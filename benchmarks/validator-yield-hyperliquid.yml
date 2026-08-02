@@ -2,7 +2,7 @@
 
 slug: validator-yield-hyperliquid
 number: "115"
-title: Hyperliquid validator leaderboard — live net APR, uptime, commission
+title: "Hyperliquid validator leaderboard: live net APR, uptime, commission"
 seo_title: "Best Hyperliquid validators 2026: yield, commission, uptime ranked"
 seo_description: "Live Hyperliquid validator leaderboard ranked by net APR. All 34 validators tracked: net yield in bps, commission rate, uptime %, delegated stake in USD. Updated every 5 minutes from /info validatorSummaries."
 subtitle: Per-validator net yield (predictedApr.day × uptime) in basis points across all 34 Hyperliquid validators. Ranked by net APR; commission and uptime shown as secondary columns.
@@ -13,13 +13,13 @@ unit: bps
 higher_is_better: true
 
 disclaimer: |
-  Honest scope. (1) `net_yield = predictedApr.day × uptimeFraction` from the Hyperliquid `/info validatorSummaries` endpoint. (2) No MEV layer exists at the validator level on Hyperliquid — the centralised sequencer captures order-flow value upstream. MEV is structurally absent from all figures. (3) Jailed validators (currently 6) land in the dataset with `predictedApr=0` and `net_yield=0`; they rank at the bottom. (4) APRs across the active set are tightly clustered (~200–225 bps) because Hyperliquid distributes rewards evenly across non-jailed validators — commission rate is the primary differentiator for delegators.
+  net_yield = predictedApr.day x uptimeFraction from /info validatorSummaries. No MEV layer at the validator level on Hyperliquid; the centralised sequencer captures order-flow value upstream. Jailed validators land at 0 bps regardless of published APR. APRs cluster at 200 to 225 bps across the active set; commission rate is the primary differentiator for delegators.
 
 seo_intro: |
   Hyperliquid runs a permissioned validator set of ~30 active nodes. Unlike
   Solana's ~3000-validator market where yield spreads across hundreds of bps,
   every non-jailed Hyperliquid validator earns the same gross APR from the
-  protocol — the only differentiation is commission rate, uptime, and jail
+  protocol; the only differentiation is commission rate, uptime, and jail
   risk. This page surfaces the full active set, ranked by net yield
   (gross APR after commission and downtime drag), so a delegator can see
   exactly which operators take the smallest cut and stay online.
@@ -50,8 +50,8 @@ methodology:
 
 findings:
   - "Commission is the only meaningful differentiator among healthy Hyperliquid validators: all active non-jailed validators earn the same gross APR (~225 bps as of this snapshot). A delegator choosing between them is effectively choosing a commission rate."
-  - "Zero-commission validators (infinitefield.xyz, HyperStake, CMI, Flowdex) lead the net yield ranking by construction — they take no cut from delegators."
-  - "The four Hyper Foundation validators (1–4) collectively hold ~$10B+ in staked HYPE and charge 3% commission (300 bps). Foundation-5 added later at the same terms."
+  - "Zero-commission validators (infinitefield.xyz, HyperStake, CMI, Flowdex) lead the net yield ranking by construction; they take no cut from delegators."
+  - "The four Hyper Foundation validators (1 to 4) collectively hold ~$10B+ in staked HYPE and charge 3% commission (300 bps). Foundation-5 added later at the same terms."
   - "Anchorage By Figment charges 10% commission (1000 bps), the highest among active non-jailed validators, which reduces delegator net yield by ~20 bps relative to zero-commission nodes."
   - "6 validators are currently jailed (Figment, Falcon Capital, Asymmetric Research, HyperCN X hlscan, Red Pond, cp0x by STAKR.space). They earn 0 yield and their delegated stake is minimal (<10k HYPE each)."
 
