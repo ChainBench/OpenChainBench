@@ -54,7 +54,7 @@ methodology:
   - "Cadence: derived in PromQL from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007)."
   - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / ignoring(notional) avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
   - "Oracle-priced venues (gains.trade, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
-  - "Orderbook venues (Hyperliquid, dYdX, Lighter, Paradex, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
+  - "Orderbook venues (Hyperliquid, dYdX, Lighter, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
   - "Missing $1M tier: when the visible book cannot absorb $1M the harness skips the tier and increments perp_fees_tier_skipped_total rather than extrapolating. The slope PromQL returns no data for that venue, shown as N/A in the leaderboard."
   - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / ignoring(notional) count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
   - "Chain tabs: the board is scoped per asset (ETH, BTC, SOL) because book depth differs significantly across assets and cross-asset averaging obscures the signal."
@@ -195,19 +195,6 @@ providers:
       success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}
-
-  - slug: paradex
-    name: Paradex
-    tag: "Starknet appchain perps, 100-level book"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Starknet appchain, 100-level book depth caps visible depth at ~$1M on majors."
-    queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h])
-      series: perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}
 
   - slug: extended
     name: Extended
