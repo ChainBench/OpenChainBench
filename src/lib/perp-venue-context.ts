@@ -4,7 +4,6 @@ import {
   type PerpVenueRow,
   type PerpVenueType,
 } from "@/lib/perp-stats";
-import { loadBenchFromBlob } from "@/lib/bench-blob";
 import type { Benchmark } from "@/types/benchmark";
 import type { PerpVenueBenchRow } from "@/components/perp-venue-bench-cards";
 
@@ -74,6 +73,7 @@ export type PerpVenueContext = {
  */
 export async function getPerpVenueContext(
   slug: string,
+  feesAtSizeBench?: Benchmark | null,
 ): Promise<PerpVenueContext | null> {
   // Map product slug to cohort slug for the few that differ. Today
   // only GMX is split (PROVIDER_REGISTRY entry "gmx", cohort label
@@ -91,8 +91,6 @@ export async function getPerpVenueContext(
   const venue = cohort.venues.find((v) => v.slug === cohortSlug);
   if (!venue) return null;
 
-  const feesAtSizeBench = await loadBenchFromBlob("perp-fees-at-size");
-
   return {
     kind: "venue",
     slug,
@@ -101,7 +99,7 @@ export async function getPerpVenueContext(
     chainLabel: meta.chainLabel,
     externalUrl: meta.url,
     venueType: venue.venueType,
-    benchRows: benchRowsForVenue(cohort, venue, feesAtSizeBench),
+    benchRows: benchRowsForVenue(cohort, venue, feesAtSizeBench ?? null),
   };
 }
 
