@@ -429,6 +429,22 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Polygon CDK zkEVM L2 (chain 13371) operated by Immutable, dedicated Web3 gaming stack, IMX gas token, 2 s block cadence, settlement onto Ethereum via zk-proofs.",
   },
+  {
+    slug: "kava",
+    label: "Kava",
+    category: "L1",
+    nativeSymbol: "KAVA",
+    description:
+      "Cosmos SDK Layer 1 (chain 2222) with a native EVM execution layer, ~5 s block time under Tendermint BFT consensus, KAVA gas token on the EVM side, and IBC connectivity to the wider Cosmos ecosystem.",
+  },
+  {
+    slug: "zora",
+    label: "Zora",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack rollup (chain 7777777) operated by Zora Network, optimised for NFT minting and creative media on-chain, ~2 s sequencer cadence, ETH gas, blob calldata settlement on Ethereum.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

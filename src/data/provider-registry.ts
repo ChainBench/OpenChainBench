@@ -1901,6 +1901,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@maplefinance",
     docs: "https://maplefinance.gitbook.io/maple/",
   },
+  "kava-official": {
+    url: "https://www.kava.io",
+    description:
+      "Kava Labs' official public EVM RPC (evm.kava.io) for the Cosmos SDK Layer 1 with native EVM execution (chain 2222). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@kava_platform",
+  },
+  "zora-official": {
+    url: "https://zora.co",
+    description:
+      "Zora Network's official public RPC (rpc.zora.energy) for the OP Stack rollup dedicated to NFT minting and creative media on-chain (chain 7777777). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@ourzora",
+  },
 };
 
 /**
