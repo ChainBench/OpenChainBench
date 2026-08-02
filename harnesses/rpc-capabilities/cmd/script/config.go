@@ -673,6 +673,44 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_IMMUTABLE_THIRDWEB", "https://immutable-zkevm.rpc.thirdweb.com")},
 			},
 		},
+		// ─── Kava EVM (bench 121) — added 2026-08-02. Cosmos SDK L1
+		// (chain 2222) with native EVM execution, ~5 s block time.
+		// The 2026-07-03 long-tail sweep excluded Kava for not meeting
+		// the 3-provider threshold; re-audit on 2026-08-02 confirms
+		// Thirdweb now supports Kava EVM, restoring 3 clean keyless
+		// providers. Live-verified: kava-official (evm.kava.io), drpc
+		// (kava.drpc.org), thirdweb (kava.rpc.thirdweb.com). Excluded:
+		// PublicNode (method-not-found on eth_getBlockByNumber), Tenderly
+		// (no kava route), Blast API (no listing), OnFinality (429 on
+		// public quota without key), 1RPC (unknown network).
+		{
+			Slug: "kava",
+			Name: "Kava",
+			Providers: []Provider{
+				{Slug: "kava-official", Name: "Kava Labs", URL: envDefault("RPC_URL_KAVA_OFFICIAL", "https://evm.kava.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAVA_DRPC", "https://kava.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KAVA_THIRDWEB", "https://kava.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Zora (bench 122) — added 2026-08-02. OP Stack rollup
+		// (chain 7777777) by Zora Network, ~2 s sequencer cadence, ETH
+		// gas, NFT-focused ecosystem. The 2026-07-03 long-tail sweep
+		// excluded Zora for having ≤2 keyless providers; re-audit on
+		// 2026-08-02 confirms Thirdweb now supports Zora, restoring
+		// 3 clean keyless providers. Live-verified: zora-official
+		// (rpc.zora.energy), drpc (zora.drpc.org), thirdweb
+		// (zora.rpc.thirdweb.com). Excluded: Tenderly (no zora route),
+		// Alchemy public (ZORA_MAINNET not enabled on public tier),
+		// Blast API (discontinued).
+		{
+			Slug: "zora",
+			Name: "Zora",
+			Providers: []Provider{
+				{Slug: "zora-official", Name: "Zora Network", URL: envDefault("RPC_URL_ZORA_OFFICIAL", "https://rpc.zora.energy")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZORA_DRPC", "https://zora.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZORA_THIRDWEB", "https://zora.rpc.thirdweb.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
