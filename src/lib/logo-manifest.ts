@@ -57,6 +57,17 @@ const RAW: Record<string, string> = {
   immutable: "/logos/immutable.png",
   stakeme: "/logos/stakeme.jpg",
 
+  // RPC wave-2 chains (2026-08-02, benches 121-129)
+  kava: "/logos/kava.png",
+  zora: "/logos/zora.webp",
+  abstract: "/logos/abstract.webp",
+  apechain: "/logos/apechain.webp",
+  lisk: "/logos/lisk.webp",
+  swellchain: "/logos/swellchain.webp",
+  cyber: "/logos/cyber.webp",
+  altlayer: "/logos/altlayer.webp",
+  sentio: "/logos/sentio.png",
+
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
@@ -476,6 +487,13 @@ const ALIASES: Record<string, string> = {
   "cronos-official": "cronos",
   "fraxtal-official": "fraxtal",
   "soneium-official": "soneium",
+  // RPC wave-2 chains (2026-08-02, benches 121-129)
+  "kava-official": "kava",
+  "zora-official": "zora",
+  "abstract-official": "abstract",
+  "apechain-official": "apechain",
+  "lisk-official": "lisk",
+  "cyber-official": "cyber",
 
 };
 
