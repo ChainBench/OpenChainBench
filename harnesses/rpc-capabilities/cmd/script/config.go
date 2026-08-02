@@ -673,6 +673,80 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_IMMUTABLE_THIRDWEB", "https://immutable-zkevm.rpc.thirdweb.com")},
 			},
 		},
+		// ─── Abstract (bench 123) — added 2026-08-02. ZK Stack L2
+		// (chain 2741) by Abstract Labs, Pudgy Penguins ecosystem chain.
+		// 3 clean keyless providers live-verified: abstract-official
+		// (api.mainnet.abs.xyz), drpc, thirdweb. Excluded: LeoRPC
+		// (timeout), PublicNode + Tenderly + OnFinality (no listing).
+		{
+			Slug: "abstract",
+			Name: "Abstract",
+			Providers: []Provider{
+				{Slug: "abstract-official", Name: "Abstract Labs", URL: envDefault("RPC_URL_ABSTRACT_OFFICIAL", "https://api.mainnet.abs.xyz")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ABSTRACT_DRPC", "https://abstract.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ABSTRACT_THIRDWEB", "https://abstract.rpc.thirdweb.com")},
+			},
+		},
+		// ─── ApeChain (bench 124) — added 2026-08-02. Arbitrum Orbit L2
+		// (chain 33139) for the APE ecosystem by Yuga Labs / APE Foundation,
+		// APE gas, ~1 s blocks. 3 clean keyless providers live-verified:
+		// apechain-official (rpc.apechain.com), drpc, thirdweb. Excluded:
+		// rpc.apechain.io (timeout), PublicNode (no subdomain), Tenderly
+		// (no apechain route).
+		{
+			Slug: "apechain",
+			Name: "ApeChain",
+			Providers: []Provider{
+				{Slug: "apechain-official", Name: "APE Foundation", URL: envDefault("RPC_URL_APECHAIN_OFFICIAL", "https://rpc.apechain.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_APECHAIN_DRPC", "https://apechain.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_APECHAIN_THIRDWEB", "https://apechain.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Lisk (bench 125) — added 2026-08-02. OP Stack L2 (chain 1135)
+		// by the Lisk Foundation, migrated from DPOS chain in 2024. ETH gas,
+		// 2 s blocks. 3 clean keyless providers live-verified: lisk-official
+		// (rpc.api.lisk.com), drpc, thirdweb. Excluded: LeoRPC (timeout),
+		// OnFinality (no listing), Tenderly + PublicNode (no lisk route/subdomain).
+		{
+			Slug: "lisk",
+			Name: "Lisk",
+			Providers: []Provider{
+				{Slug: "lisk-official", Name: "Lisk Foundation", URL: envDefault("RPC_URL_LISK_OFFICIAL", "https://rpc.api.lisk.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_LISK_DRPC", "https://lisk.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_LISK_THIRDWEB", "https://lisk.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Swellchain (bench 126) — added 2026-08-02. OP Stack L2
+		// (chain 1923) by Swell Network, liquid restaking. EigenDA DA,
+		// 2 s blocks. 3 clean keyless providers live-verified: ankr
+		// (rpc.ankr.com/swell), sentio (swell-mainnet.rpc.sentio.xyz),
+		// thirdweb (chain-id path 1923.rpc.thirdweb.com). Excluded:
+		// swell-mainnet.alt.technology (401), swellchain.drpc.org (404),
+		// swellchain.rpc.thirdweb.com (slug not mapped).
+		{
+			Slug: "swellchain",
+			Name: "Swellchain",
+			Providers: []Provider{
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_SWELLCHAIN_ANKR", "https://rpc.ankr.com/swell")},
+				{Slug: "sentio", Name: "Sentio", URL: envDefault("RPC_URL_SWELLCHAIN_SENTIO", "https://swell-mainnet.rpc.sentio.xyz")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SWELLCHAIN_THIRDWEB", "https://1923.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Cyber Network (bench 127) — added 2026-08-02. OP Stack L2
+		// (chain 7560) by CyberConnect, social graph. ETH gas, 2 s blocks.
+		// 3 clean keyless providers live-verified: cyber-official
+		// (rpc.cyber.co), altlayer (cyber.alt.technology — AltLayer is the
+		// sequencer operator), thirdweb (7560.rpc.thirdweb.com). Excluded:
+		// cyber.drpc.org (404), cyber.rpc.thirdweb.com (slug not mapped).
+		{
+			Slug: "cyber",
+			Name: "Cyber",
+			Providers: []Provider{
+				{Slug: "cyber-official", Name: "CyberConnect", URL: envDefault("RPC_URL_CYBER_OFFICIAL", "https://rpc.cyber.co")},
+				{Slug: "altlayer", Name: "AltLayer", URL: envDefault("RPC_URL_CYBER_ALTLAYER", "https://cyber.alt.technology")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CYBER_THIRDWEB", "https://7560.rpc.thirdweb.com")},
+			},
+		},
 		// ─── Kava EVM (bench 121) — added 2026-08-02. Cosmos SDK L1
 		// (chain 2222) with native EVM execution, ~5 s block time.
 		// The 2026-07-03 long-tail sweep excluded Kava for not meeting
