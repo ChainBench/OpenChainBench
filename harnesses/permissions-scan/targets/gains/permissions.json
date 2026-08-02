@@ -1,0 +1,1652 @@
+{
+    "GNSMultiCollatDiamond": {
+        "Implementation_Address": "0xff84c4a0d639d598af2088e2ffb76cdbdf1de0ed",
+        "Proxy_Address": "0xFF162c694eAA571f685030649814282eA457f169",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "GNSMultiCollatDiamond",
+            "Functions": [
+                {
+                    "Function": "diamondCut",
+                    "Modifiers": [
+                        "onlyRoles"
+                    ],
+                    "msg.sender_conditions": [
+                        "! hasRoles(msg.sender,_roleA,_roleB)"
+                    ],
+                    "state_variables_read": [
+                        "_account",
+                        "msg.sender",
+                        "addressStore",
+                        "_roleA",
+                        "_roleB"
+                    ],
+                    "state_variables_written": [],
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                },
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "this",
+                        "AddressUpgradeable",
+                        "_initialized",
+                        "_initializing",
+                        "isTopLevelCall",
+                        "addressStore",
+                        "account",
+                        "TMP_27"
+                    ],
+                    "state_variables_written": [
+                        "_initialized",
+                        "addressStore",
+                        "_initializing"
+                    ],
+                    "_initialized": 26,
+                    "_initializing": false,
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                },
+                {
+                    "Function": "initializeGovEmergencyTimelock",
+                    "Modifiers": [
+                        "reinitializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "version",
+                        "_initializing",
+                        "addressStore",
+                        "_initialized"
+                    ],
+                    "state_variables_written": [
+                        "_initialized",
+                        "addressStore",
+                        "_initializing"
+                    ],
+                    "_initialized": 26,
+                    "_initializing": false,
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                },
+                {
+                    "Function": "setRoles",
+                    "Modifiers": [
+                        "onlyRoles"
+                    ],
+                    "msg.sender_conditions": [
+                        "! hasRoles(msg.sender,_roleA,_roleB)",
+                        "_roles[i] == Role.GOV_TIMELOCK && _accounts[i] == msg.sender"
+                    ],
+                    "state_variables_read": [
+                        "_account",
+                        "msg.sender",
+                        "addressStore",
+                        "_roleA",
+                        "_roleB"
+                    ],
+                    "state_variables_written": [
+                        "addressStore"
+                    ],
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                },
+                {
+                    "Function": "_enforceRole",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "! hasRole(msg.sender,_role)"
+                    ],
+                    "state_variables_read": [
+                        "addressStore"
+                    ],
+                    "state_variables_written": [],
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                },
+                {
+                    "Function": "_enforceRoles",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "! hasRoles(msg.sender,_roleA,_roleB)"
+                    ],
+                    "state_variables_read": [
+                        "addressStore"
+                    ],
+                    "state_variables_written": [],
+                    "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+                }
+            ],
+            "storage_values": {
+                "_initialized": 26,
+                "_initializing": false,
+                "addressStore": "00000000000000000000000018c11fd286c5ec11c3b683caa813b77f5163a122"
+            }
+        }
+    },
+    "GNSTimelockOwner": {
+        "Address": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+        "permissions": {
+            "Contract_Name": "GNSTimelockOwner",
+            "Functions": [
+                {
+                    "Function": "schedule",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_minDelay",
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 1209600
+                },
+                {
+                    "Function": "scheduleBatch",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_minDelay",
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 1209600
+                },
+                {
+                    "Function": "cancel",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "CANCELLER_ROLE",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "_DONE_TIMESTAMP",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "CANCELLER_ROLE",
+                            "slot": "keccak256(bytes)(CANCELLER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "execute",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "EXECUTOR_ROLE",
+                        "_roles",
+                        "account",
+                        "_DONE_TIMESTAMP",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "executeBatch",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "EXECUTOR_ROLE",
+                        "_roles",
+                        "account",
+                        "_DONE_TIMESTAMP",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "updateDelay",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "require(bool,string)(msg.sender == address(this),TimelockController: caller must be timelock)"
+                    ],
+                    "state_variables_read": [
+                        "_minDelay"
+                    ],
+                    "state_variables_written": [
+                        "_minDelay"
+                    ],
+                    "_minDelay": 1209600
+                },
+                {
+                    "Function": "grantRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "addr",
+                        "buffer",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            ],
+            "storage_values": {
+                "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                "_timestamps": 0,
+                "_minDelay": 1209600
+            }
+        }
+    },
+    "GNSTimelockManager": {
+        "Address": "0x1632C38cB208df8409753729dBfbA5c58626F637",
+        "permissions": {
+            "Contract_Name": "GNSTimelockManager",
+            "Functions": [
+                {
+                    "Function": "schedule",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_minDelay",
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 259200
+                },
+                {
+                    "Function": "scheduleBatch",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_minDelay",
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 259200
+                },
+                {
+                    "Function": "cancel",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "CANCELLER_ROLE",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "_DONE_TIMESTAMP",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "CANCELLER_ROLE",
+                            "slot": "keccak256(bytes)(CANCELLER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "execute",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "EXECUTOR_ROLE",
+                        "_roles",
+                        "account",
+                        "_DONE_TIMESTAMP",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "executeBatch",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "EXECUTOR_ROLE",
+                        "_roles",
+                        "account",
+                        "_DONE_TIMESTAMP",
+                        "Strings",
+                        "value",
+                        "_timestamps"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "updateDelay",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "require(bool,string)(msg.sender == address(this),TimelockController: caller must be timelock)"
+                    ],
+                    "state_variables_read": [
+                        "_minDelay"
+                    ],
+                    "state_variables_written": [
+                        "_minDelay"
+                    ],
+                    "_minDelay": 259200
+                },
+                {
+                    "Function": "grantRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "role",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "msg.sender",
+                        "_SYMBOLS",
+                        "buffer",
+                        "addr",
+                        "i",
+                        "_roles",
+                        "account",
+                        "Strings",
+                        "value"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            ],
+            "storage_values": {
+                "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                "_timestamps": 0,
+                "_minDelay": 259200
+            }
+        }
+    },
+    "GToken": {
+        "Implementation_Address": "0xeb754588eff264793bb80be65866d11bc8d6cbdd",
+        "Proxy_Address": "0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "GToken",
+            "Functions": [
+                {
+                    "Function": "__Ownable_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing",
+                        "_owner"
+                    ],
+                    "state_variables_written": [
+                        "_owner"
+                    ],
+                    "_initializing": false,
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "__Ownable_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing",
+                        "_owner"
+                    ],
+                    "state_variables_written": [
+                        "_owner"
+                    ],
+                    "_initializing": false,
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "renounceOwnership",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "_owner"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "transferOwnership",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "_owner"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "__Context_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [],
+                    "_initializing": false
+                },
+                {
+                    "Function": "__Context_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [],
+                    "_initializing": false
+                },
+                {
+                    "Function": "__ERC4626_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [
+                        "_asset",
+                        "_underlyingDecimals"
+                    ],
+                    "_initializing": false
+                },
+                {
+                    "Function": "__ERC4626_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [
+                        "_asset",
+                        "_underlyingDecimals"
+                    ],
+                    "_initializing": false
+                },
+                {
+                    "Function": "__ERC20_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [
+                        "_name",
+                        "_symbol"
+                    ],
+                    "_initializing": false
+                },
+                {
+                    "Function": "__ERC20_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_initializing"
+                    ],
+                    "state_variables_written": [
+                        "_name",
+                        "_symbol"
+                    ],
+                    "_initializing": false
+                },
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer",
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PRECISION_18",
+                        "AddressUpgradeable",
+                        "_owner",
+                        "_initialized",
+                        "MAX_LOSSES_BURN_P",
+                        "_initializing",
+                        "isTopLevelCall",
+                        "MAX_DISCOUNT_P",
+                        "TMP_396",
+                        "MAX_SUPPLY_INCREASE_DAILY_P",
+                        "MIN_DAILY_ACC_PNL_DELTA",
+                        "MAX_GNS_SUPPLY_MINT_DAILY_P",
+                        "account",
+                        "this"
+                    ],
+                    "state_variables_written": [
+                        "lossesBurnP",
+                        "_initializing",
+                        "maxGnsSupplyMintDailyP",
+                        "maxDiscountP",
+                        "_initialized",
+                        "maxDiscountThresholdP",
+                        "shareToAssetsPrice",
+                        "MIN_LOCK_DURATION",
+                        "gnsToken",
+                        "lockedDepositNft",
+                        "manager",
+                        "_asset",
+                        "WITHDRAW_EPOCHS_LOCKS",
+                        "admin",
+                        "_underlyingDecimals",
+                        "currentEpoch",
+                        "maxAccOpenPnlDelta",
+                        "pnlHandler",
+                        "currentEpochStart",
+                        "_name",
+                        "maxDailyAccPnlDelta",
+                        "_symbol",
+                        "openTradesPnlFeed",
+                        "withdrawLockThresholdsP",
+                        "gnsPriceProvider",
+                        "maxSupplyIncreaseDailyP",
+                        "_owner"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "MIN_DAILY_ACC_PNL_DELTA",
+                            "slot": "PRECISION_18 / 10"
+                        },
+                        {
+                            "name": "MAX_SUPPLY_INCREASE_DAILY_P",
+                            "slot": "50 * PRECISION_18"
+                        },
+                        {
+                            "name": "MAX_LOSSES_BURN_P",
+                            "slot": "25 * PRECISION_18"
+                        },
+                        {
+                            "name": "MAX_GNS_SUPPLY_MINT_DAILY_P",
+                            "slot": "PRECISION_18 / 20"
+                        },
+                        {
+                            "name": "MAX_DISCOUNT_P",
+                            "slot": "10 * PRECISION_18"
+                        }
+                    ],
+                    "_initialized": 3,
+                    "_initializing": false,
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "initializeV3",
+                    "Modifiers": [
+                        "reinitializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "version",
+                        "_initializing",
+                        "_asset",
+                        "_initialized"
+                    ],
+                    "state_variables_written": [
+                        "_initialized",
+                        "collateralConfig",
+                        "_initializing"
+                    ],
+                    "_initialized": 3,
+                    "_initializing": false,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831"
+                },
+                {
+                    "Function": "transferOwnership",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "admin",
+                        "manager",
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "_owner"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637",
+                    "admin": "0xe8997C502fCD0729B462FCA19A50cF0DAEA0cAB5"
+                },
+                {
+                    "Function": "updateManager",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "admin",
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "manager"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+                    "admin": "0xe8997C502fCD0729B462FCA19A50cF0DAEA0cAB5"
+                },
+                {
+                    "Function": "updateAdmin",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "manager",
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "admin"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updatePnlHandler",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "pnlHandler"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "updateGnsPriceProvider",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "manager",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "gnsPriceProvider"
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateOpenTradesPnlFeed",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "openTradesPnlFeed"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "updateMaxAccOpenPnlDelta",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxAccOpenPnlDelta"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "updateMaxDailyAccPnlDelta",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "manager",
+                        "MIN_DAILY_ACC_PNL_DELTA",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxDailyAccPnlDelta"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MIN_DAILY_ACC_PNL_DELTA",
+                            "slot": "PRECISION_18 / 10"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateWithdrawLockThresholdsP",
+                    "Modifiers": [
+                        "onlyOwner"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_owner",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "withdrawLockThresholdsP"
+                    ],
+                    "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F"
+                },
+                {
+                    "Function": "updateMaxSupplyIncreaseDailyP",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MAX_SUPPLY_INCREASE_DAILY_P",
+                        "manager",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxSupplyIncreaseDailyP"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_SUPPLY_INCREASE_DAILY_P",
+                            "slot": "50 * PRECISION_18"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateLossesBurnP",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "manager",
+                        "MAX_LOSSES_BURN_P",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "lossesBurnP"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_LOSSES_BURN_P",
+                            "slot": "25 * PRECISION_18"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateMaxGnsSupplyMintDailyP",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MAX_GNS_SUPPLY_MINT_DAILY_P",
+                        "manager",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxGnsSupplyMintDailyP"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_GNS_SUPPLY_MINT_DAILY_P",
+                            "slot": "PRECISION_18 / 20"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateMaxDiscountP",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "manager",
+                        "MAX_DISCOUNT_P",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxDiscountP"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_DISCOUNT_P",
+                            "slot": "10 * PRECISION_18"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "updateMaxDiscountThresholdP",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PRECISION_18",
+                        "manager",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxDiscountThresholdP"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        }
+                    ],
+                    "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637"
+                },
+                {
+                    "Function": "deposit",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "totalDeposited",
+                        "PRECISION_18",
+                        "totalLiability",
+                        "shareToAssetsPrice",
+                        "_totalSupply",
+                        "currentMaxSupply",
+                        "accPnlPerToken",
+                        "accPnlPerTokenUsed",
+                        "assetsOrShares",
+                        "_balances",
+                        "_asset"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerTokenUsed": 31414041566567400,
+                    "accPnlPerToken": 32549236854273370,
+                    "currentMaxSupply": 5016959541101,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430
+                },
+                {
+                    "Function": "mint",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "totalDeposited",
+                        "PRECISION_18",
+                        "totalLiability",
+                        "shareToAssetsPrice",
+                        "_totalSupply",
+                        "currentMaxSupply",
+                        "accPnlPerToken",
+                        "accPnlPerTokenUsed",
+                        "assetsOrShares",
+                        "_balances",
+                        "_asset"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerTokenUsed": 31414041566567400,
+                    "accPnlPerToken": 32549236854273370,
+                    "currentMaxSupply": 5016959541101,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430
+                },
+                {
+                    "Function": "withdraw",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "TESTNET",
+                        "ARBITRUM_MAINNET",
+                        "_totalSupply",
+                        "openTradesPnlFeed",
+                        "accPnlPerToken",
+                        "ARBITRUM_MAINNET_WETH",
+                        "assetsOrShares",
+                        "totalDeposited",
+                        "POLYGON_MAINNET_WMATIC",
+                        "BASE_MAINNET_WETH",
+                        "BASE_MAINNET",
+                        "ARBITRUM_SEPOLIA_WETH",
+                        "APECHAIN_MAINNET_WAPE",
+                        "POLYGON_MAINNET",
+                        "MAX_NATIVE_TRANSFER_GAS_LIMIT",
+                        "PRECISION_18",
+                        "currentEpoch",
+                        "_balances",
+                        "_allowances",
+                        "ARBITRUM_SEPOLIA",
+                        "totalLiability",
+                        "APECHAIN_MAINNET",
+                        "shareToAssetsPrice",
+                        "withdrawRequests",
+                        "_asset"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "_allowances",
+                        "withdrawRequests",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "MAX_NATIVE_TRANSFER_GAS_LIMIT",
+                            "slot": "40_000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_allowances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "openTradesPnlFeed": "bf55c78132ab06a2b217040b7a7f20b5cbd47982",
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerToken": 32549236854273370,
+                    "currentEpoch": 307,
+                    "withdrawRequests": 0,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430
+                },
+                {
+                    "Function": "redeem",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "TESTNET",
+                        "ARBITRUM_MAINNET",
+                        "_totalSupply",
+                        "openTradesPnlFeed",
+                        "accPnlPerToken",
+                        "ARBITRUM_MAINNET_WETH",
+                        "assetsOrShares",
+                        "totalDeposited",
+                        "POLYGON_MAINNET_WMATIC",
+                        "BASE_MAINNET_WETH",
+                        "BASE_MAINNET",
+                        "ARBITRUM_SEPOLIA_WETH",
+                        "APECHAIN_MAINNET_WAPE",
+                        "POLYGON_MAINNET",
+                        "MAX_NATIVE_TRANSFER_GAS_LIMIT",
+                        "PRECISION_18",
+                        "currentEpoch",
+                        "_balances",
+                        "_allowances",
+                        "ARBITRUM_SEPOLIA",
+                        "totalLiability",
+                        "APECHAIN_MAINNET",
+                        "shareToAssetsPrice",
+                        "withdrawRequests",
+                        "_asset"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "_allowances",
+                        "withdrawRequests",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "MAX_NATIVE_TRANSFER_GAS_LIMIT",
+                            "slot": "40_000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_allowances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "openTradesPnlFeed": "bf55c78132ab06a2b217040b7a7f20b5cbd47982",
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerToken": 32549236854273370,
+                    "currentEpoch": 307,
+                    "withdrawRequests": 0,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430
+                },
+                {
+                    "Function": "depositWithDiscountAndLock",
+                    "Modifiers": [
+                        "checks",
+                        "validDiscount"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MIN_LOCK_DURATION",
+                        "_totalSupply",
+                        "totalDiscounts",
+                        "accPnlPerToken",
+                        "MAX_LOCK_DURATION",
+                        "assetsOrShares",
+                        "totalDeposited",
+                        "currentMaxSupply",
+                        "maxDiscountP",
+                        "maxDiscountThresholdP",
+                        "accRewardsPerToken",
+                        "PRECISION_18",
+                        "lockedDepositsCount",
+                        "_balances",
+                        "lockDuration",
+                        "lockedDeposits",
+                        "totalLockedDiscounts",
+                        "totalLiability",
+                        "shareToAssetsPrice",
+                        "accPnlPerTokenUsed",
+                        "_asset",
+                        "lockedDepositNft"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "totalLockedDiscounts",
+                        "totalDiscounts",
+                        "lockedDepositsCount",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "MAX_LOCK_DURATION",
+                            "slot": "31536000",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "lockedDepositNft": "d846b17a07e26f9832f8de940101c5f764df3804",
+                    "MIN_LOCK_DURATION": 1209600,
+                    "maxDiscountP": 5000000000000000000,
+                    "maxDiscountThresholdP": 100000000000000000000,
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerTokenUsed": 31414041566567400,
+                    "accPnlPerToken": 32549236854273370,
+                    "accRewardsPerToken": 314474195494554452,
+                    "currentMaxSupply": 5016959541101,
+                    "lockedDepositsCount": 596,
+                    "lockedDeposits": 0,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430,
+                    "totalLockedDiscounts": 39974383745,
+                    "totalDiscounts": 182787032523
+                },
+                {
+                    "Function": "mintWithDiscountAndLock",
+                    "Modifiers": [
+                        "checks",
+                        "validDiscount"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MIN_LOCK_DURATION",
+                        "_totalSupply",
+                        "totalDiscounts",
+                        "accPnlPerToken",
+                        "MAX_LOCK_DURATION",
+                        "assetsOrShares",
+                        "totalDeposited",
+                        "currentMaxSupply",
+                        "maxDiscountP",
+                        "maxDiscountThresholdP",
+                        "accRewardsPerToken",
+                        "PRECISION_18",
+                        "lockedDepositsCount",
+                        "_balances",
+                        "lockDuration",
+                        "lockedDeposits",
+                        "totalLockedDiscounts",
+                        "totalLiability",
+                        "shareToAssetsPrice",
+                        "accPnlPerTokenUsed",
+                        "_asset",
+                        "lockedDepositNft"
+                    ],
+                    "state_variables_written": [
+                        "totalDeposited",
+                        "_totalSupply",
+                        "_balances",
+                        "totalLockedDiscounts",
+                        "totalDiscounts",
+                        "lockedDepositsCount",
+                        "accPnlPerToken",
+                        "totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "MAX_LOCK_DURATION",
+                            "slot": "31536000",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        }
+                    ],
+                    "_balances": 0,
+                    "_totalSupply": 4778056705811,
+                    "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                    "lockedDepositNft": "d846b17a07e26f9832f8de940101c5f764df3804",
+                    "MIN_LOCK_DURATION": 1209600,
+                    "maxDiscountP": 5000000000000000000,
+                    "maxDiscountThresholdP": 100000000000000000000,
+                    "shareToAssetsPrice": 1283060153927987052,
+                    "accPnlPerTokenUsed": 31414041566567400,
+                    "accPnlPerToken": 32549236854273370,
+                    "accRewardsPerToken": 314474195494554452,
+                    "currentMaxSupply": 5016959541101,
+                    "lockedDepositsCount": 596,
+                    "lockedDeposits": 0,
+                    "totalDeposited": 6089418839799,
+                    "totalLiability": 315362608430,
+                    "totalLockedDiscounts": 39974383745,
+                    "totalDiscounts": 182787032523
+                }
+            ],
+            "storage_values": {
+                "_initialized": 3,
+                "_initializing": false,
+                "_balances": 0,
+                "_allowances": 0,
+                "_totalSupply": 4778056705811,
+                "_asset": "af88d065e77c8cc2239327c5edb3a432268e5831",
+                "_owner": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+                "lockedDepositNft": "d846b17a07e26f9832f8de940101c5f764df3804",
+                "manager": "0x1632C38cB208df8409753729dBfbA5c58626F637",
+                "admin": "0xe8997C502fCD0729B462FCA19A50cF0DAEA0cAB5",
+                "openTradesPnlFeed": "bf55c78132ab06a2b217040b7a7f20b5cbd47982",
+                "MIN_LOCK_DURATION": 1209600,
+                "maxDiscountP": 5000000000000000000,
+                "maxDiscountThresholdP": 100000000000000000000,
+                "shareToAssetsPrice": 1283060153927987052,
+                "accPnlPerTokenUsed": 31414041566567400,
+                "accPnlPerToken": 32549236854273370,
+                "accRewardsPerToken": 314474195494554452,
+                "currentEpoch": 307,
+                "currentMaxSupply": 5016959541101,
+                "withdrawRequests": 0,
+                "lockedDepositsCount": 596,
+                "lockedDeposits": 0,
+                "totalDeposited": 6089418839799,
+                "totalLiability": 315362608430,
+                "totalLockedDiscounts": 39974383745,
+                "totalDiscounts": 182787032523
+            }
+        }
+    }
+}

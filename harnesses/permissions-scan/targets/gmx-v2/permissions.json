@@ -1,0 +1,2746 @@
+{
+    "DataStore": {
+        "Address": "0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8",
+        "permissions": {
+            "Contract_Name": "DataStore",
+            "Functions": [
+                {
+                    "Function": "_validateRole",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "setUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "applyDeltaToUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "applyDeltaToUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "applyBoundedDeltaToUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "incrementUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "decrementUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintValues": 0
+                },
+                {
+                    "Function": "setInt",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeInt",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "intValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "intValues": 0
+                },
+                {
+                    "Function": "applyDeltaToInt",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "intValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "intValues": 0
+                },
+                {
+                    "Function": "incrementInt",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "intValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "intValues": 0
+                },
+                {
+                    "Function": "decrementInt",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "intValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "intValues": 0
+                },
+                {
+                    "Function": "setAddress",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "addressValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeAddress",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "addressValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "addressValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "addressValues": 0
+                },
+                {
+                    "Function": "setBool",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "boolValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeBool",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore",
+                        "boolValues"
+                    ],
+                    "state_variables_written": [
+                        "boolValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "boolValues": false
+                },
+                {
+                    "Function": "setString",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "stringValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeString",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "stringValues",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "stringValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "stringValues": ""
+                },
+                {
+                    "Function": "setBytes32",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "bytes32Values"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeBytes32",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "bytes32Values",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "bytes32Values"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "bytes32Values": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "setUintArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeUintArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "uintArrayValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "uintArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintArrayValues": 0
+                },
+                {
+                    "Function": "setIntArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeIntArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "intArrayValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "intArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "intArrayValues": 0
+                },
+                {
+                    "Function": "setAddressArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "addressArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeAddressArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "addressArrayValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "addressArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "addressArrayValues": 0
+                },
+                {
+                    "Function": "setBoolArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "boolArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeBoolArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "boolArrayValues",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "boolArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "boolArrayValues": false
+                },
+                {
+                    "Function": "setStringArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "stringArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeStringArray",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "stringArrayValues",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "stringArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "stringArrayValues": ""
+                },
+                {
+                    "Function": "setBytes32Array",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "bytes32ArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "removeBytes32Array",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "bytes32ArrayValues",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "bytes32ArrayValues"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "bytes32ArrayValues": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "addBytes32",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "bytes32Sets",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "bytes32Sets": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "removeBytes32",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "bytes32Sets",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "bytes32Sets": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "addAddress",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "addressSets",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "addressSets": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "removeAddress",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "addressSets",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "addressSets": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "addUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "uintSets",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintSets": 0
+                },
+                {
+                    "Function": "removeUint",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "uintSets",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "uintSets": 0
+                }
+            ],
+            "storage_values": {
+                "uintValues": 0,
+                "intValues": 0,
+                "addressValues": 0,
+                "boolValues": false,
+                "stringValues": "",
+                "bytes32Values": "0000000000000000000000000000000000000000000000000000000000000000",
+                "uintArrayValues": 0,
+                "intArrayValues": 0,
+                "addressArrayValues": 0,
+                "boolArrayValues": false,
+                "stringArrayValues": "",
+                "bytes32ArrayValues": "0000000000000000000000000000000000000000000000000000000000000000",
+                "bytes32Sets": "0000000000000000000000000000000000000000000000000000000000000000",
+                "addressSets": "0000000000000000000000000000000000000000000000000000000000000000",
+                "uintSets": 0
+            }
+        }
+    },
+    "RoleStore": {
+        "Address": "0x3c3d99FD298f679DBC2CEcd132b4eC4d0F5e6e72",
+        "permissions": {
+            "Contract_Name": "RoleStore",
+            "Functions": [
+                {
+                    "Function": "grantRole",
+                    "Modifiers": [
+                        "onlyRoleAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! hasRole(msg.sender,Role.ROLE_ADMIN)",
+                        "! hasRole(msg.sender,Role.ROLE_ADMIN)"
+                    ],
+                    "state_variables_read": [
+                        "account",
+                        "roleKey",
+                        "roleMembers",
+                        "msg.sender",
+                        "roleCache",
+                        "roles",
+                        "Role"
+                    ],
+                    "state_variables_written": [
+                        "roleCache"
+                    ],
+                    "roles": "0000000000000000000000000000000000000000000000000000000000000013",
+                    "roleMembers": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "roleCache": false
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "onlyRoleAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! hasRole(msg.sender,Role.ROLE_ADMIN)",
+                        "! hasRole(msg.sender,Role.ROLE_ADMIN)"
+                    ],
+                    "state_variables_read": [
+                        "account",
+                        "roleKey",
+                        "roleMembers",
+                        "msg.sender",
+                        "roleCache",
+                        "Role"
+                    ],
+                    "state_variables_written": [
+                        "roleCache"
+                    ],
+                    "roleMembers": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "roleCache": false
+                }
+            ],
+            "storage_values": {
+                "roles": "0000000000000000000000000000000000000000000000000000000000000013",
+                "roleMembers": "0000000000000000000000000000000000000000000000000000000000000000",
+                "roleCache": false
+            }
+        }
+    },
+    "OrderVault": {
+        "Address": "0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5",
+        "permissions": {
+            "Contract_Name": "OrderVault",
+            "Functions": [
+                {
+                    "Function": "recordTransferIn",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "tokenBalances",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "tokenBalances"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ],
+                    "tokenBalances": 0
+                },
+                {
+                    "Function": "syncTokenBalance",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "tokenBalances"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != wnt"
+                    ],
+                    "state_variables_read": [
+                        "dataStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "dataStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "transferOut",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "TOKEN_TRANSFER_GAS_LIMIT",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore",
+                        "dataStore"
+                    ],
+                    "state_variables_written": [
+                        "tokenBalances"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "transferOut",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "TOKEN_TRANSFER_GAS_LIMIT",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore",
+                        "dataStore"
+                    ],
+                    "state_variables_written": [
+                        "tokenBalances"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "transferOutNativeToken",
+                    "Modifiers": [
+                        "onlyController"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "TOKEN_TRANSFER_GAS_LIMIT",
+                        "msg.sender",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "roleStore",
+                        "dataStore"
+                    ],
+                    "state_variables_written": [
+                        "tokenBalances"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "_validateRole",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                }
+            ],
+            "storage_values": {
+                "tokenBalances": 0
+            }
+        }
+    },
+    "GovTimelockController": {
+        "Address": "0xFBEff82f2DD5E51B8AF34b57cf788b4b09d466F9",
+        "permissions": {
+            "Contract_Name": "GovTimelockController",
+            "Functions": [
+                {
+                    "Function": "schedule",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "role",
+                        "_timestamps",
+                        "_minDelay",
+                        "buffer",
+                        "_SYMBOLS",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 86400
+                },
+                {
+                    "Function": "scheduleBatch",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "PROPOSER_ROLE",
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "role",
+                        "_timestamps",
+                        "_minDelay",
+                        "buffer",
+                        "_SYMBOLS",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 86400
+                },
+                {
+                    "Function": "cancel",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "_DONE_TIMESTAMP",
+                        "role",
+                        "_timestamps",
+                        "CANCELLER_ROLE",
+                        "buffer",
+                        "_SYMBOLS",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "CANCELLER_ROLE",
+                            "slot": "keccak256(bytes)(CANCELLER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "execute",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "_DONE_TIMESTAMP",
+                        "role",
+                        "_timestamps",
+                        "buffer",
+                        "_SYMBOLS",
+                        "EXECUTOR_ROLE",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "executeBatch",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "_DONE_TIMESTAMP",
+                        "role",
+                        "_timestamps",
+                        "buffer",
+                        "_SYMBOLS",
+                        "EXECUTOR_ROLE",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "updateDelay",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "require(bool,string)(msg.sender == address(this),TimelockController: caller must be timelock)"
+                    ],
+                    "state_variables_read": [
+                        "_minDelay"
+                    ],
+                    "state_variables_written": [
+                        "_minDelay"
+                    ],
+                    "_minDelay": 86400
+                },
+                {
+                    "Function": "grantRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "role",
+                        "buffer",
+                        "_SYMBOLS",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_roles",
+                        "account",
+                        "i",
+                        "addr",
+                        "msg.sender",
+                        "value",
+                        "length",
+                        "_ADDRESS_LENGTH",
+                        "role",
+                        "buffer",
+                        "_SYMBOLS",
+                        "Strings"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            ],
+            "storage_values": {
+                "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                "_timestamps": 0,
+                "_minDelay": 86400
+            }
+        }
+    },
+    "Timelock": {
+        "Address": "0x7A967D114B8676874FA2cFC1C14F3095C88418Eb",
+        "permissions": {
+            "Contract_Name": "Timelock",
+            "Functions": [
+                {
+                    "Function": "_validateRole",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "roleStore"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "roleStore"
+                        }
+                    ]
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockMultisig"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "_status"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1
+                },
+                {
+                    "Function": "increaseTimelockDelay",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "MAX_TIMELOCK_DELAY",
+                        "_NOT_ENTERED",
+                        "roleStore"
+                    ],
+                    "state_variables_written": [
+                        "timelockDelay",
+                        "_status"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "MAX_TIMELOCK_DELAY",
+                            "slot": "432000",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400
+                },
+                {
+                    "Function": "setOracleProviderEnabled",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockMultisig"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "IS_ORACLE_PROVIDER_ENABLED",
+                        "_ENTERED",
+                        "_status",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore"
+                    ],
+                    "state_variables_written": [
+                        "_status"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1
+                },
+                {
+                    "Function": "signalSetOracleProviderForToken",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setOracleProviderForTokenAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "ORACLE_PROVIDER_FOR_TOKEN",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalSetOracleProviderEnabled",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setOracleProviderEnabledAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "IS_ORACLE_PROVIDER_ENABLED",
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalSetAtomicOracleProvider",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setAtomicOracleProviderAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "IS_ATOMIC_ORACLE_PROVIDER",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalAddOracleSigner",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "addOracleSignerAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "oracleStore",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        },
+                        {
+                            "name": "oracleStore"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalRemoveOracleSigner",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "removeOracleSignerAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "oracleStore",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        },
+                        {
+                            "name": "oracleStore"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalSetFeeReceiver",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setFeeReceiverAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalGrantRole",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "grantRoleAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalRevokeRole",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "revokeRoleAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalSetPriceFeed",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setPriceFeedAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "PRICE_FEED",
+                        "_ENTERED",
+                        "_status",
+                        "PRICE_FEED_HEARTBEAT_DURATION",
+                        "STABLE_PRICE",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "PRICE_FEED_MULTIPLIER",
+                        "roleName",
+                        "eventEmitter",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "signalSetDataStream",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "timelockDelay",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "timelockDelay": 86400,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "setDataStreamAfterSignal",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "DATA_STREAM_ID",
+                        "_ENTERED",
+                        "_status",
+                        "DATA_STREAM_MULTIPLIER",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "dataStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "dataStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                },
+                {
+                    "Function": "cancelAction",
+                    "Modifiers": [
+                        "nonReentrant",
+                        "onlyTimelockAdmin"
+                    ],
+                    "msg.sender_conditions": [
+                        "! roleStore.hasRole(msg.sender,role)"
+                    ],
+                    "state_variables_read": [
+                        "_ENTERED",
+                        "_status",
+                        "pendingActionsList",
+                        "msg.sender",
+                        "eventEmitter",
+                        "roleName",
+                        "Role",
+                        "role",
+                        "_NOT_ENTERED",
+                        "roleStore",
+                        "pendingActions"
+                    ],
+                    "state_variables_written": [
+                        "_status",
+                        "pendingActions"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "_NOT_ENTERED",
+                            "slot": "1",
+                            "value": "0x0000000000000000000000000000000000015180"
+                        },
+                        {
+                            "name": "_ENTERED",
+                            "slot": "2",
+                            "value": "0x0000000000000000000000000000000000000000"
+                        },
+                        {
+                            "name": "roleStore"
+                        },
+                        {
+                            "name": "eventEmitter"
+                        }
+                    ],
+                    "_status": 1,
+                    "pendingActions": 0,
+                    "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+                }
+            ],
+            "storage_values": {
+                "_status": 1,
+                "timelockDelay": 86400,
+                "pendingActions": 0,
+                "pendingActionsList": "00000000000000000000000000000000000000000000000000000000000000f6"
+            }
+        }
+    }
+}

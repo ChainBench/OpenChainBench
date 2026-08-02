@@ -1,0 +1,217 @@
+{
+  "project": "vertex",
+  "measured_at": "2026-08-02T19:08:53Z",
+  "block": 490422447,
+  "chain_id": 42161,
+  "rpc_used": "https://arb1.arbitrum.io/rpc",
+  "contracts": {
+    "Endpoint_proxy": {
+      "value": "0xbbee07b3e8121227afcfe1e2b82772246226128e",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Endpoint'; confirmed on-chain (bytecode present)",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Endpoint_impl": {
+      "value": "0x91ffc881837ffb3eec0c62e19675425ee3a38c74",
+      "source": "cast storage Endpoint EIP-1967-impl-slot",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Clearinghouse_proxy": {
+      "value": "0xae1ec28d6225dce2ff787dcb8ce11cf6d3ae064f",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Clearinghouse'",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Clearinghouse_impl": {
+      "value": "0x63a49718d19d8182bf20fc135372c2f84a0586bf",
+      "source": "cast storage Clearinghouse EIP-1967-impl-slot",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "SpotEngine": {
+      "value": "0x32d91af2b17054d575a7bf1acfa7615f41ccefab",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Spot Engine'",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "PerpEngine": {
+      "value": "0xb74c78cca0fadafbee52b2f48a67ee8c834b5fd1",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Perp Engine'",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "OffchainExchange": {
+      "value": "0xa4369d8e3dc847aedf17f4125f1abb1bc18fc060",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Offchain Exchange'",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Querier": {
+      "value": "0x1693273b443699bee277ecbc60e2c8027e91995d",
+      "source": "https://arbiscan.io/search?q=vertex+endpoint \u2014 label 'Vertex Protocol: Querier'",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+  "owners": {
+    "Endpoint_owner_proxy": {
+      "value": "0x2BC1F3512C372F54D987B1de7A6EB72DFdF61533",
+      "source": "cast call Endpoint owner() = 0x2BC1F3512C372F54D987B1de7A6EB72DFdF61533",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "note": "This address is itself a proxy (EIP-1967 impl: 0xb7eb64ae8cfa83f66b19da0522d672f6adcb7529). Not a direct Safe."
+    },
+    "Endpoint_owner_proxy_owner": {
+      "value": "0xC6B129179B68F9dF026AFA3914ef504C498c5bC4",
+      "source": "cast call 0x2BC1F3512C372F54D987B1de7A6EB72DFdF61533 owner() = 0xC6B129179B68F9dF026AFA3914ef504C498c5bC4",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "resolved": {
+        "type": "safe",
+        "threshold": 4,
+        "total_owners": 6,
+        "owner_addresses": [
+          "0x277B19c67467572107f69Be8Cb2fa343F118dB81",
+          "0x0B63fEF1926E85507B36A85C44e90f15E096cc25",
+          "0xEC25E025D9A12C68B8f3549a80C0eF73C83F35b3",
+          "0x7BeD83895e9BDA34Cd50eF88C082099c82293a6A",
+          "0x5BeEc2EFEBf648e0Fed309AF1e654f2F92c8939b",
+          "0xABFc5C9f5afAbFb909bFD8C0ba74E355825C223D"
+        ],
+        "source": "cast call 0xC6B129179B68F9dF026AFA3914ef504C498c5bC4 getThreshold() = 4; getOwners() = [6 addresses]",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    },
+    "upgrade_path": {
+      "value": "Safe 4/6 (0xC6B129...) \u2192 owner proxy (0x2BC1F3...) \u2192 Endpoint (0xbbee07...)",
+      "source": "chained owner() calls on-chain",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "upgrade_delay_seconds": {
+      "value": "unknown",
+      "source": "No Timelock detected in ownership chain. Safe 4/6 directly (via proxy) controls the Endpoint. No getMinDelay() found in the chain. If no timelock, effective delay = 0.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+  "permissions": {
+    "scanner_result": "not_run",
+    "scanner_failure_reason": "Vertex implementation contracts (Endpoint impl 0x91ffc8..., Clearinghouse impl 0x63a497..., SpotEngine 0x32d91a..., PerpEngine 0xb74c78..., OffchainExchange 0xa43698...) are NOT verified on Arbiscan. Etherscan API v2 returns 'Contract source code not verified' for all implementation addresses. Only proxy wrappers (TransparentUpgradeableProxy) are verified. Static analysis cannot proceed without source code.",
+    "contracts_verified_detail": {
+      "Endpoint_proxy": "verified (TransparentUpgradeableProxy)",
+      "Endpoint_impl": "NOT verified",
+      "Clearinghouse_proxy": "verified (TransparentUpgradeableProxy)",
+      "Clearinghouse_impl": "NOT verified",
+      "SpotEngine": "NOT verified",
+      "PerpEngine": "NOT verified",
+      "OffchainExchange": "NOT verified",
+      "Querier": "NOT verified"
+    },
+    "manual_observations": [
+      "Vertex uses an off-chain sequencer (OffchainExchange) for order matching.",
+      "On-chain settlement occurs via Endpoint. Clearinghouse holds TVL.",
+      "SpotEngine and PerpEngine hold position state.",
+      "Owner of Endpoint is a proxy whose underlying implementation owner is a Gnosis Safe 4/6. No timelock detected between Safe and Endpoint.",
+      "Slow-mode mechanism: Endpoint.submitSlowModeTransaction() exists in source code (github.com/vertex-protocol/vertex-contracts/blob/main/core/contracts/Endpoint.sol). Allows users to submit transactions directly if sequencer is unresponsive, executable after a configurable timeout.",
+      "slowModeConfig() and nonce() calls on Endpoint reverted \u2014 exact parameter names in deployed ABI differ from test call signatures.",
+      "CRITICAL: All implementation contracts are unverified. The permission surface of the actual deployed code is opaque \u2014 source on GitHub may not match deployed bytecode."
+    ]
+  },
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "source": "Clearinghouse (0xae1ec2...) holds TVL. Users deposit to Endpoint which routes to Clearinghouse.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "funds_contract": {
+      "value": "0xae1ec28d6225dce2ff787dcb8ce11cf6d3ae064f",
+      "source": "https://arbiscan.io (label: Vertex Protocol: Clearinghouse)",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "contracts_verified": {
+      "value": "partial",
+      "source": "Etherscan API v2 (chainid=42161) queried with valid key. Proxy wrappers (Endpoint proxy, Clearinghouse proxy) verified as TransparentUpgradeableProxy. ALL implementation contracts (Endpoint impl 0x91ffc8..., Clearinghouse impl 0x63a497..., SpotEngine 0x32d91a..., PerpEngine 0xb74c78..., OffchainExchange 0xa43698..., Querier 0x169327...) return 'Contract source code not verified'. Vertex deploys unverified implementation contracts on Arbitrum.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "chain": {
+      "value": "arbitrum",
+      "chain_id": 42161,
+      "source": "Arbiscan confirms all addresses on Arbitrum One",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "chain_l2beat_stage": {
+      "value": 1,
+      "source": "https://l2beat.com/scaling/summary \u2014 Arbitrum One listed as Stage 1. Fetched 2026-08-02.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "upgrade_delay_seconds": {
+      "value": "unknown",
+      "source": "Safe 4/6 controls Endpoint via a proxy wrapper, no Timelock detected in chain. If no timelock exists, effective upgrade delay = 0. Requires deeper investigation of the owner proxy contract to confirm absence of timelock.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "can_user_exit_unilaterally": {
+      "value": "unknown",
+      "implementation_verified": false,
+      "source_repo_claims_slow_mode": true,
+      "bytecode_matches_repo": "unverified",
+      "source": "Endpoint impl 0x91ffc8 is NOT verified on Arbiscan. GitHub repo (vertex-protocol/vertex-contracts) documents submitSlowModeTransaction() but the deployed bytecode cannot be compared to the repo. The repo describes an intent, the bytecode describes the system. No statement can be made about the actual deployed contract behavior.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_function": {
+      "value": "unknown \u2014 bytecode unverified",
+      "tier": "documented",
+      "repo_claim": "submitSlowModeTransaction(IEndpoint.SlowModeTx) on Endpoint per github.com/vertex-protocol/vertex-contracts",
+      "source": "GitHub repo only. Not derivable from deployed bytecode (implementation not verified on Arbiscan).",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_depends_on": {
+      "value": "sequencer",
+      "source": "Normal operations require sequencer (OffchainExchange) to process orders. However, slow-mode bypasses sequencer after timeout. Dependency is on sequencer for normal exit; slow-mode provides sequencer-independent fallback.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "forced_inclusion": {
+      "value": "n/a",
+      "source": "Vertex is a dApp on Arbitrum One, not a rollup. The slow-mode mechanism is Vertex-native, not an L1 forced inclusion mechanism.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "n/a"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "source": "Not verified.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "unknown"
+    },
+    "lp_exit": {
+      "note": "Vertex does not use an LP vault model in the same sense. Clearinghouse holds collateral. Withdrawal path is via Endpoint.",
+      "tier": "onchain",
+      "source": "Architecture from Arbiscan labels and GitHub repo structure."
+    },
+    "trader_exit": {
+      "mechanism": "submitSlowModeTransaction() after sequencer timeout \u2014 per GitHub source",
+      "permission_gate": "unknown \u2014 implementation not verified on Arbiscan",
+      "can_exit_without_sequencer_if_slow_mode": "unknown \u2014 bytecode unverified",
+      "tier": "documented",
+      "source": "github.com/vertex-protocol/vertex-contracts only. Bytecode NOT verified."
+    }
+  }
+}
