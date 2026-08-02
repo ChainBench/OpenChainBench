@@ -28,7 +28,7 @@ export const PERP_VENUE_META: Record<
   hyperliquid: { url: "https://hyperliquid.xyz", chainLabel: "Hyperliquid L1" },
   lighter:     { url: "https://lighter.xyz",     chainLabel: "Lighter L2" },
   "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: "gmx" },
-  gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum" },
+  gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum, Base, Polygon, ApeChain" },
   dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
   drift:       { url: "https://drift.trade",     chainLabel: "Solana" },
   vertex:      { url: "https://vertexprotocol.com", chainLabel: "Arbitrum" },
