@@ -1,0 +1,77 @@
+{
+  "chain": "arbi",
+  "project": "vertex",
+  "addresses": [
+    "0xbbee07b3e8121227afcfe1e2b82772246226128e",
+    "0xae1ec28d6225dce2ff787dcb8ce11cf6d3ae064f",
+    "0x32d91af2b17054d575a7bf1acfa7615f41ccefab",
+    "0xb74c78cca0fadafbee52b2f48a67ee8c834b5fd1",
+    "0xa4369d8e3dc847aedf17f4125f1abb1bc18fc060",
+    "0x1693273b443699bee277ecbc60e2c8027e91995d",
+    "0x2BC1F3512C372F54D987B1de7A6EB72DFdF61533"
+  ],
+  "sources": [
+    {
+      "address": "0xbbee07b3e8121227afcfe1e2b82772246226128e",
+      "label": "Endpoint",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Endpoint')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "0x91ffc881837ffb3eec0c62e19675425ee3a38c74",
+      "impl_slot_read": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    },
+    {
+      "address": "0xae1ec28d6225dce2ff787dcb8ce11cf6d3ae064f",
+      "label": "Clearinghouse",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Clearinghouse')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "0x63a49718d19d8182bf20fc135372c2f84a0586bf",
+      "impl_slot_read": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    },
+    {
+      "address": "0x32d91af2b17054d575a7bf1acfa7615f41ccefab",
+      "label": "SpotEngine",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Spot Engine')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xb74c78cca0fadafbee52b2f48a67ee8c834b5fd1",
+      "label": "PerpEngine",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Perp Engine')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xa4369d8e3dc847aedf17f4125f1abb1bc18fc060",
+      "label": "OffchainExchange",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Offchain Exchange')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x1693273b443699bee277ecbc60e2c8027e91995d",
+      "label": "Querier",
+      "found_at": "https://arbiscan.io/search?q=vertex+endpoint (label: 'Vertex Protocol: Querier')",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x2BC1F3512C372F54D987B1de7A6EB72DFdF61533",
+      "label": "Endpoint owner (proxy, wraps Gnosis Safe)",
+      "found_at": "cast call Endpoint owner() on-chain",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "0xb7eb64ae8cfa83f66b19da0522d672f6adcb7529",
+      "note": "This proxy wraps a contract whose owner() returns 0xC6B129179B68F9dF026AFA3914ef504C498c5bC4 (Gnosis Safe 4/6)."
+    }
+  ]
+}
