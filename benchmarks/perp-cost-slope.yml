@@ -1,0 +1,262 @@
+# OpenChainBench. Bench 117
+
+slug: perp-cost-slope
+number: "117"
+title: "Perp DEX cost invariance: all-in bps at $1M vs $1k, live slope ranked"
+seo_title: "Perp DEX cost at $1M vs $1k 2026"
+seo_description: "{{best_name}} leads perp cost invariance at {{best_p50}} cost slope (24h avg). Ratio of all-in bps at $1M vs $1k: oracle-priced venues score 1.00, orderbook venues above. Gains, GMX, Hyperliquid, dYdX ranked live."
+subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues (no orderbook to walk) always score 1.00 by construction."
+category: Trading
+status: live
+metric: "Cost slope ($1M / $1k)"
+unit: count
+higher_is_better: false
+
+seo_intro: |
+  Every perp DEX comparison article ranks venues by their published taker
+  fee rate. That number is size-independent by design: 4.5 bps on
+  Hyperliquid costs the same at $1,000 and $1,000,000 in taker fee alone.
+  What changes is the price impact from walking the orderbook. A $1M
+  market order eats deeper into the book than a $1k order, so the spread
+  component grows. Venues with no orderbook (oracle-priced: gains.trade,
+  GMX v2) are immune to this effect because there is no book to walk: the
+  protocol charges a flat percentage of notional regardless of size. On
+  those venues, a $1M trade costs exactly the same number of bps as a $1k
+  trade, giving a cost slope of 1.00. On an orderbook venue the slope
+  exceeds 1.00 by however much impact the extra notional adds. The wider
+  the gap above 1.00, the more the venue penalises large orders relative
+  to small ones. A venue whose visible book cannot absorb $1M at all shows
+  no slope because the $1M tier is skipped: that absence is a depth signal
+  stronger than any ratio. This benchmark derives its slope directly from
+  the existing perp-fees harness, which already measures all-in bps at
+  $1k, $10k, $100k and $1M per venue per asset every five minutes.
+
+abstract: |
+  The cost slope is the ratio of a venue's all-in opening cost at $1M
+  notional to its all-in cost at $1k notional. Both terms come from
+  perp_fees_all_in_bps_tier, the multi-tier companion series already
+  published by the perp-fees harness (bench 007). No new data collection
+  is required: the bench derives the ratio in PromQL at query time. A
+  ratio of 1.00 means the venue charges the same basis points per unit of
+  notional at $1M as at $1k, which is only possible for oracle-priced
+  venues where the fee is a flat percentage of position size with no
+  orderbook to walk. For orderbook venues the ratio rises above 1.00
+  because deeper book levels carry progressively wider prices. The
+  companion fill-rate panel shows the fraction of measurement cycles in
+  which the $1M tier was successfully filled: venues that cannot reliably
+  absorb $1M show a fill rate below 1.00, which is a stronger signal than
+  any slope number. Data is refreshed every five minutes from the
+  perp-fees harness. The chain tabs scope the board to ETH, BTC or SOL
+  individually so the slope of a thin SOL book is not mixed with a deep
+  ETH book.
+
+methodology:
+  - "Cadence: derived in PromQL from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007)."
+  - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
+  - "Oracle-priced venues (gains.trade, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
+  - "Orderbook venues (Hyperliquid, dYdX, Lighter, Paradex, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
+  - "Missing $1M tier: when the visible book cannot absorb $1M the harness skips the tier and increments perp_fees_tier_skipped_total rather than extrapolating. The slope PromQL returns no data for that venue, shown as N/A in the leaderboard."
+  - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
+  - "Chain tabs: the board is scoped per asset (ETH, BTC, SOL) because book depth differs significantly across assets and cross-asset averaging obscures the signal."
+  - "Failures and stale data: inherited from the perp-fees harness. A venue that errors keeps its last gauge and its health drops to 0."
+
+per_chain_explainer:
+  - slug: ETH
+    h2: "ETH perp cost slope: size impact on the deepest pair"
+    body: |
+      ETH-PERP is the deepest pair on every venue in the cohort. On orderbook venues the $1M
+      tier is usually filled because ETH books carry several million USD of visible depth on the
+      ask side. The slope is therefore computable for most venues on ETH, and the spread between
+      the oracle-priced 1.00 and the orderbook venues reveals the raw cost of depth-limited execution.
+      Gains and GMX always read 1.00 because their protocol charges a flat open fee regardless of
+      notional; there is no book to walk for ETH on those venues.
+  - slug: BTC
+    h2: "BTC perp cost slope: tightest books, flattest slopes"
+    body: |
+      BTC carries the highest open interest on most venues and typically has the tightest spread
+      at any given notional. Orderbook venues therefore show their flattest slopes on BTC: the
+      $1M impact is minimised by depth. Oracle-priced venues (gains, gmx) remain at exactly 1.00
+      regardless.
+  - slug: SOL
+    h2: "SOL perp cost slope: where thin books expose the gap"
+    body: |
+      SOL books are thinner than ETH or BTC on most venues. The $1M tier is frequently skipped
+      on smaller venues (shown as N/A), and on the venues that do fill it the slope is noticeably
+      higher than on ETH. This is the asset where the flat-cost advantage of oracle-priced venues
+      is most visible: gains and gmx score 1.00 while orderbook venues may show slopes of 1.50
+      or higher.
+
+findings:
+  - "{{best_name}} leads the cost-slope leaderboard at {{best_p50}} (24h average). A slope of 1.00 means the venue charges the same basis points per unit of notional at $1M as at $1k."
+  - "{{name:gains}} and {{name:gmx}} are the only venues in the cohort that structurally score 1.00: they use oracle pricing with no orderbook, so the fee is a flat percentage of position size regardless of trade size."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} cost slope (24h avg). The deepest onchain orderbook in the cohort keeps its impact low, but it still exceeds 1.00 at $1M notional on most assets."
+  - "Venues showing N/A in the slope column cannot reliably fill a $1M market order. The fill-rate panel shows what fraction of measurement cycles the $1M tier was successfully absorbed."
+  - "The cost slope is asset-specific: use the chain tabs to compare ETH (deepest books), BTC (tightest books) and SOL (thinnest books) separately."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-fees
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+  freshness_metric: perp_fees_all_in_bps_tier
+
+faq:
+  - q: "What does cost slope of 1.00 mean?"
+    a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue. This is only possible for oracle-priced venues where the fee is a flat percentage of notional and there is no orderbook impact term."
+  - q: "Why are gains.trade and GMX always 1.00?"
+    a: "Both venues use oracle pricing with no orderbook. Their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. Trading $1M costs the same bps as $1k by construction. This is the core design tradeoff: flat cost at any size, in exchange for using a price oracle rather than a live orderbook."
+  - q: "What does N/A in the slope column mean?"
+    a: "The venue's visible book could not absorb $1M of notional during the measurement period. The perp-fees harness skips a tier rather than extrapolate when the book depth is insufficient, so the $1M all-in gauge is absent. No slope can be computed. The fill-rate panel shows what fraction of cycles the $1M tier was successfully filled."
+  - q: "Is a 1.00 slope always better?"
+    a: "For a trader placing a $1M order: yes, a flat cost is better than a rising one. For a trader placing a $1k order: the slope is irrelevant because both the taker fee and the spread at small notional dominate regardless. The headline perp-fees bench (bench 007) covers the $1k case; this bench covers the size-scaling dimension."
+  - q: "Can an orderbook venue ever match 1.00?"
+    a: "In theory an infinitely deep book would have zero price impact at any size, giving a slope of exactly 1.00. In practice no onchain orderbook reaches that depth for sizes above $100k on SOL or above $1M on ETH or BTC. The fill rate panel shows how often a venue actually absorbs the full notional."
+  - q: "How does this differ from the perp-fees bench?"
+    a: "perp-fees (bench 007) ranks venues by absolute all-in cost at $1k notional. This bench ranks the same venues by how much their cost grows between $1k and $1M. A venue cheap at $1k can be expensive at $1M if its book is thin. The two benches together give a full picture: absolute cost at small size plus sensitivity to larger size."
+
+dimensions:
+  chain:
+    - { value: ETH, label: ETH }
+    - { value: BTC, label: BTC }
+    - { value: SOL, label: SOL }
+
+panel_main_label: "Cost slope ($1M / $1k)"
+metric_panels:
+  - id: fill_rate_1m
+    label: "$1M fill rate"
+    metric: "avg(count_over_time(perp_fees_all_in_bps_tier{notional=\"1000000\"}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=\"1000\"}[24h]))"
+    label_key: venue
+    unit: count
+    higher_is_better: true
+    description: "Fraction of 5-minute cycles in which the venue's visible book successfully absorbed $1M of buy notional for the selected asset. 1.00 = always filled; oracle-priced venues always fill. A low number means the book is too thin to reliably absorb large orders."
+
+providers:
+  - slug: gains
+    name: gains.trade
+    tag: "Synthetic perps on Base, oracle-priced, flat cost at any size"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (flat % of notional, no orderbook): ratio always 1.00 by construction."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: "Synthetics on Arbitrum, oracle-priced, flat cost at any size"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (positionFeeFactor flat % of notional, no orderbook): ratio always 1.00."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: "HyperBFT L1 perp DEX, deepest onchain book"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: $1M tier walks deeper than $1k, raising the spread component above 1.00."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}
+
+  - slug: lighter
+    name: Lighter
+    tag: "zk-rollup, zero taker fee, onchain orderbook"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: $1M tier walks 100 levels of the Lighter zk-rollup book."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: "Cosmos appchain orderbook"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: full dYdX v4 indexer book walked at each tier."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}
+
+  - slug: paradex
+    name: Paradex
+    tag: "Starknet appchain perps, 100-level book"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Starknet appchain, 100-level book depth caps visible depth at ~$1M on majors."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}
+
+  - slug: extended
+    name: Extended
+    tag: "Starknet perps, full public book"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: full public Starknet book walked at each tier."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}
+
+  - slug: polymarket
+    name: Polymarket
+    tag: "Polygon perps, up to 500 book levels"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Polygon CLOB, up to 500 book levels walked per tier."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}
+
+  - slug: aster
+    name: Aster
+    tag: "BNB Chain perp DEX, Binance-style REST book"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: BNB Chain CLOB, fapi depth endpoint walked per tier."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}
+
+  - slug: edgex
+    name: edgeX
+    tag: "Offchain CLOB perp DEX"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: offchain CLOB, public getDepth endpoint walked per tier."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}
