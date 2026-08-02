@@ -91,6 +91,8 @@ providers:
     formula: "Count of PERPETUAL instruments with status==TRADING from Aster fapi exchangeInfo. USDT-margined crypto pairs on BNB Chain."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="aster"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="aster"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="aster"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="aster"}[24h])
       success: avg_over_time(perp_venue_health{venue="aster"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="aster"}[24h])
@@ -102,6 +104,8 @@ providers:
     formula: "Count of active mainnet perp pairs from Mobula's catalog (dex=gains, testnet excluded). Covers crypto, forex, stocks, indices and commodities."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="gains"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="gains"}[24h])
       success: avg_over_time(perp_venue_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="gains"}[24h])
@@ -113,6 +117,8 @@ providers:
     formula: "Count of active perp markets from edgeX native markets endpoint on zkSync."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="edgex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="edgex"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h])
       success: avg_over_time(perp_venue_health{venue="edgex"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="edgex"}[24h])
@@ -124,6 +130,8 @@ providers:
     formula: "Count of active perp markets from Extended's public markets API on StarkEx."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="extended"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="extended"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="extended"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="extended"}[24h])
       success: avg_over_time(perp_venue_health{venue="extended"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="extended"}[24h])
@@ -135,6 +143,8 @@ providers:
     formula: "Count of active perp instruments from Aevo's public markets endpoint on OP Stack."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="aevo"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="aevo"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="aevo"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="aevo"}[24h])
       success: avg_over_time(perp_venue_health{venue="aevo"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="aevo"}[24h])
@@ -146,6 +156,8 @@ providers:
     formula: "Count of markets with market_type==perp and status==active from Lighter's orderBookDetails. Native API, mainnet only."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="lighter"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="lighter"}[24h])
       success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="lighter"}[24h])
@@ -157,6 +169,8 @@ providers:
     formula: "Count of non-delisted assets from Hyperliquid info metaAndAssetCtxs. Active perp crypto markets only."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="hyperliquid"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h])
       success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h])
@@ -168,6 +182,8 @@ providers:
     formula: "Count of active instruments from GRVT public markets endpoint on ZK Stack."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="grvt"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="grvt"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="grvt"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="grvt"}[24h])
       success: avg_over_time(perp_venue_health{venue="grvt"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="grvt"}[24h])
@@ -179,6 +195,8 @@ providers:
     formula: "Count of non-deactivated markets from the dYdX v4 indexer perpetualMarkets endpoint."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="dydx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="dydx"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="dydx"}[24h])
       success: avg_over_time(perp_venue_health{venue="dydx"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="dydx"}[24h])
@@ -190,6 +208,8 @@ providers:
     formula: "Count of active pairs from the Ostium subgraph on Arbitrum. Covers FX, commodities and crypto."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="ostium"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="ostium"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="ostium"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="ostium"}[24h])
       success: avg_over_time(perp_venue_health{venue="ostium"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="ostium"}[24h])
@@ -201,6 +221,8 @@ providers:
     formula: "Count of active perp markets from onchain reads on the Pacifica Solana program state."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="pacifica"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="pacifica"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="pacifica"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="pacifica"}[24h])
       success: avg_over_time(perp_venue_health{venue="pacifica"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="pacifica"}[24h])
@@ -212,6 +234,8 @@ providers:
     formula: "Count of active perp markets from the Paradex markets summary endpoint on Starknet L2."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="paradex"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="paradex"}[24h])
       success: avg_over_time(perp_venue_health{venue="paradex"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="paradex"}[24h])
@@ -223,6 +247,8 @@ providers:
     formula: "Count of active perp products from the Vertex public indexer on Arbitrum."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="vertex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="vertex"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
       success: avg_over_time(perp_venue_health{venue="vertex"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="vertex"}[24h])
@@ -234,6 +260,8 @@ providers:
     formula: "Count of listed instruments from the Polymarket public perps tickers endpoint on Polygon."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="polymarket"}[24h])
       mean: avg_over_time(perp_venue_active_markets{venue="polymarket"}[24h])
       success: avg_over_time(perp_venue_health{venue="polymarket"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="polymarket"}[24h])
