@@ -124,11 +124,11 @@ panel_main_label: "Cost slope ($1M / $1k)"
 metric_panels:
   - id: fill_rate_1m
     label: "$1M fill rate"
-    metric: "avg(count_over_time(perp_fees_all_in_bps_tier{notional=\"1000000\"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{notional=\"1000\"}[24h]))"
+    metric: "avg(count_over_time(perp_fees_all_in_bps_tier{notional=\"1000000\"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{notional=\"1000\"}[24h])) * 100"
     label_key: venue
-    unit: count
+    unit: pct
     higher_is_better: true
-    description: "Fraction of 5-minute cycles in which the venue's visible book successfully absorbed $1M of buy notional for the selected asset. 1.00 = always filled; oracle-priced venues always fill. A low number means the book is too thin to reliably absorb large orders."
+    description: "Fraction of 5-minute cycles in which the venue's visible book successfully absorbed $1M of buy notional for the selected asset. 100% = always filled; oracle-priced venues always fill. A low number means the book is too thin to reliably absorb large orders."
 
 providers:
   - slug: gains

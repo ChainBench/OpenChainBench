@@ -1,0 +1,198 @@
+# OpenChainBench. Bench 124
+
+slug: perp-fill-rate-1m
+number: "124"
+title: "Perp DEX $1M fill rate: fraction of cycles where $1M order fully absorbed, live ranked"
+seo_title: "Perp DEX $1M order fill rate 2026"
+seo_description: "{{best_name}} leads perp $1M fill rate at {{best_p50}} (24h avg). Fraction of 5-minute cycles in which the venue's visible book absorbed a full $1M buy. Oracle-priced venues always fill; thin orderbook venues may drop below 50%."
+subtitle: "Fraction of 5-minute measurement cycles in which the venue's visible orderbook successfully absorbed a $1,000,000 buy. Oracle-priced venues (gains.trade, GMX v2) score 100% by construction. Orderbook venues score lower when book depth is insufficient."
+category: Trading
+status: live
+metric: "$1M fill rate"
+unit: pct
+higher_is_better: true
+
+seo_intro: |
+  Every perp DEX publishes a taker fee rate, but a fee rate is meaningless if the
+  venue cannot actually absorb your order. A $1M market buy on a thin orderbook either
+  fails outright or executes at severe slippage once the visible depth is exhausted.
+  This benchmark answers a simpler question: what fraction of the time can each venue
+  reliably absorb a full $1M buy? Oracle-priced venues (gains.trade, GMX v2) score
+  100% by construction: their fee is a flat percentage of notional, with no orderbook
+  to deplete. Orderbook venues score lower when their visible book is thinner than
+  $1M on the ask side during a measurement cycle. The fill rate is derived every
+  five minutes from the perp-fees harness (bench 007).
+
+abstract: |
+  The $1M fill rate is the fraction of 5-minute measurement cycles in which a
+  venue's visible orderbook contained at least $1M of ask-side depth at the time
+  of sampling. When the book is too thin, the perp-fees harness skips the
+  $1M tier and increments perp_fees_tier_skipped_total rather than extrapolating
+  a cost figure. The fill rate is therefore the ratio of successful $1M measurements
+  to total $1k measurements over the same 24-hour window. A fill rate of 100% means
+  every 5-minute probe found sufficient depth. A fill rate of 50% means the book was
+  deep enough half the time. A fill rate of 0% means the venue never had $1M of
+  visible depth during the window. Oracle-priced venues always score 100% because
+  their fee is protocol-level and does not depend on orderbook depth.
+
+methodology:
+  - "Cadence: derived from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007). Values are 24-hour averages."
+  - "Fill rate = count_over_time(all_in_bps_tier{notional=1000000}[24h]) / ignoring(notional) count_over_time(all_in_bps_tier{notional=1000}[24h]) per venue, averaged across all assets."
+  - "Oracle-priced venues (gains.trade, GMX v2): the fee is protocol-level and independent of orderbook depth. Every cycle succeeds, so fill rate = 100% by construction."
+  - "Orderbook venues: the harness samples the visible book depth at each measurement cycle. If ask-side depth is below $1M the tier is skipped. The fill rate equals the fraction of cycles where the book was deep enough."
+  - "Averaging: values are averaged across ETH, BTC and SOL markets. Use the per-asset bench (perp-cost-slope, bench 117) to see asset-level fill rates alongside the cost slope."
+  - "Failures and stale data: inherited from the perp-fees harness. A venue that errors keeps its last gauge and its health drops to 0."
+
+findings:
+  - "{{best_name}} leads the $1M fill rate at {{best_p50}} (24h avg). Oracle-priced venues always score 100% by construction."
+  - "gains.trade and GMX v2 score 100% because they use oracle pricing with no orderbook. Every trade is filled at the oracle price regardless of size."
+  - "Orderbook venues with deep ETH and BTC books (Hyperliquid, dYdX, Lighter) typically maintain near-100% fill rates on majors but may drop on SOL where books are thinner."
+  - "A fill rate below 100% is a liquidity signal stronger than any cost figure: a venue that cannot absorb $1M cannot be reliably used for institutional-size execution."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-fees
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+  freshness_metric: perp_fees_all_in_bps_tier
+
+faq:
+  - q: "What does 100% fill rate mean?"
+    a: "Every 5-minute measurement cycle found sufficient ask-side depth to fill a $1M buy. Oracle-priced venues always score 100%: gains.trade and GMX v2 use a flat fee on notional with no orderbook, so every order succeeds regardless of size."
+  - q: "What does a low fill rate mean for a trader?"
+    a: "A fill rate below 100% means the venue's book was too thin to absorb $1M during some measurement cycles. In practice this means large orders either fail, execute in fragments, or suffer unexpected slippage. A fill rate of 50% means you can expect the book to be deep enough only half the time."
+  - q: "Why are oracle-priced venues always 100%?"
+    a: "gains.trade and GMX v2 charge a flat percentage of position size with no orderbook. There is no book to deplete, so every order at any size is filled at the oracle price. The $1M tier is always measurable, giving a fill rate of 100% by construction."
+  - q: "How does this differ from the perp-cost-slope bench?"
+    a: "The cost-slope bench (bench 117) shows how much a venue's all-in cost grows between $1k and $1M. The fill-rate bench shows whether the $1M tier can be measured at all. A venue with a missing slope on the cost-slope board typically has a low fill rate here."
+
+providers:
+  - slug: gains
+    name: gains.trade
+    tag: "Synthetic perps on Base, oracle-priced, always fills"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100. Oracle-priced: always 100%."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: "Synthetics on Arbitrum, oracle-priced, always fills"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100. Oracle-priced: always 100%."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: "HyperBFT L1 perp DEX, deepest onchain book"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}
+
+  - slug: lighter
+    name: Lighter
+    tag: "zk-rollup, zero taker fee, onchain orderbook"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: "Cosmos appchain orderbook"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}
+
+  - slug: paradex
+    name: Paradex
+    tag: "Starknet appchain perps, 100-level book"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}
+
+  - slug: extended
+    name: Extended
+    tag: "Starknet perps, full public book"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}
+
+  - slug: polymarket
+    name: Polymarket
+    tag: "Polygon perps, up to 500 book levels"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}
+
+  - slug: aster
+    name: Aster
+    tag: "BNB Chain perp DEX, Binance-style REST book"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}
+
+  - slug: edgex
+    name: edgeX
+    tag: "Offchain CLOB perp DEX"
+    formula: "count_over_time(perp_fees_all_in_bps_tier{notional=1000000}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=1000}[24h]) * 100."
+    queries:
+      p50: avg(count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])) * 100
+      p90: avg(count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])) * 100
+      p99: avg(count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])) * 100
+      mean: avg(count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])) * 100
+      success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}
