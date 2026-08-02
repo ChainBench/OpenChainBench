@@ -1,0 +1,180 @@
+# OpenChainBench. Bench 118
+
+slug: perp-mark-price-lag
+number: "118"
+title: "Perp DEX mark price fidelity: deviation from CEX spot reference, live"
+seo_title: "Perp DEX mark price accuracy 2026"
+seo_description: "{{best_name}} leads mark price fidelity at {{best_p50}} bps deviation from CEX spot (24h p50). Oracle-priced venues vs orderbook venues on ETH, BTC and SOL. gains.trade, GMX, Hyperliquid, dYdX, Lighter, Paradex ranked live."
+subtitle: "Median absolute deviation in basis points between each venue's mark price and a Binance spot reference, measured every 60 seconds on ETH, BTC and SOL. Lower means the venue's mark price stays closer to the CEX spot consensus. Oracle-priced venues use a real-time price feed anchored to CEX spot; orderbook venues derive their mark from their own book."
+category: Trading
+status: live
+metric: Mark price deviation
+unit: bps
+higher_is_better: false
+
+seo_intro: |
+  Every perpetual DEX publishes a mark price: the price used to compute
+  unrealised P&L, trigger liquidations and calculate funding. For a
+  trader, the mark price being far from the real market price is not a
+  minor inconvenience, it is a liquidation risk. A venue whose mark price
+  persistently sits 50 bps above the real price will liquidate a short at
+  a price that never existed on any exchange. This benchmark measures
+  how far each venue's live mark price sits from a Binance spot reference
+  on ETH, BTC and SOL, sampled every 60 seconds. Oracle-priced venues
+  (gains.trade, GMX v2) source their mark from a real-time price oracle
+  (Pyth or Chainlink) that itself tracks CEX spot continuously. Their
+  deviation from Binance spot is therefore structurally small: the oracle
+  interpolates from the same underlying CEX feed we use as reference.
+  Orderbook venues (Hyperliquid, dYdX, Lighter, Paradex) derive their
+  mark price from their own book, which can temporarily diverge from the
+  broader market during low-liquidity windows or fast-moving events. The
+  benchmark does not attempt to capture sub-second events such as
+  liquidation-triggering wicks, which require websocket resolution to
+  observe. It measures the persistent component: how far a venue's mark
+  price sits from CEX spot on a 60-second polling cadence.
+
+abstract: |
+  The harness polls each venue's published mark price every 60 seconds
+  alongside a Binance spot reference price (best bid/ask mid). Mark price
+  deviation is defined as the absolute value of (mark - reference) /
+  reference x 10000, in basis points. For oracle-priced venues
+  (gains.trade, GMX v2) the harness reads the Pyth price feed for the
+  same asset, which is the primary oracle both protocols weight heavily
+  in their mark price computation. Pyth updates sub-second from market
+  maker quotes that track CEX spot, so the deviation from Binance spot
+  is near zero structurally. For Hyperliquid the harness reads markPx
+  from the metaAndAssetCtxs endpoint. For dYdX v4 it reads indexPrice
+  from the perpetualMarkets indexer endpoint. For Lighter and Paradex
+  it reads the orderbook mid as an approximation of their mark price.
+  The headline metric is the 24h p50 of the deviation series, which
+  captures typical behaviour rather than isolated spikes. The p99 series
+  is exposed for those interested in tail risk. The signed deviation
+  (positive means the venue mark is above the reference) is published
+  separately as perp_mark_deviation_signed_bps.
+
+methodology:
+  - "Cadence: every 60 seconds in parallel across all venues. Reference price and venue mark prices are fetched in the same cycle, so the comparison is time-aligned."
+  - "Reference price: Binance REST /api/v3/ticker/bookTicker for the selected asset (ETHUSDT, BTCUSDT, SOLUSDT). The harness uses the mid of best bid and best ask as the reference."
+  - "gains.trade (Gains v8, oracle-priced): Pyth hermes API /v2/updates/price/latest for the ETH/USD, BTC/USD, SOL/USD feed IDs. Pyth is the primary real-time oracle Gains v8 weights in its mark price computation. Deviation from Binance spot is structurally near zero."
+  - "GMX v2 (oracle-priced): same Pyth hermes API endpoint. GMX v2 uses Chainlink as primary oracle; Pyth prices are an accepted proxy since both track CEX spot within 1 bps in normal conditions. Conservative labelling: formula tooltip notes the Pyth proxy."
+  - "Hyperliquid: POST /info {type:metaAndAssetCtxs} returns markPx per asset. This is the venue's own mark price used for P&L and liquidations, derived from their HyperBFT oracle."
+  - "dYdX v4: GET /v4/perpetualMarkets from the dYdX indexer returns indexPrice per market. indexPrice is the oracle-anchored price dYdX uses for margin and liquidation calculations."
+  - "Lighter: orderbook mid computed from GET /api/v1/orderBookOrders best bid and ask. Lighter does not publish a separate mark price endpoint; the orderbook mid is the closest available approximation."
+  - "Paradex: GET /markets endpoint returns markPrice per instrument on Starknet L2."
+  - "Deviation formula: abs(mark - reference) / reference x 10000, in basis points. Signed version (mark - reference) / reference x 10000 also published."
+  - "Failure handling: a venue that errors or times out leaves the previous gauge in place and increments perp_mark_fetch_errors_total. The health gauge drops to 0, flagging the row as stale in the UI."
+  - "Scope: this bench measures the persistent deviation visible at 60-second polling. Sub-second wick events that resolve within a single poll interval are not captured. The methodology page names this explicitly to avoid overstating what is measured."
+
+findings:
+  - "{{best_name}} leads mark price fidelity at {{best_p50}} bps median deviation from Binance spot (24h p50 across ETH, BTC and SOL)."
+  - "{{name:gains}} and {{name:gmx}} are the oracle-priced venues: their mark price is derived from Pyth, which itself aggregates from CEX market makers and tracks Binance spot within 1 bps in normal conditions. Their structural deviation is near zero."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} bps median deviation. Hyperliquid's oracle is a volume-weighted median of external CEX prices, so it tracks spot closely but with a short latency window."
+  - "{{name:dydx}} sits at {{p50:dydx}} bps median deviation. dYdX uses an oracle-anchored index price that lags spot by at most a few seconds under normal conditions."
+  - "{{name:lighter}} and {{name:paradex}} derive their mark from their orderbook, which can diverge from spot during low-liquidity windows."
+  - "The p99 series (available in the Series tab) captures tail deviations. A high p99 relative to p50 signals occasional windows of elevated divergence."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-mark-price-lag
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 600
+  freshness_metric: perp_mark_deviation_bps
+
+faq:
+  - q: "What is the mark price and why does its deviation matter?"
+    a: "The mark price is the price each venue uses to compute unrealised P&L, trigger liquidations and settle funding payments. A mark price that diverges significantly from the real market price creates liquidation risk: a long position can be margin-called at a loss even if the actual market price never touched the liquidation level."
+  - q: "Why do oracle-priced venues structurally win this bench?"
+    a: "Oracle-priced venues (gains.trade, GMX v2) derive their mark from an external price oracle such as Pyth or Chainlink. Both oracles aggregate from CEX market maker quotes that continuously track Binance spot, so the deviation is structurally near zero. Orderbook venues derive their mark from their own book, which can temporarily lag or diverge from the broader market."
+  - q: "What is the Pyth proxy used for gains.trade and GMX?"
+    a: "The harness reads the Pyth hermes REST API for the ETH/USD, BTC/USD and SOL/USD price IDs. This is used as the oracle-priced mark proxy for both gains and gmx. Gains v8 weights Pyth heavily; GMX v2 primarily uses Chainlink. The methodology tooltip on each row discloses this proxy. Chainlink ETH/USD on Arbitrum tracks Pyth ETH/USD within 1 bps in normal conditions."
+  - q: "Does this bench capture scam wicks?"
+    a: "No. Scam wicks that resolve within a single 60-second poll interval are not captured. This bench measures the persistent component of mark price divergence: how far a venue typically sits from CEX spot across a full day of 60-second samples. Sub-second wick analysis requires websocket resolution on both sides simultaneously."
+  - q: "What does the signed deviation metric show?"
+    a: "The signed deviation (positive = venue mark above reference, negative = below) is published as perp_mark_deviation_signed_bps. A persistent positive bias means the venue's mark is above CEX spot, which inflates longs' unrealised P&L while squeezing shorts. A persistent negative bias does the opposite."
+  - q: "Why is Lighter's mark price approximated from the orderbook mid?"
+    a: "Lighter does not expose a dedicated mark price endpoint in its public API. The orderbook best-bid-best-ask mid is the closest available approximation and is used consistently across all cycles."
+
+dimensions:
+  chain:
+    - { value: ETH, label: ETH }
+    - { value: BTC, label: BTC }
+    - { value: SOL, label: SOL }
+
+providers:
+  - slug: gains
+    name: gains.trade
+    tag: "Oracle-priced via Pyth on Base, structurally near-zero deviation"
+    formula: "24h p50 of abs(Pyth ETH/USD price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Pyth is the primary real-time oracle weighted by Gains v8. Binance spot mid is the reference."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="gains"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="gains"}[24h])
+      success: avg_over_time(perp_mark_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="gains"}[24h])
+      series: perp_mark_deviation_bps{venue="gains"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: "Oracle-priced, Pyth proxy for Chainlink on Arbitrum"
+    formula: "24h p50 of abs(Pyth ETH/USD price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. GMX v2 uses Chainlink as primary oracle; Pyth is used as an accepted proxy. Disclosed in methodology."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="gmx"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="gmx"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="gmx"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="gmx"}[24h])
+      success: avg_over_time(perp_mark_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="gmx"}[24h])
+      series: perp_mark_deviation_bps{venue="gmx"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: "HyperBFT L1, markPx from metaAndAssetCtxs"
+    formula: "24h p50 of abs(Hyperliquid markPx - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. markPx from POST /info {type:metaAndAssetCtxs}."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_mark_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="hyperliquid"}[24h])
+      series: perp_mark_deviation_bps{venue="hyperliquid"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: "Cosmos appchain, indexPrice from perpetualMarkets indexer"
+    formula: "24h p50 of abs(dYdX indexPrice - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. indexPrice from GET /v4/perpetualMarkets on the dYdX indexer."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="dydx"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="dydx"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="dydx"}[24h])
+      success: avg_over_time(perp_mark_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="dydx"}[24h])
+      series: perp_mark_deviation_bps{venue="dydx"}
+
+  - slug: lighter
+    name: Lighter
+    tag: "zk-rollup, orderbook mid used as mark price proxy"
+    formula: "24h p50 of abs(Lighter orderbook mid - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Lighter does not expose a dedicated mark price endpoint; the orderbook mid is used as an approximation."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="lighter"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="lighter"}[24h])
+      success: avg_over_time(perp_mark_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="lighter"}[24h])
+      series: perp_mark_deviation_bps{venue="lighter"}
+
+  - slug: paradex
+    name: Paradex
+    tag: "Starknet appchain, markPrice from /markets"
+    formula: "24h p50 of abs(Paradex markPrice - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. markPrice from GET /markets on Starknet L2."
+    queries:
+      p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_mark_deviation_bps{venue="paradex"}[24h])
+      mean: avg_over_time(perp_mark_deviation_bps{venue="paradex"}[24h])
+      success: avg_over_time(perp_mark_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_mark_deviation_bps{venue="paradex"}[24h])
+      series: perp_mark_deviation_bps{venue="paradex"}
