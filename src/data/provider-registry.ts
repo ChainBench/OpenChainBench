@@ -753,6 +753,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Kraken's Ink Chain second official public RPC (rpc-qnd.inkonchain.com), operated by QuickNode on behalf of Kraken. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the Gelato-backed endpoint as an active-active pair.",
     twitter: "@inkonchain",
   },
+  "morph-quicknode": {
+    url: "https://www.morphl2.io",
+    description:
+      "Morph Foundation's second public RPC (rpc-quicknode.morph.network), operated by QuickNode on behalf of the Morph team. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the official Morph endpoint as an active-active pair.",
+    twitter: "@Morphl2",
+  },
   "opbnb-official": {
     url: "https://opbnb.bnbchain.org",
     description:
