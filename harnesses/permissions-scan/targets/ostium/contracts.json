@@ -1,0 +1,116 @@
+{
+  "chain": "arbi",
+  "project": "ostium",
+  "addresses": [
+    "0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+    "0x6d0ba1f9996dbd8885827e1b2e8f6593e7702411",
+    "0x799a139ae56e11f0476ace2f6118cfcaed9608d2",
+    "0x7720fc8c8680bf4a1af99d44c6c265a74e9742a9",
+    "0xccf233920e8cc9415ecf503b992881d69b6c47ad",
+    "0x3890243a8fc091c626ed26c087a028b46bc9d66c",
+    "0x260e349f643f12797fdc6f8c9d3df211d5577823",
+    "0xccd5891083a8acd2074690f65d3024e7d13d66e7",
+    "0x4b0c3c77d398912491f192d265b237c8d4441ad7",
+    "0xeb85dc6095c74d36500c9cdcacc15ecdc223bbf7",
+    "0x083f97babf33d4abc03151b5dec98170761f4025"
+  ],
+  "sources": [
+    {
+      "address": "0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+      "label": "oLP vault proxy",
+      "found_at": "https://ostium-labs.gitbook.io/ostium-docs/security/smart-contract-audits + Arbiscan",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "0x1E20E46C92F0786889462F065BC9DA163AF6020D",
+      "impl_slot_read": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    },
+    {
+      "address": "0x6d0ba1f9996dbd8885827e1b2e8f6593e7702411",
+      "label": "Trading proxy",
+      "found_at": "https://ostium-labs.gitbook.io/ostium-docs/security/smart-contract-audits + Arbiscan",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "0x8cbb5bd2b46f993078407cea26704af0a901515a",
+      "impl_slot_read": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    },
+    {
+      "address": "0x799a139ae56e11f0476ace2f6118cfcaed9608d2",
+      "label": "Registry",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x7720fc8c8680bf4a1af99d44c6c265a74e9742a9",
+      "label": "TradingCallbacks",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xccf233920e8cc9415ecf503b992881d69b6c47ad",
+      "label": "Verifier",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x3890243a8fc091c626ed26c087a028b46bc9d66c",
+      "label": "PairInfos proxy",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "unknown",
+      "note": "impl slot not read for this specific contract"
+    },
+    {
+      "address": "0x260e349f643f12797fdc6f8c9d3df211d5577823",
+      "label": "PairsStorage proxy",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-1967",
+      "implementation": "unknown"
+    },
+    {
+      "address": "0xccd5891083a8acd2074690f65d3024e7d13d66e7",
+      "label": "TradingStorage",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x4b0c3c77d398912491f192d265b237c8d4441ad7",
+      "label": "PriceRouter",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xeb85dc6095c74d36500c9cdcacc15ecdc223bbf7",
+      "label": "TimelockOwner",
+      "found_at": "Arbiscan label search + RoleGranted events on-chain",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null,
+      "note": "OZ TimelockController (non-enumerable). getMinDelay()=64800s (18h) confirmed. PROPOSER=0x1cd84f9b (Gnosis Safe 4/8). ADMIN=itself (initial). ProxyAdmin owner=this."
+    },
+    {
+      "address": "0x083f97babf33d4abc03151b5dec98170761f4025",
+      "label": "ProxyAdmin",
+      "found_at": "Arbiscan label search",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null,
+      "note": "OZ ProxyAdmin. owner()=TimelockOwner (0xeb85dc...) confirmed on-chain."
+    }
+  ]
+}

@@ -1,0 +1,3181 @@
+{
+    "OstiumVault": {
+        "Implementation_Address": "0x1e20e46c92f0786889462f065bc9da163af6020d",
+        "Proxy_Address": "0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "OstiumVault",
+            "Functions": [
+                {
+                    "Function": "__Multicall_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot",
+                        "$"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__Multicall_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot",
+                        "$"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "multicall",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _msgSender()"
+                    ],
+                    "state_variables_read": [],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "__Context_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot",
+                        "$"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__Context_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot",
+                        "$"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__ERC4626_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "ERC4626StorageLocation",
+                        "TMP_1113",
+                        "slot"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__ERC4626_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "ERC4626StorageLocation",
+                        "TMP_1113",
+                        "slot"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__ERC20_init",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "ERC20StorageLocation",
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "__ERC20_init_unchained",
+                    "Modifiers": [
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "ERC20StorageLocation",
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "TMP_1113",
+                        "slot"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer",
+                        "onlyInitializing"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MAX_DISCOUNT_P",
+                        "ERC20StorageLocation",
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "construction",
+                        "ERC4626StorageLocation",
+                        "isTopLevelCall",
+                        "MIN_DAILY_ACC_PNL_DELTA",
+                        "PRECISION_2",
+                        "PRECISION_18",
+                        "TMP_1113",
+                        "initialized",
+                        "this",
+                        "initialSetup",
+                        "TMP_1733",
+                        "slot"
+                    ],
+                    "state_variables_written": [
+                        "__DEPRECATED_withdrawLockThresholdsP",
+                        "currentEpochStart",
+                        "__DEPRECATED_maxDiscountP",
+                        "maxAccOpenPnlDeltaPerToken",
+                        "__DEPRECATED_maxDiscountThresholdP",
+                        "shareToAssetsPrice",
+                        "registry",
+                        "maxDailyAccPnlDeltaPerToken",
+                        "__DEPRECATED_maxSupplyIncreaseDailyP",
+                        "__DEPRECATED_WITHDRAW_EPOCHS_LOCKS",
+                        "currentEpoch"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "MIN_DAILY_ACC_PNL_DELTA",
+                            "slot": "1e13"
+                        },
+                        {
+                            "name": "MAX_DISCOUNT_P",
+                            "slot": "5000"
+                        },
+                        {
+                            "name": "PRECISION_2",
+                            "slot": "1e2"
+                        }
+                    ]
+                },
+                {
+                    "Function": "initializeV2",
+                    "Modifiers": [
+                        "reinitializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "INITIALIZABLE_STORAGE",
+                        "slot",
+                        "version",
+                        "$"
+                    ],
+                    "state_variables_written": [
+                        "__DEPRECATED_totalDeposited",
+                        "__DEPRECATED_totalRewards",
+                        "__DEPRECATED_totalLiability"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "initializeV3",
+                    "Modifiers": [
+                        "reinitializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "version",
+                        "__DEPRECATED_currentEpochPositiveOpenPnl",
+                        "slot"
+                    ],
+                    "state_variables_written": [
+                        "lastSettlementOpenPnl",
+                        "maxSettlementInterval",
+                        "__DEPRECATED_currentEpochPositiveOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ],
+                    "__DEPRECATED_currentEpochPositiveOpenPnl": 0
+                },
+                {
+                    "Function": "initializeV4",
+                    "Modifiers": [
+                        "reinitializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "ERC4626StorageLocation",
+                        "version",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "lastSettlementTs",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementId",
+                        "accRewardsPerToken",
+                        "$",
+                        "accPnlPerToken",
+                        "accPnlPerTokenThreshold",
+                        "lastSettlementOpenPnl",
+                        "ERC20StorageLocation",
+                        "INITIALIZABLE_STORAGE",
+                        "supplyCap",
+                        "PRECISION_6",
+                        "slot",
+                        "registry",
+                        "totalSharesToWithdraw",
+                        "totalClosedPnl",
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "state_variables_written": [
+                        "marketMaker",
+                        "settlementShareToAssetsPrice",
+                        "settlementAllocationScaleP",
+                        "accPnlPerToken",
+                        "lastSettlementId",
+                        "totalAssetsToDeposit",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementTs",
+                        "accPnlPerTokenThreshold",
+                        "totalSharesToWithdraw",
+                        "lastSettlementOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        },
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                    "accPnlPerToken": 838225531668519834,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "totalClosedPnl": 17197379775851,
+                    "lastSettlementId": 125,
+                    "lastSettlementTs": 1784072348,
+                    "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                    "totalAssetsToDeposit": 0,
+                    "totalSharesToWithdraw": 0,
+                    "supplyCap": 1,
+                    "accPnlPerTokenThreshold": 127768668707620588
+                },
+                {
+                    "Function": "updateMaxAccOpenPnlDeltaPerToken",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "updateMaxDailyAccPnlDeltaPerToken",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender",
+                        "MIN_DAILY_ACC_PNL_DELTA"
+                    ],
+                    "state_variables_written": [
+                        "maxDailyAccPnlDeltaPerToken"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MIN_DAILY_ACC_PNL_DELTA",
+                            "slot": "1e13"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "updateMaxSettlementInterval",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender",
+                        "MIN_SETTLEMENT_LENGTH",
+                        "MAX_SETTLEMENT_LENGTH"
+                    ],
+                    "state_variables_written": [
+                        "maxSettlementInterval"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_SETTLEMENT_LENGTH",
+                            "slot": "2592000"
+                        },
+                        {
+                            "name": "MIN_SETTLEMENT_LENGTH",
+                            "slot": "600"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "updateWithdrawSettlementDelay",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "MAX_WITHDRAW_SETTLEMENT_DELAY",
+                        "registry",
+                        "a",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "withdrawSettlementDelay"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_WITHDRAW_SETTLEMENT_DELAY",
+                            "slot": "10"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "updateSupplyCap",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "supplyCap"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "updateAccPnlPerTokenThreshold",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "accRewardsPerToken",
+                        "registry",
+                        "a",
+                        "msg.sender",
+                        "accPnlPerTokenThreshold",
+                        "PRECISION_18",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice"
+                    ],
+                    "state_variables_written": [
+                        "shareToAssetsPrice",
+                        "accPnlPerTokenThreshold"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "accPnlPerTokenThreshold": 127768668707620588
+                },
+                {
+                    "Function": "forceSettlement",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "a",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "lastSettlementTs",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementId",
+                        "accRewardsPerToken",
+                        "accPnlPerToken",
+                        "accPnlPerTokenThreshold",
+                        "lastSettlementOpenPnl",
+                        "ERC20StorageLocation",
+                        "msg.sender",
+                        "supplyCap",
+                        "PRECISION_6",
+                        "registry",
+                        "totalSharesToWithdraw",
+                        "totalClosedPnl",
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "state_variables_written": [
+                        "settlementShareToAssetsPrice",
+                        "settlementAllocationScaleP",
+                        "accPnlPerToken",
+                        "lastSettlementId",
+                        "totalAssetsToDeposit",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementTs",
+                        "totalSharesToWithdraw",
+                        "lastSettlementOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                    "accPnlPerToken": 838225531668519834,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "totalClosedPnl": 17197379775851,
+                    "lastSettlementId": 125,
+                    "lastSettlementTs": 1784072348,
+                    "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                    "totalAssetsToDeposit": 0,
+                    "totalSharesToWithdraw": 0,
+                    "supplyCap": 1,
+                    "accPnlPerTokenThreshold": 127768668707620588
+                },
+                {
+                    "Function": "forceResetDailyAccPnlDelta",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "dailyAccPnlDeltaPerToken",
+                        "lastDailyAccPnlDeltaResetTs"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "requestDeposit",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "withdrawSettlementDelay",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "assetsOrShares",
+                        "pendingDepositRequest",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "pendingDepositRequest",
+                        "totalAssetsToDeposit"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalAssetsToDeposit": 0,
+                    "pendingDepositRequest": 0,
+                    "withdrawSettlementDelay": 2
+                },
+                {
+                    "Function": "requestWithdraw",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "totalSharesToWithdraw",
+                        "ERC20StorageLocation",
+                        "withdrawSettlementDelay",
+                        "assetsOrShares",
+                        "pendingWithdrawRequest",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "totalSharesToWithdraw",
+                        "pendingWithdrawRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalSharesToWithdraw": 0,
+                    "pendingWithdrawRequest": 0,
+                    "withdrawSettlementDelay": 2
+                },
+                {
+                    "Function": "cancelRequestDeposit",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [
+                        "require(bool)(getDepositStatus(msg.sender,settlementId) == RequestStatus.PENDING)",
+                        "require(bool)(pendingDepositRequest[msg.sender][settlementId] >= assets)"
+                    ],
+                    "state_variables_read": [
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "assetsOrShares",
+                        "pendingDepositRequest",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "pendingDepositRequest",
+                        "totalAssetsToDeposit"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalAssetsToDeposit": 0,
+                    "pendingDepositRequest": 0
+                },
+                {
+                    "Function": "cancelRequestWithdraw",
+                    "Modifiers": [
+                        "checks"
+                    ],
+                    "msg.sender_conditions": [
+                        "require(bool)(getWithdrawStatus(msg.sender,settlementId) == RequestStatus.PENDING)",
+                        "require(bool)(pendingWithdrawRequest[msg.sender][settlementId] >= shares)"
+                    ],
+                    "state_variables_read": [
+                        "totalSharesToWithdraw",
+                        "ERC20StorageLocation",
+                        "assetsOrShares",
+                        "pendingWithdrawRequest",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "totalSharesToWithdraw",
+                        "pendingWithdrawRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalSharesToWithdraw": 0,
+                    "pendingWithdrawRequest": 0
+                },
+                {
+                    "Function": "claimDeposit",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "getDepositStatus(msg.sender,settlementId) != RequestStatus.CLAIMABLE"
+                    ],
+                    "state_variables_read": [
+                        "ERC20StorageLocation",
+                        "settlementAllocationScaleP",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "pendingDepositRequest",
+                        "settlementShareToAssetsPrice",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "pendingDepositRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalAssetsToDeposit": 0,
+                    "settlementShareToAssetsPrice": 0,
+                    "pendingDepositRequest": 0,
+                    "settlementAllocationScaleP": 0
+                },
+                {
+                    "Function": "claimWithdraw",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "getWithdrawStatus(msg.sender,settlementId) != RequestStatus.CLAIMABLE"
+                    ],
+                    "state_variables_read": [
+                        "totalSharesToWithdraw",
+                        "ERC4626StorageLocation",
+                        "PRECISION_18",
+                        "pendingWithdrawRequest",
+                        "settlementShareToAssetsPrice",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "pendingWithdrawRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalSharesToWithdraw": 0,
+                    "settlementShareToAssetsPrice": 0,
+                    "pendingWithdrawRequest": 0
+                },
+                {
+                    "Function": "reclaimDeposit",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "getDepositStatus(msg.sender,settlementId) != RequestStatus.RECLAIMABLE"
+                    ],
+                    "state_variables_read": [
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "lastSettlementId",
+                        "pendingDepositRequest"
+                    ],
+                    "state_variables_written": [
+                        "pendingDepositRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalAssetsToDeposit": 0,
+                    "pendingDepositRequest": 0
+                },
+                {
+                    "Function": "reclaimWithdraw",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "getWithdrawStatus(msg.sender,settlementId) != RequestStatus.RECLAIMABLE"
+                    ],
+                    "state_variables_read": [
+                        "totalSharesToWithdraw",
+                        "ERC20StorageLocation",
+                        "pendingWithdrawRequest",
+                        "lastSettlementId"
+                    ],
+                    "state_variables_written": [
+                        "pendingWithdrawRequest"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        }
+                    ],
+                    "lastSettlementId": 125,
+                    "totalSharesToWithdraw": 0,
+                    "pendingWithdrawRequest": 0
+                },
+                {
+                    "Function": "sendAssets",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "a",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "lastSettlementTs",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementId",
+                        "accRewardsPerToken",
+                        "accPnlPerToken",
+                        "maxDailyAccPnlDeltaPerToken",
+                        "accPnlPerTokenThreshold",
+                        "lastSettlementOpenPnl",
+                        "maxSettlementInterval",
+                        "ERC20StorageLocation",
+                        "msg.sender",
+                        "lastDailyAccPnlDeltaResetTs",
+                        "supplyCap",
+                        "PRECISION_6",
+                        "registry",
+                        "totalSharesToWithdraw",
+                        "totalClosedPnl",
+                        "dailyAccPnlDeltaPerToken",
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "state_variables_written": [
+                        "settlementShareToAssetsPrice",
+                        "settlementAllocationScaleP",
+                        "accPnlPerToken",
+                        "lastSettlementId",
+                        "totalClosedPnl",
+                        "totalAssetsToDeposit",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastDailyAccPnlDeltaResetTs",
+                        "lastSettlementTs",
+                        "totalSharesToWithdraw",
+                        "dailyAccPnlDeltaPerToken",
+                        "lastSettlementOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "lastDailyAccPnlDeltaResetTs": 1785686518,
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                    "maxDailyAccPnlDeltaPerToken": 60000000000000000,
+                    "accPnlPerToken": 838225531668519834,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "dailyAccPnlDeltaPerToken": 68804337193,
+                    "totalClosedPnl": 17197379775851,
+                    "lastSettlementId": 125,
+                    "lastSettlementTs": 1784072348,
+                    "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                    "maxSettlementInterval": 2592000,
+                    "totalAssetsToDeposit": 0,
+                    "totalSharesToWithdraw": 0,
+                    "supplyCap": 1,
+                    "accPnlPerTokenThreshold": 127768668707620588
+                },
+                {
+                    "Function": "setMarketMaker",
+                    "Modifiers": [
+                        "onlyTimelock"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "a",
+                        "msg.sender",
+                        "marketMaker"
+                    ],
+                    "state_variables_written": [
+                        "marketMaker"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "marketMaker": "0xD8BD72EDD3451973Ce10855E2a73463648A3931d"
+                },
+                {
+                    "Function": "mmDeposit",
+                    "Modifiers": [
+                        "onlyMM"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "a",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "lastSettlementTs",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementId",
+                        "accRewardsPerToken",
+                        "accPnlPerToken",
+                        "accPnlPerTokenThreshold",
+                        "lastSettlementOpenPnl",
+                        "ERC20StorageLocation",
+                        "msg.sender",
+                        "supplyCap",
+                        "PRECISION_6",
+                        "registry",
+                        "totalSharesToWithdraw",
+                        "marketMaker",
+                        "totalClosedPnl",
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "state_variables_written": [
+                        "settlementShareToAssetsPrice",
+                        "settlementAllocationScaleP",
+                        "accPnlPerToken",
+                        "lastSettlementId",
+                        "totalAssetsToDeposit",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementTs",
+                        "totalSharesToWithdraw",
+                        "lastSettlementOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                    "accPnlPerToken": 838225531668519834,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "totalClosedPnl": 17197379775851,
+                    "lastSettlementId": 125,
+                    "lastSettlementTs": 1784072348,
+                    "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                    "totalAssetsToDeposit": 0,
+                    "totalSharesToWithdraw": 0,
+                    "supplyCap": 1,
+                    "accPnlPerTokenThreshold": 127768668707620588,
+                    "marketMaker": "0xD8BD72EDD3451973Ce10855E2a73463648A3931d"
+                },
+                {
+                    "Function": "mmWithdraw",
+                    "Modifiers": [
+                        "onlyMM"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "a",
+                        "ERC4626StorageLocation",
+                        "totalAssetsToDeposit",
+                        "PRECISION_18",
+                        "lastSettlementTs",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementId",
+                        "accRewardsPerToken",
+                        "accPnlPerToken",
+                        "accPnlPerTokenThreshold",
+                        "lastSettlementOpenPnl",
+                        "ERC20StorageLocation",
+                        "msg.sender",
+                        "supplyCap",
+                        "PRECISION_6",
+                        "registry",
+                        "totalSharesToWithdraw",
+                        "marketMaker",
+                        "totalClosedPnl",
+                        "maxAccOpenPnlDeltaPerToken"
+                    ],
+                    "state_variables_written": [
+                        "settlementShareToAssetsPrice",
+                        "settlementAllocationScaleP",
+                        "accPnlPerToken",
+                        "lastSettlementId",
+                        "totalAssetsToDeposit",
+                        "accPnlPerTokenUsed",
+                        "shareToAssetsPrice",
+                        "lastSettlementTs",
+                        "totalSharesToWithdraw",
+                        "lastSettlementOpenPnl"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "ERC20StorageLocation",
+                            "slot": "0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00"
+                        },
+                        {
+                            "name": "ERC4626StorageLocation",
+                            "slot": "0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00"
+                        },
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "shareToAssetsPrice": 1150043034562485881,
+                    "accRewardsPerToken": 277811703270106469,
+                    "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                    "accPnlPerToken": 838225531668519834,
+                    "accPnlPerTokenUsed": 124663556686233273,
+                    "totalClosedPnl": 17197379775851,
+                    "lastSettlementId": 125,
+                    "lastSettlementTs": 1784072348,
+                    "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                    "totalAssetsToDeposit": 0,
+                    "totalSharesToWithdraw": 0,
+                    "supplyCap": 1,
+                    "accPnlPerTokenThreshold": 127768668707620588,
+                    "marketMaker": "0xD8BD72EDD3451973Ce10855E2a73463648A3931d"
+                }
+            ],
+            "storage_values": {
+                "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                "lastDailyAccPnlDeltaResetTs": 1785686518,
+                "shareToAssetsPrice": 1150043034562485881,
+                "accRewardsPerToken": 277811703270106469,
+                "maxAccOpenPnlDeltaPerToken": 250000000000000000,
+                "maxDailyAccPnlDeltaPerToken": 60000000000000000,
+                "__DEPRECATED_currentEpochPositiveOpenPnl": 0,
+                "accPnlPerToken": 838225531668519834,
+                "accPnlPerTokenUsed": 124663556686233273,
+                "dailyAccPnlDeltaPerToken": 68804337193,
+                "totalClosedPnl": 17197379775851,
+                "lastSettlementId": 125,
+                "lastSettlementTs": 1784072348,
+                "lastSettlementOpenPnl": 115792089237316195423570985008687907853269984665640562661043148325116290223227,
+                "maxSettlementInterval": 2592000,
+                "totalAssetsToDeposit": 0,
+                "totalSharesToWithdraw": 0,
+                "settlementShareToAssetsPrice": 0,
+                "pendingDepositRequest": 0,
+                "pendingWithdrawRequest": 0,
+                "withdrawSettlementDelay": 2,
+                "settlementAllocationScaleP": 0,
+                "supplyCap": 1,
+                "accPnlPerTokenThreshold": 127768668707620588,
+                "marketMaker": "0xD8BD72EDD3451973Ce10855E2a73463648A3931d"
+            }
+        }
+    },
+    "OstiumTrading": {
+        "Implementation_Address": "0x8cbb5bd2b46f993078407cea26704af0a901515a",
+        "Proxy_Address": "0x6d0ba1f9996dbd8885827e1b2e8f6593e7702411",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "OstiumTrading",
+            "Functions": [
+                {
+                    "Function": "removeDelegate",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "delegations[msg.sender] == address(0)"
+                    ],
+                    "state_variables_read": [
+                        "delegatableNonces",
+                        "delegations"
+                    ],
+                    "state_variables_written": [
+                        "delegations",
+                        "delegatableNonces"
+                    ],
+                    "delegations": 0,
+                    "delegatableNonces": 0
+                },
+                {
+                    "Function": "delegatedAction",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "delegations[trader] != msg.sender"
+                    ],
+                    "state_variables_read": [
+                        "senderOverride",
+                        "delegations"
+                    ],
+                    "state_variables_written": [
+                        "senderOverride"
+                    ],
+                    "delegations": 0,
+                    "senderOverride": "0x0000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "marketOrdersTimeout",
+                        "construction",
+                        "isTopLevelCall",
+                        "TMP_1153",
+                        "initialized",
+                        "this",
+                        "initialSetup",
+                        "slot",
+                        "triggerTimeout"
+                    ],
+                    "state_variables_written": [
+                        "registry",
+                        "maxAllowedCollateral",
+                        "marketOrdersTimeout",
+                        "triggerTimeout"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ],
+                    "marketOrdersTimeout": 50,
+                    "triggerTimeout": 50
+                },
+                {
+                    "Function": "isGov",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "isManager",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "_onlyTradesUpKeep",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != address(registry.getContractAddress(bytes32(tradesUpKeep)))"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxAllowedCollateral",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxAllowedCollateral"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMarketOrdersTimeout",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "marketOrdersTimeout"
+                    ],
+                    "state_variables_written": [
+                        "marketOrdersTimeout"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "marketOrdersTimeout": 50
+                },
+                {
+                    "Function": "setTriggerTimeout",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "triggerTimeout"
+                    ],
+                    "state_variables_written": [
+                        "triggerTimeout"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50
+                },
+                {
+                    "Function": "pause",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "isPaused"
+                    ],
+                    "state_variables_written": [
+                        "isPaused"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isPaused": false
+                },
+                {
+                    "Function": "done",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "isDone"
+                    ],
+                    "state_variables_written": [
+                        "isDone"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isDone": false
+                },
+                {
+                    "Function": "openTrade",
+                    "Modifiers": [
+                        "notDone",
+                        "notPaused",
+                        "pairIndexListed"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "isPaused",
+                        "registry",
+                        "senderOverride",
+                        "PERCENT_BASE",
+                        "MAX_BUILDER_FEE_PERCENT",
+                        "maxAllowedCollateral",
+                        "pairIndex",
+                        "isDone",
+                        "PRECISION_6"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        },
+                        {
+                            "name": "PERCENT_BASE",
+                            "slot": "100e2"
+                        },
+                        {
+                            "name": "MAX_BUILDER_FEE_PERCENT",
+                            "slot": "500000"
+                        }
+                    ],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxAllowedCollateral": 5000000000000,
+                    "isPaused": false,
+                    "isDone": false
+                },
+                {
+                    "Function": "closeTradeMarket",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "PERCENT_BASE",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PERCENT_BASE",
+                            "slot": "100e2"
+                        }
+                    ],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "updateOpenLimitOrder",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "cancelOpenLimitOrder",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "updateTp",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "MAX_GAIN_P",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "MAX_GAIN_P",
+                            "slot": "900"
+                        }
+                    ],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "updateSl",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "topUpCollateral",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "ARBITRUM_SEPOLIA",
+                        "maxAllowedCollateral",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "PRECISION_6",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxAllowedCollateral": 5000000000000,
+                    "triggerTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "removeCollateral",
+                    "Modifiers": [
+                        "notDone",
+                        "notPaused"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "isPaused",
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "PRECISION_6",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isPaused": false,
+                    "isDone": false
+                },
+                {
+                    "Function": "executeAutomationOrder",
+                    "Modifiers": [
+                        "notDone",
+                        "onlyTradesUpKeep",
+                        "pairIndexListed"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != address(registry.getContractAddress(bytes32(tradesUpKeep)))"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "isPaused",
+                        "ARBITRUM_MAINNET",
+                        "msg.sender",
+                        "ARBITRUM_SEPOLIA",
+                        "pairIndex",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "triggerTimeout",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "triggerTimeout": 50,
+                    "isPaused": false,
+                    "isDone": false
+                },
+                {
+                    "Function": "openTradeMarketTimeout",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "marketOrdersTimeout",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "marketOrdersTimeout": 50,
+                    "isDone": false
+                },
+                {
+                    "Function": "closeTradeMarketTimeout",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "senderOverride",
+                        "marketOrdersTimeout",
+                        "ARBITRUM_SEPOLIA",
+                        "isDone",
+                        "ARBITRUM_GOERLI",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [],
+                    "senderOverride": "0x0000000000000000000000000000000000000000",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "marketOrdersTimeout": 50,
+                    "isDone": false
+                }
+            ],
+            "storage_values": {
+                "delegations": 0,
+                "senderOverride": "0x0000000000000000000000000000000000000000",
+                "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                "maxAllowedCollateral": 5000000000000,
+                "marketOrdersTimeout": 50,
+                "triggerTimeout": 50,
+                "isPaused": false,
+                "isDone": false,
+                "delegatableNonces": 0
+            }
+        }
+    },
+    "OstiumTimelockOwner": {
+        "Address": "0xeb85dc6095c74d36500c9cdcacc15ecdc223bbf7",
+        "permissions": {
+            "Contract_Name": "OstiumTimelockOwner",
+            "Functions": [
+                {
+                    "Function": "schedule",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_DONE_TIMESTAMP",
+                        "PROPOSER_ROLE",
+                        "msg.sender",
+                        "_timestamps",
+                        "_roles",
+                        "_minDelay",
+                        "role",
+                        "account"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 64800
+                },
+                {
+                    "Function": "scheduleBatch",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_DONE_TIMESTAMP",
+                        "PROPOSER_ROLE",
+                        "msg.sender",
+                        "_timestamps",
+                        "_roles",
+                        "_minDelay",
+                        "role",
+                        "account"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PROPOSER_ROLE",
+                            "slot": "keccak256(bytes)(PROPOSER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0,
+                    "_minDelay": 64800
+                },
+                {
+                    "Function": "cancel",
+                    "Modifiers": [
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_DONE_TIMESTAMP",
+                        "CANCELLER_ROLE",
+                        "msg.sender",
+                        "_timestamps",
+                        "_roles",
+                        "role",
+                        "account"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "CANCELLER_ROLE",
+                            "slot": "keccak256(bytes)(CANCELLER_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "execute",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_DONE_TIMESTAMP",
+                        "msg.sender",
+                        "_timestamps",
+                        "_roles",
+                        "role",
+                        "account",
+                        "EXECUTOR_ROLE"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "executeBatch",
+                    "Modifiers": [
+                        "onlyRoleOrOpenRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "_DONE_TIMESTAMP",
+                        "msg.sender",
+                        "_timestamps",
+                        "_roles",
+                        "role",
+                        "account",
+                        "EXECUTOR_ROLE"
+                    ],
+                    "state_variables_written": [
+                        "_timestamps"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "EXECUTOR_ROLE",
+                            "slot": "keccak256(bytes)(EXECUTOR_ROLE)"
+                        },
+                        {
+                            "name": "_DONE_TIMESTAMP",
+                            "slot": "uint256(1)"
+                        }
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "_timestamps": 0
+                },
+                {
+                    "Function": "grantRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "account",
+                        "msg.sender",
+                        "_roles",
+                        "role"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                },
+                {
+                    "Function": "revokeRole",
+                    "Modifiers": [
+                        "getRoleAdmin",
+                        "onlyRole"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "account",
+                        "msg.sender",
+                        "_roles",
+                        "role"
+                    ],
+                    "state_variables_written": [
+                        "_roles"
+                    ],
+                    "_roles": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            ],
+            "storage_values": {
+                "_roles": "0000000000000000000000000000000000000000000000000000000000000000",
+                "_timestamps": 0,
+                "_minDelay": 64800
+            }
+        }
+    },
+    "OstiumTradingCallbacks": {
+        "Implementation_Address": "0x9214159e33a48a252203fb47ba513b272b888f7d",
+        "Proxy_Address": "0x7720fc8c8680bf4a1af99d44c6c265a74e9742a9",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "OstiumTradingCallbacks",
+            "Functions": [
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "construction",
+                        "TMP_1042",
+                        "isTopLevelCall",
+                        "initialized",
+                        "this",
+                        "initialSetup",
+                        "slot"
+                    ],
+                    "state_variables_written": [
+                        "maxSl_P",
+                        "registry"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "isGov",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "isManager",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "isPriceUpKeep",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "isTrading",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxSl_P",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxSl_P"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setCloseFeeParams",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "CLOSE_FEE_WINDOW_MAX",
+                        "closeFeeStartingP",
+                        "msg.sender",
+                        "CLOSE_FEE_P_MAX",
+                        "closeFeeDecayWindow"
+                    ],
+                    "state_variables_written": [
+                        "closeFeeStartingP",
+                        "closeFeeDecayWindow"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "CLOSE_FEE_WINDOW_MAX",
+                            "slot": "300"
+                        },
+                        {
+                            "name": "CLOSE_FEE_P_MAX",
+                            "slot": "100e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "closeFeeDecayWindow": 15,
+                    "closeFeeStartingP": 400000
+                },
+                {
+                    "Function": "setVaultMaxAllowance",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "unsetVaultMaxAllowance",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "pause",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "isPaused"
+                    ],
+                    "state_variables_written": [
+                        "isPaused"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isPaused": false
+                },
+                {
+                    "Function": "done",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "isDone"
+                    ],
+                    "state_variables_written": [
+                        "isDone"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isDone": false
+                },
+                {
+                    "Function": "openTradeMarketCallback",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "PRECISION_10",
+                        "isPaused",
+                        "registry",
+                        "MAX_GAIN_P",
+                        "PRECISION_18",
+                        "MAX_DECAY_FACTOR",
+                        "isDone",
+                        "PRECISION_27",
+                        "PRECISION_6",
+                        "maxSl_P"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxSl_P": 100,
+                    "isPaused": false,
+                    "isDone": false
+                },
+                {
+                    "Function": "closeTradeMarketCallback",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "PRECISION_10",
+                        "CLOSE_FEE_SCALE_FACTOR",
+                        "registry",
+                        "closeFeeStartingP",
+                        "MAX_GAIN_P",
+                        "PRECISION_18",
+                        "MAX_DECAY_FACTOR",
+                        "isDone",
+                        "PRECISION_27",
+                        "PRECISION_6",
+                        "closeFeeDecayWindow"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isDone": false,
+                    "closeFeeDecayWindow": 15,
+                    "closeFeeStartingP": 400000
+                },
+                {
+                    "Function": "executeAutomationOpenOrderCallback",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "PRECISION_10",
+                        "isPaused",
+                        "registry",
+                        "MAX_GAIN_P",
+                        "PRECISION_18",
+                        "MAX_DECAY_FACTOR",
+                        "isDone",
+                        "PRECISION_27",
+                        "PRECISION_6",
+                        "maxSl_P"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxSl_P": 100,
+                    "isPaused": false,
+                    "isDone": false
+                },
+                {
+                    "Function": "executeAutomationCloseOrderCallback",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "PRECISION_10",
+                        "CLOSE_FEE_SCALE_FACTOR",
+                        "registry",
+                        "closeFeeStartingP",
+                        "MAX_GAIN_P",
+                        "PRECISION_18",
+                        "MAX_DECAY_FACTOR",
+                        "isDone",
+                        "PRECISION_27",
+                        "PRECISION_6",
+                        "closeFeeDecayWindow"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "isDone": false,
+                    "closeFeeDecayWindow": 15,
+                    "closeFeeStartingP": 400000
+                },
+                {
+                    "Function": "handleRemoveCollateral",
+                    "Modifiers": [
+                        "notDone"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(bytes32(abi.encodePacked(priceUpkeepType,PriceUpkeep)))"
+                    ],
+                    "state_variables_read": [
+                        "PRECISION_10",
+                        "isPaused",
+                        "registry",
+                        "MAX_GAIN_P",
+                        "PRECISION_18",
+                        "MAX_DECAY_FACTOR",
+                        "isDone",
+                        "PRECISION_27",
+                        "PRECISION_6",
+                        "maxSl_P"
+                    ],
+                    "state_variables_written": [],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        },
+                        {
+                            "name": "PRECISION_6",
+                            "slot": "1e6"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxSl_P": 100,
+                    "isPaused": false,
+                    "isDone": false
+                }
+            ],
+            "storage_values": {
+                "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                "maxSl_P": 100,
+                "isPaused": false,
+                "isDone": false,
+                "closeFeeDecayWindow": 15,
+                "closeFeeStartingP": 400000
+            }
+        }
+    },
+    "OstiumTradingStorage": {
+        "Implementation_Address": "0xd40c55475d4fea67415cd12abc28c949fc7a7fee",
+        "Proxy_Address": "0xccd5891083a8acd2074690f65d3024e7d13d66e7",
+        "proxy_permissions": {
+            "Contract_Name": "TransparentUpgradeableProxy",
+            "Functions": [
+                {
+                    "Function": "fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "receive",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                },
+                {
+                    "Function": "_fallback",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender == _getAdmin()"
+                    ],
+                    "state_variables_read": [
+                        "_IMPLEMENTATION_SLOT",
+                        "_ADMIN_SLOT"
+                    ],
+                    "state_variables_written": []
+                }
+            ]
+        },
+        "permissions": {
+            "Contract_Name": "OstiumTradingStorage",
+            "Functions": [
+                {
+                    "Function": "initialize",
+                    "Modifiers": [
+                        "initializer"
+                    ],
+                    "msg.sender_conditions": [],
+                    "state_variables_read": [
+                        "$",
+                        "INITIALIZABLE_STORAGE",
+                        "construction",
+                        "isTopLevelCall",
+                        "initialized",
+                        "this",
+                        "initialSetup",
+                        "slot",
+                        "TMP_607"
+                    ],
+                    "state_variables_written": [
+                        "maxTradesPerPair",
+                        "maxPendingMarketOrders",
+                        "usdc",
+                        "registry"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "INITIALIZABLE_STORAGE",
+                            "slot": "0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00"
+                        }
+                    ]
+                },
+                {
+                    "Function": "_onlyGov",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "_onlyTrading",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "_onlyCallbacks",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "_onlyManager",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "_onlyTradingOrCallbacks",
+                    "Modifiers": [],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry"
+                    ],
+                    "state_variables_written": [],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxTradesPerPair",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxTradesPerPair"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxPendingMarketOrders",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxPendingMarketOrders"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxOIKeeper",
+                    "Modifiers": [
+                        "onlyManager"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "maxOIKeeper"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "setMaxOpenInterest",
+                    "Modifiers": [
+                        "onlyManagerOrMaxOIKeeper"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != maxOIKeeper && msg.sender != registry.manager()",
+                        "msg.sender != maxOIKeeper && msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "maxOIKeeper"
+                    ],
+                    "state_variables_written": [
+                        "openInterest"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxOIKeeper": "0x8fD1694eA641F5E16749Ab6Ab17Dd9001AB2C1b0"
+                },
+                {
+                    "Function": "setMaxOpenInterestArray",
+                    "Modifiers": [
+                        "onlyManagerOrMaxOIKeeper"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != maxOIKeeper && msg.sender != registry.manager()",
+                        "msg.sender != maxOIKeeper && msg.sender != registry.manager()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "maxOIKeeper"
+                    ],
+                    "state_variables_written": [
+                        "openInterest"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "maxOIKeeper": "0x8fD1694eA641F5E16749Ab6Ab17Dd9001AB2C1b0"
+                },
+                {
+                    "Function": "storeTrade",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "openTrades",
+                        "openInterest",
+                        "openTradesCount",
+                        "maxTradesPerPair",
+                        "totalOpenTradesCount",
+                        "pairTraders"
+                    ],
+                    "state_variables_written": [
+                        "pairTraders",
+                        "openTradesCount",
+                        "pairTradersId",
+                        "openTrades",
+                        "totalOpenTradesCount",
+                        "openTradesInfo"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "totalOpenTradesCount": 1892,
+                    "maxTradesPerPair": 100,
+                    "openTrades": 0,
+                    "openTradesCount": 0,
+                    "pairTraders": 0,
+                    "openInterest": 0
+                },
+                {
+                    "Function": "unregisterTrade",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "orderTriggerBlock",
+                        "openTradesInfo",
+                        "msg.sender",
+                        "openTrades",
+                        "openInterest",
+                        "pairTradersId",
+                        "openTradesCount",
+                        "totalOpenTradesCount",
+                        "pairTraders"
+                    ],
+                    "state_variables_written": [
+                        "openTradesCount",
+                        "pairTradersId",
+                        "openTrades",
+                        "totalOpenTradesCount",
+                        "openTradesInfo",
+                        "orderTriggerBlock"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "totalOpenTradesCount": 1892,
+                    "openTrades": 0,
+                    "openTradesInfo": 0,
+                    "openTradesCount": 0,
+                    "orderTriggerBlock": 0,
+                    "pairTraders": 0,
+                    "pairTradersId": 0,
+                    "openInterest": 0
+                },
+                {
+                    "Function": "storePendingMarketOrder",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "pendingMarketCloseCount",
+                        "pendingMarketOpenCount",
+                        "msg.sender",
+                        "pendingOrderIds",
+                        "ARBITRUM_SEPOLIA",
+                        "ARBITRUM_GOERLI",
+                        "reqID_pendingMarketOrder",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [
+                        "builderData",
+                        "pendingOrderIds",
+                        "pendingMarketOpenCount",
+                        "reqID_pendingMarketOrder",
+                        "pendingMarketCloseCount"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "reqID_pendingMarketOrder": 0,
+                    "pendingOrderIds": 0,
+                    "pendingMarketOpenCount": 0,
+                    "pendingMarketCloseCount": 0
+                },
+                {
+                    "Function": "storePendingMarketCloseTradeId",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "pendingMarketCloseTradeIds"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "unregisterPendingMarketOrder",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "pendingMarketCloseCount",
+                        "pendingMarketOpenCount",
+                        "pendingMarketCloseTradeIds",
+                        "msg.sender",
+                        "pendingOrderIds",
+                        "builderData",
+                        "reqID_pendingMarketOrder"
+                    ],
+                    "state_variables_written": [
+                        "pendingMarketCloseTradeIds",
+                        "builderData",
+                        "pendingMarketOpenCount",
+                        "reqID_pendingMarketOrder",
+                        "pendingMarketCloseCount"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "reqID_pendingMarketOrder": 0,
+                    "pendingOrderIds": 0,
+                    "pendingMarketOpenCount": 0,
+                    "pendingMarketCloseCount": 0,
+                    "builderData": 0,
+                    "pendingMarketCloseTradeIds": 0
+                },
+                {
+                    "Function": "storeOpenLimitOrder",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "limitOrderIdCounter",
+                        "pairLimitOrders",
+                        "msg.sender",
+                        "openLimitOrdersCount"
+                    ],
+                    "state_variables_written": [
+                        "builderData",
+                        "pairLimitOrders",
+                        "openLimitOrderIds",
+                        "limitOrderIdCounter",
+                        "openLimitOrdersCount",
+                        "limitOrderIds"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openLimitOrdersCount": 0,
+                    "pairLimitOrders": 0,
+                    "limitOrderIdCounter": 21134
+                },
+                {
+                    "Function": "updateOpenLimitOrder",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "pairLimitOrders",
+                        "openLimitOrderIds"
+                    ],
+                    "state_variables_written": [
+                        "pairLimitOrders"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openLimitOrderIds": 0,
+                    "pairLimitOrders": 0
+                },
+                {
+                    "Function": "unregisterOpenLimitOrder",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "limitOrderIds",
+                        "pairLimitOrders",
+                        "msg.sender",
+                        "openLimitOrderIds",
+                        "openLimitOrdersCount",
+                        "builderData"
+                    ],
+                    "state_variables_written": [
+                        "builderData",
+                        "pairLimitOrders",
+                        "openLimitOrderIds",
+                        "openLimitOrdersCount",
+                        "limitOrderIds"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openLimitOrderIds": 0,
+                    "openLimitOrdersCount": 0,
+                    "pairLimitOrders": 0,
+                    "builderData": 0,
+                    "limitOrderIds": 0
+                },
+                {
+                    "Function": "setTrigger",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "ARBITRUM_MAINNET",
+                        "msg.sender",
+                        "ARBITRUM_SEPOLIA",
+                        "ARBITRUM_GOERLI",
+                        "ARB_SYS"
+                    ],
+                    "state_variables_written": [
+                        "orderTriggerBlock"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "unregisterTrigger",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "orderTriggerBlock"
+                    ],
+                    "state_variables_written": [
+                        "orderTriggerBlock"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "orderTriggerBlock": 0
+                },
+                {
+                    "Function": "clearDeprecatedBeingMarketClosed",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "openTradesInfo",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "openTradesInfo"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openTradesInfo": 0
+                },
+                {
+                    "Function": "storePendingAutomationOrder",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "reqID_pendingAutomationOrder"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "unregisterPendingAutomationOrder",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "reqID_pendingAutomationOrder"
+                    ],
+                    "state_variables_written": [
+                        "reqID_pendingAutomationOrder"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "reqID_pendingAutomationOrder": 0
+                },
+                {
+                    "Function": "updateSl",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "openTradesInfo",
+                        "msg.sender",
+                        "openTrades"
+                    ],
+                    "state_variables_written": [
+                        "openTrades",
+                        "openTradesInfo"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openTrades": 0,
+                    "openTradesInfo": 0
+                },
+                {
+                    "Function": "updateTp",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "openTradesInfo",
+                        "msg.sender",
+                        "openTrades"
+                    ],
+                    "state_variables_written": [
+                        "openTrades",
+                        "openTradesInfo"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openTrades": 0,
+                    "openTradesInfo": 0
+                },
+                {
+                    "Function": "updateTrade",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "openTradesInfo",
+                        "msg.sender",
+                        "openTrades"
+                    ],
+                    "state_variables_written": [
+                        "openTrades",
+                        "openTradesInfo"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "openTrades": 0,
+                    "openTradesInfo": 0
+                },
+                {
+                    "Function": "handleOpeningFees",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "devFees",
+                        "msg.sender",
+                        "PRECISION_18",
+                        "openInterest"
+                    ],
+                    "state_variables_written": [
+                        "devFees"
+                    ],
+                    "immutables_and_constants": [
+                        {
+                            "name": "PRECISION_18",
+                            "slot": "1e18"
+                        }
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "devFees": 245614979632,
+                    "openInterest": 0
+                },
+                {
+                    "Function": "handleOracleFee",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "devFees"
+                    ],
+                    "state_variables_written": [
+                        "devFees"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "devFees": 245614979632
+                },
+                {
+                    "Function": "refundOracleFee",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "devFees"
+                    ],
+                    "state_variables_written": [
+                        "devFees"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "devFees": 245614979632
+                },
+                {
+                    "Function": "claimFees",
+                    "Modifiers": [
+                        "onlyGov"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.gov()"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "devFees",
+                        "usdc"
+                    ],
+                    "state_variables_written": [
+                        "devFees"
+                    ],
+                    "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "devFees": 245614979632
+                },
+                {
+                    "Function": "transferUsdc",
+                    "Modifiers": [
+                        "onlyTradingOrCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading) && msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender",
+                        "usdc"
+                    ],
+                    "state_variables_written": [],
+                    "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "storePendingRemoveCollateral",
+                    "Modifiers": [
+                        "onlyTrading"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(trading)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "reqID_pendingRemoveCollateral"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2"
+                },
+                {
+                    "Function": "unregisterPendingRemoveCollateral",
+                    "Modifiers": [
+                        "onlyCallbacks"
+                    ],
+                    "msg.sender_conditions": [
+                        "msg.sender != registry.getContractAddress(callbacks)"
+                    ],
+                    "state_variables_read": [
+                        "registry",
+                        "reqID_pendingRemoveCollateral",
+                        "msg.sender"
+                    ],
+                    "state_variables_written": [
+                        "reqID_pendingRemoveCollateral"
+                    ],
+                    "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                    "reqID_pendingRemoveCollateral": 0
+                }
+            ],
+            "storage_values": {
+                "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                "registry": "799a139ae56e11f0476ace2f6118cfcaed9608d2",
+                "devFees": 245614979632,
+                "totalOpenTradesCount": 1892,
+                "maxTradesPerPair": 100,
+                "openTrades": 0,
+                "openTradesInfo": 0,
+                "openTradesCount": 0,
+                "openLimitOrderIds": 0,
+                "openLimitOrdersCount": 0,
+                "orderTriggerBlock": 0,
+                "pairLimitOrders": 0,
+                "reqID_pendingMarketOrder": 0,
+                "reqID_pendingAutomationOrder": 0,
+                "pendingOrderIds": 0,
+                "pendingMarketOpenCount": 0,
+                "pendingMarketCloseCount": 0,
+                "pairTraders": 0,
+                "pairTradersId": 0,
+                "openInterest": 0,
+                "reqID_pendingRemoveCollateral": 0,
+                "builderData": 0,
+                "limitOrderIdCounter": 21134,
+                "limitOrderIds": 0,
+                "pendingMarketCloseTradeIds": 0,
+                "maxOIKeeper": "0x8fD1694eA641F5E16749Ab6Ab17Dd9001AB2C1b0"
+            }
+        }
+    }
+}
