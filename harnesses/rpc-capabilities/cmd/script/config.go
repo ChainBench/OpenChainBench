@@ -690,6 +690,8 @@ func chains() []Chain {
 				{Slug: "kava-official", Name: "Kava Labs", URL: envDefault("RPC_URL_KAVA_OFFICIAL", "https://evm.kava.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAVA_DRPC", "https://kava.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KAVA_THIRDWEB", "https://kava.rpc.thirdweb.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KAVA_PUBLICNODE", "https://kava-evm-rpc.publicnode.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_KAVA_ANKR", "https://rpc.ankr.com/kava_evm")},
 			},
 		},
 		// ─── Zora (bench 122) — added 2026-08-02. OP Stack rollup
