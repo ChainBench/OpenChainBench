@@ -788,6 +788,113 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CYBER_THIRDWEB", "https://7560.rpc.thirdweb.com")},
 			},
 		},
+		// 2026-08-03 audit. Rootstock EVM sidechain (chain 30). 3 clean keyless
+		// providers: rootstock-official (public-node.rsk.co), drpc
+		// (rootstock.drpc.org), thirdweb (30.rpc.thirdweb.com).
+		// Excluded: Blast API (shut down), Alchemy (key required).
+		{
+			Slug: "rootstock",
+			Name: "Rootstock",
+			Providers: []Provider{
+				{Slug: "rootstock-official", Name: "Rootstock Foundation", URL: envDefault("RPC_URL_ROOTSTOCK_OFFICIAL", "https://public-node.rsk.co")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ROOTSTOCK_DRPC", "https://rootstock.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ROOTSTOCK_THIRDWEB", "https://30.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-03 audit. Metis Andromeda optimistic rollup (chain 1088). 4 clean
+		// keyless providers: metis-official (andromeda.metis.io), drpc
+		// (metis.drpc.org), publicnode (metis-rpc.publicnode.com), thirdweb
+		// (1088.rpc.thirdweb.com). Excluded: Ankr (key required for metis).
+		{
+			Slug: "metis",
+			Name: "Metis",
+			Providers: []Provider{
+				{Slug: "metis-official", Name: "Metis", URL: envDefault("RPC_URL_METIS_OFFICIAL", "https://andromeda.metis.io/?owner=1088")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_METIS_DRPC", "https://metis.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_METIS_PUBLICNODE", "https://metis-rpc.publicnode.com")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_METIS_THIRDWEB", "https://1088.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-03 audit. Manta Pacific OP Stack L2 on Celestia DA (chain 169).
+		// 3 clean keyless providers: manta-official (pacific-rpc.manta.network/http),
+		// drpc (manta-pacific.drpc.org), thirdweb (169.rpc.thirdweb.com).
+		// Excluded: Ankr (no manta pacific route), Alchemy (key required).
+		{
+			Slug: "manta",
+			Name: "Manta Pacific",
+			Providers: []Provider{
+				{Slug: "manta-official", Name: "Manta Network", URL: envDefault("RPC_URL_MANTA_OFFICIAL", "https://pacific-rpc.manta.network/http")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MANTA_DRPC", "https://manta-pacific.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MANTA_THIRDWEB", "https://169.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-03 audit. Story Protocol IP L1 (chain 1514). 3 clean keyless
+		// providers: story-official (mainnet.storyrpc.io), ankr
+		// (rpc.ankr.com/story_mainnet), stakely (story-json-rpc.stakely.io).
+		// Excluded: Alchemy (key required), Infura (no story route).
+		{
+			Slug: "story",
+			Name: "Story",
+			Providers: []Provider{
+				{Slug: "story-official", Name: "Story Foundation", URL: envDefault("RPC_URL_STORY_OFFICIAL", "https://mainnet.storyrpc.io")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_STORY_ANKR", "https://rpc.ankr.com/story_mainnet")},
+				{Slug: "stakely", Name: "Stakely", URL: envDefault("RPC_URL_STORY_STAKELY", "https://story-json-rpc.stakely.io")},
+			},
+		},
+		// 2026-08-03 audit. Morph ZK Rollup L2 (chain 2818). 3 clean keyless
+		// providers: morph-official (rpc.morphl2.io), drpc (morph.drpc.org),
+		// thirdweb (2818.rpc.thirdweb.com). Excluded: Ankr (no morph route).
+		{
+			Slug: "morph",
+			Name: "Morph",
+			Providers: []Provider{
+				{Slug: "morph-official", Name: "Morph", URL: envDefault("RPC_URL_MORPH_OFFICIAL", "https://rpc.morphl2.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MORPH_DRPC", "https://morph.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MORPH_THIRDWEB", "https://2818.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-03 audit. Moonriver Kusama parachain (chain 1285). 4 clean
+		// keyless providers: moonriver-official (rpc.api.moonriver.moonbeam.network),
+		// publicnode (moonriver-rpc.publicnode.com), onfinality
+		// (moonriver.api.onfinality.io/public), unitedbloc (moonriver.unitedbloc.com).
+		// Excluded: Ankr (key required for moonriver), drpc (no moonriver route).
+		{
+			Slug: "moonriver",
+			Name: "Moonriver",
+			Providers: []Provider{
+				{Slug: "moonriver-official", Name: "Moonbeam Foundation", URL: envDefault("RPC_URL_MOONRIVER_OFFICIAL", "https://rpc.api.moonriver.moonbeam.network")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONRIVER_PUBLICNODE", "https://moonriver-rpc.publicnode.com")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONRIVER_ONFINALITY", "https://moonriver.api.onfinality.io/public")},
+				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONRIVER_UNITEDBLOC", "https://moonriver.unitedbloc.com")},
+			},
+		},
+		// 2026-08-03 audit. Hemi BTC+ETH hybrid OP Stack L2 (chain 43111). 3 clean
+		// keyless providers: hemi-official (rpc.hemi.network/rpc), drpc
+		// (hemi.drpc.org), thirdweb (43111.rpc.thirdweb.com).
+		// Excluded: Ankr (no hemi route), Alchemy (key required).
+		{
+			Slug: "hemi",
+			Name: "Hemi",
+			Providers: []Provider{
+				{Slug: "hemi-official", Name: "Hemi Labs", URL: envDefault("RPC_URL_HEMI_OFFICIAL", "https://rpc.hemi.network/rpc")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_HEMI_DRPC", "https://hemi.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_HEMI_THIRDWEB", "https://43111.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-03 audit. BOB BTC+ETH hybrid OP Stack L2 (chain 60808). 4 clean
+		// keyless providers: bob-official (rpc.gobob.xyz), tenderly
+		// (bob.gateway.tenderly.co), drpc (bob.drpc.org), thirdweb
+		// (60808.rpc.thirdweb.com). Excluded: Ankr (no bob route).
+		{
+			Slug: "bob",
+			Name: "BOB",
+			Providers: []Provider{
+				{Slug: "bob-official", Name: "BOB", URL: envDefault("RPC_URL_BOB_OFFICIAL", "https://rpc.gobob.xyz")},
+				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_BOB_TENDERLY", "https://bob.gateway.tenderly.co")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOB_DRPC", "https://bob.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_BOB_THIRDWEB", "https://60808.rpc.thirdweb.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
