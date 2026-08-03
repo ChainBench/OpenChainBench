@@ -27,7 +27,6 @@ import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { hasRpcProviderData } from "@/lib/rpc-hub-stats";
-import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import {
   getPerpVenueContext,
@@ -204,14 +203,20 @@ export default async function ProviderPage({
       a.result.availability === "live" &&
       a.result.unresponsive !== true,
   );
-  const anyMeasuredAppearance = p.appearances.some(
-    (a) => (a.result.ms?.p50 ?? 0) > 0,
+  // Exclude appearances with insufficient data confidence from the
+  // "any measured" check: a new provider whose every bench appearance is
+  // still warming up (insufficient sample count) legitimately has rank=0
+  // everywhere — that is not a degraded store read, it is warm-up state.
+  const anyConfidentAppearance = p.appearances.some(
+    (a) =>
+      (a.result.ms?.p50 ?? 0) > 0 &&
+      a.result.dataConfidence !== "insufficient",
   );
   if (
     p.appearances.length >= 8 &&
     p.appearances.every((a) => a.rank === 0) &&
     allClaimLive &&
-    anyMeasuredAppearance
+    anyConfidentAppearance
   ) {
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
   }
@@ -232,11 +237,10 @@ export default async function ProviderPage({
   const pmContext = await getPmVenueContext(p.slug);
 
   // Perp DEX cohort dashboard. Same pattern as the PM context above.
-  const isPerpSlug = PERP_PRODUCT_PILL_SLUGS.has(p.slug);
-  const feesAtSizeBench = isPerpSlug
-    ? await loadBenchFromBlob("perp-fees-at-size")
-    : null;
-  const perpContext = await getPerpVenueContext(p.slug, feesAtSizeBench);
+  // perp-fees-at-size bench was removed; pass null so loadBenchFromBlob
+  // (cache: "no-store") is not called from an ISR page (it would trigger
+  // Next.js "Page changed from static to dynamic" for polymarket).
+  const perpContext = await getPerpVenueContext(p.slug, null);
 
   // KPI-domain availability, resolved upfront so the pill bar knows
   // every domain before rendering. A pill must never open onto an empty

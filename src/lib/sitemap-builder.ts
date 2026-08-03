@@ -10,6 +10,7 @@ import {
   isHlBuilderSlug,
   isHlBuilderWithHistory,
 } from "@/lib/hl-builder-stats";
+import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
@@ -240,6 +241,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // Emitting them in the sitemap advertises URLs the middleware will
     // then reject, failing the deploy-time sitemap-smoke gate.
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    // Benches that are editorially live but have no Prom data yet render
+    // with <meta robots noindex>. Skip until data lands.
+    if (b.status === "draft" && b.editorialStatus === "live") return [];
     const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
     const entries: MetadataRoute.Sitemap = [
       {
@@ -307,6 +311,8 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       providerSlugs.map(async (slug) => {
         if (CHAIN_BY_SLUG.has(slug)) return null;
         if (await isHlBuilderSlug(slug)) return null;
+        // Perp venue slugs (except polymarket) 308 to /perp/<slug>.
+        if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
