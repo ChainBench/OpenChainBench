@@ -24,19 +24,23 @@ export function CountLeaderboard({
   headerActions?: ReactNode;
 }) {
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
-  const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
+  // Exclude +Inf from max so finite bars render at meaningful widths
+  // instead of collapsing to 0% (Inf/Inf = NaN).
+  const finiteVals = ranked.map((r) => r.ms.p50).filter(Number.isFinite);
+  const max = Math.max(...finiteVals) || 1;
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   const validRanked = ranked.filter((r) => r.ms.p50 > 0);
   const leader = validRanked[0];
   const trailer = validRanked[validRanked.length - 1];
-  const gapRatio =
+  const rawGap =
     leader && trailer && leader.ms.p50 > 0
       ? benchmark.higherIsBetter
         ? leader.ms.p50 / trailer.ms.p50
         : trailer.ms.p50 / leader.ms.p50
       : 0;
+  const gapRatio = Number.isFinite(rawGap) ? rawGap : null;
   // range: always ascending (best → worst). for lower-is-better leader is min,
   // trailer is max; for higher-is-better flip them so low is still left.
   const [rangeMin, rangeMax] = benchmark.higherIsBetter
@@ -75,7 +79,7 @@ export function CountLeaderboard({
         />
         <CountStat
           label="Gap"
-          value={gapRatio > 0 ? `${gapRatio.toFixed(1)}×` : "-"}
+          value={gapRatio != null && gapRatio > 0 ? `${gapRatio.toFixed(1)}×` : "-"}
           hint="leader vs lowest"
         />
       </dl>
@@ -87,7 +91,8 @@ export function CountLeaderboard({
         </p>
         <ol className="mt-4 space-y-3">
           {ranked.map((r, i) => {
-            const pct = (r.ms.p50 / max) * 100;
+            // +Inf venues get full-width bar (visually "worst"); finite bar otherwise.
+            const pct = Number.isFinite(r.ms.p50) ? (r.ms.p50 / max) * 100 : 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
             const hasFormula = Boolean(r.formula);
             const isHovered = hoveredSlug === r.slug;
