@@ -485,6 +485,70 @@ export const CHAINS: ChainEntry[] = [
     description:
       "OP Stack L2 (chain 7560) operated by Cyber, a social-layer chain for SocialFi and Web3 social graphs, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
   },
+  {
+    slug: "rootstock",
+    label: "Rootstock",
+    category: "L2",
+    nativeSymbol: "RBTC",
+    description:
+      "Bitcoin sidechain (chain 30) operated by the Rootstock Foundation, merge-mined with Bitcoin for 51% attack resistance, EVM-compatible smart contracts with BTC as native gas (RBTC), ~30 s block time.",
+  },
+  {
+    slug: "metis",
+    label: "Metis",
+    category: "L2",
+    nativeSymbol: "METIS",
+    description:
+      "Optimistic rollup (chain 1088) with a decentralized sequencer network, METIS as both gas token and sequencer staking asset, ~2 s block cadence, settlement on Ethereum.",
+  },
+  {
+    slug: "manta",
+    label: "Manta Pacific",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack EVM L2 (chain 169) built on Celestia for data availability, optimised for zero-knowledge applications and DeFi, ETH gas token, ~2 s block cadence, settlement on Ethereum.",
+  },
+  {
+    slug: "story",
+    label: "Story",
+    category: "L1",
+    nativeSymbol: "IP",
+    description:
+      "Purpose-built L1 (chain 1514) for on-chain intellectual property with EVM execution layer and CometBFT consensus, IP asset primitives (PIL licensing, royalty modules), IP gas token.",
+  },
+  {
+    slug: "morph",
+    label: "Morph",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "ZK Rollup L2 (chain 2818) combining optimistic execution with ZK proof settlement on Ethereum, ETH gas token, ~2 s block cadence, Decentralized Sequencer Network for censorship resistance.",
+  },
+  {
+    slug: "moonriver",
+    label: "Moonriver",
+    category: "L1",
+    nativeSymbol: "MOVR",
+    description:
+      "Kusama parachain (chain 1285) operated by the Moonbeam Foundation, full EVM compatibility with Ethereum tooling, MOVR gas token, ~12 s block time under Nominated Proof of Stake, canary network for Moonbeam.",
+  },
+  {
+    slug: "hemi",
+    label: "Hemi",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Bitcoin+Ethereum hybrid L2 (chain 43111) built on OP Stack with dual-VM architecture running both EVM and Bitcoin script, ETH gas token, ~2 s block cadence, designed to unify BTC and ETH liquidity.",
+  },
+  {
+    slug: "bob",
+    label: "BOB",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Build on Bitcoin — OP Stack hybrid L2 (chain 60808) bridging Bitcoin and Ethereum, enabling Bitcoin DeFi with EVM smart contracts and native BTC collateral, ETH gas token, ~2 s block cadence.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

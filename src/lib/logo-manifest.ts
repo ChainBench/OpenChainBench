@@ -68,6 +68,17 @@ const RAW: Record<string, string> = {
   altlayer: "/logos/altlayer.webp",
   sentio: "/logos/sentio.png",
 
+  // RPC wave-3 chains (2026-08-03, benches 130-137)
+  rootstock: "/logos/rootstock.jpg",
+  metis: "/logos/metis.png",
+  manta: "/logos/manta.jpg",
+  story: "/logos/story.png",
+  morph: "/logos/morph.png",
+  moonriver: "/logos/moonriver.jpg",
+  hemi: "/logos/hemi.png",
+  bob: "/logos/bob.png",
+  unitedbloc: "/logos/unitedbloc.jpg",
+
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
@@ -494,6 +505,15 @@ const ALIASES: Record<string, string> = {
   "apechain-official": "apechain",
   "lisk-official": "lisk",
   "cyber-official": "cyber",
+  // RPC wave-3 chains (2026-08-03, benches 130-137)
+  "rootstock-official": "rootstock",
+  "metis-official": "metis",
+  "manta-official": "manta",
+  "story-official": "story",
+  "morph-official": "morph",
+  "moonriver-official": "moonriver",
+  "hemi-official": "hemi",
+  "bob-official": "bob",
 
 };
 
