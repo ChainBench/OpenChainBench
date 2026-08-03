@@ -378,9 +378,9 @@ export default async function ReportPage({ params }: Props) {
 
       {/* Body */}
       <div className="mt-2">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <MDXRemote
           source={report.content}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           components={MDX_COMPONENTS as any}
           options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
         />
