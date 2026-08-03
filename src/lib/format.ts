@@ -82,6 +82,7 @@ export function fmtUnit(value: number, unit: string) {
     return `${value.toFixed(1)}x`;
   }
   if (unit === "count") {
+    if (!Number.isFinite(value)) return "∞";
     // Sub-unit values are common when a "count" bench is measuring an
     // error or gap that converges toward zero (e.g. gas-oracle prediction
     // error in gwei — PublicNode feeHistory's p50 sits around 1e-9,
