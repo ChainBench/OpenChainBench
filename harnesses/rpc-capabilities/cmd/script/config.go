@@ -711,6 +711,7 @@ func chains() []Chain {
 				{Slug: "zora-official", Name: "Zora Network", URL: envDefault("RPC_URL_ZORA_OFFICIAL", "https://rpc.zora.energy")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZORA_DRPC", "https://zora.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZORA_THIRDWEB", "https://zora.rpc.thirdweb.com")},
+				{Slug: "conduit", Name: "Conduit", URL: envDefault("RPC_URL_ZORA_CONDUIT", "https://rpc-zora-mainnet-0.t.conduit.xyz")},
 			},
 		},
 		// 2026-08-02 audit. Abstract ZK Stack (chain 2741). 3 clean keyless
@@ -739,6 +740,7 @@ func chains() []Chain {
 				{Slug: "apechain-official", Name: "ApeChain", URL: envDefault("RPC_URL_APECHAIN_OFFICIAL", "https://rpc.apechain.com/http")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_APECHAIN_DRPC", "https://apechain.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_APECHAIN_THIRDWEB", "https://apechain.rpc.thirdweb.com")},
+				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_APECHAIN_TENDERLY", "https://gateway.tenderly.co/public/apechain")},
 			},
 		},
 		// 2026-08-02 audit. Lisk OP Stack L2 (chain 1135). 3 clean keyless
@@ -753,13 +755,15 @@ func chains() []Chain {
 				{Slug: "lisk-official", Name: "Lisk", URL: envDefault("RPC_URL_LISK_OFFICIAL", "https://rpc.api.lisk.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_LISK_DRPC", "https://lisk.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_LISK_THIRDWEB", "https://lisk.rpc.thirdweb.com")},
+				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_LISK_TENDERLY", "https://gateway.tenderly.co/public/lisk")},
 			},
 		},
+		// 2026-08-03: added drpc (swell.drpc.org). 4 total.
 		// 2026-08-02 audit. Swellchain OP Stack L2 (chain 1923). 3 clean
 		// keyless providers. Live-verified: ankr (rpc.ankr.com/swell), sentio
 		// (swell-mainnet.rpc.sentio.xyz), thirdweb (1923.rpc.thirdweb.com).
 		// Excluded: official alt.technology endpoint (401 without key),
-		// drpc (no swell route), Alchemy (key required).
+		// Alchemy (key required).
 		{
 			Slug: "swellchain",
 			Name: "Swellchain",
@@ -767,6 +771,7 @@ func chains() []Chain {
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_SWELLCHAIN_ANKR", "https://rpc.ankr.com/swell")},
 				{Slug: "sentio", Name: "Sentio", URL: envDefault("RPC_URL_SWELLCHAIN_SENTIO", "https://swell-mainnet.rpc.sentio.xyz")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SWELLCHAIN_THIRDWEB", "https://1923.rpc.thirdweb.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SWELLCHAIN_DRPC", "https://swell.drpc.org")},
 			},
 		},
 		// 2026-08-02 audit. Cyber Network OP Stack L2 (chain 7560). 3 clean
