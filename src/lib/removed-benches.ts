@@ -121,6 +121,16 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // the 410 list so any indexed URL returns Gone instead of 404.
   // Per-venue WS freshness now lives in pm-ws-latency (bench 114).
   "pm-data-freshness",
+  // perp-open-interest retired 2026-07: multi-chain OI aggregation was
+  // structurally biased (each venue self-reports; no independent
+  // ground truth). Spec deleted; kept for indexed URL cleanup.
+  "perp-open-interest",
+  // pm-fee-comparison and pm-geographic-access dropped 2026-07
+  // (see PR #1663/#1664): fee-comparison was apples-to-oranges across
+  // venue types; geographic-access relied on ForecastEx geo blocks that
+  // changed without notice. Specs deleted.
+  "pm-fee-comparison",
+  "pm-geographic-access",
 ]);
 
 /**
