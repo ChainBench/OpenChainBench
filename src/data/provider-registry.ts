@@ -1949,6 +1949,60 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Cyber Network's official public RPC (rpc.cyber.co) for the OP Stack L2 dedicated to SocialFi and Web3 social graphs (chain 7560). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
     twitter: "@cyberconnecthq",
   },
+  "rootstock-official": {
+    url: "https://rootstock.io",
+    description:
+      "Rootstock Foundation's official public RPC (public-node.rsk.co) for the Bitcoin sidechain with EVM smart contracts and merge-mining security (chain 30). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@rootstock_io",
+  },
+  "metis-official": {
+    url: "https://metis.io",
+    description:
+      "Metis's official Andromeda public RPC (andromeda.metis.io) for the optimistic rollup with a decentralized sequencer network and METIS gas token (chain 1088). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@MetisL2",
+  },
+  "manta-official": {
+    url: "https://manta.network",
+    description:
+      "Manta Network's official Pacific public RPC (pacific-rpc.manta.network/http) for the OP Stack L2 built on Celestia DA, optimised for zero-knowledge applications (chain 169). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@MantaNetwork",
+  },
+  "story-official": {
+    url: "https://www.story.foundation",
+    description:
+      "Story Foundation's official public RPC (mainnet.storyrpc.io) for the purpose-built IP blockchain with EVM execution and CometBFT consensus, IP gas token (chain 1514). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@StoryProtocol",
+  },
+  "morph-official": {
+    url: "https://morphl2.io",
+    description:
+      "Morph's official public RPC (rpc.morphl2.io) for the ZK Rollup L2 combining optimistic execution with ZK proof settlement and a Decentralized Sequencer Network (chain 2818). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@Morphl2",
+  },
+  "moonriver-official": {
+    url: "https://moonbeam.network/moonriver",
+    description:
+      "Moonbeam Foundation's official public RPC (rpc.api.moonriver.moonbeam.network) for Moonriver, the Kusama parachain with full EVM compatibility and MOVR gas token (chain 1285). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@MoonriverNW",
+  },
+  "hemi-official": {
+    url: "https://hemi.xyz",
+    description:
+      "Hemi Labs' official public RPC (rpc.hemi.network/rpc) for the Bitcoin+Ethereum hybrid L2 with dual-VM architecture running both EVM and Bitcoin script (chain 43111). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@hemi_xyz",
+  },
+  "bob-official": {
+    url: "https://gobob.xyz",
+    description:
+      "BOB's official public RPC (rpc.gobob.xyz) for the Build on Bitcoin OP Stack hybrid L2 bridging BTC and ETH with native BTC collateral support (chain 60808). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@gobob_xyz",
+  },
+  unitedbloc: {
+    url: "https://unitedbloc.com",
+    description:
+      "UnitedBloc is a community validator and RPC node operator running public infrastructure for Moonbeam and Moonriver. Their keyless endpoint (moonriver.unitedbloc.com) supports Moonriver (chain 1285) without an API key.",
+    twitter: "@unitedbloc",
+  },
 };
 
 /**

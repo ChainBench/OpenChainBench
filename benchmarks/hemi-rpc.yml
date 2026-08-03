@@ -1,0 +1,136 @@
+# OpenChainBench. Bench № 136
+
+slug: hemi-rpc
+number: "136"
+title: Fastest free Hemi RPC, live no-key EVM endpoint latency
+seo_title: "Fastest free Hemi RPC 2026"
+seo_description: "{{best_name}} leads free Hemi RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Hemi EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Hemi is a Bitcoin+Ethereum hybrid L2 (chain 43111) built on OP Stack with a dual-VM architecture running both EVM and Bitcoin script, ETH gas token, ~2 s block cadence, designed to unify BTC and ETH liquidity. Backed by YZi Labs (ex-Binance Labs) with $15M seed, mainnet launched March 2025 with over $440M TVL at launch. The 2026-08-03 audit confirms 3 clean keyless providers: the Hemi Labs official endpoint (rpc.hemi.network/rpc), dRPC (hemi.drpc.org), and Thirdweb (43111.rpc.thirdweb.com). Excluded: Ankr (no hemi route), Alchemy (key required), QuickNode (key required).
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Hemi.
+  We measure the round-trip latency of a single, identical JSON-RPC call
+  (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public
+  Hemi endpoint that sustains continuous probing, 3 providers
+  measured, every 60 seconds, from us-east, eu-west and Singapore. The
+  harness classifies every response (ok / http_err / jsonrpc_err / stale
+  / timeout) with a Hemi-scaled staleness gap (20 blocks
+  at Hemi's ~2 s block time). The cross-chain view
+  lives on the parent `rpc-capabilities` benchmark; this page is the
+  Hemi-scoped answer with per-region breakdowns as a first-class
+  dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"hemi\"`. Provider coverage: 3 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free Hemi RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Hemi RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Hemi RPCs work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing: the Hemi Labs official endpoint (rpc.hemi.network/rpc), dRPC (hemi.drpc.org), and Thirdweb (43111.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+  - q: "Does the fastest Hemi RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is Hemi RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="hemi"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: hemi-official
+    name: Hemi Labs
+    tag: Hemi Labs official public RPC endpoint for Hemi mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hemi Labs's no-key hemi RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hemi-official", chain="hemi"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="hemi-official", chain="hemi"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="hemi-official", chain="hemi"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="hemi-official", chain="hemi"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="hemi-official", chain="hemi"}) / sum(ocb:rpc_call:rate_24h{provider="hemi-official", chain="hemi"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="hemi-official", chain="hemi"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="hemi-official", chain="hemi"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hemi-official", chain="hemi", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hemi-official", chain="hemi", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hemi-official", chain="hemi", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hemi-official", chain="hemi", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hemi-official", chain="hemi", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hemi-official", chain="hemi", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: dRPC public gateway routing to Hemi node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key hemi RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hemi"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="hemi"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="hemi"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="hemi"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="hemi"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="hemi"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="hemi"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hemi"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hemi", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hemi", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hemi", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hemi", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hemi", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hemi", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public RPC gateway for Hemi
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key hemi RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hemi"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="hemi"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="hemi"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="hemi"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="hemi"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="hemi"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="hemi"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hemi"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hemi", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hemi", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hemi", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hemi", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hemi", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hemi", region="sgp"}[1h])
