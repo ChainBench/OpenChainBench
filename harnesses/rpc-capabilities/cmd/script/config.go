@@ -815,10 +815,10 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_METIS_THIRDWEB", "https://1088.rpc.thirdweb.com")},
 			},
 		},
-		// 2026-08-03 audit. Manta Pacific OP Stack L2 on Celestia DA (chain 169).
-		// 3 clean keyless providers: manta-official (pacific-rpc.manta.network/http),
-		// drpc (manta-pacific.drpc.org), thirdweb (169.rpc.thirdweb.com).
-		// Excluded: Ankr (no manta pacific route), Alchemy (key required).
+		// 2026-08-04 audit. Manta Pacific OP Stack L2 on Celestia DA (chain 169).
+		// 4 clean keyless providers: manta-official (pacific-rpc.manta.network/http),
+		// drpc (manta-pacific.drpc.org), thirdweb (169.rpc.thirdweb.com),
+		// 1rpc (1rpc.io/manta). Excluded: Ankr (no manta pacific route), Alchemy (key required).
 		{
 			Slug: "manta",
 			Name: "Manta Pacific",
@@ -826,12 +826,13 @@ func chains() []Chain {
 				{Slug: "manta-official", Name: "Manta Network", URL: envDefault("RPC_URL_MANTA_OFFICIAL", "https://pacific-rpc.manta.network/http")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MANTA_DRPC", "https://manta-pacific.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MANTA_THIRDWEB", "https://169.rpc.thirdweb.com")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MANTA_1RPC", "https://1rpc.io/manta")},
 			},
 		},
-		// 2026-08-03 audit. Story Protocol IP L1 (chain 1514). 3 clean keyless
+		// 2026-08-04 audit. Story Protocol IP L1 (chain 1514). 4 clean keyless
 		// providers: story-official (mainnet.storyrpc.io), ankr
-		// (rpc.ankr.com/story_mainnet), stakely (story-json-rpc.stakely.io).
-		// Excluded: Alchemy (key required), Infura (no story route).
+		// (rpc.ankr.com/story_mainnet), stakely (story-json-rpc.stakely.io),
+		// publicnode (story-rpc.publicnode.com). Excluded: Alchemy (key required), Infura (no story route).
 		{
 			Slug: "story",
 			Name: "Story",
@@ -839,11 +840,13 @@ func chains() []Chain {
 				{Slug: "story-official", Name: "Story Foundation", URL: envDefault("RPC_URL_STORY_OFFICIAL", "https://mainnet.storyrpc.io")},
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_STORY_ANKR", "https://rpc.ankr.com/story_mainnet")},
 				{Slug: "stakely", Name: "Stakely", URL: envDefault("RPC_URL_STORY_STAKELY", "https://story-json-rpc.stakely.io")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_STORY_PUBLICNODE", "https://story-rpc.publicnode.com")},
 			},
 		},
-		// 2026-08-03 audit. Morph ZK Rollup L2 (chain 2818). 3 clean keyless
+		// 2026-08-04 audit. Morph ZK Rollup L2 (chain 2818). 4 clean keyless
 		// providers: morph-official (rpc.morphl2.io), drpc (morph.drpc.org),
-		// thirdweb (2818.rpc.thirdweb.com). Excluded: Ankr (no morph route).
+		// thirdweb (2818.rpc.thirdweb.com), morph-quicknode (rpc-quicknode.morph.network).
+		// Excluded: Ankr (no morph route), Alchemy (key required).
 		{
 			Slug: "morph",
 			Name: "Morph",
@@ -851,6 +854,7 @@ func chains() []Chain {
 				{Slug: "morph-official", Name: "Morph", URL: envDefault("RPC_URL_MORPH_OFFICIAL", "https://rpc.morphl2.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MORPH_DRPC", "https://morph.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MORPH_THIRDWEB", "https://2818.rpc.thirdweb.com")},
+				{Slug: "morph-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_MORPH_QUICKNODE", "https://rpc-quicknode.morph.network")},
 			},
 		},
 		// 2026-08-03 audit. Moonriver Kusama parachain (chain 1285). 4 clean
