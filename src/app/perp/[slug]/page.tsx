@@ -18,7 +18,7 @@ import { PerpBarChart } from "@/components/perp-bar-chart";
 import { logoPath } from "@/lib/logo-manifest";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Params = { slug: string };
