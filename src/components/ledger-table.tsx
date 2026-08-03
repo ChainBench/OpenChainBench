@@ -744,7 +744,7 @@ function Row({
               // to the registry, at which point it gets a real slug
               // and the link reappears automatically.
               <span
-                className="font-semibold truncate min-w-0"
+                className="font-semibold truncate min-w-0 min-w-[50px]"
                 style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
                 itemProp="name"
               >
@@ -753,7 +753,7 @@ function Row({
             ) : (
               <Link
                 href={`/products/${r.slug}`}
-                className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
+                className="font-semibold hover:underline underline-offset-2 truncate min-w-0 min-w-[50px]"
                 style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
                 itemProp="url"
               >
