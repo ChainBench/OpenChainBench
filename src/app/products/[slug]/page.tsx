@@ -203,20 +203,24 @@ export default async function ProviderPage({
       a.result.availability === "live" &&
       a.result.unresponsive !== true,
   );
-  // Exclude appearances with insufficient data confidence from the
-  // "any measured" check: a new provider whose every bench appearance is
-  // still warming up (insufficient sample count) legitimately has rank=0
-  // everywhere — that is not a degraded store read, it is warm-up state.
-  const anyConfidentAppearance = p.appearances.some(
+  // A new provider on new benches legitimately has rank=0 everywhere while
+  // its endpoints are warming up: low successRate excludes it from the
+  // citationCandidates pool even when p50>0. The tripwire should only fire
+  // for the genuine store-failure signature: an appearance that WOULD be
+  // ranked (live bench, good confidence, successRate≥50%) but has rank=0
+  // anyway — which only happens when the ranking pipeline silently failed.
+  const anyWouldBeRanked = p.appearances.some(
     (a) =>
       (a.result.ms?.p50 ?? 0) > 0 &&
-      a.result.dataConfidence !== "insufficient",
+      a.benchmark.status === "live" &&
+      a.result.dataConfidence !== "insufficient" &&
+      (a.result.successRate ?? 100) >= 50,
   );
   if (
     p.appearances.length >= 8 &&
     p.appearances.every((a) => a.rank === 0) &&
     allClaimLive &&
-    anyConfidentAppearance
+    anyWouldBeRanked
   ) {
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
   }
