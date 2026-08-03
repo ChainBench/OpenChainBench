@@ -27,6 +27,7 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -109,7 +110,7 @@ jobs:
           exit 1
 
       - name: Ping IndexNow (post-deploy)
-        if: steps.smoke.outcome != 'failure' && secrets.CRON_SECRET != ''
+        if: steps.smoke.outcome != 'failure' && env.CRON_SECRET != ''
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \

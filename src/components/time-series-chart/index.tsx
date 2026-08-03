@@ -410,6 +410,7 @@ export function TimeSeriesChart({
   const has1y = !panelActive && lazySeries1y !== null && Object.keys(lazySeries1y).length > 0;
 
   // When confirmed-empty data comes back, fall back to the nearest longer available range.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (panelActive) return;
     if (range === "7d" && lazySeries7d !== null && !seriesHasData(lazySeries7d)) setRange("24h");
