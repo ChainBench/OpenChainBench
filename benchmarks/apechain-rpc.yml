@@ -4,7 +4,7 @@ slug: apechain-rpc
 number: "126"
 title: Fastest free ApeChain RPC, live no-key EVM endpoint latency
 seo_title: "Fastest free ApeChain RPC 2026"
-seo_description: "{{best_name}} leads free ApeChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free ApeChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 4 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public ApeChain EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  ApeChain is an Arbitrum Orbit L3 (chain 33139) operated by Yuga Labs / ApeDAO, dedicated to the APE ecosystem, APE gas token, ~250 ms block cadence, settlement onto Arbitrum One. The 2026-08-02 audit confirms 3 clean keyless providers: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), and Thirdweb (apechain.rpc.thirdweb.com). Excluded: Alchemy (key required), QuickNode (key required), Infura (no apechain route).
+  ApeChain is an Arbitrum Orbit L3 (chain 33139) operated by Yuga Labs / ApeDAO, dedicated to the APE ecosystem, APE gas token, ~250 ms block cadence, settlement onto Arbitrum One. 2026-08-03 re-audit brings the total to 4 clean keyless providers: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), Thirdweb (apechain.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/apechain). Excluded: Alchemy (key required), QuickNode (key required), Infura (no apechain route).
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to ApeChain.
   We measure the round-trip latency of a single, identical JSON-RPC call
   (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public
-  ApeChain endpoint that sustains continuous probing, 3 providers
+  ApeChain endpoint that sustains continuous probing, 4 providers
   at launch, every 60 seconds, from us-east, eu-west and Singapore. The
   harness classifies every response (ok / http_err / jsonrpc_err / stale
   / timeout) with an ApeChain-scaled staleness gap (20 blocks
@@ -35,16 +35,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"apechain\"`. Provider coverage at launch: 3 no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"apechain\"`. Provider coverage: 4 no-key endpoints."
 
 findings:
-  - "{{best_name}} currently leads free ApeChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free ApeChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
 
 faq:
   - q: "What is the fastest free ApeChain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which ApeChain RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), and Thirdweb (apechain.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+    a: "4 endpoints sustain continuous keyless probing: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), Thirdweb (apechain.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/apechain). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "Does the fastest ApeChain RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is ApeChain RPC latency measured here, technically?"
@@ -134,3 +134,26 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="apechain", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="apechain", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Tenderly public gateway for ApeChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key apechain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="apechain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="apechain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="apechain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="apechain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="apechain"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="apechain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="apechain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="apechain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="apechain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="apechain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="apechain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="apechain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="apechain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="apechain", region="sgp"}[1h])
