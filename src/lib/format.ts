@@ -74,9 +74,10 @@ export function fmtUnit(value: number, unit: string) {
     return `${value.toFixed(0)} slots`;
   }
   if (unit === "x") {
-    // Dimensionless ratio (e.g. cost-slope $1M / $1k). Show 2 decimal places
-    // for values < 10, 1 decimal for larger.
-    if (!Number.isFinite(value) || value === 0) return "1.00x";
+    // Dimensionless ratio (e.g. cost-slope $1M / $1k). 3 decimal places for
+    // values near 1 (where all the differentiation lives), 2 for larger.
+    if (!Number.isFinite(value) || value === 0) return "1.000x";
+    if (value < 2) return `${value.toFixed(3)}x`;
     if (value < 10) return `${value.toFixed(2)}x`;
     return `${value.toFixed(1)}x`;
   }
@@ -183,6 +184,7 @@ export function unitSuffix(unit: string, value?: number): string {
 export function fmtValue(value: number, unit: string): string {
   // Keep K/M/B suffixes and $ prefix — they are part of the number, not a
   // unit. Only strip trailing unit words that the caller renders separately.
+  if (unit === "x") return fmtUnit(value, unit).replace(/x$/, "");
   return fmtUnit(value, unit).replace(/\s+(ms|s|min|h|d|bps|slots?)$/, "").replace(/\s*%$/, "");
 }
 
