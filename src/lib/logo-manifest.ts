@@ -478,6 +478,7 @@ const ALIASES: Record<string, string> = {
   "kaia-official": "kaia",
   "ink-official": "gelato",
   "ink-quicknode": "quicknode",
+  "morph-quicknode": "quicknode",
   "opbnb-official": "opbnb",
   // Vague-1 chains (2026-07-26, benches 108-111) — paths in RAW above, only aliases here
   "sei-official": "sei",

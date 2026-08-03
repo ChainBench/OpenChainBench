@@ -4,7 +4,7 @@ slug: manta-rpc
 number: "132"
 title: Fastest free Manta Pacific RPC, live no-key EVM endpoint latency
 seo_title: "Fastest free Manta Pacific RPC 2026"
-seo_description: "{{best_name}} leads free Manta Pacific RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Manta Pacific RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 4 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Manta Pacific EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Manta Pacific is an OP Stack EVM L2 (chain 169) built on Celestia for data availability, optimised for zero-knowledge applications and DeFi, ETH gas token, ~2 s block cadence, settlement on Ethereum. The 2026-08-03 audit confirms 3 clean keyless providers: the Manta Pacific official endpoint (pacific-rpc.manta.network/http), dRPC (manta-pacific.drpc.org), and Thirdweb (169.rpc.thirdweb.com). Excluded: Ankr (no manta pacific route), Alchemy (key required), QuickNode (key required).
+  Manta Pacific is an OP Stack EVM L2 (chain 169) built on Celestia for data availability, optimised for zero-knowledge applications and DeFi, ETH gas token, ~2 s block cadence, settlement on Ethereum. The 2026-08-04 audit confirms 4 clean keyless providers: the Manta Pacific official endpoint (pacific-rpc.manta.network/http), dRPC (manta-pacific.drpc.org), Thirdweb (169.rpc.thirdweb.com), and 1RPC (1rpc.io/manta). Excluded: Ankr (no manta pacific route), Alchemy (key required), QuickNode (key required).
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Manta Pacific.
   We measure the round-trip latency of a single, identical JSON-RPC call
   (`eth_getBlockByNumber("latest", false)`) against every no-key public
-  Manta Pacific endpoint that sustains continuous probing, 3 providers
+  Manta Pacific endpoint that sustains continuous probing, 4 providers
   measured, every 60 seconds, from us-east, eu-west and Singapore. The
   harness classifies every response (ok / http_err / jsonrpc_err / stale
   / timeout) with a Manta Pacific-scaled staleness gap (20 blocks
@@ -35,16 +35,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"manta\"`. Provider coverage: 3 no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"manta\"`. Provider coverage: 4 no-key endpoints."
 
 findings:
-  - "{{best_name}} currently leads free Manta Pacific RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free Manta Pacific RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
 
 faq:
   - q: "What is the fastest free Manta Pacific RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Manta Pacific RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing: Manta Network (https://pacific-rpc.manta.network/http), dRPC (https://manta-pacific.drpc.org), and Thirdweb (https://169.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+    a: "4 endpoints sustain continuous keyless probing: Manta Network (https://pacific-rpc.manta.network/http), dRPC (https://manta-pacific.drpc.org), Thirdweb (https://169.rpc.thirdweb.com), and 1RPC (https://1rpc.io/manta). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "Does the fastest Manta Pacific RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Manta Pacific RPC latency measured here, technically?"
@@ -134,3 +134,26 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="manta", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="manta", region="sgp"}[1h])
+
+  - slug: 1rpc
+    name: 1RPC
+    tag: Automata Network privacy-preserving public RPC for Manta Pacific
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Manta Pacific RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="manta"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="manta"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="manta"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="manta"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="manta"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="manta"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="manta"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="manta"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="manta", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="manta", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="manta", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="manta", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="manta", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="manta", region="sgp"}[1h])
