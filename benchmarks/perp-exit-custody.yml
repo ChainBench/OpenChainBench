@@ -7,7 +7,7 @@ seo_title: "Perp DEX custody risk 2026"
 seo_description: "Lighter leads perp DEX exit independence at 336h worst-case (14-day Desert Mode, self-provable ZK exit). Ostium 720h (public tryNewSettlement() fallback). gains.trade, GMX, Hyperliquid and Aster have no permissionless exit path. Withdrawal depends on operator liveness. Live settlement age monitored."
 subtitle: "Worst-case hours a user must wait to withdraw funds without any operator or validator cooperation. Lower is better. Venues with no permissionless exit path are ranked last. Settlement freshness monitored live via RPC for venues with on-chain settlement mechanisms."
 category: Trading
-status: live
+status: draft
 metric: Worst-case exit hours (no operator)
 unit: count
 higher_is_better: false

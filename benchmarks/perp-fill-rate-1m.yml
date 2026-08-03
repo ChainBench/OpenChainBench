@@ -7,7 +7,7 @@ seo_title: "Perp DEX $1M order fill rate 2026"
 seo_description: "{{best_name}} leads perp $1M fill rate at {{best_p50}} (24h avg). Fraction of 5-minute cycles in which the venue's visible book absorbed a full $1M buy. Oracle-priced venues always fill; thin orderbook venues may drop below 50%."
 subtitle: "Fraction of 5-minute measurement cycles in which the venue's visible orderbook successfully absorbed a $1,000,000 buy. Oracle-priced venues (gains.trade, GMX v2) score 100% by construction. Orderbook venues score lower when book depth is insufficient."
 category: Trading
-status: live
+status: draft
 metric: "$1M fill rate"
 unit: pct
 higher_is_better: true
