@@ -4,32 +4,79 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ExternalLink } from "lucide-react";
 import { SITE } from "@/data/site";
 import { PERP_VENUES } from "@/lib/perp-stats";
-import {
-  PERP_VENUE_META,
-  benchRowsForVenue,
-} from "@/lib/perp-venue-context";
+import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
+import { fmtUnit } from "@/lib/format";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
-import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { PerpBarChart } from "@/components/perp-bar-chart";
 import { logoPath } from "@/lib/logo-manifest";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import type { Benchmark } from "@/types/benchmark";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Params = { slug: string };
 
+const LIVE_PERP_BENCH_SLUGS = [
+  "perp-fees",
+  "perp-funding",
+  "perp-active-markets",
+  "perp-execution-quality",
+  "perp-mark-price-lag",
+  "perp-funding-stability",
+  "perp-protocol-longevity",
+  "perp-cost-slope",
+  "perp-volume-share",
+] as const;
+
 function resolveVenue(slug: string) {
-  // "gmx" product slug → "gmx-v2" cohort slug
   const cohortSlug = slug === "gmx" ? "gmx-v2" : slug;
   const seed = PERP_VENUES.find((v) => v.slug === cohortSlug);
   const meta = PERP_VENUE_META[cohortSlug];
   if (!seed || !meta) return null;
   return { seed, meta, cohortSlug, productSlug: slug };
+}
+
+type BenchRanking = {
+  benchSlug: string;
+  bench: Benchmark;
+  rank: number;
+  totalRanked: number;
+  p50: number;
+  hasData: boolean;
+};
+
+function buildRankings(
+  blobs: (Benchmark | null)[],
+  cohortSlug: string,
+): BenchRanking[] {
+  return LIVE_PERP_BENCH_SLUGS.flatMap((slug, i) => {
+    const bench = blobs[i];
+    if (!bench) return [];
+    const live = bench.results.filter(
+      (r) => r.availability !== "unavailable" && !r.unresponsive,
+    );
+    const sorted = [...live].sort((a, b) =>
+      bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
+    const idx = sorted.findIndex((r) => r.slug === cohortSlug);
+    if (idx < 0) return [];
+    const result = sorted[idx];
+    return [
+      {
+        benchSlug: slug,
+        bench,
+        rank: idx + 1,
+        totalRanked: sorted.length,
+        p50: result.ms.p50,
+        hasData: result.ms.p50 > 0,
+      },
+    ];
+  }).sort((a, b) => a.rank - b.rank);
 }
 
 export async function generateMetadata({
@@ -91,19 +138,21 @@ export default async function PerpVenuePage({
 
   const { seed, meta, cohortSlug } = v;
 
-  const [cohort, kpis, ext, feesAtSizeBench] = await Promise.all([
+  const [, kpis, ext, ...benchBlobs] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpVenueKpis(cohortSlug),
     fetchPerpVenueExternalStats(cohortSlug),
-    loadBenchFromBlob("perp-fees-at-size"),
+    ...LIVE_PERP_BENCH_SLUGS.map((s) => loadBenchFromBlob(s)),
   ]);
 
-  const venueRow = cohort?.venues.find((r) => r.slug === cohortSlug);
-  const benchRows =
-    cohort && venueRow
-      ? benchRowsForVenue(cohort, venueRow, feesAtSizeBench)
-      : [];
-  const measured = benchRows.filter((r) => r.value !== null && r.rank !== null);
+  const rankings = buildRankings(benchBlobs as (Benchmark | null)[], cohortSlug);
+
+  const lastMeasured = rankings.reduce<string | null>((acc, a) => {
+    const t = a.bench.lastRunAt;
+    if (!t) return acc;
+    if (!acc || new Date(t) > new Date(acc)) return t;
+    return acc;
+  }, null);
 
   const externalHost = (() => {
     try {
@@ -303,16 +352,80 @@ export default async function PerpVenuePage({
         </section>
       )}
 
-      {/* OCB Rankings */}
-      {measured.length > 0 && (
+      {/* Live benchmark results */}
+      {rankings.length > 0 && (
         <section className="mb-10">
-          <p
-            className="text-[10px] uppercase tracking-wide text-ink-faint mb-3"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
-          >
-            OpenChainBench rankings
-          </p>
-          <PerpVenueBenchCards rows={measured} />
+          {lastMeasured && (() => {
+            const d = new Date(lastMeasured);
+            return (
+              <p className="mb-4 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Last measured{" "}
+                <time dateTime={d.toISOString()} className="text-ink-soft">
+                  {d.toUTCString().replace("GMT", "UTC")}
+                </time>
+              </p>
+            );
+          })()}
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted mb-4">
+            Live benchmark results
+          </h2>
+          <ol className="divide-y divide-rule border-y border-rule">
+            {rankings.map((a) => {
+              const value = a.hasData ? fmtUnit(a.p50, a.bench.unit) : null;
+              return (
+                <li key={a.benchSlug}>
+                  <Link
+                    href={`/benchmarks/${a.benchSlug}`}
+                    className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
+                  >
+                    <span
+                      className="font-sans tabular text-xl sm:text-2xl font-semibold w-12 text-center"
+                      style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
+                    >
+                      {a.hasData ? (
+                        <>
+                          #{a.rank}
+                          <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                            of {a.totalRanked}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
+                          awaiting
+                        </span>
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p
+                        className="font-sans text-[10px] uppercase tracking-[0.18em] font-medium"
+                        style={{ color: "var(--color-ink-faint)" }}
+                      >
+                        Trading
+                      </p>
+                      <h3 className="mt-0.5 display text-base sm:text-lg font-semibold leading-tight truncate">
+                        {a.bench.title}
+                      </h3>
+                      <p className="text-xs text-ink-muted truncate">{a.bench.metric}</p>
+                    </div>
+                    <div className="col-start-2 sm:col-start-3 text-left sm:text-right">
+                      {value ? (
+                        <>
+                          <p className="font-sans tabular text-base text-ink">{value}</p>
+                          <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
+                            p50 · 24h
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
+                          data warming up
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
         </section>
       )}
 
