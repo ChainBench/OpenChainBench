@@ -7,7 +7,7 @@ seo_title: "Perp DEX open interest 2026"
 seo_description: "Live perpetual futures open interest in USD across 13 major perp DEX venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX, Aevo, Paradex, gains.trade, Polymarket. Refreshed every 5 minutes."
 subtitle: Live aggregate open interest in USD across 13 major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
 category: Trading
-status: live
+status: draft
 metric: Open interest
 unit: usd
 higher_is_better: true
