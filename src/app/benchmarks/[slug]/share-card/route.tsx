@@ -209,6 +209,14 @@ function CardProviderLogo({
       </div>
     );
   }
+  // chipBackground / chipTextColor return CSS variables ("var(--color-ink-soft)",
+  // "var(--color-paper)", "var(--color-ink)") for unbranded or dark-brand providers.
+  // Satori cannot resolve CSS variables and crashes the whole ImageResponse stream.
+  // Resolve to the local hex palette variables instead.
+  const rawBg = chipBackground(slug);
+  const chipBg = rawBg.startsWith("#") ? rawBg : INK_SOFT;
+  const rawFg = chipTextColor(slug);
+  const chipFg = rawFg === "var(--color-ink)" ? INK : PAPER;
   return (
     <div
       style={{
@@ -216,8 +224,8 @@ function CardProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: chipBackground(slug),
-        color: chipTextColor(slug),
+        background: chipBg,
+        color: chipFg,
         alignItems: "center",
         justifyContent: "center",
         fontSize: Math.round(size * 0.42),
@@ -672,18 +680,27 @@ export async function GET(
 
   const colors = buildProviderColors(benchmark.results);
 
-  switch (template) {
-    case "snapshot":
-      return renderSnapshot(filteredSafe, colors, chainLabel);
-    case "headline":
-      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
-    case "compare":
-      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
-    case "leaderboard":
-      return renderLeaderboard(benchmark, colors, chainLabel);
-    case "ranking":
-    default:
-      return renderRanking(benchmark, colors, chainLabel);
+  try {
+    switch (template) {
+      case "snapshot":
+        return await renderSnapshot(filteredSafe, colors, chainLabel);
+      case "headline":
+        return await renderHeadline(benchmark, colors, headlineProvider, chainLabel);
+      case "compare":
+        return await renderCompare(benchmark, colors, compareA, compareB, chainLabel);
+      case "leaderboard":
+        return await renderLeaderboard(benchmark, colors, chainLabel);
+      case "ranking":
+      default:
+        return await renderRanking(benchmark, colors, chainLabel);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
+    console.error(`[share-card] ${slug} template=${template} ERROR:`, msg);
+    return new Response(`render_error: ${err instanceof Error ? err.message : String(err)}`, {
+      status: 500,
+      headers: { "content-type": "text/plain" },
+    });
   }
 }
 
@@ -868,8 +885,12 @@ async function renderLeaderboard(
   // the 630px canvas (weekend-drift 11 rows + long title case).
   const count = sorted.length;
   const titleLen = benchmark.title.length;
-  const dense = count >= 8 || titleLen > 55;
-  const veryDense = count >= 10 || titleLen > 70;
+  // The "and N more" line counts as an extra row for density — 9 rows +
+  // truncation line overflows the 630px canvas at dense (not veryDense)
+  // sizing, pushing the text on top of the CardFooter border.
+  const effectiveCount = count + (truncatedCount > 0 ? 1 : 0);
+  const dense = effectiveCount >= 8 || titleLen > 55;
+  const veryDense = effectiveCount >= 10 || titleLen > 70;
   const titleSize = veryDense ? 32 : dense ? 40 : 50;
   const rankSize = veryDense ? 18 : dense ? 20 : 24;
   const nameSize = veryDense ? 18 : dense ? 20 : 24;
@@ -1049,6 +1070,9 @@ async function renderSnapshot(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
+  // Cap series to avoid unreadable charts and Satori element-count limits
+  // on large benches (e.g. hyperliquid-frontends has 104 providers).
+  const MAX_SNAPSHOT_SERIES = 16;
   const sorted = sortByP50(benchmark);
   const seriesList = sorted
     .map((r) => ({
@@ -1063,7 +1087,8 @@ async function renderSnapshot(
       color: colors.get(r.slug) ?? INK_SOFT,
       p50: r.ms.p50,
     }))
-    .filter((s) => s.values.length > 1);
+    .filter((s) => s.values.length > 1)
+    .slice(0, MAX_SNAPSHOT_SERIES);
 
   const chartW = 1086;
   const chartH = 280;

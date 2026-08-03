@@ -1,0 +1,224 @@
+{
+  "project": "gains",
+  "measured_at": "2026-08-02T19:08:53Z",
+  "block": 490422447,
+  "chain_id": 42161,
+  "rpc_used": "https://arb1.arbitrum.io/rpc",
+  "version_note": "Contract address from official docs (https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet). Page does not explicitly state v10.3. The user context indicates current version is v10.3. Diamond facet set verified on-chain via facets() call (14 facets returned). Version cannot be confirmed from a storage slot or on-chain constant.",
+  "contracts": {
+    "GNSMultiCollatDiamond": {
+      "value": "0xFF162c694eAA571f685030649814282eA457f169",
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Diamond_impl": {
+      "value": "0xff84c4a0d639d598af2088e2ffb76cdbdf1de0ed",
+      "source": "cast storage diamond EIP-1967-impl-slot",
+      "block": 490419994,
+      "measured_at": "2026-08-02T18:58:36Z"
+    },
+    "ProxyAdmin": {
+      "value": "0xe18be0113c38c91b3B429d04fDeb84359fBCb2eB",
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "GNSTimelockOwner_14d": {
+      "value": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "GNSTimelockManager_3d": {
+      "value": "0x1632C38cB208df8409753729dBfbA5c58626F637",
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+  "owners": {
+    "ProxyAdmin_owner": {
+      "value": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+      "source": "cast call ProxyAdmin owner()",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "resolved": {
+        "type": "timelock",
+        "label": "GNSTimelockOwner",
+        "min_delay_seconds": 1209600,
+        "min_delay_days": 14,
+        "source": "cast call GNSTimelockOwner getMinDelay()",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    },
+    "GNSTimelockOwner_proposer_1": {
+      "value": "0xc07eed650ab255190ca9766162cfb47cfdf72f3a",
+      "source": "RoleGranted event PROPOSER_ROLE on GNSTimelockOwner at block 262437221. hasRole() confirmed true at block 490422447.",
+      "resolved": {
+        "type": "safe",
+        "threshold": 4,
+        "total_owners": 7,
+        "owner_addresses": [
+          "0x44C590465402Bc56F401dE4F699680559aB4b1E4",
+          "0x211999E5eE74Af3E8dAcBCd5c4e608CD7D8086FA",
+          "0xdDF3a49F0eA3C53112D8eC058421EB24902dCbfc",
+          "0x994805c5FaC2FAb30077003143368F9243F02B7e",
+          "0x6a9fe023F2D5930249081EBfa1909350CEbe1605",
+          "0x9cdfe21adfa1038318321e1729a2de2251A0803A",
+          "0xB608c15A9a7b30304fB0763a1d6C66354423985d"
+        ],
+        "source": "cast call getThreshold()=4, getOwners()=[7 addresses]",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    },
+    "GNSTimelockOwner_proposer_2": {
+      "value": "0xe8997c502fcd0729b462fca19a50cf0daea0cab5",
+      "source": "RoleGranted event PROPOSER_ROLE on GNSTimelockOwner at block 262437553. hasRole() confirmed true at block 490422447.",
+      "resolved": {
+        "type": "safe",
+        "threshold": 2,
+        "total_owners": 4,
+        "owner_addresses": [
+          "0x80fd0accC8Da81b0852d2Dca17b5DDab68f22253",
+          "0x211999E5eE74Af3E8dAcBCd5c4e608CD7D8086FA",
+          "0x727695E7888853af9e673EA66F30F26a791DdfB0",
+          "0x52a722BC2B0D8ce869a478956865744D7C3beBd3"
+        ],
+        "source": "cast call getThreshold()=2, getOwners()=[4 addresses]",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    },
+    "GNSTimelockManager_proposer": {
+      "value": "unknown",
+      "source": "Not queried \u2014 event scan limited to GNSTimelockOwner. Separate scan on 0x1632C38cB208df8409753729dBfbA5c58626F637 required.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+  "permissions": {
+    "scanner_result": "completed",
+    "scanner_tool": "deficollective/permission-scanner (crytic-compile + Slither)",
+    "scanner_ran_at": "2026-08-02T19:08:53Z",
+    "key_permissioned_functions": [
+      "GNSMultiCollatDiamond.diamondCut(IDiamondCut.FacetCut[],address,bytes) \u2014 modifier: onlyRoles (ROLES_MANAGER_ROLE)",
+      "GNSMultiCollatDiamond.initialize(uint8,IGNSDiamond.InitParams) \u2014 modifier: initializer",
+      "GNSMultiCollatDiamond.setRoles(address[],IGNSAccessControl.Role[],bool[]) \u2014 modifier: onlyRoles (ROLES_MANAGER_ROLE)",
+      "GToken.withdraw(uint256,address,address) \u2014 modifier: checks (NOT onlyOwner; standard ERC4626 gate)",
+      "GToken.redeem(uint256,address,address) \u2014 modifier: checks (NOT onlyOwner; standard ERC4626 gate)",
+      "GToken.mint(uint256,address) \u2014 modifier: checks (ERC4626 standard; user-callable deposit-by-shares)",
+      "GToken.deposit(uint256,address) \u2014 modifier: checks (ERC4626 standard; user-callable)",
+      "GNSTimelockOwner.schedule(...) \u2014 modifier: onlyRoleOrOpenRole(PROPOSER_ROLE)",
+      "GNSTimelockOwner.execute(...) \u2014 modifier: onlyRoleOrOpenRole(EXECUTOR_ROLE)",
+      "GNSTimelockOwner.grantRole(bytes32,address) \u2014 modifier: onlyRole(TIMELOCK_ADMIN_ROLE)"
+    ],
+    "manual_observations": [
+      "Diamond uses EIP-2535 + EIP-1967 upgradeable pattern. DiamondCut facet additions/replacements controlled by ROLES_MANAGER_ROLE.",
+      "ProxyAdmin owner = GNSTimelockOwner (14-day timelock). Major upgrades require 14-day delay.",
+      "GNSTimelockManager (3-day) controls routine management functions.",
+      "KEY FINDING: GToken withdraw() and redeem() use 'checks' modifier (ERC4626 standard gating) \u2014 NOT onlyOwner. LP can call redeem/withdraw directly without admin permission.",
+      "GToken deposit/mint/withdraw/redeem all use 'checks' \u2014 fully ERC4626 standard, all user-callable. Admin functions (updateManager, updatePnlHandler, etc.) are onlyOwner but do not gate user flows."
+    ]
+  },
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "source": "gToken vaults (gDAI, gETH, gGNS, gUSDC) are public ERC4626-like contracts; traders' collateral held in these vaults",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "funds_contract": {
+      "value": "gDAI: 0xd85E038593d7A098614721EaE955EC2022B9B91B | gGNS: 0x4BeeF1113F968326905224D2Ca272f3032A9a9F4 | gETH: 0x5977A9682D7AF81D347CFc338c61692163a2784C | gUSDC: 0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0",
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "contracts_verified": {
+      "value": true,
+      "source": "Etherscan API v2 (chainid=42161): GNSMultiCollatDiamond proxy verified (solc 0.8.9), GNSMultiCollatDiamond impl verified (solc 0.8.23), GToken vaults verified (solc 0.8.9), GNSTimelockOwner verified (solc 0.8.17). All source code downloaded successfully by permission-scanner.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "chain": {
+      "value": "arbitrum",
+      "chain_id": 42161,
+      "source": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "chain_l2beat_stage": {
+      "value": 1,
+      "source": "https://l2beat.com/scaling/summary \u2014 Arbitrum One listed as Stage 1. Fetched 2026-08-02. Note: all Groupe A targets share this value as they are all on Arbitrum One.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "upgrade_delay_seconds": {
+      "value": 1209600,
+      "source": "cast call 0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F getMinDelay() = 1209600. This is the delay for ProxyAdmin/Diamond upgrades. A separate 3-day timelock (0x1632C3..., getMinDelay()=259200) exists for management functions.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "lp_exit": {
+      "mechanism": "2-step epoch-lock: makeWithdrawRequest(shares, owner) \u2192 wait withdrawEpochsTimelock (=3) epochs \u2192 withdraw()/redeem()",
+      "permission_gate": "none \u2014 withdraw/redeem use 'checks' modifier (ERC4626 balance gate only, no admin permission)",
+      "epoch_lock_gate": "CRITICAL: epochs advance via openTradesPnlFeed oracle callbacks (currentEpoch++ triggered by oracle). Epoch duration is oracle-driven, NOT time-based. If oracle stops, epochs stop, withdrawals locked indefinitely regardless of elapsed time.",
+      "maxWithdraw_test": "maxWithdraw(holder) = 0 for 4 real holders with positive balances \u2014 confirmed: users cannot withdraw without first calling makeWithdrawRequest and waiting 3 oracle epochs",
+      "can_exit_without_admin": true,
+      "can_exit_without_oracle": false,
+      "tier": "bytecode",
+      "source": "GToken.sol source (verified, solc 0.8.9). on-chain: maxWithdraw(0x5504e7...)=0 with balance=1.618e18. currentEpoch=428, withdrawEpochsTimelock=3, currentEpochStart=2026-07-31.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "trader_exit": {
+      "mechanism": "closeTradeMarket(tradeIndex, collateralIndex, pairIndex) on GNSMultiCollatDiamond requires oracle price",
+      "can_exit_without_oracle": false,
+      "tier": "bytecode",
+      "source": "Diamond architecture: position closure requires price feed liveness (openTradesPnlFeed / oracle keepers).",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "can_user_exit_unilaterally": {
+      "value": false,
+      "reason": "LP: no admin gate but oracle-gated epoch lock (3 oracle cycles required). Trader: oracle required for position closure. Both paths depend on protocol oracle liveness.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "bytecode+onchain"
+    },
+    "exit_function_candidate": {
+      "value": "redeem(uint256,address,address) on gToken vaults; closeTradeMarket(uint32,uint8,uint16) on Diamond",
+      "source": "ERC4626 interface + gains protocol docs",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_depends_on": {
+      "value": "operator",
+      "source": "Oracle price feeds required for position management. OpenPnlFeed influences vault share price. These are operator-controlled off-chain components.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "bytecode"
+    },
+    "forced_inclusion": {
+      "value": "n/a",
+      "source": "gains is a dApp on Arbitrum One, not a rollup. forced_inclusion refers to L1 inbox mechanism which is Arbitrum's feature, not gains'.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "n/a"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "source": "Not verified. Contracts are public and ABI-accessible, so technically anyone can build a frontend.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "unknown"
+    }
+  }
+}

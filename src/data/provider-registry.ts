@@ -115,6 +115,23 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Independent crypto market data API. Token prices, OHLCV, exchange tickers, and contract/platform lookups across 300+ supported chains. Public free tier with no auth.",
     twitter: "@coinpaprika",
   },
+  dexpaprika: {
+    url: "https://dexpaprika.com",
+    description:
+      "DEX data API by the CoinPaprika team. REST endpoints for pools, OHLCV candles, trades, and token prices across 35+ blockchains. No auth required on the public tier.",
+    longDescription:
+      "DexPaprika is CoinPaprika's dedicated DEX pool indexer, built as a standalone product separate from the market-data API. It exposes REST endpoints for pool discovery, OHLCV candles, live trade feeds, and token prices across 35+ EVM and non-EVM chains. The public tier requires no API key, making it practical for prototyping and open-source tooling. Because DexPaprika is purpose-built for DEX data, its network list reflects actual pool-indexing depth rather than the broader chain coverage of the parent CoinPaprika market-data API.",
+    twitter: "@coinpaprika",
+    docs: "https://api.dexpaprika.com",
+    parent: "coinpaprika",
+    features: [
+      "Pool discovery and search across 35+ chains",
+      "OHLCV candles for any DEX pair",
+      "Live trade feed per pool",
+      "Token price derived from on-chain DEX data",
+      "No API key required on public tier",
+    ],
+  },
   coinstats: {
     url: "https://coinstats.app",
     description:
@@ -1883,6 +1900,54 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Maple SyrupUSDC is an ERC-4626 vault whose underlying is a book of institutional USDC loans. Not a T-bill wrapper. Yield reflects loan-book performance. Delivered yield on bench 089 reads convertToAssets(1 share) at latest and t-30d blocks and compares to the pool's base APY (excludes SYRUP token rewards).",
     twitter: "@maplefinance",
     docs: "https://maplefinance.gitbook.io/maple/",
+  },
+  "kava-official": {
+    url: "https://www.kava.io",
+    description:
+      "Kava Labs' official public EVM RPC (evm.kava.io) for the Cosmos SDK Layer 1 with native EVM execution (chain 2222). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@kava_platform",
+  },
+  "zora-official": {
+    url: "https://zora.co",
+    description:
+      "Zora Network's official public RPC (rpc.zora.energy) for the OP Stack rollup dedicated to NFT minting and creative media on-chain (chain 7777777). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@ourzora",
+  },
+  "abstract-official": {
+    url: "https://abs.xyz",
+    description:
+      "Abstract Foundation's official public RPC (api.mainnet.abs.xyz) for the ZK Stack validium L2 dedicated to consumer applications and NFTs (chain 2741). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@abstractchain",
+  },
+  "apechain-official": {
+    url: "https://apechain.com",
+    description:
+      "ApeChain's official public RPC (rpc.apechain.com/http) for the Arbitrum Orbit L3 operated by Yuga Labs / ApeDAO, APE gas token (chain 33139). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@apecoin",
+  },
+  "lisk-official": {
+    url: "https://lisk.com",
+    description:
+      "Lisk's official public RPC (rpc.api.lisk.com) for the OP Stack L2 focused on emerging-market Web3 adoption (chain 1135). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@LiskHQ",
+  },
+  sentio: {
+    url: "https://app.sentio.xyz",
+    description:
+      "Sentio is a blockchain data and RPC infrastructure provider. Their public RPC node (swell-mainnet.rpc.sentio.xyz) supports Swellchain (chain 1923) without an API key.",
+    twitter: "@sentioxyz",
+  },
+  altlayer: {
+    url: "https://altlayer.io",
+    description:
+      "AltLayer is a restaked rollup infrastructure provider offering managed RPC nodes for OP Stack and Arbitrum chains. Their public endpoint (cyber.alt.technology) supports Cyber Network (chain 7560) without an API key.",
+    twitter: "@alt_layer",
+  },
+  "cyber-official": {
+    url: "https://cyber.co",
+    description:
+      "Cyber Network's official public RPC (rpc.cyber.co) for the OP Stack L2 dedicated to SocialFi and Web3 social graphs (chain 7560). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@cyberconnecthq",
   },
 };
 

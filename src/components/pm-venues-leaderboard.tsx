@@ -131,10 +131,15 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
+            {filtered.map((r, i) => {
+              const href = r.benched === false && r.externalUrl
+                ? r.externalUrl
+                : `/products/${r.slug}`;
+              const isExternal = r.benched === false;
+              return (
               <tr
                 key={r.slug}
-                onClick={() => router.push(`/products/${r.slug}`)}
+                onClick={() => isExternal ? window.open(href, "_blank") : router.push(href)}
                 className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
@@ -142,7 +147,9 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                 </Td>
                 <Td>
                   <Link
-                    href={`/products/${r.slug}`}
+                    href={href}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
                     className="flex items-center gap-2 min-w-0 group"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -151,7 +158,6 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                       {r.name}
                     </span>
                     <TypeBadge type={r.type} />
-                    {r.slug === "manifold" && <PlayMoneyBadge />}
                     <ChevronRight
                       size={14}
                       className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -163,8 +169,6 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                   tip={
                     r.slug === "kalshi"
                       ? "Projection from 24h × 30; may over-estimate during burst-trade periods"
-                      : r.slug === "manifold"
-                      ? "Play-money: mana × charity rate 0.001, NOT a market USD price"
                       : undefined
                   }
                 >
@@ -175,8 +179,6 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                   tip={
                     r.slug === "polymarket" || r.slug === "limitless"
                       ? "Proxy: DefiLlama protocol TVL (Polymarket gamma openInterest is deprecated)"
-                      : r.slug === "manifold"
-                      ? "Play-money: totalLiquidity (mana) × charity rate 0.001"
                       : undefined
                   }
                 >
@@ -187,7 +189,8 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                 <Td mono>{fmtMs(r.p50ApiLatencyMs)}</Td>
                 <Td mono>{fmtCount(r.marketsAbove1m)}</Td>
               </tr>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td
@@ -202,18 +205,6 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
         </table>
       </div>
     </div>
-  );
-}
-
-function PlayMoneyBadge() {
-  return (
-    <span
-      className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 border border-amber-500/30"
-      style={{ fontFamily: "var(--font-mono, monospace)" }}
-      title="Manifold uses play-money (mana). USD values are converted at the legacy charity rate (1000 mana = $1) and are NOT a market exchange rate."
-    >
-      Play-money
-    </span>
   );
 }
 

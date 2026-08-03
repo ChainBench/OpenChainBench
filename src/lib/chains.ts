@@ -21,7 +21,7 @@ import {
 
 export { CHAIN_SLUG_ALIASES, canonicalChainSlug };
 
-export type ChainCategory = "L1" | "L2";
+export type ChainCategory = "L1" | "L2" | "L3";
 
 export type ChainEntry = {
   slug: string;
@@ -428,6 +428,62 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "IMX",
     description:
       "Polygon CDK zkEVM L2 (chain 13371) operated by Immutable, dedicated Web3 gaming stack, IMX gas token, 2 s block cadence, settlement onto Ethereum via zk-proofs.",
+  },
+  {
+    slug: "kava",
+    label: "Kava",
+    category: "L1",
+    nativeSymbol: "KAVA",
+    description:
+      "Cosmos SDK Layer 1 (chain 2222) with a native EVM execution layer, ~5 s block time under Tendermint BFT consensus, KAVA gas token on the EVM side, and IBC connectivity to the wider Cosmos ecosystem.",
+  },
+  {
+    slug: "zora",
+    label: "Zora",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack rollup (chain 7777777) operated by Zora Network, optimised for NFT minting and creative media on-chain, ~2 s sequencer cadence, ETH gas, blob calldata settlement on Ethereum.",
+  },
+  {
+    slug: "abstract",
+    label: "Abstract",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "ZK Stack validium L2 (chain 2741) built by the Abstract Foundation, optimised for consumer applications and NFTs, ETH gas token, ~2 s block cadence, ZK proof settlement onto Ethereum.",
+  },
+  {
+    slug: "apechain",
+    label: "ApeChain",
+    category: "L3",
+    nativeSymbol: "APE",
+    description:
+      "Arbitrum Orbit L3 (chain 33139) operated by Yuga Labs / ApeDAO, dedicated to the APE ecosystem, APE gas token, ~250 ms block cadence, settlement onto Arbitrum One.",
+  },
+  {
+    slug: "lisk",
+    label: "Lisk",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack L2 (chain 1135) operated by Onchain Foundation (formerly Lisk Foundation), focused on emerging-market Web3 adoption, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
+  },
+  {
+    slug: "swellchain",
+    label: "Swellchain",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack L2 (chain 1923) operated by Swell Network, the restaking-native rollup built on EigenLayer, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
+  },
+  {
+    slug: "cyber",
+    label: "Cyber",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack L2 (chain 7560) operated by Cyber, a social-layer chain for SocialFi and Web3 social graphs, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
   },
 ];
 

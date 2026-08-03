@@ -30,6 +30,7 @@ func main() {
 
 	go healthLoop()
 	go gamma.pendingLoop(ctx)
+	go runKalshiResolutionLoop(ctx)
 	go func() {
 		// Category map first, then the chain engine: backfilled resolutions
 		// join against Gamma tags instead of falling back to keywords.

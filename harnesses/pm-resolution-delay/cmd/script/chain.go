@@ -279,7 +279,7 @@ func (e *engine) markDisputed(qid string, ts int64, via string) {
 	title := q.title
 	e.mu.Unlock()
 	cat := e.category(qid, title)
-	disputesTotal.WithLabelValues(cat).Inc()
+	disputesTotal.WithLabelValues("polymarket", cat).Inc()
 	log.Printf("[dispute] qid=%s via=%s category=%s title=%q at=%s", qid, via, cat, title, time.Unix(ts, 0).UTC().Format(time.RFC3339))
 }
 
@@ -306,8 +306,8 @@ func (e *engine) resolve(qid string, ts int64) {
 		disputed = "true"
 		extra = fmt.Sprintf(" dispute_extra=%ds", ts-q.firstDisputedAt)
 	}
-	resolutionDelay.WithLabelValues(cat, disputed).Observe(float64(delay))
-	resolutionsTotal.WithLabelValues(cat, disputed).Inc()
+	resolutionDelay.WithLabelValues("polymarket", cat, disputed).Observe(float64(delay))
+	resolutionsTotal.WithLabelValues("polymarket", cat, disputed).Inc()
 	log.Printf("[resolve] qid=%s category=%s disputed=%s delay=%ds proposed=%s resolved=%s%s title=%q",
 		qid, cat, disputed, delay,
 		time.Unix(q.firstProposedAt, 0).UTC().Format(time.RFC3339),

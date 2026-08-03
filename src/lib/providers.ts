@@ -490,10 +490,9 @@ async function buildProviders(): Promise<ProviderProfile[]> {
 }
 
 // Zombie slugs from the pre-collapse pm-api-latency split. The bench
-// now ranks the parent provider only (codex, predexon), but stale
-// materialize-worker snapshots can recreate ghost /products/<slug>
-// pages with no data. Hard-block so getProvider() returns undefined and
-// the route 404s cleanly.
+// now ranks the parent provider only (codex), but stale materialize-worker
+// snapshots can recreate ghost /products/<slug> pages with no data.
+// Hard-block so getProvider() returns undefined and the route 404s cleanly.
 //
 // Exported as the single source of truth. related-providers.ts imports
 // this set instead of duplicating the literal — PR #728 originally

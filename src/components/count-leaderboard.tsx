@@ -24,15 +24,28 @@ export function CountLeaderboard({
   headerActions?: ReactNode;
 }) {
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
-  const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
+  // Exclude +Inf from max so finite bars render at meaningful widths
+  // instead of collapsing to 0% (Inf/Inf = NaN).
+  const finiteVals = ranked.map((r) => r.ms.p50).filter(Number.isFinite);
+  const max = Math.max(...finiteVals) || 1;
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
-  const leader = ranked[0];
-  const trailer = ranked[ranked.length - 1];
-  const gap = leader && trailer && trailer.ms.p50 > 0
-    ? leader.ms.p50 / trailer.ms.p50
-    : 0;
+  const validRanked = ranked.filter((r) => r.ms.p50 > 0);
+  const leader = validRanked[0];
+  const trailer = validRanked[validRanked.length - 1];
+  const rawGap =
+    leader && trailer && leader.ms.p50 > 0
+      ? benchmark.higherIsBetter
+        ? leader.ms.p50 / trailer.ms.p50
+        : trailer.ms.p50 / leader.ms.p50
+      : 0;
+  const gapRatio = Number.isFinite(rawGap) ? rawGap : null;
+  // range: always ascending (best → worst). for lower-is-better leader is min,
+  // trailer is max; for higher-is-better flip them so low is still left.
+  const [rangeMin, rangeMax] = benchmark.higherIsBetter
+    ? [trailer, leader]
+    : [leader, trailer];
 
   return (
     <>
@@ -45,24 +58,28 @@ export function CountLeaderboard({
           <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
             Leaderboard
           </p>
-          {headerActions}
+          <div className="flex items-center gap-2">{headerActions}</div>
         </div>
       )}
       {/* Thin summary strip. matches the latency-bench layout. */}
       <dl className="grid grid-cols-1 sm:flex sm:flex-wrap items-baseline gap-x-3 sm:gap-x-8 gap-y-2 sm:gap-y-3 border-y border-rule py-4">
         <CountStat
           label="Leader"
-          value={fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
+          value={leader ? fmtValue(leader.ms.p50, benchmark.unit) : "-"}
           hint={leader?.name}
         />
         <CountStat
           label="Range"
-          value={`${fmtValue(trailer?.ms.p50 ?? 0, benchmark.unit)} → ${fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}`}
-          hint={`${benchmark.results.length} providers`}
+          value={
+            rangeMin && rangeMax
+              ? `${fmtValue(rangeMin.ms.p50, benchmark.unit)} → ${fmtValue(rangeMax.ms.p50, benchmark.unit)}`
+              : "-"
+          }
+          hint={`${validRanked.length} providers`}
         />
         <CountStat
           label="Gap"
-          value={gap > 0 ? `${gap.toFixed(1)}×` : "-"}
+          value={gapRatio != null && gapRatio > 0 ? `${gapRatio.toFixed(1)}×` : "-"}
           hint="leader vs lowest"
         />
       </dl>
@@ -74,7 +91,8 @@ export function CountLeaderboard({
         </p>
         <ol className="mt-4 space-y-3">
           {ranked.map((r, i) => {
-            const pct = (r.ms.p50 / max) * 100;
+            // +Inf venues get full-width bar (visually "worst"); finite bar otherwise.
+            const pct = Number.isFinite(r.ms.p50) ? (r.ms.p50 / max) * 100 : 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
             const hasFormula = Boolean(r.formula);
             const isHovered = hoveredSlug === r.slug;

@@ -38,7 +38,7 @@ export function Chart({
   const W = 1000;
   const H = 360;
   const padL = 60;
-  const padR = 96;
+  const padR = 130;
   const padT = 16;
   const padB = 36;
   const innerW = W - padL - padR;

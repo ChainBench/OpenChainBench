@@ -43,5 +43,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   // can serve different values than the hub for up to 5 minutes after a
   // worker publish.
   revalidateTag("benchmarks", "default");
-  return NextResponse.json({ revalidated: true, tags: ["bench-aggregate", "benchmarks"] });
+  revalidateTag("data-api-cohort", "default");
+  return NextResponse.json({ revalidated: true, tags: ["bench-aggregate", "benchmarks", "data-api-cohort"] });
 }

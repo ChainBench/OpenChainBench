@@ -92,6 +92,12 @@ func main() {
 		runManifoldLoop(cfg, stop)
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runPolymarketUSLoop(cfg, stop)
+	}()
+
 	<-sigChan
 	fmt.Println("\nShutting down...")
 	close(stop)
@@ -184,6 +190,21 @@ func runManifoldLoop(cfg *Config, stop <-chan struct{}) {
 			return
 		case <-tick.C:
 			fetchAllManifold(cfg.ManifoldManaUsdRate)
+		}
+	}
+}
+
+func runPolymarketUSLoop(cfg *Config, stop <-chan struct{}) {
+	tick := time.NewTicker(cfg.PolymarketRefreshInterval)
+	defer tick.Stop()
+
+	fetchAllPolymarketUS()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-tick.C:
+			fetchAllPolymarketUS()
 		}
 	}
 }

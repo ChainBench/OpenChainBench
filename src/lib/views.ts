@@ -44,6 +44,7 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   // benches — the leaderboard view shows the $ value per provider with
   // a comparison bar, which is the at-a-glance read users want.
   usd: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
+  x: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
 };
 
 /**

@@ -1,0 +1,126 @@
+{
+  "project": "aster",
+  "measured_at": "2026-08-02T21:00:00Z",
+  "chain": "multi-chain (BNB primary, ETH, ARB, SOL + Aster Chain PoSA)",
+  "architecture": "Multi-chain perp DEX. Born from Astherus + APX Finance merger (late 2024), rebranded Aster March 2025. Not a rollup. Launched 'Aster Chain' (PoSA L1) March 2026 but main trading still on BNB/ETH/ARB/SOL.",
+
+  "contracts": {
+    "bridge_bnb": {
+      "value": "0x128463A60784c4D3f46c23Af3f65Ed859Ba87974",
+      "chain": "bnb",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts",
+      "tier": "documented",
+      "verified": "unknown"
+    },
+    "bridge_ethereum": {
+      "value": "0x604DD02d620633Ae427888d41bfd15e38483736E",
+      "chain": "ethereum",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts",
+      "tier": "documented",
+      "verified": "unknown"
+    },
+    "bridge_arbitrum": {
+      "value": "0x9E36CB86a159d479cEd94Fa05036f235Ac40E1d5",
+      "chain": "arbitrum",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts",
+      "tier": "documented",
+      "verified": "unknown"
+    },
+    "bridge_solana": {
+      "value": "EhUtRgu9iEbZXXRpEvDj6n1wnQRjMi2SERDo3c6bmN2c",
+      "chain": "solana",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts",
+      "tier": "documented",
+      "verified": "unknown"
+    },
+    "aster_chain_contracts": {
+      "value": "unknown",
+      "note": "Aster Chain (PoSA) core contracts not disclosed. Docs state 'not open-sourced.'",
+      "tier": "unknown"
+    }
+  },
+
+  "owners": {
+    "cross_chain_withdrawal_signers": {
+      "value": "2-of-3 internal validator set",
+      "type": "internal_multisig",
+      "tier": "documented",
+      "source": "https://docs.asterdex.com"
+    },
+    "upgrade_key": {
+      "value": "unknown",
+      "note": "Upgrade key management not publicly disclosed. Confirmed not disclosed in official docs.",
+      "tier": "unknown"
+    },
+    "oracles": {
+      "value": "Chainlink + Pyth",
+      "tier": "documented",
+      "source": "https://docs.asterdex.com"
+    }
+  },
+
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "note": "Per-chain bridge contracts on BNB, ETH, ARB, SOL. Not on a single chain.",
+      "tier": "documented",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts"
+    },
+    "funds_contract": {
+      "value": "BNB: 0x128463... | ETH: 0x604DD0... | ARB: 0x9E36CB... | SOL: EhUtRgu...",
+      "tier": "documented",
+      "source": "https://docs.asterdex.com/overview/what-is-aster/our-smart-contracts"
+    },
+    "contracts_verified": {
+      "value": "unknown",
+      "note": "Docs state bridge contracts 'will be publicly disclosed.' Core chain not open-sourced. No independent verification performed at time of measurement.",
+      "tier": "unknown"
+    },
+    "chain_l2beat_stage": {
+      "value": "n/a",
+      "note": "Not tracked by L2Beat. Not a rollup or L2.",
+      "tier": "documented"
+    },
+    "upgrade_delay_seconds": {
+      "value": "unknown",
+      "note": "Upgrade key management not disclosed. No timelock documented.",
+      "tier": "unknown"
+    },
+    "lp_exit": {
+      "note": "Aster uses an LP pool model. Early exit from staking incurs penalties of 2-60%. Cross-chain LP withdrawals require 2-of-3 internal validator co-signature.",
+      "can_exit_without_validators": false,
+      "tier": "documented",
+      "source": "https://docs.asterdex.com"
+    },
+    "trader_exit": {
+      "mechanism": "Close position on-chain → cross-chain withdrawal requires 2-of-3 internal validator co-signature → USDC to user wallet",
+      "can_exit_without_validators": false,
+      "tier": "documented",
+      "source": "https://docs.asterdex.com"
+    },
+    "can_user_exit_unilaterally": {
+      "value": false,
+      "qualifier": "Cross-chain withdrawals require internal 2-of-3 validator sign-off. No forced exit or escape hatch documented.",
+      "tier": "documented",
+      "source": "https://docs.asterdex.com"
+    },
+    "exit_function": {
+      "value": "unknown",
+      "note": "No permissionless forced exit documented.",
+      "tier": "unknown"
+    },
+    "exit_depends_on": {
+      "value": "2-of-3 internal validators + Chainlink/Pyth oracles + off-chain matching engine",
+      "tier": "documented"
+    },
+    "forced_inclusion": {
+      "value": false,
+      "note": "No forced exit mechanism documented.",
+      "tier": "documented"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "note": "Core chain closed source. No permissionless alternative documented."
+    }
+  }
+}

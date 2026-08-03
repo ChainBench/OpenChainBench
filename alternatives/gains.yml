@@ -1,0 +1,16 @@
+slug: gains
+target_product: gains.trade
+target_url: https://gains.trade
+description: Oracle-priced perpetuals on Arbitrum, Base, Polygon and ApeChain
+benchmark: perp-fees
+
+intro: |
+  gains.trade v8 is an oracle-priced perpetuals venue running on Arbitrum, Base, Polygon and ApeChain. It settles against a GNS staking vault rather than a central orderbook, with the position open fee read directly on-chain from the fees contract and the spread term computed from half of the on-chain spreadP parameter. Because there is no orderbook, there is no price impact when executing against it: a $1M trade costs exactly the same number of basis points as a $1k trade. This benchmark measures the live all-in cost of opening a $1000 ETH long 10x position across major perpetual venues, every five minutes, by reading taker fees from each venue's own API and walking each orderbook for $1000 of buy-side notional. gains.trade is queried via eth_call on Base: pairs(N) gives the spreadP and feeIndex for each market, then fees(feeIndex) gives the open fee (totalPositionSizeFeeP). Values are in 1e10 precision per Gains v8 convention. The same harness queries Hyperliquid, Lighter, dYdX v4 and GMX v2. Funding rate is published separately because it accrues per hour held, not at open.
+
+seo_title: "gains.trade alternatives: live benchmark"
+seo_description: Compare gains.trade against Hyperliquid, Lighter, dYdX, GMX v2 on live taker fee plus spread crossed at $1k, $100k and $1M notional, refreshed every five minutes.
+
+status: live
+
+positioning: |
+  gains.trade v8 uses a decentralized GNS staking vault rather than an orderbook. Traders open positions against the vault, priced against a Chainlink or Pyth oracle rather than a live book. The vault absorbs trader profits and receives trader losses, with GNS stakers backstopping it in exchange for a share of protocol fees. This oracle-driven model is architecturally distinct from CLOB venues: there is no maker side, no maker rebate to earn, and the fee schedule is a single flat percentage of position size. For the perp-fees axis, this has one important implication: a $1M trade costs the same basis points as a $1k trade, because there is no book to walk and no price impact to eat. The all-in cost at any size equals the open fee plus half of spreadP, both read live from on-chain. The venue covers 364 active markets across crypto, forex, tokenized stocks, commodities and stock indices, the widest multi-asset catalog among EVM perp DEXes. The typical use case is directional traders on mid-cap or exotic pairs that lack deep orderbook liquidity on any CLOB venue; teams running large block trades also benefit from the flat cost structure versus a deep-but-not-infinite orderbook.

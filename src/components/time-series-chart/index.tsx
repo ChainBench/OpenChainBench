@@ -90,6 +90,9 @@ type Props = {
   /** Tooltip surfaced on disabled long-range pills (e.g. "Archive
    *  temporarily unavailable"). */
   longRangeDisabledTitle?: string;
+  /** Called whenever the set of ranges with confirmed data changes.
+   *  Useful for syncing the video exporter's range picker. */
+  onAvailableRangesChange?: (ranges: Set<Range>) => void;
 };
 
 export function TimeSeriesChart({
@@ -114,6 +117,7 @@ export function TimeSeriesChart({
   longRangeSeries,
   longRangeDisabled,
   longRangeDisabledTitle,
+  onAvailableRangesChange,
 }: Props) {
   const [rangeLocal, setRangeLocal] = useState<Range>("24h");
   const range = rangeProp ?? rangeLocal;
@@ -135,9 +139,12 @@ export function TimeSeriesChart({
   // Chart's internal re-renders. Reset to null when range or region
   // changes (the data shape is different, the old zoom doesn't apply).
   const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
-  // Ref to the <figure> so ChartExportButton can rasterise the whole
-  // chart (header + SVG + watermark + legend) in one shot.
   const figureRef = useRef<HTMLElement | null>(null);
+  // Points to just the SVG+legend block so the exported PNG captures
+  // only the chart body — the omitted header/pills divs still occupy
+  // layout space inside <figure> and would create blank whitespace at
+  // the top of the image if we used figureRef as the export target.
+  const chartBodyRef = useRef<HTMLDivElement | null>(null);
   const zoomScopeKey = `${range}|${region}`;
   const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
   if (prevZoomScopeKey !== zoomScopeKey) {
@@ -155,6 +162,11 @@ export function TimeSeriesChart({
   // most one fan-out per (bench, range) per minute.
   const [lazySeries7d, setLazySeries7d] = useState<Record<string, (number | null)[]> | null>(null);
   const [lazySeries30d, setLazySeries30d] = useState<Record<string, (number | null)[]> | null>(null);
+  // Probed on demand after 30d confirms data. null = not yet probed, {} = probed+empty.
+  const [lazySeries90d, setLazySeries90d] = useState<Record<string, (number | null)[]> | null>(null);
+  const [lazySeries1y, setLazySeries1y] = useState<Record<string, (number | null)[]> | null>(null);
+  // Declared early so effects below can guard on it without TDZ issues.
+  const panelActive = !!seriesOverride;
   // Per-panel lazy series, keyed by panel id. Cached across a panel
   // switch so flipping back to a previously-viewed panel is instant.
   // 7d/30d: fetched on panel activation. 90d/1y: fetched on-demand when
@@ -183,7 +195,7 @@ export function TimeSeriesChart({
     // never refetched.
     const done: Record<"7d" | "30d", boolean> = { "7d": false, "30d": false };
     const buildQs = (range: "7d" | "30d") => {
-      const qs = new URLSearchParams({ range });
+      const qs = new URLSearchParams({ range, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
@@ -222,6 +234,61 @@ export function TimeSeriesChart({
     };
   }, [regionProp, chainProp, benchmark.slug]);
 
+  // Probe 90d after 30d confirms data. Uses a slug ref so a benchmark change
+  // resets the probe even if lazySeries30d stays non-null briefly.
+  const probed90dSlugRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (panelActive) return;
+    if (lazySeries30d === null || Object.keys(lazySeries30d).length === 0) return;
+    if (lazySeries90d !== null) return;
+    if (probed90dSlugRef.current === benchmark.slug) return;
+    probed90dSlugRef.current = benchmark.slug;
+    let cancelled = false;
+    const qs = new URLSearchParams({ range: "90d", raw: "1" });
+    if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+    if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+    fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
+        if (cancelled) return;
+        const map: Record<string, (number | null)[]> = {};
+        for (const p of data.providers) map[p.slug] = p.values;
+        setLazySeries90d(map);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLazySeries90d({});
+      });
+    return () => { cancelled = true; };
+  }, [panelActive, lazySeries30d, lazySeries90d, benchmark.slug, regionProp, chainProp]);
+
+  // Probe 1y after 90d confirms data.
+  const probed1ySlugRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (panelActive) return;
+    if (lazySeries90d === null || Object.keys(lazySeries90d).length === 0) return;
+    if (lazySeries1y !== null) return;
+    if (probed1ySlugRef.current === benchmark.slug) return;
+    probed1ySlugRef.current = benchmark.slug;
+    let cancelled = false;
+    const qs = new URLSearchParams({ range: "1y", raw: "1" });
+    if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+    if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+    fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
+        if (cancelled) return;
+        const map: Record<string, (number | null)[]> = {};
+        for (const p of data.providers) map[p.slug] = p.values;
+        setLazySeries1y(map);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLazySeries1y({});
+      });
+    return () => { cancelled = true; };
+  }, [panelActive, lazySeries90d, lazySeries1y, benchmark.slug, regionProp, chainProp]);
+
   // Panel-scoped lazy fetch. Runs when the active panel id changes and the
   // parent did NOT ship the panel's own 7d/30d series inline (the common
   // case since slimBenchmarkForCache drops them). Cache-keyed per panel so
@@ -240,7 +307,7 @@ export function TimeSeriesChart({
       "30d": !need30d,
     };
     const buildQs = (range: "7d" | "30d") => {
-      const qs = new URLSearchParams({ range, panel: activePanelId });
+      const qs = new URLSearchParams({ range, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
@@ -296,7 +363,7 @@ export function TimeSeriesChart({
     if (!need90d && !need1y) return;
     let cancelled = false;
     const buildQs = (r: "90d" | "1y") => {
-      const qs = new URLSearchParams({ range: r, panel: activePanelId });
+      const qs = new URLSearchParams({ range: r, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
@@ -324,19 +391,46 @@ export function TimeSeriesChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanelId, regionProp, chainProp, benchmark.slug]);
 
-  const panelActive = !!seriesOverride;
   const panelLazy7d = activePanelId ? lazyPanel7d[activePanelId] : undefined;
   const panelLazy30d = activePanelId ? lazyPanel30d[activePanelId] : undefined;
   const panelLazy90d = activePanelId ? lazyPanel90d[activePanelId] : undefined;
   const panelLazy1y = activePanelId ? lazyPanel1y[activePanelId] : undefined;
-  const has7d =
-    !panelActive ||
-    !!seriesOverride7d ||
-    (!!activePanelId && panelLazy7d !== undefined);
-  const has30d =
-    !panelActive ||
-    !!seriesOverride30d ||
-    (!!activePanelId && panelLazy30d !== undefined);
+
+  // null = still loading → show optimistically; {} = confirmed empty → hide
+  const seriesHasData = (m: Record<string, (number | null)[]> | null) =>
+    m === null || Object.keys(m).length > 0;
+
+  const has7d = panelActive
+    ? (!!seriesOverride7d || (!!activePanelId && panelLazy7d !== undefined))
+    : seriesHasData(lazySeries7d);
+  const has30d = panelActive
+    ? (!!seriesOverride30d || (!!activePanelId && panelLazy30d !== undefined))
+    : seriesHasData(lazySeries30d);
+  const has90d = !panelActive && lazySeries90d !== null && Object.keys(lazySeries90d).length > 0;
+  const has1y = !panelActive && lazySeries1y !== null && Object.keys(lazySeries1y).length > 0;
+
+  // When confirmed-empty data comes back, fall back to the nearest longer available range.
+  useEffect(() => {
+    if (panelActive) return;
+    if (range === "7d" && lazySeries7d !== null && !seriesHasData(lazySeries7d)) setRange("24h");
+    if (range === "30d" && lazySeries30d !== null && !seriesHasData(lazySeries30d)) setRange("24h");
+    if (range === "90d" && lazySeries90d !== null && Object.keys(lazySeries90d).length === 0)
+      setRange(has30d ? "30d" : "24h");
+    if (range === "1y" && lazySeries1y !== null && Object.keys(lazySeries1y).length === 0)
+      setRange(has90d ? "90d" : "24h");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range, panelActive, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y]);
+
+  // Notify parent whenever the set of available ranges changes.
+  useEffect(() => {
+    if (!onAvailableRangesChange || panelActive) return;
+    const available = new Set<Range>(["1h", "6h", "24h"]);
+    if (has7d) available.add("7d");
+    if (has30d) available.add("30d");
+    if (has90d) available.add("90d");
+    if (has1y) available.add("1y");
+    onAvailableRangesChange(available);
+  }, [onAvailableRangesChange, panelActive, has7d, has30d, has90d, has1y]);
 
   const availableRegions = useMemo(() => {
     const set = new Set<string>();
@@ -380,12 +474,19 @@ export function TimeSeriesChart({
       if (range === "7d") {
         return seriesOverride7d ?? panelLazy7d ?? seriesOverride;
       }
-      // 90d / 1y: served from Prom via lazy fetch. Return empty map while
-      // loading so the chart shows an empty state rather than stale 24h data.
-      // 180d / all: no panel data — these tabs stay disabled for panels.
-      if (range === "90d") return panelLazy90d ?? {};
-      if (range === "1y") return panelLazy1y ?? {};
-      return seriesOverride;
+      // 90d / 1y: use Prom-backed lazy series when available, otherwise
+      // return undefined so pickBenchValues falls through to longRangeSeries
+      // (archive). An empty map would hide the archive lines.
+      // 180d / all: no Prom panel data; fall through to longRangeSeries.
+      if (range === "90d") {
+        if (panelLazy90d && Object.keys(panelLazy90d).length > 0) return panelLazy90d;
+        return undefined;
+      }
+      if (range === "1y") {
+        if (panelLazy1y && Object.keys(panelLazy1y).length > 0) return panelLazy1y;
+        return undefined;
+      }
+      return undefined;
     };
     const panel = pickPanel();
     const sliceOverride = (full: (number | null)[]): (number | null)[] => {
@@ -402,6 +503,11 @@ export function TimeSeriesChart({
     // Pick from the lazy map when in those ranges, fall back to
     // pickSeries (which uses benchmark.extras.series24h) otherwise.
     const pickBenchValues = (slug: string): (number | null)[] => {
+      // Probed ranges take priority over the archive-backed longRangeSeries path.
+      if (range === "90d" && lazySeries90d && Object.keys(lazySeries90d).length > 0)
+        return lazySeries90d[slug] ?? [];
+      if (range === "1y" && lazySeries1y && Object.keys(lazySeries1y).length > 0)
+        return lazySeries1y[slug] ?? [];
       if (isLongRange) {
         return longRangeSeries?.[range]?.[slug] ?? [];
       }
@@ -433,7 +539,7 @@ export function TimeSeriesChart({
       return higherIsBetter ? bv - av : av - bv;
     });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, isLongRange, longRangeSeries, panelLazy90d, panelLazy1y]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y, isLongRange, longRangeSeries, panelLazy90d, panelLazy1y]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
@@ -478,7 +584,7 @@ export function TimeSeriesChart({
 
   return (
     <figure className="my-2" ref={figureRef}>
-      <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
+      <div className="mb-3 flex items-center justify-between gap-3 min-h-7" data-chart-export-omit="true">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>
@@ -487,7 +593,7 @@ export function TimeSeriesChart({
         </p>
         <div className="flex items-center gap-2">
           <ChartExportButton
-            targetRef={figureRef}
+            targetRef={chartBodyRef}
             filename={`openchainbench-${benchmark.slug}-${range}`}
           />
           {zoom && (
@@ -508,9 +614,12 @@ export function TimeSeriesChart({
           {headerActions}
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-chart-export-omit="true">
         <div className="flex flex-wrap items-center gap-1">
           {RANGES.map((r) => {
+            // Hide entirely once we have confirmed there's no data for this range.
+            if (r === "7d" && lazySeries7d !== null && !has7d) return null;
+            if (r === "30d" && lazySeries30d !== null && !has30d) return null;
             const active = r === range;
             const disabled =
               (r === "7d" && !has7d) || (r === "30d" && !has30d);
@@ -537,22 +646,56 @@ export function TimeSeriesChart({
               </button>
             );
           })}
+          {(has90d || has1y) && (
+            <>
+              <span aria-hidden className="mx-1 inline-block h-4 w-px bg-rule" />
+              {has90d && (
+                <button
+                  key="90d"
+                  type="button"
+                  onClick={() => setRange("90d")}
+                  className={[
+                    "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                    range === "90d"
+                      ? "bg-ink text-paper"
+                      : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                  ].join(" ")}
+                >
+                  90d
+                </button>
+              )}
+              {has1y && (
+                <button
+                  key="1y"
+                  type="button"
+                  onClick={() => setRange("1y")}
+                  className={[
+                    "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                    range === "1y"
+                      ? "bg-ink text-paper"
+                      : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                  ].join(" ")}
+                >
+                  1y
+                </button>
+              )}
+            </>
+          )}
           {longRangeSeries && (
             <>
               {/* Hairline separator between live (Prom) and archive
                   ranges so the reader sees they come from a different
                   data source — kept inside the same pill strip so the
-                  selection feels like one control. Panel tabs disable
-                  the archive ranges (panel data is not archived). */}
+                  selection feels like one control. */}
               <span
                 aria-hidden
                 className="mx-1 inline-block h-4 w-px bg-rule"
               />
               {LONG_RANGES.map((r) => {
                 const active = r === range;
-                // 90d / 1y are Prom-backed for panel views; 180d / all are
-                // archive-only and stay disabled when a panel is active.
-                const panelBlocks = panelActive && r !== "90d" && r !== "1y";
+                // Archive series covers all long-range windows (90d/180d/1y/all)
+                // even when a panel is active — panelBlocks no longer needed.
+                const panelBlocks = false;
                 const disabled = longRangeDisabled || panelBlocks;
                 const title = panelBlocks
                   ? "Switch to the main metric for 180D / ALL history"
@@ -613,23 +756,25 @@ export function TimeSeriesChart({
         <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
 
-      {lines.length === 0 ? (
-        <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
-          No time-series data emitted for this range yet.
-        </div>
-      ) : (
-        <Chart
-          key={seriesKey}
-          lines={lines as LineWithColor[]}
-          unit={unitOverride ?? benchmark.unit}
-          windowHours={RANGE_HOURS[range]}
-          expectedPoints={RANGE_EXPECTED_POINTS[range]}
-          zoom={zoom}
-          onZoom={setZoom}
-          onToggleExclude={toggle}
-          onResetExcluded={excluded.size > 0 ? reset : undefined}
-        />
-      )}
+      <div ref={chartBodyRef}>
+        {lines.length === 0 ? (
+          <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
+            No time-series data emitted for this range yet.
+          </div>
+        ) : (
+          <Chart
+            key={seriesKey}
+            lines={lines as LineWithColor[]}
+            unit={unitOverride ?? benchmark.unit}
+            windowHours={RANGE_HOURS[range]}
+            expectedPoints={RANGE_EXPECTED_POINTS[range]}
+            zoom={zoom}
+            onZoom={setZoom}
+            onToggleExclude={toggle}
+            onResetExcluded={excluded.size > 0 ? reset : undefined}
+          />
+        )}
+      </div>
     </figure>
   );
 }

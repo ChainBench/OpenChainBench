@@ -27,6 +27,7 @@ import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { hasRpcProviderData } from "@/lib/rpc-hub-stats";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import {
   getPerpVenueContext,
@@ -231,7 +232,11 @@ export default async function ProviderPage({
   const pmContext = await getPmVenueContext(p.slug);
 
   // Perp DEX cohort dashboard. Same pattern as the PM context above.
-  const perpContext = await getPerpVenueContext(p.slug);
+  const isPerpSlug = PERP_PRODUCT_PILL_SLUGS.has(p.slug);
+  const feesAtSizeBench = isPerpSlug
+    ? await loadBenchFromBlob("perp-fees-at-size")
+    : null;
+  const perpContext = await getPerpVenueContext(p.slug, feesAtSizeBench);
 
   // KPI-domain availability, resolved upfront so the pill bar knows
   // every domain before rendering. A pill must never open onto an empty
@@ -575,23 +580,11 @@ export default async function ProviderPage({
                       jump from a venue/data provider product page to the
                       PM coverage hub. Hard-coded slug list, same shape
                       as the HL companion treatment elsewhere. */}
-                  {/* Prediction-market pill: 6 native venues + Codex.
-                      Codex is the aggregator measured on pm-data-freshness
-                      alongside Polymarket + Kalshi as the third data
-                      provider indexing PM feeds; retaining the pill lets
-                      readers jump from /products/codex to the PM hub
-                      where its freshness ranking surfaces. Mobula was
-                      previously in this list but does not currently
-                      appear on any PM bench and the pill read as a
-                      routing bug on its data-API profile. */}
                   {(
                     p.slug === "polymarket" ||
                     p.slug === "kalshi" ||
                     p.slug === "limitless" ||
-                    p.slug === "manifold" ||
-                    p.slug === "myriad" ||
-                    p.slug === "predexon" ||
-                    p.slug === "codex"
+                    p.slug === "myriad"
                   ) && (
                     <>
                       <span className="text-ink-faint"> · </span>
