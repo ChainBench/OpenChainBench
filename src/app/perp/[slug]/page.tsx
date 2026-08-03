@@ -352,6 +352,60 @@ export default async function PerpVenuePage({
         </section>
       )}
 
+      {/* Vault / Protocol */}
+      {hasVault && (
+        <section className="mb-10">
+          <p
+            className="text-[10px] uppercase tracking-wide text-ink-faint mb-3"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            Protocol
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {ext.vaultTvlUsd != null && (
+              <StatCard label="Vault TVL" value={fmtUSD(ext.vaultTvlUsd)} accent="teal" />
+            )}
+            {ext.stakingAprPct != null && (
+              <StatCard label="Staking APR" value={fmtPct(ext.stakingAprPct)} accent="cyan" />
+            )}
+          </div>
+
+          {/* Collateral breakdown table */}
+          {(ext.collateralBreakdown?.length ?? 0) > 0 && (
+            <div className="mt-4 rounded-lg border border-rule overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-rule bg-paper-soft">
+                    <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                      Collateral
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                      TVL
+                    </th>
+                    <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                      APR
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-rule">
+                  {ext.collateralBreakdown!.map((cr) => (
+                    <tr key={cr.symbol} className="hover:bg-paper-soft/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{cr.symbol}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-ink-soft">
+                        {fmtUSD(cr.tvlUsd)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-good">
+                        {fmtPct(cr.aprPct)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Live benchmark results */}
       {rankings.length > 0 && (
         <section className="mb-10">
@@ -429,59 +483,134 @@ export default async function PerpVenuePage({
         </section>
       )}
 
-      {/* Vault / Protocol */}
-      {hasVault && (
-        <section className="mb-10">
-          <p
-            className="text-[10px] uppercase tracking-wide text-ink-faint mb-3"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
-          >
-            Protocol
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {ext.vaultTvlUsd != null && (
-              <StatCard label="Vault TVL" value={fmtUSD(ext.vaultTvlUsd)} accent="teal" />
-            )}
-            {ext.stakingAprPct != null && (
-              <StatCard label="Staking APR" value={fmtPct(ext.stakingAprPct)} accent="cyan" />
-            )}
-          </div>
+      {/* Embeddable badges — only for rank #1 appearances */}
+      {(() => {
+        const winnerRankings = rankings.filter((a) => a.rank === 1 && a.hasData);
+        if (winnerRankings.length === 0) return null;
+        return (
+          <section className="mb-10">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Embeddable badges
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              Drop these on your site to show your ranking. The SVG fetches the
+              latest figures on every request so the badge stays accurate without
+              redeploying.
+            </p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {winnerRankings.map((a) => {
+                const badgePath = `/api/badge/${a.benchSlug}/${cohortSlug}`;
+                const badgeUrl = `${SITE.url}${badgePath}`;
+                const targetUrl = `${SITE.url}/benchmarks/${a.benchSlug}`;
+                const altText = `Ranked #1 on OpenChainBench: ${a.bench.title}`;
+                const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="${altText}" height="44" /></a>`;
+                const markdown = `[![${altText}](${badgeUrl})](${targetUrl})`;
+                const tweetText = `Independently benchmarked #1 on ${a.bench.title} by @OpenChainBench.\n\nReproducible methodology, live data:`;
+                const tweetIntent = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(targetUrl)}`;
+                return (
+                  <li key={`badge-${a.benchSlug}`} className="card-soft p-4">
+                    <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                      {a.bench.title}
+                    </p>
+                    <div className="mt-3 flex items-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={badgePath}
+                        alt={altText}
+                        height={44}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                      <a
+                        href={tweetIntent}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-ink"
+                      >
+                        Share on X
+                        <ArrowUpRight size={11} strokeWidth={2} />
+                      </a>
+                    </div>
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                        Copy HTML
+                      </summary>
+                      <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{html}
+                      </pre>
+                    </details>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                        Copy Markdown
+                      </summary>
+                      <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{markdown}
+                      </pre>
+                    </details>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })()}
 
-          {/* Collateral breakdown table */}
-          {(ext.collateralBreakdown?.length ?? 0) > 0 && (
-            <div className="mt-4 rounded-lg border border-rule overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-rule bg-paper-soft">
-                    <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-                      Collateral
-                    </th>
-                    <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-                      TVL
-                    </th>
-                    <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wide text-ink-faint font-medium" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-                      APR
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rule">
-                  {ext.collateralBreakdown!.map((cr) => (
-                    <tr key={cr.symbol} className="hover:bg-paper-soft/50 transition-colors">
-                      <td className="px-4 py-3 font-medium">{cr.symbol}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-ink-soft">
-                        {fmtUSD(cr.tvlUsd)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-good">
-                        {fmtPct(cr.aprPct)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
+      {/* Compare to other perp venues */}
+      {(() => {
+        const otherVenues = PERP_VENUES
+          .filter((v) => v.slug !== cohortSlug)
+          .map((v) => {
+            const sharedCount = (benchBlobs as (Benchmark | null)[]).filter(
+              (b) => b && b.results.some((r) => r.slug === v.slug),
+            ).length;
+            return { ...v, sharedCount };
+          })
+          .filter((v) => v.sharedCount > 0)
+          .sort((a, b) => b.sharedCount - a.sharedCount);
+        if (otherVenues.length === 0) return null;
+        return (
+          <section className="mb-10">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Compare {seed.name} to alternatives
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              Other perp venues benchmarked on the same metrics.
+            </p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {otherVenues.map((v) => {
+                const lp = logoPath(v.slug);
+                return (
+                  <li key={v.slug}>
+                    <Link
+                      href={`/perp/${v.slug === "gmx-v2" ? "gmx" : v.slug}`}
+                      className="card-soft p-4 flex items-center gap-3 h-full hover:border-ink/40 transition-colors"
+                    >
+                      {lp ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={lp} alt={v.name} width={32} height={32} className="rounded object-contain shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-paper-soft border border-rule flex items-center justify-center text-xs font-semibold text-ink-soft shrink-0">
+                          {v.name[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-ink leading-tight truncate">{v.name}</p>
+                        <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
+                          {v.sharedCount} shared{" "}
+                          {v.sharedCount === 1 ? "benchmark" : "benchmarks"}
+                        </p>
+                      </div>
+                      <ArrowUpRight size={14} strokeWidth={2} className="shrink-0 text-ink-faint" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })()}
 
       {/* Footer links */}
       <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-8 border-t border-rule text-[12px] text-ink-faint">
