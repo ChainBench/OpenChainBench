@@ -16,7 +16,7 @@ higher_is_better: false
 seo_intro: |
   Rootstock (chain 30) is the longest-running Bitcoin EVM, a merge-mined sidechain secured by
   54%+ of Bitcoin hashrate under REMASC consensus, with a 30-second block cadence and RBTC as
-  its native gas token — a 1:1 BTC peg bridged through the Powpeg. The chain has been live
+  its native gas token (RBTC), a 1:1 BTC peg bridged through the Powpeg. The chain has been live
   since 2018, predating most EVM L2s. A 2026-08-03 audit confirms 3 clean keyless providers:
   the Rootstock official endpoint (public-node.rsk.co), dRPC (rootstock.drpc.org), and
   Thirdweb (30.rpc.thirdweb.com). Excluded providers: Blast API (shut down, redirects to
