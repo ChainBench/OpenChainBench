@@ -410,15 +410,16 @@ export function TimeSeriesChart({
   const has1y = !panelActive && lazySeries1y !== null && Object.keys(lazySeries1y).length > 0;
 
   // When confirmed-empty data comes back, fall back to the nearest longer available range.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (panelActive) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (range === "7d" && lazySeries7d !== null && !seriesHasData(lazySeries7d)) setRange("24h");
     if (range === "30d" && lazySeries30d !== null && !seriesHasData(lazySeries30d)) setRange("24h");
     if (range === "90d" && lazySeries90d !== null && Object.keys(lazySeries90d).length === 0)
       setRange(has30d ? "30d" : "24h");
     if (range === "1y" && lazySeries1y !== null && Object.keys(lazySeries1y).length === 0)
       setRange(has90d ? "90d" : "24h");
+    /* eslint-enable react-hooks/set-state-in-effect */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, panelActive, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y]);
 
