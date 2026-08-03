@@ -22,10 +22,9 @@ import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { isRegion } from "@/lib/brand";
 import { PERP_VENUE_META, benchRowsForVenue } from "@/lib/perp-venue-context";
 import { fetchPerpCohort } from "@/lib/perp-stats";
-import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 // Same budget as /products/[slug]: on-demand renders span the whole bench
 // catalog and the 60s default killed them mid-flight.
@@ -69,17 +68,16 @@ export default async function AlternativePage({
   const { slug } = await params;
   const isPerpVenue = slug in PERP_VENUE_META;
 
-  const [alt, cohort, feesAtSizeBench] = await Promise.all([
+  const [alt, cohort] = await Promise.all([
     loadAlternative(slug),
     isPerpVenue ? fetchPerpCohort() : Promise.resolve(null),
-    isPerpVenue ? loadBenchFromBlob("perp-fees-at-size") : Promise.resolve(null),
   ]);
   if (!alt) notFound();
 
   const venueRow = cohort?.venues.find((v) => v.slug === slug) ?? null;
   const perpBenchRows =
     cohort && venueRow
-      ? benchRowsForVenue(cohort, venueRow, feesAtSizeBench)
+      ? benchRowsForVenue(cohort, venueRow, null)
       : [];
 
   const { bench } = alt;
