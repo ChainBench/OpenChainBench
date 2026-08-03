@@ -1,0 +1,243 @@
+# OpenChainBench. Bench № 039
+
+slug: pm-resolution-delay
+number: "039"
+title: Resolution delay, Polymarket vs Kalshi
+seo_title: "Prediction market resolution delay live 2026"
+seo_description: "Polymarket and Kalshi resolution time measured live: median delay from close to payout, broken down by category. Polymarket anchored on UMA ProposePrice, Kalshi on settlement_ts from the public API."
+subtitle: "How long from market close to final settlement: Polymarket measured onchain via UMA ProposePrice to QuestionResolved, Kalshi via settlement_ts minus close_time from the public REST API. Auto-generated multivariate parlays excluded from Kalshi data."
+
+category: Trading
+status: live
+metric: Resolution delay
+unit: s
+higher_is_better: false
+
+seo_intro: |
+  The most asked question about prediction markets after "is it legal" is "how
+  long until I get paid". The answer circulating on social media for Polymarket
+  is that 93 percent of markets resolve within 2 hours. That number has no
+  published methodology and cannot be reproduced from Polymarket's own Gamma
+  API. This benchmark measures what can actually be observed: for Polymarket,
+  the time from the first onchain outcome proposal on UMA's optimistic oracle to
+  the onchain resolution, read directly from Polygon logs. For Kalshi, the time
+  from a market's scheduled close_time to the first poll at which its result is
+  non-null, measured every five minutes. Both venues are broken down by category
+  so the comparison is apples to apples.
+
+abstract: |
+  Polymarket: a listener follows the UMA CTF adapters on Polygon
+  (QuestionInitialized, QuestionResolved, QuestionReset) and the Optimistic
+  Oracle they call (ProposePrice, DisputePrice). Delay = first ProposePrice
+  block to QuestionResolved block, joined to Gamma for category tags.
+
+  Kalshi: a poller hits the public /trade-api/v2/markets?status=settled endpoint
+  every 5 minutes. Delay = settlement_ts - close_time (both from API, exact,
+  no polling error). Categories resolved via /events/{event_ticker}. Auto-generated
+  multivariate parlay markets (Kalshi "Exotics" category) are excluded: they
+  settle algorithmically in seconds and are not prediction market questions. No auth required.
+
+methodology:
+  - "Polymarket anchor: the first OO ProposePrice block timestamp, not Gamma fields. Verified live: Gamma closedTime equals the QuestionResolved block timestamp (circular by construction) and endDate is a scheduled buffer most markets beat."
+  - "Polymarket sources: Polygon logs of the post-migration UMA CTF adapters (binary 0x65070BE9..., neg-risk 0x69c47De9...) and their Optimistic Oracle (0x2c0367a9...). Gamma supplies the market catalogue and category tags."
+  - "Polymarket join: questionID = keccak256 of the proposal ancillary data, verified against QuestionInitialized events."
+  - "Kalshi anchor: settlement_ts from the public markets API (exact timestamp, no polling error). Delay = settlement_ts - close_time. close_time is the scheduled market close, not the real-world event end."
+  - "Kalshi scope: traditional prediction markets only. Exotics (auto-generated multivariate parlays) are excluded by design: they auto-settle so fast they never appear in status=closed, so the watchlist only contains real market questions. Categories from /events/{event_ticker} (lazy cache): Sports→sports, Politics/Elections→politics, Crypto/Financials→crypto, everything else→other."
+  - "Anchor asymmetry: Polymarket's 2h UMA challenge window is protocol-enforced: no market can resolve in under 2h on the clean path. Kalshi has no such floor; traditional sports and politics markets settle in minutes to hours after close_time. The difference in distributions reflects both operational speed and architecture."
+  - "Categories: sports, politics, crypto, other, consistent across venues. Per-category rows are the honest unit of comparison because market types run different resolution windows."
+  - "Disputes (Polymarket only): a DisputePrice before resolution marks the market disputed. Disputed delays land in the disputed series and are excluded from the main category rows."
+  - "Pending backlog (Polymarket only): markets past their scheduled endDate with no onchain resolution, polled from Gamma every cycle."
+  - "Listener: 45s incremental Polygon log polling with a 7-day chunked backfill on restart. Kalshi poller ticks every 5 min. Both coexist in the same process."
+
+findings:
+  - "Polymarket across all markets: median onchain resolution delay {{p50:polymarket-all}} from first proposal to resolution, p99 at {{p99:polymarket-all}}. The within 2 hours share is in the table above, measured, and does not match the 93 percent figure that circulates without a methodology."
+  - "Kalshi across all markets (excluding auto-generated parlays): median resolution delay {{p50:kalshi-all}} from scheduled close_time to settlement_ts. Kalshi resolves internally: no onchain oracle, no mandatory challenge window. The difference vs Polymarket's median reflects both operational speed and Polymarket's protocol-enforced 2h minimum."
+  - "Categories are not comparable on a single median: sports, crypto and politics markets run different resolution processes on each venue."
+  - "Disputes (Polymarket only) are rare but expensive: disputed markets carry materially longer delays than the clean path."
+
+disclaimer: "Polymarket delay is measured from the first onchain outcome proposal to resolution (UMA challenge window, minimum 2h by protocol). Kalshi delay is settlement_ts - close_time (exact from API), where close_time is the scheduled market close, not the real-world event end. Kalshi auto-generated parlay markets (Exotics) are excluded. Both anchors are lower bounds on total user wait from the real-world event ending."
+
+faq:
+  - q: "How long does Polymarket take to pay out after a market ends?"
+    a: "Measured onchain, the median delay from the first outcome proposal to resolution is currently {{p50:polymarket-all}} across all markets, and redemptions are claimable immediately after resolution. The full distribution matters: p99 is {{p99:polymarket-all}}, and the per category rows show that sports, crypto and politics markets run on different verification windows. Add the time between the real world event ending and the first proposal, which is not measurable onchain."
+  - q: "How long does Kalshi take to resolve?"
+    a: "Kalshi resolves via its own internal process, not through an onchain oracle. The delay measured here is from a market's scheduled close_time to the first API poll (every 5 minutes) at which a result appears. The current median is {{p50:kalshi-all}}. This reflects Kalshi's operational resolution speed, not an onchain settlement time."
+  - q: "Do 93 percent of Polymarket markets resolve within 2 hours?"
+    a: "We could not reproduce that figure. The fields in Polymarket's public Gamma API cannot produce it: closedTime is written at the moment of resolution (circular) and endDate is a scheduled buffer most markets beat. Measured from the first onchain outcome proposal, the within 2 hours share is in the table above and has been materially below 93 percent since this benchmark started."
+  - q: "What happens when a Polymarket market is disputed?"
+    a: "A dispute on UMA's optimistic oracle resets the question and routes it through UMA token holder voting, replacing the normal verification window with a voting period measured in days. The disputed label separates those markets so clean path percentiles stay honest."
+  - q: "Why is my Polymarket market still unresolved?"
+    a: "Three common reasons: the underlying event has not concluded despite the scheduled end date; no one has submitted a proposal yet (the clock only starts at first proposal); or the market is in a UMA dispute, which adds days. The pending backlog gauge counts all markets past their end date without onchain resolution."
+
+per_chain_explainer:
+  - slug: polymarket-all
+    h2: Polymarket resolution — all markets
+    body: "All Polymarket markets combined, measured from first UMA ProposePrice to QuestionResolved on Polygon. The median is {{p50:polymarket-all}}. Sports dominates volume; crypto runs fastest; politics carries conservative verification windows. p99 at {{p99:polymarket-all}} reflects the long tail of disputes and postponed events."
+  - slug: polymarket-sports
+    h2: Polymarket sports resolution
+    body: "Sports markets dominate Polymarket volume and currently resolve at {{p50:polymarket-sports}} median from first proposal. Nearly all disputes happen here: contested endings and stat corrections make sports the category where the oracle's verification window earns its keep."
+  - slug: polymarket-politics
+    h2: Polymarket politics resolution
+    body: "Politics markets resolve at {{p50:polymarket-politics}} median, the slow end. Political outcomes often need an authoritative source to publish before anyone proposes, and verification windows are conservative because these markets carry the largest open interest."
+  - slug: polymarket-crypto
+    h2: Polymarket crypto resolution
+    body: "Crypto price markets resolve at {{p50:polymarket-crypto}} median, the fastest Polymarket category. The outcome is machine checkable against price feeds the moment the window closes, so proposals arrive promptly and short verification windows suffice."
+  - slug: kalshi-all
+    h2: Kalshi resolution — all markets
+    body: "All Kalshi markets combined, measured from scheduled close_time to API-observed finalization (poll every 5 min). The median is {{p50:kalshi-all}}. Kalshi resolves via internal processes, not an onchain oracle, so the anchor is the market's scheduled close rather than an onchain proposal."
+  - slug: kalshi-sports
+    h2: Kalshi sports resolution
+    body: "Kalshi sports markets resolve at {{p50:kalshi-sports}} median from scheduled close. Sports outcomes can require official stat verification, so delays vary with league reporting speed."
+  - slug: kalshi-politics
+    h2: Kalshi politics resolution
+    body: "Kalshi politics markets resolve at {{p50:kalshi-politics}} median from scheduled close. Political outcomes on Kalshi are resolved by Kalshi's internal operations team against authoritative sources."
+  - slug: kalshi-crypto
+    h2: Kalshi crypto resolution
+    body: "Kalshi crypto markets resolve at {{p50:kalshi-crypto}} median from scheduled close. Machine-checkable outcomes against price feeds allow for prompt resolution."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-resolution-delay
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 900
+  freshness_metric: pmres_resolutions_total
+
+metric_panels:
+  - id: pending_backlog
+    label: Pending backlog (Polymarket)
+    description: "Polymarket markets past their scheduled end date with no onchain resolution yet. The queue a waiting bettor experiences; oldest entries are usually postponed events, not oracle failures."
+    metric: sum(pmres_pending_markets{})
+    label_key: category
+    unit: count
+    higher_is_better: false
+  - id: disputes
+    label: Disputes (Polymarket)
+    description: "Polymarket resolutions that went through UMA's dispute process since the listener's backfill window. Rare, concentrated in sports."
+    metric: sum(pmres_disputes_total{})
+    label_key: category
+    unit: count
+    higher_is_better: false
+
+ledger_columns:
+  - { label: "p50 (median delay)", slot: p50 }
+  - { label: "p99", slot: p99 }
+  - { label: "Pending", panel: pending_backlog }
+  - { label: "Disputes", panel: disputes }
+
+providers:
+  - slug: polymarket-all
+    name: "Polymarket — All"
+    tag: Every resolved Polymarket market across categories
+    formula: "Median seconds from first OO ProposePrice block to QuestionResolved block on Polygon. Success = share resolved within 2 hours of proposal."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="polymarket"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="polymarket",le="7200"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="polymarket"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket"}))
+
+  - slug: polymarket-sports
+    name: "Polymarket — Sports"
+    tag: Game and match markets, the volume majority
+    formula: "Median seconds from first proposal to resolution for Polymarket sports markets."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="sports"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="sports"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="sports"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="polymarket",category="sports"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="sports"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="polymarket",le="7200",category="sports"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="sports"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="polymarket",category="sports"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="sports"}))
+
+  - slug: polymarket-crypto
+    name: "Polymarket — Crypto"
+    tag: Price markets, machine checkable outcomes
+    formula: "Median seconds from first proposal to resolution for Polymarket crypto price markets."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="crypto"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="crypto"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="crypto"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="polymarket",category="crypto"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="crypto"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="polymarket",le="7200",category="crypto"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="crypto"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="polymarket",category="crypto"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="crypto"}))
+
+  - slug: polymarket-politics
+    name: "Polymarket — Politics"
+    tag: Election and policy markets, conservative windows
+    formula: "Median seconds from first proposal to resolution for Polymarket politics markets."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="politics"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="politics"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="politics"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="polymarket",category="politics"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="politics"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="polymarket",le="7200",category="politics"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="politics"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="polymarket",category="politics"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="politics"}))
+
+  - slug: polymarket-other
+    name: "Polymarket — Other"
+    tag: Culture, weather, science and everything else
+    formula: "Median seconds from first proposal to resolution for uncategorized Polymarket markets."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="other"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="other"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="other"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="polymarket",category="other"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="other"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="polymarket",le="7200",category="other"}) / sum(pmres_resolution_delay_seconds_count{venue="polymarket",category="other"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="polymarket",category="other"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="polymarket",category="other"}))
+
+  - slug: kalshi-all
+    name: "Kalshi — All"
+    tag: All Kalshi markets, close_time to observed finalization
+    formula: "Median seconds from Kalshi market close_time to first API poll observing a non-null result (5 min polling interval). Success = share resolved within 2 hours of close."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="kalshi"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="kalshi",le="7200"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="kalshi"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi"}))
+
+  - slug: kalshi-sports
+    name: "Kalshi — Sports"
+    tag: Kalshi sports markets
+    formula: "Median seconds from Kalshi sports market close_time to observed finalization."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="sports"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="sports"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="sports"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="kalshi",category="sports"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="sports"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="kalshi",le="7200",category="sports"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="sports"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="kalshi",category="sports"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="sports"}))
+
+  - slug: kalshi-politics
+    name: "Kalshi — Politics"
+    tag: Kalshi politics markets
+    formula: "Median seconds from Kalshi politics market close_time to observed finalization."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="politics"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="politics"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="politics"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="kalshi",category="politics"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="politics"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="kalshi",le="7200",category="politics"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="politics"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="kalshi",category="politics"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="politics"}))
+
+  - slug: kalshi-crypto
+    name: "Kalshi — Crypto"
+    tag: Kalshi crypto markets
+    formula: "Median seconds from Kalshi crypto market close_time to observed finalization."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="crypto"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="crypto"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="crypto"}))
+      mean: 1000 * sum(pmres_resolution_delay_seconds_sum{venue="kalshi",category="crypto"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="crypto"})
+      success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{venue="kalshi",le="7200",category="crypto"}) / sum(pmres_resolution_delay_seconds_count{venue="kalshi",category="crypto"}), 1)
+      sample_size: sum(pmres_resolutions_total{venue="kalshi",category="crypto"})
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{venue="kalshi",category="crypto"}))

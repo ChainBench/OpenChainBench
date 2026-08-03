@@ -50,21 +50,30 @@ var (
 		Help: "1 when the most recent primary-class probe returned ok, 0 otherwise.",
 	}, []string{"venue", "region", "source"})
 
+	// Polymarket sends an immediate orderbook snapshot (<1s); Kalshi's ticker
+	// channel is delta-only (no snapshot on subscribe), so first-frame latency
+	// reflects "time to next price change" which can be 10–300s on quiet markets.
 	wsConnectToSnapshot = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pmapi_ws_connect_to_snapshot_seconds",
 		Help:    "Time from WebSocket dial to the first market data frame after subscribing. Kalshi requires auth for WS and Myriad has none, so only venues with a public WS appear.",
-		Buckets: durBuckets,
+		Buckets: []float64{0.025, 0.05, 0.075, 0.1, 0.15, 0.25, 0.4, 0.6, 1, 1.5, 2.5, 4, 6, 10, 15, 30, 60, 120, 300},
 	}, []string{"venue", "region", "source"})
 
 	wsInterarrival = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pmapi_ws_update_interarrival_seconds",
 		Help:    "Gap between consecutive market data frames on the public WebSocket for the pinned market.",
-		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120},
+		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 180, 300, 600},
 	}, []string{"venue", "region", "source"})
 
 	wsDisconnects = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "pmapi_ws_disconnects_total",
 		Help: "WebSocket connections dropped after being established.",
+	}, []string{"venue", "region", "source"})
+
+	wsTradePublishLag = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pmapi_ws_trade_pub_lag_seconds",
+		Help:    "Delay between venue server-side trade creation and WS subscriber receipt. Polymarket: CLOB WS timestamp field vs recv time. Kalshi: REST create_date vs WS ticker recv time (us-east only).",
+		Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30},
 	}, []string{"venue", "region", "source"})
 
 	rampDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{

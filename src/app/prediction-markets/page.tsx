@@ -8,11 +8,11 @@ import { SITE } from "@/data/site";
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
  * the `pm-cohort-stats` harness gauges plus the existing PM bench
- * gauges (pm-api-latency, pm-resolution-delay, pm-data-freshness). One
- * server fetch, one client tab swap between Venues and Data feeds.
+ * gauges (pm-api-latency, pm-resolution-delay, pm-ws-latency). One
+ * server fetch, sortable venue leaderboard below.
  *
  * The page positions OCB as the neutral cross venue measurement layer:
- * resolution honesty, API quality, freshness lag, all on the same
+ * resolution honesty, API quality, WS latency, all on the same
  * timeline and with the same methodology. Per venue pages live on the
  * bench specs (`/benchmarks/pm-*`); cross venue context lives here.
  *
@@ -25,7 +25,6 @@ import { SITE } from "@/data/site";
 const ANSWERS = [
   { slug: "how-long-does-polymarket-take-to-resolve", question: "How long does Polymarket take to resolve a market?" },
   { slug: "polymarket-vs-kalshi-resolution-speed", question: "Polymarket vs Kalshi, which resolves prediction markets faster?" },
-  { slug: "which-prediction-market-data-api-is-the-freshest", question: "Which prediction market data API publishes the freshest Polymarket data?" },
   { slug: "which-prediction-market-has-the-strictest-rate-limits", question: "Which prediction market API has the strictest rate limits?" },
   { slug: "polymarket-fees-explained", question: "What fees does Polymarket charge?" },
   { slug: "polymarket-vs-kalshi-fees", question: "Polymarket vs Kalshi fees, which is cheaper to trade?" },
@@ -38,7 +37,7 @@ const ANSWERS = [
 ] as const;
 
 const DESCRIPTION =
-  "Polymarket vs Kalshi plus Limitless, Manifold and Myriad on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
+  "Polymarket vs Kalshi plus Limitless and Myriad on one cross-venue leaderboard: volume, open interest, resolution delay and API latency.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/prediction-markets",
@@ -138,7 +137,7 @@ export default async function PredictionMarketsHubPage() {
             <span className="text-ink">pm-resolution-delay</span>
           </Link>
           <Link
-            href="/benchmarks/pm-data-freshness"
+            href="/benchmarks/pm-ws-latency"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
             <span
@@ -147,7 +146,7 @@ export default async function PredictionMarketsHubPage() {
             >
               Bench
             </span>
-            <span className="text-ink">pm-data-freshness</span>
+            <span className="text-ink">pm-ws-latency</span>
           </Link>
           <Link
             href="/benchmarks/pm-rate-limits"
@@ -193,8 +192,8 @@ export default async function PredictionMarketsHubPage() {
               tip="Median of per venue p50 latency on the warm price endpoint, trailing 24h."
             />
             <SummaryCard
-              label="Tracked venues and feeds"
-              value={`${cohort.venues.length} + ${cohort.dataFeeds.length}`}
+              label="Tracked venues"
+              value={`${cohort.venues.length}${cohort.dataFeeds.length > 0 ? ` + ${cohort.dataFeeds.length}` : ""}`}
             />
           </section>
 
@@ -230,10 +229,10 @@ export default async function PredictionMarketsHubPage() {
             </Link>{" "}
             (volume, OI, active markets, top market, markets &gt;$1M)
             plus the live PM bench fleet (api latency, resolution delay,
-            freshness). All gauges scraped from the public OCB Prom,
-            refresh interval 60s. Click a venue or feed row above to
-            open its dedicated product page. Hover the dotted underline
-            on any value to see how it is computed.
+            ws latency). All gauges scraped from the public OCB Prom,
+            refresh interval 60s. Click a venue row above to open its
+            dedicated product page. Hover the dotted underline on any
+            value to see how it is computed.
           </p>
         </>
       ) : (
@@ -251,8 +250,8 @@ export default async function PredictionMarketsHubPage() {
             /benchmarks/polymarket-resolution-delay
           </Link>
           ,{" "}
-          <Link href="/benchmarks/pm-data-freshness" className="underline">
-            /benchmarks/pm-data-freshness
+          <Link href="/benchmarks/pm-ws-latency" className="underline">
+            /benchmarks/pm-ws-latency
           </Link>{" "}
           and{" "}
           <Link href="/benchmarks/pm-rate-limits" className="underline">

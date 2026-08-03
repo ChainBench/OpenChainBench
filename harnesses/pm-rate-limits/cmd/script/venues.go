@@ -21,6 +21,8 @@ type Class struct {
 	Interval time.Duration
 	Timeout  time.Duration
 	URL      func(p Pin) string
+	Method   string           // "" or "GET" → GET; "POST" for venues with POST-only APIs
+	BodyFn   func(Pin) []byte // POST body generator; nil = no body
 }
 
 // Venue defines the probe matrix for one native prediction-market API.
@@ -29,19 +31,20 @@ type Class struct {
 // from the daily ramp (Myriad: keyless 30 req/10s budget, ramping it would
 // just measure our own quota).
 type Venue struct {
-	Slug        string
-	Classes     []Class
-	PinFunc     func(ctx context.Context, c *http.Client, avoid string) (Pin, error)
-	StalenessMs func(class string, body []byte) (int64, bool)
-	RampRates   []int
-	StopOn429   bool     // Kalshi: documented token bucket, stop at first 429
-	InvalidBody []string // 4xx body substrings that mark a probe_invalid (stale pin)
+	Slug           string
+	Classes        []Class
+	PinFunc        func(ctx context.Context, c *http.Client, avoid string) (Pin, error)
+	StalenessMs    func(class string, body []byte) (int64, bool)
+	RampRates      []int
+	StopOn429      bool     // Kalshi: documented token bucket, stop at first 429
+	InvalidBody    []string // body substrings that mark a probe_invalid (stale pin)
+	RequestMutator func(*http.Request) // optional: stamps auth/custom headers before send
 
 	state *venueState // wired at startup
 }
 
-func venues() []*Venue {
-	return []*Venue{
+func venues(cfg Config) []*Venue {
+	vs := []*Venue{
 		{
 			Slug: "polymarket",
 			Classes: []Class{
@@ -173,7 +176,26 @@ func venues() []*Venue {
 			PinFunc:   pinSmarkets,
 			RampRates: []int{10, 25, 50},
 		},
+		// Metaculus: public forecasting platform, no auth, no order book.
+		// Primary class is price (single question endpoint). Conservative ramp
+		// because limits are undocumented.
+		{
+			Slug: "metaculus",
+			Classes: []Class{
+				{Name: "price", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://www.metaculus.com/api2/questions/" + p.Market + "/"
+					}},
+				{Name: "list", Interval: 30 * time.Second, Timeout: 15 * time.Second,
+					URL: func(Pin) string {
+						return "https://www.metaculus.com/api2/questions/?limit=20&order_by=-activity&status=open"
+					}},
+			},
+			PinFunc:   pinMetaculus,
+			RampRates: []int{5, 10, 20},
+		},
 	}
+	return vs
 }
 
 // ProbeSource is one (venue, source) cell the aggregator harness probes

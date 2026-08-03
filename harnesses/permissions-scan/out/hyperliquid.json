@@ -1,0 +1,115 @@
+{
+  "project": "hyperliquid",
+  "measured_at": "2026-08-02T21:00:00Z",
+  "chain": "hyperliquid-l1 + arbitrum-bridge",
+  "chain_id_bridge": 42161,
+  "architecture": "custom L1 (HyperBFT consensus) + USDC bridge on Arbitrum One. Not an Ethereum L2.",
+
+  "contracts": {
+    "HyperliquidBridge2_arbitrum": {
+      "value": "0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7",
+      "source": "https://arbiscan.io/address/0x2df1c51e09aecf9cacb7bc98cb1742757f163df7 — verified contract, label 'Hyperliquid: Bridge 2'",
+      "tier": "onchain",
+      "verified": true,
+      "upgradeable": true,
+      "upgrade_admin": "EOA — no timelock",
+      "note": "All user USDC is escrowed here on Arbitrum. Instant upgrade by single EOA = funds can be drained with one transaction and no delay."
+    },
+    "L1_node_software": {
+      "value": "closed source",
+      "source": "L2Beat: https://l2beat.com/scaling/projects/hyperliquid — 'The node software is not open source.'",
+      "tier": "documented"
+    }
+  },
+
+  "owners": {
+    "bridge_upgrade_key": {
+      "value": "unknown EOA",
+      "type": "EOA",
+      "timelock": "none",
+      "tier": "documented",
+      "source": "L2Beat: 'Funds can be stolen if a contract receives a malicious code upgrade. There is no delay on code upgrades (CRITICAL).' https://l2beat.com/scaling/projects/hyperliquid"
+    },
+    "validator_set": {
+      "value": "~25-27 nodes as of June 2026",
+      "description": "Partially externally staked but still heavily foundation-influenced. 4 hot-validator EOAs on Arbitrum historically submitted all withdrawal transactions.",
+      "tier": "documented",
+      "source": "ChainArgos: https://medium.com/chainargos/centralized-control-in-hyperliquid-3e9f7dd0d706 + L2Beat"
+    },
+    "withdrawal_signers": {
+      "value": "2/3+ staking-weighted validator set required to co-sign withdrawals",
+      "type": "validator_multisig",
+      "tier": "documented",
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/bridge"
+    }
+  },
+
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "note": "On Arbitrum One bridge contract. USDC is held in escrow there.",
+      "tier": "onchain",
+      "source": "https://arbiscan.io/address/0x2df1c51e09aecf9cacb7bc98cb1742757f163df7"
+    },
+    "funds_contract": {
+      "value": "0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7 (Arbitrum One)",
+      "tier": "onchain",
+      "source": "Arbiscan verified"
+    },
+    "contracts_verified": {
+      "value": "partial",
+      "detail": "Bridge contract verified on Arbiscan. L1 node software closed source — no bytecode auditable.",
+      "tier": "onchain"
+    },
+    "chain_l2beat_stage": {
+      "value": "other",
+      "note": "Not rated as Stage 0/1/2 — classified as 'Other' because it is not an Ethereum L2. L2Beat flags: invalid state roots permitted, data not published on Ethereum, contracts instantly upgradeable by EOA.",
+      "tier": "documented",
+      "source": "https://l2beat.com/scaling/projects/hyperliquid"
+    },
+    "upgrade_delay_seconds": {
+      "value": 0,
+      "note": "Bridge contract upgradeable with no delay by a single EOA. Instant upgrade = instant fund loss risk.",
+      "tier": "documented",
+      "source": "L2Beat: 'There is no delay on code upgrades (CRITICAL).'"
+    },
+    "lp_exit": {
+      "note": "Hyperliquid uses a vault model (HLP) for LP. HLP vault withdrawals go through the same bridge mechanism.",
+      "can_exit_without_validators": false,
+      "tier": "documented",
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/bridge"
+    },
+    "trader_exit": {
+      "mechanism": "Withdraw from Hyperliquid L1 account → bridge co-signed by 2/3+ validators → Arbitrum USDC transfer",
+      "can_exit_without_validators": false,
+      "tier": "documented",
+      "source": "https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/bridge"
+    },
+    "can_user_exit_unilaterally": {
+      "value": false,
+      "reason": "Withdrawals require 2/3+ staking-weighted validator co-signature. Historically executed by ~4 team-controlled EOAs. No forced exit mechanism. Bridge upgradeable by single EOA with no delay.",
+      "tier": "documented",
+      "source": "L2Beat + ChainArgos + bridge docs"
+    },
+    "exit_function": {
+      "value": "unknown",
+      "note": "No user-callable forced exit exists. Normal path: withdraw via HL UI → validators sign → Arbitrum settlement.",
+      "tier": "documented"
+    },
+    "exit_depends_on": {
+      "value": "validator set (2/3+ staking weight) + bridge upgrade EOA",
+      "tier": "documented",
+      "source": "L2Beat + bridge docs"
+    },
+    "forced_inclusion": {
+      "value": false,
+      "note": "No escape hatch. L2Beat: 'There is no window for users to exit in case of an unwanted upgrade since contracts are instantly upgradable.'",
+      "tier": "documented",
+      "source": "https://l2beat.com/scaling/projects/hyperliquid"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "note": "L1 is closed source. No known permissionless alternative frontend for withdrawals."
+    }
+  }
+}

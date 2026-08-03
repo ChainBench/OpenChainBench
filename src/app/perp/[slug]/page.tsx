@@ -4,31 +4,79 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ExternalLink } from "lucide-react";
 import { SITE } from "@/data/site";
 import { PERP_VENUES } from "@/lib/perp-stats";
-import {
-  PERP_VENUE_META,
-  benchRowsForVenue,
-} from "@/lib/perp-venue-context";
+import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
+import { fmtUnit } from "@/lib/format";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
-import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { PerpBarChart } from "@/components/perp-bar-chart";
 import { logoPath } from "@/lib/logo-manifest";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import type { Benchmark } from "@/types/benchmark";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type Params = { slug: string };
 
+const LIVE_PERP_BENCH_SLUGS = [
+  "perp-fees",
+  "perp-funding",
+  "perp-active-markets",
+  "perp-execution-quality",
+  "perp-mark-price-lag",
+  "perp-funding-stability",
+  "perp-protocol-longevity",
+  "perp-cost-slope",
+  "perp-volume-share",
+] as const;
+
 function resolveVenue(slug: string) {
-  // "gmx" product slug → "gmx-v2" cohort slug
   const cohortSlug = slug === "gmx" ? "gmx-v2" : slug;
   const seed = PERP_VENUES.find((v) => v.slug === cohortSlug);
   const meta = PERP_VENUE_META[cohortSlug];
   if (!seed || !meta) return null;
   return { seed, meta, cohortSlug, productSlug: slug };
+}
+
+type BenchRanking = {
+  benchSlug: string;
+  bench: Benchmark;
+  rank: number;
+  totalRanked: number;
+  p50: number;
+  hasData: boolean;
+};
+
+function buildRankings(
+  blobs: (Benchmark | null)[],
+  cohortSlug: string,
+): BenchRanking[] {
+  return LIVE_PERP_BENCH_SLUGS.flatMap((slug, i) => {
+    const bench = blobs[i];
+    if (!bench) return [];
+    const live = bench.results.filter(
+      (r) => r.availability !== "unavailable" && !r.unresponsive,
+    );
+    const sorted = [...live].sort((a, b) =>
+      bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
+    const idx = sorted.findIndex((r) => r.slug === cohortSlug);
+    if (idx < 0) return [];
+    const result = sorted[idx];
+    return [
+      {
+        benchSlug: slug,
+        bench,
+        rank: idx + 1,
+        totalRanked: sorted.length,
+        p50: result.ms.p50,
+        hasData: result.ms.p50 > 0,
+      },
+    ];
+  }).sort((a, b) => a.rank - b.rank);
 }
 
 export async function generateMetadata({
@@ -90,16 +138,21 @@ export default async function PerpVenuePage({
 
   const { seed, meta, cohortSlug } = v;
 
-  const [cohort, kpis, ext] = await Promise.all([
+  const [, kpis, ext, ...benchBlobs] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpVenueKpis(cohortSlug),
     fetchPerpVenueExternalStats(cohortSlug),
+    ...LIVE_PERP_BENCH_SLUGS.map((s) => loadBenchFromBlob(s)),
   ]);
 
-  const venueRow = cohort?.venues.find((r) => r.slug === cohortSlug);
-  const benchRows =
-    cohort && venueRow ? benchRowsForVenue(cohort, venueRow) : [];
-  const measured = benchRows.filter((r) => r.value !== null && r.rank !== null);
+  const rankings = buildRankings(benchBlobs as (Benchmark | null)[], cohortSlug);
+
+  const lastMeasured = rankings.reduce<string | null>((acc, a) => {
+    const t = a.bench.lastRunAt;
+    if (!t) return acc;
+    if (!acc || new Date(t) > new Date(acc)) return t;
+    return acc;
+  }, null);
 
   const externalHost = (() => {
     try {
@@ -299,19 +352,6 @@ export default async function PerpVenuePage({
         </section>
       )}
 
-      {/* OCB Rankings */}
-      {measured.length > 0 && (
-        <section className="mb-10">
-          <p
-            className="text-[10px] uppercase tracking-wide text-ink-faint mb-3"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
-          >
-            OpenChainBench rankings
-          </p>
-          <PerpVenueBenchCards rows={measured} />
-        </section>
-      )}
-
       {/* Vault / Protocol */}
       {hasVault && (
         <section className="mb-10">
@@ -365,6 +405,212 @@ export default async function PerpVenuePage({
           )}
         </section>
       )}
+
+      {/* Live benchmark results */}
+      {rankings.length > 0 && (
+        <section className="mb-10">
+          {lastMeasured && (() => {
+            const d = new Date(lastMeasured);
+            return (
+              <p className="mb-4 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Last measured{" "}
+                <time dateTime={d.toISOString()} className="text-ink-soft">
+                  {d.toUTCString().replace("GMT", "UTC")}
+                </time>
+              </p>
+            );
+          })()}
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted mb-4">
+            Live benchmark results
+          </h2>
+          <ol className="divide-y divide-rule border-y border-rule">
+            {rankings.map((a) => {
+              const value = a.hasData ? fmtUnit(a.p50, a.bench.unit) : null;
+              return (
+                <li key={a.benchSlug}>
+                  <Link
+                    href={`/benchmarks/${a.benchSlug}`}
+                    className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
+                  >
+                    <span
+                      className="font-sans tabular text-xl sm:text-2xl font-semibold w-12 text-center"
+                      style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
+                    >
+                      {a.hasData ? (
+                        <>
+                          #{a.rank}
+                          <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                            of {a.totalRanked}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
+                          awaiting
+                        </span>
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p
+                        className="font-sans text-[10px] uppercase tracking-[0.18em] font-medium"
+                        style={{ color: "var(--color-ink-faint)" }}
+                      >
+                        Trading
+                      </p>
+                      <h3 className="mt-0.5 display text-base sm:text-lg font-semibold leading-tight truncate">
+                        {a.bench.title}
+                      </h3>
+                      <p className="text-xs text-ink-muted truncate">{a.bench.metric}</p>
+                    </div>
+                    <div className="col-start-2 sm:col-start-3 text-left sm:text-right">
+                      {value ? (
+                        <>
+                          <p className="font-sans tabular text-base text-ink">{value}</p>
+                          <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
+                            p50 · 24h
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
+                          data warming up
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+
+      {/* Embeddable badges — only for rank #1 appearances */}
+      {(() => {
+        const winnerRankings = rankings.filter((a) => a.rank === 1 && a.hasData);
+        if (winnerRankings.length === 0) return null;
+        return (
+          <section className="mb-10">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Embeddable badges
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              Drop these on your site to show your ranking. The SVG fetches the
+              latest figures on every request so the badge stays accurate without
+              redeploying.
+            </p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {winnerRankings.map((a) => {
+                const badgePath = `/api/badge/${a.benchSlug}/${cohortSlug}`;
+                const badgeUrl = `${SITE.url}${badgePath}`;
+                const targetUrl = `${SITE.url}/benchmarks/${a.benchSlug}`;
+                const altText = `Ranked #1 on OpenChainBench: ${a.bench.title}`;
+                const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="${altText}" height="44" /></a>`;
+                const markdown = `[![${altText}](${badgeUrl})](${targetUrl})`;
+                const tweetText = `Independently benchmarked #1 on ${a.bench.title} by @OpenChainBench.\n\nReproducible methodology, live data:`;
+                const tweetIntent = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(targetUrl)}`;
+                return (
+                  <li key={`badge-${a.benchSlug}`} className="card-soft p-4">
+                    <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                      {a.bench.title}
+                    </p>
+                    <div className="mt-3 flex items-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={badgePath}
+                        alt={altText}
+                        height={44}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                      <a
+                        href={tweetIntent}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-ink"
+                      >
+                        Share on X
+                        <ArrowUpRight size={11} strokeWidth={2} />
+                      </a>
+                    </div>
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                        Copy HTML
+                      </summary>
+                      <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{html}
+                      </pre>
+                    </details>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                        Copy Markdown
+                      </summary>
+                      <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{markdown}
+                      </pre>
+                    </details>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })()}
+
+      {/* Compare to other perp venues */}
+      {(() => {
+        const otherVenues = PERP_VENUES
+          .filter((v) => v.slug !== cohortSlug)
+          .map((v) => {
+            const sharedCount = (benchBlobs as (Benchmark | null)[]).filter(
+              (b) => b && b.results.some((r) => r.slug === v.slug),
+            ).length;
+            return { ...v, sharedCount };
+          })
+          .filter((v) => v.sharedCount > 0)
+          .sort((a, b) => b.sharedCount - a.sharedCount);
+        if (otherVenues.length === 0) return null;
+        return (
+          <section className="mb-10">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Compare {seed.name} to alternatives
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              Other perp venues benchmarked on the same metrics.
+            </p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {otherVenues.map((v) => {
+                const lp = logoPath(v.slug);
+                return (
+                  <li key={v.slug}>
+                    <Link
+                      href={`/perp/${v.slug === "gmx-v2" ? "gmx" : v.slug}`}
+                      className="card-soft p-4 flex items-center gap-3 h-full hover:border-ink/40 transition-colors"
+                    >
+                      {lp ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={lp} alt={v.name} width={32} height={32} className="rounded object-contain shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-paper-soft border border-rule flex items-center justify-center text-xs font-semibold text-ink-soft shrink-0">
+                          {v.name[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-ink leading-tight truncate">{v.name}</p>
+                        <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
+                          {v.sharedCount} shared{" "}
+                          {v.sharedCount === 1 ? "benchmark" : "benchmarks"}
+                        </p>
+                      </div>
+                      <ArrowUpRight size={14} strokeWidth={2} className="shrink-0 text-ink-faint" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })()}
 
       {/* Footer links */}
       <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-8 border-t border-rule text-[12px] text-ink-faint">

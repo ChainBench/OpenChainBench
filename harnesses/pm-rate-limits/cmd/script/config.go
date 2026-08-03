@@ -8,7 +8,7 @@ import (
 
 // userAgent identifies every probe per the OCB methodology page. Venues can
 // contact us or block the UA selectively instead of banning a bare Go client.
-const userAgent = "OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@mobula.io)"
+const userAgent = "OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@openchainbench.com)"
 
 // Config groups the env-driven knobs the harness needs at startup. Direct
 // venue probes don't need any of these; the aggregator goroutines stay
@@ -17,8 +17,8 @@ type Config struct {
 	MobulaAPIKey         string // Authorization: <key> on api.mobula.io
 	PredexonAPIKey       string // x-api-key on api.predexon.com
 	DefinedSessionCookie string // 7-day cookie used to mint Codex JWT
-	KalshiAPIKeyID       string // KALSHI-ACCESS-KEY header for WS auth
-	KalshiPrivateKeyPEM  string // RSA private key PEM for WS signature
+	KalshiAPIKeyID      string // KALSHI-ACCESS-KEY header for WS auth
+	KalshiPrivateKeyPEM string // RSA private key PEM for WS signature
 }
 
 func loadConfig() Config {
@@ -26,8 +26,8 @@ func loadConfig() Config {
 		MobulaAPIKey:         strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
 		PredexonAPIKey:       strings.TrimSpace(os.Getenv("PREDEXON_API_KEY")),
 		DefinedSessionCookie: strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE")),
-		KalshiAPIKeyID:       strings.TrimSpace(os.Getenv("KALSHI_API_KEY_ID")),
-		KalshiPrivateKeyPEM:  strings.TrimSpace(os.Getenv("KALSHI_PRIVATE_KEY_PEM")),
+		KalshiAPIKeyID:      strings.TrimSpace(os.Getenv("KALSHI_API_KEY_ID")),
+		KalshiPrivateKeyPEM: strings.TrimSpace(os.Getenv("KALSHI_PRIVATE_KEY_PEM")),
 	}
 	fmt.Printf("[providers] mobula=%v predexon=%v codex=%v kalshi_ws=%v\n",
 		cfg.MobulaAPIKey != "", cfg.PredexonAPIKey != "", cfg.DefinedSessionCookie != "",

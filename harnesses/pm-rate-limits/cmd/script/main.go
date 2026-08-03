@@ -33,7 +33,7 @@ func main() {
 	defer stop()
 
 	pinClient := &http.Client{Timeout: 20 * time.Second}
-	vs := venues()
+	vs := venues(cfg)
 	stateByVenue := map[string]*venueState{}
 	for _, v := range vs {
 		v.state = newVenueState()
@@ -50,6 +50,9 @@ func main() {
 		}
 		if v.Slug == "kalshi" && cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "" {
 			go runKalshiWS(ctx, v.state, cfg.KalshiAPIKeyID, cfg.KalshiPrivateKeyPEM)
+		}
+		if v.Slug == "kalshi" && cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "" {
+			go runKalshiTradeRestPoll(ctx, v.state)
 		}
 	}
 

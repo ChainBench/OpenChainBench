@@ -673,6 +673,116 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_IMMUTABLE_THIRDWEB", "https://immutable-zkevm.rpc.thirdweb.com")},
 			},
 		},
+		// ─── Kava EVM (bench 121) — added 2026-08-02. Cosmos SDK L1
+		// (chain 2222) with native EVM execution, ~5 s block time.
+		// The 2026-07-03 long-tail sweep excluded Kava for not meeting
+		// the 3-provider threshold; re-audit on 2026-08-02 confirms
+		// Thirdweb now supports Kava EVM, restoring 3 clean keyless
+		// providers. Live-verified: kava-official (evm.kava.io), drpc
+		// (kava.drpc.org), thirdweb (kava.rpc.thirdweb.com). Excluded:
+		// PublicNode (method-not-found on eth_getBlockByNumber), Tenderly
+		// (no kava route), Blast API (no listing), OnFinality (429 on
+		// public quota without key), 1RPC (unknown network).
+		{
+			Slug: "kava",
+			Name: "Kava",
+			Providers: []Provider{
+				{Slug: "kava-official", Name: "Kava Labs", URL: envDefault("RPC_URL_KAVA_OFFICIAL", "https://evm.kava.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAVA_DRPC", "https://kava.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KAVA_THIRDWEB", "https://kava.rpc.thirdweb.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KAVA_PUBLICNODE", "https://kava-evm-rpc.publicnode.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_KAVA_ANKR", "https://rpc.ankr.com/kava_evm")},
+			},
+		},
+		// ─── Zora (bench 122) — added 2026-08-02. OP Stack rollup
+		// (chain 7777777) by Zora Network, ~2 s sequencer cadence, ETH
+		// gas, NFT-focused ecosystem. The 2026-07-03 long-tail sweep
+		// excluded Zora for having ≤2 keyless providers; re-audit on
+		// 2026-08-02 confirms Thirdweb now supports Zora, restoring
+		// 3 clean keyless providers. Live-verified: zora-official
+		// (rpc.zora.energy), drpc (zora.drpc.org), thirdweb
+		// (zora.rpc.thirdweb.com). Excluded: Tenderly (no zora route),
+		// Alchemy public (ZORA_MAINNET not enabled on public tier),
+		// Blast API (discontinued).
+		{
+			Slug: "zora",
+			Name: "Zora",
+			Providers: []Provider{
+				{Slug: "zora-official", Name: "Zora Network", URL: envDefault("RPC_URL_ZORA_OFFICIAL", "https://rpc.zora.energy")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZORA_DRPC", "https://zora.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZORA_THIRDWEB", "https://zora.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-02 audit. Abstract ZK Stack (chain 2741). 3 clean keyless
+		// providers. Live-verified: abstract-official (api.mainnet.abs.xyz),
+		// drpc (abstract.drpc.org), thirdweb (abstract.rpc.thirdweb.com).
+		// Excluded: Ankr (no abstract route), Alchemy (key required),
+		// Infura (key required), QuickNode (key required).
+		{
+			Slug: "abstract",
+			Name: "Abstract",
+			Providers: []Provider{
+				{Slug: "abstract-official", Name: "Abstract Foundation", URL: envDefault("RPC_URL_ABSTRACT_OFFICIAL", "https://api.mainnet.abs.xyz")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ABSTRACT_DRPC", "https://abstract.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ABSTRACT_THIRDWEB", "https://abstract.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-02 audit. ApeChain Arbitrum Orbit L3 (chain 33139). 3 clean
+		// keyless providers. Live-verified: apechain-official
+		// (rpc.apechain.com/http), drpc (apechain.drpc.org), thirdweb
+		// (apechain.rpc.thirdweb.com). Excluded: Alchemy (key required),
+		// QuickNode (key required), Infura (no apechain route).
+		{
+			Slug: "apechain",
+			Name: "ApeChain",
+			Providers: []Provider{
+				{Slug: "apechain-official", Name: "ApeChain", URL: envDefault("RPC_URL_APECHAIN_OFFICIAL", "https://rpc.apechain.com/http")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_APECHAIN_DRPC", "https://apechain.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_APECHAIN_THIRDWEB", "https://apechain.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-02 audit. Lisk OP Stack L2 (chain 1135). 3 clean keyless
+		// providers. Live-verified: lisk-official (rpc.api.lisk.com),
+		// drpc (lisk.drpc.org), thirdweb (lisk.rpc.thirdweb.com). Excluded:
+		// Blast API (no lisk route), Alchemy (key required), Infura (no lisk
+		// route), QuickNode (key required).
+		{
+			Slug: "lisk",
+			Name: "Lisk",
+			Providers: []Provider{
+				{Slug: "lisk-official", Name: "Lisk", URL: envDefault("RPC_URL_LISK_OFFICIAL", "https://rpc.api.lisk.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_LISK_DRPC", "https://lisk.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_LISK_THIRDWEB", "https://lisk.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-02 audit. Swellchain OP Stack L2 (chain 1923). 3 clean
+		// keyless providers. Live-verified: ankr (rpc.ankr.com/swell), sentio
+		// (swell-mainnet.rpc.sentio.xyz), thirdweb (1923.rpc.thirdweb.com).
+		// Excluded: official alt.technology endpoint (401 without key),
+		// drpc (no swell route), Alchemy (key required).
+		{
+			Slug: "swellchain",
+			Name: "Swellchain",
+			Providers: []Provider{
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_SWELLCHAIN_ANKR", "https://rpc.ankr.com/swell")},
+				{Slug: "sentio", Name: "Sentio", URL: envDefault("RPC_URL_SWELLCHAIN_SENTIO", "https://swell-mainnet.rpc.sentio.xyz")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SWELLCHAIN_THIRDWEB", "https://1923.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-02 audit. Cyber Network OP Stack L2 (chain 7560). 3 clean
+		// keyless providers. Live-verified: cyber-official (rpc.cyber.co),
+		// altlayer (cyber.alt.technology), thirdweb (7560.rpc.thirdweb.com).
+		// Excluded: drpc (no cyber route), Blast API (no listing),
+		// Alchemy (key required).
+		{
+			Slug: "cyber",
+			Name: "Cyber",
+			Providers: []Provider{
+				{Slug: "cyber-official", Name: "Cyber Network", URL: envDefault("RPC_URL_CYBER_OFFICIAL", "https://rpc.cyber.co")},
+				{Slug: "altlayer", Name: "AltLayer", URL: envDefault("RPC_URL_CYBER_ALTLAYER", "https://cyber.alt.technology")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CYBER_THIRDWEB", "https://7560.rpc.thirdweb.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))

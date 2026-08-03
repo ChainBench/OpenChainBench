@@ -337,6 +337,38 @@ func pinSmarkets(ctx context.Context, c *http.Client, avoid string) (Pin, error)
 	return Pin{}, errors.New("smarkets: no open politics market with live quotes found")
 }
 
+func pinMetaculus(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	var out struct {
+		Results []struct {
+			ID        int    `json:"id"`
+			CloseTime string `json:"close_time"`
+			Active    bool   `json:"active"`
+		} `json:"results"`
+	}
+	url := "https://www.metaculus.com/api2/questions/?limit=50&order_by=-activity&status=open&type=forecast&forecast_type=binary"
+	if err := fetchJSON(ctx, c, url, &out); err != nil {
+		return Pin{}, fmt.Errorf("metaculus list: %w", err)
+	}
+	for _, m := range out.Results {
+		if !m.Active {
+			continue
+		}
+		id := fmt.Sprintf("%d", m.ID)
+		if id == avoid {
+			continue
+		}
+		ct, err := time.Parse(time.RFC3339, m.CloseTime)
+		if err != nil {
+			continue
+		}
+		if time.Until(ct) < minPinHorizon {
+			continue
+		}
+		return Pin{Market: id, Expiry: ct}, nil
+	}
+	return Pin{}, errors.New("metaculus: no open binary question with >24h close horizon")
+}
+
 // stalenessPolymarket reads the ms timestamp Polymarket embeds in every book
 // response (string in the docs, tolerate a bare number).
 func stalenessPolymarket(class string, body []byte) (int64, bool) {

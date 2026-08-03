@@ -26,11 +26,12 @@ type Venue struct {
 // Order = display order in the PM hub.
 // Adding a new venue: append here, append on the OCB site, redeploy both.
 var Registry = []Venue{
-	{Slug: "polymarket", Name: "Polymarket", Type: "onchain", Chain: "polygon"},
-	{Slug: "kalshi", Name: "Kalshi", Type: "offchain", Chain: ""},
-	{Slug: "limitless", Name: "Limitless", Type: "onchain", Chain: "base"},
-	{Slug: "manifold", Name: "Manifold", Type: "offchain", Chain: ""},
-	{Slug: "myriad", Name: "Myriad", Type: "offchain", Chain: ""},
+	{Slug: "polymarket",    Name: "Polymarket",    Type: "onchain",  Chain: "polygon"},
+	{Slug: "polymarket-us", Name: "Polymarket US", Type: "offchain", Chain: ""},
+	{Slug: "kalshi",        Name: "Kalshi",        Type: "offchain", Chain: ""},
+	{Slug: "limitless",     Name: "Limitless",     Type: "onchain",  Chain: "base"},
+	{Slug: "manifold",      Name: "Manifold",      Type: "offchain", Chain: ""},
+	{Slug: "myriad",        Name: "Myriad",        Type: "onchain",  Chain: "abstract"},
 }
 
 // VenueBySlug returns the Venue with the given slug, or nil if not found.

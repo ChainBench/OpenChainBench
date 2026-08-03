@@ -1,0 +1,95 @@
+{
+  "chain": "arbi",
+  "project": "gains",
+  "addresses": [
+    "0xFF162c694eAA571f685030649814282eA457f169",
+    "0xe18be0113c38c91b3B429d04fDeb84359fBCb2eB",
+    "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+    "0x1632C38cB208df8409753729dBfbA5c58626F637",
+    "0x7edDE7e5900633F698EaB0Dbc97DE640fC5dC015",
+    "0xd85E038593d7A098614721EaE955EC2022B9B91B",
+    "0x4BeeF1113F968326905224D2Ca272f3032A9a9F4",
+    "0x5977A9682D7AF81D347CFc338c61692163a2784C",
+    "0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0"
+  ],
+  "sources": [
+    {
+      "address": "0xFF162c694eAA571f685030649814282eA457f169",
+      "label": "GNSMultiCollatDiamond",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": true,
+      "proxy_type": "EIP-2535 Diamond + EIP-1967",
+      "implementation": "0xff84c4a0d639d598af2088e2ffb76cdbdf1de0ed",
+      "impl_slot_read": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+      "admin_slot_read": "0xe18be0113c38c91b3b429d04fdeb84359fbcb2eb"
+    },
+    {
+      "address": "0xe18be0113c38c91b3B429d04fDeb84359fBCb2eB",
+      "label": "ProxyAdmin",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null,
+      "note": "OZ ProxyAdmin; getProxyImplementation(diamond) returns 0xff84c4... confirmed on-chain"
+    },
+    {
+      "address": "0x5f5E4892BAB94d94DC57a3edeA3c138167c4DF0F",
+      "label": "GNSTimelockOwner (14-day)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null,
+      "note": "TimelockController; getMinDelay() = 1209600 confirmed on-chain; owner of ProxyAdmin"
+    },
+    {
+      "address": "0x1632C38cB208df8409753729dBfbA5c58626F637",
+      "label": "GNSTimelockManager (3-day)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null,
+      "note": "TimelockController; getMinDelay() = 259200 confirmed on-chain"
+    },
+    {
+      "address": "0x7edDE7e5900633F698EaB0Dbc97DE640fC5dC015",
+      "label": "GNSStaking",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xd85E038593d7A098614721EaE955EC2022B9B91B",
+      "label": "gDAI vault (ERC4626)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x4BeeF1113F968326905224D2Ca272f3032A9a9F4",
+      "label": "gGNS vault (ERC4626)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0x5977A9682D7AF81D347CFc338c61692163a2784C",
+      "label": "gETH vault (ERC4626)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    },
+    {
+      "address": "0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0",
+      "label": "gUSDC vault (ERC4626)",
+      "found_at": "https://docs.gains.trade/what-is-gains-network/contract-addresses/arbitrum-mainnet",
+      "consulted_at": "2026-08-02T19:08:53Z",
+      "is_proxy": false,
+      "implementation": null
+    }
+  ]
+}

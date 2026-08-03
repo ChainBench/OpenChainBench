@@ -1,0 +1,256 @@
+{
+  "project": "ostium",
+  "measured_at": "2026-08-02T19:08:53Z",
+  "block": 490422447,
+  "chain_id": 42161,
+  "rpc_used": "https://arb1.arbitrum.io/rpc",
+
+  "contracts": {
+    "oLP_vault_proxy": {
+      "value": "0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+      "source": "https://ostium-labs.gitbook.io/ostium-docs/security/smart-contract-audits + Arbiscan",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "oLP_vault_impl": {
+      "value": "0x1E20E46C92F0786889462F065BC9DA163AF6020D",
+      "source": "cast storage oLP-proxy EIP-1967-impl-slot",
+      "block": 490419994,
+      "measured_at": "2026-08-02T18:58:36Z"
+    },
+    "Trading_proxy": {
+      "value": "0x6d0ba1f9996dbd8885827e1b2e8f6593e7702411",
+      "source": "https://ostium-labs.gitbook.io/ostium-docs/security/smart-contract-audits + Arbiscan",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Trading_impl": {
+      "value": "0x8cbb5bd2b46f993078407cea26704af0a901515a",
+      "source": "cast storage Trading-proxy EIP-1967-impl-slot",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Registry": {
+      "value": "0x799a139ae56e11f0476ace2f6118cfcaed9608d2",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "TradingCallbacks": {
+      "value": "0x7720fc8c8680bf4a1af99d44c6c265a74e9742a9",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Verifier": {
+      "value": "0xccf233920e8cc9415ecf503b992881d69b6c47ad",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "PairInfos_proxy": {
+      "value": "0x3890243a8fc091c626ed26c087a028b46bc9d66c",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "PairsStorage_proxy": {
+      "value": "0x260e349f643f12797fdc6f8c9d3df211d5577823",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "TradingStorage": {
+      "value": "0xccd5891083a8acd2074690f65d3024e7d13d66e7",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "PriceRouter": {
+      "value": "0x4b0c3c77d398912491f192d265b237c8d4441ad7",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "TimelockOwner": {
+      "value": "0xeb85dc6095c74d36500c9cdcacc15ecdc223bbf7",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "ProxyAdmin": {
+      "value": "0x083f97babf33d4abc03151b5dec98170761f4025",
+      "source": "Arbiscan label search",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+
+  "owners": {
+    "ProxyAdmin_owner": {
+      "value": "0xeb85dc6095c74d36500c9cdcacc15ecdc223bbf7",
+      "source": "cast call ProxyAdmin owner() = 0xeB85dC6095c74D36500C9cdcaCc15EcDC223Bbf7 (same as TimelockOwner)",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "resolved": {
+        "type": "timelock",
+        "label": "TimelockOwner",
+        "min_delay_seconds": 64800,
+        "min_delay_hours": 18,
+        "source": "cast call TimelockOwner getMinDelay() = 64800"
+      }
+    },
+    "TimelockOwner_proposer": {
+      "value": "0x1cd84f9b95d3fc7dbba5f7428fb17c4f2ee29e50",
+      "source": "RoleGranted event (topic PROPOSER_ROLE, grantee 0x1cd84f9b) from block 228313384 tx 0x2b8830d7. Verified via cast logs on TimelockOwner.",
+      "block": 228313384,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "resolved": {
+        "type": "safe",
+        "threshold": 4,
+        "total_owners": 8,
+        "owner_addresses": [
+          "0xAc7935dB621535b94a3D77b1a853B22db5D4F3aC",
+          "0x640EcDE463f2a54845251E2399068A80b12F488D",
+          "0x5C9E16750380072776fC39Daf59B20514d954a17",
+          "0x190628DEe27F8763b7ccDA0956493A87794d3637",
+          "0xe193d97f6b92712A4e9B947b23EF2F7569C950eb",
+          "0xAC40c7AAF02466D2358891e1e995801331173EAc",
+          "0x25d83C56f6a57bE4ce419694cBa98BEDc31E0b4b",
+          "0xb27f1880Bdf972BFb586EC486CB9348cADB0B71B"
+        ],
+        "source": "cast call 0x1cd84f9b95d3fc7dbba5f7428fb17c4f2ee29e50 getThreshold() = 4; getOwners() = [8 addresses]",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    },
+    "TimelockOwner_executor": {
+      "value": "0x1cd84f9b95d3fc7dbba5f7428fb17c4f2ee29e50",
+      "source": "RoleGranted event (topic 0xfd643c72 = EXECUTOR_ROLE per OZ keccak, grantee 0x1cd84f9b) from block 228313384 same tx. The EXECUTOR_ROLE bytes32 = 0xd8aa0f3194971a2a116679f7c2090f6939c8d4e01a2a8d7e41d55e5351469e63.",
+      "block": 228313384,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+
+  "permissions": {
+    "scanner_result": "completed",
+    "scanner_tool": "deficollective/permission-scanner (crytic-compile + Slither)",
+    "scanner_ran_at": "2026-08-02T19:08:53Z",
+    "key_permissioned_functions": [
+      "OstiumVault.requestWithdraw(uint256) — no onlyOwner; user-callable BUT initiates async flow",
+      "OstiumVault.claimWithdraw(uint256) — no onlyOwner; user-callable ONLY after operator settles",
+      "OstiumVault.settle(uint256,uint256) — modifier: onlyGov (settlement gate; operator-only)",
+      "OstiumVault.setGov(address) — modifier: onlyGov",
+      "OstiumVault.pause()/unpause() — modifier: onlyGov",
+      "OstiumTrading.openTrade(...) x22 — modifier: onlyGov",
+      "OstiumTrading.setGov(address) — modifier: onlyGov",
+      "OstiumTradingCallbacks.updateTp/updateSl/closeTrade x16 — modifier: onlyGov",
+      "OstiumTradingStorage.setGov(address)/addSupportedToken(address) x34 — modifier: onlyGov",
+      "OstiumTimelockOwner.schedule/execute/grantRole — OZ standard (PROPOSER/EXECUTOR/ADMIN)"
+    ],
+    "manual_observations": [
+      "ProxyAdmin controls upgrades for oLP vault, Trading, PairInfos, PairsStorage proxies.",
+      "ProxyAdmin owner = TimelockOwner (18h delay) which is itself proposer/executor = Gnosis Safe 4/8.",
+      "Full governance path: Safe 4/8 → Timelock 18h → ProxyAdmin → proxy upgrades.",
+      "KEY FINDING: tryNewSettlement() is PUBLIC — anyone can advance the settlement counter after maxSettlementInterval has elapsed. No admin permission required for the fallback. This is the censorship-resistance mechanism.",
+      "forceSettlement: onlyGov is an emergency override (bypasses interval check), not the required path for normal withdrawals.",
+      "maxSettlementInterval: gov changed from 24h (init) to 30 days. Last settlement was 19 days ago (2026-07-14). tryNewSettlement() not yet callable. withdrawSettlementDelay=2 means 3 settlements needed for a complete withdrawal.",
+      "Governance risk: updateMaxSettlementInterval(onlyGov) and updateWithdrawSettlementDelay(onlyGov) both expand the maximum lock period. Current worst-case: 90 days.",
+      "Pause is on OstiumTrading/OstiumTradingCallbacks (onlyManager) — does NOT affect OstiumVault LP withdrawals.",
+      "Ostium uses Stork + Chainlink price feeds; oracle is an operator dependency for trade settlement."
+    ]
+  },
+
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "source": "User funds (LP deposits) held in oLP vault proxy (0x20d419...). Trader collateral also in vault.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "funds_contract": {
+      "value": "0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+      "source": "https://ostium-labs.gitbook.io/ostium-docs/security/smart-contract-audits + Arbiscan",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "contracts_verified": {
+      "value": true,
+      "source": "Etherscan API v2 (chainid=42161): oLP vault proxy verified (TransparentUpgradeableProxy, solc 0.8.9), oLP vault impl verified (OstiumVault, solc 0.8.24), Trading proxy verified (solc 0.8.9), Trading impl verified (OstiumTrading, solc 0.8.24), TimelockOwner verified (solc 0.8.24). Source code downloaded successfully by permission-scanner.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "chain": {
+      "value": "arbitrum",
+      "chain_id": 42161,
+      "source": "Arbiscan confirms all addresses on Arbitrum One",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "chain_l2beat_stage": {
+      "value": 1,
+      "source": "https://l2beat.com/scaling/summary — Arbitrum One listed as Stage 1. Fetched 2026-08-02.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "upgrade_delay_seconds": {
+      "value": 64800,
+      "source": "TimelockOwner.getMinDelay() = 64800 (18 hours). This gates ProxyAdmin which controls proxy upgrades.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "lp_exit": {
+      "mechanism": "3-step: requestWithdraw(shares) → wait withdrawSettlementDelay (=2) settlements to pass → claimWithdraw(settlementId)",
+      "permission_gate": "none — claimWithdraw has no modifier. requestWithdraw uses checks (balance gate only).",
+      "settlement_advancement": "CRITICAL: settlements advance two ways — (a) operator calls _settlement() via normal protocol flow; (b) anyone calls tryNewSettlement() PUBLIC function after maxSettlementInterval has elapsed. Fallback exists, no admin permission to use it.",
+      "current_state": {
+        "lastSettlementId": 125,
+        "lastSettlementTs": "2026-07-14T23:39:08Z",
+        "days_since_last_settlement": 19,
+        "maxSettlementInterval_seconds": 2592000,
+        "maxSettlementInterval_days": 30,
+        "withdrawSettlementDelay": 2,
+        "tryNewSettlement_callable_in_days": 11,
+        "worst_case_exit_days": 90,
+        "note": "maxSettlementInterval was initialized at 24h but gov changed it to 30 days. Last settlement 19 days ago — tryNewSettlement() not yet callable. User requesting withdrawal today needs 3 settlements; each at most 30 days apart: worst-case 90-day lock."
+      },
+      "can_exit_without_operator": "true with delay — fallback tryNewSettlement() allows anyone to trigger after maxSettlementInterval. But gov controls that interval (currently 30 days, was 24h).",
+      "governance_risk": "updateMaxSettlementInterval onlyGov: if gov increases interval to max, effective max lock increases proportionally. updateWithdrawSettlementDelay onlyGov: adding settlement IDs multiplies the wait.",
+      "tier": "bytecode + onchain",
+      "source": "OstiumVault.sol source (verified solc 0.8.24). tryNewSettlement() public function confirmed. On-chain reads: lastSettlementId=125, lastSettlementTs=1784072348 (2026-07-14), maxSettlementInterval=2592000, withdrawSettlementDelay=2.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "can_user_exit_unilaterally": {
+      "value": true,
+      "qualifier": "time-gated with public fallback — worst-case 90 days if protocol goes dark (3 × 30-day interval). No admin approval required but gov controls interval length.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_function": {
+      "value": "requestWithdraw(uint256 shares) then claimWithdraw(uint32 settlementId) on OstiumVault 0x20d419a8e12c45f88fda7c5760bb6923cee27f98",
+      "tier": "bytecode",
+      "source": "OstiumVault impl 0x1E20E46C92F0786889462F065BC9DA163AF6020D (solc 0.8.24)",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_depends_on": {
+      "value": "operator",
+      "source": "Stork + Chainlink oracle feeds required for trade settlement. TradingCallbacks contract processes order outcomes. Without oracle liveness, settlement is blocked.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "forced_inclusion": {
+      "value": "n/a",
+      "source": "Ostium is a dApp on Arbitrum One, not a rollup.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "source": "Not verified.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "project": "gmx-v2",
+  "measured_at": "2026-08-02T19:08:53Z",
+  "block": 490422447,
+  "chain_id": 42161,
+  "rpc_used": "https://arb1.arbitrum.io/rpc",
+  "contracts": {
+    "ExchangeRouter": {
+      "value": "0x602b805EedddBbD9ddff44A7dcBD46cb07849685",
+      "source": "Arbiscan label 'GMX: ExchangeRouter'; confirmed on-chain: dataStore() returns DataStore address 0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "DataStore": {
+      "value": "0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/DataStore.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "RoleStore": {
+      "value": "0x3c3d99FD298f679DBC2CEcd132b4eC4d0F5e6e72",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/RoleStore.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "EventEmitter": {
+      "value": "0xC8ee91A54287DB53897056e12D9819156D3822Fb",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/EventEmitter.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "OrderVault": {
+      "value": "0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/OrderVault.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "DepositVault": {
+      "value": "0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/DepositVault.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "WithdrawalVault": {
+      "value": "0x0628D46b5D145f183AdB6Ef1f2c97eD1C4701C55",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/WithdrawalVault.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "MarketFactory": {
+      "value": "0xf5F30B10141E1F63FC11eD772931A8294a591996",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/MarketFactory.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "OracleStore": {
+      "value": "0xA8AF9B86fC47deAde1bc66B12673706615E2B011",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/OracleStore.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "GovTimelockController": {
+      "value": "0xFBEff82f2DD5E51B8AF34b57cf788b4b09d466F9",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/GovTimelockController.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "Timelock_custom": {
+      "value": "0x7A967D114B8676874FA2cFC1C14F3095C88418Eb",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/Timelock.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "ProtocolGovernor": {
+      "value": "0x03e8f708e9C85EDCEaa6AD7Cd06824CeB82A7E68",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/ProtocolGovernor.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "GovToken": {
+      "value": "0x2A29D3a792000750807cc401806d6fd539928481",
+      "source": "https://github.com/gmx-io/gmx-synthetics/blob/main/deployments/arbitrum/GovToken.json",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    }
+  },
+  "owners": {
+    "GovTimelockController_proposer": {
+      "value": "0x03e8f708e9C85EDCEaa6AD7Cd06824CeB82A7E68",
+      "source": "cast call GovTimelockController hasRole(PROPOSER_ROLE, ProtocolGovernor) = true",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "resolved": {
+        "type": "governor",
+        "label": "ProtocolGovernor",
+        "proposal_threshold_tokens": "30000000000000000000000",
+        "voting_delay_blocks": 86400,
+        "source": "cast call ProtocolGovernor proposalThreshold() + votingDelay()"
+      }
+    },
+    "GovTimelockController_executor": {
+      "value": "0x03e8f708e9C85EDCEaa6AD7Cd06824CeB82A7E68",
+      "source": "cast call GovTimelockController hasRole(EXECUTOR_ROLE, ProtocolGovernor) = true",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "GovTimelockController_min_delay": {
+      "value": 86400,
+      "source": "cast call GovTimelockController getMinDelay() = 86400",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "custom_Timelock_delay": {
+      "value": 86400,
+      "source": "cast storage Timelock slot 1 = 0x15180 = 86400. Standard functions (getMinDelay, admin) revert: non-OZ interface.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "custom_Timelock_admin": {
+      "value": "resolved via RoleStore enumeration",
+      "source": "GMX Timelock inherits RoleModule \u2014 roles stored in RoleStore (0x3c3d99FD298f679DBC2CEcd132b4eC4d0F5e6e72). Role hashes: keccak256(abi.encode('TIMELOCK_ADMIN'))=0xf49b0c86..., keccak256(abi.encode('TIMELOCK_MULTISIG'))=0xe068a8d8...",
+      "TIMELOCK_MULTISIG": {
+        "count": 1,
+        "members": [
+          {
+            "address": "0x8D1d2e24eC641eDC6a1ebe0F3aE7af0EBC573e0D",
+            "type": "safe",
+            "threshold": 5,
+            "total_owners": 8,
+            "owner_addresses": [
+              "0xD7941C4Ca57a511F21853Bbc7FBF8149d5eCb398",
+              "0x32660E5Fe1C5d10330c019Df4eb522A78c1EC896",
+              "0x25B889f14B9E5bB65F97b456dcd1ce8a5ab0D855",
+              "0xd32b86F984254246005a1c1c5e0b6A48743Ddc93",
+              "0x49C9F377d48c417FEB1f4fb32BF2D9Eb04112Da3",
+              "0x9fCA624E05EfA27205e905a40f9cEE9cb455D890",
+              "0xeAA5600595a64a23480b2DF5FCA35A2867c912Ea",
+              "0xFbf5dC7C8911Bf3434e855374eC81414E44E2b12"
+            ]
+          }
+        ],
+        "source": "getRoleMemberCount(TIMELOCK_MULTISIG)=1, getRoleMembers()=[0x8D1d2e24]. getThreshold()=5, getOwners()=[8 addresses]",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      },
+      "TIMELOCK_ADMIN": {
+        "count": 4,
+        "members": [
+          {
+            "address": "0x8D1d2e24eC641eDC6a1ebe0F3aE7af0EBC573e0D",
+            "type": "safe_5_of_8"
+          },
+          {
+            "address": "0x35ea3066F90Db13e737BBd41f1ED7B4bfF8323b3",
+            "type": "EOA",
+            "note": "plain EOA \u2014 single private key can execute TIMELOCK_ADMIN functions"
+          },
+          {
+            "address": "0xE014cbD60A793901546178E1c16ad9132C927483",
+            "type": "EOA",
+            "note": "plain EOA \u2014 single private key"
+          },
+          {
+            "address": "0x58F582455b54d7c83d03BCeed95FAf72B37fdDD7",
+            "type": "safe",
+            "threshold": 4,
+            "total_owners": 6
+          }
+        ],
+        "finding": "2 of 4 TIMELOCK_ADMIN holders are plain EOAs. TIMELOCK_ADMIN can execute timelock admin functions (increaseTimelockDelay, setOracleProviderForToken, grantRole) with a single key. No multisig protection for these two holders.",
+        "source": "getRoleMemberCount(TIMELOCK_ADMIN)=4, getRoleMembers(0,4)=[4 addresses]. getThreshold() on each to determine type.",
+        "block": 490422447,
+        "measured_at": "2026-08-02T19:08:53Z"
+      }
+    }
+  },
+  "permissions": {
+    "scanner_result": "completed",
+    "scanner_tool": "deficollective/permission-scanner (crytic-compile + Slither)",
+    "scanner_ran_at": "2026-08-02T19:08:53Z",
+    "key_permissioned_functions": [
+      "DataStore.setUint/setInt/setAddress/setBool/setBytes32/setString/setBytes(...) x39 \u2014 modifier: onlyController (CONTROLLER role in RoleStore)",
+      "RoleStore.grantRole(address,bytes32) \u2014 modifier: onlyRoleAdmin",
+      "RoleStore.revokeRole(address,bytes32) \u2014 modifier: onlyRoleAdmin",
+      "OrderVault.transferOut(address,address,uint256) x7 \u2014 modifier: onlyController",
+      "GovTimelockController.schedule/scheduleBatch/execute/executeBatch/cancel \u2014 OZ standard (PROPOSER/EXECUTOR roles)",
+      "Timelock.signalSetGov(address) \u2014 modifier: onlyTimelockMultisig",
+      "Timelock.setGov(address) \u2014 modifier: onlyTimelockAdmin",
+      "Timelock.signalSetHandler(address,address,bool) \u2014 modifier: onlyTimelockMultisig",
+      "Timelock.processMint(address,address,uint256) \u2014 modifier: onlyTimelockAdmin",
+      "Timelock.setMaxLeverage(address,uint256) \u2014 modifier: onlyTimelockAdmin"
+    ],
+    "new_discoveries": [
+      "Custom Timelock uses two distinct roles: onlyTimelockMultisig (propose/signal) and onlyTimelockAdmin (execute/finalize). These are NOT standard OZ roles.",
+      "onlyTimelockMultisig holder: NOT resolved on-chain (gov()/owner()/timelockAdmin() revert on non-OZ interface). Requires event scan or Etherscan to identify.",
+      "onlyTimelockAdmin holder: NOT resolved on-chain. Same blocker.",
+      "DataStore is the central permission gate: all 39 setters gated by onlyController (= CONTROLLER role in RoleStore). Keeper bots hold CONTROLLER."
+    ],
+    "manual_observations": [
+      "RoleStore controls all role-based access. CONTROLLER role gives full protocol access.",
+      "GovTimelockController (1-day delay) is the governance path for on-chain changes.",
+      "Custom Timelock (1-day delay): signals require onlyTimelockMultisig, finalization requires onlyTimelockAdmin. Two-key scheme for critical operations.",
+      "No proxy upgrade pattern detected \u2014 contracts appear non-upgradeable (direct deployments per GitHub)."
+    ]
+  },
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "source": "Funds flow through OrderVault/DepositVault/WithdrawalVault on Arbitrum. GM token liquidity in market pools. All are public contracts.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "funds_contract": {
+      "value": "OrderVault: 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5 | DepositVault: 0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55 | WithdrawalVault: 0x0628D46b5D145f183AdB6Ef1f2c97eD1C4701C55",
+      "source": "https://github.com/gmx-io/gmx-synthetics/tree/main/deployments/arbitrum",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "contracts_verified": {
+      "value": true,
+      "source": "Etherscan API v2 (chainid=42161): all 12 GMX v2 contracts verified. ExchangeRouter, DataStore, RoleStore, EventEmitter verified (solc 0.8.18); GovTimelockController verified (solc 0.8.20); custom Timelock verified (solc 0.8.18). Source code downloaded successfully by permission-scanner.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "chain": {
+      "value": "arbitrum",
+      "chain_id": 42161,
+      "source": "https://github.com/gmx-io/gmx-synthetics/tree/main/deployments/arbitrum",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "chain_l2beat_stage": {
+      "value": 1,
+      "source": "https://l2beat.com/scaling/summary \u2014 Arbitrum One listed as Stage 1. Fetched 2026-08-02.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "documented"
+    },
+    "upgrade_delay_seconds": {
+      "value": 86400,
+      "source": "GovTimelockController.getMinDelay()=86400 (1 day). Governance path for protocol changes. Custom Timelock also has 86400s delay. Contracts appear to be non-upgradeable (no proxy pattern detected in GitHub deployment files).",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "onchain"
+    },
+    "can_user_exit_unilaterally": {
+      "value": false,
+      "source": "GM token withdrawal requires keeper execution (ExchangeRouter.createWithdrawal \u2192 keeper executes via WithdrawalHandler). Users CAN cancel pending requests (cancelWithdrawal), recovering tokens. But actual exit from positions requires keeper liveness. If keeper down, user can cancel but cannot execute their own withdrawal.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "bytecode"
+    },
+    "exit_function_candidate": {
+      "value": "cancelWithdrawal(bytes32) on ExchangeRouter for pending request recovery; createWithdrawal() + keeper for actual exit",
+      "source": "GMX v2 architecture docs + contract ABI",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z"
+    },
+    "exit_depends_on": {
+      "value": "operator",
+      "source": "Keeper bots (CONTROLLER role in RoleStore) required to execute withdrawals. Users cannot self-execute withdrawal orders.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "bytecode"
+    },
+    "forced_inclusion": {
+      "value": "n/a",
+      "source": "GMX v2 is a dApp on Arbitrum One, not a rollup. N/A for forced inclusion.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "n/a"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "source": "Not verified.",
+      "block": 490422447,
+      "measured_at": "2026-08-02T19:08:53Z",
+      "tier": "unknown"
+    },
+    "lp_exit": {
+      "mechanism": "createWithdrawal() on ExchangeRouter \u2192 keeper executes via WithdrawalHandler. Users cannot self-execute.",
+      "permission_gate": "CONTROLLER role (keeper bots) required to execute withdrawals via WithdrawalHandler",
+      "censorship_resistance": "cancelWithdrawal(bytes32) allows user to recover pending withdrawal request collateral if keeper doesn't execute. But actual exit from GM tokens requires keeper liveness.",
+      "can_exit_without_keeper": false,
+      "tier": "bytecode+onchain",
+      "source": "Scanner: DataStore 39 setters onlyController. Architecture confirmed via GitHub deployments + ExchangeRouter.dataStore() on-chain."
+    },
+    "trader_exit": {
+      "mechanism": "createOrder()/cancelOrder() on ExchangeRouter. Execution requires ORDER_KEEPER role.",
+      "can_exit_without_keeper": false,
+      "tier": "bytecode",
+      "source": "Scanner: OrderVault 7 functions onlyController. Keeper required for order execution."
+    }
+  }
+}

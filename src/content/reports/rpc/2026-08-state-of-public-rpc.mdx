@@ -1,0 +1,200 @@
+---
+title: "Best Free Public RPC 2026: Speed, Reliability, and What to Use"
+category: "rpc"
+slug: "2026-08-state-of-public-rpc"
+publishedAt: "2026-08-01"
+period: "August 2026"
+summary: "Free public RPCs are faster than ever, and less reliable than most builders assume. This report benchmarks the leading providers by what actually matters: correctness first, latency second."
+heroFinding: "The fastest free RPC in this cohort fails one call in five. The most reliable didn't fail a single probe in the measurement window."
+author: "OpenChainBench Research"
+readingTime: 15
+canonical: "https://openchainbench.com/reports/rpc/2026-08-state-of-public-rpc"
+---
+
+<Summary>
+- Free public RPCs are fast enough for most use cases, but success rates vary wildly across the cohort.
+- The fastest providers are not the most reliable. Latency rankings published by providers themselves almost always hide this.
+- As of August 2026, PublicNode is the only provider in this cohort sustaining near-100% success across five or more EVM chains simultaneously.
+- Foundation endpoints on L2s (Arbitrum, Base, Optimism) consistently trail third-party providers on latency; on reliability they match but do not lead.
+- Latency grows with geographic distance, but geographic penalties vary by region and provider — check the per-region tab for your users' location before choosing a static endpoint.
+- Across 19 chains and 3 regions (57 contests), PublicNode wins 28. dRPC, the next third-party provider, trails by 14.
+- For indexers and event listeners, filter by success rate first. A 90% success rate means hundreds of silent failures per hour at typical read rates.
+</Summary>
+
+<TOC sections="Methodology|The Speed Trap: Why Latency Rankings Mislead|Reliability Champion|Chain-by-Chain Standouts|Regional Divergence|Provider Wins Across 19 Chains|Reproducibility Recipe|Decision Framework|What to Watch Next|Sources and Reproducibility" />
+
+## Methodology
+
+Every number in this report is a live query against the [OpenChainBench Prometheus](https://openchainbench.com/methodology). The harness probes each provider with a rotating `eth_getBlockByNumber` request every 60 seconds from three geographic regions: `us-east-1`, `eu-west-1`, and `ap-southeast-1` (Singapore). Each probe is classified into one of five states: `ok`, `http_err`, `jsonrpc_err`, `stale` (block number behind chain tip by more than 20 blocks), or `timeout` (no response within 5 seconds).
+
+Latency figures are the p50 over a 24-hour rolling window. Success rate is the fraction of probes returning `ok`. All benchmarks are reproducible: the harness source lives at [github.com/ChainBench/OpenChainBench/harnesses](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses), and the live bench pages link to the Prometheus queries that back each figure.
+
+This report covers data from the [Ethereum RPC bench](/benchmarks/ethereum-rpc), [RPC Reliability bench](/benchmarks/rpc-reliability), [RPC Capabilities bench](/benchmarks/rpc-capabilities), and a selection of per-chain RPC leaderboards. The live cross-chain view across all providers and chains is on the [RPC hub](/rpc).
+
+## The Speed Trap: Why Latency Rankings Mislead
+
+Every "fastest RPC" ranking on the web is a latency ranking. p50 milliseconds, median response time, average latency. The implicit assumption is that a faster response is a better response.
+
+That assumption breaks for free public RPCs.
+
+An RPC endpoint can return an HTTP 200 with a JSON body in milliseconds and still be wrong. If the `result` field contains a JSON-RPC error, or if the block number is 40 blocks behind the chain tip, the low latency figure is meaningless. The client asked a question and got a wrong answer, fast.
+
+OpenChainBench classifies every probe response. A 200 that contains `{"jsonrpc":"2.0","error":{"code":-32603}}` counts as `jsonrpc_err`, not as a successful call. A 200 that returns a block number 25 blocks behind the tip counts as `stale`. Only probes classified `ok` count toward the success rate.
+
+When you apply this filter, the ranking changes dramatically. Cloudflare-eth is the clearest example in this cohort: it returns sub-second HTTP 200s, but a large share carry a JSON-RPC error body (`-32046 Cannot fulfill request`) rather than a block number. <Mark>Fast on latency metrics, wrong in practice.</Mark> Providers that dominate raw-latency rankings often fall to the middle or bottom once correctness is factored in.
+
+Two providers are absent from the latency ranking for different reasons. Merkle sits behind an aggressive bot filter that, in our testing, <Mark>locks out programmatic clients for 20 minutes</Mark> after a single unauthenticated request — a benchmark of it would measure cache-hit latency, not availability. Cloudflare-eth is tracked by the harness but has no rankable latency: with nearly every probe classified as `jsonrpc_err` (`-32046 Cannot fulfill request`), there are not enough `ok` responses to calculate a meaningful p50. It remains the clearest illustration of the speed-vs-correctness split: fast HTTP round-trips, wrong answers, no latency data.
+
+<StatTable bench="ethereum-rpc" caption="Ethereum RPC providers with a rankable p50 latency over 24 hours. Merkle and Cloudflare-eth are absent; see the paragraph above." />
+
+The lesson is not that latency is unimportant. A 400 ms p50 would disqualify a provider for real-time frontend use regardless of its success rate. The lesson is that <Mark>below 95% success rate, latency is irrelevant.</Mark>
+
+### Why free public endpoints degrade
+
+Free public RPC endpoints are subsidized products. A provider offers them to acquire developer mindshare, then sells dedicated nodes, websocket connections, or archive tiers to the subset of users whose usage grows. The subsidy model creates a structural tension: the more popular the free endpoint, the more it costs to maintain it at quality, and the incentive structure suggests providers may throttle or degrade free-tier traffic as their paid base grows.
+
+The consequence shows up in success rates. A provider whose free tier is heavily used at peak hours will serve throttle errors (`429`, `-32005`) that the harness classifies as `jsonrpc_err`. Because the harness probes at a fixed 60-second cadence from three regions, it catches the degraded hour that a casual benchmark misses entirely.
+
+## Reliability Champion
+
+One provider consistently outperforms the field on success rate across multiple chains and regions: **PublicNode**.
+
+PublicNode runs near-100% success rates on Ethereum, Arbitrum, Base, Optimism, and Avalanche over the measurement window. It achieves this without a premium tier for RPC access: the project is community-funded and operates endpoints as a public good. Its architecture uses geographic PoP distribution with automatic failover. A failure in one data center is invisible to the probe.
+
+What makes PublicNode structurally different is that it has <Mark>no paid conversion funnel for RPC access.</Mark> Most other providers in this cohort have an incentive structure that can lead to throttling free-tier users toward paid plans. PublicNode does not. That difference shows up in the data.
+
+The practical implication is simple: if you need a free RPC for anything that fails silently on error, PublicNode is the standout option in the no-key free tier.
+
+The Ethereum cohort splits into two groups. Several providers — including PublicNode — recorded zero probe failures over the measurement window. A second group sits in the 80–82% band: dRPC at around 80% and one other provider nearby. A 80% success rate means one in five of your `eth_call` requests silently fails — <Mark>400 failed reads per hour</Mark> at 100 reads per minute. Whether that is tolerable depends entirely on how your application handles errors.
+
+## Chain-by-Chain Standouts
+
+### Ethereum
+
+The Ethereum RPC market is the most competitive in the cohort. Multiple providers compete on latency within ranges that are well within acceptable frontend budgets. The differentiation on Ethereum is almost entirely on reliability, which is why the success rate column matters more than the latency column on this bench.
+
+PublicNode's Ethereum endpoint is not the fastest. It typically ranks in the middle by p50, but near the top by success rate. This inversion is a consistent pattern across the RPC dataset: the most reliable provider is rarely the fastest, because running infrastructure that stays correct under load is a different engineering problem than minimizing median response time.
+
+### L2s: Foundation Endpoints Trail on Speed
+
+On Arbitrum, Base, and Optimism, the foundation-operated endpoints (arb1.arbitrum.io, mainnet.base.org, mainnet.optimism.io) are the most obvious choice for builders new to each chain. They are the endpoints documented first in every official SDK. But they consistently trail third-party providers on latency. On reliability, foundation endpoints reach comparable success rates — they are sized for availability, not for speed under continuous load.
+
+<StatTable bench="arbitrum-rpc" caption="Arbitrum RPC: foundation vs specialist endpoints." />
+
+<RegionWinners bench="arbitrum-rpc" />
+
+<StatTable bench="base-rpc" caption="Base RPC providers. Third-party providers outperform mainnet.base.org on latency." />
+
+<RegionWinners bench="base-rpc" />
+
+Foundation endpoints are maintained to be accessible, not to be fast. They are sized for the long tail of infrequent callers, not for continuous probing or indexing traffic. The specialist providers that sell dedicated nodes keep their free tier competitive because it feeds developer acquisition — a different incentive from endpoints whose paid base is large enough not to care about free-tier latency.
+
+### L1s: Foundation Endpoints Dominate
+
+The pattern reverses on Solana and Monad.
+
+Solana's `api.mainnet-beta.solana.com` leads on latency among the providers in this cohort. This is structurally expected: the Solana Foundation operates the endpoint as a showcase for the chain's speed claims, and allocates engineering resources to keep it performant.
+
+<StatTable bench="solana-rpc" caption="Solana RPC providers. Foundation endpoint leads by a wide margin." />
+
+Monad's `rpc.monad.xyz` returns the fastest median responses in the entire RPC dataset across all chains. Monad's parallel-execution architecture makes the on-chain layer itself much faster, and the foundation endpoint sits co-located with validator nodes. No third-party provider is competitive on raw latency at this stage.
+
+### HyperEVM / Hyperliquid
+
+Hyperliquid's EVM presents a distinct case. Hyperliquid Labs operates the primary publicly accessible RPC and the competitive pool remains small compared to EVM chains. The data below serves as a reliability monitor, not a competitive ranking — do not use latency position here to select a provider.
+
+<StatTable bench="hyperliquid-rpc" caption="HyperEVM RPC monitoring. Thin competitive field; treat as a reliability baseline, not a speed ranking." />
+
+## Regional Divergence
+
+The headline p50 in every table above is a global average. The table below shows the full latency ranking for each of the three probe regions side by side. Read across the rows: position changes between columns are real ranking shifts; value changes show how the same provider's latency grows as geographic distance increases.
+
+<RegionWinners bench="ethereum-rpc" />
+
+Latency leadership at the top is typically stable — the same provider that wins Virginia usually wins Singapore. What changes is the magnitude: every provider's p50 grows as probes travel further, and those without infrastructure in the probe's region carry the largest penalty. One pattern worth noting on the Arbitrum bench: PublicNode's Singapore p50 undercuts its Virginia figure — evidence of an Asian PoP serving L2 traffic efficiently from a closer datacenter. That is structurally rare in the free-tier cohort. <Mark>No single public RPC is optimal everywhere.</Mark> If your users are global, a geo-routing strategy (CDN-edge RPC selection, or multiple endpoints with latency-based fallback) beats any static choice. The [RPC Capabilities bench](/benchmarks/rpc-capabilities) has live per-region breakdowns for every provider, queryable via `?region=us-east|eu-west|sgp`.
+
+## Provider Wins Across 19 Chains
+
+19 chains, 3 probe regions — 57 regional contests. A "win" is the lowest p50 among providers returning a classified `ok` response in that region for that chain. Data snapshot: July 28, 2026 — live current rankings on the [RPC hub](/rpc).
+
+**Win count summary**
+
+| Provider | US-East | EU-West | Singapore | Total / 57 |
+|---|---:|---:|---:|---:|
+| PublicNode | 9 | 10 | 9 | 28 |
+| Foundation (own-chain) | 5 | 5 | 5 | 15 |
+| dRPC | 5 | 4 | 5 | 14 |
+
+
+Foundation endpoints win exclusively on their own chain and cannot serve traffic on other networks. Among third-party providers, PublicNode takes 28 slots across 10 chains; dRPC, the next third-party provider, trails by 14 wins (28 vs 14) concentrated on 5 chains. The per-region breakdown for every chain is live on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) via `?region=us-east|eu-west|sgp`.
+
+## Reproducibility Recipe
+
+Every number in this report can be reproduced. Here is the exact curl command to run a single probe matching the harness behavior:
+
+```bash
+REQUEST_ID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-f0-9' | head -c 16)
+curl -s -X POST https://ethereum.publicnode.com \
+  -H 'Content-Type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false],\"id\":\"$REQUEST_ID\"}" \
+  | jq '{ok: (.result != null), block: (.result.number | if . then tonumber else null end)}'
+```
+
+The `REQUEST_ID` rotation prevents provider-side caching of responses, which can inflate apparent performance in naive benchmarks that repeat the same request body. The harness generates a new UUID per probe for the same reason.
+
+To reproduce the archive depth test (which determines how far back `eth_getLogs` can query):
+
+```bash
+# Block 1 = genesis-era; a full-archive provider returns a result, a pruned node returns -32001
+curl -s -X POST https://ethereum.publicnode.com \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","0x1"],"id":1}' \
+  | jq '{archive_supported: (.result != null), error_code: (.error.code // null)}'
+```
+
+A response of `null` for `result` with error code `-32001` (`missing trie node`) confirms the provider does not serve archive queries. A non-null result confirms full archive depth. The harness tests five depth levels: 300 blocks (Geth default pruning), 7,200 (recent-week), 216,000 (recent-month), 1,296,000 (recent-year), and genesis.
+
+The full harness source, including all probe types and Prometheus metric definitions, is at [harnesses/rpc-capabilities](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities).
+
+## Decision Framework
+
+Which free RPC you should use depends on what you are building. All figures below are live on the [RPC hub](/rpc), updated every 60 seconds.
+
+<UseCase label="Frontend dApp / wallet UI">
+Latency matters because it affects perceived speed for end users. Success rates above 95% are necessary but not differentiating: the user retries failed wallet operations. Use the p50 leader for each chain in your target region. For Ethereum in Asia: check the `sgp` regional filter on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) for the current leader.
+</UseCase>
+
+<UseCase label="Indexer / event listener">
+Success rate is the primary variable. One `jsonrpc_err` on `eth_getLogs` means a missed event and a corrupted index. Use PublicNode (near-100% success, archive supported). Build in exponential backoff with a secondary fallback: even high-success providers have incident windows.
+</UseCase>
+
+<UseCase label="MEV bot / frontrunner">
+Latency is critical and the public RPC market is the wrong solution. Any free public endpoint with shared infrastructure introduces queueing delay that a co-located private node eliminates. This report covers public no-key endpoints only; MEV infrastructure is outside scope.
+</UseCase>
+
+<UseCase label="Archive query workload">
+Filter first by archive depth support using the [RPC Capabilities bench](/benchmarks/rpc-capabilities), then by latency. Several Ethereum providers in this cohort do not support archive queries at all. Sending historical `eth_getLogs` to them returns an error, silently if your client does not check error codes.
+</UseCase>
+
+<UseCase label="Multi-chain app">
+As of August 2026, PublicNode is the only provider in this cohort with near-100% success rate across five or more EVM chains simultaneously. If you need a single RPC provider for a multi-chain architecture, it is the only option in the no-key free tier that meets reliability thresholds across the board.
+</UseCase>
+
+## What to Watch Next
+
+This is the first edition of the OpenChainBench RPC Report. Starting with the next edition, each report will track month-over-month movement across three signals: success rate shifts, latency ranking changes, and incident counts per provider. Providers that degraded, chains where the competitive landscape shifted, and new entrants to the cohort will all appear in that section.
+
+The metrics most likely to move next: success rates on Base and Arbitrum foundation endpoints (both chains are actively investing in RPC infrastructure), and the provider count on HyperEVM (currently thin).
+
+If you want to be notified when the next edition publishes, follow [@OpenChainBench](https://x.com/OpenChainBench) or subscribe to the [RSS feed](/reports/rpc/rss.xml).
+
+## Sources and Reproducibility
+
+All data in this report is derived from OpenChainBench's live Prometheus instance. The underlying metrics are public and queryable.
+
+- **Live bench pages:** [ethereum-rpc](/benchmarks/ethereum-rpc), [rpc-reliability](/benchmarks/rpc-reliability), [rpc-capabilities](/benchmarks/rpc-capabilities), [arbitrum-rpc](/benchmarks/arbitrum-rpc), [base-rpc](/benchmarks/base-rpc), [optimism-rpc](/benchmarks/optimism-rpc), [solana-rpc](/benchmarks/solana-rpc), [monad-rpc](/benchmarks/monad-rpc), [hyperliquid-rpc](/benchmarks/hyperliquid-rpc)
+- **Machine-readable data:** [/api/stat/ethereum-rpc](/api/stat/ethereum-rpc), [/api/stat/rpc-reliability](/api/stat/rpc-reliability)
+- **Harness source:** [github.com/ChainBench/OpenChainBench/harnesses](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses)
+- **Prometheus queries:** available via [/api/citable](/api/citable) or the methodology page
+- **License:** All data and figures in this report are published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). You may reproduce them in editorial, research, or commercial contexts with attribution to OpenChainBench and a link to the canonical URL.
+- **Corrections:** Data errors, methodology disputes, and provider rebuttals can be filed as [GitHub issues](https://github.com/ChainBench/OpenChainBench/issues/new). Material corrections are applied in place with a dated note.

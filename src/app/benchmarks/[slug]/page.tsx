@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
@@ -78,7 +77,7 @@ type Params = { slug: string };
 // Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
 // 25+ bench pages at build pushed the full multi-bench Prom load through
 // the CI runner, whose DNS resolver throttles under hundreds of lookups;
-// observed 2026-06-11: /benchmarks/pm-data-freshness failing 3×60s
+// observed 2026-06-11: a bench page failing 3×60s
 // export attempts and killing the deploy. Without the embedded variant
 // matrix an on-demand first render is a few seconds once per deploy per
 // slug, then the CDN serves it.
@@ -271,14 +270,6 @@ export default async function BenchmarkPage({
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
-  // An editorially-live bench rendering as draft means the store read
-  // came back empty this cycle (srh timeout, snapshot swap), not that
-  // the bench has no data: keep that render OUT of the ISR cache so the
-  // next visitor triggers a fresh read instead of everyone seeing
-  // "no live data yet" for a revalidate window (seen on perp-fees
-  // 2026-07-10). Genuinely-new benches render dynamically until their
-  // first samples land, which is the correct behavior anyway.
-  if (isAwaiting) noStore();
   // Insufficient: editorially live, runtime might say "live" too, but the
   // shared predicate decided no provider has a usable p50. Drives the
   // pill above the H1 and the headline degradation downstream.

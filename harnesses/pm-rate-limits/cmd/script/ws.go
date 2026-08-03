@@ -113,6 +113,32 @@ func wsSession(ctx context.Context, st *venueState, token string) bool {
 			wsInterarrival.WithLabelValues("polymarket", currentRegion, sourceDirect).Observe(now.Sub(lastMsg).Seconds())
 		}
 		lastMsg = now
+		var frames []json.RawMessage
+		if data[0] == '[' {
+			_ = json.Unmarshal(data, &frames)
+		} else {
+			frames = []json.RawMessage{data}
+		}
+		for _, frame := range frames {
+			var ev struct {
+				EventType string `json:"event_type"`
+				Timestamp string `json:"timestamp"`
+			}
+			if err := json.Unmarshal(frame, &ev); err != nil {
+				continue
+			}
+			if ev.EventType != "last_trade_price" || ev.Timestamp == "" {
+				continue
+			}
+			tsMs, err := strconv.ParseFloat(ev.Timestamp, 64)
+			if err != nil {
+				continue
+			}
+			delta := now.Sub(time.UnixMilli(int64(tsMs))).Seconds()
+			if delta >= 0 && delta <= 30 {
+				wsTradePublishLag.WithLabelValues("polymarket", currentRegion, sourceDirect).Observe(delta)
+			}
+		}
 	}
 }
 
@@ -261,5 +287,21 @@ func kalshiWSSession(ctx context.Context, st *venueState, ticker, keyID, private
 			wsInterarrival.WithLabelValues("kalshi", currentRegion, sourceDirect).Observe(now.Sub(lastMsg).Seconds())
 		}
 		lastMsg = now
+		var tick struct {
+			Msg struct {
+				LastPrice int `json:"last_price"`
+				YesBid    int `json:"yes_bid"`
+				YesAsk    int `json:"yes_ask"`
+			} `json:"msg"`
+		}
+		if err := json.Unmarshal(data, &tick); err == nil {
+			price := tick.Msg.LastPrice
+			if price <= 0 && tick.Msg.YesBid > 0 && tick.Msg.YesAsk > 0 {
+				price = (tick.Msg.YesBid + tick.Msg.YesAsk) / 2
+			}
+			if price > 0 {
+				recordKalshiWSTick(ticker, price, now)
+			}
+		}
 	}
 }

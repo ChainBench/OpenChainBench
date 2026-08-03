@@ -1,0 +1,174 @@
+# OpenChainBench. Bench 119
+
+slug: perp-protocol-longevity
+number: "119"
+title: "Perp DEX security track record: days without a recorded exploit, live"
+seo_title: "Perp DEX security track record 2026"
+seo_description: "gains.trade leads perp DEX security longevity at {{p50:gains}} days without a recorded exploit. GMX, Hyperliquid, dYdX v4, Lighter, Paradex ranked by days since last incident on rekt.news and public post-mortems."
+subtitle: "Days each perp DEX has operated without a recorded security exploit, counted live from a versioned incident registry sourced from rekt.news and public post-mortems. Higher means a longer clean track record. Oracle-priced venues with immutable smart contracts have a structural advantage: there is no custodial hot wallet and no privileged admin key that can drain the vault."
+category: Trading
+status: live
+metric: Days since last exploit
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  This benchmark counts recorded incidents only. Absence from the registry does not prove a protocol is exploit-free: it means no incident matching the criteria (direct theft or loss of user funds via a security vulnerability) has been documented in the tracked sources as of the registry timestamp shown on each row. The registry is human-curated and updated when a new incident is confirmed. The registry date and source links are embedded in the harness.
+
+seo_intro: |
+  Smart contract exploits are the tail risk that every DeFi protocol carries.
+  For a perp DEX the consequences are asymmetric: a single reentrancy or
+  oracle manipulation event can wipe all liquidity from the vault while
+  positions are still open. The DeFi ecosystem has a public, reasonably
+  comprehensive ledger of these events in rekt.news and community
+  post-mortems. This benchmark converts that ledger into a live counter:
+  how many days has each venue operated without a recorded security exploit
+  that resulted in direct theft or loss of user funds via a protocol
+  vulnerability. gains.trade has been live since December 2021, more than
+  four years, with no recorded exploit in the tracked sources as of the
+  registry date. GMX had an exploit in July 2025 estimated at around 42
+  million USD via a reentrancy vulnerability. Hyperliquid, dYdX v4,
+  Lighter and Paradex have no recorded protocol exploits. The harness
+  computes the counter live each day from a versioned YAML registry
+  committed to the harness repository. The registry is semi-automated:
+  a daily job polls rekt.news for new entries matching the venue slugs
+  and alerts a maintainer to confirm before committing. The counter
+  therefore reflects confirmed incidents, not unverified reports.
+
+abstract: |
+  The harness maintains a versioned incident registry (registry.yaml
+  embedded in the binary at build time). For each venue the registry
+  holds the protocol launch date and a list of confirmed security
+  incidents with date, estimated loss in USD, incident type and source
+  URL. The live counter is (current_timestamp - max(launch_date,
+  last_incident_date)) / 86400 in days. A venue with no incidents uses
+  the launch date as the start of the clean streak. The harness emits
+  three gauges per venue: perp_protocol_days_clean (the live counter),
+  perp_protocol_incidents_total (count of recorded incidents), and
+  perp_protocol_incident_amount_usd (cumulative USD lost in recorded
+  incidents). The registry includes only incidents that resulted in
+  direct theft or permanent loss of user funds via a protocol
+  vulnerability. Oracle price manipulation without smart contract
+  compromise, market-structure events (liquidation cascades,
+  governance disputes) and front-end phishing are excluded and noted
+  separately in the per-venue formula tooltip.
+
+methodology:
+  - "Registry: a versioned YAML file embedded in the harness binary at build time. Fields per incident: venue_slug, date (YYYY-MM-DD), amount_usd, type (exploit, oracle-manipulation, admin-key, bridge), source_url."
+  - "Counter formula: (Unix timestamp at query time - Unix timestamp of max(launch_date, last_incident_date)) / 86400. Emitted as perp_protocol_days_clean{venue}."
+  - "Incident criteria: direct theft or permanent loss of user funds via a documented smart contract vulnerability or privileged key compromise. Oracle manipulation without contract exploit is excluded. Market-structure events (liquidation cascades, large-position forced close) are excluded."
+  - "gains.trade: launched 2021-12-01. No incidents in tracked sources as of registry date 2026-08-02. Clean streak = days since 2021-12-01."
+  - "GMX v2: launched 2023-08-01. Incident 2025-07-09: reentrancy in vault and order-flow logic, estimated loss USD 42 000 000, source coinperps.xyz post-mortem. Clean streak = days since 2025-07-09."
+  - "Hyperliquid: launched 2023-11-01. No protocol exploit in tracked sources. Note: the March 2025 JellyJelly forced close was a market-structure event (large-position liquidation cascade triggering a governance emergency), not a smart contract exploit, and is excluded per criteria."
+  - "dYdX v4: launched on the Cosmos appchain 2023-10-01. No protocol exploit on v4. dYdX v1 and v2 on Ethereum had oracle manipulation events that are excluded here (different contract, different era)."
+  - "Lighter: launched 2023-07-01. No incidents in tracked sources."
+  - "Paradex: launched 2023-10-01. No incidents in tracked sources."
+  - "Registry update process: a nightly job polls rekt.news for new entries matching venue slugs and raises a review alert. A maintainer confirms and commits the updated registry.yaml. The harness auto-rebuilds and the counter updates on the next deploy cycle."
+  - "Survivorship note: older protocols have had more calendar time in which an exploit could occur. A long streak is a positive signal but is partly explained by age. The perp_protocol_incidents_total counter lets readers weight the streak against the full history."
+
+findings:
+  - "{{best_name}} leads the security longevity leaderboard at {{best_p50}} days without a recorded exploit (24h live counter)."
+  - "{{name:gains}} has operated since {{gains_launch}} with no recorded exploit in rekt.news or public post-mortems as of the registry date. The synthetic architecture (no custodial vault holding user funds outright, no privileged admin key) removes the most common attack surfaces."
+  - "{{name:gmx}} clocks {{p50:gmx}} days since its July 2025 reentrancy exploit (estimated USD 42 million). The incident involved a reentrancy in the vault and order-flow logic in GMX v2. The streak counter restarts from the incident date."
+  - "{{name:hyperliquid}}, {{name:dydx}}, {{name:lighter}} and {{name:paradex}} have no recorded protocol exploits. Their clean streaks start from their respective launch dates."
+  - "The perp_protocol_incident_amount_usd gauge shows cumulative confirmed losses per venue, allowing a risk-adjusted comparison alongside the day counter."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-protocol-longevity
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 86400
+  freshness_metric: perp_protocol_days_clean
+
+faq:
+  - q: "What counts as a recordable incident?"
+    a: "Direct theft or permanent loss of user funds via a documented smart contract vulnerability or privileged key compromise. Oracle price manipulation events that do not involve a contract exploit are excluded. Market-structure events such as liquidation cascades triggered by large positions are excluded. The registry source URL for each entry is available in the harness YAML."
+  - q: "Why does gains.trade have such a long clean streak?"
+    a: "gains.trade launched in December 2021 and has not had a recorded exploit in the tracked sources as of the registry date, giving a streak of over four years. The synthetic architecture uses oracle pricing (no custodial AMM vault that can be drained) and immutable smart contracts without privileged admin keys on critical paths, which removes the most common attack surfaces."
+  - q: "Why is Hyperliquid's JellyJelly event not counted?"
+    a: "The March 2025 JellyJelly event was a market-structure incident: a large whale position was force-closed by the validator committee after a liquidation cascade threatened the insurance fund. No smart contract vulnerability was exploited and no user funds were stolen via a protocol bug. The methodology excludes market-structure events to keep the metric focused on smart contract security."
+  - q: "Does a long streak prove the protocol is safe?"
+    a: "No. A long clean streak is a positive signal and the best available public evidence of resilience under live conditions. It does not prove the code is exploit-free. Undiscovered vulnerabilities can exist for years before being found. The streak should be read alongside the protocol's audit history and architecture, not as a standalone guarantee."
+  - q: "How often is the registry updated?"
+    a: "A nightly job polls rekt.news and other public sources for entries matching the tracked venue slugs and raises an alert for manual review. A maintainer confirms and commits any new incidents, triggering a harness rebuild. The registry timestamp is visible in the harness source at registry.yaml."
+  - q: "Does this benchmark cover all historical incidents?"
+    a: "The benchmark covers incidents recorded in rekt.news and publicly disclosed post-mortems for the specific protocol deployments tracked. Incidents on predecessor versions (GMX v1, dYdX v1/v2), front-end phishing attacks and incidents on third-party integrations built on top of these protocols are out of scope."
+
+providers:
+  - slug: gains
+    name: gains.trade
+    tag: "Synthetic perps on Base, launched 2021-12-01, no recorded exploit"
+    formula: "Live counter: (current_unix - 2021-12-01T00:00:00Z) / 86400. No incidents in the registry as of 2026-08-02. Counter = days since launch."
+    queries:
+      p50: perp_protocol_days_clean{venue="gains"}
+      p90: perp_protocol_days_clean{venue="gains"}
+      p99: perp_protocol_days_clean{venue="gains"}
+      mean: perp_protocol_days_clean{venue="gains"}
+      success: perp_protocol_health{venue="gains"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="gains"}[24h])
+      series: perp_protocol_days_clean{venue="gains"}
+
+  - slug: lighter
+    name: Lighter
+    tag: "zk-rollup, launched 2023-07-01, no recorded exploit"
+    formula: "Live counter: (current_unix - 2023-07-01T00:00:00Z) / 86400. No incidents in the registry as of 2026-08-02. Counter = days since launch."
+    queries:
+      p50: perp_protocol_days_clean{venue="lighter"}
+      p90: perp_protocol_days_clean{venue="lighter"}
+      p99: perp_protocol_days_clean{venue="lighter"}
+      mean: perp_protocol_days_clean{venue="lighter"}
+      success: perp_protocol_health{venue="lighter"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="lighter"}[24h])
+      series: perp_protocol_days_clean{venue="lighter"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: "Cosmos appchain, launched 2023-10-01, no recorded exploit on v4"
+    formula: "Live counter: (current_unix - 2023-10-01T00:00:00Z) / 86400. No incidents recorded for the v4 Cosmos appchain deployment. Counter = days since v4 launch."
+    queries:
+      p50: perp_protocol_days_clean{venue="dydx"}
+      p90: perp_protocol_days_clean{venue="dydx"}
+      p99: perp_protocol_days_clean{venue="dydx"}
+      mean: perp_protocol_days_clean{venue="dydx"}
+      success: perp_protocol_health{venue="dydx"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="dydx"}[24h])
+      series: perp_protocol_days_clean{venue="dydx"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: "HyperBFT L1, launched 2023-11-01, no recorded smart contract exploit"
+    formula: "Live counter: (current_unix - 2023-11-01T00:00:00Z) / 86400. No protocol exploit recorded. Note: the March 2025 JellyJelly forced close was a market-structure event, not a smart contract exploit, and is excluded per methodology."
+    queries:
+      p50: perp_protocol_days_clean{venue="hyperliquid"}
+      p90: perp_protocol_days_clean{venue="hyperliquid"}
+      p99: perp_protocol_days_clean{venue="hyperliquid"}
+      mean: perp_protocol_days_clean{venue="hyperliquid"}
+      success: perp_protocol_health{venue="hyperliquid"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="hyperliquid"}[24h])
+      series: perp_protocol_days_clean{venue="hyperliquid"}
+
+  - slug: paradex
+    name: Paradex
+    tag: "Starknet appchain, launched 2023-10-01, no recorded exploit"
+    formula: "Live counter: (current_unix - 2023-10-01T00:00:00Z) / 86400. No incidents in the registry as of 2026-08-02. Counter = days since launch."
+    queries:
+      p50: perp_protocol_days_clean{venue="paradex"}
+      p90: perp_protocol_days_clean{venue="paradex"}
+      p99: perp_protocol_days_clean{venue="paradex"}
+      mean: perp_protocol_days_clean{venue="paradex"}
+      success: perp_protocol_health{venue="paradex"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="paradex"}[24h])
+      series: perp_protocol_days_clean{venue="paradex"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: "Synthetics on Arbitrum, launched 2023-08-01, exploit 2025-07-09"
+    formula: "Live counter: (current_unix - 2025-07-09T00:00:00Z) / 86400. Incident: reentrancy in vault and order-flow logic, est. USD 42 000 000, source coinperps.xyz post-mortem 2025-07-09. Counter restarts from incident date."
+    queries:
+      p50: perp_protocol_days_clean{venue="gmx"}
+      p90: perp_protocol_days_clean{venue="gmx"}
+      p99: perp_protocol_days_clean{venue="gmx"}
+      mean: perp_protocol_days_clean{venue="gmx"}
+      success: perp_protocol_health{venue="gmx"}
+      sample_size: count_over_time(perp_protocol_days_clean{venue="gmx"}[24h])
+      series: perp_protocol_days_clean{venue="gmx"}

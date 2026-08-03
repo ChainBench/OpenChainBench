@@ -73,7 +73,16 @@ export function fmtUnit(value: number, unit: string) {
     }
     return `${value.toFixed(0)} slots`;
   }
+  if (unit === "x") {
+    // Dimensionless ratio (e.g. cost-slope $1M / $1k). 3 decimal places for
+    // values near 1 (where all the differentiation lives), 2 for larger.
+    if (!Number.isFinite(value) || value === 0) return "1.000x";
+    if (value < 2) return `${value.toFixed(3)}x`;
+    if (value < 10) return `${value.toFixed(2)}x`;
+    return `${value.toFixed(1)}x`;
+  }
   if (unit === "count") {
+    if (!Number.isFinite(value)) return "∞";
     // Sub-unit values are common when a "count" bench is measuring an
     // error or gap that converges toward zero (e.g. gas-oracle prediction
     // error in gwei — PublicNode feeHistory's p50 sits around 1e-9,
@@ -117,9 +126,8 @@ export function fmtUnit(value: number, unit: string) {
   // fmtUnit produced but unitSuffix independently returned " min".
   if (value >= 60000) return `${(value / 60000).toFixed(1)} min`;
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
-  // Sub-millisecond values keep one decimal: pm-data-freshness's 0.5 ms
-  // anchor rendered "1 ms", contradicting the 0.5 published by the
-  // citable API (2x apart, flagged by the coherence audit).
+  // Sub-millisecond values keep one decimal: 0.5 ms would render as
+  // "1 ms" without this, contradicting the published citable value.
   if (value > 0 && value < 1) return `${value.toFixed(1)} ms`;
   return `${value.toFixed(0)} ms`;
 }
@@ -165,6 +173,7 @@ export function unitSuffix(unit: string, value?: number): string {
     return " ms";
   }
   if (unit === "slots") return " slots";
+  if (unit === "x") return "x";
   if (unit === "count") return "";
   if (unit === "gwei") return " gwei";
   if (unit === "usd") return "";
@@ -176,6 +185,7 @@ export function unitSuffix(unit: string, value?: number): string {
 export function fmtValue(value: number, unit: string): string {
   // Keep K/M/B suffixes and $ prefix — they are part of the number, not a
   // unit. Only strip trailing unit words that the caller renders separately.
+  if (unit === "x") return fmtUnit(value, unit).replace(/x$/, "");
   return fmtUnit(value, unit).replace(/\s+(ms|s|min|h|d|bps|slots?)$/, "").replace(/\s*%$/, "");
 }
 
