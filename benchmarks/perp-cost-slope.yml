@@ -209,19 +209,6 @@ providers:
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}
 
-  - slug: polymarket
-    name: Polymarket
-    tag: "Polygon perps, up to 500 book levels"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Polygon CLOB, up to 500 book levels walked per tier."
-    queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h])
-      series: perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}
-
   - slug: aster
     name: Aster
     tag: "BNB Chain perp DEX, Binance-style REST book"
