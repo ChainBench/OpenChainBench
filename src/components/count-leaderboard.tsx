@@ -54,7 +54,7 @@ export function CountLeaderboard({
           <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
             Leaderboard
           </p>
-          {headerActions}
+          <div className="flex items-center gap-2">{headerActions}</div>
         </div>
       )}
       {/* Thin summary strip. matches the latency-bench layout. */}

@@ -35,6 +35,7 @@ type polymarketBook struct {
 
 type polymarketTickers []struct {
 	Symbol      string `json:"symbol"`
+	MidPrice    string `json:"mid_price"`    // exchange-published mid (robust vs outlier top-of-book orders)
 	FundingRate string `json:"funding_rate"` // per 1h interval, decimal
 }
 
@@ -63,9 +64,31 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 		return s
 	}
 
-	// 2) Fee schedule — base (tier 0) taker rate. The published tiers go
-	// down to 2 bps at $25M 30d volume; the bench quotes the entry tier
-	// like every other venue.
+	// 2) Tickers — mid_price used as spread reference (robust vs outlier
+	// top-of-book orders that inflate (bestBid+bestAsk)/2), plus funding.
+	var tickers polymarketTickers
+	if err := polymarketGet(client, polymarketBase+"/tickers", &tickers); err != nil {
+		s.Err = fmt.Sprintf("tickers: %v", err)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	var mid float64
+	for _, t := range tickers {
+		if t.Symbol == v.Asset+"-USD" {
+			mid, _ = strconv.ParseFloat(t.MidPrice, 64)
+			rate, _ := strconv.ParseFloat(t.FundingRate, 64)
+			s.FundingRatePerHrBps = rate * 10000
+			break
+		}
+	}
+	if mid <= 0 {
+		s.Err = "no_mid_price"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	s.MidPrice = mid
+
+	// 3) Fee schedule — base (tier 0) taker rate.
 	var fees polymarketFees
 	if err := polymarketGet(client, polymarketBase+"/fees", &fees); err != nil {
 		s.Err = fmt.Sprintf("fees: %v", err)
@@ -80,22 +103,18 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 		}
 	}
 
-	// 3) Orderbook
+	// 4) Orderbook walk using the ticker mid_price as reference.
 	var book polymarketBook
 	if err := polymarketGet(client, fmt.Sprintf("%s/book?instrument_id=%d&depth=500", polymarketBase, instrumentID), &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	if len(book.Bids) == 0 || len(book.Asks) == 0 {
+	if len(book.Asks) == 0 {
 		s.Err = "empty_orderbook"
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	bestBid, _ := strconv.ParseFloat(book.Bids[0][0], 64)
-	bestAsk, _ := strconv.ParseFloat(book.Asks[0][0], 64)
-	mid := (bestBid + bestAsk) / 2
-	s.MidPrice = mid
 
 	levels := make([]bookLevel, 0, len(book.Asks))
 	for _, a := range book.Asks {
@@ -112,18 +131,6 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 	s.SpreadBps = (effective - mid) / mid * 10000
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	applyBookTiers(&s, levels, mid)
-
-	// 4) Funding — per 1h native interval, so per-hour bps is direct.
-	var tickers polymarketTickers
-	if err := polymarketGet(client, polymarketBase+"/tickers", &tickers); err == nil {
-		for _, t := range tickers {
-			if t.Symbol == v.Asset+"-USD" {
-				rate, _ := strconv.ParseFloat(t.FundingRate, 64)
-				s.FundingRatePerHrBps = rate * 10000
-				break
-			}
-		}
-	}
 
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
