@@ -72,6 +72,18 @@ jobs:
             | xargs -P 4 -I{} curl -s -o /dev/null -w "%{http_code} %{time_total}s {}\n" --max-time 120 {} \
             || echo "warm-up failed (non-blocking)"
 
+      # Warm pages that can cold-render 500: products/polymarket triggers the
+      # degraded-read tripwire on empty store; alternatives/* for perp venues
+      # run a live Prom cohort fetch on first hit. Both self-heal after one
+      # successful warm render, so hitting them here pre-empts the smoke gate.
+      - name: Warm ISR-sensitive pages
+        run: |
+          base="https://openchainbench.com"
+          for path in /products/polymarket /alternatives/dydx /alternatives/gains /alternatives/hyperliquid /alternatives/polymarket; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$base$path" || echo "000")
+            echo "$code $base$path"
+          done
+
       # Warm /api/citable explicitly: the aggregator cache is independent
       # from per-bench caches, and the bench-page warm-up only populates
       # the latter. Without this step, /api/citable's first hit after
