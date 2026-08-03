@@ -7,7 +7,7 @@ seo_title: "Perp DEX fees at $100k 2026"
 seo_description: "{{best_name}} leads cheapest perp DEX at $100k at {{best_p50}} all-in (24h avg). All-in bps at $100,000 notional: taker fee plus spread plus impact, live across gains.trade, Lighter, Hyperliquid, dYdX, GMX, Paradex, Extended, Aster, edgeX, Polymarket."
 subtitle: "All-in cost in basis points to open a long at $100,000 notional, measured live on ETH, BTC and SOL. Oracle-priced venues (gains.trade, GMX) stay at their rack rate at any size. Orderbook venues add price impact on top of their taker fee. Refreshed every 5 minutes."
 category: Trading
-status: live
+status: draft
 metric: All-in cost at $100k
 unit: bps
 higher_is_better: false
