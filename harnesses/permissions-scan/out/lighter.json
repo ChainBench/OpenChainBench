@@ -1,0 +1,121 @@
+{
+  "project": "lighter",
+  "measured_at": "2026-08-02T21:00:00Z",
+  "chain": "ethereum-mainnet",
+  "chain_id": 1,
+  "architecture": "ZK-rollup on Ethereum mainnet. Custom Plonky2 circuits. Single centralized sequencer.",
+
+  "contracts": {
+    "ZkLighter_core": {
+      "value": "0x3B4D794a66304F130a4Db8F2551B0070dfCf5ca7",
+      "source": "https://l2beat.com/scaling/projects/lighter + https://etherscan.io/address/0x3b4d794a66304f130a4db8f2551b0070dfcf5ca7",
+      "tier": "documented",
+      "verified": true,
+      "chain": "ethereum"
+    },
+    "ZkLighter_verifier": {
+      "value": "0xac3Ce44B6ff4E402858C99D5699ff63131572BaA",
+      "source": "https://l2beat.com/scaling/projects/lighter",
+      "tier": "documented",
+      "verified": true,
+      "chain": "ethereum"
+    },
+    "UpgradeGatekeeper": {
+      "value": "0x94da8A995D0D82Ef0fE7E509C6D76c22603B6f67",
+      "source": "https://l2beat.com/scaling/projects/lighter",
+      "tier": "documented",
+      "note": "Controls upgrades. L2Beat: no delay on upgrades — CRITICAL.",
+      "chain": "ethereum"
+    },
+    "prover_source": {
+      "value": "https://github.com/elliottech/lighter-prover",
+      "note": "ZK prover and desert exit circuits open source. Audited by ZKSecurity.",
+      "tier": "documented"
+    }
+  },
+
+  "owners": {
+    "upgrade_gatekeeper": {
+      "value": "0x94da8A995D0D82Ef0fE7E509C6D76c22603B6f67",
+      "type": "unknown — EOA or contract",
+      "timelock": "none",
+      "tier": "documented",
+      "source": "L2Beat: 'Funds can be stolen if a contract receives a malicious code upgrade. There is no delay on code upgrades (CRITICAL).'"
+    },
+    "sequencer": {
+      "value": "centralized — operated by Lighter team",
+      "type": "centralized",
+      "tier": "documented",
+      "source": "https://docs.lighter.xyz/about-lighter/technical-architecture-lighter-core"
+    }
+  },
+
+  "exit": {
+    "funds_location": {
+      "value": "public_contract",
+      "note": "User funds held in ZkLighter core contract on Ethereum mainnet.",
+      "tier": "documented",
+      "source": "https://etherscan.io/address/0x3b4d794a66304f130a4db8f2551b0070dfcf5ca7"
+    },
+    "funds_contract": {
+      "value": "0x3B4D794a66304F130a4Db8F2551B0070dfCf5ca7 (Ethereum mainnet)",
+      "tier": "documented",
+      "source": "L2Beat + Etherscan"
+    },
+    "contracts_verified": {
+      "value": true,
+      "note": "Core contracts verified on Etherscan. ZK prover and desert exit circuit code open source on GitHub.",
+      "tier": "documented"
+    },
+    "chain_l2beat_stage": {
+      "value": "stage_0_appchain",
+      "note": "5 of required conditions met. Blocked from Stage 1 by no-delay upgrade key (UpgradeGatekeeper).",
+      "tier": "documented",
+      "source": "https://l2beat.com/scaling/projects/lighter"
+    },
+    "upgrade_delay_seconds": {
+      "value": 0,
+      "note": "UpgradeGatekeeper has no timelock. Instant upgrade = instant fund loss risk.",
+      "tier": "documented",
+      "source": "L2Beat"
+    },
+    "lp_exit": {
+      "note": "Lighter does not use a public LP vault model in the same sense as EVM perp DEXes. Maker/market-maker positions managed via centralized sequencer.",
+      "tier": "documented"
+    },
+    "trader_exit": {
+      "mechanism": "Priority queue submission on Ethereum L1 → sequencer must process within 14 days or Desert Mode activates → user generates ZK proof of balance → withdraws directly from contract",
+      "normal_path_depends_on": "centralized sequencer",
+      "censorship_resistance": "Desert Mode: if sequencer ignores priority queue for 14 days, rollup freezes and users can exit with self-generated ZK proofs. Open source circuit code available at github.com/elliottech/lighter-prover.",
+      "can_exit_without_sequencer": true,
+      "can_exit_without_upgrade_key": false,
+      "tier": "documented",
+      "source": "https://docs.lighter.xyz/about-lighter/technical-architecture-lighter-core + L2Beat"
+    },
+    "can_user_exit_unilaterally": {
+      "value": true,
+      "qualifier": "conditional — requires 14-day wait + self-generating a ZK proof of balance. Desert Mode is the mechanism. NOT instant. Upgrade key risk remains: if contract is upgraded before Desert Mode triggers, funds can be lost.",
+      "tier": "documented",
+      "source": "L2Beat + Lighter docs"
+    },
+    "exit_function": {
+      "value": "Priority queue → Desert Mode withdrawal with self-generated ZK proof",
+      "tier": "documented",
+      "source": "https://github.com/elliottech/lighter-prover"
+    },
+    "exit_depends_on": {
+      "value": "sequencer (normal), UpgradeGatekeeper EOA (critical risk), ZK circuit correctness (for desert exit)",
+      "tier": "documented"
+    },
+    "forced_inclusion": {
+      "value": true,
+      "mechanism": "Desert Mode after 14-day sequencer non-response to priority queue",
+      "tier": "documented",
+      "source": "L2Beat + Lighter docs"
+    },
+    "alternative_frontend": {
+      "value": "unknown",
+      "note": "Contracts are verified; technically a permissionless frontend is possible but none documented."
+    }
+  }
+}

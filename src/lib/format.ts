@@ -73,6 +73,13 @@ export function fmtUnit(value: number, unit: string) {
     }
     return `${value.toFixed(0)} slots`;
   }
+  if (unit === "x") {
+    // Dimensionless ratio (e.g. cost-slope $1M / $1k). Show 2 decimal places
+    // for values < 10, 1 decimal for larger.
+    if (!Number.isFinite(value) || value === 0) return "1.00x";
+    if (value < 10) return `${value.toFixed(2)}x`;
+    return `${value.toFixed(1)}x`;
+  }
   if (unit === "count") {
     // Sub-unit values are common when a "count" bench is measuring an
     // error or gap that converges toward zero (e.g. gas-oracle prediction
@@ -164,6 +171,7 @@ export function unitSuffix(unit: string, value?: number): string {
     return " ms";
   }
   if (unit === "slots") return " slots";
+  if (unit === "x") return "x";
   if (unit === "count") return "";
   if (unit === "gwei") return " gwei";
   if (unit === "usd") return "";

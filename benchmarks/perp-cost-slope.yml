@@ -9,7 +9,7 @@ subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per ve
 category: Trading
 status: live
 metric: "Cost slope ($1M / $1k)"
-unit: count
+unit: x
 higher_is_better: false
 
 seo_intro: |
