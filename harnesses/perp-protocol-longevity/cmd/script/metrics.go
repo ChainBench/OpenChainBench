@@ -50,13 +50,13 @@ func init() {
 
 	healthGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_protocol_health",
-		Help: "Always 1 for this harness (no external calls, computed from embedded registry).",
+		Help: "Always 1 for this harness (computed from embedded registry, enriched daily from DeFiLlama).",
 	}, []string{"venue"})
 	prometheus.MustRegister(healthGauge)
 }
 
 // registryUpdatedAt is the date the embedded registry was last reviewed.
-var registryUpdatedAt = time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC)
+var registryUpdatedAt = time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
 
 func publishAll() {
 	registryTimestampGauge.Set(float64(registryUpdatedAt.Unix()))
