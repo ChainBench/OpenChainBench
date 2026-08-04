@@ -4,8 +4,8 @@ slug: comdex-rpc
 number: "183"
 title: Fastest free Comdex RPC, live no-key endpoint latency
 seo_title: "Fastest free Comdex RPC 2026"
-seo_description: "{{best_name}} leads free Comdex RPC at {{best_p50}} (Tendermint status p50, 24h). 3 no-key providers measured every 60s from 3 regions."
-subtitle: HTTP round-trip latency for the Tendermint status method against every free, no-key public Comdex Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
+seo_description: "{{best_name}} leads free Comdex RPC at {{best_p50}} (Tendermint status p50, 24h). 1 no-key provider measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the Tendermint status method against the free, no-key public Comdex Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Comdex (comdex-1) is a Cosmos SDK DeFi blockchain providing a decentralised synthetics and lending protocol with on-chain commodity markets, CMDX staking token, CometBFT consensus, IBC-connected to Osmosis, Cosmos Hub, and other Cosmos chains. Polkachu, PublicNode, and LavenderFive provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+  Comdex (comdex-1) is a Cosmos SDK DeFi blockchain providing a decentralised synthetics and lending protocol with on-chain commodity markets, CMDX staking token, CometBFT consensus, IBC-connected to Osmosis, Cosmos Hub, and other Cosmos chains. STAVR provides a keyless Tendermint RPC endpoint probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Comdex.
   We measure the round-trip latency of a single, identical Cosmos SDK call
-  (Tendermint `status`) against every no-key public Comdex endpoint
-  that sustains continuous probing, 3 providers at launch,
+  (Tendermint `status`) against the no-key public Comdex endpoint
+  that sustains continuous probing, 1 provider at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,20 +34,20 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable decimal `sync_info.latest_block_height`), `http_err`, `jsonrpc_err`, `stale` (more than 40 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"comdex\"`. Provider coverage at launch: 3 no-key endpoints (Polkachu, PublicNode, LavenderFive)."
+  - "Chain scope: every query on this page is pinned to `chain=\"comdex\"`. Provider coverage: 1 no-key endpoint (STAVR)."
 
 findings:
-  - "{{best_name}} currently leads free Comdex RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free Comdex RPC at {{best_p50}} (Tendermint `status` p50, 24h)."
 
 faq:
   - q: "What is the fastest free Comdex RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Comdex RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Polkachu, PublicNode, LavenderFive. Every listed endpoint was live-verified before inclusion."
+    a: "STAVR's endpoint (comdex.rpc.m.stavr.tech) is the free, keyless Comdex RPC sustaining probes from all 3 regions. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Comdex RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Comdex RPC latency measured here?"
-    a: "One identical Tendermint `status` POST every 60 seconds against each provider from each of 3 regions. Responses are classified so an endpoint stuck on an old block is never ranked as fastest."
+    a: "One identical Tendermint `status` POST every 60 seconds against the provider from each of 3 regions. Responses are classified so an endpoint stuck on an old block is never ranked as fastest."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -65,71 +65,25 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: polkachu
-    name: Polkachu
-    tag: Community Cosmos validator and public RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Comdex endpoint."
+  - slug: stavr
+    name: STAVR
+    tag: STAVR validator public Cosmos RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to STAVR's no-key Comdex endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="comdex"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="comdex"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="comdex"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="comdex"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="comdex"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="comdex"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="comdex"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="comdex"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stavr", chain="comdex"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stavr", chain="comdex"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stavr", chain="comdex"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stavr", chain="comdex"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stavr", chain="comdex"}) / sum(ocb:rpc_call:rate_24h{provider="stavr", chain="comdex"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stavr", chain="comdex"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stavr", chain="comdex"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="comdex", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="comdex", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stavr", chain="comdex", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stavr", chain="comdex", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="comdex", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="comdex", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stavr", chain="comdex", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stavr", chain="comdex", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="comdex", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="comdex", region="sgp"}[1h])
-
-  - slug: publicnode
-    name: PublicNode
-    tag: Allnodes-operated, 70+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Comdex endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="comdex"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="comdex"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="comdex"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="comdex"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="comdex"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="comdex"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="comdex"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="comdex"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="comdex", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="comdex", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="comdex", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="comdex", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="comdex", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="comdex", region="sgp"}[1h])
-
-  - slug: lavenderfive
-    name: LavenderFive
-    tag: Cosmos validator and no-key RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key Comdex endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="comdex"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lavenderfive", chain="comdex"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lavenderfive", chain="comdex"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lavenderfive", chain="comdex"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lavenderfive", chain="comdex"}) / sum(ocb:rpc_call:rate_24h{provider="lavenderfive", chain="comdex"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lavenderfive", chain="comdex"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="comdex"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="comdex", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="comdex", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="comdex", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="comdex", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="comdex", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="comdex", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stavr", chain="comdex", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stavr", chain="comdex", region="sgp"}[1h])
