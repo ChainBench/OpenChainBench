@@ -975,6 +975,91 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_FUSE_THIRDWEB", "https://122.rpc.thirdweb.com")},
 			},
 		},
+		// 2026-08-04 wave-5. Filecoin EVM (FEVM, chain 314). 3 keyless providers:
+		// glif (api.node.glif.io/rpc/v1), drpc (filecoin.drpc.org),
+		// ankr (rpc.ankr.com/filecoin).
+		{
+			Slug: "filecoin",
+			Name: "Filecoin EVM",
+			Providers: []Provider{
+				{Slug: "glif", Name: "Glif", URL: envDefault("RPC_URL_FILECOIN_GLIF", "https://api.node.glif.io/rpc/v1")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FILECOIN_DRPC", "https://filecoin.drpc.org")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FILECOIN_ANKR", "https://rpc.ankr.com/filecoin")},
+			},
+		},
+		// 2026-08-04 wave-5. Canto EVM L1 (chain 7700). 4 keyless providers:
+		// canto-official (canto.gravitychain.io), drpc (canto.drpc.org),
+		// publicnode (canto-evm.publicnode.com), ankr (rpc.ankr.com/canto).
+		{
+			Slug: "canto",
+			Name: "Canto",
+			Providers: []Provider{
+				{Slug: "canto-official", Name: "Canto Official", URL: envDefault("RPC_URL_CANTO_OFFICIAL", "https://canto.gravitychain.io/")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CANTO_DRPC", "https://canto.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CANTO_PUBLICNODE", "https://canto-evm.publicnode.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_CANTO_ANKR", "https://rpc.ankr.com/canto")},
+			},
+		},
+		// 2026-08-04 wave-5. Aurora EVM on NEAR Protocol (chain 1313161554). 3 keyless
+		// providers: aurora-official (mainnet.aurora.dev), drpc (aurora.drpc.org),
+		// ankr (rpc.ankr.com/aurora).
+		{
+			Slug: "aurora",
+			Name: "Aurora",
+			Providers: []Provider{
+				{Slug: "aurora-official", Name: "Aurora Labs", URL: envDefault("RPC_URL_AURORA_OFFICIAL", "https://mainnet.aurora.dev")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AURORA_DRPC", "https://aurora.drpc.org")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_AURORA_ANKR", "https://rpc.ankr.com/aurora")},
+			},
+		},
+		// 2026-08-04 wave-5. Bitlayer Bitcoin L2 EVM (chain 200901). 3 keyless
+		// providers: bitlayer-official (rpc.bitlayer.org), drpc (bitlayer.drpc.org),
+		// ankr (rpc.ankr.com/bitlayer).
+		{
+			Slug: "bitlayer",
+			Name: "Bitlayer",
+			Providers: []Provider{
+				{Slug: "bitlayer-official", Name: "Bitlayer Official", URL: envDefault("RPC_URL_BITLAYER_OFFICIAL", "https://rpc.bitlayer.org")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BITLAYER_DRPC", "https://bitlayer.drpc.org")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_BITLAYER_ANKR", "https://rpc.ankr.com/bitlayer")},
+			},
+		},
+		// 2026-08-04 wave-5. B² Network Bitcoin L2 EVM (chain 223). 3 keyless
+		// providers: b2-official (rpc.bsquared.network), drpc (b2-mainnet.drpc.org),
+		// thirdweb (223.rpc.thirdweb.com).
+		{
+			Slug: "b2",
+			Name: "B² Network",
+			Providers: []Provider{
+				{Slug: "b2-official", Name: "B² Network Official", URL: envDefault("RPC_URL_B2_OFFICIAL", "https://rpc.bsquared.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_B2_DRPC", "https://b2-mainnet.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_B2_THIRDWEB", "https://223.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-04 wave-5. dYdX Chain Cosmos app-chain (dydx-mainnet-1). Cosmos SDK
+		// Tendermint status probe. 3 keyless providers: publicnode, polkachu, lavenderfive.
+		{
+			Slug: "dydx",
+			Name: "dYdX Chain",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_DYDX_PUBLICNODE", "https://dydx-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_DYDX_POLKACHU", "https://dydx-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_DYDX_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/dydx")},
+			},
+		},
+		// 2026-08-04 wave-5. Celestia modular DA network (celestia mainnet). Cosmos SDK
+		// Tendermint status probe. 3 keyless providers: publicnode, polkachu, lavenderfive.
+		{
+			Slug: "celestia",
+			Name: "Celestia",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CELESTIA_PUBLICNODE", "https://celestia-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_CELESTIA_POLKACHU", "https://celestia-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_CELESTIA_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/celestia")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
