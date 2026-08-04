@@ -1,0 +1,135 @@
+# OpenChainBench. Bench № 168
+
+slug: stargaze-rpc
+number: "168"
+title: Fastest free Stargaze RPC, live no-key endpoint latency
+seo_title: "Fastest free Stargaze RPC 2026"
+seo_description: "{{best_name}} leads free Stargaze RPC at {{best_p50}} (Tendermint status p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the Tendermint status method against every free, no-key public Stargaze Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Stargaze (stargaze-1) is a Cosmos SDK blockchain and the primary NFT hub in the Cosmos ecosystem, STARS staking token, using CometBFT consensus with around 6 second block times. It hosts a native NFT marketplace and integrates with IBC for cross-chain NFT transfers. The Stargaze Foundation's rpc.stargaze-apis.com, Polkachu, and PublicNode provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Stargaze.
+  We measure the round-trip latency of a single, identical Cosmos SDK call
+  (Tendermint `status`) against every no-key public Stargaze endpoint
+  that sustains continuous probing, 3 providers at launch,
+  every 60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) so the leaderboard rewards sustained availability rather than
+  fast error messages. The cross-chain view lives on the parent
+  `rpc-capabilities` benchmark; this page is the Stargaze-scoped answer
+  with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"status\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable decimal `sync_info.latest_block_height`), `http_err`, `jsonrpc_err`, `stale` (more than 40 blocks behind the cross-provider tip), `timeout`."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"stargaze\"`. Provider coverage at launch: 3 no-key endpoints (Stargaze Foundation, Polkachu, PublicNode)."
+
+findings:
+  - "{{best_name}} currently leads free Stargaze RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Stargaze RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Stargaze RPCs work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Stargaze Foundation, Polkachu, PublicNode. Every listed endpoint was live-verified before inclusion."
+  - q: "Does the fastest Stargaze RPC change by region?"
+    a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is Stargaze RPC latency measured here?"
+    a: "One identical Tendermint `status` POST every 60 seconds against each provider from each of 3 regions. Responses are classified so an endpoint stuck on an old block is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="stargaze"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: stargaze-official
+    name: Stargaze Foundation
+    tag: Stargaze Foundation's official public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stargaze Foundation's no-key Stargaze endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stargaze-official", chain="stargaze"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stargaze-official", chain="stargaze"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stargaze-official", chain="stargaze"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stargaze-official", chain="stargaze"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stargaze-official", chain="stargaze"}) / sum(ocb:rpc_call:rate_24h{provider="stargaze-official", chain="stargaze"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stargaze-official", chain="stargaze"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stargaze-official", chain="stargaze"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stargaze-official", chain="stargaze", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stargaze-official", chain="stargaze", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stargaze-official", chain="stargaze", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stargaze-official", chain="stargaze", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stargaze-official", chain="stargaze", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stargaze-official", chain="stargaze", region="sgp"}[1h])
+
+  - slug: polkachu
+    name: Polkachu
+    tag: Community Cosmos validator and public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Stargaze endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="stargaze"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="stargaze"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="stargaze"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="stargaze"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="stargaze"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="stargaze"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="stargaze"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="stargaze"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="stargaze", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="stargaze", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="stargaze", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="stargaze", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="stargaze", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="stargaze", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Stargaze endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="stargaze"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="stargaze"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="stargaze"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="stargaze"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="stargaze"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="stargaze"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="stargaze"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="stargaze"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="stargaze", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="stargaze", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="stargaze", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="stargaze", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="stargaze", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="stargaze", region="sgp"}[1h])

@@ -440,6 +440,45 @@ const RAW: Record<string, string> = {
   ousg: "/logos/ousg.svg",
   ustb: "/logos/ustb.svg",
   "syrup-usdc": "/logos/syrup-usdc.svg",
+
+  // ─── Wave-6 EVM RPC cluster chains (benches 152-166, 2026-08-04) ───
+  boba: "/logos/boba.png",
+  xdc: "/logos/xdc.png",
+  astar: "/logos/astar.png",
+  "oasis-sapphire": "/logos/oasis-sapphire.png",
+  "oasis-emerald": "/logos/oasis-emerald.png",
+  conflux: "/logos/conflux.png",
+  iotex: "/logos/iotex.png",
+  harmony: "/logos/harmony.png",
+  zircuit: "/logos/zircuit.png",
+  plume: "/logos/plume.png",
+  corn: "/logos/corn.png",
+  vana: "/logos/vana.png",
+  gravity: "/logos/gravity.png",
+  reya: "/logos/reya.png",
+  sanko: "/logos/sanko.png",
+
+  // ─── Wave-6 Cosmos SDK RPC cluster chains (benches 167-183, 2026-08-04) ───
+  akash: "/logos/akash.png",
+  stargaze: "/logos/stargaze.png",
+  stride: "/logos/stride.png",
+  juno: "/logos/juno.png",
+  kujira: "/logos/kujira.png",
+  evmos: "/logos/evmos.png",
+  dymension: "/logos/dymension.png",
+  persistence: "/logos/persistence.png",
+  coreum: "/logos/coreum.png",
+  nolus: "/logos/nolus.png",
+  archway: "/logos/archway.png",
+  nibiru: "/logos/nibiru.png",
+  quicksilver: "/logos/quicksilver.png",
+  terra: "/logos/terra.png",
+  regen: "/logos/regen.png",
+  comdex: "/logos/comdex.png",
+
+  // ─── Wave-6 Cosmos RPC providers ───
+  ecostake: "/logos/ecostake.png",
+  autostake: "/logos/autostake.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
@@ -541,6 +580,14 @@ const ALIASES: Record<string, string> = {
   "bitlayer-official": "bitlayer",
   "b2-official": "b2",
   glif: "filecoin",
+
+  // Wave-6 RPC cluster official-endpoint aliases (2026-08-04, benches 152-183)
+  "stargaze-official": "stargaze",
+  "archway-official": "archway",
+  "coreum-official": "coreum",
+  "conflux-official": "conflux",
+  "conflux-global": "conflux",
+  unifra: "conflux",
 
 };
 
