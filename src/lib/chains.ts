@@ -549,6 +549,54 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Build on Bitcoin — OP Stack hybrid L2 (chain 60808) bridging Bitcoin and Ethereum, enabling Bitcoin DeFi with EVM smart contracts and native BTC collateral, ETH gas token, ~2 s block cadence.",
   },
+  {
+    slug: "polygon-zkevm",
+    label: "Polygon zkEVM",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Polygon's ZK rollup L2 (chain 1101) settling on Ethereum, using ZK proofs for validity, ETH gas token, ~2 s block cadence, EVM-equivalent smart contract execution with full Ethereum tooling support.",
+  },
+  {
+    slug: "arbitrum-nova",
+    label: "Arbitrum Nova",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "AnyTrust chain (chain 42170) on the Nitro stack, optimised for high-throughput gaming and social apps with ultra-low fees, ETH gas token, ~1 s block cadence, minimal on-chain data via a Data Availability Committee.",
+  },
+  {
+    slug: "xlayer",
+    label: "X Layer",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OKX ZK-powered L2 (chain 196) built with Polygon CDK and Aggregation Layer, ETH gas token, ~2 s block cadence, Ethereum settlement, launched April 2024.",
+  },
+  {
+    slug: "flare",
+    label: "Flare",
+    category: "L1",
+    nativeSymbol: "FLR",
+    description:
+      "EVM-compatible L1 (chain 14) specialising in cross-chain data acquisition with native enshrined oracles (FTSOv2 price feeds, FDC cross-chain attestation), FLR gas token, ~1.8 s block cadence.",
+  },
+  {
+    slug: "core",
+    label: "Core Chain",
+    category: "L1",
+    nativeSymbol: "CORE",
+    description:
+      "Bitcoin-aligned EVM-compatible L1 (chain 1116) using Satoshi Plus consensus combining Bitcoin PoW mining with delegated PoS, CORE gas token, ~3 s block cadence, Self-Custodial Bitcoin Staking.",
+  },
+  {
+    slug: "fuse",
+    label: "Fuse Network",
+    category: "L1",
+    nativeSymbol: "FUSE",
+    description:
+      "Community-owned EVM-compatible blockchain (chain 122) built around business payments and consumer DeFi, FUSE gas token, ~5 s block cadence with AuRa-based PoA consensus.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

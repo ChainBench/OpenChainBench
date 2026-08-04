@@ -78,6 +78,13 @@ const RAW: Record<string, string> = {
   hemi: "/logos/hemi.png",
   bob: "/logos/bob.png",
   unitedbloc: "/logos/unitedbloc.jpg",
+  // RPC wave-4 chains (2026-08-04, benches 138-143)
+  "polygon-zkevm": "/logos/polygon-zkevm.png",
+  "arbitrum-nova": "/logos/arbitrum-nova.jpg",
+  xlayer: "/logos/xlayer.jpg",
+  flare: "/logos/flare.png",
+  core: "/logos/core.png",
+  fuse: "/logos/fuse.jpg",
 
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
@@ -515,6 +522,12 @@ const ALIASES: Record<string, string> = {
   "moonriver-official": "moonriver",
   "hemi-official": "hemi",
   "bob-official": "bob",
+  // RPC wave-4 chains (2026-08-04, benches 138-143)
+  "polygon-zkevm-official": "polygon-zkevm",
+  "xlayer-official": "xlayer",
+  "flare-official": "flare",
+  "core-official": "core",
+  "fuse-official": "fuse",
 
 };
 
