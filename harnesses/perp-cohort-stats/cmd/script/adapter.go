@@ -82,6 +82,7 @@ const (
 	mFees30d       = "fees_30d"
 	mActiveMarkets = "active_markets"
 	mTopVol24h     = "top_market_volume_24h"
+	mTVL           = "tvl"
 )
 
 // Source names. Keep these stable: they appear as Prom label values
@@ -290,6 +291,17 @@ func priorityMap(venue, metric string) []string {
 		case "polymarket":
 			return []string{srcPolymarketNative}
 		}
+	case mTVL:
+		// TVL comes from DefiLlama /protocol/{slug} for venues where the
+		// slug is known and the TVL is meaningful trading collateral.
+		// Venues not listed here (e.g. polymarket, variational) have no
+		// reliable TVL signal and are omitted from the capital-efficiency bench.
+		switch venue {
+		case "hyperliquid", "gains", "gmx-v2", "dydx", "ostium",
+			"lighter", "paradex", "edgex", "aster", "vertex",
+			"grvt", "extended", "aevo", "pacifica":
+			return []string{srcDefillama}
+		}
 	}
 	return nil
 }
@@ -442,7 +454,7 @@ func (r *Router) Sweep() {
 
 	// Resolve each (venue, metric) using priorityMap. Run cross-check
 	// against the next source in the priority list.
-	cohortMetrics := []string{mVolume24h, mVolume30d, mOI, mFees30d, mActiveMarkets, mTopVol24h}
+	cohortMetrics := []string{mVolume24h, mVolume30d, mOI, mFees30d, mActiveMarkets, mTopVol24h, mTVL}
 	for _, v := range Registry {
 		var healthHits, healthTotal int
 		for _, metric := range cohortMetrics {
@@ -614,6 +626,8 @@ func publishCohort(venue, metric string, val float64) {
 		perpVenueActiveMarkets.WithLabelValues(venue).Set(val)
 	case mTopVol24h:
 		perpVenueTopMarketVolume24hUsd.WithLabelValues(venue).Set(val)
+	case mTVL:
+		perpVenueTvlUsd.WithLabelValues(venue).Set(val)
 	}
 }
 
