@@ -1,9 +1,9 @@
 slug: polymarket-vs-kalshi-resolution-speed
 question: "Polymarket vs Kalshi, which resolves prediction markets faster?"
 short_answer: |
-  OpenChainBench measures Polymarket resolution delay directly onchain on Polygon: median across sports, politics and crypto categories is in the tens of minutes today, with crypto markets fastest and politics slowest by a wide margin. Kalshi settlement is offchain through a CFTC-registered exchange and is not yet in the harness; the venue-versus-venue head-to-head on this page will populate as soon as Kalshi settlement events are ingested. Live numbers per category at openchainbench.com/benchmarks/polymarket-resolution-delay.
+  OpenChainBench measures Polymarket resolution delay directly onchain on Polygon: median across sports, politics and crypto categories is in the tens of minutes today, with crypto markets fastest and politics slowest by a wide margin. Kalshi settlement is offchain through a CFTC-registered exchange and is not yet in the harness; the venue-versus-venue head-to-head on this page will populate as soon as Kalshi settlement events are ingested. Live numbers per category at openchainbench.com/benchmarks/pm-resolution-delay.
 
-benchmark: polymarket-resolution-delay
+benchmark: pm-resolution-delay
 
 intro: |
   Prediction market comparison articles publish rack rate resolution times ("Polymarket resolves in minutes") without measuring the tail. In practice, resolution speed depends on the venue's oracle stack, the category of the market and the dispute window. Polymarket runs on UMA's optimistic oracle with a variable liveness window; Kalshi settles through a CFTC-registered exchange oracle with fixed settlement rails. This page answers the head-to-head every prediction market trader eventually cares about at payout time: on the same market outcome trigger, from event confirmation to onchain payout on Polymarket or to account credit on Kalshi, which venue is faster and by how much. OpenChainBench measures both venues from their own settlement events, breaks out sports, politics and crypto categories separately, and publishes the ranked distribution live.
