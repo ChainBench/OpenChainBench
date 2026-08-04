@@ -1,12 +1,12 @@
 slug: best-prediction-market-for-politics
 question: "Which prediction market is best for politics and elections?"
-benchmark: polymarket-resolution-delay
+benchmark: pm-resolution-delay
 status: live
 
 short_answer: |
   Polymarket carries the highest global volume on political and election markets, with the largest
   open interest in the cohort. Politics markets have the longest resolution delay on Polymarket at
-  {{p50:politics}} median, because they wait for authoritative sources before resolving. For US users,
+  {{p50:polymarket-politics}} median, because they wait for authoritative sources before resolving. For US users,
   Kalshi is the regulated option with political event contracts. Metaculus is free and tracks
   calibration but is not real-money.
 
@@ -24,10 +24,10 @@ intro: |
 
   The tradeoff for political markets is resolution delay. OpenChainBench measures Polymarket
   resolution delay live by category, and politics markets have the longest median delay in the
-  cohort at {{p50:politics}}. Politics resolution is slow for two reasons: outcomes often wait on
+  cohort at {{p50:polymarket-politics}}. Politics resolution is slow for two reasons: outcomes often wait on
   authoritative sources (AP election calls, official certifications, court rulings), and UMA's
   dispute rate is highest on political markets because ambiguous or contested outcomes attract
-  challengers. A p99 of {{p99:politics}} means the slowest 1% of political markets takes much
+  challengers. A p99 of {{p99:polymarket-politics}} means the slowest 1% of political markets takes much
   longer than the median.
 
   Kalshi is CFTC-regulated and covers US political events: congressional elections, presidential
@@ -40,7 +40,7 @@ intro: |
   points), so there is no real financial stake and no CLOB to trade in and out of.
 
 methodology: |
-  OpenChainBench measures resolution delay on the polymarket-resolution-delay bench, which listens
+  OpenChainBench measures resolution delay on the pm-resolution-delay bench, which listens
   to UMA CTF adapter events on Polygon and records the time between the first onchain outcome
   proposal (ProposePrice) and the onchain resolution (payout claim availability). Markets are
   classified by category (politics, sports, crypto, other) using Polymarket's Gamma API metadata.
@@ -52,7 +52,7 @@ methodology: |
 limitations:
   - "Politics resolution delay is measured from the first onchain proposal, not from when the political event occurs. For elections, the gap between voting day and first UMA proposal can span days or weeks, depending on when the outcome is officially called. The measured figures are a lower bound on total wait."
   - "The UMA dispute rate is highest on political markets. A disputed political market waits for UMA token holder voting, which takes days. The p99 column captures this tail; the median does not."
-  - "Kalshi political market resolution delay is not yet in the polymarket-resolution-delay harness. The bench currently measures Polymarket only. Kalshi settlement is offchain through the exchange's own settlement process."
+  - "Kalshi political market resolution delay is not yet in the pm-resolution-delay harness. The bench currently measures Polymarket only. Kalshi settlement is offchain through the exchange's own settlement process."
   - "US access to Polymarket's international exchange is restricted following a 2022 CFTC settlement. US users should use Kalshi for regulated real-money political market trading."
 
 faq:
@@ -61,7 +61,7 @@ faq:
   - q: "Can US users trade election prediction markets?"
     a: "On Kalshi, yes. Kalshi is CFTC-regulated and explicitly covers US political events including congressional races, presidential elections and policy markets. On Polymarket's international exchange, no: US IPs are geoblocked following a 2022 CFTC settlement. Polymarket US (QCX), launched December 2025, may offer political event contracts but initially launched with a limited set. For US political market trading today, Kalshi is the primary regulated option."
   - q: "Why do political markets take longer to resolve than sports markets?"
-    a: "Two reasons. First, outcomes wait on authoritative sources: Polymarket markets typically do not resolve until an authoritative call is made (AP election call, official certification, court ruling). This can take hours to weeks after the event. Second, the UMA dispute rate is higher on political markets because contested outcomes attract challengers during the dispute window. Both factors extend the median resolution delay relative to sports markets. OpenChainBench measures this live: the current politics median is {{p50:politics}} versus sports at {{p50:sports}}."
+    a: "Two reasons. First, outcomes wait on authoritative sources: Polymarket markets typically do not resolve until an authoritative call is made (AP election call, official certification, court ruling). This can take hours to weeks after the event. Second, the UMA dispute rate is higher on political markets because contested outcomes attract challengers during the dispute window. Both factors extend the median resolution delay relative to sports markets. OpenChainBench measures this live: the current politics median is {{p50:polymarket-politics}} versus sports at {{p50:polymarket-sports}}."
   - q: "Polymarket vs Kalshi for politics, which is better?"
     a: "On market depth and variety: Polymarket. On US regulatory access: Kalshi. Polymarket has deeper books and higher open interest on major political events, including international elections Kalshi does not cover. Kalshi is the compliant option for US users and covers major US political events. Resolution delay is likely similar in magnitude but through architecturally different systems: Polymarket is onchain via UMA, Kalshi is offchain via the exchange's settlement process."
 
@@ -72,4 +72,4 @@ related:
   - is-polymarket-legal-in-the-us
 
 seo_title: "Best prediction market for politics 2026: Polymarket vs Kalshi"
-seo_description: "Polymarket leads on political market open interest and variety. Politics resolution runs {{p50:politics}} median on OCB's live bench. For US users, Kalshi is the regulated option."
+seo_description: "Polymarket leads on political market open interest and variety. Politics resolution runs {{p50:polymarket-politics}} median on OCB's live bench. For US users, Kalshi is the regulated option."
