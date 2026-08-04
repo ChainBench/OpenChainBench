@@ -597,6 +597,62 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Community-owned EVM-compatible blockchain (chain 122) built around business payments and consumer DeFi, FUSE gas token, ~5 s block cadence with AuRa-based PoA consensus.",
   },
+  {
+    slug: "filecoin",
+    label: "Filecoin",
+    category: "L1",
+    nativeSymbol: "FIL",
+    description:
+      "Ethereum-compatible smart-contract environment on Filecoin (FEVM, chain 314) powered by the Filecoin Virtual Machine, FIL gas token, ~30 s epoch time, decentralized storage proofs securing state.",
+  },
+  {
+    slug: "canto",
+    label: "Canto",
+    category: "L1",
+    nativeSymbol: "CANTO",
+    description:
+      "Permissionless EVM L1 (chain 7700) with free public infrastructure (DEX, lending market, stablecoin) built into the protocol as core primitives, CANTO gas token, ~6 s block time.",
+  },
+  {
+    slug: "aurora",
+    label: "Aurora",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "EVM runtime on NEAR Protocol (chain 1313161554) exposing full Ethereum tooling to NEAR's sharded execution environment, ETH gas token bridged from Ethereum, operated by Aurora Labs.",
+  },
+  {
+    slug: "bitlayer",
+    label: "Bitlayer",
+    category: "L2",
+    nativeSymbol: "BTC",
+    description:
+      "Bitcoin L2 with EVM compatibility (chain 200901) secured by a BitVM-based fraud-proof scheme, BTC gas token, ~0.5 s block time, first EVM-compatible Bitcoin Layer 2 using BitVM.",
+  },
+  {
+    slug: "b2",
+    label: "B² Network",
+    category: "L2",
+    nativeSymbol: "BTC",
+    description:
+      "Bitcoin L2 combining ZK proof verification with a Rollup+Restaking hybrid model (chain 223), BTC gas token, targeting sub-second block confirmation for Bitcoin-secured EVM execution.",
+  },
+  {
+    slug: "dydx",
+    label: "dYdX Chain",
+    category: "L1",
+    nativeSymbol: "DYDX",
+    description:
+      "Cosmos SDK app-chain (dydx-mainnet-1) running the dYdX perpetuals DEX entirely on-chain in CometBFT consensus, DYDX governance and staking token, ~1 s block time.",
+  },
+  {
+    slug: "celestia",
+    label: "Celestia",
+    category: "L1",
+    nativeSymbol: "TIA",
+    description:
+      "Modular data availability network (celestia mainnet) decoupling DA from execution, TIA gas token, ~12 s block time, used as the DA layer by Arbitrum Nitro, OP Stack, and other rollup frameworks.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

@@ -85,6 +85,14 @@ const RAW: Record<string, string> = {
   flare: "/logos/flare.svg",
   core: "/logos/core.png",
   fuse: "/logos/fuse.jpg",
+  // RPC wave-5 chains (2026-08-04, benches 145-151)
+  filecoin: "/logos/filecoin.svg",
+  canto: "/logos/canto.png",
+  aurora: "/logos/aurora.svg",
+  bitlayer: "/logos/bitlayer.png",
+  b2: "/logos/b2.png",
+  celestia: "/logos/celestia.svg",
+  // dydx already registered in providers section below
 
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
@@ -528,6 +536,11 @@ const ALIASES: Record<string, string> = {
   "flare-official": "flare",
   "core-official": "core",
   "fuse-official": "fuse",
+  "canto-official": "canto",
+  "aurora-official": "aurora",
+  "bitlayer-official": "bitlayer",
+  "b2-official": "b2",
+  glif: "filecoin",
 
 };
 
