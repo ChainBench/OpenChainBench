@@ -84,15 +84,39 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 	// We skip the testnet `arbitrum-sepolia` chain rows so the active
 	// markets gauge reflects mainnet inventory only.
 	counts := map[string]int{}
+	byClass := map[string]map[string]int{} // dex -> class -> count
 	for _, p := range parsed.Data {
 		if p.Chain == "arbitrum-sepolia" {
 			continue
 		}
 		counts[p.Dex]++
+		if byClass[p.Dex] == nil {
+			byClass[p.Dex] = map[string]int{}
+		}
+		byClass[p.Dex][p.AssetClass]++
 	}
 	for dex, n := range counts {
 		res.Set(dex, mActiveMarkets, float64(n))
 	}
+
+	// nonCore classes are the asset classes beyond crypto that represent
+	// genuine breadth: forex, stocks, indices, commodities.
+	// degen and new are excluded (leverage variants and unclassified crypto).
+	nonCore := map[string]bool{"forex": true, "stocks": true, "indices": true, "commodities": true}
+	for dex, classes := range byClass {
+		total := 0
+		for class, n := range classes {
+			perpVenueMarketsByClass.WithLabelValues(dex, class).Set(float64(n))
+			if nonCore[class] {
+				total += n
+			}
+		}
+		perpVenueNoncoreMarketsTotal.WithLabelValues(dex).Set(float64(total))
+	}
+
 	fmt.Printf("[perp-cohort][mobula_pairs] ok: %d dexes, counts=%v\n", len(counts), counts)
+	for dex, classes := range byClass {
+		fmt.Printf("[perp-cohort][mobula_pairs] %s by class: %v\n", dex, classes)
+	}
 	return res, nil
 }
