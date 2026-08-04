@@ -6,6 +6,7 @@ import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import {
   isHlBuilderSlug,
   isHlBuilderWithHistory,
@@ -313,6 +314,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
         if (await isHlBuilderSlug(slug)) return null;
         // Perp venue slugs (except polymarket) 308 to /perp/<slug>.
         if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
+        // Providers removed from all benches: stale Redis data can keep them
+        // in getProviders() while the page 410s. Explicit exclusion here
+        // prevents the smoke-gate rollback until the cache flushes.
+        if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
