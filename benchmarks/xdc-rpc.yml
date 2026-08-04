@@ -1,0 +1,181 @@
+# OpenChainBench. Bench № 153
+
+slug: xdc-rpc
+number: "153"
+title: Fastest free XDC Network RPC, live no-key endpoint latency
+seo_title: "Fastest free XDC Network RPC 2026"
+seo_description: "{{best_name}} leads free XDC Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public XDC Network RPC endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  XDC Network (chain 50) is an EVM-compatible hybrid blockchain targeting enterprise and trade-finance use cases, XDC gas token, delegated proof of stake consensus, designed for ISO 20022-compliant financial applications. The XDC Foundation's rpc.xinfin.network and additional endpoints from Ankr and the community provide keyless access probed every 60 seconds from three regions.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to XDC Network.
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_getBlockByNumber`) against every no-key public XDC Network endpoint
+  that sustains continuous probing, 5 providers at launch,
+  every 60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) so the leaderboard rewards sustained availability rather than
+  fast error messages. The cross-chain view lives on the parent
+  `rpc-capabilities` benchmark; this page is the XDC Network-scoped answer
+  with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"xdc\"`. Provider coverage at launch: 5 no-key endpoints (XDC Foundation, Ankr, XDCrpc, XDC eRPC, XDC.org)."
+
+findings:
+  - "{{best_name}} currently leads free XDC Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
+
+faq:
+  - q: "What is the fastest free XDC Network RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which XDC Network RPCs work without an API key?"
+    a: "5 endpoints sustain continuous keyless probing at launch: XDC Foundation, Ankr, XDCrpc, XDC eRPC, XDC.org. Every listed endpoint was live-verified before inclusion."
+  - q: "Does the fastest XDC Network RPC change by region?"
+    a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is XDC Network RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions. Responses are classified so an endpoint stuck on an old head or returning errors is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="xdc"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: xdc-official
+    name: XDC Foundation
+    tag: XDC Foundation's primary public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to XDC Foundation's no-key XDC Network endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-official", chain="xdc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="xdc-official", chain="xdc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="xdc-official", chain="xdc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="xdc-official", chain="xdc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="xdc-official", chain="xdc"}) / sum(ocb:rpc_call:rate_24h{provider="xdc-official", chain="xdc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="xdc-official", chain="xdc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="xdc-official", chain="xdc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-official", chain="xdc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-official", chain="xdc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-official", chain="xdc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-official", chain="xdc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-official", chain="xdc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-official", chain="xdc", region="sgp"}[1h])
+
+  - slug: ankr
+    name: Ankr
+    tag: Multi-cloud RPC network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key XDC Network endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="xdc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="xdc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="xdc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="xdc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="xdc"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="xdc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="xdc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="xdc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="xdc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="xdc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="xdc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="xdc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="xdc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="xdc", region="sgp"}[1h])
+
+  - slug: xdcrpc
+    name: XDCrpc
+    tag: Community-operated XDC public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to XDCrpc's no-key XDC Network endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdcrpc", chain="xdc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="xdcrpc", chain="xdc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="xdcrpc", chain="xdc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="xdcrpc", chain="xdc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="xdcrpc", chain="xdc"}) / sum(ocb:rpc_call:rate_24h{provider="xdcrpc", chain="xdc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="xdcrpc", chain="xdc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="xdcrpc", chain="xdc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdcrpc", chain="xdc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdcrpc", chain="xdc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdcrpc", chain="xdc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdcrpc", chain="xdc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdcrpc", chain="xdc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdcrpc", chain="xdc", region="sgp"}[1h])
+
+  - slug: xdc-erpc
+    name: XDC eRPC
+    tag: XDC Foundation alternate public RPC gateway
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to XDC Foundation's erpc endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-erpc", chain="xdc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="xdc-erpc", chain="xdc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="xdc-erpc", chain="xdc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="xdc-erpc", chain="xdc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="xdc-erpc", chain="xdc"}) / sum(ocb:rpc_call:rate_24h{provider="xdc-erpc", chain="xdc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="xdc-erpc", chain="xdc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="xdc-erpc", chain="xdc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-erpc", chain="xdc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-erpc", chain="xdc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-erpc", chain="xdc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-erpc", chain="xdc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-erpc", chain="xdc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-erpc", chain="xdc", region="sgp"}[1h])
+
+  - slug: xdc-org
+    name: XDC.org
+    tag: XDC Foundation third public RPC mirror
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to XDC Foundation's rpc.xdc.org endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-org", chain="xdc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="xdc-org", chain="xdc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="xdc-org", chain="xdc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="xdc-org", chain="xdc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="xdc-org", chain="xdc"}) / sum(ocb:rpc_call:rate_24h{provider="xdc-org", chain="xdc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="xdc-org", chain="xdc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="xdc-org", chain="xdc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-org", chain="xdc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-org", chain="xdc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-org", chain="xdc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-org", chain="xdc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xdc-org", chain="xdc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xdc-org", chain="xdc", region="sgp"}[1h])
