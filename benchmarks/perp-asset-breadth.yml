@@ -5,7 +5,7 @@ number: "124"
 title: "Perp DEX asset breadth: non-crypto markets live, forex + stocks + indices + commodities"
 seo_title: "Perp DEX asset breadth 2026"
 seo_description: "gains.trade leads perp DEX asset breadth with 110+ non-crypto markets live: 18 forex pairs (EUR/USD, GBP/JPY...), 68 stocks (AAPL, TSLA, NVDA...), 14 indices (SPX, NDX...) and 10 commodities (XAU, WTI...). Hyperliquid, GMX, dYdX are crypto-only. Live count updated every 5 minutes from the Mobula perp catalog."
-subtitle: "Total number of tradable non-crypto perpetual markets per venue — forex currency pairs, tokenized stocks, indices and commodities. Higher means broader asset coverage beyond BTC/ETH/SOL. Live count updated every 5 minutes."
+subtitle: "Total number of tradable non-crypto perpetual markets per venue: forex currency pairs, tokenized stocks, indices and commodities. Higher means broader asset coverage beyond BTC/ETH/SOL. Live count updated every 5 minutes."
 category: Trading
 status: live
 metric: Non-crypto markets
