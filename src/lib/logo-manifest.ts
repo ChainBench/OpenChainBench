@@ -82,7 +82,7 @@ const RAW: Record<string, string> = {
   "polygon-zkevm": "/logos/polygon-zkevm.png",
   "arbitrum-nova": "/logos/arbitrum-nova.jpg",
   xlayer: "/logos/xlayer.jpg",
-  flare: "/logos/flare.png",
+  flare: "/logos/flare.svg",
   core: "/logos/core.png",
   fuse: "/logos/fuse.jpg",
 
