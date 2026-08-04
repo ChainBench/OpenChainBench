@@ -2003,6 +2003,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "BOB's official public RPC (rpc.gobob.xyz) for the Build on Bitcoin OP Stack hybrid L2 bridging BTC and ETH with native BTC collateral support (chain 60808). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
     twitter: "@gobob_xyz",
   },
+  "polygon-zkevm-official": {
+    url: "https://polygon.technology/polygon-zkevm",
+    description:
+      "Polygon Foundation's official public RPC (zkevm-rpc.com) for Polygon zkEVM (chain 1101), the ZK rollup L2 settling on Ethereum. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@0xPolygon",
+  },
+  "xlayer-official": {
+    url: "https://www.okx.com/xlayer",
+    description:
+      "OKX's official public RPC (rpc.xlayer.tech) for X Layer (chain 196), the ZK-powered L2 built with Polygon CDK and operated by OKX. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@XLayerOfficial",
+  },
+  "flare-official": {
+    url: "https://flare.network",
+    description:
+      "Flare Foundation's official public RPC (flare-api.flare.network/ext/bc/C/rpc) for Flare mainnet (chain 14), the EVM-compatible L1 with enshrined oracles (FTSOv2, FDC). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@FlareNetworks",
+  },
+  "core-official": {
+    url: "https://coredao.org",
+    description:
+      "Core DAO's official public RPC (rpc.coredao.org) for Core Chain mainnet (chain 1116), the Bitcoin-aligned EVM L1 using Satoshi Plus consensus. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@Coredao_Org",
+  },
+  "fuse-official": {
+    url: "https://fuse.io",
+    description:
+      "Fuse Foundation's official public RPC (rpc.fuse.io) for Fuse Network mainnet (chain 122), the community-owned EVM chain built for business payments and consumer DeFi. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@fuse_network",
+  },
   unitedbloc: {
     url: "https://unitedbloc.com",
     description:

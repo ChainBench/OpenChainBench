@@ -899,6 +899,82 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_BOB_THIRDWEB", "https://60808.rpc.thirdweb.com")},
 			},
 		},
+		// 2026-08-04 audit. Polygon zkEVM ZK rollup L2 (chain 1101). 3 clean keyless
+		// providers: polygon-zkevm-official (zkevm-rpc.com), drpc (polygon-zkevm.drpc.org),
+		// thirdweb (1101.rpc.thirdweb.com). Excluded: Ankr (no route), Alchemy (key required).
+		{
+			Slug: "polygon-zkevm",
+			Name: "Polygon zkEVM",
+			Providers: []Provider{
+				{Slug: "polygon-zkevm-official", Name: "Polygon", URL: envDefault("RPC_URL_POLYGON_ZKEVM_OFFICIAL", "https://zkevm-rpc.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_ZKEVM_DRPC", "https://polygon-zkevm.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_POLYGON_ZKEVM_THIRDWEB", "https://1101.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-04 audit. Arbitrum Nova AnyTrust chain (chain 42170). 3 clean keyless
+		// providers: publicnode (arbitrum-nova-rpc.publicnode.com), drpc (arbitrum-nova.drpc.org),
+		// thirdweb (42170.rpc.thirdweb.com). Excluded: Ankr (no route), Alchemy (key required).
+		{
+			Slug: "arbitrum-nova",
+			Name: "Arbitrum Nova",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARBITRUM_NOVA_PUBLICNODE", "https://arbitrum-nova-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARBITRUM_NOVA_DRPC", "https://arbitrum-nova.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ARBITRUM_NOVA_THIRDWEB", "https://42170.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-04 audit. X Layer OKX zkEVM L2 (chain 196). 3 clean keyless
+		// providers: xlayer-official (rpc.xlayer.tech), drpc (xlayer.drpc.org),
+		// thirdweb (196.rpc.thirdweb.com). Excluded: Ankr (no route), Alchemy (key required).
+		{
+			Slug: "xlayer",
+			Name: "X Layer",
+			Providers: []Provider{
+				{Slug: "xlayer-official", Name: "X Layer", URL: envDefault("RPC_URL_XLAYER_OFFICIAL", "https://rpc.xlayer.tech")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_XLAYER_DRPC", "https://xlayer.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_XLAYER_THIRDWEB", "https://196.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-04 audit. Flare cross-chain data L1 (chain 14). 4 clean keyless
+		// providers: flare-official (flare-api.flare.network/ext/bc/C/rpc), drpc (flare.drpc.org),
+		// thirdweb (14.rpc.thirdweb.com), ankr (rpc.ankr.com/flare).
+		// Excluded: Alchemy (no route), QuickNode (key required).
+		{
+			Slug: "flare",
+			Name: "Flare",
+			Providers: []Provider{
+				{Slug: "flare-official", Name: "Flare Foundation", URL: envDefault("RPC_URL_FLARE_OFFICIAL", "https://flare-api.flare.network/ext/bc/C/rpc")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FLARE_DRPC", "https://flare.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_FLARE_THIRDWEB", "https://14.rpc.thirdweb.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FLARE_ANKR", "https://rpc.ankr.com/flare")},
+			},
+		},
+		// 2026-08-04 audit. Core Chain Bitcoin-aligned L1 (chain 1116). 4 clean keyless
+		// providers: core-official (rpc.coredao.org), drpc (core.drpc.org),
+		// thirdweb (1116.rpc.thirdweb.com), ankr (rpc.ankr.com/core).
+		// Excluded: Alchemy (no route), QuickNode (key required).
+		{
+			Slug: "core",
+			Name: "Core Chain",
+			Providers: []Provider{
+				{Slug: "core-official", Name: "Core DAO", URL: envDefault("RPC_URL_CORE_OFFICIAL", "https://rpc.coredao.org")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CORE_DRPC", "https://core.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CORE_THIRDWEB", "https://1116.rpc.thirdweb.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_CORE_ANKR", "https://rpc.ankr.com/core")},
+			},
+		},
+		// 2026-08-04 audit. Fuse Network community DeFi chain (chain 122). 3 clean keyless
+		// providers: fuse-official (rpc.fuse.io), drpc (fuse.drpc.org),
+		// thirdweb (122.rpc.thirdweb.com). Excluded: Ankr (no route), Alchemy (no route).
+		{
+			Slug: "fuse",
+			Name: "Fuse Network",
+			Providers: []Provider{
+				{Slug: "fuse-official", Name: "Fuse Foundation", URL: envDefault("RPC_URL_FUSE_OFFICIAL", "https://rpc.fuse.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FUSE_DRPC", "https://fuse.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_FUSE_THIRDWEB", "https://122.rpc.thirdweb.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
