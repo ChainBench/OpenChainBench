@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Canto is a permissionless EVM L1 (chain 7700) built around free public infrastructure — its DEX, lending market, and stablecoin are protocol primitives rather than third-party dApps. The official endpoint (`canto.gravitychain.io`) is maintained by Plex, with dRPC, PublicNode, and Ankr providing additional keyless alternatives probed every 60 seconds from three regions.
+  Canto is a permissionless EVM L1 (chain 7700) built around free public infrastructure; its DEX, lending market, and stablecoin are protocol primitives rather than third-party dApps. The official endpoint (`canto.gravitychain.io`) is maintained by Plex, with dRPC, PublicNode, and Ankr providing additional keyless alternatives probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Canto.
