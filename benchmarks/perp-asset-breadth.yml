@@ -19,9 +19,9 @@ seo_intro: |
   Most perp DEX comparisons measure fees, funding and volume on BTC and ETH.
   They ignore a structural question: which venues let you trade assets that
   are not crypto? This benchmark measures the live count of non-crypto
-  perpetual markets — forex pairs like EUR/USD and GBP/JPY, tokenized stocks
-  like AAPL and NVDA, indices like SPX and NDX, and commodities like XAU
-  and WTI crude — across the major onchain perp venues.
+  perpetual markets, including forex pairs like EUR/USD and GBP/JPY, tokenized
+  stocks like AAPL and NVDA, indices like SPX and NDX, and commodities like
+  XAU and WTI crude, across the major onchain perp venues.
 
   The results are stark. gains.trade lists over 110 non-crypto perpetual
   markets, the widest catalog among EVM perp DEXes. Lighter lists around 40.
@@ -73,7 +73,7 @@ faq:
   - q: "What counts as a non-crypto market?"
     a: "Forex: currency pairs like EUR/USD, GBP/JPY. Stocks: tokenized equities like AAPL/USD, TSLA/USD. Indices: index perpetuals like SPX/USD, NDX/USD. Commodities: XAU/USD (gold), XAG/USD (silver), WTI/USD (crude oil), NATGAS/USD. The classification uses Mobula's editorial assetClass tag."
   - q: "Why are degen and new markets excluded?"
-    a: "degen markets are high-leverage variants of existing crypto pairs (BTCDEGEN, ETHDEGEN) — they do not represent a new asset class. new markets are newly listed pairs pending classification. Both are excluded to give an honest count of genuine non-crypto breadth."
+    a: "degen markets are high-leverage variants of existing crypto pairs (BTCDEGEN, ETHDEGEN); they do not represent a new asset class. new markets are newly listed pairs pending classification. Both are excluded to give an honest count of genuine non-crypto breadth."
   - q: "Can I trade US stocks 24/7 on gains.trade?"
     a: "gains.trade lists synthetic stock perpetuals. Trading availability during off-hours depends on the venue's oracle and liquidity configuration. The market is listed but execution conditions may differ from market-hours trading."
   - q: "How often does the market list change?"
