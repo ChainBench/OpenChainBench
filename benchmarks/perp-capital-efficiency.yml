@@ -53,7 +53,6 @@ findings:
   - "gains.trade lists {{p50:gains}} markets per $1M TVL, the highest among measured venues. Its synthetic oracle model backs 449+ pairs from a single shared GToken vault."
   - "Hyperliquid lists {{p50:hyperliquid}} markets per $1M TVL. Its CLOB model requires market-maker inventory per pair; the $6B deposit base reflects that inventory requirement."
   - "dYdX v4 lists {{p50:dydx}} markets per $1M TVL. Cosmos appchain orderbook."
-  - "GMX v2 lists {{p50:gmx-v2}} markets per $1M TVL. Its GM pools require per-market collateral, so adding a new market means deploying a new pool."
   - "Ostium lists {{p50:ostium}} markets per $1M TVL. Synthetic perps on Arbitrum covering FX, crypto and commodities."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
@@ -116,20 +115,6 @@ providers:
       success: avg_over_time(perp_venue_health{venue="dydx"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="dydx"}[24h])
       series: perp_venue_active_markets{venue="dydx"} / perp_venue_tvl_usd{venue="dydx"} * 1000000
-
-  - slug: gmx-v2
-    name: GMX v2
-    tag: EVM Arbitrum, per-market GM pool collateral
-    confidence_tier: onchain
-    formula: "avg_over_time(perp_venue_active_markets{venue=\"gmx-v2\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"gmx-v2\"}[24h]) * 1000000"
-    queries:
-      p50: avg_over_time(perp_venue_active_markets{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gmx-v2"}[24h]) * 1000000
-      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gmx-v2"}[24h]) * 1000000
-      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gmx-v2"}[24h]) * 1000000
-      mean: avg_over_time(perp_venue_active_markets{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gmx-v2"}[24h]) * 1000000
-      success: avg_over_time(perp_venue_health{venue="gmx-v2"}[24h])
-      sample_size: count_over_time(perp_venue_active_markets{venue="gmx-v2"}[24h])
-      series: perp_venue_active_markets{venue="gmx-v2"} / perp_venue_tvl_usd{venue="gmx-v2"} * 1000000
 
   - slug: ostium
     name: Ostium
