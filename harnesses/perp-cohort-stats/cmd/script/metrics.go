@@ -73,6 +73,13 @@ var (
 		},
 		[]string{"venue"},
 	)
+	perpVenueTvlUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_tvl_usd",
+			Help: "Total value locked in USD per perp venue, excluding staking and pool2 categories. Source: DefiLlama /protocol/{slug} currentChainTvls.",
+		},
+		[]string{"venue"},
+	)
 	perpVenueHealth = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_health",
@@ -137,6 +144,7 @@ func init() {
 		perpVenueVolume24hUsd, perpVenueVolume30dUsd, perpVenueOIUsd,
 		perpVenueFees30dUsd, perpVenueActiveMarkets, perpVenueTopMarketVolume24hUsd,
 		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
+		perpVenueTvlUsd,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
 		perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
