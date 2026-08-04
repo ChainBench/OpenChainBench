@@ -1093,23 +1093,21 @@ func chains() []Chain {
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ASTAR_1RPC", "https://1rpc.io/astr")},
 			},
 		},
-		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 3 keyless providers.
+		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 2 keyless providers.
 		{
 			Slug: "oasis-sapphire",
 			Name: "Oasis Sapphire",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_PUBLICNODE", "https://sapphire.oasis.io")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_ANKR", "https://rpc.ankr.com/oasis_sapphire")},
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_1RPC", "https://1rpc.io/oasis/sapphire")},
 			},
 		},
-		// Oasis Emerald — EVM paratime (chain 42262). 3 keyless providers.
+		// Oasis Emerald — EVM paratime (chain 42262). 2 keyless providers.
 		{
 			Slug: "oasis-emerald",
 			Name: "Oasis Emerald",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_EMERALD_PUBLICNODE", "https://emerald.oasis.io")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_OASIS_EMERALD_ANKR", "https://rpc.ankr.com/oasis_emerald")},
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_OASIS_EMERALD_1RPC", "https://1rpc.io/oasis/emerald")},
 			},
 		},
@@ -1123,25 +1121,19 @@ func chains() []Chain {
 				{Slug: "unifra", Name: "Unifra", URL: envDefault("RPC_URL_CONFLUX_UNIFRA", "https://conflux-espace.nodereal.io/v1/pub")},
 			},
 		},
-		// IoTeX — DePIN EVM L1 (chain 4689). 4 keyless providers.
+		// IoTeX — DePIN EVM L1 (chain 4689). 1 keyless provider.
 		{
 			Slug: "iotex",
 			Name: "IoTeX",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_IOTEX_PUBLICNODE", "https://iotex-rpc.publicnode.com")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_IOTEX_ANKR", "https://rpc.ankr.com/iotex")},
-				{Slug: "blastapi", Name: "BlastAPI", URL: envDefault("RPC_URL_IOTEX_BLASTAPI", "https://iotex-mainnet.public.blastapi.io")},
 				{Slug: "iotex-mirror", Name: "IoTeX Mirror", URL: envDefault("RPC_URL_IOTEX_MIRROR", "https://babel-api.mainnet.iotex.one")},
 			},
 		},
-		// Harmony — Sharded EVM L1 shard 0 (chain 1666600000). 5 keyless providers.
+		// Harmony — Sharded EVM L1 shard 0 (chain 1666600000). 2 keyless providers.
 		{
 			Slug: "harmony",
 			Name: "Harmony",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_HARMONY_PUBLICNODE", "https://harmony-0-rpc.publicnode.com")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_HARMONY_ANKR", "https://rpc.ankr.com/harmony")},
-				{Slug: "blastapi", Name: "BlastAPI", URL: envDefault("RPC_URL_HARMONY_BLASTAPI", "https://harmony-mainnet.public.blastapi.io")},
 				{Slug: "harmony-s0", Name: "Harmony S0", URL: envDefault("RPC_URL_HARMONY_S0", "https://a.api.s0.t.hmny.io")},
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_HARMONY_1RPC", "https://1rpc.io/one")},
 			},
@@ -1163,23 +1155,21 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_PLUME_DRPC", "https://plume.drpc.org")},
 			},
 		},
-		// Vana — Data economy EVM L1 (chain 1480). 2 keyless providers.
+		// Vana — Data economy EVM L1 (chain 1480). 1 keyless provider.
 		{
 			Slug: "vana",
 			Name: "Vana",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_VANA_PUBLICNODE", "https://rpc.vana.org")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_VANA_DRPC", "https://vana.drpc.org")},
 			},
 		},
-		// Gravity — Galxe EVM L2 (chain 1625). 3 keyless providers.
+		// Gravity — Galxe EVM L2 (chain 1625). 2 keyless providers.
 		{
 			Slug: "gravity",
 			Name: "Gravity",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GRAVITY_PUBLICNODE", "https://rpc.gravity.xyz")},
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_GRAVITY_ANKR", "https://rpc.ankr.com/gravity")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GRAVITY_DRPC", "https://gravity.drpc.org")},
 			},
 		},
 		// Reya Network — Trading EVM L2 (chain 1729). 2 keyless providers.
@@ -1250,16 +1240,13 @@ func chains() []Chain {
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_DYMENSION_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/dymension")},
 			},
 		},
-		// Persistence — liquid staking hub (core-1). 4 keyless providers.
+		// Persistence — liquid staking hub (core-1). 1 keyless provider.
 		{
 			Slug: "persistence",
 			Name: "Persistence",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_PERSISTENCE_POLKACHU", "https://persistence-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PERSISTENCE_PUBLICNODE", "https://persistence-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_PERSISTENCE_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/persistence")},
-				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_PERSISTENCE_AUTOSTAKE", "https://persistence-mainnet-rpc.autostake.com:443")},
 			},
 		},
 		// Coreum — enterprise RWA chain (coreum-mainnet-1). 3 keyless providers.
@@ -1273,15 +1260,13 @@ func chains() []Chain {
 				{Slug: "coreum-official", Name: "Coreum Foundation", URL: envDefault("RPC_URL_COREUM_OFFICIAL", "https://full-node.mainnet-1.coreum.dev:26657")},
 			},
 		},
-		// Nolus — DeFi lease protocol (pirin-1). 3 keyless providers.
+		// Nolus — DeFi lease protocol (pirin-1). 1 keyless provider.
 		{
 			Slug: "nolus",
 			Name: "Nolus",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NOLUS_POLKACHU", "https://nolus-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_NOLUS_PUBLICNODE", "https://nolus-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_NOLUS_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/nolus")},
 			},
 		},
 		// Archway — developer-rewards CosmWasm (archway-1). 4 keyless providers.
@@ -1296,26 +1281,22 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARCHWAY_PUBLICNODE", "https://archway-rpc.publicnode.com:443")},
 			},
 		},
-		// Nibiru — CosmWasm + EVM chain (cataclysm-1). 3 keyless providers.
+		// Nibiru — CosmWasm + EVM chain (cataclysm-1). 1 keyless provider.
 		{
 			Slug: "nibiru",
 			Name: "Nibiru",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NIBIRU_POLKACHU", "https://nibiru-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_NIBIRU_PUBLICNODE", "https://nibiru-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_NIBIRU_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/nibiru")},
 			},
 		},
-		// Quicksilver — ICS liquid staking (quicksilver-2). 3 keyless providers.
+		// Quicksilver — ICS liquid staking (quicksilver-2). 1 keyless provider.
 		{
 			Slug: "quicksilver",
 			Name: "Quicksilver",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_QUICKSILVER_POLKACHU", "https://quicksilver-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_QUICKSILVER_PUBLICNODE", "https://quicksilver-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_QUICKSILVER_LAVENDERFIVE", "https://quicksilver-rpc.lavenderfive.com:443")},
 			},
 		},
 		// Terra 2 — relaunched Cosmos chain (phoenix-1). 4 keyless providers.
@@ -1330,16 +1311,13 @@ func chains() []Chain {
 				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_TERRA_AUTOSTAKE", "https://terra-mainnet-rpc.autostake.com:443")},
 			},
 		},
-		// Regen Network — ecological assets chain (regen-1). 4 keyless providers.
+		// Regen Network — ecological assets chain (regen-1). 1 keyless provider.
 		{
 			Slug: "regen",
 			Name: "Regen Network",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_REGEN_POLKACHU", "https://regen-rpc.polkachu.com:443")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_REGEN_PUBLICNODE", "https://regen-rpc.publicnode.com:443")},
-				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_REGEN_AUTOSTAKE", "https://regen-mainnet-rpc.autostake.com:443")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_REGEN_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/regen")},
 			},
 		},
 		// Comdex — DeFi synthetics chain (comdex-1). 1 keyless provider.

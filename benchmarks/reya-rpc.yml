@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Reya Network (chain 1729) is an EVM-compatible L2 purpose-built for perpetual futures trading, featuring a native order book, cross-margin accounts, and a passive liquidity pool. The Reya Foundation's rpc.reya.network and dRPC provide keyless access probed every 60 seconds from three regions.
+  Reya Network (chain 1729) is an EVM-compatible L2 purpose-built for perpetual futures trading, featuring a native order book, cross-margin accounts, and a passive liquidity pool. The Reya Foundation's rpc.reya.network and Thirdweb provide keyless access probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Reya Network.
@@ -34,7 +34,7 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"reya\"`. Provider coverage at launch: 2 no-key endpoints (Reya Foundation, dRPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"reya\"`. Provider coverage at launch: 2 no-key endpoints (Reya Foundation, Thirdweb)."
 
 findings:
   - "{{best_name}} currently leads free Reya Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
@@ -43,7 +43,7 @@ faq:
   - q: "What is the fastest free Reya Network RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Reya Network RPCs work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing at launch: Reya Foundation, dRPC. Every listed endpoint was live-verified before inclusion."
+    a: "2 endpoints sustain continuous keyless probing at launch: Reya Foundation, Thirdweb. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Reya Network RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Reya Network RPC latency measured here?"
@@ -65,48 +65,48 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: reya-official
+  - slug: publicnode
     name: Reya Foundation
     tag: Reya Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Reya Foundation's no-key Reya Network endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="reya-official", chain="reya"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="reya-official", chain="reya"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="reya-official", chain="reya"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="reya-official", chain="reya"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="reya-official", chain="reya"}) / sum(ocb:rpc_call:rate_24h{provider="reya-official", chain="reya"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="reya-official", chain="reya"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="reya-official", chain="reya"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="reya"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="reya"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="reya"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="reya"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="reya"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="reya"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="reya"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="reya"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="reya-official", chain="reya", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="reya-official", chain="reya", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="reya", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="reya", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="reya-official", chain="reya", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="reya-official", chain="reya", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="reya", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="reya", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="reya-official", chain="reya", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="reya-official", chain="reya", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="reya", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="reya", region="sgp"}[1h])
 
-  - slug: drpc
-    name: dRPC
-    tag: Decentralized RPC mesh
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Reya Network endpoint."
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb chain-ID RPC gateway
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Reya Network endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="reya"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="reya"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="reya"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="reya"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="reya"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="reya"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="reya"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="reya"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="reya"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="reya"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="reya"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="reya"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="reya"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="reya"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="reya"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="reya"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="reya", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="reya", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="reya", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="reya", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="reya", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="reya", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="reya", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="reya", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="reya", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="reya", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="reya", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="reya", region="sgp"}[1h])
