@@ -2039,6 +2039,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "UnitedBloc is a community validator and RPC node operator running public infrastructure for Moonbeam and Moonriver. Their keyless endpoint (moonriver.unitedbloc.com) supports Moonriver (chain 1285) without an API key.",
     twitter: "@unitedbloc",
   },
+  glif: {
+    url: "https://glif.io",
+    description:
+      "Glif is a community-operated Filecoin node infrastructure provider. Their public endpoint (api.node.glif.io/rpc/v1) is the canonical keyless FEVM gateway for Filecoin mainnet (chain 314).",
+    twitter: "@glifio",
+  },
+  "canto-official": {
+    url: "https://canto.io",
+    description:
+      "Plex-operated public RPC (canto.gravitychain.io) for Canto mainnet (chain 7700), the permissionless EVM L1 with free public DeFi infrastructure. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@CantoPublic",
+  },
+  "aurora-official": {
+    url: "https://aurora.dev",
+    description:
+      "Aurora Labs-operated public RPC (mainnet.aurora.dev) for Aurora mainnet (chain 1313161554), the EVM runtime on NEAR Protocol. Standard EVM JSON-RPC, keyless.",
+    twitter: "@auroraisnear",
+  },
+  "bitlayer-official": {
+    url: "https://www.bitlayer.org",
+    description:
+      "Bitlayer Labs-operated public RPC (rpc.bitlayer.org) for Bitlayer mainnet (chain 200901), the first EVM-compatible Bitcoin L2 using BitVM. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@BitlayerLabs",
+  },
+  "b2-official": {
+    url: "https://www.bsquared.network",
+    description:
+      "B² Network team-operated public RPC (rpc.bsquared.network) for B² Network mainnet (chain 223), a Bitcoin L2 combining ZK proof verification with Rollup+Restaking. Standard EVM JSON-RPC, keyless.",
+    twitter: "@BSquaredNetwork",
+  },
 };
 
 /**

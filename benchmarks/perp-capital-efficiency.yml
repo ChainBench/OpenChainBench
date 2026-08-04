@@ -1,0 +1,131 @@
+# OpenChainBench. Bench 144
+
+slug: perp-capital-efficiency
+number: "144"
+title: "Perp DEX capital efficiency: active markets per $M TVL, live"
+seo_title: "Perp DEX capital efficiency 2026"
+seo_description: "gains.trade lists 40+ active perp markets per $1M TVL versus Hyperliquid at under 0.1. Capital efficiency measures how many tradable instruments a venue can sustain per dollar of locked collateral. Synthetic oracle venues outperform CLOB venues by two orders of magnitude. Live from DefiLlama TVL and native venue APIs."
+subtitle: "Active perp markets divided by trading TVL in USD millions. Higher means more instruments supported per dollar of locked collateral. Synthetic oracle venues like gains.trade carry many markets on a shared pool; CLOB venues like Hyperliquid require dedicated market-maker inventory per pair."
+category: Trading
+status: live
+metric: Markets per $M TVL
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  TVL from DefiLlama /protocol/{slug} currentChainTvls, excluding staking and pool2 categories. Market count from each venue's native API (same source as the perp-active-markets bench). The ratio reflects architectural choices, not absolute liquidity: a high ratio means the venue can list many markets cheaply, not that each market has deep liquidity. Compare with perp-open-interest for the liquidity angle.
+
+seo_intro: |
+  Every perp DEX comparison ranks by volume, fees or funding rates. Few ask the
+  capital question: how many markets can a venue sustain per dollar it locks up?
+  The answer reveals the structural gap between synthetic oracle venues and CLOB
+  order book venues. A synthetic venue like gains.trade needs one shared collateral
+  pool to back unlimited pairs. A CLOB like Hyperliquid needs market-maker inventory
+  for every individual pair. The collateral requirements scale completely differently.
+
+  gains.trade supports over 40 active markets per $1M of trading TVL. Hyperliquid
+  supports less than 0.1 markets per $1M TVL. The 400x gap is not a performance
+  difference; it is an architectural one. The bench does not judge which model is
+  better: deep single-pair liquidity has real value. It measures a real dimension
+  that existing leaderboards ignore entirely.
+
+abstract: |
+  The bench computes active_markets / (trading_tvl_usd / 1_000_000) for each
+  tracked perp venue. Both inputs are updated every 5 minutes. Active market count
+  comes from each venue's native API via the perp-cohort-stats harness (same
+  source as the perp-active-markets bench). Trading TVL comes from DefiLlama
+  /protocol/{slug} currentChainTvls with staking and pool2 keys excluded, also
+  polled every 5 minutes. The ratio is recomputed on every Prometheus scrape.
+  TVL fluctuates with collateral deposits and crypto prices, so the 24h average
+  smooths intraday noise.
+
+methodology:
+  - "Cadence: every 5 minutes. Both active_markets and TVL are re-read on the same sweep cycle."
+  - "Active markets: native venue API per the perp-active-markets bench methodology. gains.trade: Mobula perp pairs catalog (mainnet only). Hyperliquid: info metaAndAssetCtxs. dYdX: indexer perpetualMarkets. Others: native endpoints."
+  - "TVL: DefiLlama /protocol/{slug} currentChainTvls. Staking and pool2 keys excluded. Multi-chain TVL summed across all deployment chains."
+  - "gains.trade TVL: GToken vault across Arbitrum, Base, Polygon and ApeChain. This is the shared liquidity pool that backs all synthetic pairs simultaneously."
+  - "Hyperliquid TVL: total user deposits (USDC). Funds serve as both margin and implicit market-maker collateral; every listed pair draws from this pool for maker fills."
+  - "Ratio formula: avg_over_time(markets[24h]) / avg_over_time(tvl_usd[24h]) * 1_000_000."
+  - "Interpretation: a ratio of 40 means the venue can sustain 40 active markets per $1M locked. Higher is more capital-efficient in terms of market breadth."
+
+findings:
+  - "{{best_name}} leads capital efficiency with {{best_p50}} active markets per $1M TVL."
+  - "gains.trade lists {{p50:gains}} markets per $1M TVL, the highest among measured venues. Its synthetic oracle model backs 449+ pairs from a single shared GToken vault."
+  - "Hyperliquid lists {{p50:hyperliquid}} markets per $1M TVL. Its CLOB model requires market-maker inventory per pair; the $6B deposit base reflects that inventory requirement."
+  - "dYdX v4 lists {{p50:dydx}} markets per $1M TVL. Cosmos appchain orderbook."
+  - "Ostium lists {{p50:ostium}} markets per $1M TVL. Synthetic perps on Arbitrum covering FX, crypto and commodities."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+
+faq:
+  - q: "What does capital efficiency mean here?"
+    a: "It measures how many distinct perpetual markets a venue can sustain per $1M of trading collateral locked. Higher is more efficient: you get more instruments per dollar of capital. It does not measure depth per market."
+  - q: "Why does gains.trade win so clearly?"
+    a: "gains.trade uses synthetic oracles backed by a single shared liquidity pool (the GToken vault). Adding a new pair costs near zero additional capital. CLOB venues like Hyperliquid or GMX need per-pair market-maker inventory or per-pool collateral, so capital scales with pair count."
+  - q: "Is capital efficiency always desirable?"
+    a: "Not necessarily. Deep per-pair liquidity has value for large traders. A venue with 449 pairs on $11M TVL may have thin liquidity per pair. Pair this bench with perp-open-interest for the depth angle."
+  - q: "Why is TVL from DefiLlama and not native APIs?"
+    a: "DefiLlama aggregates TVL across all deployment chains and normalizes the methodology across venues. Native TVL endpoints (where they exist) differ in scope: some include user margin, others only LP collateral."
+  - q: "Does TVL change with crypto prices?"
+    a: "Yes. Venues whose TVL includes crypto-denominated assets (LP tokens, staked tokens) see their USD TVL move with prices. The 24h average smooths intraday moves, but the ratio can shift in volatile markets."
+
+providers:
+  - slug: gains
+    name: gains.trade
+    tag: Synthetic perps on Arbitrum, Base, Polygon and ApeChain, shared GToken vault
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"gains\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"gains\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="gains"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gains"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="gains"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gains"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="gains"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gains"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="gains"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="gains"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="gains"}[24h])
+      series: perp_venue_active_markets{venue="gains"} / perp_venue_tvl_usd{venue="gains"} * 1000000
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: Custom L1 HyperBFT CLOB, total user deposits as TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"hyperliquid\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"hyperliquid\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="hyperliquid"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="hyperliquid"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="hyperliquid"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="hyperliquid"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="hyperliquid"}[24h])
+      series: perp_venue_active_markets{venue="hyperliquid"} / perp_venue_tvl_usd{venue="hyperliquid"} * 1000000
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain orderbook perps
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"dydx\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"dydx\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="dydx"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="dydx"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="dydx"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="dydx"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="dydx"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="dydx"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="dydx"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="dydx"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="dydx"}[24h])
+      series: perp_venue_active_markets{venue="dydx"} / perp_venue_tvl_usd{venue="dydx"} * 1000000
+
+  - slug: ostium
+    name: Ostium
+    tag: Synthetic perps on Arbitrum, FX and commodities alongside crypto
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"ostium\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"ostium\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="ostium"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="ostium"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="ostium"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="ostium"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="ostium"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="ostium"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="ostium"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="ostium"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="ostium"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="ostium"}[24h])
+      series: perp_venue_active_markets{venue="ostium"} / perp_venue_tvl_usd{venue="ostium"} * 1000000
