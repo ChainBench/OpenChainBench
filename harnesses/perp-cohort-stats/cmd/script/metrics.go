@@ -52,6 +52,20 @@ var (
 		},
 		[]string{"venue"},
 	)
+	perpVenueMarketsByClass = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_markets_by_class",
+			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: Mobula perp pairs catalog.",
+		},
+		[]string{"venue", "class"},
+	)
+	perpVenueNoncoreMarketsTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_noncore_markets_total",
+			Help: "Total non-crypto markets (forex+stocks+indices+commodities) per venue. Higher = more asset class breadth beyond crypto.",
+		},
+		[]string{"venue"},
+	)
 	perpVenueTopMarketVolume24hUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_top_market_volume_24h_usd",
@@ -122,6 +136,7 @@ func init() {
 	prometheus.MustRegister(
 		perpVenueVolume24hUsd, perpVenueVolume30dUsd, perpVenueOIUsd,
 		perpVenueFees30dUsd, perpVenueActiveMarkets, perpVenueTopMarketVolume24hUsd,
+		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
 		perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
