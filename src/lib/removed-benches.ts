@@ -131,6 +131,11 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // changed without notice. Specs deleted.
   "pm-fee-comparison",
   "pm-geographic-access",
+  // polymarket-resolution-delay was drafted in a worktree but never merged
+  // to main. Answer pages originally referenced it; those were updated to
+  // pm-resolution-delay (2026-08-04). A 308 redirect covers inbound links.
+  // Adding here prevents stale Redis data from re-appearing in the sitemap.
+  "polymarket-resolution-delay",
 ]);
 
 /**
@@ -147,5 +152,10 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   // dropped 2026-07-24. Product page was live briefly, so Google
   // likely indexed the URL. 410 speeds de-indexing.
   "bitquery",
+  // goldrush (Covalent) was removed from indexing-freshness bench in
+  // 2026-08-04 data-api report (PR #1758). Stale Redis data can keep
+  // the provider in getProviders() output while the page 404s; 410 guard
+  // + sitemap exclusion stop the smoke-gate rollback until Redis flushes.
+  "goldrush",
 ]);
 
