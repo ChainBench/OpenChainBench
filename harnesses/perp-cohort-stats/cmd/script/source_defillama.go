@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -61,6 +63,28 @@ var defillamaSlugMap = map[string]string{
 	"ostium":      "ostium",
 }
 
+// tvlSlugMap maps OCB venue slugs to DefiLlama /protocol/{slug} identifiers
+// used for the trading TVL endpoint. These slugs differ from defillamaSlugMap
+// (which uses -perps suffixed overview slugs). Verified 2026-08.
+// Venues omitted here (variational, polymarket) have no reliable TVL page.
+// tvlSlugMap verified 2026-08 against DefiLlama /protocol/{slug}.
+// vertex has no TVL page; variational and polymarket omitted (no protocol page).
+var tvlSlugMap = map[string]string{
+	"hyperliquid": "hyperliquid",
+	"gains":       "gains-network",
+	"gmx-v2":      "gmx",
+	"dydx":        "dydx",
+	"ostium":      "ostium",
+	"lighter":     "lighter",
+	"paradex":     "paradex",
+	"edgex":       "edgex",
+	"aster":       "aster",
+	"grvt":        "grvt",
+	"extended":    "extended",
+	"aevo":        "aevo",
+	"pacifica":    "pacifica-perps",
+}
+
 type llamaProto struct {
 	Slug     string   `json:"slug"`
 	Total24h *float64 `json:"total24h"`
@@ -105,7 +129,72 @@ func (s *DefiLlamaScrapeSource) Fetch() (*SourceResult, error) {
 			fmt.Printf("[perp-cohort][%s][%s] ok: fees30d=%.0f oi=%.0f\n", venueSlug, srcDefillama, fees30, oiNow)
 		}
 	}
+
+	// Fetch per-venue TVL in parallel using /protocol/{slug}.
+	type tvlResult struct {
+		venue string
+		tvl   float64
+		err   error
+	}
+	tvlCh := make(chan tvlResult, len(tvlSlugMap))
+	var wg sync.WaitGroup
+	for venueSlug, llamaSlug := range tvlSlugMap {
+		wg.Add(1)
+		go func(v, l string) {
+			defer wg.Done()
+			tvl, err := s.protocolTVL(l)
+			tvlCh <- tvlResult{venue: v, tvl: tvl, err: err}
+		}(venueSlug, llamaSlug)
+	}
+	wg.Wait()
+	close(tvlCh)
+	for r := range tvlCh {
+		if r.err != nil {
+			perpCohortFetchErrors.WithLabelValues(r.venue, srcDefillama, classifyError(r.err.Error())).Inc()
+			fmt.Printf("[perp-cohort][%s][%s] tvl err: %v\n", r.venue, srcDefillama, r.err)
+			continue
+		}
+		if r.tvl > 0 {
+			res.SetIfPositive(r.venue, mTVL, r.tvl)
+			fmt.Printf("[perp-cohort][%s][%s] ok: tvl=%.0f\n", r.venue, srcDefillama, r.tvl)
+		}
+	}
+
 	return res, nil
+}
+
+// protocolTVL fetches the /protocol/{slug} endpoint and returns the trading
+// TVL in USD, excluding staking and pool2 categories which inflate the
+// headline number with non-trading capital.
+func (s *DefiLlamaScrapeSource) protocolTVL(slug string) (float64, error) {
+	url := "https://api.llama.fi/protocol/" + slug
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@mobula.io")
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("request_error: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return 0, fmt.Errorf("status_%d", resp.StatusCode)
+	}
+	var proto struct {
+		CurrentChainTvls map[string]float64 `json:"currentChainTvls"`
+	}
+	if err := json.Unmarshal(body, &proto); err != nil {
+		return 0, fmt.Errorf("parse: %w", err)
+	}
+	var total float64
+	for k, v := range proto.CurrentChainTvls {
+		k = strings.ToLower(k)
+		if strings.Contains(k, "staking") || strings.Contains(k, "pool2") {
+			continue
+		}
+		total += v
+	}
+	return total, nil
 }
 
 func findProto(o *llamaOverview, slug string) *llamaProto {
