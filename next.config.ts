@@ -248,6 +248,20 @@ const nextConfig: NextConfig = {
         destination: "/benchmarks/wallet-labels-coverage/gram",
         permanent: true,
       },
+      // polymarket-resolution-delay was an early bench slug drafted in a
+      // worktree but never merged. Answer pages and inbound links used the
+      // old slug; 308 to the live bench (pm-resolution-delay) so rank
+      // signal consolidates and pages stop 404-ing.
+      {
+        source: "/benchmarks/polymarket-resolution-delay",
+        destination: "/benchmarks/pm-resolution-delay",
+        permanent: true,
+      },
+      {
+        source: "/benchmarks/polymarket-resolution-delay/:path*",
+        destination: "/benchmarks/pm-resolution-delay/:path*",
+        permanent: true,
+      },
       ...chainRedirects,
       ...rpcClusterRedirects,
     ];
