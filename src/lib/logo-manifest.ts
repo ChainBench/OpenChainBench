@@ -479,6 +479,7 @@ const RAW: Record<string, string> = {
   // ─── Wave-6 Cosmos RPC providers ───
   ecostake: "/logos/ecostake.png",
   autostake: "/logos/autostake.png",
+  stavr: "/logos/stavr.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
@@ -590,6 +591,8 @@ const ALIASES: Record<string, string> = {
   unifra: "conflux",
   // Wave-6 extra provider aliases (2026-08-04)
   "boba-replica": "boba",
+  "boba-official": "boba",
+  "zircuit-official": "zircuit",
   "xdc-erpc": "xdc",
   "xdc-org": "xdc",
   "iotex-mirror": "iotex",

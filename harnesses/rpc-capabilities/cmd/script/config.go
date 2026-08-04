@@ -1061,15 +1061,13 @@ func chains() []Chain {
 			},
 		},
 		// 2026-08-04 wave-6 EVM chains (benches 152-166). eth_getBlockByNumber probe.
-		// Boba Network — Optimistic rollup L2 (chain 288). 4 keyless providers.
+		// Boba Network — Optimistic rollup L2 (chain 288). 2 keyless providers.
 		{
 			Slug: "boba",
 			Name: "Boba Network",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BOBA_PUBLICNODE", "https://boba-mainnet.public.blastapi.io")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_BOBA_ANKR", "https://rpc.ankr.com/boba_network")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOBA_DRPC", "https://boba.drpc.org")},
-				{Slug: "boba-replica", Name: "Boba Replica", URL: envDefault("RPC_URL_BOBA_REPLICA", "https://replica.boba.network")},
+				{Slug: "boba-official", Name: "Boba Foundation", URL: envDefault("RPC_URL_BOBA_OFFICIAL", "https://mainnet.boba.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOBA_DRPC", "https://boba-eth.drpc.org")},
 			},
 		},
 		// XDC Network — Enterprise EVM L1 (chain 50). 5 keyless providers.
@@ -1148,13 +1146,12 @@ func chains() []Chain {
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_HARMONY_1RPC", "https://1rpc.io/one")},
 			},
 		},
-		// Zircuit — ZK rollup L2 (chain 48900). 2 keyless providers.
+		// Zircuit — ZK rollup L2 (chain 48900). 1 keyless provider.
 		{
 			Slug: "zircuit",
 			Name: "Zircuit",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ZIRCUIT_PUBLICNODE", "https://zircuit-mainnet.public.blastapi.io")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZIRCUIT_DRPC", "https://zircuit.drpc.org")},
+				{Slug: "zircuit-official", Name: "Zircuit Foundation", URL: envDefault("RPC_URL_ZIRCUIT_OFFICIAL", "https://mainnet.zircuit.com")},
 			},
 		},
 		// Plume — RWA EVM L1 (chain 98866). 2 keyless providers.
@@ -1166,13 +1163,12 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_PLUME_DRPC", "https://plume.drpc.org")},
 			},
 		},
-		// Corn — BTC-backed EVM L2 (chain 21000000). 2 keyless providers.
+		// Corn — BTC-backed EVM L2 (chain 21000000). 1 keyless provider.
 		{
 			Slug: "corn",
 			Name: "Corn",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CORN_PUBLICNODE", "https://mainnet.corn-rpc.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CORN_DRPC", "https://corn-mainnet.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CORN_THIRDWEB", "https://21000000.rpc.thirdweb.com")},
 			},
 		},
 		// Vana — Data economy EVM L1 (chain 1480). 2 keyless providers.
@@ -1203,12 +1199,11 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_REYA_THIRDWEB", "https://1729.rpc.thirdweb.com")},
 			},
 		},
-		// Sanko — Gaming L3 on Arbitrum Orbit (chain 1996). 2 keyless providers.
+		// Sanko — Gaming L3 on Arbitrum Orbit (chain 1996). 1 keyless provider.
 		{
 			Slug: "sanko",
 			Name: "Sanko",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SANKO_PUBLICNODE", "https://mainnet.sanko.xyz")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SANKO_THIRDWEB", "https://1996.rpc.thirdweb.com")},
 			},
 		},
@@ -1398,15 +1393,13 @@ func chains() []Chain {
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_REGEN_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/regen")},
 			},
 		},
-		// Comdex — DeFi synthetics chain (comdex-1). 3 keyless providers.
+		// Comdex — DeFi synthetics chain (comdex-1). 1 keyless provider.
 		{
 			Slug: "comdex",
 			Name: "Comdex",
 			Kind: "cosmos",
 			Providers: []Provider{
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_COMDEX_POLKACHU", "https://comdex-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_COMDEX_PUBLICNODE", "https://comdex-rpc.publicnode.com:443")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_COMDEX_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/comdex")},
+				{Slug: "stavr", Name: "STAVR", URL: envDefault("RPC_URL_COMDEX_STAVR", "https://comdex.rpc.m.stavr.tech:443")},
 			},
 		},
 	}
