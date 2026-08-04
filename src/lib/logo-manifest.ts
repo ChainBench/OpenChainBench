@@ -588,6 +588,12 @@ const ALIASES: Record<string, string> = {
   "conflux-official": "conflux",
   "conflux-global": "conflux",
   unifra: "conflux",
+  // Wave-6 extra provider aliases (2026-08-04)
+  "boba-replica": "boba",
+  "xdc-erpc": "xdc",
+  "xdc-org": "xdc",
+  "iotex-mirror": "iotex",
+  "harmony-s0": "harmony",
 
 };
 
