@@ -1,0 +1,135 @@
+# OpenChainBench. Bench № 157
+
+slug: conflux-rpc
+number: "157"
+title: Fastest free Conflux eSpace RPC, live no-key endpoint latency
+seo_title: "Fastest free Conflux eSpace RPC 2026"
+seo_description: "{{best_name}} leads free Conflux eSpace RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Conflux eSpace RPC endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Conflux eSpace (chain 1030) is the EVM-compatible execution space of the Conflux tree-graph consensus network, CFX gas token, targeting high-throughput DeFi and RWA applications with sub-second block production. The Conflux Foundation maintains evm.confluxrpc.com and evmmain-global.confluxrpc.com; Unifra provides an additional keyless endpoint. All three are probed every 60 seconds from three regions.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Conflux eSpace.
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_getBlockByNumber`) against every no-key public Conflux eSpace endpoint
+  that sustains continuous probing, 3 providers at launch,
+  every 60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) so the leaderboard rewards sustained availability rather than
+  fast error messages. The cross-chain view lives on the parent
+  `rpc-capabilities` benchmark; this page is the Conflux eSpace-scoped answer
+  with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"conflux\"`. Provider coverage at launch: 3 no-key endpoints (Conflux Foundation, Conflux Global, Unifra)."
+
+findings:
+  - "{{best_name}} currently leads free Conflux eSpace RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Conflux eSpace RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Conflux eSpace RPCs work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Conflux Foundation, Conflux Global, Unifra. Every listed endpoint was live-verified before inclusion."
+  - q: "Does the fastest Conflux eSpace RPC change by region?"
+    a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is Conflux eSpace RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions. Responses are classified so an endpoint stuck on an old head or returning errors is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="conflux"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: conflux-official
+    name: Conflux Foundation
+    tag: Conflux Foundation's primary eSpace RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Conflux Foundation's no-key Conflux eSpace endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-official", chain="conflux"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="conflux-official", chain="conflux"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="conflux-official", chain="conflux"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="conflux-official", chain="conflux"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="conflux-official", chain="conflux"}) / sum(ocb:rpc_call:rate_24h{provider="conflux-official", chain="conflux"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="conflux-official", chain="conflux"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="conflux-official", chain="conflux"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-official", chain="conflux", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-official", chain="conflux", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-official", chain="conflux", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-official", chain="conflux", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-official", chain="conflux", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-official", chain="conflux", region="sgp"}[1h])
+
+  - slug: conflux-global
+    name: Conflux Global
+    tag: Conflux Foundation's global eSpace mirror
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Conflux Global's no-key Conflux eSpace endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-global", chain="conflux"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="conflux-global", chain="conflux"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="conflux-global", chain="conflux"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="conflux-global", chain="conflux"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="conflux-global", chain="conflux"}) / sum(ocb:rpc_call:rate_24h{provider="conflux-global", chain="conflux"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="conflux-global", chain="conflux"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="conflux-global", chain="conflux"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-global", chain="conflux", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-global", chain="conflux", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-global", chain="conflux", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-global", chain="conflux", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-global", chain="conflux", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="conflux-global", chain="conflux", region="sgp"}[1h])
+
+  - slug: unifra
+    name: Unifra
+    tag: Unifra public Conflux eSpace node
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Unifra's no-key Conflux eSpace endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="unifra", chain="conflux"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="unifra", chain="conflux"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="unifra", chain="conflux"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="unifra", chain="conflux"}) / sum(ocb:rpc_call:rate_24h{provider="unifra", chain="conflux"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="unifra", chain="conflux"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="sgp"}[1h])

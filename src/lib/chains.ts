@@ -653,6 +653,263 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Modular data availability network (celestia mainnet) decoupling DA from execution, TIA gas token, ~12 s block time, used as the DA layer by Arbitrum Nitro, OP Stack, and other rollup frameworks.",
   },
+  // ─── Wave-6 RPC cluster (benches 152-183, 2026-08-04) ───
+  {
+    slug: "boba",
+    label: "Boba Network",
+    category: "L2",
+    nativeSymbol: "BOBA",
+    description:
+      "Optimistic rollup L2 (boba-mainnet, chain 288) bridged from Ethereum, BOBA governance token, hybrid compute enabling off-chain logic callable from smart contracts.",
+  },
+  {
+    slug: "xdc",
+    label: "XDC Network",
+    category: "L1",
+    nativeSymbol: "XDC",
+    description:
+      "EVM-compatible L1 (XinFin mainnet, chain 50) targeting enterprise trade finance and real-world asset tokenisation, XDC staking token, delegated proof-of-stake consensus with ~2 s block time.",
+  },
+  {
+    slug: "astar",
+    label: "Astar",
+    category: "L1",
+    nativeSymbol: "ASTR",
+    description:
+      "Polkadot parachain and standalone EVM chain (Astar mainnet, chain 592) supporting both EVM and WASM smart contracts, ASTR staking token, dApp staking model rewarding developers.",
+  },
+  {
+    slug: "oasis-sapphire",
+    label: "Oasis Sapphire",
+    category: "L1",
+    nativeSymbol: "ROSE",
+    description:
+      "Confidential EVM-compatible paratime on the Oasis Network (chain 23294) with hardware-backed TEE confidentiality for smart contract state, ROSE gas token, sub-second finality.",
+  },
+  {
+    slug: "oasis-emerald",
+    label: "Oasis Emerald",
+    category: "L1",
+    nativeSymbol: "ROSE",
+    description:
+      "EVM-compatible paratime on the Oasis Network (chain 42262) offering standard Solidity smart contracts with Oasis consensus security, ROSE gas token.",
+  },
+  {
+    slug: "conflux",
+    label: "Conflux",
+    category: "L1",
+    nativeSymbol: "CFX",
+    description:
+      "Tree-Graph consensus L1 (Conflux eSpace, chain 1030) with EVM compatibility via its eSpace layer, CFX staking and gas token, high throughput without sacrificing decentralisation.",
+  },
+  {
+    slug: "iotex",
+    label: "IoTeX",
+    category: "L1",
+    nativeSymbol: "IOTX",
+    description:
+      "EVM-compatible L1 (IoTeX mainnet, chain 4689) purpose-built for decentralised physical infrastructure (DePIN) and IoT applications, IOTX staking token, Roll-DPoS consensus.",
+  },
+  {
+    slug: "harmony",
+    label: "Harmony",
+    category: "L1",
+    nativeSymbol: "ONE",
+    description:
+      "Sharded EVM-compatible L1 (Harmony Shard 0, chain 1666600000) using FBFT consensus with ~2 s finality, ONE staking token, cross-shard and cross-chain IBC bridges.",
+  },
+  {
+    slug: "zircuit",
+    label: "Zircuit",
+    category: "L2",
+    nativeSymbol: "ZRC",
+    description:
+      "ZK rollup L2 (Zircuit mainnet, chain 48900) on Ethereum with sequencer-level MEV protection and ZK-proven execution, ZRC governance token.",
+  },
+  {
+    slug: "plume",
+    label: "Plume",
+    category: "L1",
+    nativeSymbol: "PLUME",
+    description:
+      "EVM-compatible L1 (Plume mainnet, chain 98866) purpose-built for real-world asset tokenisation with native compliance rails and asset primitives, PLUME gas token.",
+  },
+  {
+    slug: "corn",
+    label: "Corn",
+    category: "L2",
+    nativeSymbol: "BTCN",
+    description:
+      "Bitcoin-backed EVM L2 (Corn mainnet, chain 21000000) using BTCN (wrapped BTC) as the native gas token, secured by Ethereum via the AltLayer restaking stack.",
+  },
+  {
+    slug: "vana",
+    label: "Vana",
+    category: "L1",
+    nativeSymbol: "VANA",
+    description:
+      "EVM-compatible L1 (Vana mainnet, chain 1480) designed for user-owned data economies, enabling individuals to monetise their data via DataDAOs, VANA staking token.",
+  },
+  {
+    slug: "gravity",
+    label: "Gravity",
+    category: "L2",
+    nativeSymbol: "G",
+    description:
+      "EVM-compatible L2 (Gravity Alpha mainnet, chain 1625) built by Galxe, using Celestia for DA and AltLayer for restaked security, G gas token.",
+  },
+  {
+    slug: "reya",
+    label: "Reya Network",
+    category: "L2",
+    nativeSymbol: "REYA",
+    description:
+      "Trading-optimised EVM L2 (Reya mainnet, chain 1729) built on Arbitrum Orbit with a cross-margined clearing layer enabling capital-efficient perp and options trading, REYA token.",
+  },
+  {
+    slug: "sanko",
+    label: "Sanko",
+    category: "L3",
+    nativeSymbol: "DMT",
+    description:
+      "Gaming L3 (Sanko mainnet, chain 1996) built on Arbitrum Orbit using DMT as the native gas token, targeting on-chain gaming and NFT applications.",
+  },
+  {
+    slug: "akash",
+    label: "Akash",
+    category: "L1",
+    nativeSymbol: "AKT",
+    description:
+      "Cosmos SDK decentralised cloud compute marketplace (akashnet-2) where users bid on idle server capacity with AKT, CometBFT consensus, IBC-connected to the broader Cosmos ecosystem.",
+  },
+  {
+    slug: "stargaze",
+    label: "Stargaze",
+    category: "L1",
+    nativeSymbol: "STARS",
+    description:
+      "Cosmos SDK NFT and social blockchain (stargaze-1) with first-class on-chain NFT primitives, STARS staking token, CometBFT consensus, IBC-connected to Osmosis and other Cosmos chains.",
+  },
+  {
+    slug: "stride",
+    label: "Stride",
+    category: "L1",
+    nativeSymbol: "STRD",
+    description:
+      "Cosmos SDK liquid staking zone (stride-1) issuing stTokens (stATOM, stOSMO, stTIA, etc.) redeemable for the underlying staked asset plus rewards, STRD governance token, CometBFT consensus.",
+  },
+  {
+    slug: "juno",
+    label: "Juno",
+    category: "L1",
+    nativeSymbol: "JUNO",
+    description:
+      "Cosmos SDK CosmWasm smart contract platform (juno-1) permissionlessly hosting dApps, JUNO staking token, CometBFT consensus, IBC-connected to Osmosis and the wider Cosmos ecosystem.",
+  },
+  {
+    slug: "kujira",
+    label: "Kujira",
+    category: "L1",
+    nativeSymbol: "KUJI",
+    description:
+      "Cosmos SDK DeFi chain (kaiyo-1) with native on-chain order book (FIN), liquidation engine (ORCA), and money market (GHOST), KUJI staking token, CometBFT consensus.",
+  },
+  {
+    slug: "evmos",
+    label: "Evmos",
+    category: "L1",
+    nativeSymbol: "EVMOS",
+    description:
+      "Cosmos SDK EVM-compatible chain (evmos_9001-2) combining Tendermint consensus with full Ethereum tooling compatibility, EVMOS staking token, dApp revenue share model.",
+  },
+  {
+    slug: "axelar",
+    label: "Axelar",
+    category: "L1",
+    nativeSymbol: "AXL",
+    description:
+      "Cosmos SDK cross-chain communication network (axelar-dojo-1) providing generalised message passing and token transfers between 50+ blockchains, AXL staking token, CometBFT consensus.",
+  },
+  {
+    slug: "dymension",
+    label: "Dymension",
+    category: "L1",
+    nativeSymbol: "DYM",
+    description:
+      "Cosmos SDK modular L1 (dymension_1100-1) serving as the settlement and hub layer for RollApps (sovereign rollups), DYM staking token, CometBFT consensus, IBC-native bridging.",
+  },
+  {
+    slug: "persistence",
+    label: "Persistence",
+    category: "L1",
+    nativeSymbol: "XPRT",
+    description:
+      "Cosmos SDK liquid staking and DeFi hub (core-1) issuing stkAssets for IBC-connected chains and hosting pSTAKE Finance, XPRT staking token, CometBFT consensus.",
+  },
+  {
+    slug: "coreum",
+    label: "Coreum",
+    category: "L1",
+    nativeSymbol: "COREUM",
+    description:
+      "Cosmos SDK enterprise and RWA blockchain (coreum-mainnet-1) with native smart token primitives including NFTs and fungible tokens with built-in transfer rules, COREUM staking token, CometBFT consensus.",
+  },
+  {
+    slug: "nolus",
+    label: "Nolus",
+    category: "L1",
+    nativeSymbol: "NLS",
+    description:
+      "Cosmos SDK DeFi lease protocol (pirin-1) enabling leveraged positions with lower collateral requirements than traditional CDPs, NLS staking token, CometBFT consensus, IBC-connected to Osmosis.",
+  },
+  {
+    slug: "archway",
+    label: "Archway",
+    category: "L1",
+    nativeSymbol: "ARCH",
+    description:
+      "Cosmos SDK CosmWasm chain (archway-1) with a built-in developer rewards model where dApps earn a portion of gas fees generated by their users, ARCH staking token, CometBFT consensus.",
+  },
+  {
+    slug: "nibiru",
+    label: "Nibiru",
+    category: "L1",
+    nativeSymbol: "NIBI",
+    description:
+      "Cosmos SDK blockchain (cataclysm-1) supporting both CosmWasm and EVM smart contracts with sub-second block times, NIBI staking token, CometBFT consensus.",
+  },
+  {
+    slug: "quicksilver",
+    label: "Quicksilver",
+    category: "L1",
+    nativeSymbol: "QCK",
+    description:
+      "Cosmos SDK ICS liquid staking protocol (quicksilver-2) providing qATOM, qOSMO, qSTARS and other IBC-connected staked representations, QCK staking token, CometBFT consensus.",
+  },
+  {
+    slug: "terra",
+    label: "Terra",
+    category: "L1",
+    nativeSymbol: "LUNA",
+    description:
+      "Cosmos SDK blockchain (phoenix-1) relaunched after the 2022 Terra/Luna collapse, LUNA staking token, CometBFT consensus, CosmWasm smart contracts, IBC-connected to the Cosmos ecosystem.",
+  },
+  {
+    slug: "regen",
+    label: "Regen Network",
+    category: "L1",
+    nativeSymbol: "REGEN",
+    description:
+      "Cosmos SDK ecological assets blockchain (regen-1) enabling on-chain issuance, retirement and trading of verified carbon credits and ecological credits, REGEN staking token, CometBFT consensus.",
+  },
+  {
+    slug: "comdex",
+    label: "Comdex",
+    category: "L1",
+    nativeSymbol: "CMDX",
+    description:
+      "Cosmos SDK DeFi chain (comdex-1) providing decentralised synthetics and lending with on-chain commodity markets, CMDX staking token, CometBFT consensus, IBC-connected to Osmosis and Cosmos Hub.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
