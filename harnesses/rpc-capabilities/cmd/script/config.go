@@ -1163,14 +1163,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_PLUME_DRPC", "https://plume.drpc.org")},
 			},
 		},
-		// Corn — BTC-backed EVM L2 (chain 21000000). 1 keyless provider.
-		{
-			Slug: "corn",
-			Name: "Corn",
-			Providers: []Provider{
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_CORN_THIRDWEB", "https://21000000.rpc.thirdweb.com")},
-			},
-		},
 		// Vana — Data economy EVM L1 (chain 1480). 2 keyless providers.
 		{
 			Slug: "vana",
@@ -1199,14 +1191,6 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_REYA_THIRDWEB", "https://1729.rpc.thirdweb.com")},
 			},
 		},
-		// Sanko — Gaming L3 on Arbitrum Orbit (chain 1996). 1 keyless provider.
-		{
-			Slug: "sanko",
-			Name: "Sanko",
-			Providers: []Provider{
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SANKO_THIRDWEB", "https://1996.rpc.thirdweb.com")},
-			},
-		},
 		// 2026-08-04 wave-6 Cosmos SDK chains (benches 167-183). Tendermint status probe.
 		// Akash — decentralised cloud compute (akashnet-2). 4 keyless providers.
 		{
@@ -1218,18 +1202,6 @@ func chains() []Chain {
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_AKASH_POLKACHU", "https://akash-rpc.polkachu.com")},
 				{Slug: "ecostake", Name: "EcoStake", URL: envDefault("RPC_URL_AKASH_ECOSTAKE", "https://rpc.cosmos.directory/akash")},
 				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_AKASH_AUTOSTAKE", "https://akash-mainnet-rpc.autostake.com:443")},
-			},
-		},
-		// Stargaze — NFT chain (stargaze-1). 4 keyless providers.
-		{
-			Slug: "stargaze",
-			Name: "Stargaze",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "stargaze-official", Name: "Stargaze Foundation", URL: envDefault("RPC_URL_STARGAZE_OFFICIAL", "https://rpc.stargaze-apis.com")},
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_STARGAZE_POLKACHU", "https://stargaze-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_STARGAZE_PUBLICNODE", "https://stargaze-rpc.publicnode.com")},
-				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_STARGAZE_AUTOSTAKE", "https://stargaze-mainnet-rpc.autostake.com:443")},
 			},
 		},
 		// Stride — liquid staking zone (stride-1). 3 keyless providers.
@@ -1253,29 +1225,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_JUNO_PUBLICNODE", "https://juno-rpc.publicnode.com")},
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_JUNO_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/juno")},
 				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_JUNO_AUTOSTAKE", "https://juno-mainnet-rpc.autostake.com:443")},
-			},
-		},
-		// Kujira — on-chain DeFi chain (kaiyo-1). 3 keyless providers.
-		{
-			Slug: "kujira",
-			Name: "Kujira",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_KUJIRA_POLKACHU", "https://kujira-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KUJIRA_PUBLICNODE", "https://kujira-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_KUJIRA_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/kujira")},
-			},
-		},
-		// Evmos — Cosmos EVM chain (evmos_9001-2). 4 keyless providers.
-		{
-			Slug: "evmos",
-			Name: "Evmos",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_EVMOS_POLKACHU", "https://evmos-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_EVMOS_PUBLICNODE", "https://evmos-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_EVMOS_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/evmos")},
-				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_EVMOS_AUTOSTAKE", "https://evmos-mainnet-rpc.autostake.com:443")},
 			},
 		},
 		// Axelar — cross-chain network (axelar-dojo-1). 4 keyless providers.
