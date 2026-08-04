@@ -210,9 +210,22 @@ export default async function ChainPage({
 
       <header className="mt-5 flex items-center gap-4">
         <ProviderLogo slug={chain.slug} name={chain.label} size={56} />
-        <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
-          {chain.label} live benchmarks
-        </h1>
+        <div>
+          <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
+            {chain.label} live benchmarks
+          </h1>
+          {chain.website && (
+            <a
+              href={chain.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
+            >
+              {chain.website.replace(/^https?:\/\//, "")}
+              <ArrowUpRight size={11} strokeWidth={2} />
+            </a>
+          )}
+        </div>
       </header>
 
       <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-soft">
