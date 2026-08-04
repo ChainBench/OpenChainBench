@@ -1,0 +1,159 @@
+# OpenChainBench. Bench № 142
+
+slug: core-rpc
+number: "142"
+title: Fastest free Core Chain RPC, live no-key EVM endpoint latency
+seo_title: "Fastest free Core Chain RPC 2026"
+seo_description: "{{best_name}} leads free Core Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Core Chain EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Core Chain is a Bitcoin-aligned EVM-compatible L1 blockchain (chain 1116) using a hybrid Satoshi Plus consensus that combines Bitcoin PoW mining with delegated PoS, CORE as gas token, ~3 s block cadence, BTC staking via the Self-Custodial Bitcoin Staking protocol. The 2026-08-04 audit confirms 4 clean keyless providers: the Core DAO official endpoint (rpc.coredao.org), dRPC (core.drpc.org), Thirdweb (1116.rpc.thirdweb.com), and Ankr (rpc.ankr.com/core). Excluded: Alchemy (no Core route), QuickNode (key required).
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Core Chain.
+  We measure the round-trip latency of a single, identical JSON-RPC call
+  (`eth_getBlockByNumber("latest", false)`) against every no-key public
+  Core Chain endpoint that sustains continuous probing, 4 providers
+  measured, every 60 seconds, from us-east, eu-west and Singapore. The
+  harness classifies every response (ok / http_err / jsonrpc_err / stale
+  / timeout) with a Core Chain-scaled staleness gap (20 blocks
+  at Core Chain's ~3 s block time). The cross-chain view
+  lives on the parent `rpc-capabilities` benchmark; this page is the
+  Core Chain-scoped answer with per-region breakdowns as a first-class
+  dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"core\"`. Provider coverage: 4 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free Core Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
+
+faq:
+  - q: "What is the fastest free Core Chain RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Core Chain RPCs work without an API key?"
+    a: "4 endpoints sustain continuous keyless probing: Core DAO official (https://rpc.coredao.org), dRPC (https://core.drpc.org), Thirdweb (https://1116.rpc.thirdweb.com), and Ankr (https://rpc.ankr.com/core). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+  - q: "Does the fastest Core Chain RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is Core Chain RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="core"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: core-official
+    name: Core DAO
+    tag: Core DAO official public RPC for Core Chain mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Core DAO's no-key Core Chain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="core-official", chain="core"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="core-official", chain="core"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="core-official", chain="core"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="core-official", chain="core"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="core-official", chain="core"}) / sum(ocb:rpc_call:rate_24h{provider="core-official", chain="core"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="core-official", chain="core"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="core-official", chain="core"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="core-official", chain="core", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="core-official", chain="core", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="core-official", chain="core", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="core-official", chain="core", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="core-official", chain="core", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="core-official", chain="core", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: dRPC public gateway routing to Core Chain node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Core Chain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="core"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="core"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="core"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="core"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="core"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="core"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="core"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="core"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="core", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="core", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="core", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="core", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="core", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="core", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public RPC gateway for Core Chain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Core Chain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="core"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="core"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="core"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="core"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="core"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="core"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="core"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="core"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="core", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="core", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="core", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="core", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="core", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="core", region="sgp"}[1h])
+
+  - slug: ankr
+    name: Ankr
+    tag: Ankr decentralized node provider for Core Chain mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Core Chain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="core"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="core"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="core"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="core"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="core"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="core"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="core"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="core"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="core", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="core", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="core", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="core", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="core", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="core", region="sgp"}[1h])
