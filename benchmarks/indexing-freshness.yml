@@ -2,9 +2,9 @@
 
 slug: indexing-freshness
 number: "070"
-title: Freshest wallet data API. Zerion, Moralis, Allium, Mobula
+title: Freshest wallet data API. Zerion, Moralis, Allium, GoldRush, Mobula
 seo_title: "Freshest wallet data API 2026"
-seo_description: "How fast do wallet APIs index a new transaction? Zerion, Moralis, Allium, Mobula measured live on organic Base transfers, second by second."
+seo_description: "How fast do wallet APIs index a new transaction? Zerion, Moralis, Allium, GoldRush, Mobula measured live on organic Base transfers, second by second."
 subtitle: Seconds between an organic transfer confirming on Base and the moment each wallet data API first returns it, measured continuously on real user transactions.
 category: Aggregators
 status: live
@@ -60,6 +60,7 @@ findings:
   - "{{best_name}} currently leads at {{best_p50}} (p50 of found lags, 24h) across organic Base transfers."
   - "{{name:zerion}} sits at {{p50:zerion}}. Early runs showed a bimodal pattern, some events indexed in about a second and others surfacing several seconds later, consistent with a caching layer in front of the wallet endpoint."
   - "{{name:moralis}} runs at {{p50:moralis}} with a notably tight distribution across events."
+  - "{{name:goldrush}} trails at {{p50:goldrush}} on this probe. Its unified multi-chain schema trades freshness for breadth, a real trade-off teams should weigh explicitly."
   - "Miss rates matter more than medians: an API that fails to show a deposit within two minutes breaks the user flow entirely, so read the reliability column before the latency one."
 
 faq:
@@ -114,6 +115,17 @@ providers:
       success: sum(increase(indexing_probe_total{provider="moralis", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="moralis", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="moralis", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="moralis"}[1h])
+  - slug: goldrush
+    name: GoldRush
+    tag: Covalent's multi-chain wallet API, unified schema
+    formula: "Median (p50) over 24h of visibility lag in seconds between an organic Base transfer confirming and GoldRush's transactions endpoint first returning it, from the shared histogram estimator."
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
+      success: sum(increase(indexing_probe_total{provider="goldrush", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="goldrush", result=~"found|missed"}[24h]))
+      sample_size: sum(increase(indexing_probe_total{provider="goldrush", result=~"found|missed"}[24h]))
+      series: avg_over_time(indexing_freshness_seconds{provider="goldrush"}[1h])
   - slug: allium
     name: Allium
     tag: Enterprise realtime wallet APIs, 100+ chains
