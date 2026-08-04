@@ -4,7 +4,7 @@ slug: zircuit-rpc
 number: "160"
 title: Fastest free Zircuit RPC, live no-key endpoint latency
 seo_title: "Fastest free Zircuit RPC 2026"
-seo_description: "{{best_name}} leads free Zircuit RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Zircuit RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 1 no-key provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Zircuit RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Zircuit (chain 48900) is an EVM-compatible L2 with sequencer-level threat detection using AI models to classify and quarantine malicious transactions before they are included in blocks. It launched on mainnet in 2024, ZRC governance token, built on an OP-Stack foundation with custom security extensions. The Zircuit Foundation's mainnet.zircuit.com and dRPC provide keyless access probed every 60 seconds from three regions.
+  Zircuit (chain 48900) is an EVM-compatible L2 with sequencer-level threat detection using AI models to classify and quarantine malicious transactions before they are included in blocks. It launched on mainnet in 2024, ZRC governance token, built on an OP-Stack foundation with custom security extensions. The Zircuit Foundation's mainnet.zircuit.com provides keyless access probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Zircuit.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public Zircuit endpoint
-  that sustains continuous probing, 2 providers at launch,
+  that sustains continuous probing, 1 provider at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"zircuit\"`. Provider coverage at launch: 2 no-key endpoints (Zircuit Foundation, dRPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"zircuit\"`. Provider coverage: 1 no-key endpoint (Zircuit Foundation)."
 
 findings:
-  - "{{best_name}} currently leads free Zircuit RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
+  - "{{best_name}} currently leads free Zircuit RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h)."
 
 faq:
   - q: "What is the fastest free Zircuit RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Zircuit RPCs work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing at launch: Zircuit Foundation, dRPC. Every listed endpoint was live-verified before inclusion."
+    a: "The Zircuit Foundation endpoint (mainnet.zircuit.com) is the free, keyless Zircuit RPC sustaining probes from all 3 regions. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Zircuit RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Zircuit RPC latency measured here?"
@@ -87,26 +87,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zircuit-official", chain="zircuit", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="zircuit-official", chain="zircuit", region="sgp"}[1h])
-
-  - slug: drpc
-    name: dRPC
-    tag: Decentralized RPC mesh
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Zircuit endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zircuit"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="zircuit"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="zircuit"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="zircuit"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="zircuit"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="zircuit"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="zircuit"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zircuit"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zircuit", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zircuit", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zircuit", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zircuit", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zircuit", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zircuit", region="sgp"}[1h])
