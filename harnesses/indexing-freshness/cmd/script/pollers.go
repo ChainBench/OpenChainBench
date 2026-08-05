@@ -46,12 +46,6 @@ func checkProvider(slug, wallet, txHash string) (bool, error) {
 			req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(key+":")))
 			req.Header.Set("Accept", "application/json")
 		}
-	case "moralis":
-		u := fmt.Sprintf("https://deep-index.moralis.io/api/v2.2/wallets/%s/history?chain=%s&limit=20", wallet, chainSlug)
-		req, err = http.NewRequest("GET", u, nil)
-		if err == nil {
-			req.Header.Set("X-API-Key", key)
-		}
 	case "goldrush":
 		u := fmt.Sprintf("https://api.covalenthq.com/v1/%s-mainnet/address/%s/transactions_v3/?page-size=20", chainSlug, wallet)
 		req, err = http.NewRequest("GET", u, nil)
