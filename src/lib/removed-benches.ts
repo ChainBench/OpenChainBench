@@ -136,6 +136,11 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // pm-resolution-delay (2026-08-04). A 308 redirect covers inbound links.
   // Adding here prevents stale Redis data from re-appearing in the sitemap.
   "polymarket-resolution-delay",
+  // indexing-freshness (070) retired 2026-08-05: cohort reduced to 3
+  // providers (Zerion, Mobula, Allium) after GoldRush 402s and Moralis
+  // removal; a 3-provider bench is not strong enough signal for a
+  // standalone page. Spec kept for carry-forward; 410 on prod.
+  "indexing-freshness",
 ]);
 
 /**
