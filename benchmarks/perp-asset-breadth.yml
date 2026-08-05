@@ -85,52 +85,49 @@ providers:
   - slug: gains
     name: gains.trade
     tag: EVM multi-chain — forex + stocks + indices + commodities — Mobula catalog
-    confidence_tier: onchain
     formula: "Count of active Mobula catalog pairs for dex=gains where assetClass in {forex, stocks, indices, commodities}. Mainnet chains only. Live."
     queries:
-      current: perp_venue_noncore_markets_total{venue="gains"}
-      forex: perp_venue_markets_by_class{venue="gains", class="forex"}
-      stocks: perp_venue_markets_by_class{venue="gains", class="stocks"}
-      indices: perp_venue_markets_by_class{venue="gains", class="indices"}
-      commodities: perp_venue_markets_by_class{venue="gains", class="commodities"}
-    series: perp_venue_noncore_markets_total{venue="gains"}
+      p50: perp_venue_noncore_markets_total{venue="gains"}
+      p90: perp_venue_noncore_markets_total{venue="gains"}
+      p99: perp_venue_noncore_markets_total{venue="gains"}
+      series: perp_venue_noncore_markets_total{venue="gains"}
 
   - slug: lighter
     name: Lighter
     tag: ETH ZK-rollup — multi-asset catalog — Mobula catalog
-    confidence_tier: onchain
     formula: "Count of active Mobula catalog pairs for dex=lighter where assetClass in {forex, stocks, indices, commodities}. Mainnet only."
     queries:
-      current: perp_venue_noncore_markets_total{venue="lighter"}
-      forex: perp_venue_markets_by_class{venue="lighter", class="forex"}
-      stocks: perp_venue_markets_by_class{venue="lighter", class="stocks"}
-      indices: perp_venue_markets_by_class{venue="lighter", class="indices"}
-      commodities: perp_venue_markets_by_class{venue="lighter", class="commodities"}
-    series: perp_venue_noncore_markets_total{venue="lighter"}
+      p50: perp_venue_noncore_markets_total{venue="lighter"}
+      p90: perp_venue_noncore_markets_total{venue="lighter"}
+      p99: perp_venue_noncore_markets_total{venue="lighter"}
+      series: perp_venue_noncore_markets_total{venue="lighter"}
 
   - slug: hyperliquid
     name: Hyperliquid
     tag: Custom L1 HyperBFT — crypto-only — native API verified
-    confidence_tier: onchain
     formula: "Native info metaAndAssetCtxs endpoint verified crypto-only. Non-crypto count: 0."
     queries:
-      current: perp_venue_noncore_markets_total{venue="hyperliquid"}
-    series: perp_venue_noncore_markets_total{venue="hyperliquid"}
+      p50: perp_venue_noncore_markets_total{venue="hyperliquid"}
+      p90: perp_venue_noncore_markets_total{venue="hyperliquid"}
+      p99: perp_venue_noncore_markets_total{venue="hyperliquid"}
+      series: perp_venue_noncore_markets_total{venue="hyperliquid"}
 
   - slug: gmx
     name: GMX v2
     tag: EVM Arbitrum — crypto-only — DataStore onchain verified
-    confidence_tier: bytecode
     formula: "DataStore pairs verified crypto-only (BTC, ETH, ARB, SOL, AVAX, LINK, DOGE, UNI). Non-crypto count: 0."
     queries:
-      current: perp_venue_noncore_markets_total{venue="gmx"}
-    series: perp_venue_noncore_markets_total{venue="gmx"}
+      p50: perp_venue_noncore_markets_total{venue="gmx"}
+      p90: perp_venue_noncore_markets_total{venue="gmx"}
+      p99: perp_venue_noncore_markets_total{venue="gmx"}
+      series: perp_venue_noncore_markets_total{venue="gmx"}
 
   - slug: dydx
     name: dYdX v4
     tag: Cosmos appchain — crypto-only — indexer verified
-    confidence_tier: onchain
     formula: "Indexer perpetualMarkets endpoint verified crypto-only. Non-crypto count: 0."
     queries:
-      current: perp_venue_noncore_markets_total{venue="dydx"}
-    series: perp_venue_noncore_markets_total{venue="dydx"}
+      p50: perp_venue_noncore_markets_total{venue="dydx"}
+      p90: perp_venue_noncore_markets_total{venue="dydx"}
+      p99: perp_venue_noncore_markets_total{venue="dydx"}
+      series: perp_venue_noncore_markets_total{venue="dydx"}
