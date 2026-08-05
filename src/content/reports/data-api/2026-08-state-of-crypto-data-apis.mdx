@@ -5,7 +5,7 @@ slug: "2026-08-state-of-crypto-data-apis"
 publishedAt: "2026-08-04"
 period: "August 2026"
 summary: "Seven live benchmarks across seven categories show a market where no two category leaders are the same provider. This report maps where each provider wins, where it falls short, and what the data actually says about causation."
-heroFinding: "GeckoTerminal indexes 253 blockchains for DEX data but publishes prices 12 seconds after they move. The fastest price aggregators publish in under one second on some chains — but the driver is integration depth, not the chain's block time. Seven benchmarks, seven different category leaders, zero overlap."
+heroFinding: "GeckoTerminal indexes 253 blockchains for DEX data but publishes prices 12 seconds after they move. The fastest price aggregators publish in under one second on some chains, but the driver is integration depth, not the chain's block time. Seven benchmarks, seven different category leaders, zero overlap."
 author: "OpenChainBench Research"
 readingTime: 14
 canonical: "https://openchainbench.com/reports/data-api/2026-08-state-of-crypto-data-apis"
@@ -14,7 +14,7 @@ canonical: "https://openchainbench.com/reports/data-api/2026-08-state-of-crypto-
 <Summary>
 - Seven independent benchmarks, seven distinct category leaders. No provider leads more than one of the seven categories measured.
 - Price aggregator head lag spans 98 ms (Mobula on Solana) to over 12 seconds (GeckoTerminal). The per-chain spread matters more than any single headline number.
-- Head lag on a chain reflects integration depth, not block speed: Robinhood Chain (100 ms blocks) produces 881 ms lag; Solana (400 ms blocks) produces 98 ms. Block time and head lag are anti-correlated across the four chains measured.
+- Head lag on a chain reflects integration depth, not block speed. Robinhood Chain (100 ms blocks) produces 881 ms lag; Solana (400 ms blocks) produces 98 ms. Block time and head lag are anti-correlated across the four chains measured.
 - Token metadata coverage: the top two providers are within 0.6 pp of each other and both under 65%. More than one in three newly-launched tokens are missing at least one metadata field across all providers.
 - Asset registry breadth: CoinGecko (461 chains) leads CoinPaprika (307 chains) by 1.5x and Mobula (81 chains) by 5.7x.
 - NFT metadata: the gap between leader Moralis (97.1%) and Alchemy (74.3%) is the largest between a cohort leader and a major general-purpose incumbent in any category in this report.
@@ -29,11 +29,11 @@ Every number in this report is derived from OpenChainBench's live Prometheus ins
 
 Benchmarks in scope: [aggregator-head-lag](/benchmarks/aggregator-head-lag), [metadata-coverage](/benchmarks/metadata-coverage), [asset-registry-coverage](/benchmarks/asset-registry-coverage), [token-quote-coverage](/benchmarks/token-quote-coverage), [wallet-labels-coverage](/benchmarks/wallet-labels-coverage), [dex-network-coverage](/benchmarks/dex-network-coverage), [nft-collection-metadata](/benchmarks/nft-collection-metadata).
 
-The aggregator head-lag harness samples every 15 seconds from three geographic regions (US East, EU West, Singapore) across four chains (Solana, Base, Robinhood Chain, BNB). The cross-chain headline figure is the cross-region average of per-chain p50s; the per-chain table in the next section is the more actionable signal for builders choosing a provider for a specific chain. Coverage benches run every 30 minutes to every 6 hours depending on bench. All harnesses are open source at [github.com/ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses).
+The aggregator head-lag harness samples every 15 seconds from three geographic regions (US East, EU West, Singapore) across four chains (Solana, Base, Robinhood Chain, BNB). The cross-chain headline figure is the cross-region average of per-chain p50s. The per-chain table in the next section is the more actionable signal for builders choosing a provider for a specific chain. Coverage benches run every 30 minutes to every 6 hours depending on bench. All harnesses are open source at [github.com/ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses).
 
 ## The Seven-Category Divide
 
-The crypto data API market is frequently described as competitive, with a handful of dominant players. The benchmark data tells a different story: <Mark>seven benchmarks produce seven distinct category leaders — no provider leads more than one.</Mark>
+The crypto data API market is frequently described as competitive, with a handful of dominant players. The benchmark data tells a different story: <Mark>seven benchmarks produce seven distinct category leaders, with no provider leading more than one.</Mark>
 
 Category leaders as of August 2026:
 
@@ -55,7 +55,7 @@ This fragmentation is structural, not accidental. Price feed freshness, asset re
 
 The cross-chain headline is an average of per-chain p50s across all three probe regions: Mobula 677 ms, Codex 1,059 ms, GeckoTerminal 12,340 ms. <Mark>The ratio between chains matters far more than the single aggregate.</Mark> The next section breaks down each chain individually.
 
-GeckoTerminal is in a separate category entirely. Its p50 of 12,340 ms is not a latency ranking failure — it reflects a batch-sync pipeline architecture that enables 253-chain DEX coverage (the widest in the industry, as shown below). GeckoTerminal does not compete as a real-time price feed and its benchmark position reflects that trade-off, not a product deficiency.
+GeckoTerminal is in a separate category entirely. Its p50 of 12,340 ms is not a latency ranking failure. It reflects a batch-sync pipeline architecture that enables 253-chain DEX coverage, the widest in the industry. GeckoTerminal does not compete as a real-time price feed and its benchmark position reflects that trade-off, not a product deficiency.
 
 The practical line to draw: if a 12-second delay between an on-chain price event and your UI is visible to users, GeckoTerminal's price endpoint is not viable for that use case. For DEX pool metadata, pool history, or multi-chain analytics where lag is irrelevant, GeckoTerminal is the strongest option.
 
@@ -72,15 +72,15 @@ The per-chain breakdown produces the sharpest finding in this report.
 | Robinhood Chain | ~100 ms² | 881 ms | 1,106 ms | 11,085 ms |
 | BNB Chain | ~450 ms³ | 961 ms | 1,490 ms | 12,110 ms |
 
-¹ Base activated Flashblocks in 2025, enabling 200 ms sub-blocks over WebSocket alongside standard 2 s blocks. ² Robinhood Chain mainnet launched July 1, 2026, 34 days before this report. ³ BNB's Fermi hard fork (January 2026) reduced block time from 750 ms to ~450 ms.
+¹ Base activated Flashblocks in 2025, enabling 200 ms sub-blocks over WebSocket alongside standard 2 s blocks. ² Robinhood Chain mainnet launched July 1, 2026, 34 days before this report. ³ BNB's Fermi hard fork (January 2026) reduced block time from 750 ms to approximately 450 ms.
 
-The block time column makes the causal claim uncomfortable: <Mark>block speed and head lag are anti-correlated across the four chains measured.</Mark> Robinhood Chain has the fastest blocks (100 ms) and the second-slowest head lag (881 ms). Base has 200 ms Flashblocks and sits at 773 ms. Solana has 400 ms slots — slower than both — yet records 98 ms head lag. BNB at 450 ms produces 961 ms lag.
+The block time column makes the causal claim uncomfortable: <Mark>block speed and head lag are anti-correlated across the four chains measured.</Mark> Robinhood Chain has the fastest blocks (100 ms) and the second-slowest head lag (881 ms). Base has 200 ms Flashblocks and sits at 773 ms. Solana has 400 ms slots, slower than both, yet records 98 ms head lag. BNB at 450 ms produces 961 ms lag.
 
 The ranking (Solana fastest, BNB slowest) is the inverse of what a block-time explanation predicts. The data points instead to integration depth: how each provider subscribes to on-chain events on that specific chain.
 
-Mobula's 98 ms on Solana is consistent with a native program subscription to Solana's transaction or vote stream — receiving data pre-block-finalization through Solana's streaming RPC. Its EVM chain lags (773–961 ms) are consistent with block-polling: waiting for a full block header, then resolving prices. The 8.2x gap between Solana and Mobula's next-fastest chain (Base) is not a Solana property — it is the signal of different integration investments per chain.
+Mobula's 98 ms on Solana is consistent with a native program subscription to Solana's transaction or vote stream, receiving data pre-block-finalization through Solana's streaming RPC. Its EVM chain lags (773 to 961 ms) are consistent with block-polling, waiting for a full block header then resolving prices. The 8.2x gap between Solana and Mobula's next-fastest chain (Base) is not a Solana property. It is the signal of different integration investments per chain.
 
-Codex shows the same structural pattern at different absolute values. Base 831 ms is close to Mobula; Solana 808 ms is 8.2x Mobula's Solana figure. Codex's Solana integration extracts less of the chain's latency advantage.
+Codex shows the same structural pattern at different absolute values. Base at 831 ms is close to Mobula; Solana at 808 ms is 8.2x Mobula's Solana figure. Codex's Solana integration extracts less of the chain's latency advantage.
 
 Robinhood Chain carries an additional caveat: it launched July 1, 2026, 34 days before this measurement. Both Mobula (881 ms) and Codex (1,106 ms) lag behind Base despite RH Chain's 4x faster blocks, which suggests early-stage EVM-polling integrations not yet optimized for RH Chain's sub-second slot cadence. <Mark>Treat the RH Chain figures as initial baselines, not settled rankings.</Mark>
 
@@ -88,7 +88,7 @@ Robinhood Chain carries an additional caveat: it launched July 1, 2026, 34 days 
 
 <StatTable bench="metadata-coverage" caption="Token metadata field coverage across logo, description, Twitter, and website. Measured on freshly launched tokens from pump.fun, Meteora, Four.meme, Zora, and others. Higher is better." />
 
-The metadata bench is one of the few categories where the ranking is genuinely ambiguous. Codex leads at 64.3%, Mobula follows at 63.7%. <Mark>The gap is 0.6 percentage points — within normal measurement noise for this bench.</Mark> Both providers are effectively tied on metadata coverage for newly-launched tokens.
+The metadata bench is one of the few categories where the ranking is genuinely ambiguous. Codex leads at 64.3%, Mobula follows at 63.7%. <Mark>The gap is 0.6 percentage points, within normal measurement noise for this bench.</Mark> Both providers are effectively tied on metadata coverage for newly-launched tokens.
 
 Jupiter's 24.9% requires context. Jupiter is Solana-only; it returns zero coverage on EVM chains (Base, BNB) by construction. The bench scores it on the full multi-chain sample set, so Jupiter's 24.9% headline undercounts its actual performance on Solana tokens. The cross-chain figure is correct for any builder working with EVM or multi-chain tokens; for Solana-native metadata, consult the per-chain breakdown on the bench page.
 
@@ -98,7 +98,7 @@ The more important observation: both leading providers are under 65%. <Mark>More
 
 <StatTable bench="asset-registry-coverage" caption="Number of blockchains indexed in each provider's asset registry. Higher is better. Updated every 6 hours." />
 
-CoinGecko's 461-chain registry leads CoinPaprika's 307 chains by 1.5x and Mobula's 81 chains by 5.7x. This is the clearest expression of the breadth-versus-depth trade-off in the data API market. CoinGecko's breadth reflects a decade of manual chain onboarding and community submissions — reaching 461 chains means accepting chains with thin liquidity, inactive validators, and minimal trading activity. The registry count measures scope, not data quality.
+CoinGecko's 461-chain registry leads CoinPaprika's 307 chains by 1.5x and Mobula's 81 chains by 5.7x. This is the clearest expression of the breadth-versus-depth trade-off in the data API market. CoinGecko's breadth reflects a decade of manual chain onboarding and community submissions. Reaching 461 chains means accepting chains with thin liquidity, inactive validators, and minimal trading activity. The registry count measures scope, not data quality.
 
 <Mark>Registry breadth and real-time price freshness are different products serving different use cases.</Mark> CoinGecko has no entry in the aggregator-head-lag bench. A builder who needs both must combine providers.
 
@@ -108,9 +108,9 @@ If you need to answer "does this contract exist on chain X", CoinGecko's registr
 
 <StatTable bench="token-quote-coverage" caption="Share of newly-launched tokens returning a valid swap quote. Tokens sourced live from pump.fun, Meteora, Moonshot, Four.meme, Zora, and Virtuals. Higher is better." />
 
-The token quote bench tests providers on tokens created within the last hour, sourced from live launchpad feeds — the hardest case for routing coverage. A token may have no liquidity on major venues, no metadata, and may exist only on a single chain.
+The token quote bench tests providers on tokens created within the last hour, sourced from live launchpad feeds. This is the hardest case for routing coverage: a token may have no liquidity on major venues, no metadata, and may exist only on a single chain.
 
-<Mark>Jupiter (97.1%) and Moralis NFT (97.1%) share the highest coverage figure in the entire cohort across all seven benchmarks.</Mark> Jupiter's score reflects its native integration with Solana's pool infrastructure — it discovers new pools seconds after creation. KyberSwap at 87.8% covers EVM chains competently. Mobula at 71.3% means roughly one in three newly-launched tokens across chains cannot be quoted.
+<Mark>Jupiter (97.1%) and Moralis NFT (97.1%) share the highest coverage figure in the entire cohort across all seven benchmarks.</Mark> Jupiter's score reflects its native integration with Solana's pool infrastructure. It discovers new pools seconds after creation. KyberSwap at 87.8% covers EVM chains competently. Mobula at 71.3% means roughly one in three newly-launched tokens across chains cannot be quoted.
 
 For applications handling established tokens (top-1,000 by market cap), all three providers will perform near 100%. The quote-coverage bench is specifically relevant for launchpad analytics, meme-token apps, or any product that needs to quote tokens within minutes of creation.
 
@@ -120,7 +120,7 @@ For applications handling established tokens (top-1,000 by market cap), all thre
 
 GeckoTerminal's 253 chains is a market-leading figure by a wide margin. Codex's 122 chains is the next closest at roughly half. Sim by Dune at 64 covers EVM mainnets only. DexPaprika at 36 is the narrowest in the cohort.
 
-The juxtaposition with the head-lag bench illustrates the breadth-freshness trade-off. GeckoTerminal leads DEX coverage by 2x and trails on price freshness by 18x. These are the same architecture decision seen from two angles. <Mark>A batch-sync pipeline can cover 253 chains; a streaming pipeline cannot — not at current infrastructure costs.</Mark>
+The juxtaposition with the head-lag bench illustrates the breadth-freshness trade-off. GeckoTerminal leads DEX coverage by 2x and trails on price freshness by 18x. These are the same architecture decision seen from two angles. <Mark>A batch-sync pipeline can cover 253 chains. A streaming pipeline cannot, not at current infrastructure costs.</Mark>
 
 For DEX analytics, backtesting, or chain comparisons, GeckoTerminal's breadth is the correct trade-off. For applications requiring current prices on a specific chain, providers in the head-lag bench offer far fresher data, with DEX chain count as the cost.
 
@@ -128,13 +128,13 @@ For DEX analytics, backtesting, or chain comparisons, GeckoTerminal's breadth is
 
 <StatTable bench="nft-collection-metadata" caption="Field coverage across name, image, description, floor price, and external URL for 50 Ethereum blue-chip NFT collections. Higher is better." />
 
-The NFT metadata bench has the narrowest competitive field in this report: three providers benchmarked against a fixed set of 50 Ethereum blue-chip collections. All three return 100% API availability — the ranking is driven entirely by field coverage.
+The NFT metadata bench has the narrowest competitive field in this report: three providers benchmarked against a fixed set of 50 Ethereum blue-chip collections. All three return 100% API availability. The ranking is driven entirely by field coverage.
 
 Moralis leads at 97.1%, OpenSea at 93.8%, and Alchemy at 74.3%. <Mark>The 22.8-percentage-point gap between Moralis and Alchemy is the largest between a cohort leader and a major general-purpose incumbent in any single category in this report.</Mark>
 
-Alchemy's gap is specific to the `floor_eth` field. Alchemy's `getContractMetadata` endpoint focuses on on-chain collection metadata — name, image, external URL — not marketplace-sourced order book data. Delivering a live floor price requires actively polling marketplace orders, which is not its primary function. OpenSea surfaces floor prices naturally as a marketplace operator, though at the cost of two API calls per collection versus one for Moralis.
+Alchemy's gap is specific to the `floor_eth` field. Alchemy's `getContractMetadata` endpoint focuses on on-chain collection metadata (name, image, external URL), not marketplace-sourced order book data. Delivering a live floor price requires actively polling marketplace orders, which is not its primary function. OpenSea surfaces floor prices naturally as a marketplace operator, though at the cost of two API calls per collection versus one for Moralis.
 
-For builders needing collection metadata plus floor prices from a single call, Moralis is the clear choice. For on-chain metadata only (name, image, external URL), Alchemy is competitive — the gap collapses when `floor_eth` is excluded from the score.
+For builders needing collection metadata plus floor prices from a single call, Moralis is the clear choice. For on-chain metadata only, Alchemy is competitive. The gap collapses when `floor_eth` is excluded from the score.
 
 ## Wallet Labels: No One Owns the Graph
 
@@ -156,9 +156,9 @@ The wallet labeling bench has the most providers of any category in this report:
 
 Helius (Solana), XRPScan (XRP), and StellarExpert (Stellar) each maintain manually curated entity graphs for their specific chain, built on years of chain-specific research, community tagging, and validator partnerships. Their lead over general-purpose providers is editorial, not algorithmic.
 
-This is not a quality failure by multi-chain providers. Wallet labeling is editorial work at scale — someone must decide that address 0x... is "Binance Hot Wallet 14" — and chain-native teams have the ecosystem context to do that work accurately. No tooling shortcut replaces it.
+This is not a quality failure by multi-chain providers. Wallet labeling is editorial work at scale: someone must decide that address 0x... is "Binance Hot Wallet 14", and chain-native teams have the ecosystem context to do that work accurately. No tooling shortcut replaces it.
 
-OLI (Open Labels Initiative) sits at 50.2%, below Blockscout (55.6%). A shared decentralized labeling protocol does not automatically produce higher-coverage entity graphs; the curation problem is harder than the coordination problem.
+OLI (Open Labels Initiative) sits at 50.2%, below Blockscout (55.6%). A shared decentralized labeling protocol does not automatically produce higher-coverage entity graphs. The curation problem is harder than the coordination problem.
 
 TonAPI at 35.6% reflects TON's still-developing ecosystem tooling. WalletExplorer at 19.8% has strong API availability (99.6%) but the narrowest entity graph in the cohort.
 
@@ -172,28 +172,28 @@ Across seven benchmarks, the competitive landscape resolves into four archetypes
 
 **Vertical specialists** dominate a single chain or use case. Jupiter (97.1% Solana quote coverage), Helius (84.1% Solana wallet labels), and Moralis (97.1% NFT metadata) each lead in a category where their infrastructure or editorial investment confers a structural advantage.
 
-**Generalists** appear in multiple benches without leading any outright. Codex leads token metadata by 0.6 pp over Mobula and indexes 122 DEX chains. Neither Codex nor any other provider is the obvious answer for an application that needs to lead across categories — because no such provider exists yet.
+**Generalists** appear in multiple benches without leading any outright. Codex leads token metadata by 0.6 pp over Mobula and indexes 122 DEX chains. Neither Codex nor any other provider is the obvious answer for an application that needs to lead across categories, because no such provider exists yet.
 
 ## Decision Framework
 
 <UseCase label="DeFi frontend / price display">
-Price freshness is the primary constraint. Check the per-chain breakdown on the [aggregator-head-lag](/benchmarks/aggregator-head-lag) bench before committing — Base is a near coin-flip between Mobula (773 ms) and Codex (831 ms), Solana is not (98 ms vs 808 ms). Both providers run above 98% success rates. Verify the per-chain figure for your specific chain before assuming the headline aggregate applies.
+Price freshness is the primary constraint. Check the per-chain breakdown on the [aggregator-head-lag](/benchmarks/aggregator-head-lag) bench before committing. Base is a near coin-flip between Mobula (773 ms) and Codex (831 ms); Solana is not (98 ms vs 808 ms). Both providers run above 98% success rates. Verify the per-chain figure for your specific chain before assuming the headline aggregate applies.
 </UseCase>
 
 <UseCase label="Launchpad or new-token app">
-Quote coverage on fresh tokens is the constraint. Jupiter is the only viable choice for Solana launchpad tokens (97.1%). For EVM chains, KyberSwap (87.8%) leads; Mobula (71.3%) covers more chains at the cost of a ~29% miss rate on brand-new tokens. Build a fallback path — no single provider routes every freshly launched token across all chains.
+Quote coverage on fresh tokens is the constraint. Jupiter is the only viable choice for Solana launchpad tokens (97.1%). For EVM chains, KyberSwap (87.8%) leads; Mobula (71.3%) covers more chains at the cost of a roughly 29% miss rate on brand-new tokens. Build a fallback path: no single provider routes every freshly launched token across all chains.
 </UseCase>
 
 <UseCase label="Chain-agnostic token registry / contract lookup">
-CoinGecko's 461-chain registry is the deepest single source for contract address lookup. For DEX pool metadata on niche chains, GeckoTerminal covers 253. Both are near-static lookups — safe to cache aggressively. Neither is a real-time price source.
+CoinGecko's 461-chain registry is the deepest single source for contract address lookup. For DEX pool metadata on niche chains, GeckoTerminal covers 253. Both are near-static lookups, safe to cache aggressively. Neither is a real-time price source.
 </UseCase>
 
 <UseCase label="NFT collection display">
-Moralis leads (97.1%) and delivers floor prices in a single API call. OpenSea is competitive (93.8%) but costs two calls per collection. Alchemy's 74.3% headline is driven almost entirely by the floor-price gap — if floor price is not needed, Alchemy is close to parity on the remaining four fields.
+Moralis leads (97.1%) and delivers floor prices in a single API call. OpenSea is competitive (93.8%) but costs two calls per collection. Alchemy's 74.3% headline is driven almost entirely by the floor-price gap. If floor price is not needed, Alchemy is close to parity on the remaining four fields.
 </UseCase>
 
 <UseCase label="Compliance or wallet risk scoring">
-Chain-native providers are the only viable path to high coverage. For Solana: Helius (84.1%). For XRP: XRPScan (80.0%). For Stellar: StellarExpert (79.9%). For EVM: Blockscout (55.6%) or OLI (50.2%). No single provider reaches above 85% across all eleven chains — plan for missing labels on non-specialist chains as the baseline.
+Chain-native providers are the only viable path to high coverage. For Solana: Helius (84.1%). For XRP: XRPScan (80.0%). For Stellar: StellarExpert (79.9%). For EVM: Blockscout (55.6%) or OLI (50.2%). No single provider reaches above 85% across all eleven chains. Plan for missing labels on non-specialist chains as the baseline.
 </UseCase>
 
 <UseCase label="DEX analytics / multi-chain research">
@@ -204,20 +204,20 @@ GeckoTerminal's 253-chain index is the only viable answer for breadth-first DEX 
 
 The clearest finding across all seven benchmarks is structural fragmentation without a clear convergence path. The providers who win on price freshness lose on chain breadth; those who win on chain breadth lose on price freshness. Chain-native specialists dominate their corner of the graph but fall to mid-table the moment you need coverage outside their primary ecosystem. The integration-depth finding in the price feed section reinforces this: leading on a specific chain requires sustained, chain-specific engineering investment that generalizes poorly across chains.
 
-The per-chain head lag data makes one thing concrete: the old narrative — "Solana is fast, EVM is slow" — does not explain what providers actually deliver. Robinhood Chain, the fastest-block chain in the cohort at 100 ms slots, produces the second-slowest head lag. A provider's performance on a chain reflects how much they have invested in that chain's integration, not the chain's architectural properties. Builders should evaluate providers per chain, not by headline aggregate.
+The per-chain head lag data makes one thing concrete. The old narrative that "Solana is fast, EVM is slow" does not explain what providers actually deliver. Robinhood Chain, the fastest-block chain in the cohort at 100 ms slots, produces the second-slowest head lag. A provider's performance on a chain reflects how much they have invested in that chain's integration, not the chain's architectural properties. Builders should evaluate providers per chain, not by headline aggregate.
 
 The practical consequence for production applications: <Mark>most applications using live crypto data will need two or more providers simultaneously.</Mark> A real-time price feed from a speed specialist, combined with a chain-agnostic registry from a coverage maximalist, is the pattern the benchmark data supports. The decision framework above maps which combination fits each use case.
 
 ## Sources
 
-All data is derived from OpenChainBench's live benchmarks. Figures are p50 over a 24-hour rolling window unless noted. Figures reflect the state as of August 5, 2026 — bench data updates continuously and values will shift.
+All data is derived from OpenChainBench's live benchmarks. Figures are p50 over a 24-hour rolling window unless noted. Figures reflect the state as of August 5, 2026. Bench data updates continuously and values will shift.
 
 - **Price feeds:** [aggregator-head-lag](/benchmarks/aggregator-head-lag) · [api/stat/aggregator-head-lag](/api/stat/aggregator-head-lag)
 - **Token metadata:** [metadata-coverage](/benchmarks/metadata-coverage) · [asset-registry-coverage](/benchmarks/asset-registry-coverage) · [token-quote-coverage](/benchmarks/token-quote-coverage)
 - **Wallet data:** [wallet-labels-coverage](/benchmarks/wallet-labels-coverage)
 - **DEX:** [dex-network-coverage](/benchmarks/dex-network-coverage)
 - **NFT:** [nft-collection-metadata](/benchmarks/nft-collection-metadata)
-- **Data API hub:** [/data-api](/data-api) — live cross-bench rankings, updated every 60 seconds
+- **Data API hub:** [/data-api](/data-api), live cross-bench rankings updated every 60 seconds
 - **Harness source:** [github.com/ChainBench/OpenChainBench/harnesses](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses)
 - **License:** All data and figures are published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). You may reproduce them with attribution to OpenChainBench and a link to the canonical URL.
 - **Corrections:** File a [GitHub issue](https://github.com/ChainBench/OpenChainBench/issues/new). Material corrections are applied in place with a dated note.
