@@ -1339,6 +1339,184 @@ func chains() []Chain {
 				{Slug: "stavr", Name: "STAVR", URL: envDefault("RPC_URL_COMDEX_STAVR", "https://comdex.rpc.m.stavr.tech:443")},
 			},
 		},
+		// Fantom — EVM (chain 250). 5 keyless providers.
+		{
+			Slug: "fantom",
+			Name: "Fantom",
+			Providers: []Provider{
+				{Slug: "fantom-official", Name: "Fantom Foundation", URL: envDefault("RPC_URL_FANTOM_OFFICIAL", "https://rpcapi.fantom.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FANTOM_DRPC", "https://fantom.drpc.org")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FANTOM_ANKR", "https://rpc.ankr.com/fantom")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_FANTOM_THIRDWEB", "https://250.rpc.thirdweb.com")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_FANTOM_BLASTAPI", "https://fantom-mainnet.public.blastapi.io")},
+			},
+		},
+		// Kusama — Polkadot canary relay chain. 6 keyless providers.
+		{
+			Slug: "kusama",
+			Name: "Kusama",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KUSAMA_PUBLICNODE", "https://kusama-rpc.publicnode.com")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_KUSAMA_ONFINALITY", "https://kusama.api.onfinality.io/public")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KUSAMA_DRPC", "https://kusama.drpc.org")},
+				{Slug: "ibp", Name: "IBP Network", URL: envDefault("RPC_URL_KUSAMA_IBP", "https://rpc.ibp.network/kusama")},
+				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_KUSAMA_DWELLIR", "https://kusama-rpc.dwellir.com")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_KUSAMA_1RPC", "https://1rpc.io/ksm")},
+			},
+		},
+		// Hydration — Polkadot DeFi parachain (HydraDX). 5 keyless providers.
+		{
+			Slug: "hydration",
+			Name: "Hydration",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "hydration-official", Name: "Hydration Foundation", URL: envDefault("RPC_URL_HYDRATION_OFFICIAL", "https://rpc.hydration.cloud")},
+				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_HYDRATION_DWELLIR", "https://hydradx-rpc.dwellir.com")},
+				{Slug: "helikon", Name: "Helikon", URL: envDefault("RPC_URL_HYDRATION_HELIKON", "https://rpc.helikon.io/hydradx")},
+				{Slug: "dotters-network", Name: "Dotters Network", URL: envDefault("RPC_URL_HYDRATION_DOTTERS", "https://hydradx.dotters.network")},
+				{Slug: "parachains-network", Name: "Parachains.network", URL: envDefault("RPC_URL_HYDRATION_PARACHAINS", "https://rpc.parachains.network/hydradx")},
+			},
+		},
+		// ZetaChain — EVM omnichain L1 (chain 7000). 5 keyless providers.
+		{
+			Slug: "zetachain",
+			Name: "ZetaChain",
+			Providers: []Provider{
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZETACHAIN_DRPC", "https://zetachain.drpc.org")},
+				{Slug: "blockpi", Name: "BlockPi", URL: envDefault("RPC_URL_ZETACHAIN_BLOCKPI", "https://zetachain.blockpi.network/v1/rpc/public")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZETACHAIN_THIRDWEB", "https://7000.rpc.thirdweb.com")},
+				{Slug: "allthatnode", Name: "AllThatNode", URL: envDefault("RPC_URL_ZETACHAIN_ATN", "https://zetachain-mainnet.rpc.public.allthatnode.com")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ZETACHAIN_BLASTAPI", "https://zetachain-mainnet.public.blastapi.io")},
+			},
+		},
+		// HAQQ — EVM Islamic finance L1 (chain 11235). 4 keyless providers.
+		{
+			Slug: "haqq",
+			Name: "HAQQ",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_HAQQ_PUBLICNODE", "https://haqq-evm-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_HAQQ_DRPC", "https://haqq.drpc.org")},
+				{Slug: "haqq-official", Name: "HAQQ Foundation", URL: envDefault("RPC_URL_HAQQ_OFFICIAL", "https://rpc.eth.haqq.network")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_HAQQ_BLASTAPI", "https://haqq-network.public.blastapi.io")},
+			},
+		},
+		// Etherlink — Tezos EVM L2 (chain 42793). 4 keyless providers.
+		{
+			Slug: "etherlink",
+			Name: "Etherlink",
+			Providers: []Provider{
+				{Slug: "etherlink-official", Name: "Etherlink Foundation", URL: envDefault("RPC_URL_ETHERLINK_OFFICIAL", "https://node.mainnet.etherlink.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHERLINK_DRPC", "https://etherlink.drpc.org")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_ETHERLINK_ANKR", "https://rpc.ankr.com/etherlink")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ETHERLINK_BLASTAPI", "https://etherlink-mainnet.public.blastapi.io")},
+			},
+		},
+		// Chiliz — Sports fan token EVM (chain 88888). 4 keyless providers.
+		{
+			Slug: "chiliz",
+			Name: "Chiliz",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CHILIZ_PUBLICNODE", "https://chiliz-rpc.publicnode.com")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_CHILIZ_ANKR", "https://rpc.ankr.com/chiliz")},
+				{Slug: "chiliz-official", Name: "Chiliz Foundation", URL: envDefault("RPC_URL_CHILIZ_OFFICIAL", "https://rpc.chiliz.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CHILIZ_DRPC", "https://chiliz.drpc.org")},
+			},
+		},
+		// WEMIX — Korean web3 gaming EVM (chain 1111). 4 keyless providers.
+		{
+			Slug: "wemix",
+			Name: "WEMIX",
+			Providers: []Provider{
+				{Slug: "wemix-official", Name: "WEMIX Foundation", URL: envDefault("RPC_URL_WEMIX_OFFICIAL", "https://api.wemix.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WEMIX_DRPC", "https://wemix.drpc.org")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_WEMIX_BLASTAPI", "https://wemix-mainnet.public.blastapi.io")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_WEMIX_1RPC", "https://1rpc.io/wemix")},
+			},
+		},
+		// Songbird — Flare canary network (chain 19). 4 keyless providers.
+		{
+			Slug: "songbird",
+			Name: "Songbird",
+			Providers: []Provider{
+				{Slug: "flare-official", Name: "Flare Foundation", URL: envDefault("RPC_URL_SONGBIRD_FLARE", "https://songbird-api.flare.network/ext/C/rpc")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONGBIRD_DRPC", "https://songbird.drpc.org")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_SONGBIRD_BLASTAPI", "https://songbird-mainnet.public.blastapi.io")},
+				{Slug: "ftso-au", Name: "FTSO AU", URL: envDefault("RPC_URL_SONGBIRD_FTSOAU", "https://songbird.rpc.ftso.au")},
+			},
+		},
+		// Cronos zkEVM — zkSync-stack Cronos L2 (chain 388). 3 keyless providers.
+		{
+			Slug: "cronos-zkevm",
+			Name: "Cronos zkEVM",
+			Providers: []Provider{
+				{Slug: "cronos-zkevm-official", Name: "Crypto.com Foundation", URL: envDefault("RPC_URL_CRONOS_ZKEVM_OFFICIAL", "https://mainnet.zkevm.cronos.org")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CRONOS_ZKEVM_DRPC", "https://cronos-zkevm.drpc.org")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_CRONOS_ZKEVM_BLASTAPI", "https://cronos-zkevm-mainnet.public.blastapi.io")},
+			},
+		},
+		// Ethereum Classic — Original Ethereum chain (chain 61). 3 keyless providers.
+		{
+			Slug: "ethereum-classic",
+			Name: "Ethereum Classic",
+			Providers: []Provider{
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETC_DRPC", "https://etc.drpc.org")},
+				{Slug: "etcdesktop", Name: "ETC Desktop", URL: envDefault("RPC_URL_ETC_ETCDESKTOP", "https://rpc.etcdesktop.com")},
+				{Slug: "etcmc", Name: "ETCMC", URL: envDefault("RPC_URL_ETC_ETCMC", "https://etcmc.rpc.nz")},
+			},
+		},
+		// Telos EVM — High-performance EVM (chain 40). 3 keyless providers.
+		{
+			Slug: "telos",
+			Name: "Telos",
+			Providers: []Provider{
+				{Slug: "telos-official", Name: "Telos Foundation", URL: envDefault("RPC_URL_TELOS_OFFICIAL", "https://mainnet.telos.net/evm")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TELOS_DRPC", "https://telos.drpc.org")},
+				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_TELOS_BLASTAPI", "https://telos-mainnet.public.blastapi.io")},
+			},
+		},
+		// PulseChain — Full-state Ethereum fork (chain 369). 3 keyless providers.
+		{
+			Slug: "pulsechain",
+			Name: "PulseChain",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PULSECHAIN_PUBLICNODE", "https://pulsechain-rpc.publicnode.com")},
+				{Slug: "pulsechain-official", Name: "PulseChain Foundation", URL: envDefault("RPC_URL_PULSECHAIN_OFFICIAL", "https://rpc.pulsechain.com")},
+				{Slug: "g4mm4", Name: "G4MM4", URL: envDefault("RPC_URL_PULSECHAIN_G4MM4", "https://rpc-pulsechain.g4mm4.io")},
+			},
+		},
+		// Warden Protocol — Intent-based EVM L1. 3 keyless providers.
+		{
+			Slug: "warden",
+			Name: "Warden Protocol",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_WARDEN_PUBLICNODE", "https://warden-evm-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WARDEN_DRPC", "https://warden.drpc.org")},
+				{Slug: "warden-official", Name: "Warden Foundation", URL: envDefault("RPC_URL_WARDEN_OFFICIAL", "https://evm.wardenprotocol.org")},
+			},
+		},
+		// Oraichain — AI-focused Cosmos SDK chain. 3 keyless providers.
+		{
+			Slug: "oraichain",
+			Name: "Oraichain",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ORAICHAIN_PUBLICNODE", "https://oraichain-rpc.publicnode.com")},
+				{Slug: "orai-official", Name: "Orai Foundation", URL: envDefault("RPC_URL_ORAICHAIN_OFFICIAL", "https://rpc.orai.io")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_ORAICHAIN_LAVENDERFIVE", "https://oraichain-rpc.lavenderfive.com")},
+			},
+		},
+		// Peaq Network — DePIN Polkadot parachain. 3 keyless providers.
+		{
+			Slug: "peaq",
+			Name: "Peaq Network",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PEAQ_PUBLICNODE", "https://peaq-rpc.publicnode.com")},
+				{Slug: "peaq-official", Name: "Peaq Foundation", URL: envDefault("RPC_URL_PEAQ_OFFICIAL", "https://rpc.peaq.network")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_PEAQ_ONFINALITY", "https://peaq.api.onfinality.io/public")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
