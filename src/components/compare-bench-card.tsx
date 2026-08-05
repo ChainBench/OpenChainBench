@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
@@ -70,19 +70,7 @@ export function CompareBenchCard({
   aName: string;
   bName: string;
 }) {
-  const [activePanelId, setActivePanelId] = useState<string | null>(null);
-
-  const activePanel = bench.panelScopes.find((p) => p.id === activePanelId) ?? null;
-
-  const effectiveUnit = activePanel?.unit ?? bench.unit;
-  const effectiveHigherIsBetter = activePanel?.higherIsBetter ?? bench.higherIsBetter;
-  const effectiveAVal = activePanel?.aValue ?? bench.aResult.p50;
-  const effectiveBVal = activePanel?.bValue ?? bench.bResult.p50;
-
-  const panelWinner =
-    activePanel && (activePanel.aValue > 0 || activePanel.bValue > 0)
-      ? decideWinner(effectiveAVal, effectiveBVal, effectiveHigherIsBetter)
-      : bench.aggregateWinner;
+  const hasScopes = bench.panelScopes.length > 0;
 
   return (
     <article className="border border-rule rounded-2xl p-5 sm:p-6">
@@ -97,79 +85,63 @@ export function CompareBenchCard({
         </span>
       </header>
 
-      {bench.panelScopes.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-1">
-          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-            View
-          </span>
-          <PanelTab
-            label={bench.metric}
-            active={activePanelId === null}
-            onClick={() => setActivePanelId(null)}
-          />
-          {bench.panelScopes.map((p) => (
-            <PanelTab
-              key={p.id}
-              label={p.label}
-              active={activePanelId === p.id}
-              onClick={() => setActivePanelId(p.id)}
+      {hasScopes ? (
+        <ScopeTable bench={bench} aName={aName} bName={bName} />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <AggregatePanel
+              name={aName}
+              value={bench.aResult.p50}
+              details={bench.aResult}
+              unit={bench.unit}
+              winner={bench.aggregateWinner === "a"}
+              loser={bench.aggregateWinner === "b"}
             />
-          ))}
-        </div>
+            <AggregatePanel
+              name={bName}
+              value={bench.bResult.p50}
+              details={bench.bResult}
+              unit={bench.unit}
+              winner={bench.aggregateWinner === "b"}
+              loser={bench.aggregateWinner === "a"}
+            />
+          </div>
+
+          {bench.chainRegionMatrix.length > 0 ? (
+            <ChainRegionMatrix
+              entries={bench.chainRegionMatrix}
+              aName={aName}
+              bName={bName}
+              unit={bench.unit}
+            />
+          ) : (
+            <>
+              {bench.chainBreakdown.length > 0 && (
+                <BreakdownTable
+                  title="Per chain"
+                  rows={bench.chainBreakdown}
+                  aName={aName}
+                  bName={bName}
+                  unit={bench.unit}
+                />
+              )}
+              {bench.regionBreakdown.length > 0 && (
+                <BreakdownTable
+                  title="Per region"
+                  rows={bench.regionBreakdown}
+                  aName={aName}
+                  bName={bName}
+                  unit={bench.unit}
+                />
+              )}
+            </>
+          )}
+        </>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <AggregatePanel
-          name={aName}
-          value={effectiveAVal}
-          details={activePanel ? null : bench.aResult}
-          unit={effectiveUnit}
-          winner={panelWinner === "a"}
-          loser={panelWinner === "b"}
-        />
-        <AggregatePanel
-          name={bName}
-          value={effectiveBVal}
-          details={activePanel ? null : bench.bResult}
-          unit={effectiveUnit}
-          winner={panelWinner === "b"}
-          loser={panelWinner === "a"}
-        />
-      </div>
-
-      {!activePanel &&
-        (bench.chainRegionMatrix.length > 0 ? (
-          <ChainRegionMatrix
-            entries={bench.chainRegionMatrix}
-            aName={aName}
-            bName={bName}
-            unit={bench.unit}
-          />
-        ) : (
-          <>
-            {bench.chainBreakdown.length > 0 && (
-              <BreakdownTable
-                title="Per chain"
-                rows={bench.chainBreakdown}
-                aName={aName}
-                bName={bName}
-                unit={bench.unit}
-              />
-            )}
-            {bench.regionBreakdown.length > 0 && (
-              <BreakdownTable
-                title="Per region"
-                rows={bench.regionBreakdown}
-                aName={aName}
-                bName={bName}
-                unit={bench.unit}
-              />
-            )}
-          </>
-        ))}
-
       <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-        <span>Rolling 24h · {activePanel ? activePanel.label : bench.metric}</span>
+        <span>Rolling 24h · {bench.metric}</span>
         <Link
           href={`/api/stat/${bench.slug}`}
           className="hover:text-ink-soft normal-case tracking-normal"
@@ -181,29 +153,74 @@ export function CompareBenchCard({
   );
 }
 
-function PanelTab({
-  label,
-  active,
-  onClick,
+/** Multi-column table for benches with metric panels. One row per provider,
+ *  one column per scope. Winner per column is highlighted. */
+function ScopeTable({
+  bench,
+  aName,
+  bName,
 }: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
+  bench: CompareBench;
+  aName: string;
+  bName: string;
 }) {
+  const cols = bench.panelScopes;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={[
-        "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
-        active
-          ? "bg-ink text-paper"
-          : "text-ink-muted hover:text-ink hover:bg-paper-soft",
-      ].join(" ")}
-    >
-      {label}
-    </button>
+    <div className="overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-[0.16em] text-ink-faint border-b border-rule">
+            <th className="text-left font-medium py-2 pr-4 sticky left-0 bg-bg z-10 min-w-[80px]">
+              Provider
+            </th>
+            {cols.map((c) => (
+              <th
+                key={c.id}
+                className="text-right font-medium py-2 px-3 whitespace-nowrap"
+              >
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(["a", "b"] as const).map((side) => {
+            const name = side === "a" ? aName : bName;
+            return (
+              <tr key={side} className="border-t border-rule">
+                <td className="py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted sticky left-0 bg-bg border-r border-rule/40">
+                  {name}
+                </td>
+                {cols.map((c) => {
+                  const val = side === "a" ? c.aValue : c.bValue;
+                  const winner = decideWinner(c.aValue, c.bValue, c.higherIsBetter);
+                  const leads = winner === side;
+                  const trails = winner !== side && winner !== "tie";
+                  const hasData = val > 0;
+                  return (
+                    <td
+                      key={c.id}
+                      className={`py-3 px-3 text-right tabular whitespace-nowrap ${
+                        !hasData
+                          ? "text-ink-faint"
+                          : leads
+                            ? "text-good font-semibold"
+                            : trails
+                              ? "text-bad"
+                              : "text-ink"
+                      }`}
+                    >
+                      {hasData ? fmtUnit(val, c.unit) : "-"}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -249,9 +266,7 @@ function AggregatePanel({
       </div>
       {hasData ? (
         <>
-          <p
-            className={`display text-3xl sm:text-4xl tracking-tight tabular leading-none ${headlineCls}`}
-          >
+          <p className={`display text-3xl sm:text-4xl tracking-tight tabular leading-none ${headlineCls}`}>
             {fmtValue(value, unit)}
             <span className="ml-1 text-base text-ink-muted">
               {unitSuffix(unit, value)}
@@ -298,10 +313,7 @@ function ChainRegionMatrix({
       if (!regionMap.has(r.value)) regionMap.set(r.value, r.label);
     }
   }
-  const regions = Array.from(regionMap.entries()).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const regions = Array.from(regionMap.entries()).map(([value, label]) => ({ value, label }));
 
   const valueCell = (win: boolean, lose: boolean, isAggregate = false) => {
     const color = win ? "text-good font-medium" : lose ? "text-bad" : "text-ink";
@@ -358,9 +370,7 @@ function ChainRegionMatrix({
                           {fmtUnit(row.aP50, unit)}
                         </td>
                       ) : (
-                        <td key={r.value} className={emptyCell()}>
-                          -
-                        </td>
+                        <td key={r.value} className={emptyCell()}>-</td>
                       );
                     })}
                     <td className={valueCell(entry.aWins, entry.bWins, true)}>
@@ -378,9 +388,7 @@ function ChainRegionMatrix({
                           {fmtUnit(row.bP50, unit)}
                         </td>
                       ) : (
-                        <td key={r.value} className={emptyCell()}>
-                          -
-                        </td>
+                        <td key={r.value} className={emptyCell()}>-</td>
                       );
                     })}
                     <td className={valueCell(entry.bWins, entry.aWins, true)}>
@@ -430,14 +438,10 @@ function BreakdownTable({
             {rows.map((row) => (
               <tr key={row.value}>
                 <td className="py-2 pr-3 text-ink-soft">{row.label}</td>
-                <td
-                  className={`py-2 px-3 text-right ${row.aWins ? "text-good font-medium" : row.bWins ? "text-bad" : "text-ink"}`}
-                >
+                <td className={`py-2 px-3 text-right ${row.aWins ? "text-good font-medium" : row.bWins ? "text-bad" : "text-ink"}`}>
                   {fmtUnit(row.aP50, unit)}
                 </td>
-                <td
-                  className={`py-2 pl-3 text-right ${row.bWins ? "text-good font-medium" : row.aWins ? "text-bad" : "text-ink"}`}
-                >
+                <td className={`py-2 pl-3 text-right ${row.bWins ? "text-good font-medium" : row.aWins ? "text-bad" : "text-ink"}`}>
                   {fmtUnit(row.bP50, unit)}
                 </td>
               </tr>
