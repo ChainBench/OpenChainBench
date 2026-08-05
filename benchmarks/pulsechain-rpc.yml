@@ -1,0 +1,132 @@
+# OpenChainBench. Bench № 196
+
+slug: pulsechain-rpc
+number: "196"
+title: Fastest free PulseChain RPC, live no-key endpoint latency
+seo_title: "Fastest free PulseChain RPC 2026"
+seo_description: "{{best_name}} leads free PulseChain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public PulseChain EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  PulseChain (chain 369) is a full-state Ethereum fork launched in 2023 with PLS as the gas token. It maintains EVM compatibility and has a large retail user base. Three keyless endpoints are probed continuously: PublicNode (pulsechain-rpc.publicnode.com), PulseChain official (rpc.pulsechain.com), and G4MM4 (rpc-pulsechain.g4mm4.io).
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to PulseChain.
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_getBlockByNumber`) against every no-key public PulseChain endpoint
+  that sustains continuous probing, 3 providers at launch,
+  every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
+  view lives on the parent `rpc-capabilities` benchmark; this page is the
+  PulseChain-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"pulsechain\"`. Provider coverage at launch: 3 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free PulseChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free PulseChain RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
+  - q: "Which PulseChain RPCs work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing: PublicNode, PulseChain official, and G4MM4. Every endpoint was live-verified before inclusion."
+  - q: "Does the fastest PulseChain RPC change by region?"
+    a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is PulseChain RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="pulsechain"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: PublicNode multi-chain gateway for PulseChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PublicNode's no-key PulseChain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="pulsechain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="pulsechain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="pulsechain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="pulsechain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="pulsechain"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="pulsechain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="pulsechain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="pulsechain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="pulsechain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="pulsechain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="pulsechain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="pulsechain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="pulsechain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="pulsechain", region="sgp"}[1h])
+
+  - slug: pulsechain-official
+    name: PulseChain Foundation
+    tag: PulseChain official public RPC endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PulseChain Foundation's no-key endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="pulsechain-official", chain="pulsechain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="pulsechain-official", chain="pulsechain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="pulsechain-official", chain="pulsechain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="pulsechain-official", chain="pulsechain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="pulsechain-official", chain="pulsechain"}) / sum(ocb:rpc_call:rate_24h{provider="pulsechain-official", chain="pulsechain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="pulsechain-official", chain="pulsechain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="pulsechain-official", chain="pulsechain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="pulsechain-official", chain="pulsechain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="pulsechain-official", chain="pulsechain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="pulsechain-official", chain="pulsechain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="pulsechain-official", chain="pulsechain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="pulsechain-official", chain="pulsechain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="pulsechain-official", chain="pulsechain", region="sgp"}[1h])
+
+  - slug: g4mm4
+    name: G4MM4
+    tag: G4MM4 community public RPC for PulseChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to G4MM4's no-key PulseChain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="g4mm4", chain="pulsechain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="g4mm4", chain="pulsechain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="g4mm4", chain="pulsechain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="g4mm4", chain="pulsechain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="g4mm4", chain="pulsechain"}) / sum(ocb:rpc_call:rate_24h{provider="g4mm4", chain="pulsechain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="g4mm4", chain="pulsechain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="g4mm4", chain="pulsechain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="g4mm4", chain="pulsechain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="g4mm4", chain="pulsechain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="g4mm4", chain="pulsechain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="g4mm4", chain="pulsechain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="g4mm4", chain="pulsechain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="g4mm4", chain="pulsechain", region="sgp"}[1h])
