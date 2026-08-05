@@ -19,6 +19,8 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import type { Benchmark } from "@/types/benchmark";
+import { CompareBenchCard } from "@/components/compare-bench-card";
+import type { CompareBench } from "@/components/compare-bench-card";
 import {
   computeInputsHash,
   readPairCache,
@@ -293,31 +295,7 @@ type ChainRegionEntry = BreakdownRow & {
   regionRows: BreakdownRow[];
 };
 
-type SharedBench = {
-  slug: string;
-  title: string;
-  category: Benchmark["category"];
-  unit: Benchmark["unit"];
-  metric: string;
-  higherIsBetter: boolean;
-  lastRunAt: Benchmark["lastRunAt"];
-  aResult: Panel;
-  bResult: Panel;
-  /** Aggregate winner side. "tie" when p50 are equal. */
-  aggregateWinner: "a" | "b" | "tie";
-  /** Per chain side by side rows, populated only for benches with
-   *  `dimensions.chain` and where both providers have positive p50 in
-   *  the filtered variant. */
-  chainBreakdown: BreakdownRow[];
-  /** Per region side by side rows, same gating as chainBreakdown. */
-  regionBreakdown: BreakdownRow[];
-  /** Chain x region matrix, populated only for benches that expose
-   *  BOTH `dimensions.chain` and `dimensions.region`. When present, the
-   *  renderer uses this nested structure as a single 2D table and
-   *  drops the flat chainBreakdown + regionBreakdown so we don't stack
-   *  three tables for the same data. */
-  chainRegionMatrix: ChainRegionEntry[];
-};
+type SharedBench = CompareBench;
 
 /** Sort comparator that respects `higherIsBetter`. Returns:
  *    "a" if A leads, "b" if B leads, "tie" if both equal. */
@@ -640,6 +618,24 @@ async function buildSharedBenches(
             : Promise.resolve<ChainRegionEntry[]>([]),
         ]);
 
+      const panelScopes = (fullBench.metricPanels ?? [])
+        .filter((p) => p.tab !== false)
+        .flatMap((p) => {
+          const aVal = p.values[aAppearances.slug];
+          const bVal = p.values[bAppearances.slug];
+          if (aVal == null || bVal == null) return [];
+          return [
+            {
+              id: p.id,
+              label: p.label,
+              unit: p.unit,
+              higherIsBetter: p.higherIsBetter,
+              aValue: aVal,
+              bValue: bVal,
+            },
+          ];
+        });
+
       return {
         slug: fullBench.slug,
         title: fullBench.title,
@@ -654,6 +650,7 @@ async function buildSharedBenches(
         chainRegionMatrix,
         chainBreakdown,
         regionBreakdown,
+        panelScopes,
       } satisfies SharedBench;
     }),
   );
@@ -902,7 +899,7 @@ export default async function ComparePage({
         </h2>
         <div className="mt-4 space-y-5">
           {shared.map((s) => (
-            <BenchCard
+            <CompareBenchCard
               key={s.slug}
               bench={s}
               aName={a.name}
