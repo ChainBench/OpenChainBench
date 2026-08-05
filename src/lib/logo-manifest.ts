@@ -457,9 +457,9 @@ const RAW: Record<string, string> = {
   gravity: "/logos/gravity.svg",
   "gravity-official": "/logos/gravity.svg",
   "oasis-official": "/logos/oasis-emerald.png",
-  "reya-official": "/logos/reya.png",
+  "reya-official": "/logos/reya.svg",
   "vana-official": "/logos/vana.png",
-  reya: "/logos/reya.png",
+  reya: "/logos/reya.svg",
   sanko: "/logos/sanko.png",
 
   // ─── Wave-6 Cosmos SDK RPC cluster chains (benches 167-183, 2026-08-04) ───
