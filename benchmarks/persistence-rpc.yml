@@ -4,7 +4,7 @@ slug: persistence-rpc
 number: "175"
 title: Fastest free Persistence RPC, live no-key endpoint latency
 seo_title: "Fastest free Persistence RPC 2026"
-seo_description: "{{best_name}} leads free Persistence RPC at {{best_p50}} (Tendermint status p50, 24h). 1 no-key provider measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Persistence RPC at {{best_p50}} (Tendermint status p50, 24h). 3 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Tendermint status method against every free, no-key public Persistence Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Persistence (core-1) is a Cosmos SDK blockchain specializing in liquid staking with stkATOM, stkDYDX, and other IBC-connected staked assets, XPRT staking token, using CometBFT consensus. It was among the first Cosmos liquid staking protocols. Polkachu provides keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+  Persistence (core-1) is a Cosmos SDK blockchain specializing in liquid staking with stkATOM, stkDYDX, and other IBC-connected staked assets, XPRT staking token, using CometBFT consensus. It was among the first Cosmos liquid staking protocols. Polkachu, PublicNode, and the Persistence Foundation provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Persistence.
   We measure the round-trip latency of a single, identical Cosmos SDK call
   (Tendermint `status`) against every no-key public Persistence endpoint
-  that sustains continuous probing, 1 provider at launch,
+  that sustains continuous probing, 3 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable decimal `sync_info.latest_block_height`), `http_err`, `jsonrpc_err`, `stale` (more than 40 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"persistence\"`. Provider coverage at launch: 1 no-key endpoint (Polkachu)."
+  - "Chain scope: every query on this page is pinned to `chain=\"persistence\"`. Provider coverage at launch: 3 no-key endpoints (Polkachu, PublicNode, Persistence Foundation)."
 
 findings:
-  - "{{best_name}} currently leads free Persistence RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 1 measured provider."
+  - "{{best_name}} currently leads free Persistence RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 3 measured providers."
 
 faq:
   - q: "What is the fastest free Persistence RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Persistence RPCs work without an API key?"
-    a: "1 endpoint sustains continuous keyless probing at launch: Polkachu. Every listed endpoint was live-verified before inclusion."
+    a: "3 endpoints sustain continuous keyless probing at launch: Polkachu, PublicNode, and Persistence Foundation. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Persistence RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Persistence RPC latency measured here?"
@@ -87,3 +87,47 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="persistence", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="persistence", region="sgp"}[1h])
+  - slug: publicnode
+    name: PublicNode
+    tag: Non-profit public RPC by Allnodes
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Persistence endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="persistence"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="persistence"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="persistence"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="persistence"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="persistence"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="persistence"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="sgp"}[1h])
+  - slug: persistence-official
+    name: Persistence Foundation
+    tag: Official Persistence Foundation public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Persistence Foundation's no-key endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="persistence-official", chain="persistence"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="persistence-official", chain="persistence"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="persistence-official", chain="persistence"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="persistence-official", chain="persistence"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="persistence-official", chain="persistence"}) / sum(ocb:rpc_call:rate_24h{provider="persistence-official", chain="persistence"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="persistence-official", chain="persistence"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="persistence-official", chain="persistence"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="persistence-official", chain="persistence", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="persistence-official", chain="persistence", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="persistence-official", chain="persistence", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="persistence-official", chain="persistence", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="persistence-official", chain="persistence", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="persistence-official", chain="persistence", region="sgp"}[1h])
