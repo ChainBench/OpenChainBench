@@ -42,6 +42,11 @@ export const REPORT_CATEGORY_META: Record<
     description:
       "On-chain prediction markets benchmarked for quote availability, market coverage, and resolution latency.",
   },
+  "data-api": {
+    label: "Data API",
+    description:
+      "Crypto data APIs benchmarked for price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.",
+  },
 };
 
 function parseReport(filePath: string): Report {
