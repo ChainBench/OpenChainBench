@@ -65,7 +65,7 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: publicnode
+  - slug: vana-official
     name: Vana Foundation
     tag: Vana Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Vana Foundation's no-key Vana endpoint."
