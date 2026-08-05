@@ -1093,22 +1093,22 @@ func chains() []Chain {
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ASTAR_1RPC", "https://1rpc.io/astr")},
 			},
 		},
-		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 2 keyless providers.
+		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 1 keyless provider.
+		// 1RPC dropped: ~15% ok_rate (vs 100% for publicnode), not sustaining continuous probing.
 		{
 			Slug: "oasis-sapphire",
 			Name: "Oasis Sapphire",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_PUBLICNODE", "https://sapphire.oasis.io")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_1RPC", "https://1rpc.io/oasis/sapphire")},
 			},
 		},
-		// Oasis Emerald — EVM paratime (chain 42262). 2 keyless providers.
+		// Oasis Emerald — EVM paratime (chain 42262). 1 keyless provider.
+		// 1RPC dropped: ~15% ok_rate (vs 100% for publicnode), not sustaining continuous probing.
 		{
 			Slug: "oasis-emerald",
 			Name: "Oasis Emerald",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_EMERALD_PUBLICNODE", "https://emerald.oasis.io")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_OASIS_EMERALD_1RPC", "https://1rpc.io/oasis/emerald")},
 			},
 		},
 		// Conflux eSpace — Tree-Graph EVM L1 (chain 1030). 3 keyless providers.

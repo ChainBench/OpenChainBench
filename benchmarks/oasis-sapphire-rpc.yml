@@ -4,7 +4,7 @@ slug: oasis-sapphire-rpc
 number: "155"
 title: Fastest free Oasis Sapphire RPC, live no-key endpoint latency
 seo_title: "Fastest free Oasis Sapphire RPC 2026"
-seo_description: "{{best_name}} leads free Oasis Sapphire RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Oasis Sapphire RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 1 no-key provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Oasis Sapphire RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Oasis Sapphire (chain 23294) is the only production confidential EVM, running smart contracts inside Intel SGX trusted execution environments to keep state and inputs private by default. It is part of the Oasis Network, ROSE gas token bridged from the consensus layer. The Oasis Foundation's sapphire.oasis.io and 1RPC provide keyless access probed every 60 seconds from three regions.
+  Oasis Sapphire (chain 23294) is the only production confidential EVM, running smart contracts inside Intel SGX trusted execution environments to keep state and inputs private by default. It is part of the Oasis Network, ROSE gas token bridged from the consensus layer. The Oasis Foundation's sapphire.oasis.io provides keyless access probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Oasis Sapphire.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public Oasis Sapphire endpoint
-  that sustains continuous probing, 2 providers at launch,
+  that sustains continuous probing, 1 provider at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"oasis-sapphire\"`. Provider coverage at launch: 2 no-key endpoints (Oasis Foundation, 1RPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"oasis-sapphire\"`. Provider coverage at launch: 1 no-key endpoint (Oasis Foundation)."
 
 findings:
-  - "{{best_name}} currently leads free Oasis Sapphire RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
+  - "{{best_name}} currently leads free Oasis Sapphire RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 1 measured provider."
 
 faq:
   - q: "What is the fastest free Oasis Sapphire RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Oasis Sapphire RPCs work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing at launch: Oasis Foundation, 1RPC. Every listed endpoint was live-verified before inclusion."
+    a: "1 endpoint sustains continuous keyless probing at launch: Oasis Foundation. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Oasis Sapphire RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Oasis Sapphire RPC latency measured here?"
@@ -87,26 +87,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="oasis-sapphire", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="oasis-sapphire", region="sgp"}[1h])
-
-  - slug: 1rpc
-    name: 1RPC
-    tag: Privacy-first RPC relay
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Oasis Sapphire endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="oasis-sapphire"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="oasis-sapphire"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="oasis-sapphire"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="oasis-sapphire"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="oasis-sapphire"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="oasis-sapphire"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="oasis-sapphire"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="oasis-sapphire"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="oasis-sapphire", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="oasis-sapphire", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="oasis-sapphire", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="oasis-sapphire", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="oasis-sapphire", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="oasis-sapphire", region="sgp"}[1h])
