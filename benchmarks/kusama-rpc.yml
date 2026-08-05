@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Kusama is Polkadot's canary network — a live, production relay chain (KSM token) where new features ship before Polkadot mainnet. Substrate-based, ~6 s block time, same Substrate JSON-RPC wire protocol as Polkadot. Six keyless endpoints are probed continuously: PublicNode, OnFinality, dRPC, IBP Network, Dwellir, and 1RPC.
+  Kusama is Polkadot's canary network, a live production relay chain (KSM token) where new features ship before Polkadot mainnet. Substrate-based, ~6 s block time, same Substrate JSON-RPC wire protocol as Polkadot. Six keyless endpoints are probed continuously: PublicNode, OnFinality, dRPC, IBP Network, Dwellir, and 1RPC.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Kusama.

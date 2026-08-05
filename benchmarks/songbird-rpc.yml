@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Songbird (chain 19, SGB) is Flare Network's canary network — a production EVM-compatible chain used to test and validate Flare's FTSO (Flare Time Series Oracle) oracle system before mainnet deployment. The Flare Foundation operates four keyless endpoints: the official Songbird gateway (songbird-api.flare.network/ext/C/rpc), dRPC (songbird.drpc.org), Blast API, and the community node sgb.ftso.com.au.
+  Songbird (chain 19, SGB) is Flare Network's canary network, a production EVM-compatible chain used to test and validate Flare's FTSO oracle system before mainnet deployment. The Flare Foundation operates four keyless endpoints: the official Songbird gateway (songbird-api.flare.network/ext/C/rpc), dRPC (songbird.drpc.org), Blast API, and the community node sgb.ftso.com.au.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Songbird.
