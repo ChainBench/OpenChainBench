@@ -65,7 +65,7 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: publicnode
+  - slug: gravity-official
     name: Gravity Foundation
     tag: Gravity Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Gravity Foundation's no-key Gravity Alpha endpoint."
