@@ -456,6 +456,9 @@ const RAW: Record<string, string> = {
   vana: "/logos/vana.png",
   gravity: "/logos/gravity.svg",
   "gravity-official": "/logos/gravity.svg",
+  "oasis-official": "/logos/oasis-emerald.png",
+  "reya-official": "/logos/reya.png",
+  "vana-official": "/logos/vana.png",
   reya: "/logos/reya.png",
   sanko: "/logos/sanko.png",
 
