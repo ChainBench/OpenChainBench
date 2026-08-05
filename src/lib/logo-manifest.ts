@@ -480,6 +480,24 @@ const RAW: Record<string, string> = {
   regen: "/logos/regen.png",
   comdex: "/logos/comdex.png",
 
+  // ─── Wave-7 RPC cluster chains (benches 184-199, 2026-08-05) ───
+  fantom: "/logos/fantom.png",
+  kusama: "/logos/kusama.png",
+  hydration: "/logos/hydration.png",
+  zetachain: "/logos/zetachain.png",
+  haqq: "/logos/haqq.svg",
+  etherlink: "/logos/etherlink.png",
+  chiliz: "/logos/chiliz.png",
+  wemix: "/logos/wemix.png",
+  songbird: "/logos/songbird.png",
+  "cronos-zkevm": "/logos/cronos-zkevm.png",
+  "ethereum-classic": "/logos/ethereum-classic.png",
+  telos: "/logos/telos.png",
+  pulsechain: "/logos/pulsechain.png",
+  warden: "/logos/warden.svg",
+  oraichain: "/logos/oraichain.svg",
+  peaq: "/logos/peaq.png",
+
   // ─── Wave-6 Cosmos RPC providers ───
   ecostake: "/logos/ecostake.png",
   autostake: "/logos/autostake.png",
@@ -601,6 +619,20 @@ const ALIASES: Record<string, string> = {
   "xdc-org": "xdc",
   "iotex-mirror": "iotex",
   "harmony-s0": "harmony",
+
+  // Wave-7 RPC official-endpoint aliases (2026-08-05, benches 184-199)
+  "fantom-official": "fantom",
+  "hydration-official": "hydration",
+  "haqq-official": "haqq",
+  "etherlink-official": "etherlink",
+  "chiliz-official": "chiliz",
+  "wemix-official": "wemix",
+  "cronos-zkevm-official": "cronos-zkevm",
+  "telos-official": "telos",
+  "pulsechain-official": "pulsechain",
+  "warden-official": "warden",
+  "orai-official": "oraichain",
+  "peaq-official": "peaq",
 
 };
 
