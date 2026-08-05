@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  ZetaChain (chain 7000) is an EVM-compatible omnichain L1 enabling native cross-chain assets — BTC, ETH, BNB — without bridges or wrapped tokens. ZETA is the gas token. Five keyless endpoints are probed continuously: dRPC, BlockPI, Thirdweb (7000.rpc.thirdweb.com), All That Node, and Blast API.
+  ZetaChain (chain 7000) is an EVM-compatible omnichain L1 enabling native cross-chain assets (BTC, ETH, BNB) without bridges or wrapped tokens. ZETA is the gas token. Five keyless endpoints are probed continuously: dRPC, BlockPI, Thirdweb (7000.rpc.thirdweb.com), All That Node, and Blast API.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to ZetaChain.
