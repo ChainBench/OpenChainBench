@@ -287,7 +287,12 @@ function ModalBody({
   // Priority: active panel (uses in-memory values from benchmark prop,
   // no extra fetch) > fetched dim variant > base aggregate.
   // Null while a dim variant is still in flight (panel path is instant).
-  const effectiveBench = (() => {
+  //
+  // Must be stable across renders (useMemo) so the reference-equality check
+  // in `selected` (selOverride.bench === effectiveBench) survives re-renders
+  // triggered by toggleProvider. An inline IIFE would produce a new object
+  // every render, making every toggle silently revert to defaultSelection.
+  const effectiveBench = useMemo(() => {
     if (activeMetricPanel) {
       return {
         ...benchmark,
@@ -309,7 +314,8 @@ function ModalBody({
     }
     if (hasDims) return variant;
     return benchmark;
-  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMetricPanel, benchmark, variant, hasDims]);
 
   // Live rows ranked by headline value (video order), dead rows last.
   const rankedResults = useMemo(() => {
