@@ -488,7 +488,9 @@ export function TimeSeriesChart({
         if (panelLazy1y && Object.keys(panelLazy1y).length > 0) return panelLazy1y;
         return undefined;
       }
-      return undefined;
+      // 24h and sub-24h (1h, 6h) use the 24h panel series.
+      // sliceOverride() trims the trailing edge for sub-24h tabs.
+      return seriesOverride;
     };
     const panel = pickPanel();
     const sliceOverride = (full: (number | null)[]): (number | null)[] => {

@@ -1121,21 +1121,23 @@ func chains() []Chain {
 				{Slug: "unifra", Name: "Unifra", URL: envDefault("RPC_URL_CONFLUX_UNIFRA", "https://conflux-espace.nodereal.io/v1/pub")},
 			},
 		},
-		// IoTeX — DePIN EVM L1 (chain 4689). 1 keyless provider.
+		// IoTeX — DePIN EVM L1 (chain 4689). 3 keyless providers.
 		{
 			Slug: "iotex",
 			Name: "IoTeX",
 			Providers: []Provider{
 				{Slug: "iotex-mirror", Name: "IoTeX Mirror", URL: envDefault("RPC_URL_IOTEX_MIRROR", "https://babel-api.mainnet.iotex.one")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_IOTEX_ANKR", "https://rpc.ankr.com/iotex")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_IOTEX_THIRDWEB", "https://4689.rpc.thirdweb.com")},
 			},
 		},
-		// Harmony — Sharded EVM L1 shard 0 (chain 1666600000). 2 keyless providers.
+		// Harmony — Sharded EVM L1 shard 0 (chain 1666600000). 1 keyless provider.
+		// 1RPC dropped: ~16% ok_rate vs 100% for harmony-s0.
 		{
 			Slug: "harmony",
 			Name: "Harmony",
 			Providers: []Provider{
 				{Slug: "harmony-s0", Name: "Harmony S0", URL: envDefault("RPC_URL_HARMONY_S0", "https://a.api.s0.t.hmny.io")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_HARMONY_1RPC", "https://1rpc.io/one")},
 			},
 		},
 		// Zircuit — ZK rollup L2 (chain 48900). 1 keyless provider.
@@ -1240,13 +1242,15 @@ func chains() []Chain {
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_DYMENSION_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/dymension")},
 			},
 		},
-		// Persistence — liquid staking hub (core-1). 1 keyless provider.
+		// Persistence — liquid staking hub (core-1). 3 keyless providers.
 		{
 			Slug: "persistence",
 			Name: "Persistence",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_PERSISTENCE_POLKACHU", "https://persistence-rpc.polkachu.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PERSISTENCE_PUBLICNODE", "https://persistence-rpc.publicnode.com:443")},
+				{Slug: "persistence-official", Name: "Persistence Foundation", URL: envDefault("RPC_URL_PERSISTENCE_OFFICIAL", "https://rpc.core.persistence.one")},
 			},
 		},
 		// Coreum — enterprise RWA chain (coreum-mainnet-1). 3 keyless providers.
@@ -1260,13 +1264,14 @@ func chains() []Chain {
 				{Slug: "coreum-official", Name: "Coreum Foundation", URL: envDefault("RPC_URL_COREUM_OFFICIAL", "https://full-node.mainnet-1.coreum.dev:26657")},
 			},
 		},
-		// Nolus — DeFi lease protocol (pirin-1). 1 keyless provider.
+		// Nolus — DeFi lease protocol (pirin-1). 2 keyless providers.
 		{
 			Slug: "nolus",
 			Name: "Nolus",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NOLUS_POLKACHU", "https://nolus-rpc.polkachu.com")},
+				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_NOLUS_AUTOSTAKE", "https://nolus-mainnet-rpc.autostake.com:443")},
 			},
 		},
 		// Archway — developer-rewards CosmWasm (archway-1). 4 keyless providers.
@@ -1281,22 +1286,26 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARCHWAY_PUBLICNODE", "https://archway-rpc.publicnode.com:443")},
 			},
 		},
-		// Nibiru — CosmWasm + EVM chain (cataclysm-1). 1 keyless provider.
+		// Nibiru — CosmWasm + EVM chain (cataclysm-1). 3 keyless providers.
 		{
 			Slug: "nibiru",
 			Name: "Nibiru",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NIBIRU_POLKACHU", "https://nibiru-rpc.polkachu.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_NIBIRU_PUBLICNODE", "https://nibiru-rpc.publicnode.com:443")},
+				{Slug: "nibiru-official", Name: "Nibiru Foundation", URL: envDefault("RPC_URL_NIBIRU_OFFICIAL", "https://rpc.nibiru.fi:443")},
 			},
 		},
-		// Quicksilver — ICS liquid staking (quicksilver-2). 1 keyless provider.
+		// Quicksilver — ICS liquid staking (quicksilver-2). 3 keyless providers.
 		{
 			Slug: "quicksilver",
 			Name: "Quicksilver",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_QUICKSILVER_POLKACHU", "https://quicksilver-rpc.polkachu.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_QUICKSILVER_PUBLICNODE", "https://quicksilver-rpc.publicnode.com:443")},
+				{Slug: "quicksilver-official", Name: "Quicksilver Foundation", URL: envDefault("RPC_URL_QUICKSILVER_OFFICIAL", "https://rpc.quicksilver.zone")},
 			},
 		},
 		// Terra 2 — relaunched Cosmos chain (phoenix-1). 4 keyless providers.
@@ -1311,13 +1320,14 @@ func chains() []Chain {
 				{Slug: "autostake", Name: "AutoStake", URL: envDefault("RPC_URL_TERRA_AUTOSTAKE", "https://terra-mainnet-rpc.autostake.com:443")},
 			},
 		},
-		// Regen Network — ecological assets chain (regen-1). 1 keyless provider.
+		// Regen Network — ecological assets chain (regen-1). 2 keyless providers.
 		{
 			Slug: "regen",
 			Name: "Regen Network",
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_REGEN_POLKACHU", "https://regen-rpc.polkachu.com:443")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_REGEN_PUBLICNODE", "https://regen-rpc.publicnode.com:443")},
 			},
 		},
 		// Comdex — DeFi synthetics chain (comdex-1). 1 keyless provider.

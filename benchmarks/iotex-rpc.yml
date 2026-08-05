@@ -4,7 +4,7 @@ slug: iotex-rpc
 number: "158"
 title: Fastest free IoTeX RPC, live no-key endpoint latency
 seo_title: "Fastest free IoTeX RPC 2026"
-seo_description: "{{best_name}} leads free IoTeX RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 1 no-key provider measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free IoTeX RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public IoTeX RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  IoTeX (chain 4689) is an EVM-compatible Layer 1 designed for decentralized physical infrastructure networks (DePIN), IOTX gas token, combining IoT device identity, data streams, and on-chain settlement. The IoTeX Foundation's babel-api.mainnet.iotex.io gateway provides standard eth_ JSON-RPC access probed every 60 seconds from three regions.
+  IoTeX (chain 4689) is an EVM-compatible Layer 1 designed for decentralized physical infrastructure networks (DePIN), IOTX gas token, combining IoT device identity, data streams, and on-chain settlement. IoTeX Mirror, Ankr, and Thirdweb provide keyless eth_ JSON-RPC access probed every 60 seconds from three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to IoTeX.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public IoTeX endpoint
-  that sustains continuous probing, 1 provider at launch,
+  that sustains continuous probing, 3 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"iotex\"`. Provider coverage at launch: 1 no-key endpoint (IoTeX Mirror)."
+  - "Chain scope: every query on this page is pinned to `chain=\"iotex\"`. Provider coverage at launch: 3 no-key endpoints (IoTeX Mirror, Ankr, Thirdweb)."
 
 findings:
-  - "{{best_name}} currently leads free IoTeX RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 1 measured provider."
+  - "{{best_name}} currently leads free IoTeX RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
 
 faq:
   - q: "What is the fastest free IoTeX RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which IoTeX RPCs work without an API key?"
-    a: "1 endpoint sustains continuous keyless probing at launch: IoTeX Mirror. Every listed endpoint was live-verified before inclusion."
+    a: "3 endpoints sustain continuous keyless probing at launch: IoTeX Mirror, Ankr, and Thirdweb. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest IoTeX RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is IoTeX RPC latency measured here?"
@@ -87,3 +87,47 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-mirror", chain="iotex", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="iotex-mirror", chain="iotex", region="sgp"}[1h])
+  - slug: ankr
+    name: Ankr
+    tag: Multi-chain public RPC network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key IoTeX endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="iotex"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="iotex"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="iotex"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="iotex"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="iotex"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="iotex"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="sgp"}[1h])
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Web3 developer platform public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key IoTeX endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="iotex"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="iotex"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="iotex"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="iotex"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="iotex"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="iotex"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="iotex"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="iotex"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="iotex", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="iotex", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="iotex", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="iotex", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="iotex", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="iotex", region="sgp"}[1h])
