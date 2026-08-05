@@ -10,6 +10,7 @@ import (
 var (
 	coverageSuccess  *prometheus.CounterVec
 	coverageAttempts *prometheus.CounterVec
+	coverageAPIok    *prometheus.CounterVec
 )
 
 func init() {
@@ -30,12 +31,25 @@ func init() {
 		[]string{"provider", "venue", "chain"},
 	)
 	prometheus.MustRegister(coverageAttempts)
+
+	coverageAPIok = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "token_quote_api_ok_total",
+			Help: "HTTP 200 responses received per provider/venue/chain, regardless of outAmount",
+		},
+		[]string{"provider", "venue", "chain"},
+	)
+	prometheus.MustRegister(coverageAPIok)
 }
 
-// RecordProbe records one probe attempt and optionally a success.
-func RecordProbe(provider, venue, chain string, ok bool) {
+// RecordProbeDetailed records one probe: apiOk=true when the provider returned HTTP 200,
+// routeFound=true when outAmount > 0 was parsed from the response.
+func RecordProbeDetailed(provider, venue, chain string, apiOk, routeFound bool) {
 	coverageAttempts.WithLabelValues(provider, venue, chain).Inc()
-	if ok {
+	if apiOk {
+		coverageAPIok.WithLabelValues(provider, venue, chain).Inc()
+	}
+	if routeFound {
 		coverageSuccess.WithLabelValues(provider, venue, chain).Inc()
 	}
 }

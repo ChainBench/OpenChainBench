@@ -37,7 +37,7 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	case p.sem <- struct{}{}:
 		defer func() { <-p.sem }()
 	case <-ctx.Done():
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -54,7 +54,7 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		chainId = 4663
 		usdcAddr = odosUSDGRobinhood
 	default:
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -73,7 +73,7 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.odos.xyz/sor/quote/v2", bytes.NewBuffer(bb))
 	if err != nil {
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -81,7 +81,7 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	resp, err := p.client.Do(req)
 	if err != nil {
 		fmt.Printf("[odos] %s/%s net error: %s\n", token.Chain, token.Address, classifyNetErr(err))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	defer resp.Body.Close()
@@ -89,12 +89,12 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	if resp.StatusCode == 429 {
 		fmt.Printf("[odos] %s/%s throttled\n", token.Chain, token.Address)
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	if resp.StatusCode != 200 {
 		fmt.Printf("[odos] %s/%s status=%d body=%s\n", token.Chain, token.Address, resp.StatusCode, snippet(body))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -103,11 +103,11 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		fmt.Printf("[odos] %s/%s parse error: %v\n", token.Chain, token.Address, err)
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, false)
 		return false
 	}
 
 	ok = len(r.OutAmounts) > 0 && r.OutAmounts[0] != "" && r.OutAmounts[0] != "0"
-	RecordProbe(p.Slug(), token.Venue, token.Chain, ok)
+	RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, ok)
 	return ok
 }

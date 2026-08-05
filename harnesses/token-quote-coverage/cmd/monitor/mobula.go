@@ -54,7 +54,7 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	case "solana":
 		chainId, tokenIn, wallet = "solana", mobulaUSDCSolana, mobulaSolanaWallet
 	default:
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -72,7 +72,7 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	req.Header.Set("Authorization", p.apiKey)
@@ -80,7 +80,7 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	resp, err := p.client.Do(req)
 	if err != nil {
 		fmt.Printf("[mobula] %s/%s net error: %s\n", token.Chain, token.Address, classifyNetErr(err))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	defer resp.Body.Close()
@@ -88,7 +88,7 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	if resp.StatusCode != 200 {
 		fmt.Printf("[mobula] %s/%s status=%d body=%s\n", token.Chain, token.Address, resp.StatusCode, snippet(body))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -100,18 +100,18 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		fmt.Printf("[mobula] %s/%s parse error: %v\n", token.Chain, token.Address, err)
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, false)
 		return false
 	}
 
 	// For Solana: Mobula finds the route but fails to build the tx because the
 	// dummy wallet has no SOL for fees. Route found = coverage HIT.
 	if token.Chain == "solana" && r.Error == "Transaction build failed" {
-		RecordProbe(p.Slug(), token.Venue, token.Chain, true)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, true)
 		return true
 	}
 
 	ok = r.Data.AmountOutTokens != "" && r.Data.AmountOutTokens != "0"
-	RecordProbe(p.Slug(), token.Venue, token.Chain, ok)
+	RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, ok)
 	return ok
 }

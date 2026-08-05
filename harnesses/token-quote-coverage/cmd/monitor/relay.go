@@ -49,7 +49,7 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	case "robinhood":
 		chainId, tokenIn, user = 4663, relayUSDGRobinhood, relayEVMUser
 	default:
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -65,7 +65,7 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.relay.link/quote", bytes.NewReader(payload))
 	if err != nil {
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -73,11 +73,13 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	resp, err := p.client.Do(req)
 	if err != nil {
 		fmt.Printf("[relay] %s/%s net error: %s\n", token.Chain, token.Address, classifyNetErr(err))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
+
+	apiOk := resp.StatusCode == 200
 
 	var r struct {
 		Details struct {
@@ -89,7 +91,7 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		fmt.Printf("[relay] %s/%s parse error: %v\n", token.Chain, token.Address, err)
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, apiOk, false)
 		return false
 	}
 
@@ -97,6 +99,6 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	if !ok && r.Message != "" {
 		fmt.Printf("[relay] %s/%s: %s\n", token.Chain, token.Address, r.Message)
 	}
-	RecordProbe(p.Slug(), token.Venue, token.Chain, ok)
+	RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, apiOk, ok)
 	return ok
 }
