@@ -42,7 +42,7 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		network = "4663"
 		usdcAddr = paraswapUSDGRobinhood
 	default:
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -58,14 +58,14 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {
 		fmt.Printf("[paraswap] %s/%s net error: %s\n", token.Chain, token.Address, classifyNetErr(err))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 	defer resp.Body.Close()
@@ -73,7 +73,7 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 
 	if resp.StatusCode != 200 {
 		fmt.Printf("[paraswap] %s/%s status=%d body=%s\n", token.Chain, token.Address, resp.StatusCode, snippet(body))
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, false, false)
 		return false
 	}
 
@@ -84,11 +84,11 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		fmt.Printf("[paraswap] %s/%s parse error: %v\n", token.Chain, token.Address, err)
-		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, false)
 		return false
 	}
 
 	ok = r.PriceRoute.DestAmount != "" && r.PriceRoute.DestAmount != "0"
-	RecordProbe(p.Slug(), token.Venue, token.Chain, ok)
+	RecordProbeDetailed(p.Slug(), token.Venue, token.Chain, true, ok)
 	return ok
 }
