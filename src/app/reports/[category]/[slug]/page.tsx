@@ -407,26 +407,7 @@ export default async function ReportPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Citation */}
-      <div className="mt-8 border border-rule p-6 bg-[var(--color-paper-soft)]">
-        <p className="label-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-3">
-          Cite this report
-        </p>
-        <p className="text-sm text-ink-muted leading-relaxed">
-          OpenChainBench Research. <em>{report.title}</em>. OpenChainBench,{" "}
-          {new Date(report.publishedAt).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            timeZone: "UTC",
-          })}
-          .{" "}
-          <a className="lnk" href={report.canonical}>
-            {report.canonical}
-          </a>
-          . Licensed under CC BY 4.0.
-        </p>
-      </div>
+
     </article>
   );
 }
