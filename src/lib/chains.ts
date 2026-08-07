@@ -951,6 +951,141 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Cosmos SDK DeFi chain (comdex-1) providing decentralised synthetics and lending with on-chain commodity markets, CMDX staking token, CometBFT consensus, IBC-connected to Osmosis and Cosmos Hub.",
   },
+  {
+    slug: "fantom",
+    label: "Fantom",
+    category: "L1",
+    nativeSymbol: "FTM",
+    website: "https://fantom.foundation",
+    description:
+      "DAG-based EVM-compatible L1 (chain 250) using Lachesis aBFT consensus for ~1-2 second finality, FTM as native gas token. Home to a rich DeFi ecosystem including SpookySwap and Beethoven X.",
+  },
+  {
+    slug: "kusama",
+    label: "Kusama",
+    category: "L1",
+    nativeSymbol: "KSM",
+    website: "https://kusama.network",
+    description:
+      "Polkadot canary relay chain providing a fast-paced environment for experimentation with parachain slots, shared security and on-chain governance before features graduate to Polkadot mainnet.",
+  },
+  {
+    slug: "hydration",
+    label: "Hydration",
+    category: "L2",
+    nativeSymbol: "HDX",
+    website: "https://hydration.net",
+    description:
+      "Polkadot parachain DeFi hub (formerly HydraDX) featuring an Omnipool AMM, Stableswap, money market, and OTC desk, secured by Polkadot shared security with HDX as the native governance token.",
+  },
+  {
+    slug: "zetachain",
+    label: "ZetaChain",
+    category: "L1",
+    nativeSymbol: "ZETA",
+    website: "https://www.zetachain.com",
+    description:
+      "EVM omnichain L1 (chain 7000) with native cross-chain messaging and value transfer across Bitcoin, Ethereum, BNB Chain, and other networks without bridges, using ZETA as the gas and bonding token.",
+  },
+  {
+    slug: "haqq",
+    label: "HAQQ",
+    category: "L1",
+    nativeSymbol: "ISLM",
+    website: "https://haqq.network",
+    description:
+      "EVM-compatible L1 (chain 11235) designed for Shariah-compliant Islamic finance applications, powered by the Ethermint stack with ISLM as the native token and CometBFT consensus.",
+  },
+  {
+    slug: "etherlink",
+    label: "Etherlink",
+    category: "L2",
+    nativeSymbol: "XTZ",
+    website: "https://www.etherlink.com",
+    description:
+      "EVM-compatible L2 (chain 42793) built on Tezos Smart Rollup technology, offering decentralised sequencing and fast finality secured by Tezos bakers, using XTZ as the native gas token.",
+  },
+  {
+    slug: "chiliz",
+    label: "Chiliz",
+    category: "L1",
+    nativeSymbol: "CHZ",
+    website: "https://www.chiliz.com",
+    description:
+      "EVM-compatible sports and entertainment blockchain (chain 88888, Chiliz Chain 2.0) enabling sports fan tokens and NFTs for football clubs and leagues worldwide, with CHZ as the native gas token.",
+  },
+  {
+    slug: "wemix",
+    label: "WEMIX",
+    category: "L1",
+    nativeSymbol: "WEMIX",
+    website: "https://wemix.com",
+    description:
+      "EVM-compatible Web3 gaming blockchain (chain 1111, WEMIX 3.0) by WeMade, home to P2E gaming titles like MirrorWorld and WonderX across the South Korean gaming ecosystem.",
+  },
+  {
+    slug: "songbird",
+    label: "Songbird",
+    category: "L1",
+    nativeSymbol: "SGB",
+    website: "https://flare.network/songbird",
+    description:
+      "Canary network for Flare (chain 19), EVM-compatible with a native FTSO data oracle system, used to test governance proposals and smart contract upgrades before deployment to Flare mainnet.",
+  },
+  {
+    slug: "ethereum-classic",
+    label: "Ethereum Classic",
+    category: "L1",
+    nativeSymbol: "ETC",
+    website: "https://ethereumclassic.org",
+    description:
+      "The original unforked Ethereum chain (chain 61) continuing after the 2016 DAO hack, committed to immutability and proof-of-work consensus with ETC as the native currency.",
+  },
+  {
+    slug: "telos",
+    label: "Telos",
+    category: "L1",
+    nativeSymbol: "TLOS",
+    website: "https://www.telos.net",
+    description:
+      "High-performance EVM blockchain (chain 40) built on EOSIO technology delivering fast block times and zero front-running via fixed-order transaction processing, with TLOS as the native token.",
+  },
+  {
+    slug: "pulsechain",
+    label: "PulseChain",
+    category: "L1",
+    nativeSymbol: "PLS",
+    website: "https://pulsechain.com",
+    description:
+      "Full-state Ethereum fork (chain 369) launched in 2023 by Richard Heart, carrying a copy of all Ethereum state at genesis with PLS as the native gas token and a Proof-of-Stake consensus.",
+  },
+  {
+    slug: "warden",
+    label: "Warden Protocol",
+    category: "L1",
+    nativeSymbol: "WARD",
+    website: "https://wardenprotocol.org",
+    description:
+      "Intent-based modular L1 built with Cosmos SDK, enabling omnichain smart accounts (Spaces) with programmable key management and cross-chain transaction orchestration via intents.",
+  },
+  {
+    slug: "oraichain",
+    label: "Oraichain",
+    category: "L1",
+    nativeSymbol: "ORAI",
+    website: "https://orai.io",
+    description:
+      "AI-focused Cosmos SDK blockchain (Oraichain mainnet) providing verifiable AI execution via a decentralised oracle layer, CosmWasm smart contracts, and IBC connectivity across the Cosmos ecosystem.",
+  },
+  {
+    slug: "peaq",
+    label: "Peaq",
+    category: "L2",
+    nativeSymbol: "PEAQ",
+    website: "https://www.peaq.network",
+    description:
+      "Polkadot parachain purpose-built for DePIN (Decentralised Physical Infrastructure Networks) with machine identity, machine staking, and role-based access control primitives for IoT and mobility networks.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
