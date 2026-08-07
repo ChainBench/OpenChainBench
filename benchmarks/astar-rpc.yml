@@ -4,7 +4,7 @@ slug: astar-rpc
 number: "154"
 title: Fastest free Astar Network RPC, live no-key endpoint latency
 seo_title: "Fastest free Astar Network RPC 2026"
-seo_description: "{{best_name}} leads free Astar Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Astar Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Astar Network RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Astar Network (chain 592) is Polkadot's flagship EVM and WebAssembly parachain, ASTR gas token, supporting both Solidity and ink! smart contracts. Developed by Startale (formerly Stake Technologies) and chosen by Sony for Soneium infrastructure, it exposes a standard EVM endpoint alongside Substrate RPC. The Foundation's evm.astar.network, BlastAPI, and OnFinality provide keyless access probed every 60 seconds from three regions.
+  Astar Network (chain 592) is Polkadot's flagship EVM and WebAssembly parachain, ASTR gas token, supporting both Solidity and ink! smart contracts. Developed by Startale (formerly Stake Technologies) and chosen by Sony for Soneium infrastructure, it exposes a standard EVM endpoint alongside Substrate RPC. OnFinality and 1RPC provide keyless access probed every 60 seconds from three regions. PublicNode returned 404 and BlastAPI's DNS is dead.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Astar Network.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public Astar Network endpoint
-  that sustains continuous probing, 4 providers at launch,
+  that sustains continuous probing, 2 providers,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained availability rather than
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"astar\"`. Provider coverage at launch: 4 no-key endpoints (Astar Foundation, BlastAPI, OnFinality, 1RPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"astar\"`. Provider coverage: 2 no-key endpoints (OnFinality, 1RPC). PublicNode returned 404; BlastAPI DNS is dead."
 
 findings:
-  - "{{best_name}} currently leads free Astar Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
+  - "{{best_name}} currently leads free Astar Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
 
 faq:
   - q: "What is the fastest free Astar Network RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Astar Network RPCs work without an API key?"
-    a: "4 endpoints sustain continuous keyless probing at launch: Astar Foundation, BlastAPI, OnFinality, 1RPC. Every listed endpoint was live-verified before inclusion."
+    a: "2 endpoints sustain continuous keyless probing: OnFinality and 1RPC. PublicNode returned 404 and BlastAPI's DNS is dead; both were removed."
   - q: "Does the fastest Astar Network RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Astar Network RPC latency measured here?"
@@ -65,52 +65,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: astar-official
-    name: Astar Foundation
-    tag: Astar Foundation's official EVM RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Astar Foundation's no-key Astar Network endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="astar-official", chain="astar"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="astar-official", chain="astar"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="astar-official", chain="astar"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="astar-official", chain="astar"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="astar-official", chain="astar"}) / sum(ocb:rpc_call:rate_24h{provider="astar-official", chain="astar"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="astar-official", chain="astar"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="astar-official", chain="astar"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="astar-official", chain="astar", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="astar-official", chain="astar", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="astar-official", chain="astar", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="astar-official", chain="astar", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="astar-official", chain="astar", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="astar-official", chain="astar", region="sgp"}[1h])
-
-  - slug: blastapi
-    name: BlastAPI
-    tag: BlastAPI public endpoint
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BlastAPI's no-key Astar Network endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="astar"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blastapi", chain="astar"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blastapi", chain="astar"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blastapi", chain="astar"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blastapi", chain="astar"}) / sum(ocb:rpc_call:rate_24h{provider="blastapi", chain="astar"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blastapi", chain="astar"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="astar"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="astar", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="astar", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="astar", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="astar", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="astar", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="astar", region="sgp"}[1h])
-
   - slug: onfinality
     name: OnFinality
     tag: OnFinality shared node service

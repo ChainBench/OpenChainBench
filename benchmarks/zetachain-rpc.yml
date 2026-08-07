@@ -4,7 +4,7 @@ slug: zetachain-rpc
 number: "187"
 title: Fastest free ZetaChain RPC, live no-key endpoint latency
 seo_title: "Fastest free ZetaChain RPC 2026"
-seo_description: "{{best_name}} leads free ZetaChain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free ZetaChain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 1 no-key provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public ZetaChain EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  ZetaChain (chain 7000) is an EVM-compatible omnichain L1 enabling native cross-chain assets (BTC, ETH, BNB) without bridges or wrapped tokens. ZETA is the gas token. Five keyless endpoints are probed continuously: dRPC, BlockPI, Thirdweb (7000.rpc.thirdweb.com), All That Node, and Blast API.
+  ZetaChain (chain 7000) is an EVM-compatible omnichain L1 enabling native cross-chain assets (BTC, ETH, BNB) without bridges or wrapped tokens. ZETA is the gas token. One keyless endpoint is probed continuously: Thirdweb (7000.rpc.thirdweb.com). BlockPI returned 404 and All That Node's DNS is dead.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to ZetaChain.
   We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against every no-key public ZetaChain endpoint
-  that sustains continuous probing, 5 providers at launch,
+  (`eth_getBlockByNumber`) against the no-key public ZetaChain endpoint
+  that sustains continuous probing (1 provider: Thirdweb),
   every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
   view lives on the parent `rpc-capabilities` benchmark; this page is the
   ZetaChain-scoped answer with per-region breakdowns as a first-class dimension.
@@ -31,16 +31,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"zetachain\"`. Provider coverage at launch: 5 no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"zetachain\"`. Provider coverage: 1 no-key endpoint (Thirdweb). BlockPI returned 404; AllThatNode DNS is dead."
 
 findings:
-  - "{{best_name}} currently leads free ZetaChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
+  - "{{best_name}} currently leads free ZetaChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) — 1 measured provider."
 
 faq:
   - q: "What is the fastest free ZetaChain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which ZetaChain RPCs work without an API key?"
-    a: "5 endpoints sustain continuous keyless probing: dRPC, BlockPI, Thirdweb, All That Node, and Blast API. Every endpoint was live-verified before inclusion."
+    a: "1 endpoint sustains continuous keyless probing: Thirdweb (7000.rpc.thirdweb.com). BlockPI returned 404 during the audit; AllThatNode's DNS is dead."
   - q: "Does the fastest ZetaChain RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is ZetaChain RPC latency measured here?"
@@ -62,52 +62,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: drpc
-    name: dRPC
-    tag: dRPC public gateway for ZetaChain mainnet
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key ZetaChain endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zetachain"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="zetachain"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="zetachain"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="zetachain"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="zetachain"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="zetachain"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="zetachain"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zetachain"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zetachain", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zetachain", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zetachain", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zetachain", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zetachain", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="zetachain", region="sgp"}[1h])
-
-  - slug: blockpi
-    name: BlockPI
-    tag: BlockPI public RPC gateway for ZetaChain
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to BlockPI's no-key ZetaChain endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="zetachain"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockpi", chain="zetachain"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockpi", chain="zetachain"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockpi", chain="zetachain"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockpi", chain="zetachain"}) / sum(ocb:rpc_call:rate_24h{provider="blockpi", chain="zetachain"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockpi", chain="zetachain"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="zetachain"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="zetachain", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="zetachain", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="zetachain", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="zetachain", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="zetachain", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="zetachain", region="sgp"}[1h])
-
   - slug: thirdweb
     name: Thirdweb
     tag: Thirdweb chain-ID RPC gateway for ZetaChain
@@ -131,25 +85,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="zetachain", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="zetachain", region="sgp"}[1h])
 
-  - slug: allthatnode
-    name: All That Node
-    tag: All That Node archive-grade public gateway for ZetaChain
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to All That Node's no-key ZetaChain endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="allthatnode", chain="zetachain"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="allthatnode", chain="zetachain"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="allthatnode", chain="zetachain"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="allthatnode", chain="zetachain"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="allthatnode", chain="zetachain"}) / sum(ocb:rpc_call:rate_24h{provider="allthatnode", chain="zetachain"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="allthatnode", chain="zetachain"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="allthatnode", chain="zetachain"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="allthatnode", chain="zetachain", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="allthatnode", chain="zetachain", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="allthatnode", chain="zetachain", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="allthatnode", chain="zetachain", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="allthatnode", chain="zetachain", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="allthatnode", chain="zetachain", region="sgp"}[1h])
