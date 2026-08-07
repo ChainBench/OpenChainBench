@@ -4,7 +4,7 @@ slug: warden-rpc
 number: "197"
 title: Fastest free Warden Protocol RPC, live no-key endpoint latency
 seo_title: "Fastest free Warden Protocol RPC 2026"
-seo_description: "{{best_name}} leads free Warden Protocol RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Warden Protocol RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Warden Protocol EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Warden Protocol is a modular intent-based L1 for cross-chain smart contract security, built by the Qredo team with WARD as the native gas token. EVM-compatible with Cosmos SDK internals, enabling omnichain key management and intent execution via SpaceWard. Three keyless EVM endpoints are probed continuously: PublicNode (warden-evm-rpc.publicnode.com), dRPC (warden.drpc.org), and the Warden Foundation official endpoint (evm.wardenprotocol.org).
+  Warden Protocol is a modular intent-based L1 for cross-chain smart contract security, built by the Qredo team with WARD as the native gas token. EVM-compatible with Cosmos SDK internals, enabling omnichain key management and intent execution via SpaceWard. Two keyless EVM endpoints are probed continuously: PublicNode (warden-evm-rpc.publicnode.com) and the Warden Foundation official endpoint (evm.wardenprotocol.org).
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Warden Protocol.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public Warden EVM endpoint
-  that sustains continuous probing, 3 providers at launch,
+  that sustains continuous probing, 2 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
   view lives on the parent `rpc-capabilities` benchmark; this page is the
   Warden-scoped answer with per-region breakdowns as a first-class dimension.
@@ -31,16 +31,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"warden\"`. Provider coverage at launch: 3 no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"warden\"`. Provider coverage at launch: 2 no-key endpoints."
 
 findings:
-  - "{{best_name}} currently leads free Warden Protocol RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free Warden Protocol RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
 
 faq:
   - q: "What is the fastest free Warden Protocol RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Warden Protocol RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing: PublicNode, dRPC, and the Warden Foundation official endpoint. Every endpoint was live-verified before inclusion."
+    a: "2 endpoints sustain continuous keyless probing: PublicNode and the Warden Foundation official endpoint. Every endpoint was live-verified before inclusion."
   - q: "Does the fastest Warden RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Warden Protocol RPC latency measured here?"
