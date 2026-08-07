@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { loadAnswer, loadAllAnswers } from "@/lib/answers";
+import { getProviderSlugs } from "@/lib/providers";
 import { renderTemplate } from "@/lib/bench-template";
 import {
   cleanLeftoverTokens,
@@ -155,8 +156,14 @@ export default async function AnswerPage({
   // Top results from the referenced bench, mirroring the alternatives
   // top-N section: surfaces the answer visually for skim readers + gives
   // crawlers concrete provider names + numbers in the SSR HTML.
+  // Only include results whose slug has a matching /products/ page — some
+  // benches (e.g. pm-resolution-delay) use non-provider slugs like
+  // "politics" or "all-markets" as result labels, which would otherwise
+  // generate 404 links.
+  const validProviderSlugs = new Set(await getProviderSlugs());
   const sortedResults = [...bench.results]
     .filter((r) => !isRegion(r.slug))
+    .filter((r) => validProviderSlugs.has(r.slug))
     .filter((r) => r.ms.p50 !== 0 || r.ms.p99 !== 0)
     .sort((a, b) =>
       bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,

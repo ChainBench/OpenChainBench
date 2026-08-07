@@ -34,6 +34,7 @@ export function SiteFooter() {
               { label: "RPC", href: "/rpc" },
               { label: "Data APIs", href: "/data-api" },
               { label: "Perpetuals", href: "/perps" },
+              { label: "Bridge", href: "/bridge" },
               { label: "Compare", href: "/compare" },
               { label: "Alternatives", href: "/alternatives" },
               { label: "Answers", href: "/answers" },
