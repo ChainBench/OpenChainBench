@@ -34,7 +34,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"zetachain\"`. Provider coverage: 1 no-key endpoint (Thirdweb). BlockPI returned 404; AllThatNode DNS is dead."
 
 findings:
-  - "{{best_name}} currently leads free ZetaChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) — 1 measured provider."
+  - "{{best_name}} currently leads free ZetaChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free ZetaChain RPC right now?"
