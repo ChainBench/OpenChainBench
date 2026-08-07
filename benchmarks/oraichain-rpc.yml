@@ -107,26 +107,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="orai-official", chain="oraichain", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="orai-official", chain="oraichain", region="sgp"}[1h])
-
-  - slug: lavenderfive
-    name: LavenderFive
-    tag: LavenderFive validator and RPC provider for Cosmos chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions to LavenderFive's no-key Oraichain endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="oraichain"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lavenderfive", chain="oraichain"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lavenderfive", chain="oraichain"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lavenderfive", chain="oraichain"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lavenderfive", chain="oraichain"}) / sum(ocb:rpc_call:rate_24h{provider="lavenderfive", chain="oraichain"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lavenderfive", chain="oraichain"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="oraichain"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="oraichain", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="oraichain", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="oraichain", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="oraichain", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="oraichain", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="oraichain", region="sgp"}[1h])

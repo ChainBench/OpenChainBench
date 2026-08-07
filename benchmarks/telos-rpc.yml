@@ -107,26 +107,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="telos", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="telos", region="sgp"}[1h])
-
-  - slug: blastapi
-    name: Blast API
-    tag: Blast API public gateway for Telos EVM
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Blast API's no-key Telos endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="telos"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blastapi", chain="telos"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blastapi", chain="telos"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blastapi", chain="telos"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blastapi", chain="telos"}) / sum(ocb:rpc_call:rate_24h{provider="blastapi", chain="telos"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blastapi", chain="telos"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="telos"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="telos", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="telos", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="telos", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="telos", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="telos", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="telos", region="sgp"}[1h])
