@@ -85,29 +85,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="peaq", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="peaq", region="sgp"}[1h])
 
-  - slug: peaq-official
-    name: Peaq Foundation
-    tag: Peaq Foundation official public RPC endpoint
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to Peaq Foundation's no-key endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="peaq-official", chain="peaq"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="peaq-official", chain="peaq"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="peaq-official", chain="peaq"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="peaq-official", chain="peaq"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="peaq-official", chain="peaq"}) / sum(ocb:rpc_call:rate_24h{provider="peaq-official", chain="peaq"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="peaq-official", chain="peaq"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="peaq-official", chain="peaq"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="peaq-official", chain="peaq", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="peaq-official", chain="peaq", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="peaq-official", chain="peaq", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="peaq-official", chain="peaq", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="peaq-official", chain="peaq", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="peaq-official", chain="peaq", region="sgp"}[1h])
-
   - slug: onfinality
     name: OnFinality
     tag: OnFinality Substrate public gateway for Peaq

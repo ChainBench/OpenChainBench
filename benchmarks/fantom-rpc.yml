@@ -111,29 +111,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="fantom", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="fantom", region="sgp"}[1h])
 
-  - slug: ankr
-    name: Ankr
-    tag: Ankr decentralized node provider for Fantom
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Ankr's no-key Fantom endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="fantom"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="fantom"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="fantom"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="fantom"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="fantom"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="fantom"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="fantom"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="fantom"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="fantom", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="fantom", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="fantom", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="fantom", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="fantom", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="fantom", region="sgp"}[1h])
-
   - slug: thirdweb
     name: Thirdweb
     tag: Thirdweb chain-ID RPC gateway for Fantom
@@ -156,26 +133,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="fantom", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="fantom", region="sgp"}[1h])
-
-  - slug: blastapi
-    name: Blast API
-    tag: Blast API public gateway for Fantom mainnet
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Blast API's no-key Fantom endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="fantom"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blastapi", chain="fantom"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blastapi", chain="fantom"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blastapi", chain="fantom"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blastapi", chain="fantom"}) / sum(ocb:rpc_call:rate_24h{provider="blastapi", chain="fantom"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blastapi", chain="fantom"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="fantom"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="fantom", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="fantom", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="fantom", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="fantom", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blastapi", chain="fantom", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blastapi", chain="fantom", region="sgp"}[1h])
