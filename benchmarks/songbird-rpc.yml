@@ -34,7 +34,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"songbird\"`. Provider coverage: 1 no-key endpoint (Flare Foundation official). FTSO AU removed after DNS went dead."
 
 findings:
-  - "{{best_name}} currently leads free Songbird RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) — 1 measured provider."
+  - "{{best_name}} currently leads free Songbird RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free Songbird RPC right now?"

@@ -8,7 +8,7 @@ seo_description: "Hydration RPC bench temporarily suspended: all 5 providers are
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Hydration Polkadot parachain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
-status: suspended
+status: draft
 metric: RPC latency
 unit: ms
 higher_is_better: false
@@ -58,7 +58,29 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
 
-providers: []
 # All 5 previously measured providers are DNS dead or returning HTTP 400.
 # Suspended 2026-08-07. Will resume when endpoints recover.
-# Removed: hydration-official, dwellir, helikon, dotters-network, parachains-network
+# Removed: dwellir, helikon, dotters-network, parachains-network
+providers:
+  - slug: hydration-official
+    name: Hydration
+    tag: Hydration official public RPC (currently unreachable)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to the Hydration official no-key endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hydration-official", chain="hydration"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="hydration-official", chain="hydration"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="hydration-official", chain="hydration"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="hydration-official", chain="hydration"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="hydration-official", chain="hydration"}) / sum(ocb:rpc_call:rate_24h{provider="hydration-official", chain="hydration"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="hydration-official", chain="hydration"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="hydration-official", chain="hydration"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hydration-official", chain="hydration", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hydration-official", chain="hydration", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hydration-official", chain="hydration", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hydration-official", chain="hydration", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hydration-official", chain="hydration", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hydration-official", chain="hydration", region="sgp"}[1h])
