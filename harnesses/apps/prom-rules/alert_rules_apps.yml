@@ -1,0 +1,151 @@
+groups:
+  - name: apps_infrastructure
+    rules:
+      - alert: AppsPostgresDown
+        expr: pg_up{job="postgres-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: ocb
+        annotations:
+          summary: "Postgres OCB-Apps est down"
+          description: "pg_up == 0 depuis 2 minutes. Collectors et materializer sont bloqués."
+
+      - alert: AppsDataDiskWarning
+        expr: (node_filesystem_avail_bytes{mountpoint="/data"} / node_filesystem_size_bytes{mountpoint="/data"}) < 0.20
+        for: 5m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "/data à plus de 80% de capacité"
+          description: "Disponible : {{ $value | humanize }}B. Prévoir extension ou nettoyage."
+
+      - alert: AppsDataDiskCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/data"} / node_filesystem_size_bytes{mountpoint="/data"}) < 0.10
+        for: 2m
+        labels:
+          severity: critical
+          team: ocb
+        annotations:
+          summary: "/data à plus de 90% — Postgres risque de crasher"
+          description: "Action immédiate requise."
+
+      - alert: AppsPostgresConnSaturation
+        expr: pg_stat_database_numbackends{datname="apps"} / pg_settings_max_connections > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Postgres : connexions > 80% de max_connections"
+
+      - alert: AppsDBSizeGrowthAnomaly
+        expr: deriv(pg_database_size_bytes{datname="apps"}[1h]) > 524288000
+        for: 10m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Postgres apps croît de >500MB/h"
+          description: "Probable bug de replay. Vérifier l'idempotence du collector."
+
+  - name: apps_collectors
+    rules:
+      - alert: AppsCollectorLagWarning
+        expr: time() - ocb_app_data_freshness_seconds > 600
+        for: 5m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Collector /apps en retard > 10min"
+          description: "Deployment {{ $labels.deployment }} — dernier event il y a {{ $value | humanizeDuration }}."
+
+      - alert: AppsCollectorDead
+        expr: time() - ocb_app_data_freshness_seconds > 3600
+        for: 2m
+        labels:
+          severity: critical
+          team: ocb
+        annotations:
+          summary: "Collector /apps mort (> 1h sans données)"
+          description: "Deployment {{ $labels.deployment }} silencieux depuis {{ $value | humanizeDuration }}."
+
+      - alert: AppsCollectorErrors
+        expr: rate(ocb_app_collector_errors_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Erreurs collector /apps"
+          description: "{{ $labels.deployment }} / {{ $labels.kind }} : {{ $value | humanize }} err/s"
+
+      - alert: AppsMaterializerStale
+        expr: time() - ocb_app_materializer_last_run_seconds > 1800
+        for: 2m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Materializer /apps n'a pas tourné depuis > 30min"
+
+  - name: apps_data_quality
+    rules:
+      - alert: AppsInvariantFailed
+        expr: ocb_app_invariant_failures_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: ocb
+        annotations:
+          summary: "Invariant comptable cassé sur /apps"
+          description: >-
+            {{ $labels.deployment }} — invariant {{ $labels.invariant }}.
+            I1 (Σ bénéficiaires ≠ gross) ou I4 (additivité sous-fenêtres cassée).
+            Le chiffre NE DOIT PAS être publié. Quarantaine automatique en cours.
+
+      - alert: AppsQuarantineOpen
+        expr: ocb_app_quarantined > 0
+        for: 24h
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Ligne /apps en quarantaine non résolue > 24h"
+          description: "Deployment {{ $labels.deployment }} — voir issue GitHub liée."
+
+      - alert: AppsWitnessDivergenceHigh
+        expr: ocb_app_witness_divergence_ratio > 0.05
+        for: 30m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Divergence témoin > 5% sur /apps"
+          description: >-
+            {{ $labels.deployment }} vs {{ $labels.witness }} : {{ $value | humanizePercentage }}.
+            Déclenchement automatique de la quarantaine si persistant.
+
+      - alert: AppsUnallocatedFeeHigh
+        expr: ocb_app_unallocated_bps > 50
+        for: 10m
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "/apps : fees non alloués > 50 bps"
+          description: "{{ $labels.deployment }} — {{ $value }} bps non alloués. Bug de décodage probable."
+
+      - alert: AppsZeroEventsOnActiveDeployment
+        expr: rate(ocb_app_collector_events_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+          team: ocb
+        annotations:
+          summary: "Zéro event collecté sur un déploiement actif"
+          description: >-
+            {{ $labels.deployment }} : aucun event depuis 2h.
+            Vérifier que les topic0 / hashes sont calculés au runtime et non zéro.
