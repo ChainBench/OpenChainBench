@@ -29,25 +29,27 @@ func main() {
 	}()
 
 	dydx := rest.NewDyDX()
+	hl := rest.NewHyperliquid()
 
 	for {
-		if err := runDyDX(ctx, db, dydx); err != nil {
+		if err := runCollector(ctx, db, dydx, "dydx-v4:dydx-chain"); err != nil {
 			log.Printf("dydx collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, hl, "hyperliquid:hypercore"); err != nil {
+			log.Printf("hyperliquid collector error: %v", err)
 		}
 		time.Sleep(60 * time.Second)
 	}
 }
 
-func runDyDX(ctx context.Context, db *ledger.DB, col *rest.DyDXCollector) error {
-	const deploymentID = "dydx-v4:dydx-chain"
-
+func runCollector(ctx context.Context, db *ledger.DB, col spec.Collector, deploymentID string) error {
 	from, err := db.GetCursor(ctx, deploymentID)
 	if err != nil {
 		return err
 	}
 
 	to := spec.Cursor{
-		Height:    ^uint64(0), // collect up to tip
+		Height:    ^uint64(0),
 		Ts:        time.Now(),
 		Finalized: true,
 	}
