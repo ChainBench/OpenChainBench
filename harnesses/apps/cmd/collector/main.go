@@ -30,6 +30,8 @@ func main() {
 
 	dydx := rest.NewDyDX()
 	hl := rest.NewHyperliquid()
+	gmxArb := rest.NewGMXv2Arbitrum()
+	gmxAvax := rest.NewGMXv2Avalanche()
 
 	for {
 		if err := runCollector(ctx, db, dydx, "dydx-v4:dydx-chain"); err != nil {
@@ -37,6 +39,12 @@ func main() {
 		}
 		if err := runCollector(ctx, db, hl, "hyperliquid:hypercore"); err != nil {
 			log.Printf("hyperliquid collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, gmxArb, "gmx-v2:arbitrum"); err != nil {
+			log.Printf("gmx-v2:arbitrum collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, gmxAvax, "gmx-v2:avalanche"); err != nil {
+			log.Printf("gmx-v2:avalanche collector error: %v", err)
 		}
 		time.Sleep(60 * time.Second)
 	}
