@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ProtocolRow, WindowMetrics } from "@/lib/apps-leaderboard";
 
 const WINDOWS = [
@@ -19,6 +20,11 @@ function fmt(n: number): string {
 
 function Dot() {
   return <span className="text-ink-muted">—</span>;
+}
+
+function fmtDate(s: string): string {
+  const d = new Date(s);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function AppsLeaderboardTable({
@@ -54,7 +60,7 @@ export function AppsLeaderboardTable({
               onClick={() => setWindow(w.key)}
               className={`px-3 py-1 rounded text-sm font-mono transition-colors ${
                 window === w.key
-                  ? "bg-ink text-bg"
+                  ? "bg-ink text-paper"
                   : "text-ink-soft hover:text-ink"
               }`}
             >
@@ -88,7 +94,16 @@ export function AppsLeaderboardTable({
                 <tr key={p.id} className="border-b border-ink/5 hover:bg-ink/2">
                   <td className="py-3 pr-4 text-ink-muted font-mono text-xs">{i + 1}</td>
                   <td className="py-3 pr-4">
-                    <div className="font-medium text-ink">{p.name}</div>
+                    {p.slug ? (
+                      <Link
+                        href={`/perp/${p.slug}`}
+                        className="font-medium text-ink hover:text-accent transition-colors"
+                      >
+                        {p.name}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-ink">{p.name}</span>
+                    )}
                     <div className="text-xs text-ink-muted capitalize">{p.category}</div>
                   </td>
                   <td className="py-3 pr-4 text-right font-mono">
@@ -100,8 +115,8 @@ export function AppsLeaderboardTable({
                   <td className="py-3 pr-4 text-right font-mono text-ink-soft hidden sm:table-cell">
                     {wm?.lp ? fmt(wm.lp) : <Dot />}
                   </td>
-                  <td className="py-3 text-right text-xs text-ink-muted font-mono hidden md:table-cell">
-                    {p.latestDay ? p.latestDay.slice(0, 10) : <Dot />}
+                  <td className="py-3 text-right text-xs text-ink-muted hidden md:table-cell">
+                    {p.latestDay ? fmtDate(p.latestDay) : <Dot />}
                   </td>
                 </tr>
               );
