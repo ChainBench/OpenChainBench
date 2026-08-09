@@ -1,0 +1,175 @@
+schema_version: 1
+slug: hyperliquid
+name: Hyperliquid
+category: perps
+methodology_version: 1
+status: live
+verifiability: tier_2      # -> tier_1 une fois le node en place
+
+# Cas non-EVM. La question "plan B si l'API tombe ?" a une vraie réponse : le node.
+# L'archive S3 et le node partagent le MÊME FORMAT, donc le décodeur est commun et
+# bascule sans changement de code. Une panne REST coûte la fraîcheur, pas l'historique.
+
+deployments:
+  - id: hyperliquid:hypercore
+    chain: hyperliquid
+    effective_from: "2023-06-01T00:00:00Z"
+
+    finality:
+      mode: hyperbft
+      lag_seconds: 5
+      note: "Finalité quasi immédiate, mais la dépendance porte sur la source de données."
+
+    # Sources par ordre de préférence. Le collector bascule automatiquement.
+    sources:
+      - kind: hl_node
+        rank: 1
+        canonical: true
+        flags: ["--write-fills", "--batch-by-block"]
+        note: "Seule configuration T1. Objectif cible à 6 mois."
+        status: planned
+
+      - kind: s3_archive
+        rank: 2
+        canonical: true
+        buckets:
+          fills: "s3://hl-mainnet-node-data/node_fills_by_block"
+          misc: "s3://hl-mainnet-node-data/misc_events_by_block"
+        requester_pays: true
+        cost_warning: >-
+          ~0.8-1 GiB/jour tous coins confondus. Un backfill d'un an est une facture AWS
+          à trois chiffres. BUDGÉTER, et ne backfiller qu'une seule fois.
+        note: "Format identique à l'API. misc_events couvre transferts, staking, funding."
+
+      - kind: rest
+        rank: 3
+        endpoint: "https://api.hyperliquid.xyz/info"
+        method: POST
+        types: [metaAndAssetCtxs, fundingHistory, clearinghouseState, builderFills]
+        note: "Temps réel et métadonnées. Bornes INCLUSIVES : appeler à t1-1ms + re-filtrer."
+
+    witnesses:
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/hyperliquid
+      - kind: onchain_af_inflows
+        address: "0xfefefefefefefefefefefefefefefefefefefefe"
+        note: "Le meilleur témoin : purement observationnel, indépendant de l'API."
+
+allocation:
+  # ATTENTION : le brief d'origine disait "99% AF / 1% HLP". C'est incomplet ET imprécis.
+  #  (a) L'allocation de référence est ~97%, portée vers 99% pour CERTAINES catégories
+  #      de fees par un vote de validateurs de décembre 2025.
+  #  (b) Le brief OMET ENTIÈREMENT les déployeurs spot et HIP-3.
+  rules:
+    - component: taker_fee
+      splits:
+        - beneficiary: burn
+          share_source: onchain_config
+          read: assistance_fund_share
+          note: >-
+            Le HYPE détenu par l'AF est formellement reconnu comme brûlé depuis un vote
+            pondéré par le stake (85% pour) de décembre 2025. `burn` est donc correct,
+            pas `token_holder`.
+        - beneficiary: lp
+          share_source: derived
+          target: hlp_vault
+
+    - component: maker_fee
+      splits:
+        - beneficiary: burn
+          share_source: onchain_config
+          read: assistance_fund_share
+        - beneficiary: lp
+          share_source: derived
+
+    # JAMBE MANQUANTE DANS LE BRIEF. Obligatoire même si elle vaut zéro.
+    - component: taker_fee
+      scope: hip3_and_spot_deployed_assets
+      splits:
+        - beneficiary: third_party
+          share_source: onchain_field
+          read: deployer_fee_share
+          max_observed: 0.50
+          note: >-
+            Les déployeurs spot et HIP-3 peuvent conserver jusqu'à 50% des fees générés
+            par LEURS assets. Les ignorer surestime le protocole.
+
+    # Builder fees : captés par les frontends tiers, séparés des fees protocole.
+    - component: interface_fee
+      source: builderFills
+      splits:
+        - beneficiary: third_party
+          is_app_layer: true
+          share_source: onchain_field
+
+  documented_split_reference:
+    assistance_fund: 0.97
+    source_url: https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees
+    used_for: plausibility_check_only
+    alert_if_deviation_gt: 0.01
+    note: >-
+      SI L'ÉCART DÉPASSE 1%, L'ALLOCATION A CHANGÉ SANS ANNONCE. C'est exactement le
+      signal que le produit est censé détecter.
+
+pricing:
+  # Les fees sont en USDC : pas d'oracle nécessaire pour les fees eux-mêmes.
+  fees_denomination: USDC
+  primary: stable_passthrough
+  depeg_guard_bps: 50
+  # En revanche les oraclePx de HL sont self-reported -> triangulation obligatoire.
+  oracle_triangulation:
+    against: pyth_hermes
+    assets: [BTC, ETH, SOL]
+    alert_if_divergence_gt: 0.01
+    note: "Aucun tiers ne peut vérifier les prix de HL. Trianguler ou ne pas publier."
+
+emissions:
+  scope: incentives_only
+  total: 0
+  review_due: "2026-11-01"
+  note: >-
+    Zéro émission d'incentive. À REVÉRIFIER TRIMESTRIELLEMENT, pas à supposer acquis.
+    Les unlocks mensuels aux contributeurs (~9.92M HYPE) sont de la dilution, pas un
+    coût d'acquisition de volume -> scope all_inflation uniquement.
+
+fee_taxonomy:
+  exclude:
+    - funding_payment      # zéro-somme entre traders
+  separate_components:
+    - spot_fee             # structure distincte, ne jamais additionner les taux
+    - twap_fill_fee        # userTwapSliceFills : format distinct, décoder séparément
+
+validation:
+  checks:
+    - id: af_conservation
+      kind: onchain_conservation
+      description: "Inflows USDC de 0xfefe…fefe ≈ part AF de Σ fills.fee"
+      tolerance_bps: 200
+      severity: blocking
+      note: "Test fort et purement observationnel. Le meilleur dont on dispose ici."
+    - id: s3_vs_rest_parity
+      kind: cross_source
+      description: "Σ fills archive S3 == Σ fills API REST sur 24h"
+      tolerance: exact
+      severity: blocking
+      note: >-
+        IDENTIQUE À L'UNITÉ PRÈS. Toute divergence signale un bug de format ou de
+        fenêtrage — à corriger avant toute publication.
+    - id: hlp_equity
+      kind: cross_check
+      description: "Équité du HLP vault (clearinghouseState) vs part résiduelle"
+      tolerance_bps: 500
+
+ui:
+  annotations:
+    - target: token_holder_value
+      text: >-
+        L'AF reçoit de l'USDC, achète du HYPE, puis le brûle. On comptabilise la valeur
+        REÇUE (certaine), pas la valeur du HYPE brûlé (qui dépend du prix d'exécution).
+        Les deux sont exposées ; le classement utilise la première.
+
+metadata:
+  chains: [hyperliquid]
+  is_router: false
+  nests_within: null
+  docs: https://hyperliquid.gitbook.io/hyperliquid-docs
