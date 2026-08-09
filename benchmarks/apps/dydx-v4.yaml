@@ -1,0 +1,144 @@
+schema_version: 1
+slug: dydx-v4
+name: dYdX V4
+category: perps
+methodology_version: 1
+status: live
+verifiability: tier_2
+
+# Premier protocole implémenté : REST + tout en USDC, pas d'oracle.
+# Valide toute la chaîne (ledger, materializer, invariants, quarantaine) sans bruit.
+
+deployments:
+  - id: dydx-v4:dydx-chain
+    chain: dydx-chain
+    effective_from: "2023-10-26T00:00:00Z"
+
+    finality:
+      mode: cosmos_finalized
+      lag_seconds: 10
+
+    source:
+      kind: rest
+      canonical: true
+      base_url: "https://indexer.dydx.trade/v4"
+      endpoints:
+        - /fills                                    # source primaire
+        - /historicalTradingRewardAggregations/{address}
+        - /vault/v1/megavault/historicalPnl
+      pagination: by_height                         # curseur createdAtHeight, jamais offset temporel
+      note: >-
+        T2 : dépendance à l'indexer dYdX. Plan B : full node + indexer self-hosted
+        (open-source, Postgres + Redis). Objectif à 6 mois.
+
+    witnesses:
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/dydx
+      - kind: onchain_megavault
+        description: >-
+          Inflows USDC vers l'adresse MegaVault ≈ 50% de Σ fills.fee.
+          Témoin purement on-chain, indépendant de l'indexer.
+
+allocation:
+  # ATTENTION : lire on-chain via x/revshare avant de coder.
+  # "100% validators/stakers, 0% trésor" était faux depuis dYdX Unlimited.
+  rules:
+    - component: taker_fee
+      splits:
+        - beneficiary: lp
+          share_source: onchain_config
+          read: revshare_megavault_fraction        # ~50%
+          param: megavault_taker_fee_share
+        - beneficiary: treasury
+          share_source: onchain_config
+          read: revshare_treasury_fraction         # ~10%
+          param: treasury_taker_fee_share
+        - beneficiary: staker
+          share_source: derived                    # reste (~40%)
+        - beneficiary: third_party
+          component: affiliate_fee
+          share_source: onchain_field
+          field: affiliateRevShare
+          note: >-
+            Affiliés VIP jusqu'à 50% du taker fee du trader référé.
+            Décomposer PAR FILL, jamais en moyenne.
+
+    - component: maker_fee
+      splits:
+        - beneficiary: lp
+          share_source: onchain_config
+          read: revshare_megavault_fraction
+        - beneficiary: staker
+          share_source: derived
+
+    # Rebates maker (fee négatif dans fills.fee)
+    - component: maker_rebate
+      included_in_gross: false
+      beneficiary: lp
+      note: "Montant positif stocké, gross_fees = fees bruts payés avant rebate."
+
+  # Paramètres lus quotidiennement depuis x/revshare, versionnés dans allocation_params.
+  # La contrainte GIST empêche deux valeurs simultanées pour le même param.
+  params_source:
+    kind: cosmos_grpc
+    module: x/revshare
+    snapshot: daily
+    note: "Le lire, pas le supposer. Les paramètres changent par vote de gouvernance."
+
+  documented_split_reference:
+    megavault: 0.50
+    treasury_subdao: 0.10
+    market_mapper: 0.00
+    stakers: 0.40
+    source_url: https://dydx.exchange/blog/dydx-unlimited
+    used_for: plausibility_check_only
+    alert_if_deviation_gt: 0.05
+
+pricing:
+  fees_denomination: USDC
+  primary: stable_passthrough
+  depeg_guard_bps: 50
+  note: "Tout en USDC. Pas d'oracle nécessaire pour les fees."
+
+emissions:
+  scope: incentives_only
+  sources:
+    - kind: megavault_rewards
+      token: DYDX
+      note: "Rewards MegaVault en DYDX. Zéro-somme comptablement mais coût réel."
+    - kind: trading_rewards
+      token: DYDX
+      status: onchain_param
+      note: >-
+        Statut = paramètre de gouvernance. Le lire via x/rewards avant chaque recompute.
+        Ne jamais supposer actif ou inactif.
+
+validation:
+  checks:
+    - id: megavault_inflows
+      kind: onchain_conservation
+      description: "Inflows USDC vers MegaVault ≈ 50% de Σ fills.fee sur 24h"
+      tolerance_bps: 300
+      note: "Meilleur test disponible : purement on-chain, indépendant de l'indexer."
+    - id: boundary_test
+      kind: unit_test
+      description: "3 events à t1-1ms / t1 / t1+1ms : fenêtre [t0,t1) retourne exactement 1"
+      severity: blocking
+    - id: idempotence
+      kind: unit_test
+      description: "Injecter deux fois le même event ne change aucun chiffre"
+      severity: blocking
+    - id: recompute_speed
+      kind: perf
+      description: "Recompute complet historique dYdX < 5 minutes"
+    - id: quarantine_trigger
+      kind: integration
+      description: "Écart artificiel de 6% injecté dans le témoin déclenche bien la quarantaine"
+      severity: blocking
+
+metadata:
+  chains: [dydx-chain]
+  is_router: false
+  nests_within: null
+  docs: https://docs.dydx.exchange
+  indexer: https://indexer.dydx.trade/v4
