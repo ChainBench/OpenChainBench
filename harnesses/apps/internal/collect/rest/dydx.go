@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ChainBench/OpenChainBench/harnesses/apps/internal/spec"
@@ -23,19 +24,16 @@ func NewDyDX() *DyDXCollector {
 
 func (c *DyDXCollector) Name() string { return "dydx-rest" }
 
-type dydxFill struct {
-	ID                string `json:"id"`
-	CreatedAt         string `json:"createdAt"`
-	CreatedAtHeight   string `json:"createdAtHeight"`
-	Side              string `json:"side"`
-	Liquidity         string `json:"liquidity"` // TAKER | MAKER
-	Type              string `json:"type"`
-	Market            string `json:"market"`
-	Price             string `json:"price"`
-	Size              string `json:"size"`
-	Fee               string `json:"fee"`    // USDC, 6 decimals, may be negative (rebate)
-	SubaccountID      string `json:"subaccountId"`
-	AffiliateRevShare string `json:"affiliateRevShare"` // USDC, optional
+// megavaultPnlEntry is one day of MegaVault historical PnL.
+// MegaVault receives ~50% of all taker fees — tracking its PnL gives us lp_revenue directly.
+// Source: GET /v4/vault/v1/megavault/historicalPnl
+type megavaultPnlEntry struct {
+	Equity           string `json:"equity"`
+	TotalPnl         string `json:"totalPnl"`
+	NetTransfers     string `json:"netTransfers"`
+	CreatedAt        string `json:"createdAt"`       // "2026-01-15T00:00:00.000Z"
+	BlockHeight      string `json:"blockHeight"`
+	BlockTime        string `json:"blockTime"`
 }
 
 func (c *DyDXCollector) Collect(
@@ -45,181 +43,117 @@ func (c *DyDXCollector) Collect(
 	out chan<- spec.FeeEvent,
 ) (spec.Cursor, error) {
 	cursor := from
-	pageSize := 100
 
-	for {
-		fills, nextHeight, err := c.fetchFills(ctx, cursor.Height, pageSize)
-		if err != nil {
-			return cursor, fmt.Errorf("dydx: fetch fills at height %d: %w", cursor.Height, err)
+	entries, err := c.fetchMegavaultPnl(ctx)
+	if err != nil {
+		return cursor, fmt.Errorf("dydx: megavault pnl: %w", err)
+	}
+
+	// totalPnl is cumulative; emit daily deltas only.
+	// entries arrive oldest-first from the indexer.
+	for i, e := range entries {
+		h, _ := strconv.ParseUint(e.BlockHeight, 10, 64)
+		if h < from.Height {
+			continue
 		}
-		if len(fills) == 0 {
+		if h >= to.Height {
 			break
 		}
 
-		for _, f := range fills {
-			h, _ := strconv.ParseUint(f.CreatedAtHeight, 10, 64)
-			// [from, to) — exclude events at or above `to`
-			if h >= to.Height {
-				return cursor, nil
-			}
-
-			ts, err := time.Parse(time.RFC3339Nano, f.CreatedAt)
+		ts, err := parseTime(e.BlockTime)
+		if err != nil {
+			ts, err = parseTime(e.CreatedAt)
 			if err != nil {
 				continue
 			}
-
-			// Emit taker or maker fee event
-			component, beneficiary := classifyDyDXFill(f)
-			if component == "" {
-				continue
-			}
-
-			feeAmt := f.Fee
-			isRebate := len(feeAmt) > 0 && feeAmt[0] == '-'
-
-			if isRebate {
-				// Maker rebate: excluded from gross_fees, beneficiary = lp
-				out <- spec.FeeEvent{
-					DeploymentID: deploymentID,
-					EventKey:     fmt.Sprintf("dydx:%s:fee", f.ID),
-					Ts:           ts,
-					Height:       h,
-					Component:    "maker_rebate",
-					Beneficiary:  "lp",
-					Token:        "USDC",
-					AmountRaw:    trimNegative(feeAmt),
-					Decimals:     6,
-					Market:       f.Market,
-					Finality:     spec.FinalityFinal,
-					Source:       "dydx-indexer",
-				}
-			} else {
-				out <- spec.FeeEvent{
-					DeploymentID: deploymentID,
-					EventKey:     fmt.Sprintf("dydx:%s:fee", f.ID),
-					Ts:           ts,
-					Height:       h,
-					Component:    component,
-					Beneficiary:  beneficiary,
-					Token:        "USDC",
-					AmountRaw:    toMicroUSDC(feeAmt),
-					Decimals:     6,
-					Market:       f.Market,
-					Finality:     spec.FinalityFinal,
-					Source:       "dydx-indexer",
-				}
-			}
-
-			// Affiliate rev share (third_party leg)
-			if f.AffiliateRevShare != "" && f.AffiliateRevShare != "0" {
-				out <- spec.FeeEvent{
-					DeploymentID: deploymentID,
-					EventKey:     fmt.Sprintf("dydx:%s:affiliate", f.ID),
-					Ts:           ts,
-					Height:       h,
-					Component:    "affiliate_fee",
-					Beneficiary:  "third_party",
-					Token:        "USDC",
-					AmountRaw:    toMicroUSDC(f.AffiliateRevShare),
-					Decimals:     6,
-					Market:       f.Market,
-					Finality:     spec.FinalityFinal,
-					Source:       "dydx-indexer",
-				}
-			}
-
-			cursor = spec.Cursor{Height: h, Ts: ts, Finalized: true}
 		}
 
-		// Advance cursor past the max height seen to avoid re-fetching the same page.
-		// nextHeight is the highest block in this page; next call starts at nextHeight+1.
-		if nextHeight == 0 || nextHeight+1 >= to.Height {
-			break
+		// Daily delta = this snapshot's cumulative PnL minus previous snapshot's.
+		// Skip first entry (no previous to diff against) or loss days.
+		if i == 0 {
+			continue
 		}
-		cursor.Height = nextHeight + 1
+		delta := pnlDelta(entries[i-1].TotalPnl, e.TotalPnl)
+		if delta == "" || strings.HasPrefix(delta, "-") || delta == "0" {
+			continue
+		}
+
+		out <- spec.FeeEvent{
+			DeploymentID: deploymentID,
+			EventKey:     fmt.Sprintf("dydx:megavault:%s", e.BlockHeight),
+			Ts:           ts,
+			Height:       h,
+			Component:    "taker_fee",
+			Beneficiary:  "lp",
+			Token:        "USDC",
+			AmountRaw:    delta,
+			Decimals:     0,
+			Market:       "all",
+			Finality:     spec.FinalityFinal,
+			Source:       "dydx-indexer-megavault-pnl",
+			Meta: map[string]string{
+				"note":          "MegaVault daily PnL delta ~ 50% of taker fees. Full split applied by materializer.",
+				"equity":        e.Equity,
+				"net_transfers": e.NetTransfers,
+				"total_pnl":     e.TotalPnl,
+			},
+		}
+
+		cursor = spec.Cursor{Height: h + 1, Ts: ts, Finalized: true}
 	}
 
 	return cursor, nil
 }
 
-func (c *DyDXCollector) fetchFills(ctx context.Context, fromHeight uint64, limit int) ([]dydxFill, uint64, error) {
-	url := fmt.Sprintf("%s/fills?limit=%d&createdAtHeight=%d", dydxIndexer, limit, fromHeight)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (c *DyDXCollector) fetchMegavaultPnl(ctx context.Context) ([]megavaultPnlEntry, error) {
+	url := fmt.Sprintf("%s/vault/v1/megavault/historicalPnl", dydxIndexer)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, 0, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
 	var result struct {
-		Fills []dydxFill `json:"fills"`
+		MegavaultPnl []megavaultPnlEntry `json:"megavaultPnl"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, 0, err
+		return nil, fmt.Errorf("decode: %w", err)
 	}
 
-	var maxHeight uint64
-	for _, f := range result.Fills {
-		h, _ := strconv.ParseUint(f.CreatedAtHeight, 10, 64)
-		if h > maxHeight {
-			maxHeight = h
+	return result.MegavaultPnl, nil
+}
+
+// pnlDelta subtracts two integer-string USDC values and returns the delta as a string.
+// Returns "" if either input is malformed.
+func pnlDelta(prev, curr string) string {
+	p, err1 := strconv.ParseInt(prev, 10, 64)
+	c, err2 := strconv.ParseInt(curr, 10, 64)
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	d := c - p
+	return strconv.FormatInt(d, 10)
+}
+
+func parseTime(s string) (time.Time, error) {
+	formats := []string{
+		time.RFC3339Nano,
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t, nil
 		}
 	}
-
-	return result.Fills, maxHeight, nil
-}
-
-func classifyDyDXFill(f dydxFill) (component, beneficiary string) {
-	switch f.Liquidity {
-	case "TAKER":
-		return "taker_fee", "staker" // split handled by materializer via allocation_params
-	case "MAKER":
-		return "maker_fee", "lp"
-	}
-	return "", ""
-}
-
-// toMicroUSDC converts a decimal USDC string (e.g. "1.234567") to integer micro-USDC
-// without using float64 to avoid rounding errors in accounting code.
-// dYdX indexer always returns exactly 6 decimal places.
-func toMicroUSDC(s string) string {
-	if s == "" {
-		return "0"
-	}
-	dot := -1
-	for i, c := range s {
-		if c == '.' {
-			dot = i
-			break
-		}
-	}
-	if dot == -1 {
-		// No decimal point — multiply by 1e6
-		return s + "000000"
-	}
-	intPart := s[:dot]
-	fracPart := s[dot+1:]
-	// Pad or truncate to exactly 6 decimal places
-	for len(fracPart) < 6 {
-		fracPart += "0"
-	}
-	fracPart = fracPart[:6]
-	// Remove leading zeros from intPart to avoid octal interpretation, then combine
-	result := intPart + fracPart
-	// Strip leading zeros (but keep at least one digit)
-	for len(result) > 1 && result[0] == '0' {
-		result = result[1:]
-	}
-	return result
-}
-
-func trimNegative(s string) string {
-	if len(s) > 0 && s[0] == '-' {
-		return s[1:]
-	}
-	return s
+	return time.Time{}, fmt.Errorf("cannot parse time: %q", s)
 }
