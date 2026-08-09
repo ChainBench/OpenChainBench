@@ -131,9 +131,12 @@ func (c *DyDXCollector) Collect(
 			cursor = spec.Cursor{Height: h, Ts: ts, Finalized: true}
 		}
 
-		if nextHeight == 0 || nextHeight >= to.Height {
+		// Advance cursor past the max height seen to avoid re-fetching the same page.
+		// nextHeight is the highest block in this page; next call starts at nextHeight+1.
+		if nextHeight == 0 || nextHeight+1 >= to.Height {
 			break
 		}
+		cursor.Height = nextHeight + 1
 	}
 
 	return cursor, nil
@@ -180,15 +183,38 @@ func classifyDyDXFill(f dydxFill) (component, beneficiary string) {
 	return "", ""
 }
 
+// toMicroUSDC converts a decimal USDC string (e.g. "1.234567") to integer micro-USDC
+// without using float64 to avoid rounding errors in accounting code.
+// dYdX indexer always returns exactly 6 decimal places.
 func toMicroUSDC(s string) string {
-	// Input is already in USDC with 6 decimal places from the indexer
-	// Strip the decimal point and return as integer string
-	// e.g. "1.234567" -> "1234567"
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if s == "" {
 		return "0"
 	}
-	return strconv.FormatInt(int64(f*1e6), 10)
+	dot := -1
+	for i, c := range s {
+		if c == '.' {
+			dot = i
+			break
+		}
+	}
+	if dot == -1 {
+		// No decimal point — multiply by 1e6
+		return s + "000000"
+	}
+	intPart := s[:dot]
+	fracPart := s[dot+1:]
+	// Pad or truncate to exactly 6 decimal places
+	for len(fracPart) < 6 {
+		fracPart += "0"
+	}
+	fracPart = fracPart[:6]
+	// Remove leading zeros from intPart to avoid octal interpretation, then combine
+	result := intPart + fracPart
+	// Strip leading zeros (but keep at least one digit)
+	for len(result) > 1 && result[0] == '0' {
+		result = result[1:]
+	}
+	return result
 }
 
 func trimNegative(s string) string {

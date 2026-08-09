@@ -53,13 +53,19 @@ func runDyDX(ctx context.Context, db *ledger.DB, col *rest.DyDXCollector) error 
 	}
 
 	out := make(chan spec.FeeEvent, 1000)
-	var batch []spec.FeeEvent
+	collectErr := make(chan error, 1)
 
 	go func() {
 		defer close(out)
-		_, err = col.Collect(ctx, deploymentID, from, to, out)
+		newCursor, err := col.Collect(ctx, deploymentID, from, to, out)
+		if err != nil {
+			collectErr <- err
+			return
+		}
+		collectErr <- db.SaveCursor(ctx, deploymentID, newCursor)
 	}()
 
+	var batch []spec.FeeEvent
 	for e := range out {
 		batch = append(batch, e)
 		if len(batch) >= 500 {
@@ -75,7 +81,7 @@ func runDyDX(ctx context.Context, db *ledger.DB, col *rest.DyDXCollector) error 
 		}
 	}
 
-	return nil
+	return <-collectErr
 }
 
 func mustEnv(key string) string {

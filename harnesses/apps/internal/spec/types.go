@@ -1,6 +1,9 @@
 package spec
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // HalfOpenRange enforces [From, To) semantics everywhere.
 // No function in this codebase accepts two bare time.Time values for a window.
@@ -48,5 +51,5 @@ type Cursor struct {
 // `to` is EXCLUDED — all windows are [from, to).
 type Collector interface {
 	Name() string
-	Collect(ctx interface{}, deploymentID string, from, to Cursor, out chan<- FeeEvent) (Cursor, error)
+	Collect(ctx context.Context, deploymentID string, from, to Cursor, out chan<- FeeEvent) (Cursor, error)
 }
