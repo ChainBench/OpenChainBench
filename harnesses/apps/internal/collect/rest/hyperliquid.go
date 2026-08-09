@@ -4,33 +4,38 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
 	"github.com/ChainBench/OpenChainBench/harnesses/apps/internal/spec"
 )
 
-const defilllamaHL = "https://api.llama.fi/summary/fees/hyperliquid"
+// fillsAggURL is the hl-fills-agg service running on the SGP node alongside
+// the Hyperliquid non-validating node. It reads hourly node_fills_by_block
+// files and returns daily fee totals (gross, builder, net) in USDC.
+const fillsAggURL = "http://15.235.224.14:2116"
+
+// fillsEpoch is the earliest date available in the node fills archive.
+const fillsEpoch = "20260601"
 
 type HyperliquidCollector struct {
 	client *http.Client
 }
 
 func NewHyperliquid() *HyperliquidCollector {
-	return &HyperliquidCollector{client: &http.Client{Timeout: 30 * time.Second}}
+	return &HyperliquidCollector{client: &http.Client{Timeout: 60 * time.Second}}
 }
 
-func (c *HyperliquidCollector) Name() string { return "hyperliquid-defillama" }
+func (c *HyperliquidCollector) Name() string { return "hyperliquid-node-fills" }
 
-// hlDayBreakdown holds the per-category fees for one day as returned by DeFiLlama.
-// Perps → taker_fee / burn (goes to AF which buys+burns HYPE)
-// HLP   → taker_fee / lp  (HLP vault earns from market making)
-// Spot  → spot_fee  / burn (spot orderbook fees, mostly AF)
-type hlDayBreakdown struct {
-	Ts    int64   // unix seconds (DeFiLlama bucket start)
-	Perps float64 // "Hyperliquid Perps"
-	HLP   float64 // "Hyperliquid HLP"
-	Spot  float64 // "Hyperliquid Spot Orderbook"
+type hlDailySummary struct {
+	Date       string  `json:"date"`       // "YYYYMMDD"
+	GrossUSDC  float64 `json:"gross_usdc"` // all fees paid (taker + maker)
+	BuilderUSDC float64 `json:"builder_usdc"` // third-party builder codes cut
+	NetUSDC    float64 `json:"net_usdc"`   // gross - builder → goes to AF + HLP + deployers
+	Fills      int64   `json:"fills"`
+	Hours      int     `json:"hours"`
 }
 
 func (c *HyperliquidCollector) Collect(
@@ -41,56 +46,71 @@ func (c *HyperliquidCollector) Collect(
 ) (spec.Cursor, error) {
 	cursor := from
 
-	days, err := c.fetchBreakdown(ctx)
+	// Determine the start date string.
+	// cursor.Height encodes the unix timestamp (seconds) of the last processed
+	// day's midnight UTC. Zero means start from the fills epoch.
+	var startDate string
+	if from.Height == 0 {
+		startDate = fillsEpoch
+	} else {
+		startDate = time.Unix(int64(from.Height), 0).UTC().Format("20060102")
+	}
+	endDate := to.Ts.UTC().Format("20060102")
+
+	days, err := c.fetchDailySummaries(ctx, startDate, endDate)
 	if err != nil {
-		return cursor, fmt.Errorf("hyperliquid: defillama: %w", err)
+		return cursor, fmt.Errorf("hyperliquid: fills-agg: %w", err)
 	}
 
 	for _, d := range days {
-		// Use unix timestamp (seconds) as synthetic height for cursor tracking.
-		h := uint64(d.Ts)
+		ts, err := time.Parse("20060102", d.Date)
+		if err != nil {
+			continue
+		}
+		ts = ts.UTC()
+
+		h := uint64(ts.Unix())
 		if h < from.Height {
 			continue
 		}
-		if h >= to.Height {
-			break
-		}
 
-		ts := time.Unix(d.Ts, 0).UTC()
-
-		// Skip days with zero fees (typically the incomplete current day at the tail).
-		if d.Perps == 0 && d.HLP == 0 && d.Spot == 0 {
+		// Skip partial days (< 23 hours) — they're incomplete.
+		// Today's day will be partial and should not be persisted.
+		if d.Hours < 23 {
 			continue
 		}
 
-		// DeFiLlama returns whole-dollar amounts.
-		// Store as raw USD integer strings with Decimals=0.
-		emit := func(component, beneficiary string, amount float64) {
-			if amount <= 0 {
-				return
-			}
-			out <- spec.FeeEvent{
-				DeploymentID: deploymentID,
-				EventKey:     fmt.Sprintf("hl:defillama:%d:%s:%s", d.Ts, component, beneficiary),
-				Ts:           ts,
-				Height:       h,
-				Component:    component,
-				Beneficiary:  beneficiary,
-				Token:        "USD",
-				AmountRaw:    fmt.Sprintf("%d", int64(amount)),
-				Decimals:     0,
-				Market:       "all",
-				Finality:     spec.FinalityFinal,
-				Source:       "defillama-hyperliquid",
-				Meta: map[string]string{
-					"note": "Phase 1 proxy via DeFiLlama. Will be replaced by S3 fills in Phase 2.",
-				},
-			}
+		if d.NetUSDC <= 0 {
+			continue
 		}
 
-		emit("taker_fee", "burn", d.Perps)
-		emit("taker_fee", "lp", d.HLP)
-		emit("spot_fee", "burn", d.Spot)
+		// net_usdc = all fills fees minus builder codes.
+		// This is the total amount that flows to AF + HLP + deployers.
+		// We classify as taker_fee/burn since the vast majority (~97-99%)
+		// goes to the Assistance Fund (which burns HYPE), per the HL docs.
+		// The HLP vault share and deployer share are not separable per-fill
+		// and are small relative to the total.
+		amountMicro := int64(math.Round(d.NetUSDC * 1e6))
+		out <- spec.FeeEvent{
+			DeploymentID: deploymentID,
+			EventKey:     fmt.Sprintf("hl:node-fills:%s:net", d.Date),
+			Ts:           ts,
+			Height:       h,
+			Component:    "taker_fee",
+			Beneficiary:  "burn",
+			Token:        "USDC",
+			AmountRaw:    fmt.Sprintf("%d", amountMicro),
+			Decimals:     6,
+			Market:       "all",
+			Finality:     spec.FinalityFinal,
+			Source:       "hyperliquid-node-fills",
+			Meta: map[string]string{
+				"gross_usdc":   fmt.Sprintf("%.2f", d.GrossUSDC),
+				"builder_usdc": fmt.Sprintf("%.2f", d.BuilderUSDC),
+				"fills":        fmt.Sprintf("%d", d.Fills),
+				"hours":        fmt.Sprintf("%d", d.Hours),
+			},
+		}
 
 		cursor = spec.Cursor{Height: h + 86400, Ts: ts, Finalized: true}
 	}
@@ -98,8 +118,9 @@ func (c *HyperliquidCollector) Collect(
 	return cursor, nil
 }
 
-func (c *HyperliquidCollector) fetchBreakdown(ctx context.Context) ([]hlDayBreakdown, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, defilllamaHL, nil)
+func (c *HyperliquidCollector) fetchDailySummaries(ctx context.Context, from, to string) ([]hlDailySummary, error) {
+	url := fmt.Sprintf("%s/daily?from=%s&to=%s", fillsAggURL, from, to)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -112,43 +133,12 @@ func (c *HyperliquidCollector) fetchBreakdown(ctx context.Context) ([]hlDayBreak
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, defilllamaHL)
+		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
-	var result struct {
-		TotalDataChartBreakdown [][]json.RawMessage `json:"totalDataChartBreakdown"`
-	}
+	var result []hlDailySummary
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
-
-	out := make([]hlDayBreakdown, 0, len(result.TotalDataChartBreakdown))
-	for _, entry := range result.TotalDataChartBreakdown {
-		if len(entry) < 2 {
-			continue
-		}
-		var ts int64
-		if err := json.Unmarshal(entry[0], &ts); err != nil {
-			continue
-		}
-
-		// breakdown shape: {"Hyperliquid L1": {"Hyperliquid Perps": N, "Hyperliquid HLP": N, ...}}
-		var outer map[string]map[string]float64
-		if err := json.Unmarshal(entry[1], &outer); err != nil {
-			continue
-		}
-		inner, ok := outer["Hyperliquid L1"]
-		if !ok {
-			continue
-		}
-
-		out = append(out, hlDayBreakdown{
-			Ts:    ts,
-			Perps: inner["Hyperliquid Perps"],
-			HLP:   inner["Hyperliquid HLP"],
-			Spot:  inner["Hyperliquid Spot Orderbook"],
-		})
-	}
-
-	return out, nil
+	return result, nil
 }
