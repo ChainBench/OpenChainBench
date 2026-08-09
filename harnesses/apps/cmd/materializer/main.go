@@ -39,7 +39,7 @@ func main() {
 
 func runMaterialize(ctx context.Context, db *ledger.DB, checker *invariant.Checker) error {
 	const mv = 1
-	deployments := []string{"dydx-v4:dydx-chain"}
+	deployments := []string{"dydx-v4:dydx-chain", "hyperliquid:hypercore"}
 
 	for _, dep := range deployments {
 		if err := db.Materialize(ctx, dep, mv); err != nil {
