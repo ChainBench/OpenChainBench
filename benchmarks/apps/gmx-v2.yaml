@@ -1,0 +1,148 @@
+schema_version: 1
+slug: gmx-v2
+name: GMX V2
+category: perps
+methodology_version: 1
+status: live
+website: https://gmx.io
+verifiability: tier_1
+
+# Exemple canonique : TOUS les splits sont lus dans l'event, aucune constante.
+# C'est le pattern à copier. Voir aerodrome.yaml pour le cas où c'est impossible.
+
+deployments:
+  - id: gmx-v2:arbitrum
+    chain: arbitrum
+    effective_from: "2023-08-01T00:00:00Z"
+    start_block: 107737756
+
+    finality:
+      mode: l1_confirmed
+      lag_seconds: 900
+
+    source:
+      kind: evm_logs
+      canonical: true
+      address: "0xC8ee91A54287DB53897056e12D9819156D3822Fb"   # EventEmitter
+      # topic0 de EventLog1. Constante du contrat, pas un paramètre métier.
+      topic0: "0x137a44067c8961cd7e1d876f4754a5a3a75989b4552f1843fc69c3b372def160"
+      # topic1 = keccak256(nom). Calculé AU RUNTIME. Un hash collé en dur et mal
+      # recopié retourne zéro event, ce qui est indiscernable de "pas d'activité".
+      event_names:
+        - PositionFeesCollected
+        - SwapFeesCollected
+      decoder: gmx_v2_eventlog          # payload = key-value typés, décodage par clé
+      batch_blocks: 2000
+
+    witnesses:
+      - kind: subgraph
+        id: gmx-v2-arbitrum
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/gmx-v2
+        note: "Adapter écrit par le protocole. Témoin, jamais source."
+
+  - id: gmx-v2:avalanche
+    chain: avalanche
+    effective_from: "2023-08-01T00:00:00Z"
+    # Déploiement distinct, pot de fees distinct : la somme avec Arbitrum est
+    # correcte et ne constitue pas un double-comptage (cf. architecture §6.5).
+    source:
+      kind: evm_logs
+      canonical: true
+      address: "TODO_verifier_avant_activation"
+      topic0: "0x137a44067c8961cd7e1d876f4754a5a3a75989b4552f1843fc69c3b372def160"
+      event_names: [PositionFeesCollected, SwapFeesCollected]
+      decoder: gmx_v2_eventlog
+    status: pending_verification
+
+allocation:
+  rules:
+    - event: PositionFeesCollected
+      splits:
+        - field: positionFeeAmount
+          component: taker_fee
+          share_source: onchain_field       # ← jamais un pourcentage
+        - field: borrowingFeeAmount
+          component: borrow_fee
+          share_source: onchain_field
+        - field: fundingFeeAmount
+          component: funding_payment        # exclu de gross_fees par la taxonomie
+          share_source: onchain_field
+        - field: feeAmountForPool
+          beneficiary: lp
+          share_source: onchain_field
+        - field: feeReceiverAmount
+          beneficiary: token_holder         # rachat GMX
+          share_source: onchain_field
+        - field: uiFeeAmount
+          beneficiary: third_party
+          component: interface_fee
+          share_source: onchain_field
+
+    - event: SwapFeesCollected
+      splits:
+        - field: feeAmountForPool
+          component: swap_fee
+          beneficiary: lp
+          share_source: onchain_field
+        - field: feeReceiverAmount
+          component: swap_fee
+          beneficiary: token_holder
+          share_source: onchain_field
+
+  # Contrôle intra-event. Attrape la majorité des régressions de décodage :
+  # si GMX ajoute un champ entre deux versions du contrat, cette assertion échoue
+  # avant que le chiffre ne soit publié.
+  assertions:
+    - name: position_fee_conservation
+      expr: "positionFeeAmount == feeAmountForPool + feeReceiverAmount + uiFeeAmount"
+      on_failure: quarantine
+
+  # Le 63/27/10 documenté n'est JAMAIS appliqué au calcul. Il sert uniquement de
+  # test de plausibilité : un écart persistant est une information publiable.
+  documented_split_reference:
+    lp: 0.63
+    token_holder: 0.27
+    overhead: 0.10
+    source_url: https://docs.gmx.io/docs/tokenomics
+    used_for: plausibility_check_only
+    alert_if_deviation_gt: 0.05
+
+pricing:
+  # Collatéral mixte : conversion obligatoire.
+  primary: pyth_hermes
+  witness: chainlink
+  granularity: hourly_twap
+  chainlink_guards:
+    - sequencer_uptime_feed: required     # Arbitrum : prix invalides si le sequencer était down
+  fallback: pool_ratio
+  fallback_confidence: low
+
+emissions:
+  scope: incentives_only
+  sources:
+    - kind: esgmx_distribution
+      token: GMX
+      accounting: at_emission            # au moment de l'émission, pas du vesting
+      note: "Choix documenté : le coût est encouru quand le token est émis."
+    - kind: external_grant
+      token: ARB
+      note: >-
+        Programmes d'incentives Arbitrum. Les omettre flatterait net_real_revenue.
+        Source : distributions ARB vers les contrats GMX.
+      status: todo
+
+validation:
+  checks:
+    - id: fee_receiver_inflows
+      kind: onchain_conservation
+      description: "Inflows vers le fee receiver GMX ≈ Σ feeReceiverAmount"
+      tolerance_bps: 200
+    - id: witness_divergence
+      kind: witness
+      quarantine_above_bps: 500
+
+metadata:
+  chains: [arbitrum, avalanche]
+  is_router: false
+  nests_within: null
