@@ -60,6 +60,9 @@ var deploymentMeta = map[string]struct{ Name, Slug, Category string }{
 	"gmx-v2:arbitrum":      {Name: "GMX v2 (Arbitrum)", Slug: "gmx", Category: "perps"},
 	"gmx-v2:avalanche":     {Name: "GMX v2 (Avalanche)", Slug: "gmx", Category: "perps"},
 	"gains-trade:arbitrum": {Name: "Gains.trade", Slug: "gains-trade", Category: "perps"},
+	"drift:solana":         {Name: "Drift", Slug: "drift", Category: "perps"},
+	"jupiter-perps:solana": {Name: "Jupiter Perps", Slug: "jupiter-perps", Category: "perps"},
+	"vertex:arbitrum":      {Name: "Vertex", Slug: "vertex", Category: "perps"},
 }
 
 func handleLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
@@ -72,7 +75,7 @@ func handleLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				deployment_id,
 				beneficiary,
 				component,
-				SUM(CASE WHEN bucket_start >= now() - INTERVAL '24 hours' THEN amount_usd ELSE 0 END) AS h24,
+				SUM(CASE WHEN bucket_start >= now() - INTERVAL '2 days'  THEN amount_usd ELSE 0 END) AS h24,
 				SUM(CASE WHEN bucket_start >= now() - INTERVAL '7 days'   THEN amount_usd ELSE 0 END) AS d7,
 				SUM(CASE WHEN bucket_start >= now() - INTERVAL '30 days'  THEN amount_usd ELSE 0 END) AS d30,
 				SUM(amount_usd) AS all_time,
