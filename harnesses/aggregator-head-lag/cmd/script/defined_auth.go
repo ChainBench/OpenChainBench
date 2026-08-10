@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,12 +11,10 @@ import (
 	"time"
 )
 
+// DefinedTokenResponse is kept for compatibility but the /api/codex/token endpoint
+// now returns {"token":"..."} directly (not GraphQL).
 type DefinedTokenResponse struct {
-	Data struct {
-		CreateApiTokens []struct {
-			Token string `json:"token"`
-		} `json:"createApiTokens"`
-	} `json:"data"`
+	Token string `json:"token"`
 }
 
 // JWT token cache to avoid rate limiting
@@ -123,30 +120,21 @@ func generateDefinedJWTToken(sessionCookie string) (string, error) {
 		Transport: transport,
 	}
 
-	reqBody := map[string]interface{}{
-		"operationName": "CreateApiToken",
-		"query":         "mutation CreateApiToken { createApiTokens(input: { count: 1 }) { token } }",
-		"variables":     map[string]interface{}{},
-	}
-
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", "https://www.defined.fi/api", bytes.NewBuffer(bodyBytes))
+	// NOTE: www.defined.fi/api (old createApiTokens GraphQL endpoint) is dead as of 2026-08.
+	// The new endpoint is /api/codex/token which returns {"token":"<JWE>"} directly.
+	// This endpoint is protected by Vercel's TLS-fingerprint checkpoint and cannot be
+	// called from Go's net/http directly. Use CODEX_JWT env var or DEFINED_TOKEN_SERVICE_URL
+	// (sidecar using headless Chrome) to bypass this.
+	req, _ := http.NewRequest("POST", "https://www.defined.fi/api/codex/token", nil)
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "https://www.defined.fi")
 	req.Header.Set("Referer", "https://www.defined.fi/")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-	req.Header.Set("sec-ch-ua", `"Not_A Brand";v="8", "Chromium";v="131", "Google Chrome";v="131"`)
-	req.Header.Set("sec-ch-ua-mobile", "?0")
-	req.Header.Set("sec-ch-ua-platform", `"macOS"`)
-	req.Header.Set("sec-fetch-dest", "empty")
-	req.Header.Set("sec-fetch-mode", "cors")
-	req.Header.Set("sec-fetch-site", "same-origin")
-	req.AddCookie(&http.Cookie{Name: "session", Value: sessionCookie})
+	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: sessionCookie})
 
-	fmt.Println("[DEFINED-AUTH] Sending POST request to https://www.defined.fi/api...")
+	fmt.Println("[DEFINED-AUTH] Sending POST request to https://www.defined.fi/api/codex/token...")
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("[DEFINED-AUTH] ❌ Request failed: %v\n", err)
@@ -178,13 +166,13 @@ func generateDefinedJWTToken(sessionCookie string) (string, error) {
 		return "", fmt.Errorf("failed to decode: %w", err)
 	}
 
-	if len(tokenResp.Data.CreateApiTokens) == 0 {
+	if tokenResp.Token == "" {
 		fmt.Println("[DEFINED-AUTH] ❌ No token in response")
 		return "", fmt.Errorf("no token returned")
 	}
 
-	fmt.Printf("[DEFINED-AUTH] ✅ JWT token generated successfully (length: %d)\n", len(tokenResp.Data.CreateApiTokens[0].Token))
-	return tokenResp.Data.CreateApiTokens[0].Token, nil
+	fmt.Printf("[DEFINED-AUTH] ✅ JWT token generated successfully (length: %d)\n", len(tokenResp.Token))
+	return tokenResp.Token, nil
 }
 
 // InvalidateTokenCache forces a token refresh on next request
