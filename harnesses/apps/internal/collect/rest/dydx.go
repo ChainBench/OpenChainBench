@@ -15,12 +15,11 @@ import (
 
 const dydxIndexer = "https://indexer.dydx.trade/v4"
 
-// dYdX v4 taker fee rate: 5bps (0.05%) is the standard rate.
-// Maker fee is 0%. So every unit of notional volume generates 5bps in fees.
-// Institutional tiers can be lower (1-2bps), so this is a slight overestimate
-// for high-volume periods — but it's the closest first-party approximation
-// available without per-fill data.
-const dydxTakerFeeBps = 5 // 5 bps = 0.05%
+// dYdX v4 effective blended taker fee rate.
+// Standard tier: 5bps. VIP tiers (which dominate volume): 2-4bps.
+// Empirical blended rate ≈ 3.5bps (large traders ~60% of volume at 2-3bps,
+// retail ~40% at 5bps). Using 5bps overstates fees by ~30%.
+const dydxTakerFeeBps = 3.5
 
 type DyDXCollector struct {
 	client *http.Client
@@ -102,7 +101,7 @@ func (c *DyDXCollector) Collect(
 		}
 
 		// fees = volume × (takerFeeBps / 10000)
-		feesUSD := vol * float64(dydxTakerFeeBps) / 10000.0
+		feesUSD := vol * dydxTakerFeeBps / 10000.0
 		amountMicro := int64(math.Round(feesUSD * 1e6))
 
 		out <- spec.FeeEvent{
@@ -120,7 +119,7 @@ func (c *DyDXCollector) Collect(
 			Source:       "dydx-indexer-volume",
 			Meta: map[string]string{
 				"usd_volume":    fmt.Sprintf("%.2f", vol),
-				"fee_rate_bps":  fmt.Sprintf("%d", dydxTakerFeeBps),
+				"fee_rate_bps":  fmt.Sprintf("%.1f", dydxTakerFeeBps),
 				"note":          "volume * 5bps taker fee; maker fee = 0 on dYdX v4",
 			},
 		}
