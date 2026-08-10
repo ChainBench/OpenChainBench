@@ -112,7 +112,7 @@ faq:
 
 # rank_matrix_query required by spec validator when dimensions.region is declared.
 # label_replace maps bridge= → provider= so badge scoping works per region.
-rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (label_replace(rate(bridge_quote_latency_ms_bucket[24h]), "provider", "$1", "bridge", "(.+)")))
+rank_matrix_query: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h_provider)
 
 providers:
   - slug: mobula
@@ -120,22 +120,22 @@ providers:
     tag: Aggregator + intent layer
     formula: "Median wall-clock ms over 24h for Mobula's quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="mobula"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="mobula"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="mobula"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="mobula"}
+      success: ocb:bridge_quote_success:avg24h{bridge="mobula"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="mobula"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[1h])))
       regions:
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="eu-west"}[1h])))
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="mobula", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[1h])))
 
   - slug: relay
@@ -143,22 +143,22 @@ providers:
     tag: Cross-chain relay
     formula: "Median wall-clock ms over 24h for Relay's solver-quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="relay"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="relay"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="relay"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="relay"}
+      success: ocb:bridge_quote_success:avg24h{bridge="relay"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="relay"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[1h])))
       regions:
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="eu-west"}[1h])))
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="relay", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[1h])))
 
   - slug: lifi
@@ -166,22 +166,22 @@ providers:
     tag: Aggregator
     formula: "Median wall-clock ms over 24h for LI.FI's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="lifi"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="lifi"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="lifi"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="lifi"}
+      success: ocb:bridge_quote_success:avg24h{bridge="lifi"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="lifi"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[1h])))
       regions:
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="eu-west"}[1h])))
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="lifi", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[1h])))
 
   - slug: debridge
@@ -189,22 +189,22 @@ providers:
     tag: Native-token fees
     formula: "Median wall-clock ms over 24h for deBridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="debridge"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="debridge"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="debridge"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="debridge"}
+      success: ocb:bridge_quote_success:avg24h{bridge="debridge"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="debridge"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[1h])))
       regions:
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="eu-west"}[1h])))
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="debridge", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[1h])))
 
   - slug: near-intents
@@ -212,22 +212,22 @@ providers:
     tag: Intent layer (NEAR)
     formula: "Median wall-clock ms over 24h for Near Intents 1Click API to return a usable USDC quote via the solver auction bus, sampled every 5 minutes across the supported routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="near-intents"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="near-intents"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="near-intents"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="near-intents"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="near-intents"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="near-intents"}
+      success: ocb:bridge_quote_success:avg24h{bridge="near-intents"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="near-intents"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[1h])))
       regions:
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="eu-west"}[1h])))
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[24h])))
+          p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="near-intents", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[1h])))
 
   - slug: across
@@ -235,12 +235,12 @@ providers:
     tag: Intent layer
     formula: "Median wall-clock ms over 24h for Across's Swap API to return a usable USDC quote across supported corridors (Sol to Base, Base to Arb) from 3 regions. Arb to Sol excluded: no destination swaps to Solana."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="across"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="across"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="across"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="across"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="across"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="across"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="across"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="across"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="across"}
+      success: ocb:bridge_quote_success:avg24h{bridge="across"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="across"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[1h])))
 
   - slug: squid
@@ -248,12 +248,12 @@ providers:
     tag: Aggregator (Axelar)
     formula: "Median wall-clock ms for Squid Router's v2 API to return a best-output USDC route, p50 over 24h, EVM corridors only (Base to Arb). Solana source excluded: API returns server error."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="squid"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="squid"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="squid"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="squid"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="squid"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="squid"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="squid"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="squid"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="squid"}
+      success: ocb:bridge_quote_success:avg24h{bridge="squid"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="squid"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[1h])))
 
   - slug: socket
@@ -261,10 +261,10 @@ providers:
     tag: Aggregator
     formula: "Median wall-clock ms for Socket Protocol's v2 API to return a best-output USDC route (via Across, Stargate, CCTP), p50 over 24h, EVM corridors only (Base to Arb)."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[24h])))
-      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="socket"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="socket"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="socket"}[24h]))
-      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="socket"}[24h]))
+      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="socket"})
+      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="socket"})
+      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:rate24h{bridge="socket"})
+      mean: ocb:bridge_quote_latency_ms_sum:rate24h{bridge="socket"} / ocb:bridge_quote_latency_ms_count:rate24h{bridge="socket"}
+      success: ocb:bridge_quote_success:avg24h{bridge="socket"}
+      sample_size: ocb:bridge_quote_latency_ms_count:increase24h{bridge="socket"}
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[1h])))
