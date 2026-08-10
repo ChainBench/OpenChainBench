@@ -101,9 +101,60 @@ func newUTLSClient() *http.Client {
 	}
 }
 
-// tryUtlsCodexToken uses Chrome TLS fingerprint spoofing to call /api/codex/token.
-// Works from residential IPs. From datacenter IPs Vercel may return 429.
+// tryUtlsLegacyAPI calls un.defined.fi/api (old UI, still alive) with createApiTokens mutation.
+// No cookies or CSRF needed — one request, much simpler. Works from residential IPs.
+// Try this first since it's a single POST with no page-visit prerequisite.
+func tryUtlsLegacyAPI() (string, error) {
+	client := newUTLSClient()
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"operationName": "CreateApiToken",
+		"query":         "mutation CreateApiToken { createApiTokens(input: { count: 1 }) { token } }",
+		"variables":     map[string]interface{}{},
+	})
+	req, _ := http.NewRequest("POST", "https://un.defined.fi/api", bytes.NewBuffer(body))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Origin", "https://un.defined.fi")
+	req.Header.Set("Referer", "https://un.defined.fi/")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+	req.Header.Set("Sec-Fetch-Dest", "empty")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("HTTP %d: %.100s", resp.StatusCode, string(respBody))
+	}
+
+	var parsed struct {
+		Data struct {
+			CreateApiTokens []struct {
+				Token string `json:"token"`
+			} `json:"createApiTokens"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &parsed); err != nil || len(parsed.Data.CreateApiTokens) == 0 || parsed.Data.CreateApiTokens[0].Token == "" {
+		return "", fmt.Errorf("no token in response: %.100s", string(respBody))
+	}
+	return parsed.Data.CreateApiTokens[0].Token, nil
+}
+
+// tryUtlsCodexToken uses Chrome TLS fingerprint spoofing to call www.defined.fi/api/codex/token.
+// Requires a page visit first to get CSRF cookie. Fallback if tryUtlsLegacyAPI fails.
 func tryUtlsCodexToken() (string, error) {
+	// Try the old un.defined.fi API first — no cookies or CSRF needed.
+	if tok, err := tryUtlsLegacyAPI(); err == nil && tok != "" {
+		return tok, nil
+	}
+
 	client := newUTLSClient()
 
 	req1, _ := http.NewRequest("GET", "https://www.defined.fi/", nil)
@@ -154,18 +205,18 @@ func tryUtlsCodexToken() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("codex/token request failed: %w", err)
 	}
-	body, _ := io.ReadAll(resp2.Body)
+	body2, _ := io.ReadAll(resp2.Body)
 	resp2.Body.Close()
 
 	if resp2.StatusCode != 200 {
-		return "", fmt.Errorf("codex/token HTTP %d: %.100s", resp2.StatusCode, string(body))
+		return "", fmt.Errorf("codex/token HTTP %d: %.100s", resp2.StatusCode, string(body2))
 	}
 
 	var parsed struct {
 		Token string `json:"token"`
 	}
-	if err := json.Unmarshal(body, &parsed); err != nil || parsed.Token == "" {
-		return "", fmt.Errorf("no token in response: %.100s", string(body))
+	if err := json.Unmarshal(body2, &parsed); err != nil || parsed.Token == "" {
+		return "", fmt.Errorf("no token in response: %.100s", string(body2))
 	}
 
 	return parsed.Token, nil

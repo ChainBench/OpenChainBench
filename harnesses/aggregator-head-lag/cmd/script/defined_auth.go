@@ -207,49 +207,39 @@ func GetDefinedJWTToken(sessionCookie string) (string, error) {
 	return token, nil
 }
 
-// generateDefinedJWTToken generates a new JWT token from Defined.fi session cookie
-func generateDefinedJWTToken(sessionCookie string) (string, error) {
-	fmt.Println("[DEFINED-AUTH] Generating new JWT token from Defined.fi (local)...")
-	fmt.Println("[DEFINED-AUTH] Creating new HTTP client with fresh TCP connection (no keepalive)")
-
-	// Create a new HTTP client with fresh connection for each request.
-	// CRITICAL: route through HTTP_PROXY/HTTPS_PROXY (webshare rotating proxy)
-	// so each JWT mint hits a fresh IP. Direct from the container IP gets us
-	// stuck on Vercel's bot ban (429 loop) when the container restarts often.
-	transport := &http.Transport{
-		DisableKeepAlives:   true,
-		MaxIdleConnsPerHost: 0,
-		Proxy:               http.ProxyFromEnvironment,
-	}
-	client := &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: transport,
-	}
+// generateDefinedJWTToken generates a new JWT token via un.defined.fi (old UI, still alive).
+// No session cookie or CSRF needed. Falls back to www.defined.fi/api proxy path.
+func generateDefinedJWTToken(_ string) (string, error) {
+	fmt.Println("[DEFINED-AUTH] Generating token via un.defined.fi legacy API...")
 
 	reqBody := map[string]interface{}{
 		"operationName": "CreateApiToken",
 		"query":         "mutation CreateApiToken { createApiTokens(input: { count: 1 }) { token } }",
 		"variables":     map[string]interface{}{},
 	}
-
 	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", "https://www.defined.fi/api", bytes.NewBuffer(bodyBytes))
 
+	transport := &http.Transport{
+		DisableKeepAlives: true,
+		Proxy:             http.ProxyFromEnvironment,
+	}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: transport}
+
+	req, _ := http.NewRequest("POST", "https://un.defined.fi/api", bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://www.defined.fi")
-	req.Header.Set("Referer", "https://www.defined.fi/")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Origin", "https://un.defined.fi")
+	req.Header.Set("Referer", "https://un.defined.fi/")
 	req.Header.Set("sec-ch-ua", `"Not_A Brand";v="8", "Chromium";v="131", "Google Chrome";v="131"`)
 	req.Header.Set("sec-ch-ua-mobile", "?0")
 	req.Header.Set("sec-ch-ua-platform", `"macOS"`)
 	req.Header.Set("sec-fetch-dest", "empty")
 	req.Header.Set("sec-fetch-mode", "cors")
 	req.Header.Set("sec-fetch-site", "same-origin")
-	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: sessionCookie})
 
-	fmt.Println("[DEFINED-AUTH] Sending POST request to https://www.defined.fi/api...")
+	fmt.Println("[DEFINED-AUTH] POST https://un.defined.fi/api ...")
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("[DEFINED-AUTH] ❌ Request failed: %v\n", err)
@@ -261,18 +251,16 @@ func generateDefinedJWTToken(sessionCookie string) (string, error) {
 	fmt.Printf("[DEFINED-AUTH] Response status: %d\n", resp.StatusCode)
 
 	if resp.StatusCode == 429 {
-		// Parse retry-after header if available
 		retryAfter := resp.Header.Get("Retry-After")
 		fmt.Printf("[DEFINED-AUTH] ⚠ Rate limited! Retry-After: %s\n", retryAfter)
-		if retryAfter != "" {
-			return "", fmt.Errorf("rate limited (429), retry after: %s", retryAfter)
-		}
-		return "", fmt.Errorf("rate limited (429), too many token requests - will retry later")
+		return "", fmt.Errorf("rate limited (429)")
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Printf("[DEFINED-AUTH] ❌ Unexpected status %d: %s\n", resp.StatusCode, string(respBody[:min(len(respBody), 100)]))
-		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody[:min(len(respBody), 100)]))
+		n := len(respBody)
+		if n > 100 { n = 100 }
+		fmt.Printf("[DEFINED-AUTH] ❌ Unexpected status %d: %s\n", resp.StatusCode, string(respBody[:n]))
+		return "", fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody[:n]))
 	}
 
 	var tokenResp DefinedTokenResponse
@@ -286,7 +274,7 @@ func generateDefinedJWTToken(sessionCookie string) (string, error) {
 		return "", fmt.Errorf("no token returned")
 	}
 
-	fmt.Printf("[DEFINED-AUTH] ✅ JWT token generated successfully (length: %d)\n", len(tokenResp.Data.CreateApiTokens[0].Token))
+	fmt.Printf("[DEFINED-AUTH] ✅ Token generated via un.defined.fi (length: %d)\n", len(tokenResp.Data.CreateApiTokens[0].Token))
 	return tokenResp.Data.CreateApiTokens[0].Token, nil
 }
 
