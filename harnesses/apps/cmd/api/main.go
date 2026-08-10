@@ -124,7 +124,7 @@ func handleLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				wm := row.Windows[winKey]
 				wm.Gross += amount
 				switch k.beneficiary {
-				case "burn":
+				case "burn", "treasury":
 					wm.Burn += amount
 				case "lp":
 					wm.LP += amount
