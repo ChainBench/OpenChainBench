@@ -34,7 +34,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"telos\"`. Provider coverage: 1 no-key endpoint (dRPC). Telos Foundation official returned 404 and has been removed."
 
 findings:
-  - "{{best_name}} currently leads free Telos EVM RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) — 1 measured provider."
+  - "{{best_name}} currently leads free Telos EVM RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free Telos EVM RPC right now?"
