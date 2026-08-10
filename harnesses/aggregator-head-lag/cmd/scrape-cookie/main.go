@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"time"
@@ -28,16 +25,66 @@ func main() {
 	defer cancel()
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
-	ctx, cancel = context.WithTimeout(ctx, 45*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
 	cookies := map[string]string{}
 
+	// Monkey-patch WebSocket to capture connection_init sent to graph.codex.io
+	// and the server's first response (ack or error/close).
+	captureScript := `
+window.__wsCaptures = [];
+window.__wsResponses = [];
+const _WS = window.WebSocket;
+window.WebSocket = function(url, protocols) {
+	const ws = new _WS(url, protocols);
+	if (url && url.includes('graph.codex.io')) {
+		const _send = ws.send.bind(ws);
+		ws.send = function(data) {
+			try {
+				const parsed = JSON.parse(data);
+				if (parsed.type === 'connection_init') {
+					window.__wsCaptures.push({url: url, payload: parsed.payload, raw: data});
+					console.log('WS_CAPTURE:' + JSON.stringify({url, payload: parsed.payload}));
+				}
+			} catch(e) {}
+			return _send(data);
+		};
+		ws.addEventListener('message', function(evt) {
+			try {
+				const parsed = JSON.parse(evt.data);
+				window.__wsResponses.push({url: url, type: parsed.type, raw: evt.data.slice(0, 200)});
+				console.log('WS_RESPONSE:' + JSON.stringify({url, type: parsed.type}));
+			} catch(e) {}
+		});
+		ws.addEventListener('close', function(evt) {
+			window.__wsResponses.push({url: url, closeCode: evt.code, reason: evt.reason});
+			console.log('WS_CLOSE:' + JSON.stringify({url, code: evt.code, reason: evt.reason}));
+		});
+	}
+	return ws;
+};
+window.WebSocket.prototype = _WS.prototype;
+window.WebSocket.CONNECTING = _WS.CONNECTING;
+window.WebSocket.OPEN = _WS.OPEN;
+window.WebSocket.CLOSING = _WS.CLOSING;
+window.WebSocket.CLOSED = _WS.CLOSED;
+`
+
 	err := chromedp.Run(ctx,
+		// Inject monkey-patch before page loads
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			return chromedp.Evaluate(`void 0`, nil).Do(ctx) // warm up
+		}),
+		chromedp.Navigate("about:blank"),
+		chromedp.Evaluate(captureScript, nil),
 		chromedp.Navigate("https://www.defined.fi/"),
 		chromedp.WaitVisible(`body`, chromedp.ByQuery),
-		chromedp.Sleep(8*time.Second),
+		// Re-inject on the loaded page (navigate clears scripts)
+		chromedp.Evaluate(captureScript, nil),
+		chromedp.Sleep(20*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			// Get cookies
 			cookieParams, err := network.GetCookies().Do(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get cookies: %w", err)
@@ -48,41 +95,49 @@ func main() {
 			}
 			return nil
 		}),
+		// Capture what the browser sent in connection_init
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var captures []map[string]interface{}
+			err := chromedp.Evaluate(`window.__wsCaptures || []`, &captures).Do(ctx)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "capture eval error: %v\n", err)
+				return nil
+			}
+			if len(captures) == 0 {
+				fmt.Fprintf(os.Stderr, "\n[WS CAPTURE] No connection_init captured for graph.codex.io\n")
+				// Try to get captures via console approach
+				var raw string
+				chromedp.Evaluate(`JSON.stringify(window.__wsCaptures || [])`, &raw).Do(ctx)
+				fmt.Fprintf(os.Stderr, "[WS CAPTURE] raw: %s\n", raw)
+			}
+			for i, c := range captures {
+				fmt.Fprintf(os.Stderr, "\n[WS CAPTURE #%d] url=%v\n", i, c["url"])
+				payloadBytes, _ := json.MarshalIndent(c["payload"], "", "  ")
+				fmt.Fprintf(os.Stderr, "[WS CAPTURE #%d] connection_init payload:\n%s\n", i, string(payloadBytes))
+				fmt.Printf("WS_INIT_PAYLOAD=%s\n", string(payloadBytes))
+			}
+			// Capture server responses (ack / close)
+			var responses []map[string]interface{}
+			chromedp.Evaluate(`window.__wsResponses || []`, &responses).Do(ctx)
+			if len(responses) == 0 {
+				fmt.Fprintf(os.Stderr, "\n[WS RESPONSE] No server responses captured yet\n")
+			}
+			for i, r := range responses {
+				respBytes, _ := json.MarshalIndent(r, "", "  ")
+				fmt.Fprintf(os.Stderr, "\n[WS RESPONSE #%d]:\n%s\n", i, string(respBytes))
+			}
+			return nil
+		}),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "chrome error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Try codex_token first (it's a pre-minted token, might be usable directly)
-	// It's stored as URL-encoded JSON: {"token":"<jwt>"}
-	if raw, ok := cookies["codex_token"]; ok {
-		decoded, err := url.QueryUnescape(raw)
-		if err == nil {
-			var obj struct {
-				Token string `json:"token"`
-			}
-			if json.Unmarshal([]byte(decoded), &obj) == nil && obj.Token != "" {
-				fmt.Fprintf(os.Stderr, "\ncodex_token JWT (len=%d): %s...\n", len(obj.Token), obj.Token[:min(60, len(obj.Token))])
-				// Test if we can use this token directly for a Codex query
-				testCodexToken(obj.Token)
-			}
-		}
-	}
-
-	// Also test defined-attestation-token for JWT minting
-	if attToken, ok := cookies["defined-attestation-token"]; ok {
-		fmt.Fprintf(os.Stderr, "\nTesting defined-attestation-token for JWT mint...\n")
-		testJWTMint(attToken, "defined-attestation-token")
-	}
-
-	// Output fresh defined-attestation-token
+	// Output cookies
 	if attToken, ok := cookies["defined-attestation-token"]; ok {
 		fmt.Printf("DEFINED_SESSION_COOKIE=%s\n", attToken)
-		fmt.Printf("COOKIE_NAME=defined-attestation-token\n")
 	}
-
-	// Also output full codex_token JSON decoded token
 	if raw, ok := cookies["codex_token"]; ok {
 		decoded, _ := url.QueryUnescape(raw)
 		var obj struct {
@@ -92,58 +147,4 @@ func main() {
 			fmt.Printf("CODEX_TOKEN=%s\n", obj.Token)
 		}
 	}
-}
-
-func testJWTMint(cookieValue, cookieName string) {
-	reqBody := map[string]interface{}{
-		"operationName": "CreateApiToken",
-		"query":         "mutation CreateApiToken { createApiTokens(input: { count: 1 }) { token } }",
-		"variables":     map[string]interface{}{},
-	}
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", "https://www.defined.fi/api", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://www.defined.fi")
-	req.Header.Set("Referer", "https://www.defined.fi/")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-	req.AddCookie(&http.Cookie{Name: cookieName, Value: cookieValue})
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "mint request failed: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "mint status: %d, body: %s\n", resp.StatusCode, string(body[:min(200, len(body))]))
-}
-
-func testCodexToken(token string) {
-	// Try using the token directly as a Bearer for Codex GraphQL
-	reqBody := map[string]interface{}{
-		"query": "{ getNetworkStats(networkId: 1) { addressCount } }",
-	}
-	bodyBytes, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", "https://graph.codex.io/graphql", bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "codex token test failed: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "codex test status: %d, body: %s\n", resp.StatusCode, string(body[:min(200, len(body))]))
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
