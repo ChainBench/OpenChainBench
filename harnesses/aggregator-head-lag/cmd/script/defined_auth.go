@@ -130,17 +130,23 @@ func tryTokenService(baseURL string) (string, error) {
 }
 
 // GetDefinedJWTToken returns a cached JWT token or generates a new one if expired.
-// Priority: CODEX_JWT env var > direct /api/codex/token (same IP as WS) > sidecar > inline mint.
+// Priority: CODEX_JWT env var > in-process scraper (fresh, <5min) > direct /api/codex/token > sidecar > inline mint.
 func GetDefinedJWTToken(sessionCookie string) (string, error) {
 	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
 		return jwt, nil
+	}
+	// In-process scraper: headless Chrome running inside this container, freshest possible.
+	// JWE expires in ~10 min; scraper refreshes every 5 min so token is always <5 min old.
+	if tok, mintedAt := getInProcessJWE(); tok != "" && time.Since(mintedAt) < 8*time.Minute {
+		fmt.Printf("[DEFINED-AUTH] Got token from in-process scraper (age=%v, len=%d)\n", time.Since(mintedAt).Round(time.Second), len(tok))
+		return tok, nil
 	}
 	// Direct mint: JWE minted from this container's IP = same IP used for WS = no 4403.
 	if tok, err := tryDirectCodexToken(sessionCookie); err == nil && tok != "" {
 		fmt.Printf("[DEFINED-AUTH] Got token via direct /api/codex/token (len=%d)\n", len(tok))
 		return tok, nil
 	}
-	// Sidecar fallback (Paris box chromedp, auto-refreshes every 25 min)
+	// Sidecar fallback (Paris box chromedp, auto-refreshes every 25 min — may be stale)
 	if svcURL := os.Getenv("DEFINED_TOKEN_SERVICE_URL"); svcURL != "" {
 		if tok, err := tryTokenService(svcURL); err == nil && tok != "" {
 			fmt.Printf("[DEFINED-AUTH] Got token from sidecar (len=%d)\n", len(tok))
