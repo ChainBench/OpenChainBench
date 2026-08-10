@@ -58,12 +58,45 @@ func decodeJWTExpiration(token string) (time.Time, error) {
 	return time.Unix(claims.Exp, 0), nil
 }
 
+// tryTokenService calls the Paris-box sidecar (DEFINED_TOKEN_SERVICE_URL) for a fresh JWE.
+func tryTokenService(baseURL string) (string, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	for _, path := range []string{"/token", "/jwt", "/"} {
+		resp, err := client.Get(baseURL + path)
+		if err != nil {
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			continue
+		}
+		var parsed struct{ Token string `json:"token"` }
+		if err := json.Unmarshal(body, &parsed); err == nil && parsed.Token != "" {
+			return parsed.Token, nil
+		}
+		s := strings.TrimSpace(string(body))
+		if len(s) > 50 {
+			return s, nil
+		}
+	}
+	return "", fmt.Errorf("no working path on sidecar")
+}
+
 // GetDefinedJWTToken returns a cached JWT token or generates a new one if expired.
-// If CODEX_JWT env var is set, it is returned directly (bypasses session-cookie flow).
+// Priority: CODEX_JWT env var > DEFINED_TOKEN_SERVICE_URL sidecar > inline mint.
 func GetDefinedJWTToken(sessionCookie string) (string, error) {
 	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
 		return jwt, nil
 	}
+	// Sidecar token service (Paris box chromedp scraper, auto-refreshes every 25 min)
+	if svcURL := os.Getenv("DEFINED_TOKEN_SERVICE_URL"); svcURL != "" {
+		if tok, err := tryTokenService(svcURL); err == nil && tok != "" {
+			fmt.Printf("[DEFINED-AUTH] Got token from sidecar (len=%d)\n", len(tok))
+			return tok, nil
+		}
+	}
+
 	globalTokenCache.mu.RLock()
 
 	// Check if we have a valid cached token
