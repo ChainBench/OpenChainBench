@@ -17,6 +17,7 @@ export type ReportMeta = {
   readingTime: number;
   ogImage?: string;
   canonical: string;
+  draft?: boolean;
 };
 
 export type Report = ReportMeta & {
@@ -67,6 +68,7 @@ function parseReport(filePath: string): Report {
     readingTime: Number(data.readingTime ?? 10),
     ogImage: data.ogImage ? String(data.ogImage) : undefined,
     canonical: String(data.canonical ?? ""),
+    draft: Boolean(data.draft ?? false),
     content,
   };
 }
@@ -86,7 +88,9 @@ export function getAllReports(): Report[] {
       }
     }
   }
-  return reports.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  return reports
+    .filter((r) => !r.draft)
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
 
 export function getReportsByCategory(categorySlug: string): Report[] {
