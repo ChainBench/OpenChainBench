@@ -10,20 +10,30 @@ import (
 )
 
 // Client wraps the Helius RPC + enhanced-transactions APIs.
+// rpcURL is used for standard Solana JSON-RPC calls (getSignaturesForAddress) and can be
+// any Solana endpoint — we default to the public mainnet RPC to avoid consuming Helius credits
+// on raw pagination. enhURL is Helius-specific and costs credits; it is only called for the
+// 100-sig quality sample per poll.
 type Client struct {
 	httpClient *http.Client
 	apiKey     string
-	rpcURL     string // https://mainnet.helius-rpc.com/?api-key=KEY
-	enhURL     string // https://api.helius.xyz/v0/transactions?api-key=KEY
+	rpcURL     string // standard Solana JSON-RPC (public endpoint, no credits)
+	enhURL     string // https://api.helius.xyz/v0/transactions?api-key=KEY (credits)
 }
 
-func New(apiKey string) *Client {
+// NewWithRPC creates a client where rpcURL is used for standard RPC calls (getSignaturesForAddress).
+// Pass a public or self-hosted endpoint to avoid consuming Helius credits on pagination.
+func NewWithRPC(apiKey, rpcURL string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		apiKey:     apiKey,
-		rpcURL:     fmt.Sprintf("https://mainnet.helius-rpc.com/?api-key=%s", apiKey),
+		rpcURL:     rpcURL,
 		enhURL:     fmt.Sprintf("https://api.helius.xyz/v0/transactions?api-key=%s", apiKey),
 	}
+}
+
+func New(apiKey string) *Client {
+	return NewWithRPC(apiKey, "https://api.mainnet-beta.solana.com")
 }
 
 // SigEntry is one result from getSignaturesForAddress.
