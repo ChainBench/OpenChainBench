@@ -42,13 +42,13 @@ func ScrapeDefinedSessionCookie() (string, error) {
 			}
 
 			for _, cookie := range cookieParams {
-				if cookie.Name == "session" {
+				if cookie.Name == "defined-attestation-token" {
 					sessionCookie = cookie.Value
 					return nil
 				}
 			}
 
-			return fmt.Errorf("session cookie not found")
+			return fmt.Errorf("defined-attestation-token cookie not found")
 		}),
 	)
 

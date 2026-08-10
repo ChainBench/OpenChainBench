@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -99,7 +100,11 @@ func fetchCodex(cfg *Config) ProviderResult {
 
 // getCodexJWT mints a Defined.fi JWT from the session cookie, or pulls a
 // pre-minted one from a sidecar URL if DEFINED_TOKEN_SERVICE_URL is set.
+// If CODEX_JWT env var is set, it is returned directly (bypasses all other flows).
 func getCodexJWT(cfg *Config) (string, error) {
+	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
+		return jwt, nil
+	}
 	// If a sidecar token service is configured, try it first. On any error,
 	// silently fall back to inline mint — the sidecar isn't authoritative.
 	if cfg.DefinedTokenURL != "" {
@@ -127,7 +132,7 @@ func getCodexJWT(cfg *Config) (string, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Origin", "https://www.defined.fi")
 	req.Header.Set("Referer", "https://www.defined.fi/")
-	req.Header.Set("Cookie", "session-token="+cfg.CodexSessionCookie)
+	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: cfg.CodexSessionCookie})
 
 	resp, err := client.Do(req)
 	if err != nil {

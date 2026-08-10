@@ -1,0 +1,111 @@
+# Taxonomie partagée par toutes les specs /apps.
+# Un fee_event ne peut porter qu'un `component` et qu'un `beneficiary` de ces listes.
+# Toute modification ici est un changement de méthodologie : bump obligatoire de
+# methodology_version sur les specs affectées + recompute complet.
+
+schema_version: 1
+
+components:
+  taker_fee:
+    included_in_gross: true
+    label: "Frais preneur"
+  maker_fee:
+    included_in_gross: true
+    label: "Frais offreur"
+  maker_rebate:
+    included_in_gross: false
+    label: "Rabais offreur"
+    note: "Montant stocké positif, beneficiary=lp. Sortie de trésorerie, pas un fee."
+  swap_fee:
+    included_in_gross: true
+    label: "Frais de swap AMM"
+  borrow_fee:
+    included_in_gross: true
+    label: "Frais d'emprunt"
+    note: "Payé au pool, pas à une contrepartie. Revenue réel du système."
+  liquidation_fee:
+    included_in_gross: true
+    label: "Frais de liquidation"
+    note: "Uniquement la part retenue par le protocole ou le pool. Le collatéral saisi est une perte du trader, jamais un fee."
+  pool_creation_fee:
+    included_in_gross: true
+    label: "Frais de création de pool"
+  bonding_curve_fee:
+    included_in_gross: true
+    label: "Frais de bonding curve"
+
+  # --- Collectés mais exclus des agrégats par défaut ---
+  funding_payment:
+    included_in_gross: false
+    toggleable: true
+    label: "Paiements de funding"
+    rationale: >-
+      Transfert de somme nulle entre longs et shorts. Le protocole n'en retient rien.
+      L'inclure gonfle mécaniquement les perps face aux DEX spot et rend le classement
+      inter-catégories inutilisable.
+  interface_fee:
+    included_in_gross: true
+    beneficiary_forced: third_party
+    is_app_layer: true
+    excluded_from_ranking: true
+    rationale: >-
+      Réel, mais Uniswap Labs a coupé ses frontend fees lors d'UNIfication. Les compter
+      chez les autres fausserait la comparaison. Mesuré, affiché, hors classement.
+  external_bribe:
+    included_in_gross: false
+    label: "Incentives externes"
+    rationale: "Payé par des tiers aux voters, pas un revenue généré par le protocole."
+  sequencer_revenue:
+    included_in_gross: false
+    counted_in: non_trading_holder_value
+    rationale: >-
+      Cas Unichain : entre dans le même mécanisme de burn que les protocol fees, mais
+      n'est pas un frais de trading. Additionné séparément et visiblement.
+
+exclusions:
+  # Jamais collectés. Documentés pour que la page méthodologie soit complète.
+  - id: price_impact
+    reason: "Capté par l'inventaire du LP, non identifiable comme fee dans les events."
+  - id: mev
+    reason: "Va au searcher et au validateur, pas au protocole."
+  - id: gas_and_priority_fees
+    reason: "Coût réseau, pas revenue protocole."
+  - id: seized_collateral
+    reason: "Perte du trader, pas un frais payé au système."
+  - id: treasury_one_offs
+    reason: >-
+      Burns rétroactifs et distributions exceptionnelles (ex. les 100M UNI du trésor
+      lors d'UNIfication). Ce n'est pas du revenue récurrent ; l'inclure produirait des
+      pics absurdes.
+
+beneficiaries:
+  lp:              { label: "Fournisseurs de liquidité", in_protocol_cut: false, in_holder_value: false }
+  token_holder:    { label: "Détenteurs du token",       in_protocol_cut: false, in_holder_value: true  }
+  staker:          { label: "Stakers / validateurs",     in_protocol_cut: false, in_holder_value: true  }
+  burn:            { label: "Brûlé",                     in_protocol_cut: false, in_holder_value: true  }
+  treasury:        { label: "Trésor",                    in_protocol_cut: true,  in_holder_value: false }
+  insurance_fund:  { label: "Fonds d'assurance",         in_protocol_cut: true,  in_holder_value: false }
+  third_party:     { label: "Tiers (frontends, affiliés)", in_protocol_cut: false, in_holder_value: false }
+  creator:         { label: "Créateur du pool / token",  in_protocol_cut: false, in_holder_value: false }
+
+# Métriques dérivées. Ce sont des VUES sur la partition ci-dessus, pas des colonnes
+# indépendantes. Aucune ne peut compter deux fois le même event.
+derived:
+  gross_fees:         "Σ components[included_in_gross]"
+  lp_revenue:         "Σ beneficiary == lp"
+  protocol_cut:       "Σ beneficiary.in_protocol_cut"
+  token_holder_value: "Σ beneficiary.in_holder_value"
+  emissions_cost:     "Σ_jours tokens_émis(j) × TWAP_usd(j)"
+  net_real_revenue:
+    with_holders:  "protocol_cut + token_holder_value + non_trading_holder_value − emissions_cost"
+    treasury_only: "protocol_cut − emissions_cost"
+    default: with_holders
+    note: >-
+      `treasury_only` correspond à la définition littérale du brief mais classe Hyperliquid
+      comme quasi nul, ce qui contredit l'intention. `with_holders` produit le classement
+      décrit. Les deux sont calculées ; à trancher avant le lancement public.
+
+invariants:
+  unallocated_tolerance_bps: 50
+  witness_divergence_warn_bps: 200
+  witness_divergence_quarantine_bps: 500
