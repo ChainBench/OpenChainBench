@@ -174,7 +174,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 	cuSamples := make([]store.CUSample, 0, len(events))
 	for _, e := range events {
 		if e.CUPriceMicro > 0 {
-			cuSamples = append(cuSamples, store.CUSample{BlockTime: e.BlockTime, CUPriceMicro: e.CUPriceMicro})
+			cuSamples = append(cuSamples, store.CUSample{Sig: e.Sig, BlockTime: e.BlockTime, CUPriceMicro: e.CUPriceMicro})
 		}
 	}
 	if err := db.InsertCUSamples(ctx, plt, cuSamples); err != nil {
