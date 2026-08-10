@@ -59,6 +59,9 @@ func (c *GainsTradeCollector) Collect(
 	}
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
+	// WS collector (gains_trade_ws.go) handles real-time data from this date onwards.
+	// DeFiLlama only backfills history before the cutoff to avoid double-counting.
+	wsHandoverDate := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
 
 	for _, e := range fees {
 		arbFees := e.Chains["Arbitrum"]["Gains Network"]
@@ -67,8 +70,8 @@ func (c *GainsTradeCollector) Collect(
 		}
 
 		ts := time.Unix(e.Ts, 0).UTC()
-		if !ts.Before(today) {
-			continue // skip incomplete current day
+		if !ts.Before(today) || !ts.Before(wsHandoverDate) {
+			continue // skip current day and days covered by WS collector
 		}
 		h := uint64(e.Ts)
 		if h <= from.Height {
