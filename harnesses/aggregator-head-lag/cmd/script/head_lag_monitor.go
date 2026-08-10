@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -419,11 +421,19 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 		return fmt.Errorf("failed to get JWT token: %w", err)
 	}
 
-	log.Printf("[HEAD-LAG][CODEX] Step 2/4: Creating proxy dialer...")
-	dialer := getProxyDialerWithSubprotocols([]string{"graphql-transport-ws"})
+	log.Printf("[HEAD-LAG][CODEX] Step 2/4: Creating direct dialer (no proxy — IP must match JWE origin)...")
+	dialer := &websocket.Dialer{
+		Subprotocols:     []string{"graphql-transport-ws"},
+		HandshakeTimeout: 30 * time.Second,
+	}
 
 	log.Printf("[HEAD-LAG][CODEX] Step 3/4: Connecting to wss://graph.codex.io/graphql...")
-	conn, resp, err := dialer.Dial("wss://graph.codex.io/graphql", nil)
+	cookieVal := url.QueryEscape(`{"token":"` + jwtToken + `"}`)
+	wsHeaders := http.Header{}
+	wsHeaders.Set("Cookie", "codex_token="+cookieVal)
+	wsHeaders.Set("Origin", "https://www.defined.fi")
+	wsHeaders.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	conn, resp, err := dialer.Dial("wss://graph.codex.io/graphql", wsHeaders)
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("dial failed (HTTP %d): %w", resp.StatusCode, err)
@@ -439,12 +449,11 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 		log.Printf("[HEAD-LAG][CODEX] Step 3/4: ✅ WebSocket connection established (IP check failed: %v)", err)
 	}
 
-	// Connection init with JWT Bearer token
-	log.Printf("[HEAD-LAG][CODEX] Step 4/4: Sending connection_init with JWT...")
+	log.Printf("[HEAD-LAG][CODEX] Step 4/4: Sending connection_init (token len=%d)...", len(jwtToken))
 	initMsg := map[string]interface{}{
 		"type": "connection_init",
 		"payload": map[string]interface{}{
-			"Authorization": fmt.Sprintf("Bearer %s", jwtToken),
+			"Authorization": "Bearer " + jwtToken,
 		},
 	}
 	if err := conn.WriteJSON(initMsg); err != nil {
