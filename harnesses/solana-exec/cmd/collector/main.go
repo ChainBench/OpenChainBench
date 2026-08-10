@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ChainBench/OpenChainBench/harnesses/solana-exec/internal/helius"
@@ -95,19 +96,6 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 			log.Printf("collector: %s: %s: paginated %d sigs", plt, feeAccount, len(sigs))
 		}
 
-		// Count raw hourly tx volume from this account's full sig set (all sigs, not just sample).
-		hourBuckets := make(map[time.Time]int64)
-		for _, s := range sigs {
-			if s.Err != nil || s.BlockTime == 0 {
-				continue
-			}
-			bucket := time.Unix(s.BlockTime, 0).UTC().Truncate(time.Hour)
-			hourBuckets[bucket]++
-		}
-		if err := db.UpsertRawCounts(ctx, plt, cursor.LastSig, hourBuckets); err != nil {
-			return fmt.Errorf("upsert raw counts %s: %w", feeAccount, err)
-		}
-
 		perAcct = append(perAcct, acctData{cursorKey: cursorKey, cursor: cursor, sigs: sigs})
 	}
 
@@ -127,6 +115,22 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 
 	if len(allSigs) == 0 {
 		return nil
+	}
+
+	// Count raw hourly volume from the merged+deduped sig set so a tx touching
+	// multiple fee accounts of the same platform is counted exactly once.
+	// from_cursor is a compound of all account cursors for idempotency on retry.
+	fromCursor := compoundCursor(perAcct)
+	hourBuckets := make(map[time.Time]int64)
+	for _, s := range allSigs {
+		if s.Err != nil || s.BlockTime == 0 {
+			continue
+		}
+		bucket := time.Unix(s.BlockTime, 0).UTC().Truncate(time.Hour)
+		hourBuckets[bucket]++
+	}
+	if err := db.UpsertRawCounts(ctx, plt, fromCursor, hourBuckets); err != nil {
+		return fmt.Errorf("upsert raw counts: %w", err)
 	}
 
 	// Pre-filter failed txs; only successful trades generate platform fees.
@@ -212,18 +216,10 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 			}
 		}
 
-		// CU price = priorityFee × 1_000_000 / cuLimit (not cuConsumed).
-		// The Solana fee schedule is based on the requested limit; dividing by consumed
-		// inflates the price for txs that over-provision CUs.
-		// Fall back to cuConsumed if SetComputeUnitLimit was absent.
-		var cuPriceMicro int64
-		cuDenominator := tx.CULimit
-		if cuDenominator == 0 {
-			cuDenominator = tx.ComputeUnitsConsumed
-		}
-		if cuDenominator > 0 && priorityFee > 0 {
-			cuPriceMicro = priorityFee * 1_000_000 / cuDenominator
-		}
+		// CU price comes directly from SetComputeUnitPrice (disc 0x03), already in
+		// micro-lamports per CU — no division needed. Only set when the instruction
+		// is present; 0 means base fee only, not a zero-price priority tx.
+		cuPriceMicro := tx.CUPriceDeclared
 
 		events = append(events, store.ExecEvent{
 			Sig:                 tx.Signature,
@@ -260,6 +256,19 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 
 	log.Printf("collector: %s: ingested %d events", plt, len(events))
 	return nil
+}
+
+// compoundCursor returns a deterministic string that encodes the cursor state for
+// all accounts in this poll, used as the from_cursor idempotency key in raw_counts.
+func compoundCursor(perAcct []acctData) string {
+	if len(perAcct) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(perAcct))
+	for _, a := range perAcct {
+		parts = append(parts, a.cursorKey+"="+a.cursor.LastSig)
+	}
+	return strings.Join(parts, ",")
 }
 
 // saveCursors advances each fee account's cursor to its newest observed sig.
