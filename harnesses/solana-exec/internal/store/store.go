@@ -97,7 +97,36 @@ func (db *DB) SaveCursor(ctx context.Context, platform, lastSig string, slot uin
 	return err
 }
 
-// Materialize recomputes hourly facts for the given platform and time range.
+// UpsertRawCounts stores hourly successful-tx counts from raw sig pagination.
+// counts maps bucket_start (hour-truncated UTC) → total successful sigs that hour.
+func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[time.Time]int64) error {
+	if len(counts) == 0 {
+		return nil
+	}
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("store: begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	for bucket, count := range counts {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO solana_exec_raw_counts (platform, bucket_start, success_count, updated_at)
+			VALUES ($1, $2, $3, now())
+			ON CONFLICT (platform, bucket_start) DO UPDATE SET
+				success_count = solana_exec_raw_counts.success_count + EXCLUDED.success_count,
+				updated_at = now()`,
+			platform, bucket, count,
+		)
+		if err != nil {
+			return fmt.Errorf("store: upsert raw count %v: %w", bucket, err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// Materialize recomputes hourly facts for the given platform.
+// tx_count comes from solana_exec_raw_counts (full volume); fee metrics come
+// from the sampled solana_exec_events (representative quality metrics).
 func (db *DB) Materialize(ctx context.Context, platform string) error {
 	_, err := db.pool.Exec(ctx, `
 		INSERT INTO solana_exec_facts
@@ -105,19 +134,22 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			 avg_priority_fee_lamports, p50_cu_price_micro, p95_cu_price_micro,
 			 avg_platform_fee_lamports, jito_rate, avg_cu_consumed, computed_at)
 		SELECT
-			platform,
-			date_trunc('hour', block_time) AS bucket_start,
-			COUNT(*) AS tx_count,
-			AVG(priority_fee_lamports) AS avg_priority_fee_lamports,
-			COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY cu_price_micro) FILTER (WHERE cu_price_micro > 0), 0) AS p50_cu_price_micro,
-			COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY cu_price_micro) FILTER (WHERE cu_price_micro > 0), 0) AS p95_cu_price_micro,
-			AVG(platform_fee_lamports) AS avg_platform_fee_lamports,
-			AVG(CASE WHEN is_jito_bundle THEN 1.0 ELSE 0.0 END) AS jito_rate,
-			AVG(cu_consumed) AS avg_cu_consumed,
+			e.platform,
+			date_trunc('hour', e.block_time) AS bucket_start,
+			COALESCE(r.success_count, COUNT(*)) AS tx_count,
+			AVG(e.priority_fee_lamports) AS avg_priority_fee_lamports,
+			COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p50_cu_price_micro,
+			COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p95_cu_price_micro,
+			AVG(e.platform_fee_lamports) AS avg_platform_fee_lamports,
+			AVG(CASE WHEN e.is_jito_bundle THEN 1.0 ELSE 0.0 END) AS jito_rate,
+			AVG(e.cu_consumed) AS avg_cu_consumed,
 			now()
-		FROM solana_exec_events
-		WHERE platform = $1
-		GROUP BY platform, date_trunc('hour', block_time)
+		FROM solana_exec_events e
+		LEFT JOIN solana_exec_raw_counts r
+			ON r.platform = e.platform
+			AND r.bucket_start = date_trunc('hour', e.block_time)
+		WHERE e.platform = $1
+		GROUP BY e.platform, date_trunc('hour', e.block_time), r.success_count
 		ON CONFLICT (platform, bucket_start) DO UPDATE SET
 			tx_count = EXCLUDED.tx_count,
 			avg_priority_fee_lamports = EXCLUDED.avg_priority_fee_lamports,
