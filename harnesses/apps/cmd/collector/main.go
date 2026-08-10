@@ -34,6 +34,31 @@ func main() {
 	gmxAvax := rest.NewGMXv2Avalanche()
 
 	gains := rest.NewGainsTrade()
+	gainsWS := rest.NewGainsTradeWS()
+
+	// WebSocket collector: real-time per-trade fees from gTrade first-party backend.
+	// Runs as a persistent goroutine; reconnects on any error.
+	go func() {
+		for {
+			out := make(chan spec.FeeEvent, 500)
+			after := time.Now().UTC().Truncate(24 * time.Hour)
+			go func() {
+				defer close(out)
+				if err := gainsWS.Stream(ctx, "gains-trade:arbitrum", after, out); err != nil && ctx.Err() == nil {
+					log.Printf("gains-trade WS: %v", err)
+				}
+			}()
+			for e := range out {
+				if err := db.UpsertEvents(ctx, []spec.FeeEvent{e}); err != nil {
+					log.Printf("gains-trade WS upsert: %v", err)
+				}
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	for {
 		if err := runCollector(ctx, db, dydx, "dydx-v4:dydx-chain"); err != nil {
