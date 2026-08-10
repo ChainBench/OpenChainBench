@@ -38,6 +38,11 @@ func main() {
 	var wg sync.WaitGroup
 	stopChan := make(chan struct{})
 
+	// In-process JWE scraper: headless Chrome inside this container scrapes defined.fi
+	// every 5 min to keep the Codex token fresh. JWE expires in ~10 min, so 5 min gives
+	// a comfortable margin. Runs only if Chrome is installed (no-op otherwise).
+	startInProcessScraper(stopChan)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

@@ -4,7 +4,7 @@ slug: ethereum-classic-rpc
 number: "194"
 title: Fastest free Ethereum Classic RPC, live no-key endpoint latency
 seo_title: "Fastest free Ethereum Classic RPC 2026"
-seo_description: "{{best_name}} leads free Ethereum Classic RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Ethereum Classic RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 1 no-key provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum Classic EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Ethereum Classic (chain 61) is the original Ethereum chain post-2016 DAO fork, continuing as a Proof-of-Work EVM network with ETC as the gas token. The chain upholds code-is-law immutability and has a dedicated long-term holder community. Three keyless endpoints are probed continuously: dRPC (etc.drpc.org), ETCDesktop (etc.etcdesktop.com), and ETCMC (rpc.etcmc.net).
+  Ethereum Classic (chain 61) is the original Ethereum chain post-2016 DAO fork, continuing as a Proof-of-Work EVM network with ETC as the gas token. The chain upholds code-is-law immutability and has a dedicated long-term holder community. One keyless endpoint is probed continuously: dRPC (etc.drpc.org). ETCDesktop and ETCMC are no longer responding to probes and have been removed.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Ethereum Classic.
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public Ethereum Classic endpoint
-  that sustains continuous probing, 3 providers at launch,
+  that sustains continuous probing, 1 provider at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
   view lives on the parent `rpc-capabilities` benchmark; this page is the
   Ethereum Classic-scoped answer with per-region breakdowns as a first-class dimension.
@@ -31,16 +31,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"ethereum-classic\"`. Provider coverage at launch: 3 no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"ethereum-classic\"`. Provider coverage: 1 no-key endpoint (dRPC). ETCDesktop and ETCMC stopped responding to probes and have been removed."
 
 findings:
-  - "{{best_name}} currently leads free Ethereum Classic RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free Ethereum Classic RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free Ethereum Classic RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Ethereum Classic RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing: dRPC, ETCDesktop, and ETCMC. Every endpoint was live-verified before inclusion."
+    a: "1 endpoint sustains continuous keyless probing: dRPC (etc.drpc.org). ETCDesktop and ETCMC stopped responding to probes and have been removed from the bench."
   - q: "Does the fastest Ethereum Classic RPC change by region?"
     a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Ethereum Classic RPC latency measured here?"
@@ -84,49 +84,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="ethereum-classic", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="ethereum-classic", region="sgp"}[1h])
-
-  - slug: etcdesktop
-    name: ETCDesktop
-    tag: ETCDesktop community public RPC for Ethereum Classic
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to ETCDesktop's no-key Ethereum Classic endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="etcdesktop", chain="ethereum-classic"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="etcdesktop", chain="ethereum-classic"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="etcdesktop", chain="ethereum-classic"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="etcdesktop", chain="ethereum-classic"}) / sum(ocb:rpc_call:rate_24h{provider="etcdesktop", chain="ethereum-classic"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="etcdesktop", chain="ethereum-classic"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="sgp"}[1h])
-
-  - slug: etcmc
-    name: ETCMC
-    tag: ETCMC community public RPC for Ethereum Classic
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to ETCMC's no-key Ethereum Classic endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcmc", chain="ethereum-classic"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="etcmc", chain="ethereum-classic"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="etcmc", chain="ethereum-classic"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="etcmc", chain="ethereum-classic"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="etcmc", chain="ethereum-classic"}) / sum(ocb:rpc_call:rate_24h{provider="etcmc", chain="ethereum-classic"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="etcmc", chain="ethereum-classic"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="etcmc", chain="ethereum-classic"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcmc", chain="ethereum-classic", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcmc", chain="ethereum-classic", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcmc", chain="ethereum-classic", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcmc", chain="ethereum-classic", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcmc", chain="ethereum-classic", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="etcmc", chain="ethereum-classic", region="sgp"}[1h])
