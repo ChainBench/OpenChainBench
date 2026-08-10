@@ -33,7 +33,6 @@ func main() {
 	gmxArb := rest.NewGMXv2Arbitrum()
 	gmxAvax := rest.NewGMXv2Avalanche()
 
-	gains := rest.NewGainsTrade()
 	gainsWS := rest.NewGainsTradeWS()
 
 	// WebSocket collector: real-time per-trade fees from gTrade first-party backend.
@@ -72,9 +71,6 @@ func main() {
 		}
 		if err := runCollector(ctx, db, gmxAvax, "gmx-v2:avalanche"); err != nil {
 			log.Printf("gmx-v2:avalanche collector error: %v", err)
-		}
-		if err := runCollector(ctx, db, gains, "gains-trade:arbitrum"); err != nil {
-			log.Printf("gains-trade collector error: %v", err)
 		}
 		time.Sleep(60 * time.Second)
 	}
