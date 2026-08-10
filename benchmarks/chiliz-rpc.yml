@@ -130,26 +130,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chiliz-official", chain="chiliz", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="chiliz-official", chain="chiliz", region="sgp"}[1h])
-
-  - slug: drpc
-    name: dRPC
-    tag: dRPC public gateway for Chiliz Chain
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Chiliz endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="chiliz"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="chiliz"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="chiliz"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="chiliz"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="chiliz"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="chiliz"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="chiliz"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="chiliz"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="chiliz", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="chiliz", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="chiliz", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="chiliz", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="chiliz", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="chiliz", region="sgp"}[1h])

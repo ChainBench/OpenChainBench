@@ -14,6 +14,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -59,7 +60,11 @@ func decodeJWTExpiration(token string) (time.Time, error) {
 
 // GetCodexJWT returns a cached short-lived JWT, minting a new one when the
 // cached one is within 1h of expiry.
+// If CODEX_JWT env var is set, it is returned directly (bypasses session-cookie flow).
 func GetCodexJWT(sessionCookie string) (string, error) {
+	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
+		return jwt, nil
+	}
 	codexTokenCache.mu.RLock()
 	if codexTokenCache.token != "" && time.Now().Before(codexTokenCache.expiresAt.Add(-1*time.Hour)) {
 		t := codexTokenCache.token
@@ -120,7 +125,7 @@ func mintCodexJWT(sessionCookie string) (string, error) {
 	req.Header.Set("sec-fetch-dest", "empty")
 	req.Header.Set("sec-fetch-mode", "cors")
 	req.Header.Set("sec-fetch-site", "same-origin")
-	req.AddCookie(&http.Cookie{Name: "session", Value: sessionCookie})
+	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: sessionCookie})
 
 	resp, err := client.Do(req)
 	if err != nil {

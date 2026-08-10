@@ -807,6 +807,11 @@ async function tryLoadLive(
       // common AWAITING trigger. Logged at warn level only on the
       // unfiltered "All" view to avoid spamming logs on filtered views
       // where a missing provider is expected behavior.
+      // For gauge-only benches (e.g. validator yield) p90/p99 are not
+      // defined in the spec. Fall back to p50 so the provider isn't skipped.
+      if (p90 == null && !q.p90) p90 = p50;
+      if (p99 == null && !q.p99) p99 = p50;
+
       if (p50 == null || p90 == null || p99 == null) {
         // Unresponsive cohort member: the latency series is gone from
         // the window (failed probes record no latency, so a fully dead

@@ -4,7 +4,7 @@ slug: tron-rpc
 number: "093"
 title: Fastest free TRON RPC, live no-key JSON-RPC endpoint latency
 seo_title: "Fastest free TRON RPC 2026"
-seo_description: "{{best_name}} leads free TRON RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key JSON-RPC-compat providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free TRON RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key JSON-RPC-compat providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for `eth_getBlockByNumber("latest", false)` against every free, no-key public TRON JSON-RPC-compatible endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -20,8 +20,9 @@ seo_intro: |
   Ethereum method names (`eth_blockNumber`, `eth_getBlockByNumber`,
   `eth_getBalance`). This bench measures the JSON-RPC surface because
   that is the path every TRON-compatible EVM wallet, TronWeb bridge
-  and cross-chain bot integrates against. Provider cohort at launch:
-  TronGrid (Tron Foundation official), dRPC and PublicNode / Allnodes.
+  and cross-chain bot integrates against. Provider cohort:
+  TronGrid (Tron Foundation official) and PublicNode / Allnodes.
+  dRPC was removed after the TRON JSON-RPC method became unavailable.
   Ankr's JSON-RPC path is keyless in branding but rejected our probes
   with `API key is not allowed to access blockchain`; Chainstack,
   NOWNodes, GetBlock, Tatum and BlockPI require API keys on the TRON
@@ -36,7 +37,7 @@ abstract: |
   single, identical JSON-RPC call
   (`eth_getBlockByNumber("latest", false)`) against every no-key
   public TRON JSON-RPC endpoint that sustains continuous probing,
-  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  2 providers, every 60 seconds, from us-east, eu-west and
   Singapore. The harness classifies every response
   (ok / http_err / jsonrpc_err / stale / timeout) with the EVM
   staleness gap tuned for TRON's ~3 s block time (25 blocks ≈ 75
@@ -51,22 +52,21 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 25 blocks behind the cross-provider tip, roughly 75 seconds at TRON's ~3 s block time), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Surface scope: only the EVM-compatible JSON-RPC surface (`/jsonrpc` endpoints) is measured, because that is the path every cross-chain wallet, TronWeb / EVM bridge and arbitrage bot integrates against. The native TRON REST API (`wallet/getnowblock`, `wallet/triggersmartcontract`) is out of scope for this bench; a chain-specific `tron-rest` bench can be added later when there is clear demand from integrators using TronWeb directly."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"tron\"`. Provider coverage at launch: 3 no-key JSON-RPC endpoints (TronGrid, dRPC, PublicNode). The TRON JSON-RPC provider market is materially smaller than the EVM one; most TRON infra vendors expose only the native TRON REST API keyless, and gate the JSON-RPC path behind an API key."
-  - "Excluded by the launch audit: Ankr (`rpc.ankr.com/tron_jsonrpc` returned `API key is not allowed to access blockchain` without a key), Chainstack / NOWNodes / GetBlock / Tatum / BlockPI (all require an API key on the TRON JSON-RPC path even though branded as public), OnFinality + Blast API + AllThatNode (no public TRON JSON-RPC gateway), Tron Foundation's `rpc.trongrid.io` (DNS not resolving; the correct official host is `api.trongrid.io/jsonrpc`)."
+  - "Chain scope: every query on this page is pinned to `chain=\"tron\"`. Provider coverage: 2 no-key JSON-RPC endpoints (TronGrid, PublicNode). dRPC removed (method not available). The TRON JSON-RPC provider market is materially smaller than the EVM one; most TRON infra vendors expose only the native TRON REST API keyless, and gate the JSON-RPC path behind an API key."
+  - "Excluded by the launch audit: dRPC (method not available), Ankr (key required on tron_jsonrpc path), Chainstack / NOWNodes / GetBlock / Tatum / BlockPI (key required on JSON-RPC path), OnFinality + Blast API + AllThatNode (no public TRON JSON-RPC gateway), Tron Foundation's rpc.trongrid.io (DNS dead; correct host is api.trongrid.io/jsonrpc)."
 
 findings:
-  - "{{best_name}} currently leads free TRON RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free TRON RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 2 measured providers."
   - "{{name:trongrid}} is Tron Foundation's official public API gateway; the bench measures the same `api.trongrid.io/jsonrpc` endpoint that every TronWeb + tronbox integrator points at first. Latency here reflects what a keyless TRON-EVM integrator sees end-to-end."
-  - "{{name:drpc}} routes TRON JSON-RPC through its multi-provider load balancer; latency here is a good proxy for what a cross-chain integrator (multi-chain wallets, bridges) can expect from a load-balanced setup."
   - "{{name:publicnode}} extends its universal multi-chain footprint to TRON JSON-RPC without a keyed path; the reliability column matters as much as p50 since TRON JSON-RPC compat is a thin layer over the native TRON API and can drift under load."
 
 faq:
   - q: "What is the fastest free TRON RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (eth_getBlockByNumber p50 over the last 24h), measured against 3 no-key JSON-RPC providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (eth_getBlockByNumber p50 over the last 24h), measured against 2 no-key JSON-RPC providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which TRON RPCs work without an API key?"
-    a: "Three JSON-RPC endpoints sustain continuous keyless probing at launch: TronGrid (`api.trongrid.io/jsonrpc`), dRPC (`tron.drpc.org`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). Every listed endpoint was live-verified with an `eth_getBlockByNumber` POST returning a parsable hex head before inclusion. Excluded by the audit: Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway. The TRON JSON-RPC provider market is materially smaller than the EVM one , most TRON infra vendors expose only the native TRON REST API keyless."
-  - q: "Why only 3 providers when other RPC benches have 5+?"
-    a: "TRON's JSON-RPC compat layer is thinner than the EVM one, and most infra vendors gate it behind an API key even when their native TRON REST endpoints are keyless. The 3 providers on this page are all keyless endpoints that responded correctly to a plain POST during the launch audit; when other vendors open a keyless JSON-RPC path we will add them. Latency and reliability numbers here are still meaningful because the 3 providers span a Foundation-official endpoint, a multi-provider aggregator (dRPC) and a universal multi-chain gateway (PublicNode) , the three infra archetypes an integrator would compare against each other anyway."
+    a: "Two JSON-RPC endpoints sustain continuous keyless probing: TronGrid (`api.trongrid.io/jsonrpc`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). dRPC was removed after the TRON JSON-RPC method became unavailable. Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway."
+  - q: "Why only 2 providers when other RPC benches have 5+?"
+    a: "TRON's JSON-RPC compat layer is thinner than the EVM one, and most infra vendors gate it behind an API key even when their native TRON REST endpoints are keyless. dRPC was removed after the TRON JSON-RPC method became unavailable. The 2 providers on this page are all keyless endpoints that responded correctly to a plain POST; when other vendors open a keyless JSON-RPC path we will add them."
   - q: "Does this bench cover the native TRON REST API (`wallet/getnowblock`)?"
     a: "No. This bench scopes only the EVM-compatible JSON-RPC surface (`/jsonrpc` endpoints), because that is the path cross-chain wallets, TronWeb bridges, and arbitrage bots integrate against. The native TRON REST API surface (used by TronWeb + TronBox directly) has different method semantics (address encoding, resource model, `wallet/*` vs `walletsolidity/*` paths) and would need a chain-specific probe added. That will land as a separate `tron-rest` bench when the demand from integrators using TronWeb directly is clear."
   - q: "Does the fastest TRON RPC change by region?"
@@ -115,29 +115,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="trongrid", chain="tron", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="trongrid", chain="tron", region="sgp"}[1h])
-
-  - slug: drpc
-    name: dRPC
-    tag: Multi-provider RPC load balancer, edge-close routing
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key TRON JSON-RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tron"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="tron"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="tron"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="tron"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="tron"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="tron"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="tron"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tron"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tron", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tron", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tron", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tron", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tron", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tron", region="sgp"}[1h])
 
   - slug: publicnode
     name: PublicNode

@@ -1,0 +1,65 @@
+# Fragment docker-compose à merger dans /opt/ocb/docker-compose.yml sur le VPS.
+# Données sur /data (sdb, 200GB) — isolé du disque OS.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ocb-postgres
+    restart: unless-stopped
+    env_file: /run/ocb/.env.apps
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+    networks: [web]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ocb -d apps"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ocb-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://ocb:${POSTGRES_PASSWORD}@ocb-postgres:5432/apps?sslmode=disable"
+    networks: [web]
+    expose: ["9187"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+  apps-collector:
+    build: /opt/ocb/harnesses/apps
+    container_name: ocb-apps-collector
+    restart: unless-stopped
+    env_file: /run/ocb/.env.apps
+    command: ["/app/collector"]
+    networks: [web]
+    expose: ["2112"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  apps-materializer:
+    build: /opt/ocb/harnesses/apps
+    container_name: ocb-apps-materializer
+    restart: unless-stopped
+    env_file: /run/ocb/.env.apps
+    command: ["/app/materializer"]
+    networks: [web]
+    expose: ["2112"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
