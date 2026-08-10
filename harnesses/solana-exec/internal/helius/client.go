@@ -3,10 +3,13 @@ package helius
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -138,7 +141,38 @@ type EnhancedTx struct {
 	TokenTransfers       []TokenTransfer
 	TransactionError     any
 	ComputeUnitsConsumed int64
+	// CULimit is the SetComputeUnitLimit value from ComputeBudget instructions.
+	// 0 means the instruction was absent (default limit = 200000 per tx).
+	CULimit int64
 }
+
+const b58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+// decodeBase58 decodes a base58-encoded Solana instruction data string to bytes.
+func decodeBase58(s string) []byte {
+	var n big.Int
+	for _, c := range s {
+		idx := strings.IndexRune(b58Alphabet, c)
+		if idx < 0 {
+			return nil
+		}
+		n.Mul(&n, big.NewInt(58))
+		n.Add(&n, big.NewInt(int64(idx)))
+	}
+	decoded := n.Bytes()
+	leading := 0
+	for _, c := range s {
+		if c != '1' {
+			break
+		}
+		leading++
+	}
+	out := make([]byte, leading+len(decoded))
+	copy(out[leading:], decoded)
+	return out
+}
+
+const computeBudgetProgram = "ComputeBudget111111111111111111111111111111"
 
 // GetEnhancedTransactions fetches and parses up to 100 transactions in parallel
 // using standard Solana JSON-RPC getTransaction — no third-party credits needed.
@@ -230,7 +264,11 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 			BlockTime *int64 `json:"blockTime"`
 			Transaction struct {
 				Message struct {
-					AccountKeys []accountKey `json:"accountKeys"`
+					AccountKeys  []accountKey `json:"accountKeys"`
+					Instructions []struct {
+						ProgramIDIndex int    `json:"programIdIndex"`
+						Data           string `json:"data"` // base58-encoded
+					} `json:"instructions"`
 				} `json:"message"`
 				Signatures []string `json:"signatures"`
 			} `json:"transaction"`
@@ -367,6 +405,25 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		cuConsumed = *m.ComputeUnitsConsumed
 	}
 
+	// Parse ComputeBudget::SetComputeUnitLimit (discriminator 0x03) from instructions.
+	// Priority fee = cuPrice × cuLimit / 1_000_000; cuLimit is the correct denominator,
+	// not cuConsumed (over-provisioned txs would otherwise show inflated per-CU price).
+	var cuLimit int64
+	for _, ix := range r.Transaction.Message.Instructions {
+		if ix.ProgramIDIndex < 0 || ix.ProgramIDIndex >= len(accounts) {
+			continue
+		}
+		if accounts[ix.ProgramIDIndex].Pubkey != computeBudgetProgram {
+			continue
+		}
+		data := decodeBase58(ix.Data)
+		// SetComputeUnitLimit: discriminator[0]==3, limit=uint32LE[1:5]
+		if len(data) >= 5 && data[0] == 3 {
+			cuLimit = int64(binary.LittleEndian.Uint32(data[1:5]))
+			break
+		}
+	}
+
 	var feePayer string
 	if len(accounts) > 0 {
 		feePayer = accounts[0].Pubkey
@@ -392,5 +449,6 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		TokenTransfers:       tokenTransfers,
 		TransactionError:     m.Err,
 		ComputeUnitsConsumed: cuConsumed,
+		CULimit:              cuLimit,
 	}, nil
 }

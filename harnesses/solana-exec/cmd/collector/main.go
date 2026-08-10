@@ -212,9 +212,17 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 			}
 		}
 
+		// CU price = priorityFee × 1_000_000 / cuLimit (not cuConsumed).
+		// The Solana fee schedule is based on the requested limit; dividing by consumed
+		// inflates the price for txs that over-provision CUs.
+		// Fall back to cuConsumed if SetComputeUnitLimit was absent.
 		var cuPriceMicro int64
-		if tx.ComputeUnitsConsumed > 0 && priorityFee > 0 {
-			cuPriceMicro = priorityFee * 1_000_000 / tx.ComputeUnitsConsumed
+		cuDenominator := tx.CULimit
+		if cuDenominator == 0 {
+			cuDenominator = tx.ComputeUnitsConsumed
+		}
+		if cuDenominator > 0 && priorityFee > 0 {
+			cuPriceMicro = priorityFee * 1_000_000 / cuDenominator
 		}
 
 		events = append(events, store.ExecEvent{
