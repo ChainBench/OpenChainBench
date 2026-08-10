@@ -58,6 +58,52 @@ func decodeJWTExpiration(token string) (time.Time, error) {
 	return time.Unix(claims.Exp, 0), nil
 }
 
+// tryDirectCodexToken calls /api/codex/token on defined.fi directly using the session cookie.
+// No proxy so the JWE is minted from this container's own IP, matching the WS connection IP.
+func tryDirectCodexToken(sessionCookie string) (string, error) {
+	if sessionCookie == "" {
+		return "", fmt.Errorf("no session cookie")
+	}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
+	}
+	req, err := http.NewRequest("GET", "https://www.defined.fi/api/codex/token", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Origin", "https://www.defined.fi")
+	req.Header.Set("Referer", "https://www.defined.fi/")
+	req.Header.Set("sec-ch-ua", `"Not_A Brand";v="8", "Chromium";v="131", "Google Chrome";v="131"`)
+	req.Header.Set("sec-ch-ua-mobile", "?0")
+	req.Header.Set("sec-ch-ua-platform", `"macOS"`)
+	req.Header.Set("sec-fetch-dest", "empty")
+	req.Header.Set("sec-fetch-mode", "cors")
+	req.Header.Set("sec-fetch-site", "same-origin")
+	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: sessionCookie})
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("status %d: %.100s", resp.StatusCode, string(body))
+	}
+	var parsed struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && parsed.Token != "" {
+		return parsed.Token, nil
+	}
+	return "", fmt.Errorf("no token in response: %.100s", string(body))
+}
+
 // tryTokenService calls the Paris-box sidecar (DEFINED_TOKEN_SERVICE_URL) for a fresh JWE.
 func tryTokenService(baseURL string) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -84,12 +130,17 @@ func tryTokenService(baseURL string) (string, error) {
 }
 
 // GetDefinedJWTToken returns a cached JWT token or generates a new one if expired.
-// Priority: CODEX_JWT env var > DEFINED_TOKEN_SERVICE_URL sidecar > inline mint.
+// Priority: CODEX_JWT env var > direct /api/codex/token (same IP as WS) > sidecar > inline mint.
 func GetDefinedJWTToken(sessionCookie string) (string, error) {
 	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
 		return jwt, nil
 	}
-	// Sidecar token service (Paris box chromedp scraper, auto-refreshes every 25 min)
+	// Direct mint: JWE minted from this container's IP = same IP used for WS = no 4403.
+	if tok, err := tryDirectCodexToken(sessionCookie); err == nil && tok != "" {
+		fmt.Printf("[DEFINED-AUTH] Got token via direct /api/codex/token (len=%d)\n", len(tok))
+		return tok, nil
+	}
+	// Sidecar fallback (Paris box chromedp, auto-refreshes every 25 min)
 	if svcURL := os.Getenv("DEFINED_TOKEN_SERVICE_URL"); svcURL != "" {
 		if tok, err := tryTokenService(svcURL); err == nil && tok != "" {
 			fmt.Printf("[DEFINED-AUTH] Got token from sidecar (len=%d)\n", len(tok))
