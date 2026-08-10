@@ -44,10 +44,9 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		return fmt.Errorf("get cursor: %w", err)
 	}
 
-	const sigLimit = 100
-	// Paginate through ALL signatures newer than cursor (newest-first per page).
-	// Each page uses `before=oldestSigInPreviousPage` to walk backwards until
-	// we exhaust the window. This guarantees complete coverage regardless of volume.
+	// Solana RPC supports up to 1000 sigs per getSignaturesForAddress call.
+	// Using 1000 reduces page count ~10x vs 100: 45K sigs = 45 pages instead of 450.
+	const sigLimit = 1000
 	var sigs []helius.SigEntry
 	before := ""
 	for {
@@ -165,6 +164,17 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 
 	if err := db.UpsertEvents(ctx, events); err != nil {
 		return fmt.Errorf("upsert: %w", err)
+	}
+
+	// Store raw CU price samples for true percentile computation (not AVG of hourly p50).
+	cuSamples := make([]store.CUSample, 0, len(events))
+	for _, e := range events {
+		if e.CUPriceMicro > 0 {
+			cuSamples = append(cuSamples, store.CUSample{BlockTime: e.BlockTime, CUPriceMicro: e.CUPriceMicro})
+		}
+	}
+	if err := db.InsertCUSamples(ctx, plt, cuSamples); err != nil {
+		return fmt.Errorf("insert cu samples: %w", err)
 	}
 
 	// Advance cursor to the newest sig (first in original order = last in reversed).

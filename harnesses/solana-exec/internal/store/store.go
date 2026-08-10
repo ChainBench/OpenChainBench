@@ -124,6 +124,40 @@ func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[t
 	return tx.Commit(ctx)
 }
 
+// CUSample is a single compute-unit price observation from the enhanced API sample.
+type CUSample struct {
+	BlockTime     time.Time
+	CUPriceMicro  int64
+}
+
+// InsertCUSamples appends raw CU price samples; no dedup (each poll is a fresh sample).
+func (db *DB) InsertCUSamples(ctx context.Context, platform string, samples []CUSample) error {
+	if len(samples) == 0 {
+		return nil
+	}
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("store: begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	for _, s := range samples {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO solana_exec_cu_samples (platform, block_time, cu_price_micro) VALUES ($1,$2,$3)`,
+			platform, s.BlockTime, s.CUPriceMicro,
+		)
+		if err != nil {
+			return fmt.Errorf("store: insert cu sample: %w", err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// PurgeCUSamples deletes samples older than 35 days to bound table growth.
+func (db *DB) PurgeCUSamples(ctx context.Context) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM solana_exec_cu_samples WHERE block_time < now() - INTERVAL '35 days'`)
+	return err
+}
+
 // Materialize recomputes hourly facts for the given platform.
 // tx_count comes from solana_exec_raw_counts (full volume); fee metrics come
 // from the sampled solana_exec_events (representative quality metrics).
