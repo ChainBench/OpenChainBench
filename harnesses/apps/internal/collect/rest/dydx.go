@@ -4,15 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ChainBench/OpenChainBench/harnesses/apps/internal/spec"
 )
 
 const dydxIndexer = "https://indexer.dydx.trade/v4"
+
+// dYdX v4 taker fee rate: 5bps (0.05%) is the standard rate.
+// Maker fee is 0%. So every unit of notional volume generates 5bps in fees.
+// Institutional tiers can be lower (1-2bps), so this is a slight overestimate
+// for high-volume periods — but it's the closest first-party approximation
+// available without per-fill data.
+const dydxTakerFeeBps = 5 // 5 bps = 0.05%
 
 type DyDXCollector struct {
 	client *http.Client
@@ -22,18 +30,11 @@ func NewDyDX() *DyDXCollector {
 	return &DyDXCollector{client: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (c *DyDXCollector) Name() string { return "dydx-rest" }
+func (c *DyDXCollector) Name() string { return "dydx-volume-fees" }
 
-// megavaultPnlEntry is one day of MegaVault historical PnL.
-// MegaVault receives ~50% of all taker fees — tracking its PnL gives us lp_revenue directly.
-// Source: GET /v4/vault/v1/megavault/historicalPnl
-type megavaultPnlEntry struct {
-	Equity           string `json:"equity"`
-	TotalPnl         string `json:"totalPnl"`
-	NetTransfers     string `json:"netTransfers"`
-	CreatedAt        string `json:"createdAt"`       // "2026-01-15T00:00:00.000Z"
-	BlockHeight      string `json:"blockHeight"`
-	BlockTime        string `json:"blockTime"`
+type dydxCandle struct {
+	StartedAt string `json:"startedAt"` // "2026-08-09T00:00:00.000Z"
+	USDVolume string `json:"usdVolume"`
 }
 
 func (c *DyDXCollector) Collect(
@@ -44,69 +45,94 @@ func (c *DyDXCollector) Collect(
 ) (spec.Cursor, error) {
 	cursor := from
 
-	entries, err := c.fetchMegavaultPnl(ctx)
+	// Step 1: fetch all markets, keep those with any 24h volume.
+	markets, err := c.fetchActiveMarkets(ctx)
 	if err != nil {
-		return cursor, fmt.Errorf("dydx: megavault pnl: %w", err)
+		return cursor, fmt.Errorf("dydx: markets: %w", err)
 	}
 
-	// totalPnl is cumulative; emit daily deltas only.
-	// entries arrive oldest-first from the indexer.
-	for i, e := range entries {
-		h, _ := strconv.ParseUint(e.BlockHeight, 10, 64)
-		if h < from.Height {
+	// Step 2: fetch 90d of daily candles for each active market.
+	// Aggregate usdVolume per calendar day (UTC midnight).
+	dailyVol := map[string]float64{} // "YYYY-MM-DD" -> total USD volume
+
+	for _, ticker := range markets {
+		candles, err := c.fetchCandles(ctx, ticker, 90)
+		if err != nil {
+			// Non-fatal: skip this market if it fails.
 			continue
 		}
-		if h >= to.Height {
-			break
-		}
-
-		ts, err := parseTime(e.BlockTime)
-		if err != nil {
-			ts, err = parseTime(e.CreatedAt)
-			if err != nil {
+		for _, candle := range candles {
+			day := candle.StartedAt[:10] // "YYYY-MM-DD"
+			vol, err := strconv.ParseFloat(candle.USDVolume, 64)
+			if err != nil || vol <= 0 {
 				continue
 			}
+			dailyVol[day] += vol
+		}
+	}
+
+	// Step 3: sort days and emit fee events.
+	days := make([]string, 0, len(dailyVol))
+	for d := range dailyVol {
+		days = append(days, d)
+	}
+	sort.Strings(days)
+
+	today := time.Now().UTC().Format("2006-01-02")
+
+	for _, day := range days {
+		if day >= today {
+			continue // skip incomplete current day
 		}
 
-		// Daily delta = this snapshot's cumulative PnL minus previous snapshot's.
-		// Skip first entry (no previous to diff against) or loss days.
-		if i == 0 {
+		ts, err := time.Parse("2006-01-02", day)
+		if err != nil {
 			continue
 		}
-		delta := pnlDelta(entries[i-1].TotalPnl, e.TotalPnl)
-		if delta == "" || strings.HasPrefix(delta, "-") || delta == "0" {
+		ts = ts.UTC()
+		h := uint64(ts.Unix())
+
+		if h <= from.Height {
 			continue
 		}
+
+		vol := dailyVol[day]
+		if vol <= 0 {
+			continue
+		}
+
+		// fees = volume × (takerFeeBps / 10000)
+		feesUSD := vol * float64(dydxTakerFeeBps) / 10000.0
+		amountMicro := int64(math.Round(feesUSD * 1e6))
 
 		out <- spec.FeeEvent{
 			DeploymentID: deploymentID,
-			EventKey:     fmt.Sprintf("dydx:megavault:%s", e.BlockHeight),
+			EventKey:     fmt.Sprintf("dydx:vol-fee:%s", day),
 			Ts:           ts,
 			Height:       h,
 			Component:    "taker_fee",
-			Beneficiary:  "lp",
+			Beneficiary:  "burn",
 			Token:        "USDC",
-			AmountRaw:    delta,
-			Decimals:     0,
+			AmountRaw:    fmt.Sprintf("%d", amountMicro),
+			Decimals:     6,
 			Market:       "all",
 			Finality:     spec.FinalityFinal,
-			Source:       "dydx-indexer-megavault-pnl",
+			Source:       "dydx-indexer-volume",
 			Meta: map[string]string{
-				"note":          "MegaVault daily PnL delta ~ 50% of taker fees. Full split applied by materializer.",
-				"equity":        e.Equity,
-				"net_transfers": e.NetTransfers,
-				"total_pnl":     e.TotalPnl,
+				"usd_volume":    fmt.Sprintf("%.2f", vol),
+				"fee_rate_bps":  fmt.Sprintf("%d", dydxTakerFeeBps),
+				"note":          "volume * 5bps taker fee; maker fee = 0 on dYdX v4",
 			},
 		}
 
-		cursor = spec.Cursor{Height: h + 1, Ts: ts, Finalized: true}
+		cursor = spec.Cursor{Height: h + 86400, Ts: ts, Finalized: true}
 	}
 
 	return cursor, nil
 }
 
-func (c *DyDXCollector) fetchMegavaultPnl(ctx context.Context) ([]megavaultPnlEntry, error) {
-	url := fmt.Sprintf("%s/vault/v1/megavault/historicalPnl", dydxIndexer)
+func (c *DyDXCollector) fetchActiveMarkets(ctx context.Context) ([]string, error) {
+	url := fmt.Sprintf("%s/perpetualMarkets?limit=500", dydxIndexer)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -123,37 +149,41 @@ func (c *DyDXCollector) fetchMegavaultPnl(ctx context.Context) ([]megavaultPnlEn
 	}
 
 	var result struct {
-		MegavaultPnl []megavaultPnlEntry `json:"megavaultPnl"`
+		Markets map[string]json.RawMessage `json:"markets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
 
-	return result.MegavaultPnl, nil
+	tickers := make([]string, 0, len(result.Markets))
+	for ticker := range result.Markets {
+		tickers = append(tickers, ticker)
+	}
+	return tickers, nil
 }
 
-// pnlDelta subtracts two integer-string USDC values and returns the delta as a string.
-// Returns "" if either input is malformed.
-func pnlDelta(prev, curr string) string {
-	p, err1 := strconv.ParseInt(prev, 10, 64)
-	c, err2 := strconv.ParseInt(curr, 10, 64)
-	if err1 != nil || err2 != nil {
-		return ""
+func (c *DyDXCollector) fetchCandles(ctx context.Context, ticker string, days int) ([]dydxCandle, error) {
+	url := fmt.Sprintf("%s/candles/perpetualMarkets/%s?resolution=1DAY&limit=%d", dydxIndexer, ticker, days)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
 	}
-	d := c - p
-	return strconv.FormatInt(d, 10)
-}
 
-func parseTime(s string) (time.Time, error) {
-	formats := []string{
-		time.RFC3339Nano,
-		"2006-01-02T15:04:05.000Z",
-		"2006-01-02T15:04:05Z",
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	for _, f := range formats {
-		if t, err := time.Parse(f, s); err == nil {
-			return t, nil
-		}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
-	return time.Time{}, fmt.Errorf("cannot parse time: %q", s)
+
+	var result struct {
+		Candles []dydxCandle `json:"candles"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
+	}
+	return result.Candles, nil
 }
