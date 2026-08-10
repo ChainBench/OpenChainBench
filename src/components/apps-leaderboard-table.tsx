@@ -14,11 +14,14 @@ const WINDOWS = [
 ];
 
 // Maps leaderboard slug → perp venue slug + logo key
-const VENUE: Record<string, { perpSlug: string; logoKey: string }> = {
-  hyperliquid: { perpSlug: "hyperliquid", logoKey: "hyperliquid" },
-  dydx:        { perpSlug: "dydx",        logoKey: "dydx" },
-  gmx:         { perpSlug: "gmx",         logoKey: "gmx" },
-  "gains-trade": { perpSlug: "gains",     logoKey: "gains" },
+const VENUE: Record<string, { perpSlug: string | null; logoKey: string }> = {
+  hyperliquid:    { perpSlug: "hyperliquid",    logoKey: "hyperliquid" },
+  dydx:           { perpSlug: "dydx",           logoKey: "dydx" },
+  gmx:            { perpSlug: "gmx",            logoKey: "gmx" },
+  "gains-trade":  { perpSlug: "gains",          logoKey: "gains" },
+  drift:          { perpSlug: null, logoKey: "drift" },
+  "jupiter-perps": { perpSlug: null, logoKey: "jupiter" },
+  vertex:         { perpSlug: null, logoKey: "vertex" },
 };
 
 function fmt(n: number): string {
@@ -101,7 +104,7 @@ export function AppsLeaderboardTable({
               const barW = wm?.gross ? Math.max(2, Math.round((wm.gross / maxGross) * 100)) : 0;
               const venue = VENUE[p.slug];
               const logo = venue ? logoPath(venue.logoKey) : null;
-              const href = venue ? `/perp/${venue.perpSlug}` : null;
+              const href = venue?.perpSlug ? `/perp/${venue.perpSlug}` : null;
 
               const nameCell = (
                 <div className="flex items-center gap-2.5">
