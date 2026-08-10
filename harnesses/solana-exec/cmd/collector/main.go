@@ -24,7 +24,11 @@ func main() {
 	}
 	defer db.Close()
 
-	h := helius.New(mustEnv("HELIUS_API_KEY"))
+	rpcURL := os.Getenv("SOLANA_RPC_URL")
+	if rpcURL == "" {
+		rpcURL = "https://api.mainnet-beta.solana.com"
+	}
+	h := helius.NewWithRPC(mustEnv("HELIUS_API_KEY"), rpcURL)
 
 	log.Printf("collector: monitoring %d platforms", len(platform.FeeAccounts))
 
