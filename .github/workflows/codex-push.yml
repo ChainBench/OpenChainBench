@@ -1,0 +1,44 @@
+name: Codex token push
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  push-token:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: harnesses/aggregator-head-lag/go.mod
+          cache-dependency-path: harnesses/aggregator-head-lag/go.sum
+
+      - name: Build scraper
+        working-directory: harnesses/aggregator-head-lag
+        run: go build -o /tmp/codex-scraper ./cmd/test-utls/
+
+      - name: Scrape and push token
+        run: |
+          set -euo pipefail
+          output=$(MODE=default /tmp/codex-scraper 2>&1)
+          echo "$output" | head -5
+          token=$(echo "$output" | grep '^CODEX_TOKEN=' | cut -d= -f2-)
+          if [ -z "$token" ] || [ ${#token} -lt 100 ]; then
+            echo "ERROR: no token in output"
+            echo "$output"
+            exit 1
+          fi
+          echo "Got token (len=${#token}), pushing to sidecar..."
+          http_code=$(curl -s -o /tmp/push_resp -w "%{http_code}" -X POST \
+            -H "Content-Type: text/plain" \
+            --data-raw "$token" \
+            "http://57.130.19.92:8080/push")
+          if [ "$http_code" = "204" ]; then
+            echo "Push OK"
+          else
+            echo "Push failed (HTTP $http_code): $(cat /tmp/push_resp)"
+            exit 1
+          fi
