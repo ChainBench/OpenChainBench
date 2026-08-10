@@ -103,9 +103,30 @@ func scrapeCodexToken() (string, error) {
 	return "", fmt.Errorf("codex_token cookie not found after page load")
 }
 
+// chromeAvailable returns true if a Chrome/Chromium binary is found on this host.
+func chromeAvailable() bool {
+	for _, p := range []string{
+		os.Getenv("CHROME_PATH"),
+		"/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome",
+		"/usr/bin/google-chrome-stable",
+	} {
+		if p != "" {
+			if _, err := os.Stat(p); err == nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // startInProcessScraper launches a background goroutine that refreshes the JWE every 5 min.
-// Call once from main. Safe to call even if Chrome is not installed (logs error, no crash).
+// Call once from main. No-ops silently if Chrome is not installed.
 func startInProcessScraper(stopChan <-chan struct{}) {
+	if !chromeAvailable() {
+		fmt.Println("[CODEX-SCRAPER] Chrome not found — in-process scraper disabled (sidecar will be used)")
+		return
+	}
+
 	go func() {
 		// Initial delay: let the container fully start before launching Chrome.
 		select {
