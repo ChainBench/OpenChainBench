@@ -98,8 +98,10 @@ func (db *DB) SaveCursor(ctx context.Context, platform, lastSig string, slot uin
 }
 
 // UpsertRawCounts stores hourly successful-tx counts from raw sig pagination.
-// counts maps bucket_start (hour-truncated UTC) → total successful sigs that hour.
-func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[time.Time]int64) error {
+// fromCursor is cursor.LastSig at poll start — it makes each row idempotent:
+// same (platform, bucket, fromCursor) on retry → DO NOTHING, no double-count.
+// counts maps bucket_start (hour-truncated UTC) → successful sigs in this poll window.
+func (db *DB) UpsertRawCounts(ctx context.Context, platform, fromCursor string, counts map[time.Time]int64) error {
 	if len(counts) == 0 {
 		return nil
 	}
@@ -110,12 +112,10 @@ func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[t
 	defer tx.Rollback(ctx)
 	for bucket, count := range counts {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO solana_exec_raw_counts (platform, bucket_start, success_count, updated_at)
-			VALUES ($1, $2, $3, now())
-			ON CONFLICT (platform, bucket_start) DO UPDATE SET
-				success_count = solana_exec_raw_counts.success_count + EXCLUDED.success_count,
-				updated_at = now()`,
-			platform, bucket, count,
+			INSERT INTO solana_exec_raw_counts (platform, bucket_start, from_cursor, success_count, updated_at)
+			VALUES ($1, $2, $3, $4, now())
+			ON CONFLICT (platform, bucket_start, from_cursor) DO NOTHING`,
+			platform, bucket, fromCursor, count,
 		)
 		if err != nil {
 			return fmt.Errorf("store: upsert raw count %v: %w", bucket, err)
@@ -179,9 +179,11 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			AVG(e.cu_consumed) AS avg_cu_consumed,
 			now()
 		FROM solana_exec_events e
-		LEFT JOIN solana_exec_raw_counts r
-			ON r.platform = e.platform
-			AND r.bucket_start = date_trunc('hour', e.block_time)
+		LEFT JOIN (
+			SELECT platform, bucket_start, SUM(success_count) AS success_count
+			FROM solana_exec_raw_counts
+			GROUP BY platform, bucket_start
+		) r ON r.platform = e.platform AND r.bucket_start = date_trunc('hour', e.block_time)
 		WHERE e.platform = $1
 		GROUP BY e.platform, date_trunc('hour', e.block_time), r.success_count
 		ON CONFLICT (platform, bucket_start) DO UPDATE SET

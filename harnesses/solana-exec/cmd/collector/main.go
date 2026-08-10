@@ -97,7 +97,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		bucket := time.Unix(s.BlockTime, 0).UTC().Truncate(time.Hour)
 		hourBuckets[bucket]++
 	}
-	if err := db.UpsertRawCounts(ctx, plt, hourBuckets); err != nil {
+	if err := db.UpsertRawCounts(ctx, plt, cursor.LastSig, hourBuckets); err != nil {
 		return fmt.Errorf("upsert raw counts: %w", err)
 	}
 
