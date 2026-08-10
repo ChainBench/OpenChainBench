@@ -6,24 +6,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"sync"
 	"time"
 )
 
-// Client wraps the Helius RPC + enhanced-transactions APIs.
+// Client wraps the Solana JSON-RPC API.
+// All calls use standard Solana JSON-RPC — no third-party credits required.
 type Client struct {
 	httpClient *http.Client
-	apiKey     string
-	rpcURL     string // https://mainnet.helius-rpc.com/?api-key=KEY
-	enhURL     string // https://api.helius.xyz/v0/transactions?api-key=KEY
+	rpcURL     string
 }
 
-func New(apiKey string) *Client {
+// New creates a client using the given Solana RPC endpoint.
+func New(rpcURL string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
-		apiKey:     apiKey,
-		rpcURL:     fmt.Sprintf("https://mainnet.helius-rpc.com/?api-key=%s", apiKey),
-		enhURL:     fmt.Sprintf("https://api.helius.xyz/v0/transactions?api-key=%s", apiKey),
+		rpcURL:     rpcURL,
 	}
+}
+
+// NewWithRPC kept for call-site compat; apiKey is ignored.
+func NewWithRPC(_, rpcURL string) *Client {
+	return New(rpcURL)
 }
 
 // SigEntry is one result from getSignaturesForAddress.
@@ -36,8 +41,7 @@ type SigEntry struct {
 
 // GetSignaturesForAddress fetches up to `limit` finalized signatures for
 // `address`, newest-first. `until` is the exclusive upper bound (cursor);
-// `before` is the exclusive lower bound used for pagination (pass "" for
-// the first page).
+// `before` is the exclusive lower bound for pagination (pass "" for first page).
 func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, limit int, until, before string) ([]SigEntry, error) {
 	params := map[string]any{
 		"limit":      limit,
@@ -57,90 +61,336 @@ func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, li
 		"params":  []any{address, params},
 	})
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	var lastErr error
+	for attempt := range 3 {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt*attempt) * time.Second):
+			}
+		}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("helius RPC HTTP %d", resp.StatusCode)
-	}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("RPC HTTP 429")
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("RPC HTTP %d", resp.StatusCode)
+		}
 
-	var out struct {
-		Result []SigEntry `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+		var out struct {
+			Result []SigEntry `json:"result"`
+			Error  *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("RPC decode: %w", err)
+		}
+		resp.Body.Close()
+		if out.Error != nil {
+			return nil, fmt.Errorf("RPC error %d: %s", out.Error.Code, out.Error.Message)
+		}
+		return out.Result, nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("helius RPC decode: %w", err)
-	}
-	if out.Error != nil {
-		return nil, fmt.Errorf("helius RPC error %d: %s", out.Error.Code, out.Error.Message)
-	}
-	return out.Result, nil
+	return nil, fmt.Errorf("RPC: %w (after 3 attempts)", lastErr)
 }
 
-// NativeTransfer is a SOL transfer extracted by Helius.
+// NativeTransfer is a SOL transfer derived from pre/post balance diff.
 type NativeTransfer struct {
-	FromUserAccount string `json:"fromUserAccount"`
-	ToUserAccount   string `json:"toUserAccount"`
-	Amount          int64  `json:"amount"` // lamports
+	FromUserAccount string
+	ToUserAccount   string
+	Amount          int64 // lamports
 }
 
-// EnhancedTx is the Helius-parsed transaction.
+// TokenTransfer is an SPL token transfer derived from pre/post token balance diff.
+// Amount is in the token's raw units (e.g. 1 USDC = 1_000_000).
+type TokenTransfer struct {
+	ToOwner string // wallet that owns the destination token account
+	Mint    string // SPL token mint address
+	Amount  int64  // raw token units (positive = received)
+}
+
+// EnhancedTx is a parsed Solana transaction.
 type EnhancedTx struct {
-	Signature            string           `json:"signature"`
-	Slot                 uint64           `json:"slot"`
-	Timestamp            int64            `json:"timestamp"` // unix seconds
-	Fee                  int64            `json:"fee"`       // total fee lamports
-	FeePayer             string           `json:"feePayer"`
-	NativeTransfers      []NativeTransfer `json:"nativeTransfers"`
-	TransactionError     any              `json:"transactionError"`
-	ComputeUnitsConsumed int64            `json:"computeUnitsConsumed"`
+	Signature            string
+	Slot                 uint64
+	Timestamp            int64 // unix seconds
+	Fee                  int64 // total fee lamports
+	FeePayer             string
+	NativeTransfers      []NativeTransfer
+	TokenTransfers       []TokenTransfer
+	TransactionError     any
+	ComputeUnitsConsumed int64
 }
 
-// GetEnhancedTransactions fetches enhanced parsed transactions for up to 100
-// signatures in a single request. Helius caps the batch at 100.
+// GetEnhancedTransactions fetches and parses up to 100 transactions in parallel
+// using standard Solana JSON-RPC getTransaction — no third-party credits needed.
+// NativeTransfers and TokenTransfers are derived from pre/post balance diffs.
 func (c *Client) GetEnhancedTransactions(ctx context.Context, sigs []string) ([]EnhancedTx, error) {
 	if len(sigs) == 0 {
 		return nil, nil
 	}
 	if len(sigs) > 100 {
-		return nil, fmt.Errorf("helius: enhanced batch max 100 sigs, got %d", len(sigs))
+		return nil, fmt.Errorf("batch max 100 sigs, got %d", len(sigs))
 	}
 
-	body, _ := json.Marshal(map[string]any{
-		"transactions": sigs,
-	})
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.enhURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
+	type result struct {
+		tx EnhancedTx
+		ok bool
 	}
-	req.Header.Set("Content-Type", "application/json")
+	results := make([]result, len(sigs))
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
+	sem := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+	for i, sig := range sigs {
+		i, sig := i, sig
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			tx, err := c.getTransaction(ctx, sig)
+			if err != nil {
+				return
+			}
+			results[i] = result{tx: tx, ok: true}
+		}()
 	}
-	defer resp.Body.Close()
+	wg.Wait()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("helius enhanced HTTP %d", resp.StatusCode)
-	}
-
-	var txs []EnhancedTx
-	if err := json.NewDecoder(resp.Body).Decode(&txs); err != nil {
-		return nil, fmt.Errorf("helius enhanced decode: %w", err)
+	txs := make([]EnhancedTx, 0, len(sigs))
+	for _, r := range results {
+		if r.ok {
+			txs = append(txs, r.tx)
+		}
 	}
 	return txs, nil
+}
+
+// accountKey handles both legacy (bare string) and v0 (object with pubkey field) formats.
+type accountKey struct{ Pubkey string }
+
+func (a *accountKey) UnmarshalJSON(b []byte) error {
+	var s string
+	if json.Unmarshal(b, &s) == nil {
+		a.Pubkey = s
+		return nil
+	}
+	var obj struct {
+		Pubkey string `json:"pubkey"`
+	}
+	if err := json.Unmarshal(b, &obj); err != nil {
+		return err
+	}
+	a.Pubkey = obj.Pubkey
+	return nil
+}
+
+func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, error) {
+	body, _ := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "getTransaction",
+		"params": []any{sig, map[string]any{
+			"encoding":                       "json",
+			"commitment":                     "finalized",
+			"maxSupportedTransactionVersion": 0,
+		}},
+	})
+
+	type tokenBalanceEntry struct {
+		AccountIndex  int    `json:"accountIndex"`
+		Mint          string `json:"mint"`
+		Owner         string `json:"owner"`
+		UITokenAmount struct {
+			Amount string `json:"amount"` // raw integer as string
+		} `json:"uiTokenAmount"`
+	}
+
+	var out struct {
+		Result *struct {
+			Slot      uint64 `json:"slot"`
+			BlockTime *int64 `json:"blockTime"`
+			Transaction struct {
+				Message struct {
+					AccountKeys []accountKey `json:"accountKeys"`
+				} `json:"message"`
+				Signatures []string `json:"signatures"`
+			} `json:"transaction"`
+			Meta *struct {
+				Err                  any                  `json:"err"`
+				Fee                  int64                `json:"fee"`
+				PreBalances          []int64              `json:"preBalances"`
+				PostBalances         []int64              `json:"postBalances"`
+				ComputeUnitsConsumed *int64               `json:"computeUnitsConsumed"`
+				PreTokenBalances     []tokenBalanceEntry  `json:"preTokenBalances"`
+				PostTokenBalances    []tokenBalanceEntry  `json:"postTokenBalances"`
+				LoadedAddresses      *struct {
+					Writable []string `json:"writable"`
+					Readonly []string `json:"readonly"`
+				} `json:"loadedAddresses"`
+			} `json:"meta"`
+		} `json:"result"`
+		Error *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	var lastErr error
+	for attempt := range 3 {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return EnhancedTx{}, ctx.Err()
+			case <-time.After(time.Duration(attempt*attempt) * time.Second):
+			}
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
+		if err != nil {
+			return EnhancedTx{}, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("getTransaction HTTP 429")
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return EnhancedTx{}, fmt.Errorf("getTransaction HTTP %d", resp.StatusCode)
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("decode: %w", err)
+			continue
+		}
+		resp.Body.Close()
+		lastErr = nil
+		break
+	}
+	if lastErr != nil {
+		return EnhancedTx{}, fmt.Errorf("getTransaction: %w (after 3 attempts)", lastErr)
+	}
+	if out.Error != nil {
+		return EnhancedTx{}, fmt.Errorf("RPC error %d: %s", out.Error.Code, out.Error.Message)
+	}
+	if out.Result == nil || out.Result.Meta == nil {
+		return EnhancedTx{}, fmt.Errorf("null result for %s", sig)
+	}
+
+	r := out.Result
+	m := r.Meta
+
+	// Full account key list: static keys + v0 loaded addresses (writable then readonly).
+	accounts := make([]accountKey, len(r.Transaction.Message.AccountKeys))
+	copy(accounts, r.Transaction.Message.AccountKeys)
+	if m.LoadedAddresses != nil {
+		for _, addr := range m.LoadedAddresses.Writable {
+			accounts = append(accounts, accountKey{Pubkey: addr})
+		}
+		for _, addr := range m.LoadedAddresses.Readonly {
+			accounts = append(accounts, accountKey{Pubkey: addr})
+		}
+	}
+
+	// NativeTransfers: accounts whose SOL balance increased received SOL.
+	var nativeTransfers []NativeTransfer
+	for i, key := range accounts {
+		if i >= len(m.PreBalances) || i >= len(m.PostBalances) {
+			break
+		}
+		diff := m.PostBalances[i] - m.PreBalances[i]
+		if diff > 0 {
+			nativeTransfers = append(nativeTransfers, NativeTransfer{ToUserAccount: key.Pubkey, Amount: diff})
+		}
+	}
+
+	// TokenTransfers: net SPL token gain per (owner, mint).
+	// Sum pre and post separately so wallets with multiple ATAs for the same mint
+	// are handled correctly — the diff is the net change, not a per-account delta.
+	type ownerMint struct{ owner, mint string }
+	preTokenAmt := make(map[ownerMint]int64, len(m.PreTokenBalances))
+	for _, tb := range m.PreTokenBalances {
+		if tb.Owner == "" {
+			continue
+		}
+		amt, _ := strconv.ParseInt(tb.UITokenAmount.Amount, 10, 64)
+		preTokenAmt[ownerMint{tb.Owner, tb.Mint}] += amt
+	}
+	postTokenAmt := make(map[ownerMint]int64, len(m.PostTokenBalances))
+	for _, tb := range m.PostTokenBalances {
+		if tb.Owner == "" {
+			continue // owner field absent on very old txs
+		}
+		amt, _ := strconv.ParseInt(tb.UITokenAmount.Amount, 10, 64)
+		postTokenAmt[ownerMint{tb.Owner, tb.Mint}] += amt
+	}
+	var tokenTransfers []TokenTransfer
+	for key, postAmt := range postTokenAmt {
+		diff := postAmt - preTokenAmt[key]
+		if diff > 0 {
+			tokenTransfers = append(tokenTransfers, TokenTransfer{
+				ToOwner: key.owner,
+				Mint:    key.mint,
+				Amount:  diff,
+			})
+		}
+	}
+
+	var cuConsumed int64
+	if m.ComputeUnitsConsumed != nil {
+		cuConsumed = *m.ComputeUnitsConsumed
+	}
+
+	var feePayer string
+	if len(accounts) > 0 {
+		feePayer = accounts[0].Pubkey
+	}
+
+	var blockTime int64
+	if r.BlockTime != nil {
+		blockTime = *r.BlockTime
+	}
+
+	var sig0 string
+	if len(r.Transaction.Signatures) > 0 {
+		sig0 = r.Transaction.Signatures[0]
+	}
+
+	return EnhancedTx{
+		Signature:            sig0,
+		Slot:                 r.Slot,
+		Timestamp:            blockTime,
+		Fee:                  m.Fee,
+		FeePayer:             feePayer,
+		NativeTransfers:      nativeTransfers,
+		TokenTransfers:       tokenTransfers,
+		TransactionError:     m.Err,
+		ComputeUnitsConsumed: cuConsumed,
+	}, nil
 }

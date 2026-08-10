@@ -69,7 +69,7 @@ func (db *DB) UpsertEvents(ctx context.Context, events []ExecEvent) error {
 	return tx.Commit(ctx)
 }
 
-// Cursor holds the last processed signature for a platform.
+// Cursor holds the last processed signature for a fee account.
 type Cursor struct {
 	LastSig string
 	Slot    uint64
@@ -98,8 +98,9 @@ func (db *DB) SaveCursor(ctx context.Context, platform, lastSig string, slot uin
 }
 
 // UpsertRawCounts stores hourly successful-tx counts from raw sig pagination.
-// counts maps bucket_start (hour-truncated UTC) → total successful sigs that hour.
-func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[time.Time]int64) error {
+// fromCursor is cursor.LastSig at poll start — makes each row idempotent:
+// same (platform, bucket_start, fromCursor) on retry → DO NOTHING, no double-count.
+func (db *DB) UpsertRawCounts(ctx context.Context, platform, fromCursor string, counts map[time.Time]int64) error {
 	if len(counts) == 0 {
 		return nil
 	}
@@ -110,18 +111,59 @@ func (db *DB) UpsertRawCounts(ctx context.Context, platform string, counts map[t
 	defer tx.Rollback(ctx)
 	for bucket, count := range counts {
 		_, err := tx.Exec(ctx, `
-			INSERT INTO solana_exec_raw_counts (platform, bucket_start, success_count, updated_at)
-			VALUES ($1, $2, $3, now())
-			ON CONFLICT (platform, bucket_start) DO UPDATE SET
-				success_count = solana_exec_raw_counts.success_count + EXCLUDED.success_count,
-				updated_at = now()`,
-			platform, bucket, count,
+			INSERT INTO solana_exec_raw_counts (platform, bucket_start, from_cursor, success_count, updated_at)
+			VALUES ($1, $2, $3, $4, now())
+			ON CONFLICT (platform, bucket_start, from_cursor) DO NOTHING`,
+			platform, bucket, fromCursor, count,
 		)
 		if err != nil {
 			return fmt.Errorf("store: upsert raw count %v: %w", bucket, err)
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// CUSample is a single compute-unit price observation from the enhanced API sample.
+type CUSample struct {
+	Sig          string
+	BlockTime    time.Time
+	CUPriceMicro int64
+}
+
+// InsertCUSamples stores CU price samples idempotently keyed on (platform, sig).
+func (db *DB) InsertCUSamples(ctx context.Context, platform string, samples []CUSample) error {
+	if len(samples) == 0 {
+		return nil
+	}
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("store: begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	for _, s := range samples {
+		_, err := tx.Exec(ctx,
+			`INSERT INTO solana_exec_cu_samples (platform, sig, block_time, cu_price_micro)
+			 VALUES ($1,$2,$3,$4)
+			 ON CONFLICT (platform, sig) DO NOTHING`,
+			platform, s.Sig, s.BlockTime, s.CUPriceMicro,
+		)
+		if err != nil {
+			return fmt.Errorf("store: insert cu sample %s: %w", s.Sig, err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// PurgeCUSamples deletes samples older than 35 days to bound table growth.
+func (db *DB) PurgeCUSamples(ctx context.Context) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM solana_exec_cu_samples WHERE block_time < now() - INTERVAL '35 days'`)
+	return err
+}
+
+// PurgeEvents deletes sampled events older than 90 days.
+func (db *DB) PurgeEvents(ctx context.Context) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM solana_exec_events WHERE block_time < now() - INTERVAL '90 days'`)
+	return err
 }
 
 // Materialize recomputes hourly facts for the given platform.
@@ -145,9 +187,11 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			AVG(e.cu_consumed) AS avg_cu_consumed,
 			now()
 		FROM solana_exec_events e
-		LEFT JOIN solana_exec_raw_counts r
-			ON r.platform = e.platform
-			AND r.bucket_start = date_trunc('hour', e.block_time)
+		LEFT JOIN (
+			SELECT platform, bucket_start, SUM(success_count) AS success_count
+			FROM solana_exec_raw_counts
+			GROUP BY platform, bucket_start
+		) r ON r.platform = e.platform AND r.bucket_start = date_trunc('hour', e.block_time)
 		WHERE e.platform = $1
 		GROUP BY e.platform, date_trunc('hour', e.block_time), r.success_count
 		ON CONFLICT (platform, bucket_start) DO UPDATE SET
