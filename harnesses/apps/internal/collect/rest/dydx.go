@@ -55,7 +55,7 @@ func (c *DyDXCollector) Collect(
 	dailyVol := map[string]float64{} // "YYYY-MM-DD" -> total USD volume
 
 	for _, ticker := range markets {
-		candles, err := c.fetchCandles(ctx, ticker, 90)
+		candles, err := c.fetchCandles(ctx, ticker, 1000)
 		if err != nil {
 			// Non-fatal: skip this market if it fails.
 			continue
