@@ -45,20 +45,28 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 	}
 
 	const sigLimit = 100
-	// Fetch signatures newer than last seen. Results are newest-first.
-	sigs, err := h.GetSignaturesForAddress(ctx, feeAccount, sigLimit, cursor.LastSig)
-	if err != nil {
-		return fmt.Errorf("get sigs: %w", err)
+	// Paginate through ALL signatures newer than cursor (newest-first per page).
+	// Each page uses `before=oldestSigInPreviousPage` to walk backwards until
+	// we exhaust the window. This guarantees complete coverage regardless of volume.
+	var sigs []helius.SigEntry
+	before := ""
+	for {
+		batch, err := h.GetSignaturesForAddress(ctx, feeAccount, sigLimit, cursor.LastSig, before)
+		if err != nil {
+			return fmt.Errorf("get sigs (before=%s): %w", before, err)
+		}
+		sigs = append(sigs, batch...)
+		if len(batch) < sigLimit {
+			break // last page
+		}
+		before = batch[len(batch)-1].Signature
+		time.Sleep(300 * time.Millisecond) // respect Helius free-tier rate limit between pages
 	}
 	if len(sigs) == 0 {
 		return nil
 	}
-	// On incremental polls (cursor set), hitting the cap means we're dropping older
-	// txs from this window — tx counts will be understated, though fee stats remain
-	// a representative sample of the most-recent transactions.
-	// The initial bootstrap (no cursor) always hits the cap; that's expected.
-	if len(sigs) == sigLimit && cursor.LastSig != "" {
-		log.Printf("collector: %s: WARNING hit sig limit (%d) — older txs in this poll window dropped; reduce POLL_INTERVAL or increase limit", plt, sigLimit)
+	if len(sigs) > sigLimit {
+		log.Printf("collector: %s: paginated %d raw sigs (%d pages)", plt, len(sigs), (len(sigs)+sigLimit-1)/sigLimit)
 	}
 
 	// Reverse to process oldest-first so cursor is always the true watermark.

@@ -34,17 +34,20 @@ type SigEntry struct {
 	Err       any    `json:"err"`       // nil = success
 }
 
-// GetSignaturesForAddress fetches up to `limit` finalized signatures
-// for `address`. Pass `until=""` to get the most recent; pass a sig
-// to get only transactions newer than that sig (exclusive).
-// Results are returned newest-first.
-func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, limit int, until string) ([]SigEntry, error) {
+// GetSignaturesForAddress fetches up to `limit` finalized signatures for
+// `address`, newest-first. `until` is the exclusive upper bound (cursor);
+// `before` is the exclusive lower bound used for pagination (pass "" for
+// the first page).
+func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, limit int, until, before string) ([]SigEntry, error) {
 	params := map[string]any{
 		"limit":      limit,
 		"commitment": "finalized",
 	}
 	if until != "" {
 		params["until"] = until
+	}
+	if before != "" {
+		params["before"] = before
 	}
 
 	body, _ := json.Marshal(map[string]any{
