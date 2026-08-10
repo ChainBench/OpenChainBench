@@ -67,36 +67,57 @@ func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, li
 		"params":  []any{address, params},
 	})
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	// Retry up to 3 times on 429 or transient errors with exponential backoff.
+	var lastErr error
+	for attempt := range 3 {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt*attempt) * time.Second):
+			}
+		}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("helius RPC HTTP %d", resp.StatusCode)
-	}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
 
-	var out struct {
-		Result []SigEntry `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("helius RPC HTTP 429")
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("helius RPC HTTP %d", resp.StatusCode)
+		}
+
+		var out struct {
+			Result []SigEntry `json:"result"`
+			Error  *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("helius RPC decode: %w", err)
+		}
+		resp.Body.Close()
+		if out.Error != nil {
+			return nil, fmt.Errorf("helius RPC error %d: %s", out.Error.Code, out.Error.Message)
+		}
+		return out.Result, nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("helius RPC decode: %w", err)
-	}
-	if out.Error != nil {
-		return nil, fmt.Errorf("helius RPC error %d: %s", out.Error.Code, out.Error.Message)
-	}
-	return out.Result, nil
+	return nil, fmt.Errorf("helius RPC: %w (after 3 attempts)", lastErr)
 }
 
 // NativeTransfer is a SOL transfer extracted by Helius.
