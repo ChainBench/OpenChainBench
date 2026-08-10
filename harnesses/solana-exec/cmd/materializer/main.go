@@ -30,6 +30,9 @@ func main() {
 		if err := db.PurgeCUSamples(ctx); err != nil {
 			log.Printf("materializer: purge cu samples: %v", err)
 		}
+		if err := db.PurgeEvents(ctx); err != nil {
+			log.Printf("materializer: purge events: %v", err)
+		}
 		time.Sleep(5 * time.Minute)
 	}
 }

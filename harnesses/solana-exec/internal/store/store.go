@@ -126,11 +126,13 @@ func (db *DB) UpsertRawCounts(ctx context.Context, platform, fromCursor string, 
 
 // CUSample is a single compute-unit price observation from the enhanced API sample.
 type CUSample struct {
-	BlockTime     time.Time
-	CUPriceMicro  int64
+	Sig          string
+	BlockTime    time.Time
+	CUPriceMicro int64
 }
 
-// InsertCUSamples appends raw CU price samples; no dedup (each poll is a fresh sample).
+// InsertCUSamples stores CU price samples idempotently keyed on (platform, sig).
+// Crash-safe: retry after failure re-inserts the same sigs → ON CONFLICT DO NOTHING.
 func (db *DB) InsertCUSamples(ctx context.Context, platform string, samples []CUSample) error {
 	if len(samples) == 0 {
 		return nil
@@ -142,11 +144,13 @@ func (db *DB) InsertCUSamples(ctx context.Context, platform string, samples []CU
 	defer tx.Rollback(ctx)
 	for _, s := range samples {
 		_, err := tx.Exec(ctx,
-			`INSERT INTO solana_exec_cu_samples (platform, block_time, cu_price_micro) VALUES ($1,$2,$3)`,
-			platform, s.BlockTime, s.CUPriceMicro,
+			`INSERT INTO solana_exec_cu_samples (platform, sig, block_time, cu_price_micro)
+			 VALUES ($1,$2,$3,$4)
+			 ON CONFLICT (platform, sig) DO NOTHING`,
+			platform, s.Sig, s.BlockTime, s.CUPriceMicro,
 		)
 		if err != nil {
-			return fmt.Errorf("store: insert cu sample: %w", err)
+			return fmt.Errorf("store: insert cu sample %s: %w", s.Sig, err)
 		}
 	}
 	return tx.Commit(ctx)
@@ -155,6 +159,14 @@ func (db *DB) InsertCUSamples(ctx context.Context, platform string, samples []CU
 // PurgeCUSamples deletes samples older than 35 days to bound table growth.
 func (db *DB) PurgeCUSamples(ctx context.Context) error {
 	_, err := db.pool.Exec(ctx, `DELETE FROM solana_exec_cu_samples WHERE block_time < now() - INTERVAL '35 days'`)
+	return err
+}
+
+// PurgeEvents deletes sampled events older than 90 days.
+// Facts table already holds aggregated metrics; raw events beyond this window
+// only cost storage without adding analytical value.
+func (db *DB) PurgeEvents(ctx context.Context) error {
+	_, err := db.pool.Exec(ctx, `DELETE FROM solana_exec_events WHERE block_time < now() - INTERVAL '90 days'`)
 	return err
 }
 
