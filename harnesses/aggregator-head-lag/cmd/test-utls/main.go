@@ -106,6 +106,26 @@ func main() {
 	mode := os.Getenv("MODE")
 
 	switch mode {
+	case "fetch-html":
+		// Fetch URL via utls, print body to stdout
+		target := os.Getenv("URL")
+		if target == "" {
+			target = "https://www.defined.fi/"
+		}
+		client := newUTLSClient()
+		req, _ := http.NewRequest("GET", target, nil)
+		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		fmt.Fprintf(os.Stderr, "HTTP %d\n", resp.StatusCode)
+		io.Copy(os.Stdout, resp.Body)
+
 	case "scrape":
 		// Step 1 only: GET defined.fi, print cookies
 		client := newUTLSClient()
