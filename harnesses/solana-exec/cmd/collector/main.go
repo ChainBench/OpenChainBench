@@ -44,13 +44,21 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		return fmt.Errorf("get cursor: %w", err)
 	}
 
+	const sigLimit = 100
 	// Fetch signatures newer than last seen. Results are newest-first.
-	sigs, err := h.GetSignaturesForAddress(ctx, feeAccount, 100, cursor.LastSig)
+	sigs, err := h.GetSignaturesForAddress(ctx, feeAccount, sigLimit, cursor.LastSig)
 	if err != nil {
 		return fmt.Errorf("get sigs: %w", err)
 	}
 	if len(sigs) == 0 {
 		return nil
+	}
+	// On incremental polls (cursor set), hitting the cap means we're dropping older
+	// txs from this window — tx counts will be understated, though fee stats remain
+	// a representative sample of the most-recent transactions.
+	// The initial bootstrap (no cursor) always hits the cap; that's expected.
+	if len(sigs) == sigLimit && cursor.LastSig != "" {
+		log.Printf("collector: %s: WARNING hit sig limit (%d) — older txs in this poll window dropped; reduce POLL_INTERVAL or increase limit", plt, sigLimit)
 	}
 
 	// Reverse to process oldest-first so cursor is always the true watermark.
