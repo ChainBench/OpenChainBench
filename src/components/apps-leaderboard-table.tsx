@@ -17,7 +17,11 @@ function fmt(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-function Dot() {
+function fmtDate(s: string): string {
+  return s.slice(0, 10);
+}
+
+function Dash() {
   return <span className="text-ink-muted">—</span>;
 }
 
@@ -28,7 +32,7 @@ export function AppsLeaderboardTable({
   protocols: ProtocolRow[];
   updatedAt: string | null;
 }) {
-  const [window, setWindow] = useState("30d");
+  const [win, setWin] = useState("30d");
 
   if (protocols.length === 0) {
     return (
@@ -39,23 +43,25 @@ export function AppsLeaderboardTable({
   }
 
   const sorted = [...protocols].sort(
-    (a, b) =>
-      (b.windows[window]?.gross ?? 0) - (a.windows[window]?.gross ?? 0),
+    (a, b) => (b.windows[win]?.gross ?? 0) - (a.windows[win]?.gross ?? 0),
   );
 
+  const maxGross = sorted[0]?.windows[win]?.gross ?? 1;
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+    <div className="card rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 sm:px-6 pt-4 pb-0 flex items-end justify-between gap-4 flex-wrap border-b border-rule">
         <div className="flex gap-1">
           {WINDOWS.map((w) => (
             <button
               key={w.key}
               type="button"
-              onClick={() => setWindow(w.key)}
-              className={`px-3 py-1 rounded text-sm font-mono transition-colors ${
-                window === w.key
-                  ? "bg-ink text-bg"
-                  : "text-ink-soft hover:text-ink"
+              onClick={() => setWin(w.key)}
+              className={`px-3 py-2 text-sm font-mono border-b-2 transition-colors ${
+                win === w.key
+                  ? "border-accent text-ink font-medium"
+                  : "border-transparent text-ink-muted hover:text-ink-soft"
               }`}
             >
               {w.label}
@@ -63,45 +69,62 @@ export function AppsLeaderboardTable({
           ))}
         </div>
         {updatedAt && (
-          <span className="text-xs text-ink-muted font-mono">
+          <span className="text-[11px] text-ink-faint font-mono pb-2">
             Updated {new Date(updatedAt).toLocaleString()}
           </span>
         )}
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink/10">
-              <th className="text-left py-2 pr-4 font-medium text-ink-soft w-8">#</th>
-              <th className="text-left py-2 pr-4 font-medium text-ink-soft">Protocol</th>
-              <th className="text-right py-2 pr-4 font-medium text-ink-soft">Gross fees</th>
-              <th className="text-right py-2 pr-4 font-medium text-ink-soft hidden sm:table-cell">Burn / AF</th>
-              <th className="text-right py-2 pr-4 font-medium text-ink-soft hidden sm:table-cell">LP</th>
-              <th className="text-right py-2 font-medium text-ink-soft hidden md:table-cell">Latest data</th>
+            <tr className="border-b border-rule">
+              <th className="text-left py-3 pl-4 sm:pl-6 pr-3 font-medium text-ink-muted text-xs w-8 tabular-nums">#</th>
+              <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs">Protocol</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">Gross fees</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden sm:table-cell">Token holders</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden sm:table-cell">LPs</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Latest</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((p, i) => {
-              const wm: WindowMetrics | undefined = p.windows[window];
+              const wm: WindowMetrics | undefined = p.windows[win];
+              const barW = wm?.gross ? Math.max(2, Math.round((wm.gross / maxGross) * 100)) : 0;
               return (
-                <tr key={p.id} className="border-b border-ink/5 hover:bg-ink/2">
-                  <td className="py-3 pr-4 text-ink-muted font-mono text-xs">{i + 1}</td>
-                  <td className="py-3 pr-4">
-                    <div className="font-medium text-ink">{p.name}</div>
-                    <div className="text-xs text-ink-muted capitalize">{p.category}</div>
+                <tr
+                  key={p.id}
+                  className="border-b border-rule last:border-0 hover:bg-paper-soft transition-colors"
+                >
+                  <td className="py-4 pl-4 sm:pl-6 pr-3 text-ink-muted font-mono text-xs tabular-nums align-middle">
+                    {i + 1}
                   </td>
-                  <td className="py-3 pr-4 text-right font-mono">
-                    {wm?.gross ? fmt(wm.gross) : <Dot />}
+                  <td className="py-4 pr-4 align-middle">
+                    <div className="font-medium text-ink leading-tight">{p.name}</div>
+                    <div className="text-xs text-ink-muted capitalize mt-0.5">{p.category}</div>
                   </td>
-                  <td className="py-3 pr-4 text-right font-mono text-ink-soft hidden sm:table-cell">
-                    {wm?.burn ? fmt(wm.burn) : <Dot />}
+                  <td className="py-4 pr-4 sm:pr-6 text-right align-middle">
+                    <div className="font-mono font-semibold text-ink tabular-nums">
+                      {wm?.gross ? fmt(wm.gross) : <Dash />}
+                    </div>
+                    {barW > 0 && (
+                      <div className="mt-1.5 ml-auto h-[3px] rounded-full bg-rule" style={{ width: "80px" }}>
+                        <div
+                          className="h-full rounded-full bg-accent/60"
+                          style={{ width: `${barW}%` }}
+                        />
+                      </div>
+                    )}
                   </td>
-                  <td className="py-3 pr-4 text-right font-mono text-ink-soft hidden sm:table-cell">
-                    {wm?.lp ? fmt(wm.lp) : <Dot />}
+                  <td className="py-4 pr-4 sm:pr-6 text-right font-mono text-ink-soft tabular-nums align-middle hidden sm:table-cell">
+                    {wm?.burn ? fmt(wm.burn) : <Dash />}
                   </td>
-                  <td className="py-3 text-right text-xs text-ink-muted font-mono hidden md:table-cell">
-                    {p.latestDay ? p.latestDay.slice(0, 10) : <Dot />}
+                  <td className="py-4 pr-4 sm:pr-6 text-right font-mono text-ink-soft tabular-nums align-middle hidden sm:table-cell">
+                    {wm?.lp ? fmt(wm.lp) : <Dash />}
+                  </td>
+                  <td className="py-4 pr-4 sm:pr-6 text-right font-mono text-xs text-ink-muted align-middle hidden md:table-cell">
+                    {p.latestDay ? fmtDate(p.latestDay) : <Dash />}
                   </td>
                 </tr>
               );
