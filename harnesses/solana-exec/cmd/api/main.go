@@ -121,6 +121,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				MAX(f.bucket_start)::text AS latest_bucket
 			FROM solana_exec_facts f
 			LEFT JOIN cu c USING (platform)
+			WHERE f.bucket_start >= now() - INTERVAL '31 days'
 			GROUP BY f.platform`,
 		)
 		if err != nil {
