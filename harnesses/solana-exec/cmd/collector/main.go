@@ -85,10 +85,29 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		}
 	}
 
+	// Count successful sigs per hour bucket from raw pagination (full volume, no enhanced API cost).
+	hourBuckets := make(map[time.Time]int64)
+	for _, s := range reversed {
+		if s.Err != nil || s.BlockTime == 0 {
+			continue
+		}
+		bucket := time.Unix(s.BlockTime, 0).UTC().Truncate(time.Hour)
+		hourBuckets[bucket]++
+	}
+	if err := db.UpsertRawCounts(ctx, plt, hourBuckets); err != nil {
+		return fmt.Errorf("upsert raw counts: %w", err)
+	}
+
 	if len(sigStrs) == 0 {
 		// All sigs in this batch were failed txs; advance cursor and skip.
 		newest := sigs[0]
 		return db.SaveCursor(ctx, plt, newest.Signature, newest.Slot)
+	}
+
+	// Cap enhanced API at 100 sigs per poll (Helius free-tier budget: ~432K CUs/month).
+	// Fee quality metrics are sampled; tx_count comes from raw counts above.
+	if len(sigStrs) > 100 {
+		sigStrs = sigStrs[:100]
 	}
 
 	txs, err := h.GetEnhancedTransactions(ctx, sigStrs)
