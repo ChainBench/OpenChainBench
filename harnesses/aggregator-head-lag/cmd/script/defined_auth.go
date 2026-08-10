@@ -141,12 +141,20 @@ func GetDefinedJWTToken(sessionCookie string) (string, error) {
 		fmt.Printf("[DEFINED-AUTH] Got token from in-process scraper (age=%v, len=%d)\n", time.Since(mintedAt).Round(time.Second), len(tok))
 		return tok, nil
 	}
-	// Direct mint: JWE minted from this container's IP = same IP used for WS = no 4403.
+	// utls Chrome fingerprint scraper: visits defined.fi, gets CSRF, POSTs to /api/codex/token.
+	// Works if this container's IP is not in Vercel's datacenter blocklist.
+	if tok, err := tryUtlsCodexToken(); err == nil && tok != "" {
+		fmt.Printf("[DEFINED-AUTH] Got token via utls scraper (len=%d)\n", len(tok))
+		return tok, nil
+	} else {
+		fmt.Printf("[DEFINED-AUTH] utls scraper failed: %v\n", err)
+	}
+	// Direct mint (standard Go TLS, usually blocked by Vercel bot check).
 	if tok, err := tryDirectCodexToken(sessionCookie); err == nil && tok != "" {
 		fmt.Printf("[DEFINED-AUTH] Got token via direct /api/codex/token (len=%d)\n", len(tok))
 		return tok, nil
 	}
-	// Sidecar fallback (Paris box chromedp, auto-refreshes every 25 min — may be stale)
+	// Sidecar fallback (Paris box, Mac-push keeps it fresh every 5 min)
 	if svcURL := os.Getenv("DEFINED_TOKEN_SERVICE_URL"); svcURL != "" {
 		if tok, err := tryTokenService(svcURL); err == nil && tok != "" {
 			fmt.Printf("[DEFINED-AUTH] Got token from sidecar (len=%d)\n", len(tok))
