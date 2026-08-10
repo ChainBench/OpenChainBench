@@ -117,7 +117,6 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			now()
 		FROM solana_exec_events
 		WHERE platform = $1
-		  AND block_time < date_trunc('hour', now())
 		GROUP BY platform, date_trunc('hour', block_time)
 		ON CONFLICT (platform, bucket_start) DO UPDATE SET
 			tx_count = EXCLUDED.tx_count,
