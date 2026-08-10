@@ -59,6 +59,7 @@ var deploymentMeta = map[string]struct{ Name, Slug, Category string }{
 	"dydx-v4:dydx-chain":   {Name: "dYdX", Slug: "dydx", Category: "perps"},
 	"gmx-v2:arbitrum":      {Name: "GMX v2 (Arbitrum)", Slug: "gmx", Category: "perps"},
 	"gmx-v2:avalanche":     {Name: "GMX v2 (Avalanche)", Slug: "gmx", Category: "perps"},
+	"gains-trade:arbitrum": {Name: "Gains.trade", Slug: "gains-trade", Category: "perps"},
 }
 
 func handleLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
