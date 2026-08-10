@@ -32,6 +32,9 @@ func main() {
 	hl := rest.NewHyperliquid()
 	gmxArb := rest.NewGMXv2Arbitrum()
 	gmxAvax := rest.NewGMXv2Avalanche()
+	drift := rest.NewDeFiLlama("drift-trade")
+	jupiterPerps := rest.NewDeFiLlama("jupiter-perpetual-exchange")
+	vertex := rest.NewDeFiLlama("vertex-perps")
 
 	gainsWS := rest.NewGainsTradeWS()
 
@@ -71,6 +74,15 @@ func main() {
 		}
 		if err := runCollector(ctx, db, gmxAvax, "gmx-v2:avalanche"); err != nil {
 			log.Printf("gmx-v2:avalanche collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, drift, "drift:solana"); err != nil {
+			log.Printf("drift collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, jupiterPerps, "jupiter-perps:solana"); err != nil {
+			log.Printf("jupiter-perps collector error: %v", err)
+		}
+		if err := runCollector(ctx, db, vertex, "vertex:arbitrum"); err != nil {
+			log.Printf("vertex collector error: %v", err)
 		}
 		time.Sleep(60 * time.Second)
 	}
