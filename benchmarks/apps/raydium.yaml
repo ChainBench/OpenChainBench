@@ -1,0 +1,154 @@
+schema_version: 1
+slug: raydium
+name: Raydium
+category: dex
+methodology_version: 1
+status: live
+verifiability: tier_1
+
+# Piège dominant : accrual vs claim.
+# Les fees s'accumulent dans les vaults et sont réclamés au seuil de $10.
+# Mesurer les inflows du wallet de buyback mesure des CLAIMS décalés de plusieurs jours.
+# SOURCE PRIMAIRE = accrual par swap depuis AmmConfig. Les inflows = témoin cumulatif.
+
+deployments:
+  - id: raydium:solana
+    chain: solana
+    effective_from: "2021-02-01T00:00:00Z"
+
+    finality:
+      mode: solana_finalized
+      lag_seconds: 30
+
+    source:
+      kind: solana_rpc
+      canonical: true
+      rpc: helius                                   # Helius ou Triton, clé en env
+      method: getSignaturesForAddress               # + getTransaction par sig
+      note: >-
+        Décoder les comptes PoolState + AmmConfig par pool.
+        getSignaturesForAddress sur les programmes collecteurs, puis getTransaction.
+
+    programs:
+      amm_v4:
+        id: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+        fee_collector: "PNLCQcVCD26aC7ZWgRyr5ptfaR7bBrWdTFgRWwu2tvF"
+      clmm:
+        id: "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+        fee_collector: "projjosVCPQH49d5em7VYS7fJZzaqKixqKtus7yk416"
+      cpmm:
+        id: "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
+        fee_collector: "ProCXqRcXJjoUd1RNoo28bSizAA6EEqt9wURZYPDc5u"
+
+    destinations:
+      ray_buyback: "DdHDoz94o2WJmD9myRobHCwtx1bESpHTd4SSPe6VEZaz"
+      treasury_clmm: "FundHfY8oo8J9KYGyfXFFuQCHe7Z1VBNmsj84eMcdYs4"
+      treasury_cpmm: "FUNDduJTA7XcckKHKfAoEnnhuSud2JUCUZv6opWEjrBU"
+
+    witnesses:
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/raydium
+      - kind: onchain_buyback_wallet
+        address: "DdHDoz94o2WJmD9myRobHCwtx1bESpHTd4SSPe6VEZaz"
+        note: "Témoin cumulatif des claims (décalés). Pas la source primaire."
+
+allocation:
+  # Splits lus depuis AmmConfig on-chain (trade_fee_rate, protocol_fee_rate, fund_fee_rate).
+  # Dénominateur 10^6. Les plateformes tierces choisissent leur cpConfigId -> lire par pool.
+  model: amm_config_per_pool
+  splits_by_pool_type:
+    amm_v4:
+      lp: 0.88
+      token_holder: 0.12      # buyback RAY -> DdHDoz94
+      treasury: 0.00
+      source_url: https://docs.raydium.io/raydium/protocol/developers/addresses
+      used_for: plausibility_check_only
+    clmm:
+      lp: 0.84
+      token_holder: 0.12
+      treasury: 0.04
+      used_for: plausibility_check_only
+    cpmm:
+      lp: 0.84
+      token_holder: 0.12
+      treasury: 0.04
+      used_for: plausibility_check_only
+
+  rules:
+    - component: swap_fee
+      share_source: onchain_config
+      read: amm_config_per_pool
+      note: "Lire AmmConfig par pool. Ne jamais utiliser les pourcentages ci-dessus au calcul."
+      splits:
+        - beneficiary: lp
+          field: lp_rate
+        - beneficiary: token_holder
+          field: protocol_fee_rate
+          note: >-
+            CORRECTION AU BRIEF : le RAY est TRANSFÉRÉ vers DdHDoz94, pas brûlé par le
+            mécanisme. beneficiary = token_holder, pas burn.
+        - beneficiary: treasury
+          field: fund_fee_rate
+
+    # Creator fee CPMM : additionnel au trade fee, pas un prélèvement dessus.
+    - component: bonding_curve_fee
+      source: cpmm_creator_fee
+      beneficiary: creator
+      share_source: onchain_field
+      note: "L'ignorer sous-estime gross_fees."
+
+  accrual_note: >-
+    COMPTABILISER À L'ACCRUAL, PAR SWAP. Pas au claim.
+    Les fees s'accumulent dans les vaults jusqu'au seuil de $10, puis sont transférés
+    par batch. La latence claim->accrual peut atteindre plusieurs jours en période calme.
+    Les inflows du wallet buyback servent de témoin cumulatif, pas de source primaire.
+
+pricing:
+  primary: pyth_hermes
+  witness: chainlink
+  granularity: hourly_twap
+  fallback: pool_ratio
+  fallback_confidence: low
+  fallback_note: >-
+    Memecoins Solana majoritaires en volume. pool_ratio = ratio des réserves au moment
+    du swap, lu on-chain. Marqué confidence:low, astérisque UI. Ne jamais inventer un prix.
+  token2022_note: >-
+    Calculer sur le montant NET entrant dans le vault (après transfer fee Token-2022),
+    pas sur le montant signé.
+
+emissions:
+  scope: incentives_only
+  sources:
+    - kind: farm_distributions
+      token: RAY
+      note: "Émissions des farms Raydium vers les LPs. Lire les distributions effectives."
+
+edge_cases:
+  - id: clmm_fee_growth
+    description: >-
+      CLMM : fees dans le token d'entrée seulement. Suivre fee_growth_global_0/1_x64
+      séparément. Pas d'accumulation symétrique.
+  - id: custom_amm_config
+    description: "Pools tiers à config custom : lire AmmConfig par pool, obligatoirement."
+  - id: token2022_transfer_fee
+    description: "Montant net entrant dans le vault, pas montant signé."
+
+validation:
+  checks:
+    - id: accrual_vs_claims
+      kind: cross_check
+      description: "Accruals calculés sur 30j vs claims observés (avec décalage) < 3%"
+      tolerance_bps: 300
+    - id: buyback_balance
+      kind: onchain_conservation
+      description: "Balance cumulative de DdHDoz94 vs Σ buybacks calculés"
+      tolerance_bps: 500
+    - id: witness_defillama
+      kind: witness
+      quarantine_above_bps: 500
+
+metadata:
+  chains: [solana]
+  is_router: false
+  nests_within: null
+  docs: https://docs.raydium.io

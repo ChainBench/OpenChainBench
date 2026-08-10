@@ -224,7 +224,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MEGAETH_TENDERLY", "https://megaeth.gateway.tenderly.co")},
 			},
 		},
-		// ─── Ethereum mainnet (9 providers) ────────────────────────
+		// ─── Ethereum mainnet (8 providers) ────────────────────────
 		{
 			Slug: "ethereum",
 			Name: "Ethereum",
@@ -233,12 +233,9 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHEREUM_DRPC", "https://eth.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ETHEREUM_MEOWRPC", "https://eth.meowrpc.com")},
 				{Slug: "flashbots", Name: "Flashbots Protect", URL: envDefault("RPC_URL_ETHEREUM_FLASHBOTS", "https://rpc.flashbots.net")},
-				{Slug: "cloudflare", Name: "Cloudflare", URL: envDefault("RPC_URL_ETHEREUM_CLOUDFLARE", "https://cloudflare-eth.com")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ETHEREUM_TENDERLY", "https://gateway.tenderly.co/public/mainnet")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ETHEREUM_NODIES", "https://eth-pokt.nodies.app")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ETHEREUM_LAVA", "https://eth1.lava.build")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ETHEREUM_BLASTAPI", "https://eth-mainnet.public.blastapi.io")},
-				{Slug: "gatewayfm", Name: "Gateway.fm", URL: envDefault("RPC_URL_ETHEREUM_GATEWAYFM", "https://rpc.eth.gateway.fm")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
 			},
 		},
@@ -516,22 +513,21 @@ func chains() []Chain {
 		// wallet + TronWeb/EVM bridge integrates against. Providers
 		// live-verified keyless via eth_blockNumber during launch
 		// audit: TronGrid (api.trongrid.io/jsonrpc — Tron Foundation
-		// official), dRPC and PublicNode/Allnodes. Excluded by that
-		// sweep: Ankr (API key required despite public branding),
-		// Chainstack + NOWNodes + GetBlock + Tatum + BlockPI (all
-		// require API key on TRON JSON-RPC path), OnFinality + Blast
-		// API + AllThatNode (no public TRON JSON-RPC gateway). The
-		// TRON JSON-RPC provider market is materially smaller than
-		// EVM — most TRON infra vendors expose only the native TRON
-		// REST API keyless. Native REST API surface is out of scope
-		// for this cluster; a `tron-rest` bench would need a
+		// official), PublicNode/Allnodes. Excluded: dRPC (method not
+		// available on TRON JSON-RPC path), Ankr (API key required
+		// despite public branding), Chainstack + NOWNodes + GetBlock +
+		// Tatum + BlockPI (all require API key on TRON JSON-RPC path),
+		// OnFinality + Blast API + AllThatNode (no public TRON JSON-RPC
+		// gateway). The TRON JSON-RPC provider market is materially
+		// smaller than EVM — most TRON infra vendors expose only the
+		// native TRON REST API keyless. Native REST API surface is out
+		// of scope for this cluster; a `tron-rest` bench would need a
 		// chain-specific probe.
 		{
 			Slug: "tron",
 			Name: "TRON",
 			Providers: []Provider{
 				{Slug: "trongrid", Name: "TronGrid", URL: envDefault("RPC_URL_TRON_TRONGRID", "https://api.trongrid.io/jsonrpc")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TRON_DRPC", "https://tron.drpc.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TRON_PUBLICNODE", "https://tron.publicnode.com/jsonrpc")},
 			},
 		},
@@ -552,9 +548,9 @@ func chains() []Chain {
 		},
 		// ─── Kaia (bench 098) — added 2026-07-24. EVM L1 formed by
 		// Klaytn + Finschia merger. Providers live-verified keyless:
-		// kaia-official (public-en.node.kaia.io), drpc, thirdweb.
-		// Excluded: BlockPI (`Apikey not found`), Nodies (paid tier),
-		// Alchemy public (KAIA_MAINNET not enabled), AllThatNode +
+		// kaia-official (public-en.node.kaia.io). Excluded: dRPC (500
+		// paid plan only), BlockPI (`Apikey not found`), Nodies (paid
+		// tier), Alchemy public (KAIA_MAINNET not enabled), AllThatNode +
 		// OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key
 		// required).
 		{
@@ -562,7 +558,6 @@ func chains() []Chain {
 			Name: "Kaia",
 			Providers: []Provider{
 				{Slug: "kaia-official", Name: "Kaia Foundation", URL: envDefault("RPC_URL_KAIA_OFFICIAL", "https://public-en.node.kaia.io")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAIA_DRPC", "https://klaytn.drpc.org")},
 			},
 		},
 		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
@@ -599,24 +594,18 @@ func chains() []Chain {
 		},
 		// ─── Sei EVM (bench 108) — added 2026-07-26. Cosmos SDK L1 with
 		// EVM parallel-execution layer (chain 1329). Native EVM JSON-RPC.
-		// The 2026-07-03 sweep excluded Sei because drpc cached
-		// eth_blockNumber leaving only 2 clean providers; re-audit on
-		// 2026-07-26 confirms dRPC no longer caches, and Thirdweb +
-		// Stakeme.pro have come online, restoring 4 clean keyless
-		// providers. Providers live-verified: sei-official
-		// (evm-rpc.sei-apis.com), drpc, thirdweb, stakeme. Excluded:
-		// PublicNode (no sei-evm subdomain), Tenderly public (no
-		// sei route), BlockPI (Apikey required), MeowRPC (defunct),
-		// Basement Nodes / Node75 / AllThatNode (host unresolvable
-		// or key-gated). Sei's dual Cosmos + EVM stack means this bench
-		// scopes strictly to the EVM side; the Cosmos JSON-RPC would
-		// need a Kind:"cosmos" entry as we did for Osmosis.
+		// Providers live-verified: sei-official (evm-rpc.sei-apis.com),
+		// thirdweb, stakeme. Excluded: dRPC (500 persistent internal error
+		// after 3 consecutive attempts), PublicNode (no sei-evm subdomain),
+		// Tenderly public (no sei route), BlockPI (Apikey required),
+		// MeowRPC (defunct), Basement Nodes / Node75 / AllThatNode
+		// (host unresolvable or key-gated). Sei's dual Cosmos + EVM stack
+		// means this bench scopes strictly to the EVM side.
 		{
 			Slug: "sei",
 			Name: "Sei EVM",
 			Providers: []Provider{
 				{Slug: "sei-official", Name: "Sei Labs", URL: envDefault("RPC_URL_SEI_OFFICIAL", "https://evm-rpc.sei-apis.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SEI_DRPC", "https://sei.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SEI_THIRDWEB", "https://sei.rpc.thirdweb.com")},
 				{Slug: "stakeme", Name: "Stakeme", URL: envDefault("RPC_URL_SEI_STAKEME", "https://sei-evm-rpc.stakeme.pro")},
 			},
@@ -641,9 +630,10 @@ func chains() []Chain {
 		},
 		// ─── Ronin (bench 110) — added 2026-07-26. EVM gaming L1
 		// (chain 2020) operated by Sky Mavis, primary home of Axie
-		// Infinity + Pixels + a broader gaming ecosystem. 4 clean
+		// Infinity + Pixels + a broader gaming ecosystem. 3 clean
 		// keyless providers live-verified: ronin-official
-		// (api.roninchain.com), drpc, tenderly, thirdweb. Excluded:
+		// (api.roninchain.com), tenderly, thirdweb. Excluded:
+		// dRPC (500 persistent internal error after 3 attempts),
 		// Ronin Tech secondary (DNS-fail), PublicNode (no ronin
 		// subdomain), lgns.net (DNS-fail).
 		{
@@ -651,7 +641,6 @@ func chains() []Chain {
 			Name: "Ronin",
 			Providers: []Provider{
 				{Slug: "ronin-official", Name: "Sky Mavis", URL: envDefault("RPC_URL_RONIN_OFFICIAL", "https://api.roninchain.com/rpc")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_RONIN_DRPC", "https://ronin.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_RONIN_TENDERLY", "https://ronin.gateway.tenderly.co")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_RONIN_THIRDWEB", "https://ronin.rpc.thirdweb.com")},
 			},
@@ -857,11 +846,12 @@ func chains() []Chain {
 				{Slug: "morph-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_MORPH_QUICKNODE", "https://rpc-quicknode.morph.network")},
 			},
 		},
-		// 2026-08-03 audit. Moonriver Kusama parachain (chain 1285). 4 clean
+		// 2026-08-03 audit. Moonriver Kusama parachain (chain 1285). 3 clean
 		// keyless providers: moonriver-official (rpc.api.moonriver.moonbeam.network),
 		// publicnode (moonriver-rpc.publicnode.com), onfinality
-		// (moonriver.api.onfinality.io/public), unitedbloc (moonriver.unitedbloc.com).
-		// Excluded: Ankr (key required for moonriver), drpc (no moonriver route).
+		// (moonriver.api.onfinality.io/public). Excluded: UnitedBloc
+		// (moonriver.unitedbloc.com DNS dead), Ankr (key required for
+		// moonriver), drpc (no moonriver route).
 		{
 			Slug: "moonriver",
 			Name: "Moonriver",
@@ -869,7 +859,6 @@ func chains() []Chain {
 				{Slug: "moonriver-official", Name: "Moonbeam Foundation", URL: envDefault("RPC_URL_MOONRIVER_OFFICIAL", "https://rpc.api.moonriver.moonbeam.network")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONRIVER_PUBLICNODE", "https://moonriver-rpc.publicnode.com")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONRIVER_ONFINALITY", "https://moonriver.api.onfinality.io/public")},
-				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONRIVER_UNITEDBLOC", "https://moonriver.unitedbloc.com")},
 			},
 		},
 		// 2026-08-03 audit. Hemi BTC+ETH hybrid OP Stack L2 (chain 43111). 3 clean
@@ -987,29 +976,24 @@ func chains() []Chain {
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FILECOIN_ANKR", "https://rpc.ankr.com/filecoin")},
 			},
 		},
-		// 2026-08-04 wave-5. Canto EVM L1 (chain 7700). 4 keyless providers:
-		// canto-official (canto.gravitychain.io), drpc (canto.drpc.org),
-		// publicnode (canto-evm.publicnode.com), ankr (rpc.ankr.com/canto).
+		// 2026-08-04 wave-5. Canto EVM L1 (chain 7700). 1 keyless provider:
+		// canto-official (canto.gravitychain.io). Excluded: dRPC (404),
+		// PublicNode (404), Ankr (403 API key required).
 		{
 			Slug: "canto",
 			Name: "Canto",
 			Providers: []Provider{
 				{Slug: "canto-official", Name: "Canto Official", URL: envDefault("RPC_URL_CANTO_OFFICIAL", "https://canto.gravitychain.io/")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CANTO_DRPC", "https://canto.drpc.org")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CANTO_PUBLICNODE", "https://canto-evm.publicnode.com")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_CANTO_ANKR", "https://rpc.ankr.com/canto")},
 			},
 		},
-		// 2026-08-04 wave-5. Aurora EVM on NEAR Protocol (chain 1313161554). 3 keyless
-		// providers: aurora-official (mainnet.aurora.dev), drpc (aurora.drpc.org),
-		// ankr (rpc.ankr.com/aurora).
+		// 2026-08-04 wave-5. Aurora EVM on NEAR Protocol (chain 1313161554). 1 keyless
+		// provider: aurora-official (mainnet.aurora.dev). Excluded: Ankr (403 API key
+		// required), dRPC (403 API key required).
 		{
 			Slug: "aurora",
 			Name: "Aurora",
 			Providers: []Provider{
 				{Slug: "aurora-official", Name: "Aurora Labs", URL: envDefault("RPC_URL_AURORA_OFFICIAL", "https://mainnet.aurora.dev")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AURORA_DRPC", "https://aurora.drpc.org")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_AURORA_ANKR", "https://rpc.ankr.com/aurora")},
 			},
 		},
 		// 2026-08-04 wave-5. Bitlayer Bitcoin L2 EVM (chain 200901). 3 keyless
@@ -1070,25 +1054,24 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOBA_DRPC", "https://boba-eth.drpc.org")},
 			},
 		},
-		// XDC Network — Enterprise EVM L1 (chain 50). 5 keyless providers.
+		// XDC Network — Enterprise EVM L1 (chain 50). 4 keyless providers.
+		// Excluded: dRPC (400 paid plan only).
 		{
 			Slug: "xdc",
 			Name: "XDC Network",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_XDC_PUBLICNODE", "https://rpc.xdc.org")},
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_XDC_ANKR", "https://rpc.ankr.com/xdc")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_XDC_DRPC", "https://xdc.drpc.org")},
 				{Slug: "xdc-erpc", Name: "XDC eRPC", URL: envDefault("RPC_URL_XDC_ERPC", "https://erpc.xinfin.network")},
 				{Slug: "xdc-org", Name: "XDC.org", URL: envDefault("RPC_URL_XDC_ORG", "https://rpc.xdc.org")},
 			},
 		},
-		// Astar — Polkadot EVM parachain (chain 592). 4 keyless providers.
+		// Astar — Polkadot EVM parachain (chain 592). 2 keyless providers.
+		// Excluded: PublicNode (404), BlastAPI (DNS dead).
 		{
 			Slug: "astar",
 			Name: "Astar",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ASTAR_PUBLICNODE", "https://astar-rpc.publicnode.com")},
-				{Slug: "blastapi", Name: "BlastAPI", URL: envDefault("RPC_URL_ASTAR_BLASTAPI", "https://astar.public.blastapi.io")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_ASTAR_ONFINALITY", "https://astar.api.onfinality.io/public")},
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ASTAR_1RPC", "https://1rpc.io/astr")},
 			},
@@ -1339,19 +1322,17 @@ func chains() []Chain {
 				{Slug: "stavr", Name: "STAVR", URL: envDefault("RPC_URL_COMDEX_STAVR", "https://comdex.rpc.m.stavr.tech:443")},
 			},
 		},
-		// Fantom — EVM (chain 250). 5 keyless providers.
+		// Fantom — EVM (chain 250). 3 keyless providers.
 		{
 			Slug: "fantom",
 			Name: "Fantom",
 			Providers: []Provider{
 				{Slug: "fantom-official", Name: "Fantom Foundation", URL: envDefault("RPC_URL_FANTOM_OFFICIAL", "https://rpcapi.fantom.network")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FANTOM_DRPC", "https://fantom.drpc.org")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FANTOM_ANKR", "https://rpc.ankr.com/fantom")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_FANTOM_THIRDWEB", "https://250.rpc.thirdweb.com")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_FANTOM_BLASTAPI", "https://fantom-mainnet.public.blastapi.io")},
 			},
 		},
-		// Kusama — Polkadot canary relay chain. 6 keyless providers.
+		// Kusama — Polkadot canary relay chain. 3 keyless providers.
 		{
 			Slug: "kusama",
 			Name: "Kusama",
@@ -1360,37 +1341,20 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KUSAMA_PUBLICNODE", "https://kusama-rpc.publicnode.com")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_KUSAMA_ONFINALITY", "https://kusama.api.onfinality.io/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KUSAMA_DRPC", "https://kusama.drpc.org")},
-				{Slug: "ibp", Name: "IBP Network", URL: envDefault("RPC_URL_KUSAMA_IBP", "https://rpc.ibp.network/kusama")},
-				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_KUSAMA_DWELLIR", "https://kusama-rpc.dwellir.com")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_KUSAMA_1RPC", "https://1rpc.io/ksm")},
 			},
 		},
-		// Hydration — Polkadot DeFi parachain (HydraDX). 5 keyless providers.
-		{
-			Slug: "hydration",
-			Name: "Hydration",
-			Kind: "polkadot",
-			Providers: []Provider{
-				{Slug: "hydration-official", Name: "Hydration Foundation", URL: envDefault("RPC_URL_HYDRATION_OFFICIAL", "https://rpc.hydration.cloud")},
-				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_HYDRATION_DWELLIR", "https://hydradx-rpc.dwellir.com")},
-				{Slug: "helikon", Name: "Helikon", URL: envDefault("RPC_URL_HYDRATION_HELIKON", "https://rpc.helikon.io/hydradx")},
-				{Slug: "dotters-network", Name: "Dotters Network", URL: envDefault("RPC_URL_HYDRATION_DOTTERS", "https://hydradx.dotters.network")},
-				{Slug: "parachains-network", Name: "Parachains.network", URL: envDefault("RPC_URL_HYDRATION_PARACHAINS", "https://rpc.parachains.network/hydradx")},
-			},
-		},
-		// ZetaChain — EVM omnichain L1 (chain 7000). 5 keyless providers.
+		// Hydration — Polkadot DeFi parachain (HydraDX). All providers dead
+		// (DNS dead or HTTP 400). Chain suspended from active probing.
+		// ZetaChain — EVM omnichain L1 (chain 7000). 1 keyless provider.
+		// Excluded: BlockPI (404), AllThatNode (DNS dead).
 		{
 			Slug: "zetachain",
 			Name: "ZetaChain",
 			Providers: []Provider{
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZETACHAIN_DRPC", "https://zetachain.drpc.org")},
-				{Slug: "blockpi", Name: "BlockPi", URL: envDefault("RPC_URL_ZETACHAIN_BLOCKPI", "https://zetachain.blockpi.network/v1/rpc/public")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZETACHAIN_THIRDWEB", "https://7000.rpc.thirdweb.com")},
-				{Slug: "allthatnode", Name: "AllThatNode", URL: envDefault("RPC_URL_ZETACHAIN_ATN", "https://zetachain-mainnet.rpc.public.allthatnode.com")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ZETACHAIN_BLASTAPI", "https://zetachain-mainnet.public.blastapi.io")},
 			},
 		},
-		// HAQQ — EVM Islamic finance L1 (chain 11235). 4 keyless providers.
+		// HAQQ — EVM Islamic finance L1 (chain 11235). 3 keyless providers.
 		{
 			Slug: "haqq",
 			Name: "HAQQ",
@@ -1398,21 +1362,18 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_HAQQ_PUBLICNODE", "https://haqq-evm-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_HAQQ_DRPC", "https://haqq.drpc.org")},
 				{Slug: "haqq-official", Name: "HAQQ Foundation", URL: envDefault("RPC_URL_HAQQ_OFFICIAL", "https://rpc.eth.haqq.network")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_HAQQ_BLASTAPI", "https://haqq-network.public.blastapi.io")},
 			},
 		},
-		// Etherlink — Tezos EVM L2 (chain 42793). 4 keyless providers.
+		// Etherlink — Tezos EVM L2 (chain 42793). 2 keyless providers.
 		{
 			Slug: "etherlink",
 			Name: "Etherlink",
 			Providers: []Provider{
 				{Slug: "etherlink-official", Name: "Etherlink Foundation", URL: envDefault("RPC_URL_ETHERLINK_OFFICIAL", "https://node.mainnet.etherlink.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHERLINK_DRPC", "https://etherlink.drpc.org")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_ETHERLINK_ANKR", "https://rpc.ankr.com/etherlink")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ETHERLINK_BLASTAPI", "https://etherlink-mainnet.public.blastapi.io")},
 			},
 		},
-		// Chiliz — Sports fan token EVM (chain 88888). 4 keyless providers.
+		// Chiliz — Sports fan token EVM (chain 88888). 3 keyless providers.
 		{
 			Slug: "chiliz",
 			Name: "Chiliz",
@@ -1420,39 +1381,33 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CHILIZ_PUBLICNODE", "https://chiliz-rpc.publicnode.com")},
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_CHILIZ_ANKR", "https://rpc.ankr.com/chiliz")},
 				{Slug: "chiliz-official", Name: "Chiliz Foundation", URL: envDefault("RPC_URL_CHILIZ_OFFICIAL", "https://rpc.chiliz.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CHILIZ_DRPC", "https://chiliz.drpc.org")},
 			},
 		},
-		// WEMIX — Korean web3 gaming EVM (chain 1111). 4 keyless providers.
+		// WEMIX — Korean web3 gaming EVM (chain 1111). 2 keyless providers.
 		{
 			Slug: "wemix",
 			Name: "WEMIX",
 			Providers: []Provider{
-				{Slug: "wemix-official", Name: "WEMIX Foundation", URL: envDefault("RPC_URL_WEMIX_OFFICIAL", "https://api.wemix.com")},
+				{Slug: "wemix-official", Name: "WeMade", URL: envDefault("RPC_URL_WEMIX_OFFICIAL", "https://api.wemix.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WEMIX_DRPC", "https://wemix.drpc.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_WEMIX_BLASTAPI", "https://wemix-mainnet.public.blastapi.io")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_WEMIX_1RPC", "https://1rpc.io/wemix")},
 			},
 		},
-		// Songbird — Flare canary network (chain 19). 4 keyless providers.
+		// Songbird — Flare canary network (chain 19). 1 keyless provider.
+		// Excluded: ftso-au (DNS dead).
 		{
 			Slug: "songbird",
 			Name: "Songbird",
 			Providers: []Provider{
 				{Slug: "flare-official", Name: "Flare Foundation", URL: envDefault("RPC_URL_SONGBIRD_FLARE", "https://songbird-api.flare.network/ext/C/rpc")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONGBIRD_DRPC", "https://songbird.drpc.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_SONGBIRD_BLASTAPI", "https://songbird-mainnet.public.blastapi.io")},
-				{Slug: "ftso-au", Name: "FTSO AU", URL: envDefault("RPC_URL_SONGBIRD_FTSOAU", "https://songbird.rpc.ftso.au")},
 			},
 		},
-		// Cronos zkEVM — zkSync-stack Cronos L2 (chain 388). 3 keyless providers.
+		// Cronos zkEVM — zkSync-stack Cronos L2 (chain 388). 2 keyless providers.
 		{
 			Slug: "cronos-zkevm",
 			Name: "Cronos zkEVM",
 			Providers: []Provider{
 				{Slug: "cronos-zkevm-official", Name: "Crypto.com Foundation", URL: envDefault("RPC_URL_CRONOS_ZKEVM_OFFICIAL", "https://mainnet.zkevm.cronos.org")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CRONOS_ZKEVM_DRPC", "https://cronos-zkevm.drpc.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_CRONOS_ZKEVM_BLASTAPI", "https://cronos-zkevm-mainnet.public.blastapi.io")},
 			},
 		},
 		// Ethereum Classic — Original Ethereum chain (chain 61). 3 keyless providers.
@@ -1465,14 +1420,13 @@ func chains() []Chain {
 				{Slug: "etcmc", Name: "ETCMC", URL: envDefault("RPC_URL_ETC_ETCMC", "https://etcmc.rpc.nz")},
 			},
 		},
-		// Telos EVM — High-performance EVM (chain 40). 3 keyless providers.
+		// Telos EVM — High-performance EVM (chain 40). 1 keyless provider.
+		// Excluded: telos-official (404).
 		{
 			Slug: "telos",
 			Name: "Telos",
 			Providers: []Provider{
-				{Slug: "telos-official", Name: "Telos Foundation", URL: envDefault("RPC_URL_TELOS_OFFICIAL", "https://mainnet.telos.net/evm")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TELOS_DRPC", "https://telos.drpc.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_TELOS_BLASTAPI", "https://telos-mainnet.public.blastapi.io")},
 			},
 		},
 		// PulseChain — Full-state Ethereum fork (chain 369). 3 keyless providers.
@@ -1485,17 +1439,16 @@ func chains() []Chain {
 				{Slug: "g4mm4", Name: "G4MM4", URL: envDefault("RPC_URL_PULSECHAIN_G4MM4", "https://rpc-pulsechain.g4mm4.io")},
 			},
 		},
-		// Warden Protocol — Intent-based EVM L1. 3 keyless providers.
+		// Warden Protocol — Intent-based EVM L1. 2 keyless providers.
 		{
 			Slug: "warden",
 			Name: "Warden Protocol",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_WARDEN_PUBLICNODE", "https://warden-evm-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WARDEN_DRPC", "https://warden.drpc.org")},
 				{Slug: "warden-official", Name: "Warden Foundation", URL: envDefault("RPC_URL_WARDEN_OFFICIAL", "https://evm.wardenprotocol.org")},
 			},
 		},
-		// Oraichain — AI-focused Cosmos SDK chain. 3 keyless providers.
+		// Oraichain — AI-focused Cosmos SDK chain. 2 keyless providers.
 		{
 			Slug: "oraichain",
 			Name: "Oraichain",
@@ -1503,17 +1456,15 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ORAICHAIN_PUBLICNODE", "https://oraichain-rpc.publicnode.com")},
 				{Slug: "orai-official", Name: "Orai Foundation", URL: envDefault("RPC_URL_ORAICHAIN_OFFICIAL", "https://rpc.orai.io")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_ORAICHAIN_LAVENDERFIVE", "https://oraichain-rpc.lavenderfive.com")},
 			},
 		},
-		// Peaq Network — DePIN Polkadot parachain. 3 keyless providers.
+		// Peaq Network — DePIN Polkadot parachain. 2 keyless providers.
 		{
 			Slug: "peaq",
 			Name: "Peaq Network",
 			Kind: "polkadot",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PEAQ_PUBLICNODE", "https://peaq-rpc.publicnode.com")},
-				{Slug: "peaq-official", Name: "Peaq Foundation", URL: envDefault("RPC_URL_PEAQ_OFFICIAL", "https://rpc.peaq.network")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_PEAQ_ONFINALITY", "https://peaq.api.onfinality.io/public")},
 			},
 		},

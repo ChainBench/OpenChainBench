@@ -1,0 +1,46 @@
+# Fragment to merge into /opt/ocb/docker-compose.yml on VPS.
+# Requires: ocb-postgres (from docker-compose.apps.yml), HELIUS_API_KEY in env.
+
+services:
+  solana-exec-collector:
+    build: /opt/ocb/harnesses/solana-exec
+    container_name: ocb-solana-exec-collector
+    restart: unless-stopped
+    env_file: /run/ocb/.env.solana-exec
+    command: ["/app/collector"]
+    networks: [web]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  solana-exec-materializer:
+    build: /opt/ocb/harnesses/solana-exec
+    container_name: ocb-solana-exec-materializer
+    restart: unless-stopped
+    env_file: /run/ocb/.env.solana-exec
+    command: ["/app/materializer"]
+    networks: [web]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  solana-exec-api:
+    build: /opt/ocb/harnesses/solana-exec
+    container_name: ocb-solana-exec-api
+    restart: unless-stopped
+    env_file: /run/ocb/.env.solana-exec
+    command: ["/app/api"]
+    networks: [web]
+    expose: ["2116"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

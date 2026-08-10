@@ -4,7 +4,7 @@ slug: kaia-rpc
 number: "098"
 title: Fastest free Kaia RPC, live no-key EVM endpoint latency
 seo_title: "Fastest free Kaia RPC 2026"
-seo_description: "{{best_name}} leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). 2 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). 1 no-key provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Kaia EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Kaia is the EVM L1 formed by the Klaytn + Finschia merger in Aug 2024, with Istanbul BFT consensus, KAIA gas token, and dominant footprint in Korea + Japan through LINE and Kakao integrations. Standard EVM JSON-RPC. Excluded by the launch audit: BlockPI (`kaia.blockpi.network` returned `Apikey not found`), Nodies (`klaytn-pokt.nodies.app` requires paid subscription), Alchemy public (`KAIA_MAINNET not enabled for this app` on public tier), AllThatNode + OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key required). Every provider live-verified with 4 consecutive keyless probes at launch.
+  Kaia is the EVM L1 formed by the Klaytn + Finschia merger in Aug 2024, with Istanbul BFT consensus, KAIA gas token, and dominant footprint in Korea + Japan through LINE and Kakao integrations. Standard EVM JSON-RPC. Excluded: dRPC (500 paid plan only), BlockPI (`kaia.blockpi.network` returned `Apikey not found`), Nodies (`klaytn-pokt.nodies.app` requires paid subscription), Alchemy public (`KAIA_MAINNET not enabled for this app` on public tier), AllThatNode + OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key required). Every provider live-verified with 4 consecutive keyless probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Kaia.
   We measure the round-trip latency of a single, identical JSON-RPC call
-  (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Kaia endpoint
-  that sustains continuous probing, 2 providers at launch,
+  (`eth_getBlockByNumber(\"latest\", false)`) against the no-key public Kaia endpoint
+  that sustains continuous probing (1 provider: Kaia Foundation official),
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) with a Kaia-scaled staleness gap (25 blocks at
@@ -35,16 +35,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 25 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"kaia\"`. Provider coverage at launch: 2 no-key endpoints (Kaia Foundation, dRPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"kaia\"`. Provider coverage: 1 no-key endpoint (Kaia Foundation). dRPC removed (500 paid plan only)."
 
 findings:
-  - "{{best_name}} currently leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h) across 2 measured providers."
+  - "{{best_name}} currently leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free Kaia RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Kaia RPCs work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing at launch: Kaia Foundation, dRPC. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
+    a: "1 endpoint sustains continuous keyless probing: Kaia Foundation (public-en.node.kaia.io). dRPC was removed after returning 500 (paid plan only). See the methodology section for the specific endpoints that were audited and excluded."
   - q: "Does the fastest Kaia RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Kaia RPC latency measured here, technically?"
@@ -89,26 +89,4 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="kaia-official", chain="kaia", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="kaia-official", chain="kaia", region="sgp"}[1h])
 
-  - slug: drpc
-    name: dRPC
-    tag: Multi-provider RPC load balancer, edge-close routing
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key kaia RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="kaia"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="kaia"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="kaia"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="kaia"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="kaia"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="kaia"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="kaia"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="kaia"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="kaia", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="kaia", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="kaia", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="kaia", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="kaia", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="kaia", region="sgp"}[1h])
 

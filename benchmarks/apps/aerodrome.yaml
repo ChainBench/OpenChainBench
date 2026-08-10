@@ -1,0 +1,132 @@
+schema_version: 1
+slug: aerodrome
+name: Aerodrome
+category: dex
+methodology_version: 1
+status: live
+verifiability: tier_2
+
+# Le protocole qui justifie la colonne net_real_revenue.
+# Résultat attendu : NÉGATIF. Ce n'est pas une anomalie à corriger.
+
+deployments:
+  - id: aerodrome:base
+    chain: base
+    effective_from: "2023-08-28T00:00:00Z"
+
+    finality:
+      mode: l1_confirmed
+      lag_seconds: 900
+
+    source:
+      kind: envio_hyperindex
+      canonical: true
+      repo: https://github.com/velodrome-finance/indexer
+      note: >-
+        T2 : dépendance à un indexer tiers. Migration vers evm_logs directs prévue
+        en phase 5. L'architecture ve(3,3) rend cette dépendance structurellement
+        risquée à long terme.
+
+    witnesses:
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/aerodrome
+        expected_divergence: high
+        note: >-
+          DefiLlama ne soustrait pas les émissions. La divergence est attendue et
+          constitue la démonstration de la thèse du produit — ne pas la traiter
+          comme une erreur à réconcilier.
+
+allocation:
+  rules:
+    - source: pool_fees
+      splits:
+        - component: swap_fee
+          beneficiary: token_holder      # 100% aux voters veAERO
+          share_source: onchain_field
+          field: fee_amount
+    - source: slipstream_unstaked
+      splits:
+        - component: swap_fee
+          beneficiary: lp
+          share_source: onchain_field
+          field: unstaked_fee
+          note: "Positions CL non-stakées : traitement distinct, ne pas confondre."
+    - source: external_bribes
+      splits:
+        - component: external_bribe      # exclu de gross_fees par la taxonomie
+          beneficiary: token_holder
+          share_source: onchain_field
+          note: "Payé par des tiers. L'inclure gonflerait artificiellement Aerodrome."
+
+  # Exemple de constante correctement encodée : bornée dans le temps, sourcée.
+  # Le CI échoue si source_url ou effective_from manque, ou si deux intervalles
+  # se chevauchent. C'est le garde-fou anti-Lido.
+  constants:
+    - name: treasury_share
+      value: 0.0
+      effective_from: "2023-08-28T00:00:00Z"
+      effective_to: null
+      source_url: https://aerodrome.finance/docs
+      review_due: "2026-11-01"
+
+pricing:
+  primary: pyth_hermes
+  witness: chainlink
+  granularity: hourly_twap
+  fallback: pool_ratio
+  fallback_confidence: low
+  note: "Milliers de tokens sur Base. La couverture Pyth sera partielle."
+
+emissions:
+  scope: incentives_only
+  source:
+    kind: evm_logs
+    contract: minter
+    events: [Mint]
+    read: distributions_to_gauges
+    note: >-
+      On mesure les AERO effectivement distribués aux gauges, epoch par epoch.
+      PAS un taux d'inflation annualisé appliqué à la supply : le "~10.9%/an"
+      couramment cité est un taux d'inflation, pas un coût d'incentive, et
+      l'approximation ne résiste pas à un examen sérieux.
+  token: AERO
+  epoch: weekly
+  spread_over_epoch: true
+  spread_note: >-
+    Émissions discrètes (hebdomadaires) réparties uniformément sur 7 jours pour les
+    fenêtres 24h et 7j. Sans ça, le classement 24h dépendrait du jour de l'epoch.
+    Choix documenté et affiché sur la page méthodologie.
+  excluded:
+    - id: ve_rebase
+      reason: >-
+        Anti-dilution des lockers, pas une incentive d'acquisition de volume.
+        Inclus uniquement sous scope=all_inflation.
+
+validation:
+  checks:
+    - id: minter_conservation
+      kind: onchain_conservation
+      description: "Émissions du Minter par epoch == Σ distributions aux gauges"
+      tolerance_bps: 1
+      note: "Doit correspondre exactement. Un écart signale un gauge manqué."
+    - id: voter_fee_conservation
+      description: "Fees distribués aux voters == Σ fees des pools"
+      tolerance_bps: 100
+
+ui:
+  # Sans cette note, la ligne "lp_revenue = 0" se lit comme une donnée manquante.
+  annotations:
+    - target: lp_revenue
+      text: >-
+        Les LPs Aerodrome ne perçoivent pas de fees : ils reçoivent des émissions AERO
+        à la place. La valeur leur revenant est réelle mais dilutive, et apparaît en
+        coût d'émission plutôt qu'en revenue.
+    - target: net_real_revenue
+      text: >-
+        Négatif : le protocole distribue plus de valeur en émissions qu'il ne capte
+        en frais. C'est un résultat mesuré, pas une erreur de données.
+
+metadata:
+  chains: [base]
+  is_router: false
+  nests_within: null

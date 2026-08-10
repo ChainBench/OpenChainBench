@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -57,8 +58,12 @@ func decodeJWTExpiration(token string) (time.Time, error) {
 	return time.Unix(claims.Exp, 0), nil
 }
 
-// GetDefinedJWTToken returns a cached JWT token or generates a new one if expired
+// GetDefinedJWTToken returns a cached JWT token or generates a new one if expired.
+// If CODEX_JWT env var is set, it is returned directly (bypasses session-cookie flow).
 func GetDefinedJWTToken(sessionCookie string) (string, error) {
+	if jwt := os.Getenv("CODEX_JWT"); jwt != "" {
+		return jwt, nil
+	}
 	globalTokenCache.mu.RLock()
 
 	// Check if we have a valid cached token
@@ -144,7 +149,7 @@ func generateDefinedJWTToken(sessionCookie string) (string, error) {
 	req.Header.Set("sec-fetch-dest", "empty")
 	req.Header.Set("sec-fetch-mode", "cors")
 	req.Header.Set("sec-fetch-site", "same-origin")
-	req.AddCookie(&http.Cookie{Name: "session", Value: sessionCookie})
+	req.AddCookie(&http.Cookie{Name: "defined-attestation-token", Value: sessionCookie})
 
 	fmt.Println("[DEFINED-AUTH] Sending POST request to https://www.defined.fi/api...")
 	resp, err := client.Do(req)

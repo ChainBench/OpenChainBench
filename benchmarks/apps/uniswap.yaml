@@ -1,0 +1,201 @@
+schema_version: 1
+slug: uniswap
+name: Uniswap
+category: dex
+methodology_version: 1
+status: live
+verifiability: tier_1
+
+# LE PROTOCOLE LE PLUS PIÉGEUX DU SCOPE.
+# Trois axes indépendants : version (v2/v3/v4) x chaîne (~11) x date d'activation.
+# Un effective_from par COMBINAISON. Appliquer un taux sur une période où il valait
+# zéro est le bug Lido inversé.
+
+deployments:
+  # -------------------------------------------------------------------------
+  # Ethereum mainnet v2 — adresses VÉRIFIÉES
+  # -------------------------------------------------------------------------
+  - id: uniswap:ethereum:v2
+    chain: ethereum
+    version: v2
+    # UNIfication exécutée on-chain le 27/12/2025. AVANT : zéro protocol revenue.
+    effective_from: "2025-12-27T20:33:00Z"
+    finality: { mode: beacon_finalized, lag_seconds: 800 }
+
+    source:
+      kind: evm_logs
+      canonical: true
+      # Contrat immuable où s'accumulent les fees. VÉRIFIÉ (Uniswap/protocol-fees + Etherscan).
+      token_jar: "0xf38521f130fcCF29dB1961597bc5d2B60F995f85"
+      # Releaser : brûler de l'UNI pour retirer. Destinataire 0xdead.
+      firepit: "0x0D5Cd355e2aBEB8fb1552F56c965B867346d6721"
+      read: token_jar_inflows
+      # On compte les INFLOWS (accrual), pas les burns Firepit (claims). Les deux
+      # sont décalés : le jar se vide par arbitrage quand la valeur dépasse le seuil.
+
+    witnesses:
+      - kind: subgraph
+        id: uniswap-v2-ethereum
+      - kind: defillama
+        endpoint: https://api.llama.fi/summary/fees/uniswap
+        note: "Divergence attendue sur les périodes pré-fee-switch."
+
+  # -------------------------------------------------------------------------
+  # Ethereum mainnet v3
+  # -------------------------------------------------------------------------
+  - id: uniswap:ethereum:v3
+    chain: ethereum
+    version: v3
+    effective_from: "2025-12-27T20:33:00Z"
+    source:
+      kind: evm_logs
+      canonical: true
+      token_jar: "0xf38521f130fcCF29dB1961597bc5d2B60F995f85"
+      v3_fee_adapter: "0x5E74C9f42EEd283bFf3744fBD1889d398d40867d"
+      v3_open_fee_adapter: "0xf2371551Fe3937Db7c750f4DfABe5c2fFFdcBf5A"
+      read: token_jar_inflows
+      note: >-
+        SEULE UNE SÉLECTION de pools v3 a été activée (80-95% des LP fees mainnet).
+        Lire l'état de l'adaptateur pool par pool. Ne pas supposer une activation globale.
+
+  # -------------------------------------------------------------------------
+  # Autres chaînes et v4 — À COMPLÉTER APRÈS VÉRIFICATION
+  # -------------------------------------------------------------------------
+  - id: uniswap:arbitrum:v3
+    chain: arbitrum
+    version: v3
+    status: pending_verification
+    effective_from: "TODO"
+    source:
+      kind: evm_logs
+      token_jar: "TODO_une_adresse_par_chaine"
+    note: >-
+      Propositions 94/95 (mars 2026) ont étendu à Arbitrum, Base, OP Mainnet, Soneium,
+      X Layer, Worldchain, Zora, Celo. Propositions ultérieures (96, 100...) ont ajouté
+      BNB Chain, Polygon et l'activation v4.
+      ÉNUMÉRER depuis gov.uniswap.org et les transactions d'exécution.
+      Récupérer chaque TokenJar depuis github.com/Uniswap/protocol-fees et le VÉRIFIER
+      sur un explorer avant de l'inscrire ici.
+
+  - id: uniswap:ethereum:v4
+    chain: ethereum
+    version: v4
+    status: pending_verification
+    effective_from: "TODO"
+    note: >-
+      Le V4FeeAdapter était marqué work-in-progress dans le repo. Confirmer son
+      déploiement et sa date d'activation avant d'activer ce déploiement.
+
+allocation:
+  # ATTENTION : le protocol fee est un PRÉLÈVEMENT sur les LP fees, PAS un supplément.
+  # Le brief d'origine affirmait l'inverse ; le traiter comme additif surestime
+  # gross_fees d'environ 1/6 sur tout Uniswap.
+  model: carve_out_from_lp_fees
+
+  rules:
+    - version: v2
+      # LP fees : 0.30% -> 0.25%. 0.05% du volume va au protocole.
+      splits:
+        - beneficiary: token_holder
+          component: swap_fee
+          share_source: constant
+          value: 0.16667                # 0.05 / 0.30
+          effective_from: "2025-12-27T20:33:00Z"
+          effective_to: null
+          source_url: https://gov.uniswap.org/t/unification-proposal/25881
+          note: >-
+            Les fee levels v2 sont hardcodés dans les contrats et la gouvernance les
+            active ou désactive globalement. `constant` est ici légitime, mais borné
+            dans le temps et sourcé — c'est ce qui manquait au cas Lido.
+        - beneficiary: lp
+          component: swap_fee
+          share_source: derived        # gross - protocol_fee
+      verify_against: token_jar_inflows
+
+    - version: v3
+      # 25% des LP fees sur les tiers 0.01% et 0.05% ; 16.7% sur 0.30% et 1%.
+      # Ajustable pool par pool par gouvernance -> DOIT être lu on-chain.
+      splits:
+        - beneficiary: token_holder
+          component: swap_fee
+          share_source: onchain_config
+          contract: v3_fee_adapter
+          read: protocol_fee_per_pool
+          fallback_reference:
+            tier_0_01: 0.25
+            tier_0_05: 0.25
+            tier_0_30: 0.167
+            tier_1_00: 0.167
+            used_for: plausibility_check_only
+        - beneficiary: lp
+          component: swap_fee
+          share_source: derived
+
+  # Fees prélevés par des hooks v4 tiers : PAS du revenue Uniswap.
+  third_party_rules:
+    - source: v4_hooks
+      beneficiary: third_party
+      component: interface_fee
+      is_app_layer: true
+
+  exclusions:
+    - id: treasury_burn_100m_uni
+      date: "2025-12-27"
+      reason: >-
+        Burn rétroactif one-off de 100M UNI depuis le trésor (~$596M), destiné à
+        représenter ce qui aurait été brûlé si le fee switch avait été actif depuis 2018.
+        CE N'EST PAS DU REVENUE. L'inclure produirait un pic absurde qui discréditerait
+        tout le classement.
+
+non_trading_revenue:
+  - id: unichain_sequencer
+    component: sequencer_revenue
+    beneficiary: burn
+    counted_in: non_trading_holder_value    # HORS gross_fees
+    formula: "sequencer_fees - l1_data_costs - optimism_share(15%)"
+    rationale: >-
+      Entre dans le même mécanisme de burn que les protocol fees, mais ce n'est pas un
+      frais de trading. Additionné séparément et VISIBLEMENT à part dans l'UI.
+
+pricing:
+  primary: pyth_hermes
+  witness: chainlink
+  granularity: hourly_twap
+  fallback: pool_ratio
+  fallback_confidence: low
+
+emissions:
+  scope: incentives_only
+  sources: []
+  total: 0
+  note: "Pas de liquidity mining. emissions_cost = 0."
+
+interface_fees:
+  status: disabled
+  since: "2025-12-27"
+  note: >-
+    Uniswap Labs a coupé ses frontend/wallet/API fees lors d'UNIfication. Les compter
+    chez les concurrents fausserait la comparaison — d'où excluded_from_ranking dans
+    la taxonomie partagée.
+
+validation:
+  checks:
+    - id: zero_before_activation
+      kind: unit_test
+      description: "protocol revenue == 0 avant effective_from, PAR CHAÎNE ET PAR VERSION"
+      severity: blocking
+    - id: token_jar_conservation
+      kind: onchain_conservation
+      description: "Inflows TokenJar ≈ Σ events de collecte de protocol fee"
+      tolerance_bps: 200
+    - id: protocol_fee_ratio_v2
+      kind: plausibility
+      description: "protocol_fee / gross_fees ≈ 1/6 sur v2"
+      alert_if_deviation_gt: 0.03
+      note: "Un écart signale un déploiement manqué ou un effective_from erroné."
+
+metadata:
+  chains: [ethereum]      # étendre après vérification
+  is_router: false
+  nests_within: null
+  repo: https://github.com/Uniswap/protocol-fees
