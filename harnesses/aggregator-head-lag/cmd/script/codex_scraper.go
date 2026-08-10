@@ -120,7 +120,7 @@ func chromeAvailable() bool {
 }
 
 // startInProcessScraper launches a background goroutine that refreshes the JWE every 5 min.
-// Call once from main. No-ops silently if Chrome is not installed.
+// Call once from main. No-ops silently if Chrome is not installed or repeatedly fails.
 func startInProcessScraper(stopChan <-chan struct{}) {
 	if !chromeAvailable() {
 		fmt.Println("[CODEX-SCRAPER] Chrome not found — in-process scraper disabled (sidecar will be used)")
@@ -128,7 +128,6 @@ func startInProcessScraper(stopChan <-chan struct{}) {
 	}
 
 	go func() {
-		// Initial delay: let the container fully start before launching Chrome.
 		select {
 		case <-stopChan:
 			return
@@ -136,12 +135,19 @@ func startInProcessScraper(stopChan <-chan struct{}) {
 		}
 
 		refreshInterval := 5 * time.Minute
+		consecutiveFails := 0
+		const maxFails = 3
 
 		for {
 			fmt.Println("[CODEX-SCRAPER] Scraping defined.fi for fresh JWE...")
 			tok, err := scrapeCodexToken()
 			if err != nil {
-				fmt.Printf("[CODEX-SCRAPER] Scrape failed: %v — retrying in 60s\n", err)
+				consecutiveFails++
+				if consecutiveFails >= maxFails {
+					fmt.Printf("[CODEX-SCRAPER] %d consecutive failures — disabling scraper (sidecar will be used)\n", maxFails)
+					return
+				}
+				fmt.Printf("[CODEX-SCRAPER] Scrape failed (%d/%d): %v — retrying in 60s\n", consecutiveFails, maxFails, err)
 				select {
 				case <-stopChan:
 					return
@@ -149,6 +155,7 @@ func startInProcessScraper(stopChan <-chan struct{}) {
 					continue
 				}
 			}
+			consecutiveFails = 0
 			setInProcessJWE(tok)
 			fmt.Printf("[CODEX-SCRAPER] Fresh JWE stored (len=%d), next refresh in %v\n", len(tok), refreshInterval)
 
