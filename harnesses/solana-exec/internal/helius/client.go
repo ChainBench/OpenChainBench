@@ -141,9 +141,12 @@ type EnhancedTx struct {
 	TokenTransfers       []TokenTransfer
 	TransactionError     any
 	ComputeUnitsConsumed int64
-	// CULimit is the SetComputeUnitLimit value from ComputeBudget instructions.
-	// 0 means the instruction was absent (default limit = 200000 per tx).
+	// CULimit from SetComputeUnitLimit (disc 0x02). 0 = instruction absent.
 	CULimit int64
+	// CUPriceDeclared is the micro-lamports/CU from SetComputeUnitPrice (disc 0x03).
+	// This is the authoritative price — use it directly, no division needed.
+	// 0 = no priority fee set (base fee only).
+	CUPriceDeclared int64
 }
 
 const b58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -405,10 +408,11 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		cuConsumed = *m.ComputeUnitsConsumed
 	}
 
-	// Parse ComputeBudget::SetComputeUnitLimit (discriminator 0x03) from instructions.
-	// Priority fee = cuPrice × cuLimit / 1_000_000; cuLimit is the correct denominator,
-	// not cuConsumed (over-provisioned txs would otherwise show inflated per-CU price).
-	var cuLimit int64
+	// Parse ComputeBudget instructions for CU price and limit.
+	// Discriminator enum (borsh u8):
+	//   0x02 = SetComputeUnitLimit  payload: u32 LE [1:5]
+	//   0x03 = SetComputeUnitPrice  payload: u64 LE [1:9]  (micro-lamports per CU)
+	var cuLimit, cuPriceDeclared int64
 	for _, ix := range r.Transaction.Message.Instructions {
 		if ix.ProgramIDIndex < 0 || ix.ProgramIDIndex >= len(accounts) {
 			continue
@@ -417,10 +421,18 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 			continue
 		}
 		data := decodeBase58(ix.Data)
-		// SetComputeUnitLimit: discriminator[0]==3, limit=uint32LE[1:5]
-		if len(data) >= 5 && data[0] == 3 {
-			cuLimit = int64(binary.LittleEndian.Uint32(data[1:5]))
-			break
+		if len(data) == 0 {
+			continue
+		}
+		switch data[0] {
+		case 2:
+			if len(data) >= 5 {
+				cuLimit = int64(binary.LittleEndian.Uint32(data[1:5]))
+			}
+		case 3:
+			if len(data) >= 9 {
+				cuPriceDeclared = int64(binary.LittleEndian.Uint64(data[1:9]))
+			}
 		}
 	}
 
@@ -450,5 +462,6 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		TransactionError:     m.Err,
 		ComputeUnitsConsumed: cuConsumed,
 		CULimit:              cuLimit,
+		CUPriceDeclared:      cuPriceDeclared,
 	}, nil
 }
