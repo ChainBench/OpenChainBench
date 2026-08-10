@@ -33,6 +33,13 @@ func main() {
 	gmxArb := rest.NewGMXv2Arbitrum()
 	gmxAvax := rest.NewGMXv2Avalanche()
 
+	var gains *rest.GainsTradeCollector
+	if key := os.Getenv("THEGRAPH_API_KEY"); key != "" {
+		gains = rest.NewGainsTrade(key)
+	} else {
+		log.Printf("THEGRAPH_API_KEY not set — Gains.trade collector disabled")
+	}
+
 	for {
 		if err := runCollector(ctx, db, dydx, "dydx-v4:dydx-chain"); err != nil {
 			log.Printf("dydx collector error: %v", err)
@@ -45,6 +52,11 @@ func main() {
 		}
 		if err := runCollector(ctx, db, gmxAvax, "gmx-v2:avalanche"); err != nil {
 			log.Printf("gmx-v2:avalanche collector error: %v", err)
+		}
+		if gains != nil {
+			if err := runCollector(ctx, db, gains, "gains-trade:arbitrum"); err != nil {
+				log.Printf("gains-trade collector error: %v", err)
+			}
 		}
 		time.Sleep(60 * time.Second)
 	}
