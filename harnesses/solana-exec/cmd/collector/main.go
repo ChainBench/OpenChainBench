@@ -60,7 +60,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 			break // last page
 		}
 		before = batch[len(batch)-1].Signature
-		time.Sleep(300 * time.Millisecond) // respect Helius free-tier rate limit between pages
+		time.Sleep(100 * time.Millisecond) // Helius free-tier RPC: 10 req/s max
 	}
 	if len(sigs) == 0 {
 		return nil
@@ -105,9 +105,14 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 	}
 
 	// Cap enhanced API at 100 sigs per poll (Helius free-tier budget: ~432K CUs/month).
-	// Fee quality metrics are sampled; tx_count comes from raw counts above.
+	// Evenly stride across the window so the sample represents the full period, not just the oldest txs.
 	if len(sigStrs) > 100 {
-		sigStrs = sigStrs[:100]
+		step := len(sigStrs) / 100
+		sampled := make([]string, 0, 100)
+		for i := 0; i < len(sigStrs) && len(sampled) < 100; i += step {
+			sampled = append(sampled, sigStrs[i])
+		}
+		sigStrs = sampled
 	}
 
 	txs, err := h.GetEnhancedTransactions(ctx, sigStrs)
