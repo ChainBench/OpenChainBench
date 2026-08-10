@@ -38,7 +38,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"kaia\"`. Provider coverage: 1 no-key endpoint (Kaia Foundation). dRPC removed (500 paid plan only)."
 
 findings:
-  - "{{best_name}} currently leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h) — 1 measured provider."
+  - "{{best_name}} currently leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h), 1 measured provider."
 
 faq:
   - q: "What is the fastest free Kaia RPC right now?"
