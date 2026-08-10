@@ -64,29 +64,42 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 		rows, err := pool.Query(ctx, `
 			SELECT
 				platform,
-				AVG(avg_priority_fee_lamports) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_prio,
-				AVG(p50_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p50,
-				AVG(p95_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p95,
-				AVG(avg_platform_fee_lamports)  FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_pfee,
-				AVG(jito_rate)                  FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_jito,
-				AVG(avg_cu_consumed)            FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_cu,
-				SUM(tx_count)                   FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_count,
+				-- weighted averages: SUM(avg×count)/SUM(count) avoids skewing by small off-peak buckets
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_count,
 
-				AVG(avg_priority_fee_lamports) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_prio,
-				AVG(p50_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_p50,
-				AVG(p95_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_p95,
-				AVG(avg_platform_fee_lamports)  FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_pfee,
-				AVG(jito_rate)                  FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_jito,
-				AVG(avg_cu_consumed)            FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_cu,
-				SUM(tx_count)                   FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')   AS d7_count,
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_count,
 
-				AVG(avg_priority_fee_lamports) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_prio,
-				AVG(p50_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_p50,
-				AVG(p95_cu_price_micro)         FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_p95,
-				AVG(avg_platform_fee_lamports)  FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_pfee,
-				AVG(jito_rate)                  FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_jito,
-				AVG(avg_cu_consumed)            FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_cu,
-				SUM(tx_count)                   FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')  AS d30_count,
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_count,
 
 				MAX(bucket_start)::text AS latest_bucket
 			FROM solana_exec_facts
