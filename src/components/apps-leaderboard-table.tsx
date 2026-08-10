@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
+import { logoPath } from "@/lib/logo-manifest";
 import type { ProtocolRow, WindowMetrics } from "@/lib/apps-leaderboard";
 
 const WINDOWS = [
@@ -10,15 +13,19 @@ const WINDOWS = [
   { key: "allTime", label: "All time" },
 ];
 
+// Maps leaderboard slug → perp venue slug + logo key
+const VENUE: Record<string, { perpSlug: string; logoKey: string }> = {
+  hyperliquid: { perpSlug: "hyperliquid", logoKey: "hyperliquid" },
+  dydx:        { perpSlug: "dydx",        logoKey: "dydx" },
+  gmx:         { perpSlug: "gmx",         logoKey: "gmx" },
+  "gains-trade": { perpSlug: "gains",     logoKey: "gains" },
+};
+
 function fmt(n: number): string {
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${Math.round(n).toLocaleString()}`;
-}
-
-function fmtDate(s: string): string {
-  return s.slice(0, 10);
 }
 
 function Dash() {
@@ -80,7 +87,7 @@ export function AppsLeaderboardTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-rule">
-              <th className="text-left py-3 pl-4 sm:pl-6 pr-3 font-medium text-ink-muted text-xs w-8 tabular-nums">#</th>
+              <th className="text-left py-3 pl-4 sm:pl-6 pr-3 font-medium text-ink-muted text-xs w-8">#</th>
               <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs">Protocol</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">Gross fees</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden sm:table-cell">Token holders</th>
@@ -92,6 +99,28 @@ export function AppsLeaderboardTable({
             {sorted.map((p, i) => {
               const wm: WindowMetrics | undefined = p.windows[win];
               const barW = wm?.gross ? Math.max(2, Math.round((wm.gross / maxGross) * 100)) : 0;
+              const venue = VENUE[p.slug];
+              const logo = venue ? logoPath(venue.logoKey) : null;
+              const href = venue ? `/perp/${venue.perpSlug}` : null;
+
+              const nameCell = (
+                <div className="flex items-center gap-2.5">
+                  {logo && (
+                    <Image
+                      src={logo}
+                      alt={p.name}
+                      width={24}
+                      height={24}
+                      className="rounded-full shrink-0 object-contain bg-paper-soft"
+                    />
+                  )}
+                  <div>
+                    <div className="font-medium text-ink leading-tight">{p.name}</div>
+                    <div className="text-xs text-ink-muted capitalize mt-0.5">{p.category}</div>
+                  </div>
+                </div>
+              );
+
               return (
                 <tr
                   key={p.id}
@@ -101,8 +130,11 @@ export function AppsLeaderboardTable({
                     {i + 1}
                   </td>
                   <td className="py-4 pr-4 align-middle">
-                    <div className="font-medium text-ink leading-tight">{p.name}</div>
-                    <div className="text-xs text-ink-muted capitalize mt-0.5">{p.category}</div>
+                    {href ? (
+                      <Link href={href} className="hover:opacity-80 transition-opacity">
+                        {nameCell}
+                      </Link>
+                    ) : nameCell}
                   </td>
                   <td className="py-4 pr-4 sm:pr-6 text-right align-middle">
                     <div className="font-mono font-semibold text-ink tabular-nums">
@@ -124,7 +156,7 @@ export function AppsLeaderboardTable({
                     {wm?.lp ? fmt(wm.lp) : <Dash />}
                   </td>
                   <td className="py-4 pr-4 sm:pr-6 text-right font-mono text-xs text-ink-muted align-middle hidden md:table-cell">
-                    {p.latestDay ? fmtDate(p.latestDay) : <Dash />}
+                    {p.latestDay ? p.latestDay.slice(0, 10) : <Dash />}
                   </td>
                 </tr>
               );
