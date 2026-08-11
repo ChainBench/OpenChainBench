@@ -16,7 +16,7 @@ const (
 	solanaRPC = "https://api.mainnet-beta.solana.com"
 	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	wsolMint  = "So11111111111111111111111111111111111111112"
-	rpcSleep  = 220 * time.Millisecond
+	rpcSleep  = 1 * time.Second
 )
 
 // Known fee wallet owners confirmed via on-chain analysis of tagged Mobula trades.

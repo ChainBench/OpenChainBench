@@ -22,7 +22,7 @@ type mobulaTradesResp struct {
 func fetchTrades(client *http.Client, apiKey, mint string) ([]MobulaTrade, error) {
 	from := time.Now().Add(-2 * time.Hour).UnixMilli()
 	url := fmt.Sprintf(
-		"https://api.mobula.io/api/2/token/trades-enriched?address=%s&chainId=solana:solana&sortOrder=desc&limit=200&from=%d",
+		"https://api.mobula.io/api/2/token/trades-enriched?address=%s&chainId=solana:solana&sortOrder=desc&limit=50&from=%d",
 		mint, from,
 	)
 	req, err := http.NewRequest("GET", url, nil)
