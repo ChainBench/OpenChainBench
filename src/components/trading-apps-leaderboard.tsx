@@ -1,28 +1,38 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { logoPath } from "@/lib/logo-manifest";
 import type { AppMeta } from "@/lib/trading-apps-config";
 
+type FeeWindow = {
+  solana: number | null;
+  ethereum: number | null;
+  bsc: number | null;
+  base: number | null;
+  total: number;
+};
+
 export type UnifiedAppRow = {
   meta: AppMeta;
-  fees: {
-    solana: number | null;
-    ethereum: number | null;
-    bsc: number | null;
-    base: number | null;
-  };
+  windows: Record<string, FeeWindow>;
   stableOnly: { ethereum: boolean; bsc: boolean; base: boolean };
-  total24h: number;
 };
 
 type TabKey = "all" | "meme-bot" | "telegram-bot";
+type WindowKey = "24h" | "7d" | "30d";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "meme-bot", label: "Meme Bots" },
   { key: "telegram-bot", label: "Telegram Bots" },
+];
+
+const WINDOWS: { key: WindowKey; label: string }[] = [
+  { key: "24h", label: "24h" },
+  { key: "7d", label: "7d" },
+  { key: "30d", label: "30d" },
 ];
 
 const CATEGORY_BADGE: Record<AppMeta["category"], string> = {
@@ -79,9 +89,12 @@ export function TradingAppsLeaderboard({
   updatedAt: string | null;
 }) {
   const [tab, setTab] = useState<TabKey>("all");
+  const [window, setWindow] = useState<WindowKey>("24h");
 
   const filtered = tab === "all" ? rows : rows.filter((r) => r.meta.category === tab);
-  const sorted = [...filtered].sort((a, b) => b.total24h - a.total24h);
+  const sorted = [...filtered].sort(
+    (a, b) => (b.windows[window]?.total ?? 0) - (a.windows[window]?.total ?? 0)
+  );
 
   const hasStableOnly = sorted.some(
     (r) => r.stableOnly.ethereum || r.stableOnly.bsc || r.stableOnly.base
@@ -106,11 +119,29 @@ export function TradingAppsLeaderboard({
             </button>
           ))}
         </div>
-        {updatedAt && (
-          <span className="text-[11px] text-ink-faint font-mono pb-2">
-            Updated {new Date(updatedAt).toLocaleString()}
-          </span>
-        )}
+        <div className="flex items-center gap-3 pb-2">
+          <div className="flex gap-0.5 bg-paper-soft rounded-md p-0.5">
+            {WINDOWS.map((w) => (
+              <button
+                key={w.key}
+                type="button"
+                onClick={() => setWindow(w.key)}
+                className={`px-2.5 py-1 text-xs font-mono rounded transition-colors ${
+                  window === w.key
+                    ? "bg-paper text-ink shadow-sm"
+                    : "text-ink-muted hover:text-ink-soft"
+                }`}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+          {updatedAt && (
+            <span className="text-[11px] text-ink-faint font-mono">
+              {new Date(updatedAt).toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -120,16 +151,23 @@ export function TradingAppsLeaderboard({
               <th className="text-left py-3 pl-4 sm:pl-6 pr-3 font-medium text-ink-muted text-xs w-8">#</th>
               <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs">App</th>
               <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs hidden sm:table-cell">Category</th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">Solana</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">
+                <Link href="/benchmarks/memecoin-platforms" className="hover:text-ink-soft transition-colors underline decoration-dotted">
+                  Solana
+                </Link>
+              </th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Ethereum</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">BSC</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Base</th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">Total 24h</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">
+                Total {window}
+              </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((row, i) => {
-              const { meta, fees, stableOnly } = row;
+              const { meta, stableOnly } = row;
+              const fees = row.windows[window] ?? { solana: null, ethereum: null, bsc: null, base: null, total: 0 };
               const logo = meta.logoKey ? logoPath(meta.logoKey) : null;
 
               return (
@@ -141,23 +179,37 @@ export function TradingAppsLeaderboard({
                     {i + 1}
                   </td>
                   <td className="py-4 pr-4 align-middle">
-                    <a
-                      href={meta.productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
-                    >
-                      {logo && (
-                        <Image
-                          src={logo}
-                          alt={meta.name}
-                          width={22}
-                          height={22}
-                          className="rounded-full shrink-0 object-contain bg-paper-soft"
-                        />
+                    <div className="flex items-center gap-2.5">
+                      <Link
+                        href={meta.benchUrl ?? meta.productUrl}
+                        {...(!meta.benchUrl ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+                      >
+                        {logo && (
+                          <Image
+                            src={logo}
+                            alt={meta.name}
+                            width={22}
+                            height={22}
+                            className="rounded-full shrink-0 object-contain bg-paper-soft"
+                          />
+                        )}
+                        <span className="font-medium text-ink">{meta.name}</span>
+                      </Link>
+                      {meta.benchUrl && (
+                        <a
+                          href={meta.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-ink-faint hover:text-ink-muted transition-colors"
+                          title={`Visit ${meta.name}`}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                            <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </a>
                       )}
-                      <span className="font-medium text-ink">{meta.name}</span>
-                    </a>
+                    </div>
                   </td>
                   <td className="py-4 pr-4 align-middle hidden sm:table-cell">
                     <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${CATEGORY_BADGE[meta.category]}`}>
@@ -169,7 +221,7 @@ export function TradingAppsLeaderboard({
                   <ChainCell value={fees.bsc} stableOnly={stableOnly.bsc} />
                   <ChainCell value={fees.base} stableOnly={stableOnly.base} />
                   <td className="py-4 pr-4 sm:pr-6 text-right font-mono font-semibold text-ink tabular-nums align-middle">
-                    {row.total24h > 0 ? fmtUSD(row.total24h) : <Dash />}
+                    {fees.total > 0 ? fmtUSD(fees.total) : <Dash />}
                   </td>
                 </tr>
               );
@@ -181,6 +233,12 @@ export function TradingAppsLeaderboard({
       {hasStableOnly && (
         <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
           <sup>°</sup> USDC only (no native trace on Base).
+          {window !== "24h" && " EVM fees are always 24h — only Solana has multi-window data."}
+        </p>
+      )}
+      {!hasStableOnly && window !== "24h" && (
+        <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
+          EVM fees (ETH/BSC/Base) are always 24h — only Solana has multi-window data.
         </p>
       )}
     </div>
