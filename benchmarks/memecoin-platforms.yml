@@ -1,4 +1,4 @@
-# OpenChainBench. Bench 200
+# OpenChainBench. Bench 203
 
 slug: memecoin-platforms
 number: "203"
@@ -24,7 +24,7 @@ seo_intro: |
 
 abstract: |
   The harness fetches the top 10 tokens by market cap from pump.fun every 5
-  minutes, then pulls the last 200 trades per token from Mobula's
+  minutes, then pulls the last 50 trades per token from Mobula's
   token/trades-enriched endpoint (chainId=solana:solana). For each trade carrying
   a hash and sender address, the harness calls the public Solana RPC
   (getTransaction, jsonParsed encoding) and computes explicit fees: Solana
@@ -36,7 +36,7 @@ abstract: |
 
 methodology:
   - "Tokens: top 10 by market cap from pump.fun, refreshed every 5 minutes."
-  - "Trades: last 200 trades per token from Mobula token/trades-enriched (chainId=solana:solana), filtered to amountUSD >= $5."
+  - "Trades: last 50 trades per token from Mobula token/trades-enriched (chainId=solana:solana), filtered to amountUSD >= $5."
   - "Fee source: Solana public RPC getTransaction (jsonParsed) for each trade hash. No third-party fee API."
   - "Gas: meta.fee (lamports) converted to USD at the current SOL/USD price fetched from CoinGecko every 5 min."
   - "Platform fees: explicit SOL or USDC/WSOL transfers to known fee wallet owners (confirmed on-chain). Unknown small recipients are captured via heuristics: SOL recipients receiving less than 5% of the user net flow, USDC/WSOL recipients receiving less than 5% of the largest pool receipt."

@@ -5,12 +5,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const minTradeUSD = 5.0
+
+var pollMu sync.Mutex
 
 func main() {
 	log.Println("memecoin-platforms monitor starting...")
@@ -45,7 +48,7 @@ func main() {
 	// heliusClient used as fallback for older tx not in public RPC history
 	heliusClient := &http.Client{Timeout: 30 * time.Second}
 
-	setSolPrice(175.0)
+	setSolPrice(76.0)
 	updateSolPrice(mobulaClient)
 
 	go func() {
@@ -70,7 +73,14 @@ func main() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
-		runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
+		if !pollMu.TryLock() {
+			log.Println("[poll] previous poll still running, skipping tick")
+			continue
+		}
+		go func() {
+			defer pollMu.Unlock()
+			runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
+		}()
 	}
 }
 
@@ -145,9 +155,9 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			if avgVal > 0 {
 				feePct = (avgTotal / avgVal) * 100
 			}
-			platformFeePct.WithLabelValues(p, sym, tok.Mint).Set(feePct)
-			platformTotalFeeUSD.WithLabelValues(p, sym, tok.Mint).Set(avgTotal)
-			platformTradeCount.WithLabelValues(p, sym, tok.Mint).Set(n)
+			platformFeePct.WithLabelValues(p, sym).Set(feePct)
+			platformTotalFeeUSD.WithLabelValues(p, sym).Set(avgTotal)
+			platformTradeCount.WithLabelValues(p, sym).Set(n)
 		}
 
 		log.Printf("[mobula][%s] %d trades across %d platforms", sym, len(trades), len(byPlatform))
