@@ -15,15 +15,17 @@ const etherscanV2 = "https://api.etherscan.io/v2/api"
 
 // NativeTx is an ETH transfer (internal or normal) to a monitored address.
 type NativeTx struct {
-	TxHash   string
-	BlockNum uint64
-	Amount   *big.Int // wei, never divided
-	EventKey string   // traceId for internal txs, "" for normal value txs
+	TxHash    string
+	BlockNum  uint64
+	BlockTime time.Time // from Etherscan timeStamp, avoids eth_getBlockByNumber
+	Amount    *big.Int  // wei, never divided
+	EventKey  string    // traceId for internal txs, "" for normal value txs
 }
 
 type etherscanTx struct {
 	Hash        string `json:"hash"`
 	BlockNumber string `json:"blockNumber"`
+	TimeStamp   string `json:"timeStamp"` // unix seconds as decimal string
 	Value       string `json:"value"`
 	To          string `json:"to"`
 	IsError     string `json:"isError"`
@@ -44,7 +46,11 @@ func GetEtherscanInternalTxs(ctx context.Context, apiKey, address string, startB
 		if err != nil {
 			return NativeTx{}, false
 		}
-		return NativeTx{TxHash: strings.ToLower(tx.Hash), BlockNum: blockNum, Amount: amt, EventKey: tx.TraceID}, true
+		var bt time.Time
+		if ts, err2 := parseDecU64(tx.TimeStamp); err2 == nil && ts > 0 {
+			bt = time.Unix(int64(ts), 0).UTC()
+		}
+		return NativeTx{TxHash: strings.ToLower(tx.Hash), BlockNum: blockNum, BlockTime: bt, Amount: amt, EventKey: tx.TraceID}, true
 	})
 }
 
@@ -66,7 +72,11 @@ func GetEtherscanNormalTxs(ctx context.Context, apiKey, address string, startBlo
 		if err != nil {
 			return NativeTx{}, false
 		}
-		return NativeTx{TxHash: strings.ToLower(tx.Hash), BlockNum: blockNum, Amount: amt, EventKey: ""}, true
+		var bt time.Time
+		if ts, err2 := parseDecU64(tx.TimeStamp); err2 == nil && ts > 0 {
+			bt = time.Unix(int64(ts), 0).UTC()
+		}
+		return NativeTx{TxHash: strings.ToLower(tx.Hash), BlockNum: blockNum, BlockTime: bt, Amount: amt, EventKey: ""}, true
 	})
 }
 
