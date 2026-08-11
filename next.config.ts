@@ -262,6 +262,11 @@ const nextConfig: NextConfig = {
         destination: "/benchmarks/pm-resolution-delay/:path*",
         permanent: true,
       },
+      {
+        source: "/apps/exec",
+        destination: "/apps",
+        permanent: true,
+      },
       ...chainRedirects,
       ...rpcClusterRedirects,
     ];
