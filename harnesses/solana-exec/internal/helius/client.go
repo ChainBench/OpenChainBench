@@ -10,20 +10,30 @@ import (
 )
 
 // Client wraps the Helius RPC + enhanced-transactions APIs.
+// rpcURL is used for standard Solana JSON-RPC calls (getSignaturesForAddress) and can be
+// any Solana endpoint — we default to the public mainnet RPC to avoid consuming Helius credits
+// on raw pagination. enhURL is Helius-specific and costs credits; it is only called for the
+// 100-sig quality sample per poll.
 type Client struct {
 	httpClient *http.Client
 	apiKey     string
-	rpcURL     string // https://mainnet.helius-rpc.com/?api-key=KEY
-	enhURL     string // https://api.helius.xyz/v0/transactions?api-key=KEY
+	rpcURL     string // standard Solana JSON-RPC (public endpoint, no credits)
+	enhURL     string // https://api.helius.xyz/v0/transactions?api-key=KEY (credits)
 }
 
-func New(apiKey string) *Client {
+// NewWithRPC creates a client where rpcURL is used for standard RPC calls (getSignaturesForAddress).
+// Pass a public or self-hosted endpoint to avoid consuming Helius credits on pagination.
+func NewWithRPC(apiKey, rpcURL string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		apiKey:     apiKey,
-		rpcURL:     fmt.Sprintf("https://mainnet.helius-rpc.com/?api-key=%s", apiKey),
+		rpcURL:     rpcURL,
 		enhURL:     fmt.Sprintf("https://api.helius.xyz/v0/transactions?api-key=%s", apiKey),
 	}
+}
+
+func New(apiKey string) *Client {
+	return NewWithRPC(apiKey, "https://api.mainnet-beta.solana.com")
 }
 
 // SigEntry is one result from getSignaturesForAddress.
@@ -57,36 +67,57 @@ func (c *Client) GetSignaturesForAddress(ctx context.Context, address string, li
 		"params":  []any{address, params},
 	})
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	// Retry up to 3 times on 429 or transient errors with exponential backoff.
+	var lastErr error
+	for attempt := range 3 {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(attempt*attempt) * time.Second):
+			}
+		}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.rpcURL, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("helius RPC HTTP %d", resp.StatusCode)
-	}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
 
-	var out struct {
-		Result []SigEntry `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("helius RPC HTTP 429")
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("helius RPC HTTP %d", resp.StatusCode)
+		}
+
+		var out struct {
+			Result []SigEntry `json:"result"`
+			Error  *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("helius RPC decode: %w", err)
+		}
+		resp.Body.Close()
+		if out.Error != nil {
+			return nil, fmt.Errorf("helius RPC error %d: %s", out.Error.Code, out.Error.Message)
+		}
+		return out.Result, nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("helius RPC decode: %w", err)
-	}
-	if out.Error != nil {
-		return nil, fmt.Errorf("helius RPC error %d: %s", out.Error.Code, out.Error.Message)
-	}
-	return out.Result, nil
+	return nil, fmt.Errorf("helius RPC: %w (after 3 attempts)", lastErr)
 }
 
 // NativeTransfer is a SOL transfer extracted by Helius.
