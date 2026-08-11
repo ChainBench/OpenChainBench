@@ -18,6 +18,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { isRegion } from "@/lib/brand";
 import { isAll } from "@/lib/dimensions";
 
@@ -270,6 +271,12 @@ export function LedgerTable({
       // undersized field. "low" rows stay; the row renderer shows them
       // with a soft pill instead.
       if (r.dataConfidence === "insufficient") return false;
+      // Success-rate gate. Prometheus gauges retain the last measured
+      // value when the harness fails, so a row with a stale non-zero p50
+      // but 0 % real success rate would otherwise rank as #1 on a
+      // lower-is-better bench. Excluded rows join unresponsiveRows for
+      // display; they are not silently hidden.
+      if ((r.successRate ?? 100) < MIN_DISPLAY_SUCCESS_PCT) return false;
       if (activePanel) {
         const v = activePanel.values[r.slug];
         return v != null && Number.isFinite(v) && v !== 0;
