@@ -8,12 +8,9 @@ import (
 )
 
 type MobulaTrade struct {
-	Platform        string  `json:"platform"`
-	PlatformFeesUSD float64 `json:"platformFeesUSD"`
-	GasFeesUSD      float64 `json:"gasFeesUSD"`
-	MEVFeesUSD      float64 `json:"mevFeesUSD"`
-	TotalFeesUSD    float64 `json:"totalFeesUSD"`
-	// Amount in native token; AmountUSD is what we use for fee %.
+	Platform  string  `json:"platform"`
+	Hash      string  `json:"hash"`
+	Sender    string  `json:"sender"`
 	AmountUSD float64 `json:"amountUSD"`
 }
 
