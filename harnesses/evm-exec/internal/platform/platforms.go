@@ -121,6 +121,15 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
+	// Axiom — confirmed via DeFiLlama fees/axiom adapter (feeReceiver field, start 2026-01-25)
+	"axiom": {
+		"bsc": {
+			FeeCollector:  "0xdec29d79e8cdf009d2fa33e0558cb5648481cac3",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
+	},
 }
 
 // Coverage returns "full" if native is enabled for this platform+chain, else "stable-only".
