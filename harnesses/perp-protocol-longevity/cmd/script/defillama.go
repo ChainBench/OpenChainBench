@@ -65,6 +65,9 @@ func enrichFromDefiLlama(reg []venueRecord) []venueRecord {
 			if t.Before(reg[i].Launched) {
 				continue
 			}
+			if h.Amount <= 0 {
+				continue // null/zero amount = no confirmed financial loss
+			}
 			if h.ReturnedFunds != nil && *h.ReturnedFunds >= h.Amount {
 				continue
 			}
