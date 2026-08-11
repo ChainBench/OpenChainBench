@@ -70,7 +70,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: Native launchpad
-    formula: "Average total fee percent across top pump.fun tokens traded via the pump.fun native interface, 24h median."
+    formula: "Average total fee percent for trades on pump.fun bonding curve and its graduated Raydium pools, 24h median. Mobula does not tag pump.fun native trades with a platform id; they return platform:null and are counted here since we exclusively sample pump.fun top tokens."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
