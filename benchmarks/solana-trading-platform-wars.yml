@@ -1,0 +1,178 @@
+# OpenChainBench. Bench 201
+
+slug: solana-trading-platform-wars
+number: "201"
+title: "Solana trading platform leaderboard: GMGN vs Axiom vs Fomo vs Trojan, live 24h volume"
+seo_title: "Solana trading platform comparison 2026: GMGN, Axiom, Fomo, Trojan"
+seo_description: "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Padre vs Phantom ranked live from Mobula lighthouse data."
+subtitle: Live 24-hour trading volume for each Solana trading platform and Telegram bot. Polled every 15 minutes from Mobula lighthouse, which aggregates on-chain swap events routed through each frontend across all Solana DEX programs.
+
+category: Trading
+status: live
+metric: 24h volume
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Volume figures are sourced from Mobula's lighthouse aggregator, which indexes on-chain swap events attributed to each trading platform or Telegram bot. Data is refreshed every 15 minutes. Platforms with zero volume may indicate no attributable on-chain activity in the last 24 hours or a temporary attribution gap in Mobula's indexing.
+
+seo_intro: |
+  Solana's trading frontend market is a three-way race between GMGN, Axiom and
+  Fomo, with Trojan and Padre close behind as the dominant Telegram bots. This
+  benchmark tracks the 24-hour trading volume routed through each platform in
+  real time using Mobula's lighthouse aggregator, which attributes on-chain
+  swap events to the originating frontend. GMGN and Axiom typically trade
+  places at the top with 80 to 100 million USD in daily volume each. Fomo
+  processes roughly 50 million USD per day, while Trojan and Padre serve the
+  Telegram-native trader segment at 40 and 20 million USD respectively.
+  Phantom, the dominant Solana wallet, routes roughly 10 million USD per day
+  through its swap interface. The fee column reveals which platforms capture
+  the most protocol revenue per dollar traded.
+
+abstract: |
+  The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
+  every 15 minutes. Mobula attributes each on-chain swap event to the originating
+  trading platform or bot using referral tags, program IDs and memo fields embedded
+  in transactions. The harness exposes three gauges per platform:
+  solana_platform_volume_24h_usd, solana_platform_fees_24h_usd and
+  solana_platform_health. All platforms returned by the API are tracked
+  automatically. The benchmark YAML selects the highest-volume Solana-native
+  trading platforms as providers.
+
+methodology:
+  - "Source: Mobula lighthouse (api.mobula.io/api/2/market/lighthouse), byPlatform field. Mobula attributes swap events using on-chain referral tags, program IDs and memo fields."
+  - "Poll cadence: harness fetches the endpoint every 15 minutes and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
+  - "Volume: sum of all swap event notional values (in USD at time of swap) within the last 24 hours for swaps attributed to this platform. Higher = more user activity routed through this frontend."
+  - "Fees: on-chain protocol fees collected or attributable to this platform within the last 24 hours. Bot fee charging through referral accounts is included where attributable."
+  - "Attribution method: Mobula uses a combination of on-chain referral tags embedded by each platform SDK and program-level routing heuristics. Attribution may undercount platforms that do not use standard referral tags."
+  - "Scope: this bench covers trading frontends and Telegram bots that route swap orders across Solana DEX programs. Launchpads with dedicated bonding-curve programs (PumpFun, Flap, Bankr) are a separate bench (200)."
+  - "Phantom note: Phantom is primarily a wallet; its swap volume here reflects users initiating swaps from the Phantom interface via Jupiter or other aggregators."
+
+findings:
+  - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
+  - "GMGN and Axiom dominate the web-based trading terminal segment, each processing over 80 million USD in daily volume. Their fee rates and UX differentiate them for power traders."
+  - "Fomo is the third web platform with around 50 million USD per day. Trojan and Padre serve Telegram-native traders at 40 and 20 million USD respectively."
+  - "Phantom routes roughly 10 million USD per day through its wallet swap interface, confirming that a large share of retail Solana volume touches the wallet layer."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-launchpad-wars
+
+prometheus:
+  window: 24h
+  freshness_metric: solana_platform_volume_24h_usd
+
+faq:
+  - q: "Which Solana trading platform has the most volume?"
+    a: "GMGN and Axiom trade places at the top depending on the day, each routing 80 to 100 million USD in daily on-chain swap volume. Fomo is close behind at around 50 million USD. The leaderboard updates every 15 minutes from live Mobula lighthouse data."
+  - q: "What is the difference between GMGN and Axiom?"
+    a: "Both are web-based Solana trading terminals targeting power traders. GMGN emphasizes AI-powered wallet analysis and copy trading. Axiom is a terminal-style platform focused on chart speed and order execution. Both route through Jupiter and direct DEX pools."
+  - q: "Are Trojan and Padre Telegram bots?"
+    a: "Yes. Trojan and Padre are Telegram-native trading bots that execute Solana swaps on behalf of users. They embed referral tags in transactions which Mobula uses to attribute volume. Padre is particularly popular among meme coin traders using bonding-curve launchpads."
+  - q: "Why does Bullx show zero volume?"
+    a: "BullX has limited Solana attribution in Mobula's lighthouse data. BullX primarily targets Ethereum and EVM chains and its Solana swap volume may not be tagged with referral data that Mobula can attribute."
+  - q: "How is trading platform volume different from launchpad volume?"
+    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like PumpFun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. A single trade on PumpFun via GMGN is counted in both benches."
+
+providers:
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal on Solana"
+    formula: "24h swap volume in USD attributed to GMGN (Mobula lighthouse byPlatform[name=GMGN].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="gmgn"}
+      p90: solana_platform_volume_24h_usd{platform="gmgn"}
+      p99: solana_platform_volume_24h_usd{platform="gmgn"}
+      mean: solana_platform_volume_24h_usd{platform="gmgn"}
+      success: solana_platform_health{platform="gmgn"}
+      sample_size: solana_platform_fees_24h_usd{platform="gmgn"}
+      series: solana_platform_volume_24h_usd{platform="gmgn"}
+
+  - slug: axiom
+    name: Axiom
+    tag: "Web trading terminal on Solana"
+    formula: "24h swap volume in USD attributed to Axiom (Mobula lighthouse byPlatform[name=Axiom].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="axiom"}
+      p90: solana_platform_volume_24h_usd{platform="axiom"}
+      p99: solana_platform_volume_24h_usd{platform="axiom"}
+      mean: solana_platform_volume_24h_usd{platform="axiom"}
+      success: solana_platform_health{platform="axiom"}
+      sample_size: solana_platform_fees_24h_usd{platform="axiom"}
+      series: solana_platform_volume_24h_usd{platform="axiom"}
+
+  - slug: fomo
+    name: Fomo
+    tag: "Solana trading platform"
+    formula: "24h swap volume in USD attributed to Fomo (Mobula lighthouse byPlatform[name=Fomo].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="fomo"}
+      p90: solana_platform_volume_24h_usd{platform="fomo"}
+      p99: solana_platform_volume_24h_usd{platform="fomo"}
+      mean: solana_platform_volume_24h_usd{platform="fomo"}
+      success: solana_platform_health{platform="fomo"}
+      sample_size: solana_platform_fees_24h_usd{platform="fomo"}
+      series: solana_platform_volume_24h_usd{platform="fomo"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram trading bot on Solana"
+    formula: "24h swap volume in USD attributed to Trojan (Mobula lighthouse byPlatform[name=Trojan].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="trojan"}
+      p90: solana_platform_volume_24h_usd{platform="trojan"}
+      p99: solana_platform_volume_24h_usd{platform="trojan"}
+      mean: solana_platform_volume_24h_usd{platform="trojan"}
+      success: solana_platform_health{platform="trojan"}
+      sample_size: solana_platform_fees_24h_usd{platform="trojan"}
+      series: solana_platform_volume_24h_usd{platform="trojan"}
+
+  - slug: padre
+    name: Padre
+    tag: "AI Telegram bot on Solana"
+    formula: "24h swap volume in USD attributed to Padre (Mobula lighthouse byPlatform[name=Padre].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="padre"}
+      p90: solana_platform_volume_24h_usd{platform="padre"}
+      p99: solana_platform_volume_24h_usd{platform="padre"}
+      mean: solana_platform_volume_24h_usd{platform="padre"}
+      success: solana_platform_health{platform="padre"}
+      sample_size: solana_platform_fees_24h_usd{platform="padre"}
+      series: solana_platform_volume_24h_usd{platform="padre"}
+
+  - slug: phantom
+    name: Phantom
+    tag: "Solana wallet, DEX aggregator"
+    formula: "24h swap volume in USD attributed to Phantom wallet (Mobula lighthouse byPlatform[name=Phantom].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="phantom"}
+      p90: solana_platform_volume_24h_usd{platform="phantom"}
+      p99: solana_platform_volume_24h_usd{platform="phantom"}
+      mean: solana_platform_volume_24h_usd{platform="phantom"}
+      success: solana_platform_health{platform="phantom"}
+      sample_size: solana_platform_fees_24h_usd{platform="phantom"}
+      series: solana_platform_volume_24h_usd{platform="phantom"}
+
+  - slug: photon
+    name: Photon
+    tag: "Solana trading terminal"
+    formula: "24h swap volume in USD attributed to Photon (Mobula lighthouse byPlatform[name=Photon].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="photon"}
+      p90: solana_platform_volume_24h_usd{platform="photon"}
+      p99: solana_platform_volume_24h_usd{platform="photon"}
+      mean: solana_platform_volume_24h_usd{platform="photon"}
+      success: solana_platform_health{platform="photon"}
+      sample_size: solana_platform_fees_24h_usd{platform="photon"}
+      series: solana_platform_volume_24h_usd{platform="photon"}
+
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram trading bot on Solana"
+    formula: "24h swap volume in USD attributed to Maestro (Mobula lighthouse byPlatform[name=Maestro].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="maestro"}
+      p90: solana_platform_volume_24h_usd{platform="maestro"}
+      p99: solana_platform_volume_24h_usd{platform="maestro"}
+      mean: solana_platform_volume_24h_usd{platform="maestro"}
+      success: solana_platform_health{platform="maestro"}
+      sample_size: solana_platform_fees_24h_usd{platform="maestro"}
+      series: solana_platform_volume_24h_usd{platform="maestro"}
