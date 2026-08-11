@@ -1,0 +1,154 @@
+# OpenChainBench. Bench 202
+
+slug: app-store-ratings
+number: "202"
+title: "Crypto trading app iOS ratings: PumpFun vs Fomo vs Phantom vs Moonshot, live"
+seo_title: "Crypto trading app App Store ratings 2026: PumpFun, Fomo, Phantom, Moonshot"
+seo_description: "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars. PumpFun vs Fomo vs Phantom vs Moonshot vs DEX Screener ranked live from iTunes ratings."
+subtitle: Live Apple App Store ratings for the leading crypto trading and meme coin apps on iOS. Updated every 30 minutes from the iTunes lookup API. Rating is the current average across all user reviews. Review count shows how many users voted.
+
+category: Trading
+status: live
+metric: App Store rating
+unit: x
+higher_is_better: true
+
+disclaimer: |
+  Ratings reflect the current all-time average user rating from the Apple App Store as returned by the iTunes lookup API. Apple does not expose star-distribution breakdowns or time-windowed averages via the public API. A high rating with few reviews carries more statistical uncertainty than the same rating with tens of thousands of reviews. The review count column shows how many users contributed to each rating.
+
+seo_intro: |
+  The PumpFun and Fomo battle for Solana meme coin traders has moved to the
+  App Store. Both launched iOS apps within months of each other in 2024 to
+  2025, and user ratings are a live signal of trader satisfaction. Fomo
+  launched in April 2025 and has already accumulated over 7,000 ratings
+  despite being newer than PumpFun, suggesting a highly engaged user base.
+  Phantom, the dominant Solana wallet, leads on raw review volume with over
+  64,000 ratings. Moonshot by DEX Screener targets fiat-onboarding with Apple
+  Pay integration and has 28,000 ratings. DEX Screener, the leading token
+  analytics app, rounds out the comparison. This benchmark is the only live
+  ranking of crypto trading app satisfaction on the App Store, updated every
+  30 minutes.
+
+abstract: |
+  The harness polls the iTunes public lookup API
+  (itunes.apple.com/lookup?id=<appID>&country=us) every 30 minutes for each
+  tracked app. The API returns averageUserRating (0-5, rounded to two decimal
+  places by Apple) and userRatingCount (total all-time reviews). The harness
+  exposes three gauges per app: app_store_rating, app_store_reviews_total,
+  and app_store_health. No API key is required. Apple caches the endpoint
+  but updates it within hours of new reviews arriving. The benchmark YAML
+  selects five crypto trading apps with iOS presence.
+
+methodology:
+  - "Source: Apple iTunes public lookup API (itunes.apple.com/lookup?id=<appID>&country=us). No authentication required. Returns averageUserRating and userRatingCount."
+  - "Poll cadence: harness fetches each app every 30 minutes. Ratings change slowly (daily to weekly) so 30-minute polling captures all meaningful changes while respecting Apple caching."
+  - "Rating: Apple computes the average across all all-time user reviews. Apple does not expose time-windowed (e.g. current version only) averages via the public API endpoint used here."
+  - "Review count: total number of ratings ever submitted on the US App Store. Higher = more statistically reliable average."
+  - "PumpFun (ID 6717572591): launched Oct 2024. Bonding-curve launchpad and trading app for Solana meme coins."
+  - "Fomo (ID 6741115427): launched Apr 2025. Social copy-trading and meme coin terminal, backed by Index Ventures and USV."
+  - "Phantom (ID 1598432977): the dominant Solana wallet with integrated DEX swap functionality."
+  - "Moonshot (ID 6503993131): mobile-first meme coin launchpad with fiat onramp via Apple Pay, by DEX Screener."
+  - "DEX Screener (ID 1631840457): leading multi-chain token analytics and charting app."
+
+findings:
+  - "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars."
+  - "Fomo has accumulated over 7,000 ratings since its April 2025 launch, roughly 3x more than PumpFun despite launching 6 months later, signalling strong mobile-native engagement."
+  - "Phantom leads on review volume with over 64,000 ratings, reflecting its position as the primary Solana wallet for retail users."
+  - "Moonshot targets the fiat-onboarding angle with Apple Pay support; its 28,000 ratings reflect strong traction among non-crypto-native users."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/app-store-ratings
+
+prometheus:
+  window: 24h
+  freshness_metric: app_store_health
+
+faq:
+  - q: "Why does the App Store rating matter for a trading app?"
+    a: "App Store ratings are the most visible public signal of user satisfaction for mobile products. For trading apps competing for the same Solana meme trader, a higher rating and more reviews signals a better-received product. Fomo's 4.77 rating with 7,000+ reviews compared to PumpFun's 4.70 with 2,200 reviews reflects a more engaged early adopter base."
+  - q: "How often do App Store ratings change?"
+    a: "Slowly. Individual ratings accumulate continuously but the average moves over days to weeks. The harness polls every 30 minutes to capture any meaningful shift; in practice the number updates at most once or twice per day."
+  - q: "Why is this the US App Store only?"
+    a: "The iTunes public lookup API returns US store data by default. Review counts and ratings can differ by country. The US store is the largest single market and the standard reference for app comparisons."
+  - q: "Does this include Google Play ratings?"
+    a: "No. Neither Fomo nor PumpFun has an Android app as of August 2026. All five apps in this bench are iOS-only."
+  - q: "What is Moonshot?"
+    a: "Moonshot is a mobile-first meme coin launchpad built by DEX Screener, the leading token analytics platform. It differentiates via fiat onboarding through Apple Pay, targeting users who want to buy meme coins without setting up a crypto wallet first."
+
+providers:
+  - slug: fomo
+    name: Fomo
+    tag: "Social trading app, Solana"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 6741115427, US store, all-time average). Review count from app_store_reviews_total{app=\"fomo\"}."
+    queries:
+      p50: app_store_rating{app="fomo"}
+      p90: app_store_rating{app="fomo"}
+      p99: app_store_rating{app="fomo"}
+      mean: app_store_rating{app="fomo"}
+      success: app_store_health{app="fomo"}
+      sample_size: app_store_reviews_total{app="fomo"}
+      series: app_store_rating{app="fomo"}
+
+  - slug: phantom
+    name: Phantom
+    tag: "Solana wallet, DEX aggregator"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 1598432977, US store, all-time average). Review count from app_store_reviews_total{app=\"phantom\"}."
+    queries:
+      p50: app_store_rating{app="phantom"}
+      p90: app_store_rating{app="phantom"}
+      p99: app_store_rating{app="phantom"}
+      mean: app_store_rating{app="phantom"}
+      success: app_store_health{app="phantom"}
+      sample_size: app_store_reviews_total{app="phantom"}
+      series: app_store_rating{app="phantom"}
+
+  - slug: dex-screener
+    name: DEX Screener
+    tag: "Multi-chain token analytics app"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 1631840457, US store, all-time average). Review count from app_store_reviews_total{app=\"dex-screener\"}."
+    queries:
+      p50: app_store_rating{app="dex-screener"}
+      p90: app_store_rating{app="dex-screener"}
+      p99: app_store_rating{app="dex-screener"}
+      mean: app_store_rating{app="dex-screener"}
+      success: app_store_health{app="dex-screener"}
+      sample_size: app_store_reviews_total{app="dex-screener"}
+      series: app_store_rating{app="dex-screener"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal, Solana"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 6745328711, US store, all-time average). Review count from app_store_reviews_total{app=\"gmgn\"}."
+    queries:
+      p50: app_store_rating{app="gmgn"}
+      p90: app_store_rating{app="gmgn"}
+      p99: app_store_rating{app="gmgn"}
+      mean: app_store_rating{app="gmgn"}
+      success: app_store_health{app="gmgn"}
+      sample_size: app_store_reviews_total{app="gmgn"}
+      series: app_store_rating{app="gmgn"}
+
+  - slug: pumpfun
+    name: PumpFun
+    tag: "Solana meme launchpad app"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 6717572591, US store, all-time average). Review count from app_store_reviews_total{app=\"pumpfun\"}."
+    queries:
+      p50: app_store_rating{app="pumpfun"}
+      p90: app_store_rating{app="pumpfun"}
+      p99: app_store_rating{app="pumpfun"}
+      mean: app_store_rating{app="pumpfun"}
+      success: app_store_health{app="pumpfun"}
+      sample_size: app_store_reviews_total{app="pumpfun"}
+      series: app_store_rating{app="pumpfun"}
+
+  - slug: moonshot
+    name: Moonshot
+    tag: "Meme launchpad, Apple Pay"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 6503993131, US store, all-time average). Review count from app_store_reviews_total{app=\"moonshot\"}."
+    queries:
+      p50: app_store_rating{app="moonshot"}
+      p90: app_store_rating{app="moonshot"}
+      p99: app_store_rating{app="moonshot"}
+      mean: app_store_rating{app="moonshot"}
+      success: app_store_health{app="moonshot"}
+      sample_size: app_store_reviews_total{app="moonshot"}
+      series: app_store_rating{app="moonshot"}
