@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -19,8 +20,27 @@ func main() {
 		log.Fatal("MOBULA_API_KEY is required")
 	}
 
+	heliusKey := os.Getenv("HELIUS_API_KEY")
+
 	mobulaClient := &http.Client{Timeout: 30 * time.Second}
-	rpcClient := &http.Client{Timeout: 10 * time.Second}
+
+	// rpcClient routes through rotating proxy to avoid per-IP rate limits
+	var rpcClient *http.Client
+	if proxyRaw := os.Getenv("HTTPS_PROXY"); proxyRaw != "" {
+		if proxyURL, err := url.Parse(proxyRaw); err == nil {
+			rpcClient = &http.Client{
+				Timeout:   15 * time.Second,
+				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
+			}
+			log.Printf("rpc: rotating proxy enabled")
+		}
+	}
+	if rpcClient == nil {
+		rpcClient = &http.Client{Timeout: 15 * time.Second}
+	}
+
+	// heliusClient used as fallback for older tx not in public RPC history
+	heliusClient := &http.Client{Timeout: 15 * time.Second}
 
 	setSolPrice(175.0)
 	updateSolPrice(mobulaClient)
@@ -42,12 +62,12 @@ func main() {
 		log.Fatal(http.ListenAndServe(":9090", nil))
 	}()
 
-	runPoll(mobulaClient, rpcClient, apiKey)
+	runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
 
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
-		runPoll(mobulaClient, rpcClient, apiKey)
+		runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
 	}
 }
 
@@ -57,7 +77,7 @@ type platformStats struct {
 	n             int
 }
 
-func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
+func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiKey string) {
 	tokens, err := fetchTopTokens(mobulaClient, 10)
 	if err != nil {
 		log.Printf("[pump.fun] %v", err)
@@ -95,7 +115,7 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 				byPlatform[p] = s
 			}
 			_, cached := txCache.Load(t.Hash)
-			if !cached && freshLookups >= 15 {
+			if !cached && freshLookups >= 20 {
 				s.tradeValueSum += t.AmountUSD
 				s.n++
 				continue
@@ -103,7 +123,7 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 			if !cached {
 				freshLookups++
 			}
-			feeUSD := computeExplicitFees(rpcClient, t.Hash, t.Sender)
+			feeUSD := computeExplicitFees(rpcClient, heliusClient, heliusKey, t.Hash, t.Sender)
 			s.totalFeeSum += feeUSD
 			s.tradeValueSum += t.AmountUSD
 			s.n++

@@ -20,7 +20,7 @@ type mobulaTradesResp struct {
 }
 
 func fetchTrades(client *http.Client, apiKey, mint string) ([]MobulaTrade, error) {
-	from := time.Now().Add(-10 * time.Minute).UnixMilli()
+	from := time.Now().Add(-2 * time.Hour).UnixMilli()
 	url := fmt.Sprintf(
 		"https://api.mobula.io/api/2/token/trades-enriched?address=%s&chainId=solana:solana&sortOrder=desc&limit=50&from=%d",
 		mint, from,
