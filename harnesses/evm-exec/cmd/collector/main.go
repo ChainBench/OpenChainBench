@@ -206,9 +206,16 @@ func collectNativeBSC(ctx context.Context, db *store.DB, plt, chain, collector s
 	var events []store.EVMEvent
 	var highBlock uint64
 	for _, t := range transfers {
-		bt, err := resolveBlockTime(ctx, db, rpc, chain, t.BlockNum)
-		if err != nil {
-			continue
+		var bt time.Time
+		if !t.BlockTime.IsZero() {
+			bt = t.BlockTime
+			_ = db.CacheBlockTime(ctx, chain, t.BlockNum, bt)
+		} else {
+			var err error
+			bt, err = resolveBlockTime(ctx, db, rpc, chain, t.BlockNum)
+			if err != nil {
+				continue
+			}
 		}
 		events = append(events, store.EVMEvent{
 			Chain: chain, TxHash: t.TxHash, BlockNum: t.BlockNum, BlockTime: bt,
