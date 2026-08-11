@@ -23,27 +23,27 @@ seo_intro: |
   button on each platform.
 
 abstract: |
-  The harness fetches the top 10 tokens by market cap from pump.fun every 5
-  minutes, then pulls the last 50 trades per token from Mobula's
-  token/trades-enriched endpoint (chainId=solana:solana). For each trade carrying
-  a hash and sender address, the harness calls the public Solana RPC
-  (getTransaction, jsonParsed encoding) and computes explicit fees: Solana
-  transaction fee (gas), SOL transfers to known platform fee wallets, small SOL
-  recipients below 5% of user net flow, and small USDC/WSOL token recipients below
-  5% of the largest pool receipt. Trades below $5 are excluded to avoid gas
-  dominating tiny amounts. Results are grouped by platform tag, averaged per
-  token, and emitted as memecoin_platform_fee_pct.
+  The harness fetches the top 25 tokens by market cap from pump.fun every 5
+  minutes, then pulls the last 100 trades per token from Mobula's
+  token/trades-enriched endpoint (chainId=solana:solana) over a 4-hour window.
+  For each trade carrying a hash and sender address, the harness calls the public
+  Solana RPC (getTransaction, jsonParsed encoding) and computes explicit fees:
+  Solana transaction fee (gas), SOL transfers to known platform fee wallets, small
+  SOL recipients below 5% of user net flow, and small USDC/WSOL token recipients
+  below 5% of the largest pool receipt. Trades below $5 are excluded to avoid gas
+  dominating tiny amounts. Results are grouped by platform tag, weighted by trade
+  count across tokens, and emitted as memecoin_platform_fee_pct.
 
 methodology:
-  - "Tokens: top 10 by market cap from pump.fun, refreshed every 5 minutes."
-  - "Trades: last 50 trades per token from Mobula token/trades-enriched (chainId=solana:solana), filtered to amountUSD >= $5."
+  - "Tokens: top 25 by market cap from pump.fun, refreshed every 5 minutes."
+  - "Trades: last 100 trades per token from Mobula token/trades-enriched (chainId=solana:solana) over a 4-hour window, filtered to amountUSD >= $5."
   - "Fee source: Solana public RPC getTransaction (jsonParsed) for each trade hash. No third-party fee API."
   - "Gas: meta.fee (lamports) converted to USD at the current SOL/USD price fetched from CoinGecko every 5 min."
   - "Platform fees: explicit SOL or USDC/WSOL transfers to known fee wallet owners (confirmed on-chain). Unknown small recipients are captured via heuristics: SOL recipients receiving less than 5% of the user net flow, USDC/WSOL recipients receiving less than 5% of the largest pool receipt. Trading bots that use pre-funded escrow accounts (Trojan, Maestro) collect fees through a separate settlement mechanism not visible in the swap transaction; their displayed fee represents gas only."
   - "AMM LP fees excluded: the 0.20% PumpSwap fee and 0.25% Raydium fee stay inside pool accounts and are not counted because they apply equally to all frontends routing through the same pool."
   - "Grouping: trades are split by the platform field returned by Mobula. Trades with no platform tag are assigned to pump-fun."
   - "Cadence: full sweep every 5 minutes; tx results are cached to avoid re-parsing the same hash."
-  - "Aggregation: headline is the 24h median of memecoin_platform_fee_pct across all tracked tokens."
+  - "Aggregation: headline is the 24h median of the trade-count-weighted average of memecoin_platform_fee_pct across all tracked tokens."
 
 findings:
   - "{{best_name}} currently leads with the lowest average trading fee at {{best_p50}} (p50, 24h) across top pump.fun tokens."
@@ -71,10 +71,10 @@ providers:
     tag: Native launchpad
     formula: "Explicit on-chain fee percent for trades on pump.fun and PumpSwap pools, 24h median. Trades with no platform tag from Mobula are assigned here since the bench exclusively samples pump.fun top tokens."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="pump-fun"} * memecoin_platform_trade_count{platform="pump-fun"}) / sum(memecoin_platform_trade_count{platform="pump-fun"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="pump-fun"} * memecoin_platform_trade_count{platform="pump-fun"}) / sum(memecoin_platform_trade_count{platform="pump-fun"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="pump-fun"} * memecoin_platform_trade_count{platform="pump-fun"}) / sum(memecoin_platform_trade_count{platform="pump-fun"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="pump-fun"} * memecoin_platform_trade_count{platform="pump-fun"}) / sum(memecoin_platform_trade_count{platform="pump-fun"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="pump-fun"}[24h]))
 
   - slug: phantom
@@ -82,10 +82,10 @@ providers:
     tag: Wallet + swap UI
     formula: "Explicit on-chain fee percent for trades tagged phantom by Mobula, 24h median."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="phantom"} * memecoin_platform_trade_count{platform="phantom"}) / sum(memecoin_platform_trade_count{platform="phantom"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="phantom"} * memecoin_platform_trade_count{platform="phantom"}) / sum(memecoin_platform_trade_count{platform="phantom"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="phantom"} * memecoin_platform_trade_count{platform="phantom"}) / sum(memecoin_platform_trade_count{platform="phantom"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="phantom"} * memecoin_platform_trade_count{platform="phantom"}) / sum(memecoin_platform_trade_count{platform="phantom"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="phantom"}[24h]))
 
   - slug: fomo
@@ -93,10 +93,10 @@ providers:
     tag: Mobile app
     formula: "Explicit on-chain fee percent for trades tagged fomo by Mobula, 24h median. Fomo collects a fee in USDC transferred to a confirmed fee wallet per trade."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="fomo"} * memecoin_platform_trade_count{platform="fomo"}) / sum(memecoin_platform_trade_count{platform="fomo"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="fomo"} * memecoin_platform_trade_count{platform="fomo"}) / sum(memecoin_platform_trade_count{platform="fomo"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="fomo"} * memecoin_platform_trade_count{platform="fomo"}) / sum(memecoin_platform_trade_count{platform="fomo"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="fomo"} * memecoin_platform_trade_count{platform="fomo"}) / sum(memecoin_platform_trade_count{platform="fomo"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="fomo"}[24h]))
 
   - slug: photon
@@ -104,10 +104,10 @@ providers:
     tag: Aggregator frontend
     formula: "Explicit on-chain fee percent for trades tagged photon by Mobula, 24h median."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="photon"} * memecoin_platform_trade_count{platform="photon"}) / sum(memecoin_platform_trade_count{platform="photon"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="photon"} * memecoin_platform_trade_count{platform="photon"}) / sum(memecoin_platform_trade_count{platform="photon"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="photon"} * memecoin_platform_trade_count{platform="photon"}) / sum(memecoin_platform_trade_count{platform="photon"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="photon"} * memecoin_platform_trade_count{platform="photon"}) / sum(memecoin_platform_trade_count{platform="photon"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="photon"}[24h]))
 
   - slug: axiom
@@ -115,10 +115,10 @@ providers:
     tag: Aggregator frontend
     formula: "Explicit on-chain fee percent for trades tagged axiom by Mobula, 24h median."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="axiom"} * memecoin_platform_trade_count{platform="axiom"}) / sum(memecoin_platform_trade_count{platform="axiom"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="axiom"} * memecoin_platform_trade_count{platform="axiom"}) / sum(memecoin_platform_trade_count{platform="axiom"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="axiom"} * memecoin_platform_trade_count{platform="axiom"}) / sum(memecoin_platform_trade_count{platform="axiom"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="axiom"} * memecoin_platform_trade_count{platform="axiom"}) / sum(memecoin_platform_trade_count{platform="axiom"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="axiom"}[24h]))
 
   - slug: trojan
@@ -126,10 +126,10 @@ providers:
     tag: Trading bot
     formula: "Gas-only on-chain cost for trades tagged trojan by Mobula, 24h median. Trojan collects its ~0.9% fee via pre-funded escrow settled outside the swap transaction; the swap itself shows no fee deduction."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="trojan"} * memecoin_platform_trade_count{platform="trojan"}) / sum(memecoin_platform_trade_count{platform="trojan"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="trojan"} * memecoin_platform_trade_count{platform="trojan"}) / sum(memecoin_platform_trade_count{platform="trojan"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="trojan"} * memecoin_platform_trade_count{platform="trojan"}) / sum(memecoin_platform_trade_count{platform="trojan"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="trojan"} * memecoin_platform_trade_count{platform="trojan"}) / sum(memecoin_platform_trade_count{platform="trojan"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="trojan"}[24h]))
 
   - slug: gmgn
@@ -137,10 +137,10 @@ providers:
     tag: Trading bot
     formula: "Explicit on-chain fee percent for trades tagged gmgn by Mobula, 24h median."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="gmgn"} * memecoin_platform_trade_count{platform="gmgn"}) / sum(memecoin_platform_trade_count{platform="gmgn"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="gmgn"} * memecoin_platform_trade_count{platform="gmgn"}) / sum(memecoin_platform_trade_count{platform="gmgn"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="gmgn"} * memecoin_platform_trade_count{platform="gmgn"}) / sum(memecoin_platform_trade_count{platform="gmgn"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="gmgn"} * memecoin_platform_trade_count{platform="gmgn"}) / sum(memecoin_platform_trade_count{platform="gmgn"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="gmgn"}[24h]))
 
   - slug: maestro
@@ -148,8 +148,8 @@ providers:
     tag: Trading bot
     formula: "Gas-only on-chain cost for trades tagged maestro by Mobula, 24h median. Maestro uses pre-funded escrow similar to Trojan; actual fee not visible in swap transaction."
     queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="maestro"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="maestro"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="maestro"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="maestro"})[24h:5m])
+      p50: quantile_over_time(0.50, (sum(memecoin_platform_fee_pct{platform="maestro"} * memecoin_platform_trade_count{platform="maestro"}) / sum(memecoin_platform_trade_count{platform="maestro"}))[24h:5m])
+      p90: quantile_over_time(0.90, (sum(memecoin_platform_fee_pct{platform="maestro"} * memecoin_platform_trade_count{platform="maestro"}) / sum(memecoin_platform_trade_count{platform="maestro"}))[24h:5m])
+      p99: quantile_over_time(0.99, (sum(memecoin_platform_fee_pct{platform="maestro"} * memecoin_platform_trade_count{platform="maestro"}) / sum(memecoin_platform_trade_count{platform="maestro"}))[24h:5m])
+      mean: avg_over_time((sum(memecoin_platform_fee_pct{platform="maestro"} * memecoin_platform_trade_count{platform="maestro"}) / sum(memecoin_platform_trade_count{platform="maestro"}))[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="maestro"}[24h]))
