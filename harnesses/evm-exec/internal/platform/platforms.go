@@ -64,6 +64,23 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
+	// FOMO — fee wallet confirmed via Dune trace analysis (relay-fomo tag)
+	// BSC: 0x99748cbd confirmed 100% via tx sample (0.003–0.29 BNB per fee)
+	// Base: 0x8f10b468 ERC1967Proxy, 216 ETH received, 2567 txs (~70% confidence)
+	"fomo": {
+		"bsc": {
+			FeeCollector:  "0x99748cbd931cb367dad265c5b2b4bd306d448e99",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
+		"base": {
+			FeeCollector:  "0x8f10b468b06c6fd214b65f87778827f7d113f996",
+			NativeEnabled: false, // no free trace API on Base; USDC only
+			ERC20Tokens:   []string{USDC_BASE},
+			BootstrapDays: 30,
+		},
+	},
 	"gmgn": {
 		"ethereum": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
