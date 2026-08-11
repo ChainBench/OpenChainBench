@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -106,7 +107,10 @@ func collectPlatform(ctx context.Context, db *store.DB, etherscanKey, plt, chain
 }
 
 func collectERC20(ctx context.Context, db *store.DB, rpc, plt, chain, collector, token string, toBlock uint64) error {
-	cursor, _, _ := db.GetCursor(ctx, chain, plt, token)
+	cursor, _, err := db.GetCursor(ctx, chain, plt, token)
+	if err != nil {
+		return fmt.Errorf("get cursor: %w", err)
+	}
 	if cursor >= toBlock {
 		return nil
 	}
@@ -142,7 +146,10 @@ func collectERC20(ctx context.Context, db *store.DB, rpc, plt, chain, collector,
 }
 
 func collectNativeETH(ctx context.Context, db *store.DB, apiKey, plt, chain, collector string, toBlock uint64) error {
-	cursor, _, _ := db.GetCursor(ctx, chain, plt, "native")
+	cursor, _, err := db.GetCursor(ctx, chain, plt, "native")
+	if err != nil {
+		return fmt.Errorf("get cursor: %w", err)
+	}
 
 	internalTxs, lastInt, err := source.GetEtherscanInternalTxs(ctx, apiKey, collector, cursor)
 	if err != nil {
@@ -182,7 +189,10 @@ func collectNativeETH(ctx context.Context, db *store.DB, apiKey, plt, chain, col
 }
 
 func collectNativeBSC(ctx context.Context, db *store.DB, plt, chain, collector string, toBlock uint64) error {
-	cursor, _, _ := db.GetCursor(ctx, chain, plt, "native")
+	cursor, _, err := db.GetCursor(ctx, chain, plt, "native")
+	if err != nil {
+		return fmt.Errorf("get cursor: %w", err)
+	}
 	if cursor >= toBlock {
 		return nil
 	}
