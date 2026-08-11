@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	solanaRPC = "https://api.mainnet-beta.solana.com"
+	solanaRPC = "https://solana-rpc.publicnode.com"
 	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	wsolMint  = "So11111111111111111111111111111111111111112"
 	rpcSleep  = 1 * time.Second
