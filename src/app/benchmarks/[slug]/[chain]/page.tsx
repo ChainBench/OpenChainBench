@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { citableAsOf } from "@/lib/citation";
-import { liveResults } from "@/lib/provider-filters";
+import { liveResults, MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
@@ -115,9 +115,11 @@ function resolveLeftoverPlaceholders(text: string, b: Benchmark): string {
 }
 
 function sortLive(results: ProviderResult[], higherIsBetter: boolean) {
-  return [...liveResults(results)].sort((a, b) =>
-    higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-  );
+  return [...liveResults(results)]
+    .filter((r) => (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT)
+    .sort((a, b) =>
+      higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
 }
 
 async function loadChainPage(
@@ -254,7 +256,9 @@ function buildKeyFacts(data: ChainPageData): string {
   if (data.shape === "row") {
     const { result, sorted, rank } = data;
     const subject = `${result.name} ${metricPhrase(b.metric)}`;
-    if (result.ms.p50 <= 0) {
+    const hasGoodData = result.ms.p50 > 0 &&
+      (result.successRate == null || result.successRate >= MIN_DISPLAY_SUCCESS_PCT);
+    if (!hasGoodData) {
       return `${subject} is measured continuously on this benchmark. Live numbers will appear here as soon as the harness reports fresh samples.`;
     }
     const p50 = fmtUnit(result.ms.p50, b.unit);
@@ -303,22 +307,42 @@ export async function generateMetadata({
   );
   const canonical = `${SITE.url}/benchmarks/${data.benchmark.slug}/${chain}`;
   const ogImage = `${SITE.url}/api/og/${data.benchmark.slug}`;
+  const b = data.benchmark;
+  const isDraft = b.status === "draft";
+  const isAwaiting = isDraft && b.editorialStatus === "live";
+  const isoPubDate = b.lastRunAt
+    ? new Date(b.lastRunAt).toISOString().slice(0, 10)
+    : undefined;
   return {
     title,
     description,
     alternates: { canonical },
+    ...(isAwaiting ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title,
       description,
       type: "article",
       url: canonical,
+      siteName: SITE.name,
       images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
+      site: SITE.twitter,
       title,
       description,
       images: [ogImage],
+    },
+    other: {
+      citation_title: title,
+      citation_author: "OpenChainBench",
+      citation_publisher: "OpenChainBench",
+      ...(isoPubDate ? { citation_publication_date: isoPubDate } : {}),
+      citation_doi: "10.5281/zenodo.20800312",
+      citation_pdf_url: `${SITE.url}/api/stat/${b.slug}`,
+      citation_public_url: canonical,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench",
     },
   };
 }
