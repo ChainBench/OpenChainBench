@@ -304,7 +304,7 @@ const RAW: Record<string, string> = {
   // ─── App Store ratings (bench № 202) ───
   pumpfun: "/logos/pumpfun.svg",
   moonshot: "/logos/moonshot.svg",
-  "binance-us": "/logos/binance-us.jpg",
+  "binance-us": "/logos/binance-us.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",

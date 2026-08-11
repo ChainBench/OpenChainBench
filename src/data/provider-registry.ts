@@ -1247,6 +1247,38 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "GMGN is a Solana and EVM memecoin trading terminal combining wallet tracking, smart money copy trading and a Telegram bot. It routes swaps through pump.fun and DEX pools with a configurable slippage and fee.",
     twitter: "@gmgnai",
   },
+
+  // ─── Crypto trading apps — iOS App Store ratings (bench № 202) ─────────
+  pumpfun: {
+    url: "https://pump.fun",
+    description:
+      "pump.fun is the leading Solana memecoin launchpad and trading app. Tokens launch on a bonding curve and graduate to Raydium at a $69k market cap, with a 1% fee on every buy and sell.",
+    twitter: "@pumpdotfun",
+  },
+  moonshot: {
+    url: "https://moonshot.money",
+    description:
+      "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
+    twitter: "@moonshotapp",
+  },
+  coinbase: {
+    url: "https://www.coinbase.com",
+    description:
+      "Coinbase is the largest US-regulated centralized exchange, publicly listed on Nasdaq (COIN). It offers spot trading, staking, and a self-custody wallet, primarily targeting retail investors in the United States.",
+    twitter: "@coinbase",
+  },
+  kraken: {
+    url: "https://www.kraken.com",
+    description:
+      "Kraken is a US-registered centralized exchange founded in 2011, offering spot, margin and futures trading across 300+ assets with a strong reputation for security and regulatory compliance.",
+    twitter: "@krakenfx",
+  },
+  "binance-us": {
+    url: "https://www.binance.us",
+    description:
+      "Binance.US is the US-regulated affiliate of Binance, operating under FinCEN MSB registration. It offers spot trading for US customers on a subset of the global Binance order book.",
+    twitter: "@BinanceUS",
+  },
   maestro: {
     url: "https://maestrobots.com",
     description:
