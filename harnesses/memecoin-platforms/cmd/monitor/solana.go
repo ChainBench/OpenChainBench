@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	solanaRPC = "https://api.mainnet-beta.solana.com"
+	solanaRPC = "https://solana-rpc.publicnode.com"
 	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	wsolMint  = "So11111111111111111111111111111111111111112"
-	rpcSleep  = 40 * time.Millisecond
+	rpcSleep  = 1 * time.Second
 )
 
 // Known fee wallet owners confirmed via on-chain analysis of tagged Mobula trades.
@@ -43,6 +43,7 @@ var skipAccounts = map[string]bool{
 
 var (
 	txCache      sync.Map
+	txCacheSize  atomic.Int64
 	solPriceAtom uint64
 )
 
@@ -84,6 +85,10 @@ type solanaTxResp struct {
 			} `json:"message"`
 		} `json:"transaction"`
 	} `json:"result"`
+	Error *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 type tokBal struct {
@@ -106,22 +111,23 @@ func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 
 	if v, ok := txCache.Load(txHash); ok {
 		return v.(float64)
 	}
+	if txCacheSize.Load() > 100_000 {
+		txCache.Range(func(k, _ any) bool { txCache.Delete(k); return true })
+		txCacheSize.Store(0)
+	}
 	fee, err := fetchOnChainFee(rpcClient, txHash, sender)
 	if err != nil {
-		log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
+		if err.Error() != "not found" {
+			log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
+		}
 		txCache.Store(txHash, float64(0))
+		txCacheSize.Add(1)
 		return 0
 	}
 	txCache.Store(txHash, fee)
+	txCacheSize.Add(1)
 	time.Sleep(rpcSleep)
 	return fee
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, error) {
@@ -145,6 +151,9 @@ func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, er
 	var out solanaTxResp
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return 0, fmt.Errorf("decode: %w", err)
+	}
+	if out.Error != nil {
+		return 0, fmt.Errorf("rpc %d: %s", out.Error.Code, out.Error.Message)
 	}
 	if out.Result == nil {
 		return 0, fmt.Errorf("not found")
