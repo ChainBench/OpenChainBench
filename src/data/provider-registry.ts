@@ -1279,6 +1279,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Binance.US is the US-regulated affiliate of Binance, operating under FinCEN MSB registration. It offers spot trading for US customers on a subset of the global Binance order book.",
     twitter: "@BinanceUS",
   },
+  robinhood: {
+    url: "https://robinhood.com",
+    description:
+      "Robinhood is a US commission-free investing app with 25M+ funded accounts. It added crypto trading in 2018, launched its own L2 chain (Robinhood Chain) in 2025, and is the #1 most-reviewed financial app on the US App Store with nearly 5 million ratings.",
+    twitter: "@RobinhoodApp",
+  },
+  cryptocom: {
+    url: "https://crypto.com",
+    description:
+      "Crypto.com is a Singapore-headquartered centralized exchange serving 100M+ users globally. The app offers spot and derivatives trading, a Visa card, DeFi wallet and staking, making it one of the most feature-complete crypto super apps on iOS.",
+    twitter: "@cryptocom",
+  },
   maestro: {
     url: "https://maestrobots.com",
     description:
