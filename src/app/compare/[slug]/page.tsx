@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { getProvider } from "@/lib/providers";
+import { getProvider, canonicalize } from "@/lib/providers";
 import { loadBenchmark } from "@/lib/spec";
 import {
+  COMPARE_PAIRS,
   getComparePair,
   getComparePairSlugs,
   type ComparePair,
@@ -294,6 +295,16 @@ type ChainRegionEntry = BreakdownRow & {
 };
 
 type SharedBench = CompareBench;
+
+/** Maps a bench to the right comparative verb for FAQ questions.
+ *  "faster" works for latency/time; cost metrics need "cheaper";
+ *  higher-is-better metrics (success rate, uptime) need "more reliable". */
+function verbForBench(bench: SharedBench): string {
+  const unit = (bench.unit ?? "").toLowerCase();
+  if (unit === "usd" || unit === "gwei" || unit === "bps" || unit === "bp") return "cheaper";
+  if (bench.higherIsBetter) return "more reliable";
+  return "faster";
+}
 
 /** Sort comparator that respects `higherIsBetter`. Returns:
  *    "a" if A leads, "b" if B leads, "tie" if both equal. */
@@ -693,6 +704,19 @@ export default async function ComparePage({
   const regB = getProviderRegistry(b.slug);
 
   const url = `${SITE.url}/compare/${pair.slug}`;
+
+  // Related curated pairs involving either provider — internal linking for
+  // orphan-page mitigation (SEO audit 2026-08-12). Uses static COMPARE_PAIRS
+  // so no extra Prom round trip. Capped at 6 to stay compact.
+  const relatedPairs = COMPARE_PAIRS.filter(
+    (p) =>
+      p.slug !== pair.slug &&
+      (p.providerA === pair.providerA ||
+        p.providerB === pair.providerA ||
+        p.providerA === pair.providerB ||
+        p.providerB === pair.providerB),
+  ).slice(0, 6);
+
   const latestTs = shared.reduce<string | null>((acc, s) => {
     if (!s.lastRunAt) return acc;
     if (!acc || new Date(s.lastRunAt) > new Date(acc)) return s.lastRunAt;
@@ -773,13 +797,13 @@ export default async function ComparePage({
   });
   if (aWinsBench) {
     faqEntries.push({
-      q: `Which is faster on ${aWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
+      q: `Which is ${verbForBench(aWinsBench)} on ${aWinsBench.title}, ${a.name} or ${b.name}?`,
       a: `On the ${aWinsBench.title} benchmark, ${a.name} leads at ${fmtUnit(aWinsBench.aResult.p50, aWinsBench.unit)} versus ${b.name} at ${fmtUnit(aWinsBench.bResult.p50, aWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     faqEntries.push({
-      q: `Which is faster on ${bWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
+      q: `Which is ${verbForBench(bWinsBench)} on ${bWinsBench.title}, ${a.name} or ${b.name}?`,
       a: `On the ${bWinsBench.title} benchmark, ${b.name} leads at ${fmtUnit(bWinsBench.bResult.p50, bWinsBench.unit)} versus ${a.name} at ${fmtUnit(bWinsBench.aResult.p50, bWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
@@ -932,6 +956,30 @@ export default async function ComparePage({
           ))}
         </div>
       </section>
+
+      {relatedPairs.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            Related comparisons
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+            {relatedPairs.map((p) => {
+              const nameA = canonicalize(p.providerA).name;
+              const nameB = canonicalize(p.providerB).name;
+              return (
+                <li key={p.slug}>
+                  <Link
+                    href={`/compare/${p.slug}`}
+                    className="text-sm text-ink-soft hover:text-ink lnk"
+                  >
+                    {nameA} vs {nameB}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-12 max-w-3xl">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
