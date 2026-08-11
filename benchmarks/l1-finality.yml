@@ -4,7 +4,7 @@ slug: l1-finality
 number: "006"
 title: Fastest L1 blockchain finality, live across 11 chains
 seo_title: "Fastest L1 finality 2026"
-seo_description: "{{best_name}} leads L1 finality at {{best_p50}} (p50, 24h) across 11 chains. Ethereum, Solana, Bitcoin, SUI, Gram — live wall-clock measurements, not whitepaper claims."
+seo_description: "{{best_name}} leads L1 finality at {{best_p50}} (p50, 24h) across 11 chains. Ethereum, Solana, Bitcoin, SUI, Gram: live wall-clock measurements, not whitepaper claims."
 subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
 seo_intro: |
   This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and Gram finality time (formerly TON) both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
