@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,6 +28,7 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 	mux.HandleFunc("/api/exec-leaderboard", corsJSON(handleExecLeaderboard(pool)))
+	mux.HandleFunc("/api/evm-revenue", corsJSON(handleEVMRevenue(pool)))
 
 	addr := ":2116"
 	log.Printf("exec-api listening on %s", addr)
@@ -199,4 +202,179 @@ func mustEnv(key string) string {
 		log.Fatalf("missing env: %s", key)
 	}
 	return v
+}
+
+// ---- EVM revenue endpoint ----
+
+// evmCoverage is the static coverage map derived from the evm-exec platform config.
+// "full" = native + stable; "stable-only" = only ERC-20 USDC tracked.
+var evmCoverage = map[string]map[string]string{
+	"gmgn": {"ethereum": "full", "bsc": "full", "base": "stable-only"},
+}
+
+// coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.
+var coinGeckoIDs = map[string]string{
+	"ethereum": "ethereum",
+	"bsc":      "binancecoin",
+	"base":     "ethereum",
+}
+
+// nativeSymbols maps chain → native asset ticker.
+var nativeSymbols = map[string]string{
+	"ethereum": "ETH",
+	"bsc":      "BNB",
+	"base":     "ETH",
+}
+
+type priceCache struct {
+	mu        sync.Mutex
+	prices    map[string]float64 // coingecko id → USD price
+	fetchedAt time.Time
+}
+
+var globalPrices = &priceCache{prices: make(map[string]float64)}
+
+func (p *priceCache) get(ctx context.Context) map[string]float64 {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if time.Since(p.fetchedAt) < 15*time.Minute && len(p.prices) > 0 {
+		out := make(map[string]float64, len(p.prices))
+		for k, v := range p.prices {
+			out[k] = v
+		}
+		return out
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet,
+		"https://api.coingecko.com/api/v3/simple/price?ids=ethereum,binancecoin&vs_currencies=usd", nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var raw map[string]map[string]float64
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil
+	}
+	for id, vs := range raw {
+		if usd, ok := vs["usd"]; ok {
+			p.prices[id] = usd
+		}
+	}
+	p.fetchedAt = time.Now()
+	out := make(map[string]float64, len(p.prices))
+	for k, v := range p.prices {
+		out[k] = v
+	}
+	return out
+}
+
+type NativeRevenue struct {
+	Symbol string   `json:"symbol"`
+	Amount float64  `json:"amount"`
+	USD    *float64 `json:"usd"`
+}
+
+type EVMChainRevenue struct {
+	Stable24h float64        `json:"stable24h"`
+	Native    *NativeRevenue `json:"native"`
+	Coverage  string         `json:"coverage"`
+}
+
+type EVMPlatformRow struct {
+	Platform string                     `json:"platform"`
+	Chains   map[string]EVMChainRevenue `json:"chains"`
+}
+
+type EVMRevenueResponse struct {
+	UpdatedAt string           `json:"updatedAt"`
+	Platforms []EVMPlatformRow `json:"platforms"`
+}
+
+func handleEVMRevenue(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+
+		rows, err := pool.Query(ctx, `
+			SELECT chain, platform,
+			       COALESCE(SUM(revenue_stable), 0),
+			       COALESCE(SUM(revenue_native), 0),
+			       COALESCE(MAX(native_symbol), '')
+			FROM evm_exec_facts
+			WHERE bucket_start >= now() - INTERVAL '24 hours'
+			GROUP BY chain, platform`)
+		if err != nil {
+			log.Printf("evm-revenue: query: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		prices := globalPrices.get(r.Context())
+
+		// Group by platform.
+		byPlatform := make(map[string]map[string]EVMChainRevenue)
+		for rows.Next() {
+			var chain, plt, nativeSym string
+			var stable, native float64
+			if err := rows.Scan(&chain, &plt, &stable, &native, &nativeSym); err != nil {
+				continue
+			}
+			if byPlatform[plt] == nil {
+				byPlatform[plt] = make(map[string]EVMChainRevenue)
+			}
+
+			coverage := "stable-only"
+			if m, ok := evmCoverage[plt]; ok {
+				if c, ok := m[chain]; ok {
+					coverage = c
+				}
+			}
+
+			var nat *NativeRevenue
+			if native > 0 || coverage == "full" {
+				sym := nativeSym
+				if sym == "" {
+					sym = nativeSymbols[chain]
+				}
+				nr := &NativeRevenue{Symbol: sym, Amount: native}
+				if cgID := coinGeckoIDs[chain]; cgID != "" && prices != nil {
+					if price, ok := prices[cgID]; ok {
+						usd := native * price
+						nr.USD = &usd
+					}
+				}
+				nat = nr
+			}
+
+			byPlatform[plt][chain] = EVMChainRevenue{
+				Stable24h: stable,
+				Native:    nat,
+				Coverage:  coverage,
+			}
+		}
+		if err := rows.Err(); err != nil {
+			log.Printf("evm-revenue: rows: %v", err)
+		}
+
+		var platforms []EVMPlatformRow
+		for plt, chains := range byPlatform {
+			platforms = append(platforms, EVMPlatformRow{Platform: plt, Chains: chains})
+		}
+		sort.Slice(platforms, func(i, j int) bool {
+			return platforms[i].Platform < platforms[j].Platform
+		})
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(EVMRevenueResponse{
+			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+			Platforms: platforms,
+		})
+	}
 }
