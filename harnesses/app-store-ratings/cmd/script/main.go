@@ -21,6 +21,8 @@ var apps = []struct {
 	{"bybit", "1488296980"},
 	{"kraken", "1481947260"},
 	{"binance-us", "1492670702"},
+	{"robinhood", "938003185"},
+	{"cryptocom", "1262148500"},
 }
 
 func main() {

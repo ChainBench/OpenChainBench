@@ -2,9 +2,9 @@
 
 slug: app-store-ratings
 number: "202"
-title: "Crypto trading app iOS ratings: Coinbase vs Bybit vs Fomo vs PumpFun, live"
-seo_title: "Crypto trading app App Store ratings 2026: Coinbase, Bybit, Kraken, Fomo, PumpFun, GMGN, Moonshot"
-seo_description: "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars. Coinbase vs Bybit vs Kraken vs Fomo vs PumpFun vs GMGN vs Moonshot ranked live from iTunes ratings."
+title: "Crypto trading app iOS ratings: Coinbase vs Robinhood vs Crypto.com vs Bybit, live"
+seo_title: "Crypto trading app App Store ratings 2026: Coinbase, Robinhood, Crypto.com, Bybit, Kraken, Fomo, PumpFun, GMGN, Moonshot"
+seo_description: "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars. Coinbase vs Robinhood vs Crypto.com vs Bybit vs Kraken vs Fomo vs PumpFun vs GMGN vs Moonshot ranked live from iTunes ratings."
 subtitle: Live Apple App Store ratings for the leading crypto trading apps on iOS. Updated every 30 minutes from the iTunes lookup API. Rating is the current average across all user reviews. Review count shows how many users voted.
 
 category: Trading
@@ -19,12 +19,13 @@ disclaimer: |
 seo_intro: |
   This benchmark ranks the top crypto trading apps on the iOS App Store by
   user rating, updated live every 30 minutes from the iTunes lookup API. It
-  spans both centralized exchange apps (Coinbase, Bybit, Kraken, Binance.US)
-  and on-chain trading terminals (Fomo, GMGN, PumpFun, Moonshot). Coinbase
-  leads on raw review volume with over 1.8 million ratings, making it the
-  most statistically reliable data point in the set. On-chain apps like Fomo
-  have accumulated over 7,000 ratings since launching in April 2025, signaling
-  strong early engagement from DeFi-native traders.
+  spans both centralized exchange apps (Coinbase, Robinhood, Crypto.com, Bybit,
+  Kraken, Binance.US) and on-chain trading terminals (Fomo, GMGN, PumpFun,
+  Moonshot). Robinhood leads on raw review volume with nearly 5 million ratings,
+  making it the most statistically reliable data point in the set. Coinbase
+  follows with over 1.8 million ratings. On-chain apps like Fomo have accumulated
+  over 7,000 ratings since launching in April 2025, signaling strong early
+  engagement from DeFi-native traders.
 
 abstract: |
   The harness polls the iTunes public lookup API
@@ -40,7 +41,9 @@ methodology:
   - "Poll cadence: harness fetches each app every 30 minutes. Ratings change slowly (daily to weekly) so 30-minute polling captures all meaningful changes while respecting Apple caching."
   - "Rating: Apple computes the average across all all-time user reviews. Apple does not expose time-windowed (e.g. current version only) averages via the public API endpoint used here."
   - "Review count: total number of ratings ever submitted on the US App Store. Higher = more statistically reliable average."
-  - "Coinbase (ID 886427730): the largest US crypto exchange. Over 1.8 million App Store ratings."
+  - "Robinhood (ID 938003185): the most-reviewed financial app on the US App Store with nearly 5 million ratings. Commission-free investing with crypto added in 2018."
+  - "Coinbase (ID 886427730): the largest US-regulated crypto exchange. Over 1.8 million App Store ratings."
+  - "Crypto.com (ID 1262148500): Singapore-headquartered super app with 100M+ users globally, offering spot, derivatives, Visa card and DeFi wallet."
   - "Bybit (ID 1488296980): major global exchange strong on derivatives and spot trading."
   - "Kraken (ID 1481947260): veteran US exchange with strong security reputation."
   - "Binance.US (ID 1492670702): US-regulated arm of Binance, available on the US App Store."
@@ -51,7 +54,8 @@ methodology:
 
 findings:
   - "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars."
-  - "Coinbase dominates on review volume with over 1.8 million ratings, making it the most statistically robust data point in the set."
+  - "Robinhood dominates on review volume with nearly 5 million ratings, making it the most statistically robust data point in the set."
+  - "Coinbase follows with over 1.8 million ratings and is the top pure-crypto exchange by review count."
   - "Fomo has accumulated over 7,000 ratings since its April 2025 launch despite being one of the newest entrants, signaling strong mobile-native engagement."
   - "On-chain trading apps (Fomo, GMGN, PumpFun, Moonshot) compete directly with major CEX apps for the same mobile trader."
 
@@ -68,7 +72,7 @@ metric_panels:
     metric: app_store_reviews_total
     unit: count
     higher_is_better: true
-    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Coinbase leads with 1.8M+ ratings."
+    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Robinhood leads with 4.8M+ ratings, Coinbase follows at 1.8M+."
 
 ledger_columns:
   - { label: "Rating", slot: p50 }
@@ -83,12 +87,29 @@ faq:
     a: "The iTunes public lookup API returns US store data by default. Review counts and ratings can differ by country. The US store is the largest single market and the standard reference for app comparisons."
   - q: "Does this include Google Play ratings?"
     a: "No. This benchmark covers the US App Store only. CEX apps like Coinbase and Bybit have Android versions but on-chain apps like Fomo and PumpFun are iOS-only as of 2026."
+  - q: "Why does Robinhood have so many more reviews than Coinbase?"
+    a: "Robinhood launched in 2013 as a stock trading app and had 13 million funded accounts before adding crypto in 2018. Its larger and older user base has had more time to leave App Store reviews. Its nearly 5 million ratings make it the most statistically reliable data point in this benchmark."
+  - q: "What is Crypto.com and why is it included?"
+    a: "Crypto.com is one of the largest crypto exchanges globally with 100M+ registered users. Its iOS app combines spot trading, a crypto Visa card, DeFi wallet and staking in a single super app, making it a major competitor to Coinbase for everyday crypto users."
   - q: "What is Moonshot?"
     a: "Moonshot is a mobile-first meme coin launchpad built by DEX Screener, the leading token analytics platform. It differentiates via fiat onboarding through Apple Pay, targeting users who want to buy meme coins without setting up a crypto wallet first."
   - q: "Why Binance.US and not Binance?"
     a: "The global Binance app is not available on the US App Store due to regulatory restrictions. Binance.US is the separate US-licensed entity with its own app (ID 1492670702) available to American users."
 
 providers:
+  - slug: robinhood
+    name: Robinhood
+    tag: "US investing app, 4.8M ratings"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 938003185, US store, all-time average). Review count from app_store_reviews_total{app=\"robinhood\"}."
+    queries:
+      p50: app_store_rating{app="robinhood"}
+      p90: app_store_rating{app="robinhood"}
+      p99: app_store_rating{app="robinhood"}
+      mean: app_store_rating{app="robinhood"}
+      success: app_store_health{app="robinhood"}
+      sample_size: app_store_reviews_total{app="robinhood"}
+      series: app_store_rating{app="robinhood"}
+
   - slug: coinbase
     name: Coinbase
     tag: "US crypto exchange"
@@ -101,6 +122,19 @@ providers:
       success: app_store_health{app="coinbase"}
       sample_size: app_store_reviews_total{app="coinbase"}
       series: app_store_rating{app="coinbase"}
+
+  - slug: cryptocom
+    name: Crypto.com
+    tag: "Global crypto super app"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 1262148500, US store, all-time average). Review count from app_store_reviews_total{app=\"cryptocom\"}."
+    queries:
+      p50: app_store_rating{app="cryptocom"}
+      p90: app_store_rating{app="cryptocom"}
+      p99: app_store_rating{app="cryptocom"}
+      mean: app_store_rating{app="cryptocom"}
+      success: app_store_health{app="cryptocom"}
+      sample_size: app_store_reviews_total{app="cryptocom"}
+      series: app_store_rating{app="cryptocom"}
 
   - slug: bybit
     name: Bybit
