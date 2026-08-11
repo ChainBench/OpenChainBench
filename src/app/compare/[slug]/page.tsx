@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { getProvider } from "@/lib/providers";
+import { getProvider, canonicalize } from "@/lib/providers";
 import { loadBenchmark } from "@/lib/spec";
 import {
   COMPARE_PAIRS,
@@ -964,10 +964,8 @@ export default async function ComparePage({
           </h2>
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
             {relatedPairs.map((p) => {
-              const rA = getProviderRegistry(p.providerA);
-              const rB = getProviderRegistry(p.providerB);
-              const nameA = rA?.name ?? p.providerA;
-              const nameB = rB?.name ?? p.providerB;
+              const nameA = canonicalize(p.providerA).name;
+              const nameB = canonicalize(p.providerB).name;
               return (
                 <li key={p.slug}>
                   <Link
