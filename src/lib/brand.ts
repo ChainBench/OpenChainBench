@@ -79,10 +79,12 @@ const BRANDS: Record<string, Brand> = {
 
   // ─── Crypto trading apps (bench № 202) ───
   pumpfun: { color: "#00C851" },       // pump.fun green
-  phantom: { color: "#AB9FF2" },       // phantom purple
   moonshot: { color: "#F97316" },      // moonshot orange
-  "dex-screener": { color: "#1C1C1C", dark: true }, // dex screener dark
   fomo: { color: "#7C3AED" },          // fomo violet
+  coinbase: { color: "#0052FF" },      // coinbase blue
+  bybit: { color: "#F7A600" },         // bybit yellow
+  kraken: { color: "#5741D9" },        // kraken purple
+  "binance-us": { color: "#F0B90B" },  // binance yellow
 
   // ─── Trading / perps ───
   hyperliquid: { color: "#22D3EE" },   // cyan
