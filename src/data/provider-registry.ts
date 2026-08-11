@@ -1226,8 +1226,32 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   fomo: {
     url: "https://fomo.family",
     description:
-      "FOMO is a social trading app on Telegram, iOS and Android that surfaces signals from consistently profitable Hyperliquid traders and routes perp orders via a registered builder code.",
+      "FOMO is a mobile trading app on iOS, Android and Telegram for Solana memecoins. It surfaces onchain signals and routes swaps directly through pump.fun and Raydium pools.",
     twitter: "@tryfomo",
+  },
+  "pump-fun": {
+    url: "https://pump.fun",
+    description:
+      "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to Raydium when they reach a $69k market cap. The platform charges a 1% fee on every buy and sell on the bonding curve.",
+    twitter: "@pumpdotfun",
+  },
+  trojan: {
+    url: "https://trojan.bot",
+    description:
+      "Trojan is a Telegram trading bot for Solana memecoins. It provides fast sniping, copy trading, limit orders and MEV protection, charging a 0.9% fee per trade routed through pump.fun and Raydium pools.",
+    twitter: "@solana_trojan",
+  },
+  gmgn: {
+    url: "https://gmgn.ai",
+    description:
+      "GMGN is a Solana and EVM memecoin trading terminal combining wallet tracking, smart money copy trading and a Telegram bot. It routes swaps through pump.fun and DEX pools with a configurable slippage and fee.",
+    twitter: "@gmgnai",
+  },
+  maestro: {
+    url: "https://maestrobots.com",
+    description:
+      "Maestro is a suite of Telegram trading bots for DeFi — Sniper, Wallet, Whale and Buy — trusted by traders on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
+    twitter: "@MaestroBots",
   },
   dextrabot: {
     url: "https://dextrabot.com",
