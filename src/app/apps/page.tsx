@@ -117,6 +117,38 @@ export default async function AppsHubPage() {
           Detailed execution metrics →
         </Link>
       </p>
+
+      <div className="mt-10 border-t border-rule pt-8">
+        <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">Related benchmarks</p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/benchmarks/app-store-ratings"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
+          >
+            <span className="text-lg">⭐</span>
+            <div>
+              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">App Store Ratings</p>
+              <p className="text-xs text-ink-muted">iOS ratings for crypto trading apps, live</p>
+            </div>
+            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Link>
+          <Link
+            href="/apps/exec"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
+          >
+            <span className="text-lg">⚡</span>
+            <div>
+              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality</p>
+              <p className="text-xs text-ink-muted">Priority fees, Jito rates, platform fees</p>
+            </div>
+            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Link>
+        </div>
+      </div>
     </article>
   );
 }
