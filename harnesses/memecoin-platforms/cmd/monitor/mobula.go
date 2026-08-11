@@ -13,7 +13,6 @@ type MobulaTrade struct {
 	Hash      string  `json:"hash"`
 	Sender    string  `json:"sender"`
 	AmountUSD float64 `json:"amountUSD"`
-	Date      int64   `json:"date"` // unix ms
 }
 
 type mobulaTradesResp struct {

@@ -79,7 +79,6 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 			continue
 		}
 
-		cutoff := time.Now().Add(-5 * time.Minute).UnixMilli()
 		byPlatform := make(map[string]*platformStats)
 		freshLookups := 0
 		for _, t := range trades {
@@ -96,8 +95,7 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 				byPlatform[p] = s
 			}
 			_, cached := txCache.Load(t.Hash)
-			rpcFresh := t.Date > cutoff
-			if !cached && (!rpcFresh || freshLookups >= 15) {
+			if !cached && freshLookups >= 15 {
 				s.tradeValueSum += t.AmountUSD
 				s.n++
 				continue
