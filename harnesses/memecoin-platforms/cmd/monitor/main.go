@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -142,7 +143,7 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			s.n++
 		}
 
-		sym := tok.Symbol
+		sym := strings.TrimSpace(tok.Symbol)
 		if sym == "" {
 			sym = tok.Mint[:8]
 		}
