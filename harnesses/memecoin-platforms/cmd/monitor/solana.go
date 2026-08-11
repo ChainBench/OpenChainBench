@@ -52,7 +52,7 @@ type cacheEntry struct {
 	ts  time.Time
 }
 
-const txCacheTTL = 2 * time.Hour
+const txCacheTTL = 4 * time.Hour
 
 var (
 	txCache      sync.Map // string → cacheEntry

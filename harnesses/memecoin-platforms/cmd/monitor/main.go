@@ -92,7 +92,7 @@ type platformStats struct {
 }
 
 func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiKey string) {
-	tokens, err := fetchTopTokens(mobulaClient, 10)
+	tokens, err := fetchTopTokens(mobulaClient, 25)
 	if err != nil {
 		log.Printf("[pump.fun] %v", err)
 		pollErrors.WithLabelValues("pumpfun").Inc()
@@ -129,7 +129,7 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 				byPlatform[p] = s
 			}
 			_, cached := txCache.Load(t.Hash)
-			if !cached && freshLookups >= 20 {
+			if !cached && freshLookups >= 40 {
 				s.tradeValueSum += t.AmountUSD
 				s.n++
 				continue
