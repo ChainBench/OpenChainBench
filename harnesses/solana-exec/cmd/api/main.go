@@ -228,7 +228,8 @@ func mustEnv(key string) string {
 // evmCoverage is the static coverage map derived from the evm-exec platform config.
 // "full" = native + stable; "stable-only" = only ERC-20 USDC tracked.
 var evmCoverage = map[string]map[string]string{
-	"gmgn": {"ethereum": "full", "bsc": "full", "base": "stable-only"},
+	"gmgn":    {"ethereum": "full", "bsc": "full", "base": "stable-only"},
+	"pumpfun": {"ethereum": "full", "bsc": "full", "base": "stable-only"},
 }
 
 // coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.
