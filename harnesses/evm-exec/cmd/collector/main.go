@@ -166,9 +166,16 @@ func collectNativeETH(ctx context.Context, db *store.DB, apiKey, plt, chain, col
 		if tx.BlockNum > toBlock {
 			continue
 		}
-		bt, err := resolveBlockTime(ctx, db, rpc, chain, tx.BlockNum)
-		if err != nil {
-			continue
+		var bt time.Time
+		if !tx.BlockTime.IsZero() {
+			bt = tx.BlockTime
+			_ = db.CacheBlockTime(ctx, chain, tx.BlockNum, bt)
+		} else {
+			var err error
+			bt, err = resolveBlockTime(ctx, db, rpc, chain, tx.BlockNum)
+			if err != nil {
+				continue
+			}
 		}
 		events = append(events, store.EVMEvent{
 			Chain: chain, TxHash: tx.TxHash, BlockNum: tx.BlockNum, BlockTime: bt,
