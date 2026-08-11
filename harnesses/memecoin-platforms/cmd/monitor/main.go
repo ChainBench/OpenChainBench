@@ -36,7 +36,7 @@ func main() {
 	if proxyRaw := os.Getenv("HTTPS_PROXY"); proxyRaw != "" {
 		if proxyURL, err := url.Parse(proxyRaw); err == nil {
 			rpcClient = &http.Client{
-				Timeout:   30 * time.Second,
+				Timeout:   5 * time.Second,
 				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
 			}
 			log.Printf("rpc: rotating proxy enabled")
@@ -100,6 +100,7 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 	}
 	log.Printf("[pump.fun] %d tokens", len(tokens))
 
+	globalFreshLookups := 0
 	for _, tok := range tokens {
 		if tok.Mint == "" {
 			continue
@@ -129,13 +130,14 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 				byPlatform[p] = s
 			}
 			_, cached := txCache.Load(t.Hash)
-			if !cached && freshLookups >= 40 {
+			if !cached && (freshLookups >= 40 || globalFreshLookups >= 300) {
 				s.tradeValueSum += t.AmountUSD
 				s.n++
 				continue
 			}
 			if !cached {
 				freshLookups++
+				globalFreshLookups++
 			}
 			feeUSD := computeExplicitFees(rpcClient, heliusClient, heliusKey, t.Hash, t.Sender)
 			s.totalFeeSum += feeUSD
