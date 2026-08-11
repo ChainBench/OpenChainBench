@@ -10,7 +10,7 @@ subtitle: Live 24-hour trading volume for each Solana meme coin launchpad. Polle
 category: Trading
 status: live
 metric: 24h volume
-unit: USD
+unit: usd
 higher_is_better: true
 
 disclaimer: |
