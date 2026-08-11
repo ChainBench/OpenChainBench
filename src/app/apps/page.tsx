@@ -20,6 +20,8 @@ export const metadata: Metadata = pageMetadata({
 
 export const revalidate = 300;
 
+const WINDOWS = ["24h", "7d", "30d"] as const;
+
 export default async function AppsHubPage() {
   const [evmData, solanaData, solPrice] = await Promise.all([
     fetchEVMRevenue(),
@@ -43,30 +45,39 @@ export default async function AppsHubPage() {
     const bscChain = evmRow?.chains["bsc"];
     const baseChain = evmRow?.chains["base"];
 
+    // EVM fees are always 24h — we don't have multi-window EVM data.
     const ethFees = ethChain ? ethChain.stable24h + (ethChain.native?.usd ?? 0) : null;
     const bscFees = bscChain ? bscChain.stable24h + (bscChain.native?.usd ?? 0) : null;
     const baseFees = baseChain ? baseChain.stable24h + (baseChain.native?.usd ?? 0) : null;
+    const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0);
 
-    let solanaFees: number | null = null;
-    if (solRow && solPrice !== null) {
-      const window24h = solRow.windows["24h"];
-      if (window24h) {
-        solanaFees = (window24h.txCount * window24h.avgPlatformFeeLamports) / 1e9 * solPrice;
+    const windows: UnifiedAppRow["windows"] = {};
+
+    for (const w of WINDOWS) {
+      let solanaFees: number | null = null;
+      if (solRow && solPrice !== null) {
+        const wData = solRow.windows[w];
+        if (wData) {
+          solanaFees = (wData.txCount * wData.avgPlatformFeeLamports) / 1e9 * solPrice;
+        }
       }
+      windows[w] = {
+        solana: solanaFees,
+        ethereum: ethFees,
+        bsc: bscFees,
+        base: baseFees,
+        total: (solanaFees ?? 0) + evmTotal,
+      };
     }
-
-    const total24h =
-      (solanaFees ?? 0) + (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0);
 
     return {
       meta,
-      fees: { solana: solanaFees, ethereum: ethFees, bsc: bscFees, base: baseFees },
+      windows,
       stableOnly: {
         ethereum: ethChain?.coverage === "stable-only",
         bsc: bscChain?.coverage === "stable-only",
         base: baseChain?.coverage === "stable-only",
       },
-      total24h,
     };
   });
 
@@ -101,7 +112,7 @@ export default async function AppsHubPage() {
 
       <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
         Solana fees = <span className="font-mono">txCount × avgPlatformFeeLamports / 1e9 × SOL price</span>.
-        EVM fees = stable (USDC/USDT) + native where traceable.{" "}
+        EVM fees = stable (USDC/USDT) + native where traceable, always 24h.{" "}
         <Link href="/apps/exec" className="underline hover:text-ink-soft transition-colors">
           Detailed execution metrics →
         </Link>
