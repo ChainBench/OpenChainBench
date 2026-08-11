@@ -80,6 +80,7 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 		}
 
 		byPlatform := make(map[string]*platformStats)
+		freshLookups := 0
 		for _, t := range trades {
 			if t.AmountUSD < minTradeUSD {
 				continue
@@ -92,6 +93,15 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 			if s == nil {
 				s = &platformStats{}
 				byPlatform[p] = s
+			}
+			_, cached := txCache.Load(t.Hash)
+			if !cached && freshLookups >= 15 {
+				s.tradeValueSum += t.AmountUSD
+				s.n++
+				continue
+			}
+			if !cached {
+				freshLookups++
 			}
 			feeUSD := computeExplicitFees(rpcClient, t.Hash, t.Sender)
 			s.totalFeeSum += feeUSD
