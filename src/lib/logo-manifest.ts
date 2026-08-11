@@ -297,6 +297,9 @@ const RAW: Record<string, string> = {
   trojan: "/logos/trojan.jpg",
   gmgn: "/logos/gmgn.jpg",
   maestro: "/logos/maestro.jpg",
+  bullx: "/logos/bullx.png",
+  photon: "/logos/photon.webp",
+  "banana-gun": "/logos/banana-gun.png",
 
   // ─── App Store ratings (bench № 202) ───
   pumpfun: "/logos/pumpfun.svg",
