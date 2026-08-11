@@ -169,7 +169,16 @@ func (s *SquidBridge) TestRoute(route TestRoute, amount, amountUsd float64, rawU
 		gasUsd += v
 	}
 
-	costUsd := inUsd - outUsd + gasUsd
+	// Prefer fromAmountUSD - toAmountUSD as the all-in cost (captures spread + fees + gas
+	// as netted by the router). Fall back to explicit fee+gas sum when the USD amounts
+	// are identical (e.g. stable→stable where spot prices cancel out).
+	diffUsd := inUsd - outUsd
+	var costUsd float64
+	if diffUsd > 0.001 {
+		costUsd = diffUsd
+	} else {
+		costUsd = bridgeFeeUsd + gasUsd
+	}
 	if costUsd < 0 {
 		costUsd = 0
 	}
@@ -177,7 +186,7 @@ func (s *SquidBridge) TestRoute(route TestRoute, amount, amountUsd float64, rawU
 	if amountUsd > 0 {
 		costPct = (costUsd / amountUsd) * 100
 	}
-	slippage := costUsd - bridgeFeeUsd - gasUsd
+	slippage := diffUsd - bridgeFeeUsd - gasUsd
 	if slippage < 0 {
 		slippage = 0
 	}
