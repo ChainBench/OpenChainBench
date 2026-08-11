@@ -117,7 +117,9 @@ func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 
 	}
 	fee, err := fetchOnChainFee(rpcClient, txHash, sender)
 	if err != nil {
-		log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
+		if err.Error() != "not found" {
+			log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
+		}
 		txCache.Store(txHash, float64(0))
 		txCacheSize.Add(1)
 		return 0
