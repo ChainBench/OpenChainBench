@@ -78,9 +78,10 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 		}
 
 		const sigLimit = 1000
+		const maxPages = 30 // cap backfill at 30k sigs per account to avoid unbounded first-run pagination
 		var sigs []helius.SigEntry
 		before := ""
-		for {
+		for page := 0; page < maxPages; page++ {
 			batch, err := h.GetSignaturesForAddress(ctx, feeAccount, sigLimit, cursor.LastSig, before)
 			if err != nil {
 				return fmt.Errorf("get sigs %s (before=%s): %w", feeAccount, before, err)
