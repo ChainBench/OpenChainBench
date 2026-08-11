@@ -1,0 +1,36 @@
+# Fragment to merge into /opt/ocb/docker-compose.yml on VPS.
+# Requires: ocb-postgres (from docker-compose.apps.yml).
+# Env: /run/ocb/.env.evm-exec
+#   DATABASE_URL, ETHERSCAN_API_KEY, NODEREAL_BSC_KEY
+#   Optional: ETH_RPC_URL (default https://eth.drpc.org)
+#             BASE_RPC_URL (default https://base.drpc.org)
+#             BSC_RPC_URL  (overrides NODEREAL_BSC_KEY)
+
+services:
+  evm-exec-collector:
+    build: /opt/ocb/harnesses/evm-exec
+    container_name: ocb-evm-exec-collector
+    restart: unless-stopped
+    env_file: /run/ocb/.env.evm-exec
+    command: ["/app/collector"]
+    networks: [web]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  evm-exec-materializer:
+    build: /opt/ocb/harnesses/evm-exec
+    container_name: ocb-evm-exec-materializer
+    restart: unless-stopped
+    env_file: /run/ocb/.env.evm-exec
+    command: ["/app/materializer"]
+    networks: [web]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
