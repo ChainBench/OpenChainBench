@@ -121,7 +121,7 @@ prometheus:
 
 # rank_matrix_query required when dimensions.region is declared.
 # label_replace maps bridge= → provider= so badge scoping works per region.
-rank_matrix_query: avg by (provider, region) (label_replace(quantile_over_time(0.50, bridge_cost_percent[24h]), "provider", "$1", "bridge", "(.+)"))
+rank_matrix_query: avg by (provider, region) (label_replace(quantile_over_time(0.50, bridge_cost_percent{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]), "provider", "$1", "bridge", "(.+)"))
 
 providers:
   - slug: mobula
@@ -130,23 +130,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent (fees + slippage + destination gas) on a $300 USDC quote from Mobula's intent layer, averaged across corridors. Sampled every 5 minutes from eu-west."
     type: intent
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: relay
     name: Relay
@@ -154,23 +154,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent (fees + slippage + destination gas) on a $300 USDC quote from Relay's API, averaged across corridors. Sampled every 5 minutes from eu-west."
     type: relay
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: lifi
     name: LI.FI
@@ -178,23 +178,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent (underlying bridge fee + slippage + destination gas + LI.FI markup) on a $300 USDC quote, averaged across corridors. Sampled every 5 minutes from eu-west."
     type: aggregator
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: debridge
     name: deBridge
@@ -202,23 +202,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent (native-token protocol fee + slippage + destination gas) on a $300 USDC quote from deBridge's direct API, averaged across corridors. Sampled every 5 minutes from eu-west."
     type: protocol
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: across
     name: Across
@@ -226,23 +226,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from the keyless Across Swap API, averaged across corridors. The provider-computed USD fee total nets relayer capital, LP fee, destination gas and swap impact."
     type: intent
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: near-intents
     name: Near Intents
@@ -250,23 +250,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from the Near Intents 1Click API, averaged across corridors. The quoted amountOut already nets out solver spread, bridge fee and destination withdrawal fee."
     type: intent
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd="300", region="sgp"}[1h])
 
   - slug: squid
     name: Squid Router
@@ -274,23 +274,23 @@ providers:
     formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from Squid Router's v2 API, averaged across supported EVM corridors (Base to Arb). Cost = fromAmountUSD minus toAmountUSD including all relayer and gas fees."
     type: aggregator
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="squid"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="squid"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="squid"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="squid"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="squid"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="squid"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="squid", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="squid", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="squid", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="squid", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300", region="sgp"}[1h])
 
   - slug: socket
     name: Socket Protocol
@@ -298,20 +298,20 @@ providers:
     formula: "All-in cost percent p50 over 24h on a $300 USDC best-output route via Socket Protocol's v2 API (routes through Across, Stargate, CCTP), EVM corridors only (Base to Arb)."
     type: aggregator
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="socket"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="socket"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="socket"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="socket"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="socket"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="socket"}[1h])
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="socket", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[1h])
       regions:
         - region: eu-west
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="eu-west"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="socket", region="eu-west"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300", region="eu-west"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300", region="eu-west"}[1h])
         - region: us-east
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="us-east"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="socket", region="us-east"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300", region="us-east"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300", region="us-east"}[1h])
         - region: sgp
-          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="sgp"}[24h]))
-          series: avg_over_time(bridge_cost_percent{bridge="socket", region="sgp"}[1h])
+          p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300", region="sgp"}[24h]))
+          series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300", region="sgp"}[1h])
