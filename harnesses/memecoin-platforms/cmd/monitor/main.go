@@ -33,22 +33,22 @@ func main() {
 		}
 	}()
 
-	runPoll(mobulaClient, rpcClient, apiKey)
-
 	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			runPoll(mobulaClient, rpcClient, apiKey)
-		}
+		http.Handle("/metrics", promhttp.Handler())
+		http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+		})
+		log.Println("serving metrics on :9090")
+		log.Fatal(http.ListenAndServe(":9090", nil))
 	}()
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-	})
-	log.Println("serving metrics on :9090")
-	log.Fatal(http.ListenAndServe(":9090", nil))
+	runPoll(mobulaClient, rpcClient, apiKey)
+
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		runPoll(mobulaClient, rpcClient, apiKey)
+	}
 }
 
 type platformStats struct {
@@ -80,6 +80,7 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 		}
 
 		byPlatform := make(map[string]*platformStats)
+		freshLookups := 0
 		for _, t := range trades {
 			if t.AmountUSD < minTradeUSD {
 				continue
@@ -92,6 +93,15 @@ func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
 			if s == nil {
 				s = &platformStats{}
 				byPlatform[p] = s
+			}
+			_, cached := txCache.Load(t.Hash)
+			if !cached && freshLookups >= 15 {
+				s.tradeValueSum += t.AmountUSD
+				s.n++
+				continue
+			}
+			if !cached {
+				freshLookups++
 			}
 			feeUSD := computeExplicitFees(rpcClient, t.Hash, t.Sender)
 			s.totalFeeSum += feeUSD
