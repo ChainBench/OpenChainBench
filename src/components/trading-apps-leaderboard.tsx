@@ -17,25 +17,22 @@ export type UnifiedAppRow = {
   total24h: number;
 };
 
-type TabKey = "all" | "meme-bot" | "telegram-bot" | "perps";
+type TabKey = "all" | "meme-bot" | "telegram-bot";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "meme-bot", label: "Meme Bots" },
   { key: "telegram-bot", label: "Telegram Bots" },
-  { key: "perps", label: "Perps" },
 ];
 
 const CATEGORY_BADGE: Record<AppMeta["category"], string> = {
   "meme-bot": "bg-orange-500/10 text-orange-400 border border-orange-500/20",
   "telegram-bot": "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-  perps: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
 };
 
 const CATEGORY_LABEL: Record<AppMeta["category"], string> = {
   "meme-bot": "Meme Bot",
   "telegram-bot": "Telegram Bot",
-  perps: "Perps",
 };
 
 function fmtUSD(n: number | null): string {
