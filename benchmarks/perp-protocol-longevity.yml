@@ -59,7 +59,7 @@ methodology:
   - "Incident criteria: direct theft or permanent loss of user funds via a documented smart contract vulnerability or privileged key compromise. Oracle manipulation without contract exploit is excluded. Market-structure events (liquidation cascades, large-position forced close) are excluded."
   - "gains.trade: launched 2021-12-01. No incidents in tracked sources as of registry date 2026-08-02. Clean streak = days since 2021-12-01."
   - "GMX v2: launched 2023-08-01. Incident 2025-07-09: reentrancy in vault and order-flow logic, estimated loss USD 42 000 000, source coinperps.xyz post-mortem. Clean streak = days since 2025-07-09."
-  - "Hyperliquid: launched 2023-11-01. No protocol exploit in tracked sources. Note: the March 2025 JellyJelly forced close was a market-structure event (large-position liquidation cascade triggering a governance emergency), not a smart contract exploit, and is excluded per criteria."
+  - "Hyperliquid: launched 2023-11-01. No protocol exploit in tracked sources. Note: the March 2025 JellyJelly forced close was a market-structure event, not a smart contract exploit, and is excluded per criteria. DeFiLlama enrichment filters entries with no confirmed financial loss (amount null or 0) to avoid false positives such as unrelated projects that share a name substring."
   - "dYdX v4: launched on the Cosmos appchain 2023-10-01. No protocol exploit on v4. dYdX v1 and v2 on Ethereum had oracle manipulation events that are excluded here (different contract, different era)."
   - "Lighter: launched 2023-07-01. No incidents in tracked sources."
   - "Paradex: launched 2023-10-01. No incidents in tracked sources."
