@@ -64,22 +64,6 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
-	// FOMO — Gnosis Safe multisig 0x9fc4e320 confirmed via Relay API appFees field (30/37 fee txs)
-	// Same address on BSC/Base/ETH; EVM-native trades only (Solana→EVM fees collected on Solana side)
-	"fomo": {
-		"bsc": {
-			FeeCollector:  "0x9fc4e320a181e88644a302d11f1f158ef0699e37",
-			NativeEnabled: true,
-			ERC20Tokens:   []string{USDC_BSC},
-			BootstrapDays: 30,
-		},
-		"base": {
-			FeeCollector:  "0x9fc4e320a181e88644a302d11f1f158ef0699e37",
-			NativeEnabled: false,
-			ERC20Tokens:   []string{USDC_BASE},
-			BootstrapDays: 30,
-		},
-	},
 	"gmgn": {
 		"ethereum": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
