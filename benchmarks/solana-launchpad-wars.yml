@@ -1,0 +1,174 @@
+# OpenChainBench. Bench 200
+
+slug: solana-launchpad-wars
+number: "200"
+title: "Solana meme launchpad leaderboard: PumpFun vs Flap vs Bankr, live 24h volume"
+seo_title: "Solana meme launchpad comparison 2026: PumpFun, Flap, Bankr, LetsCash"
+seo_description: "{{best_name}} leads Solana meme launchpads at ${{best_p50}} 24h volume. PumpFun vs Flap vs Bankr vs LetsCash vs Meteora DBC vs NOXA Fun ranked live from Mobula lighthouse data."
+subtitle: Live 24-hour trading volume for each Solana meme coin launchpad. Polled every 15 minutes from Mobula lighthouse, which aggregates on-chain swap events across all bonding-curve programs on Solana.
+
+category: Trading
+status: live
+metric: 24h volume
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Volume figures are sourced from Mobula's lighthouse aggregator, which indexes on-chain swap events. Data is refreshed every 15 minutes. A launchpad with zero volume may indicate no activity in the last 24 hours or a temporary data gap from Mobula. Fees shown are protocol-side fees detected on-chain; off-chain relay or referral fees are excluded.
+
+seo_intro: |
+  Solana's meme coin launchpad market is dominated by PumpFun but is far from a
+  monopoly. Flap, Bankr, LetsCash, NOXA Fun and Meteora DBC all run active
+  bonding-curve programs on Solana competing for the same launch traffic. This
+  benchmark tracks the 24-hour trading volume, protocol fees and trade count for
+  each platform in real time. PumpFun consistently leads with over 100 million
+  USD in daily volume and more than 1 million USD in daily fees. Flap and Meteora
+  DBC occupy the challenger positions. The fee efficiency column (fees divided by
+  volume) reveals which launchpad extracts the most revenue per dollar traded.
+
+abstract: |
+  The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
+  every 15 minutes. Mobula aggregates all on-chain swap events into rolling windows
+  (15 min, 1 h, 6 h, 24 h) per launchpad and per trading platform. The harness
+  exposes three gauges per launchpad: solana_launchpad_volume_24h_usd,
+  solana_launchpad_fees_24h_usd and solana_launchpad_trades_24h. All launchpads
+  returned by the API are tracked automatically. The benchmark YAML selects the
+  eight highest-volume Solana-native launchpads as providers.
+
+methodology:
+  - "Source: Mobula lighthouse (api.mobula.io/api/2/market/lighthouse), byLaunchpad field. Mobula indexes all Solana bonding-curve programs and aggregates swap events into 24h rolling windows updated approximately every minute on Mobula's side."
+  - "Poll cadence: harness fetches the endpoint every 15 minutes and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
+  - "Volume: sum of all swap event notional values (in USD at time of swap) within the last 24 hours for swaps routed through this launchpad's program. Higher = more active market."
+  - "Fees: on-chain protocol fees collected by the launchpad program within the last 24 hours. Off-chain relay fees and referral fees are not included."
+  - "Trades: count of individual swap events within the last 24 hours."
+  - "Launchpad scope: this bench covers bonding-curve launchpads (PumpFun, Flap, Bankr, LetsCash, NOXA Fun, Meteora DBC, Raydium Launchlab). Trading frontends that route through multiple launchpads (GMGN, Axiom, Fomo, Trojan) are a separate bench."
+  - "PumpFun note: PumpFun volume here is bonding-curve activity only. Tokens that graduate from the bonding curve to PumpSwap AMM are counted separately under PumpSwap in the DEX view and are not included here."
+
+findings:
+  - "{{best_name}} leads Solana meme launchpads at ${{best_p50}} 24h volume."
+  - "PumpFun commands the market with over $100 million in daily bonding-curve volume and over $1 million in daily protocol fees, roughly 70 percent of total tracked launchpad volume."
+  - "Flap and Meteora DBC are the closest challengers, each processing tens of millions in daily volume. Flap has the highest fee-to-volume ratio among active launchpads."
+  - "Bankr, LetsCash and NOXA Fun each run active programs with single-digit millions in daily volume and tens of thousands in daily fees."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-launchpad-wars
+
+prometheus:
+  window: 24h
+  freshness_metric: solana_launchpad_volume_24h_usd
+
+faq:
+  - q: "Which Solana meme launchpad has the most volume?"
+    a: "PumpFun leads with over $100 million in 24h bonding-curve volume, roughly 70 percent of total tracked launchpad volume. Flap and Meteora DBC are the closest challengers. The leaderboard updates every 15 minutes from live Mobula lighthouse data."
+  - q: "What counts as launchpad volume here?"
+    a: "On-chain swap events routed through the launchpad's bonding-curve program, aggregated over a rolling 24-hour window by Mobula. For PumpFun this is the bonding-curve phase only; tokens that have graduated to the PumpSwap AMM are not included in this figure."
+  - q: "How does PumpFun compare to Flap on fees?"
+    a: "PumpFun collects over $1 million in daily protocol fees on $100M+ volume, an effective rate near 1 percent. Flap has a higher fee-to-volume ratio, extracting roughly 1.2 percent of volume as fees. The solana_launchpad_fees_24h_usd gauge tracks this live."
+  - q: "What is Meteora DBC?"
+    a: "Meteora Dynamic Bonding Curve is Meteora's launchpad product on Solana, competing directly with PumpFun. It uses a configurable bonding curve and routes graduated tokens into Meteora's DLMM liquidity pools."
+  - q: "Are trading bots like GMGN and Axiom included?"
+    a: "No. GMGN, Axiom, Fomo and Trojan are trading frontends that route orders through multiple launchpads and DEXes. Their volume is attributable to the underlying programs, not to a single launchpad. A separate bench tracks the trading platform leaderboard."
+
+providers:
+  - slug: pumpfun
+    name: PumpFun
+    tag: "Solana launchpad, #1 by volume"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=PumpFun].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="pumpfun"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="pumpfun"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="pumpfun"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="pumpfun"}
+      success: solana_launchpad_health{launchpad="pumpfun"}
+      sample_size: solana_launchpad_trades_24h{launchpad="pumpfun"}
+      series: solana_launchpad_volume_24h_usd{launchpad="pumpfun"}
+
+  - slug: flap
+    name: Flap
+    tag: "Solana launchpad, top fee rate"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=Flap].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="flap"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="flap"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="flap"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="flap"}
+      success: solana_launchpad_health{launchpad="flap"}
+      sample_size: solana_launchpad_trades_24h{launchpad="flap"}
+      series: solana_launchpad_volume_24h_usd{launchpad="flap"}
+
+  - slug: meteora-dbc
+    name: Meteora DBC
+    tag: "Meteora DBC, Solana launchpad"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=Meteora DBC].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="meteora-dbc"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="meteora-dbc"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="meteora-dbc"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="meteora-dbc"}
+      success: solana_launchpad_health{launchpad="meteora-dbc"}
+      sample_size: solana_launchpad_trades_24h{launchpad="meteora-dbc"}
+      series: solana_launchpad_volume_24h_usd{launchpad="meteora-dbc"}
+
+  - slug: noxa-fun
+    name: NOXA Fun
+    tag: "Solana meme launchpad"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=NOXA Fun].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="noxa-fun"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="noxa-fun"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="noxa-fun"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="noxa-fun"}
+      success: solana_launchpad_health{launchpad="noxa-fun"}
+      sample_size: solana_launchpad_trades_24h{launchpad="noxa-fun"}
+      series: solana_launchpad_volume_24h_usd{launchpad="noxa-fun"}
+
+  - slug: bankr
+    name: Bankr
+    tag: "Solana meme launchpad"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=Bankr].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="bankr"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="bankr"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="bankr"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="bankr"}
+      success: solana_launchpad_health{launchpad="bankr"}
+      sample_size: solana_launchpad_trades_24h{launchpad="bankr"}
+      series: solana_launchpad_volume_24h_usd{launchpad="bankr"}
+
+  - slug: letscash
+    name: LetsCash
+    tag: "Solana meme launchpad"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=LetsCash].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="letscash"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="letscash"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="letscash"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="letscash"}
+      success: solana_launchpad_health{launchpad="letscash"}
+      sample_size: solana_launchpad_trades_24h{launchpad="letscash"}
+      series: solana_launchpad_volume_24h_usd{launchpad="letscash"}
+
+  - slug: dontblink
+    name: dontblink
+    tag: "Solana meme launchpad"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=dontblink].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="dontblink"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="dontblink"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="dontblink"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="dontblink"}
+      success: solana_launchpad_health{launchpad="dontblink"}
+      sample_size: solana_launchpad_trades_24h{launchpad="dontblink"}
+      series: solana_launchpad_volume_24h_usd{launchpad="dontblink"}
+
+  - slug: raydium-launchlab
+    name: Raydium Launchlab
+    tag: "Raydium launchpad on Solana"
+    formula: "24h bonding-curve swap volume in USD. Source: Mobula lighthouse byLaunchpad[name=Raydium Launchlab].volumeUSD.24h, updated every 15 min."
+    queries:
+      p50: solana_launchpad_volume_24h_usd{launchpad="raydium-launchlab"}
+      p90: solana_launchpad_volume_24h_usd{launchpad="raydium-launchlab"}
+      p99: solana_launchpad_volume_24h_usd{launchpad="raydium-launchlab"}
+      mean: solana_launchpad_volume_24h_usd{launchpad="raydium-launchlab"}
+      success: solana_launchpad_health{launchpad="raydium-launchlab"}
+      sample_size: solana_launchpad_trades_24h{launchpad="raydium-launchlab"}
+      series: solana_launchpad_volume_24h_usd{launchpad="raydium-launchlab"}
