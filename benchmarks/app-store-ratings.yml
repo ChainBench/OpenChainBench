@@ -69,7 +69,7 @@ metric_panels:
     metric: app_store_reviews_total
     unit: count
     higher_is_better: true
-    description: "Total number of user ratings submitted on the US App Store. More reviews means a more statistically reliable average rating."
+    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Phantom leads with 64k+ ratings; Fomo has 7k+ despite launching only in April 2025."
 
 ledger_columns:
   - { label: "Rating", slot: p50 }

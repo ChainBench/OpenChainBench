@@ -8,10 +8,11 @@ import (
 )
 
 type PumpToken struct {
-	Mint   string  `json:"mint"`
-	Symbol string  `json:"symbol"`
-	Name   string  `json:"name"`
-	MCap   float64 `json:"market_cap"`
+	Mint     string  `json:"mint"`
+	Symbol   string  `json:"symbol"`
+	Name     string  `json:"name"`
+	MCap     float64 `json:"market_cap"`
+	Complete bool    `json:"complete"`
 }
 
 func fetchTopTokens(client *http.Client, limit int) ([]PumpToken, error) {
