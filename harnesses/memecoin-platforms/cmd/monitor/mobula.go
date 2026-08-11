@@ -13,6 +13,7 @@ type MobulaTrade struct {
 	Hash      string  `json:"hash"`
 	Sender    string  `json:"sender"`
 	AmountUSD float64 `json:"amountUSD"`
+	Date      int64   `json:"date"` // unix ms
 }
 
 type mobulaTradesResp struct {
@@ -20,7 +21,7 @@ type mobulaTradesResp struct {
 }
 
 func fetchTrades(client *http.Client, apiKey, mint string) ([]MobulaTrade, error) {
-	from := time.Now().Add(-30 * time.Minute).UnixMilli()
+	from := time.Now().Add(-10 * time.Minute).UnixMilli()
 	url := fmt.Sprintf(
 		"https://api.mobula.io/api/2/token/trades-enriched?address=%s&chainId=solana:solana&sortOrder=desc&limit=50&from=%d",
 		mint, from,
