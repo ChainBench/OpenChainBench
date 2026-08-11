@@ -64,6 +64,43 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
+	// Maestro — confirmed via DeFiLlama fees/maestro adapter, same address all EVM chains
+	"maestro": {
+		"ethereum": {
+			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_ETH},
+			BootstrapDays: 30,
+		},
+		"bsc": {
+			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
+		"base": {
+			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
+			NativeEnabled: false,
+			ERC20Tokens:   []string{USDC_BASE},
+			BootstrapDays: 30,
+		},
+	},
+	// Banana Gun — bananagun-fees.eth resolves to this address, confirmed via Etherscan/Basescan labels
+	// BSC fee wallet unconfirmed — skipped until verified
+	"banana-gun": {
+		"ethereum": {
+			FeeCollector:  "0x72172c02da4c39d6d05c2b9458501faf671d8ef8",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_ETH},
+			BootstrapDays: 30,
+		},
+		"base": {
+			FeeCollector:  "0x72172c02da4c39d6d05c2b9458501faf671d8ef8",
+			NativeEnabled: false,
+			ERC20Tokens:   []string{USDC_BASE},
+			BootstrapDays: 30,
+		},
+	},
 	"gmgn": {
 		"ethereum": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
