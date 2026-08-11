@@ -36,7 +36,7 @@ func GetNativeTransfers(ctx context.Context, rpcURL, toAddress string, fromBlock
 			"toBlock":          fmt.Sprintf("0x%x", toBlock),
 			"toAddress":        toAddress,
 			"category":         []string{"external", "internal"},
-			"withMetadata":     false,
+			"withMetadata":     true,
 			"excludeZeroValue": true,
 			"maxCount":         "0x3e8", // 1000
 		}
