@@ -62,6 +62,19 @@ prometheus:
   window: 24h
   freshness_metric: app_store_health
 
+metric_panels:
+  - id: reviews
+    label: Review count
+    label_key: app
+    metric: app_store_reviews_total
+    unit: count
+    higher_is_better: true
+    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Phantom leads with 64k+ ratings; Fomo has 7k+ despite launching only in April 2025."
+
+ledger_columns:
+  - { label: "Rating", slot: p50 }
+  - { label: "Reviews", panel: reviews }
+
 faq:
   - q: "Why does the App Store rating matter for a trading app?"
     a: "App Store ratings are the most visible public signal of user satisfaction for mobile products. For trading apps competing for the same Solana meme trader, a higher rating and more reviews signals a better-received product. Fomo's 4.77 rating with 7,000+ reviews compared to PumpFun's 4.70 with 2,200 reviews reflects a more engaged early adopter base."

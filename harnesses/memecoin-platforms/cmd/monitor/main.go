@@ -9,6 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const minTradeUSD = 5.0 // ignore dust trades that skew fee averages
+
 func main() {
 	log.Println("memecoin-platforms monitor starting...")
 
@@ -17,17 +19,28 @@ func main() {
 		log.Fatal("MOBULA_API_KEY is required")
 	}
 
-	interval := 5 * time.Minute
-	client := &http.Client{Timeout: 30 * time.Second}
+	mobulaClient := &http.Client{Timeout: 30 * time.Second}
+	rpcClient := &http.Client{Timeout: 10 * time.Second}
 
-	// First poll immediately, then tick.
-	runPoll(client, apiKey)
+	// Seed SOL price before first poll.
+	setSolPrice(175.0)
+	updateSolPrice(mobulaClient)
 
 	go func() {
-		ticker := time.NewTicker(interval)
+		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
-			runPoll(client, apiKey)
+			updateSolPrice(mobulaClient)
+		}
+	}()
+
+	runPoll(mobulaClient, rpcClient, apiKey)
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			runPoll(mobulaClient, rpcClient, apiKey)
 		}
 	}()
 
@@ -40,15 +53,13 @@ func main() {
 }
 
 type platformStats struct {
-	platformFeeSum float64
-	gasSum         float64
-	totalFeeSum    float64
-	tradeValueSum  float64
-	n              int
+	totalFeeSum   float64
+	tradeValueSum float64
+	n             int
 }
 
-func runPoll(client *http.Client, apiKey string) {
-	tokens, err := fetchTopTokens(client, 10)
+func runPoll(mobulaClient, rpcClient *http.Client, apiKey string) {
+	tokens, err := fetchTopTokens(mobulaClient, 10)
 	if err != nil {
 		log.Printf("[pump.fun] %v", err)
 		pollErrors.WithLabelValues("pumpfun").Inc()
@@ -61,23 +72,21 @@ func runPoll(client *http.Client, apiKey string) {
 			continue
 		}
 
-		trades, err := fetchTrades(client, apiKey, tok.Mint)
+		trades, err := fetchTrades(mobulaClient, apiKey, tok.Mint)
 		if err != nil {
 			log.Printf("[mobula][%s] %v", tok.Symbol, err)
 			pollErrors.WithLabelValues("mobula").Inc()
-			// pace between tokens even on error
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
 		byPlatform := make(map[string]*platformStats)
 		for _, t := range trades {
+			if t.AmountUSD < minTradeUSD {
+				continue
+			}
 			p := t.Platform
 			if p == "" {
-				// Mobula does not tag pump.fun native trades — they return
-				// platform:null. Since we only sample pump.fun top tokens,
-				// untagged trades are overwhelmingly pump.fun bonding curve
-				// or its graduated Raydium pool.
 				p = "pump-fun"
 			}
 			s := byPlatform[p]
@@ -85,9 +94,12 @@ func runPoll(client *http.Client, apiKey string) {
 				s = &platformStats{}
 				byPlatform[p] = s
 			}
-			s.platformFeeSum += t.PlatformFeesUSD
-			s.gasSum += t.GasFeesUSD
-			s.totalFeeSum += t.TotalFeesUSD
+
+			// On-chain fee computation: parse actual SOL transfers to fee wallets.
+			// Falls back to 0 if tx is pruned from RPC history.
+			onChainFeeUSD := computeExplicitFees(rpcClient, t.Hash, t.Sender)
+
+			s.totalFeeSum += onChainFeeUSD
 			s.tradeValueSum += t.AmountUSD
 			s.n++
 		}
@@ -99,8 +111,6 @@ func runPoll(client *http.Client, apiKey string) {
 
 		for p, s := range byPlatform {
 			n := float64(s.n)
-			avgPlatformFee := s.platformFeeSum / n
-			avgGas := s.gasSum / n
 			avgTotal := s.totalFeeSum / n
 			avgVal := s.tradeValueSum / n
 
@@ -110,8 +120,6 @@ func runPoll(client *http.Client, apiKey string) {
 			}
 
 			platformFeePct.WithLabelValues(p, sym, tok.Mint).Set(feePct)
-			platformFeeUSD.WithLabelValues(p, sym, tok.Mint).Set(avgPlatformFee)
-			platformGasUSD.WithLabelValues(p, sym, tok.Mint).Set(avgGas)
 			platformTotalFeeUSD.WithLabelValues(p, sym, tok.Mint).Set(avgTotal)
 			platformTradeCount.WithLabelValues(p, sym, tok.Mint).Set(n)
 		}

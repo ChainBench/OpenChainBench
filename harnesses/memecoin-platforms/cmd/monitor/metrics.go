@@ -8,27 +8,17 @@ import (
 var (
 	platformFeePct = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "memecoin_platform_fee_pct",
-		Help: "Average total fee as % of trade value (platform + gas + MEV)",
-	}, []string{"platform", "token", "token_address"})
-
-	platformFeeUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "memecoin_platform_fee_usd",
-		Help: "Average platform fee in USD per trade",
-	}, []string{"platform", "token", "token_address"})
-
-	platformGasUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "memecoin_platform_gas_usd",
-		Help: "Average gas fee in USD per trade",
+		Help: "Explicit on-chain fee as % of trade value (gas + platform referral/bot fees, excludes AMM LP fee)",
 	}, []string{"platform", "token", "token_address"})
 
 	platformTotalFeeUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "memecoin_platform_total_fee_usd",
-		Help: "Average total fee in USD per trade",
+		Help: "Average explicit on-chain fee in USD per trade",
 	}, []string{"platform", "token", "token_address"})
 
 	platformTradeCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "memecoin_platform_trade_count",
-		Help: "Number of trades sampled for this platform and token",
+		Help: "Number of trades sampled (amountUSD >= 5) for this platform and token",
 	}, []string{"platform", "token", "token_address"})
 
 	pollErrors = promauto.NewCounterVec(prometheus.CounterOpts{

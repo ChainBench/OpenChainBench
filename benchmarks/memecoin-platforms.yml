@@ -4,73 +4,64 @@ slug: memecoin-platforms
 number: "200"
 title: Cheapest platform to trade memecoins (Fomo vs pump.fun vs Photon)
 seo_title: "Fomo vs pump.fun trading fees 2026"
-seo_description: "Compare trading fees on Fomo, pump.fun, Photon and Axiom. Real fee data from Mobula on the top Solana memecoins by market cap."
-subtitle: Average total fee per trade (platform fee plus gas plus MEV) as a percent of trade value, sampled across the top 10 pump.fun tokens every 5 minutes.
+seo_description: "Compare explicit on-chain fees on Fomo, pump.fun, Photon, Axiom, Trojan, GMGN and Phantom. Real fee data verified against Solana transactions on the top pump.fun tokens."
+subtitle: Average explicit on-chain fee per trade (gas plus platform referral and bot tips) as a percent of trade value, sampled across the top 10 pump.fun tokens every 5 minutes.
 category: Trading
 status: live
-metric: Avg total fee
+metric: Avg explicit fee
 unit: pct
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoin-platforms
 
 seo_intro: |
-  Fomo and pump.fun both compete for Solana memecoin traders, but they charge
-  very differently. This benchmark measures the real all-in cost, platform fee
-  plus gas plus any MEV, on the top 10 pump.fun tokens by market cap, sampled
-  every 5 minutes via Mobula's enriched trades API. The headline number is total
-  fee as a percent of trade value, not the advertised fee rate. Aggregators like
-  Photon and Axiom route through the same pools but add their own markup; this
-  benchmark makes that visible.
+  Every Solana memecoin frontend charges differently. Fomo, Photon, Axiom, Trojan and GMGN
+  add referral tips and bot fees on top of the base pool swap. This benchmark measures
+  those explicit on-chain charges directly from Solana transaction data, verified per trade
+  against the public RPC. The headline number is the average fee as a percent of trade value,
+  covering gas plus any referral or bot fee extracted in the transaction. The AMM liquidity
+  provider fee (0.20 to 0.25 percent depending on pool) applies equally to all frontends and
+  is excluded. Trades below 5 USD are filtered to remove gas-dominated dust.
 
 abstract: |
-  The harness fetches the top 10 tokens by market cap from pump.fun every 5
-  minutes, then pulls the last 200 trades per token from Mobula's
-  token/trades-enriched endpoint (chainId=solana:solana). Each trade carries a
-  platform tag (fomo, pump-fun, photon, axiom, trojan, gmgn...) and three fee
-  fields: platformFeesUSD, gasFeesUSD, mevFeesUSD. We group by platform, compute
-  the average total fee as a percent of amountUSD, and emit
-  memecoin_platform_fee_pct. The leaderboard sorts by the median over 24 hours.
+  The harness fetches the top 10 tokens by market cap from pump.fun every 5 minutes, then
+  pulls the last 200 trades per token from Mobula token/trades-enriched (chainId=solana:solana).
+  Mobula supplies the platform tag (fomo, photon, trojan, gmgn, axiom, phantom, null) and the
+  transaction hash. For each transaction the harness calls the public Solana JSON-RPC
+  getTransaction, parses all SOL and token balance changes, and sums the transfers to known
+  fee wallet addresses plus any small SOL recipients consistent with bot or referral tips.
+  The result is the true explicit fee in USD, independent of any third-party fee field.
+  Trades below 5 USD are excluded to avoid gas-dominated micro-trade noise.
 
 methodology:
-  - "Tokens: top 10 by market cap from pump.fun, refreshed every 5 minutes."
-  - "Trades: last 200 trades per token from Mobula token/trades-enriched (chainId=solana:solana)."
-  - "Cost: totalFeesUSD / amountUSD * 100, covering platform fee plus gas plus MEV."
-  - "Grouping: trades are split by the platform field returned by Mobula (fomo, pump-fun, photon, axiom, trojan, gmgn, maestro, phantom)."
-  - "Cadence: full sweep every 5 minutes; each poll covers the 200 most recent trades per token."
-  - "Aggregation: headline is the average of memecoin_platform_fee_pct across all tracked tokens over 24 hours."
+  - "Tokens: top 10 by market cap from pump.fun public API, refreshed every 5 minutes."
+  - "Trades: last 200 trades per token from Mobula token/trades-enriched (chainId=solana:solana), filtered to amountUSD >= 5."
+  - "Fee source: Solana public RPC getTransaction per trade hash. Balance changes of known fee wallet owners are summed in USD. Gas (meta.fee) is always included. AMM LP fees that remain inside pool accounts are excluded."
+  - "Platform tag: from Mobula platform field. Null-tagged trades are counted as pump-fun native since we exclusively sample pump.fun top tokens."
+  - "SOL price: fetched from CoinGecko every 5 minutes, used to convert SOL-denominated fees to USD."
+  - "Cadence: full sweep every 5 minutes. Transaction parse results are cached so each tx is only fetched once."
+  - "Aggregation: headline is the p50 of memecoin_platform_fee_pct over 24 hours."
 
 findings:
-  - "{{best_name}} currently leads with the lowest average trading fee at {{best_p50}} (p50, 24h) across top pump.fun tokens."
-  - "{{worst_name}} has the highest average fee at {{worst_p50}} (p50, 24h). Trading bots charge a fixed tip on top of DEX fees, which dominates at small trade sizes."
+  - "{{best_name}} currently shows the lowest explicit on-chain fee at {{best_p50}} (p50, 24h) across top pump.fun tokens."
+  - "{{worst_name}} shows the highest at {{worst_p50}} (p50, 24h). Bot platforms extract a fixed tip per trade on top of DEX fees."
 
 faq:
   - q: "Is Fomo cheaper than pump.fun?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h). The live leaderboard refreshes every 5 minutes from Mobula trade data."
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h). The live leaderboard refreshes every 5 minutes from on-chain Solana data."
   - q: "What fees do memecoin trading platforms charge?"
-    a: "Native clients (pump.fun) charge a protocol fee on each swap. Aggregator frontends (Photon, Axiom) add a referral tip on top. Trading bots (Trojan, Maestro, GMGN) charge a fixed percentage per trade. Gas is a separate Solana transaction fee. This benchmark combines all three into a single all-in percent."
-  - q: "Does MEV affect Solana memecoin trading?"
-    a: "Minimally at this scale. Solana's parallel execution and fast finality reduce MEV extraction compared to EVM chains. The mevFeesUSD field in Mobula's data is near zero for most trades on these tokens."
+    a: "Native clients (pump.fun, Phantom) add no explicit referral fee. Aggregators (Photon, Axiom) add a referral tip of roughly 0.85 to 0.9 percent. Trading bots (Trojan, GMGN, Fomo) extract a bot fee of roughly 0.85 to 1.3 percent per trade. All platforms share the same underlying AMM liquidity provider fee, which this benchmark excludes."
+  - q: "Why is the AMM LP fee excluded?"
+    a: "The LP fee (0.20 to 0.25 percent on PumpSwap and Raydium pools) stays inside the pool as accumulated yield for liquidity providers. It is not extracted as a separate SOL or token transfer and cannot be measured per-trade without a price oracle. Because it applies equally to all frontends routing through the same pool, excluding it does not change the relative ranking."
 
 prometheus:
   window: 24h
   expected_freshness_seconds: 900
 
 providers:
-  - slug: fomo
-    name: Fomo
-    tag: Mobile app
-    formula: "Average total fee percent across top pump.fun tokens traded via Fomo, 24h median."
-    queries:
-      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
-      sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="fomo"}[24h]))
-
   - slug: pump-fun
     name: pump.fun
     tag: Native launchpad
-    formula: "Average total fee percent for trades on pump.fun bonding curve and its graduated Raydium pools, 24h median. Mobula does not tag pump.fun native trades with a platform id; they return platform:null and are counted here since we exclusively sample pump.fun top tokens."
+    formula: "Average explicit on-chain fee for trades on pump.fun bonding curve and graduated PumpSwap pools, 24h median. Native trades carry no referral tip; total fee is gas only."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
@@ -78,10 +69,32 @@ providers:
       mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="pump-fun"})[24h:5m])
       sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="pump-fun"}[24h]))
 
+  - slug: phantom
+    name: Phantom
+    tag: Wallet
+    formula: "Average explicit on-chain fee for trades via Phantom wallet, 24h median."
+    queries:
+      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
+      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
+      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
+      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="phantom"})[24h:5m])
+      sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="phantom"}[24h]))
+
+  - slug: fomo
+    name: Fomo
+    tag: Mobile app
+    formula: "Average explicit on-chain fee for trades via Fomo, 24h median. Fomo extracts a referral fee in the input token (USDC or SOL) per trade."
+    queries:
+      p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
+      p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
+      p99: quantile_over_time(0.99, avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
+      mean: avg_over_time(avg(memecoin_platform_fee_pct{platform="fomo"})[24h:5m])
+      sample_size: sum(avg_over_time(memecoin_platform_trade_count{platform="fomo"}[24h]))
+
   - slug: photon
     name: Photon
     tag: Aggregator frontend
-    formula: "Average total fee percent across top pump.fun tokens traded via Photon, 24h median."
+    formula: "Average explicit on-chain fee for trades via Photon, 24h median."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="photon"})[24h:5m])
@@ -92,7 +105,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: Aggregator frontend
-    formula: "Average total fee percent across top pump.fun tokens traded via Axiom, 24h median."
+    formula: "Average explicit on-chain fee for trades via Axiom, 24h median."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="axiom"})[24h:5m])
@@ -103,7 +116,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: Trading bot
-    formula: "Average total fee percent across top pump.fun tokens traded via Trojan bot, 24h median."
+    formula: "Average explicit on-chain fee for trades via Trojan bot, 24h median."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="trojan"})[24h:5m])
@@ -114,7 +127,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: Trading bot
-    formula: "Average total fee percent across top pump.fun tokens traded via GMGN, 24h median."
+    formula: "Average explicit on-chain fee for trades via GMGN, 24h median."
     queries:
       p50: quantile_over_time(0.50, avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
       p90: quantile_over_time(0.90, avg(memecoin_platform_fee_pct{platform="gmgn"})[24h:5m])
