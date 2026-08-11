@@ -192,7 +192,7 @@ func call(ctx context.Context, client *http.Client, url, method string, params [
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	lat := float64(time.Since(start).Milliseconds())
+	lat := float64(time.Since(start).Nanoseconds()) / 1e6
 	if err != nil {
 		if ctx.Err() != nil {
 			return lat, "canceled"
