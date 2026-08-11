@@ -43,6 +43,7 @@ var skipAccounts = map[string]bool{
 
 var (
 	txCache      sync.Map
+	txCacheSize  atomic.Int64
 	solPriceAtom uint64
 )
 
@@ -106,22 +107,21 @@ func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 
 	if v, ok := txCache.Load(txHash); ok {
 		return v.(float64)
 	}
+	if txCacheSize.Load() > 100_000 {
+		txCache.Range(func(k, _ any) bool { txCache.Delete(k); return true })
+		txCacheSize.Store(0)
+	}
 	fee, err := fetchOnChainFee(rpcClient, txHash, sender)
 	if err != nil {
 		log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
 		txCache.Store(txHash, float64(0))
+		txCacheSize.Add(1)
 		return 0
 	}
 	txCache.Store(txHash, fee)
+	txCacheSize.Add(1)
 	time.Sleep(rpcSleep)
 	return fee
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, error) {
