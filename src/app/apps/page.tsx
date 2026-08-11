@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { fetchAppsLeaderboard } from "@/lib/apps-leaderboard";
 import { fetchEVMRevenue } from "@/lib/evm-exec";
 import { fetchExecLeaderboard } from "@/lib/solana-exec";
 import { fetchSolPrice } from "@/lib/sol-price";
@@ -11,19 +10,18 @@ import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading
 import Link from "next/link";
 
 const DESCRIPTION =
-  "Protocol fees collected by trading apps: meme bots, telegram bots, and perps. On-chain data, updated hourly.";
+  "Protocol fees collected by trading apps: meme bots and telegram bots. On-chain data, updated hourly.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/apps",
-  title: "Trading App Revenue — pump.fun, Axiom, GMGN, Hyperliquid | OpenChainBench",
+  title: "Trading App Revenue — pump.fun, Axiom, GMGN, BullX | OpenChainBench",
   description: DESCRIPTION,
 });
 
 export const revalidate = 300;
 
 export default async function AppsHubPage() {
-  const [perpsData, evmData, solanaData, solPrice] = await Promise.all([
-    fetchAppsLeaderboard(),
+  const [evmData, solanaData, solPrice] = await Promise.all([
     fetchEVMRevenue(),
     fetchExecLeaderboard(),
     fetchSolPrice(),
@@ -37,22 +35,7 @@ export default async function AppsHubPage() {
     (solanaData?.platforms ?? []).map((p) => [p.platform, p])
   );
 
-  const perpsBySlug = new Map(
-    (perpsData?.protocols ?? []).map((p) => [p.slug, p])
-  );
-
   const rows: UnifiedAppRow[] = TRADING_APPS.map((meta) => {
-    if (meta.perpsSlug !== null) {
-      const perp = perpsBySlug.get(meta.perpsSlug);
-      const gross = perp?.windows["24h"]?.gross ?? 0;
-      return {
-        meta,
-        fees: { solana: null, ethereum: null, bsc: null, base: null },
-        stableOnly: { ethereum: false, bsc: false, base: false },
-        total24h: gross,
-      };
-    }
-
     const evmRow = meta.evmKey ? evmByPlatform.get(meta.evmKey) : undefined;
     const solRow = meta.solanaKey ? solanaByPlatform.get(meta.solanaKey) : undefined;
 
@@ -87,8 +70,7 @@ export default async function AppsHubPage() {
     };
   });
 
-  const updatedAt =
-    evmData?.updatedAt ?? solanaData?.updatedAt ?? perpsData?.updatedAt ?? null;
+  const updatedAt = evmData?.updatedAt ?? solanaData?.updatedAt ?? null;
 
   const breadcrumb = {
     "@context": "https://schema.org",
@@ -119,8 +101,7 @@ export default async function AppsHubPage() {
 
       <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
         Solana fees = <span className="font-mono">txCount × avgPlatformFeeLamports / 1e9 × SOL price</span>.
-        EVM fees = stable (USDC/USDT) + native where traceable.
-        Perps = gross fees 24h from on-chain data.{" "}
+        EVM fees = stable (USDC/USDT) + native where traceable.{" "}
         <Link href="/apps/exec" className="underline hover:text-ink-soft transition-colors">
           Detailed execution metrics →
         </Link>
