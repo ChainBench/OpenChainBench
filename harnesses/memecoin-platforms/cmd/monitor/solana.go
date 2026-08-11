@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	solanaRPC = "https://solana-rpc.publicnode.com"
+	rpcPublic = "https://api.mainnet-beta.solana.com"
+	rpcHelius = "https://mainnet.helius-rpc.com/?api-key="
 	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	wsolMint  = "So11111111111111111111111111111111111111112"
-	rpcSleep  = 1 * time.Second
+	rpcSleep  = 200 * time.Millisecond
 )
 
 // Known fee wallet owners confirmed via on-chain analysis of tagged Mobula trades.
@@ -104,7 +105,7 @@ type tokBal struct {
 // gas + known platform fee wallet receipts + heuristic small SOL/USDC recipients.
 // AMM LP fees that stay inside pool accounts are not counted.
 // Returns 0 on RPC error (logs the failure).
-func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 {
+func computeExplicitFees(proxyClient, heliusClient *http.Client, heliusKey, txHash, sender string) float64 {
 	if txHash == "" {
 		return 0
 	}
@@ -115,7 +116,10 @@ func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 
 		txCache.Range(func(k, _ any) bool { txCache.Delete(k); return true })
 		txCacheSize.Store(0)
 	}
-	fee, err := fetchOnChainFee(rpcClient, txHash, sender)
+	fee, err := fetchOnChainFee(proxyClient, rpcPublic, txHash, sender)
+	if err != nil && heliusKey != "" {
+		fee, err = fetchOnChainFee(heliusClient, rpcHelius+heliusKey, txHash, sender)
+	}
 	if err != nil {
 		if err.Error() != "not found" {
 			log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
@@ -130,7 +134,7 @@ func computeExplicitFees(rpcClient *http.Client, txHash, sender string) float64 
 	return fee
 }
 
-func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, error) {
+func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (float64, error) {
 	body, _ := json.Marshal(map[string]interface{}{
 		"jsonrpc": "2.0", "id": 1,
 		"method": "getTransaction",
@@ -139,7 +143,7 @@ func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, er
 			"maxSupportedTransactionVersion": 0,
 		}},
 	})
-	req, _ := http.NewRequest("POST", solanaRPC, bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", rpcURL, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := rpcClient.Do(req)
