@@ -14,10 +14,11 @@ const transferTopic0 = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 
 // ERC20Transfer is one token Transfer event emitted to a recipient.
 type ERC20Transfer struct {
-	TxHash   string
-	BlockNum uint64
-	LogIndex uint64
-	Amount   *big.Int // raw token units (never divided in Go)
+	TxHash    string
+	BlockNum  uint64
+	LogIndex  uint64
+	BlockTime time.Time // from blockTimestamp in getLogs response; zero if not present
+	Amount    *big.Int  // raw token units (never divided in Go)
 }
 
 // RPCError is a JSON-RPC level error; used to detect range-too-large codes.
@@ -34,7 +35,9 @@ func IsRangeError(err error) bool {
 	if !ok {
 		return false
 	}
-	return rpcErr.Code == -32005 || rpcErr.Code == -32602
+	// -32005: range too large (Alchemy/Infura), -32602: invalid params (geth),
+	// -32614: range limit exceeded (base mainnet.base.org)
+	return rpcErr.Code == -32005 || rpcErr.Code == -32602 || rpcErr.Code == -32614
 }
 
 // GetERC20Transfers fetches Transfer events from [fromBlock, toBlock] for one window.
@@ -55,11 +58,12 @@ func GetERC20Transfers(ctx context.Context, rpcURL, tokenContract, recipient str
 
 	var out struct {
 		Result []struct {
-			TxHash      string   `json:"transactionHash"`
-			BlockNumber string   `json:"blockNumber"`
-			LogIndex    string   `json:"logIndex"`
-			Data        string   `json:"data"`
-			Topics      []string `json:"topics"`
+			TxHash         string   `json:"transactionHash"`
+			BlockNumber    string   `json:"blockNumber"`
+			BlockTimestamp string   `json:"blockTimestamp"` // hex unix seconds; present on Base, absent on ETH/BSC
+			LogIndex       string   `json:"logIndex"`
+			Data           string   `json:"data"`
+			Topics         []string `json:"topics"`
 		} `json:"result"`
 		Error *struct {
 			Code    int    `json:"code"`
@@ -90,11 +94,16 @@ func GetERC20Transfers(ctx context.Context, rpcURL, tokenContract, recipient str
 		if !ok || amount.Sign() <= 0 {
 			continue
 		}
+		var bt time.Time
+		if ts, err2 := ParseHex64(log.BlockTimestamp); err2 == nil && ts > 0 {
+			bt = time.Unix(int64(ts), 0).UTC()
+		}
 		transfers = append(transfers, ERC20Transfer{
-			TxHash:   strings.ToLower(log.TxHash),
-			BlockNum: blockNum,
-			LogIndex: logIdx,
-			Amount:   amount,
+			TxHash:    strings.ToLower(log.TxHash),
+			BlockNum:  blockNum,
+			LogIndex:  logIdx,
+			BlockTime: bt,
+			Amount:    amount,
 		})
 	}
 	return transfers, nil
