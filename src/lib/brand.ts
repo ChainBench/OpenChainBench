@@ -77,6 +77,13 @@ const BRANDS: Record<string, Brand> = {
   relay: { color: "#26D49B" },         // mint
   across: { color: "#6CF9D8" },        // across aqua
 
+  // ─── Crypto trading apps (bench № 202) ───
+  pumpfun: { color: "#00C851" },       // pump.fun green
+  phantom: { color: "#AB9FF2" },       // phantom purple
+  moonshot: { color: "#F97316" },      // moonshot orange
+  "dex-screener": { color: "#1C1C1C", dark: true }, // dex screener dark
+  fomo: { color: "#7C3AED" },          // fomo violet
+
   // ─── Trading / perps ───
   hyperliquid: { color: "#22D3EE" },   // cyan
   dydx: { color: "#C084FC" },          // bright violet
