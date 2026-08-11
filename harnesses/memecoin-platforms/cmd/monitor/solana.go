@@ -119,6 +119,11 @@ func computeExplicitFees(proxyClient, heliusClient *http.Client, heliusKey, txHa
 	fee, err := fetchOnChainFee(proxyClient, rpcPublic, txHash, sender)
 	if err != nil && heliusKey != "" {
 		fee, err = fetchOnChainFee(heliusClient, rpcHelius+heliusKey, txHash, sender)
+		if err != nil && err.Error() != "not found" {
+			// retry once on transient EOF from Helius
+			time.Sleep(500 * time.Millisecond)
+			fee, err = fetchOnChainFee(heliusClient, rpcHelius+heliusKey, txHash, sender)
+		}
 	}
 	if err != nil {
 		if err.Error() != "not found" {
