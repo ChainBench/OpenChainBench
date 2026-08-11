@@ -11,21 +11,19 @@ import (
 
 // AssetTransfer is one native-asset (BNB/ETH) transfer from NodeReal nr_getAssetTransfers.
 type AssetTransfer struct {
-	TxHash        string
-	BlockNum      uint64
-	BlockTime     time.Time // from NodeReal metadata.blockTimestamp (avoids separate RPC call)
-	Amount        *big.Int  // wei, never divided
-	EventKey      string    // position index within (tx_hash) group for uniqueness
+	TxHash    string
+	BlockNum  uint64
+	BlockTime time.Time // from NodeReal blockTimeStamp (avoids separate RPC call)
+	Amount    *big.Int  // wei, never divided
+	EventKey  string    // position index within (tx_hash) group for uniqueness
 }
 
 type nrTransfer struct {
-	BlockNum string `json:"blockNum"`
-	Hash     string `json:"hash"`
-	Value    string `json:"value"`
-	Category string `json:"category"`
-	Metadata *struct {
-		BlockTimestamp string `json:"blockTimestamp"` // hex unix seconds
-	} `json:"metadata"`
+	BlockNum       string `json:"blockNum"`
+	Hash           string `json:"hash"`
+	Value          string `json:"value"`
+	Category       string `json:"category"`
+	BlockTimeStamp int64  `json:"blockTimeStamp"` // unix seconds, present when withMetadata:true
 }
 
 // GetNativeTransfers fetches all native asset (BNB) transfers to toAddress in [fromBlock, toBlock]
@@ -119,10 +117,8 @@ func GetNativeTransfers(ctx context.Context, rpcURL, toAddress string, fromBlock
 		txCount[hash]++
 
 		var blockTime time.Time
-		if t.Metadata != nil && t.Metadata.BlockTimestamp != "" {
-			if ts, err := ParseHex64(t.Metadata.BlockTimestamp); err == nil {
-				blockTime = time.Unix(int64(ts), 0).UTC()
-			}
+		if t.BlockTimeStamp > 0 {
+			blockTime = time.Unix(t.BlockTimeStamp, 0).UTC()
 		}
 
 		result = append(result, AssetTransfer{
