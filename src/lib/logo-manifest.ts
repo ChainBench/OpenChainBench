@@ -305,6 +305,7 @@ const RAW: Record<string, string> = {
   pumpfun: "/logos/pumpfun.svg",
   moonshot: "/logos/moonshot.svg",
   "binance-us": "/logos/binance-us.svg",
+  cryptocom: "/logos/cryptocom.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",
