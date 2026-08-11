@@ -147,7 +147,7 @@ func (a *aggregator) settle(height int64) {
 			}
 		}
 		for _, p := range providers {
-			lagMs := float64(e.arrivals[p].Sub(t0).Milliseconds())
+			lagMs := float64(e.arrivals[p].Sub(t0).Nanoseconds()) / 1e6
 			headLagHist.WithLabelValues(p, a.chain).Observe(lagMs)
 		}
 		headWins.WithLabelValues(winner, a.chain).Inc()
