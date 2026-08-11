@@ -11,10 +11,11 @@ import (
 
 // AssetTransfer is one native-asset (BNB/ETH) transfer from NodeReal nr_getAssetTransfers.
 type AssetTransfer struct {
-	TxHash   string
-	BlockNum uint64
-	Amount   *big.Int // wei, never divided
-	EventKey string   // position index within (tx_hash) group for uniqueness
+	TxHash        string
+	BlockNum      uint64
+	BlockTime     time.Time // from NodeReal metadata.blockTimestamp (avoids separate RPC call)
+	Amount        *big.Int  // wei, never divided
+	EventKey      string    // position index within (tx_hash) group for uniqueness
 }
 
 type nrTransfer struct {
@@ -22,6 +23,9 @@ type nrTransfer struct {
 	Hash     string `json:"hash"`
 	Value    string `json:"value"`
 	Category string `json:"category"`
+	Metadata *struct {
+		BlockTimestamp string `json:"blockTimestamp"` // hex unix seconds
+	} `json:"metadata"`
 }
 
 // GetNativeTransfers fetches all native asset (BNB) transfers to toAddress in [fromBlock, toBlock]
@@ -114,11 +118,19 @@ func GetNativeTransfers(ctx context.Context, rpcURL, toAddress string, fromBlock
 		idx := txCount[hash]
 		txCount[hash]++
 
+		var blockTime time.Time
+		if t.Metadata != nil && t.Metadata.BlockTimestamp != "" {
+			if ts, err := ParseHex64(t.Metadata.BlockTimestamp); err == nil {
+				blockTime = time.Unix(int64(ts), 0).UTC()
+			}
+		}
+
 		result = append(result, AssetTransfer{
-			TxHash:   hash,
-			BlockNum: blockNum,
-			Amount:   amt,
-			EventKey: fmt.Sprintf("%d", idx),
+			TxHash:    hash,
+			BlockNum:  blockNum,
+			BlockTime: blockTime,
+			Amount:    amt,
+			EventKey:  fmt.Sprintf("%d", idx),
 		})
 	}
 	return result, nil
