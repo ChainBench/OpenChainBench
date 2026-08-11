@@ -74,7 +74,11 @@ func runPoll(client *http.Client, apiKey string) {
 		for _, t := range trades {
 			p := t.Platform
 			if p == "" {
-				p = "unknown"
+				// Mobula does not tag pump.fun native trades — they return
+				// platform:null. Since we only sample pump.fun top tokens,
+				// untagged trades are overwhelmingly pump.fun bonding curve
+				// or its graduated Raydium pool.
+				p = "pump-fun"
 			}
 			s := byPlatform[p]
 			if s == nil {
