@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
-import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
@@ -50,13 +49,36 @@ export async function generateMetadata({
   const title =
     alt.seo_title ??
     `${alt.target_product} alternatives. live benchmark · OpenChainBench`;
-  const description = alt.seo_description ?? alt.intro.slice(0, 200);
+  const description = capDescription(
+    alt.seo_description ?? alt.intro,
+    158,
+  );
   const url = `${SITE.url}/alternatives/${alt.slug}`;
+  const ogImage = `${SITE.url}/api/og/${alt.benchmark}`;
+  // Noindex when the underlying bench has no live data yet — same rule as
+  // /benchmarks/[slug]. Avoids indexing a "Not measured yet" page that
+  // undercuts the bench canonical once data arrives.
+  const isDraft = alt.bench.status === "draft" || alt.status === "draft";
   return {
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, type: "article", url },
+    ...(isDraft ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url,
+      siteName: SITE.name,
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: SITE.twitter,
+      title,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
@@ -268,8 +290,8 @@ export default async function AlternativePage({
       )}
 
       {/* Top alternatives cards - explicit list with internal links to
-          product pages. The bench leaderboard below carries the full data;
-          this section frames the answer for skim-readers and search. */}
+          product pages. Excludes the target product itself so every card
+          is a genuine alternative, not a restatement of the subject. */}
       {topAlternatives.length > 0 && (
         <section className="mt-10">
           <SectionLabel>
@@ -312,18 +334,17 @@ export default async function AlternativePage({
         </section>
       )}
 
-      {/* Reuse bench rendering. count vs latency split, same as the
-          /benchmarks/[slug] page. */}
+      {/* Count benches: leaderboard is the primary view; no latency stats. */}
       {!isDraft && bench.unit === "count" && (
-        <>
+        <div className="mt-10">
           <CountLeaderboard benchmark={bench} />
-          <div className="mt-14">
-            <SectionLabel>Product ledger</SectionLabel>
-            <LedgerTable benchmark={bench} />
-          </div>
-        </>
+        </div>
       )}
 
+      {/* Latency / rate / USD benches: field stats + trend chart.
+          The full provider table lives on the canonical benchmark page —
+          linking there keeps this page focused on the alternatives angle
+          without duplicating the complete leaderboard. */}
       {!isDraft && bench.unit !== "count" && (
         <>
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
@@ -359,24 +380,39 @@ export default async function AlternativePage({
             <SectionLabel>{bench.metric} · last 24 hours</SectionLabel>
             <TimeSeriesChart benchmark={bench} />
           </div>
-
-          <div className="mt-14">
-            <SectionLabel>Product ledger · sorted by p50</SectionLabel>
-            <LedgerTable benchmark={bench} />
-          </div>
         </>
       )}
 
-      <p className="mt-12 max-w-2xl text-xs text-ink-muted">
-        Same data as{" "}
-        <Link href={`/benchmarks/${bench.slug}`} className="lnk text-ink-soft">
-          /benchmarks/{bench.slug}
+      {/* CTA to the canonical benchmark page where the full ranked
+          leaderboard (all providers, p50/p90/p99, success rate, trend)
+          lives. Keeps the alternatives page focused while giving readers
+          a clear path to the complete data. */}
+      {!isDraft && (
+        <div className="mt-10 rounded-xl card-soft px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="flex-1 text-sm text-ink-soft">
+            Full leaderboard: {bench.results.length} providers ranked by{" "}
+            {bench.metric.toLowerCase()}, with p50/p90/p99, success rate and
+            24h trend.
+          </p>
+          <Link
+            href={benchUrl}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-ink text-paper text-sm font-medium px-4 py-2 hover:opacity-80 transition-opacity"
+          >
+            View full benchmark
+            <ArrowUpRight size={14} strokeWidth={2} />
+          </Link>
+        </div>
+      )}
+
+      <p className="mt-8 max-w-2xl text-xs text-ink-muted">
+        Measurements sourced from{" "}
+        <Link href={benchUrl} className="lnk text-ink-soft">
+          {bench.title}
         </Link>
-        {alt.chain ? ` (filtered to ${alt.chain})` : ""}, refreshed every minute.
-        OpenChainBench is community-run; methodology is open.
+        {alt.chain ? ` (filtered to ${alt.chain})` : ""}. Methodology and
+        raw data on the benchmark page.
       </p>
 
     </article>
   );
 }
-
