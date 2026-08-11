@@ -16,7 +16,7 @@ const (
 	solanaRPC = "https://api.mainnet-beta.solana.com"
 	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	wsolMint  = "So11111111111111111111111111111111111111112"
-	rpcSleep  = 40 * time.Millisecond
+	rpcSleep  = 220 * time.Millisecond
 )
 
 // Known fee wallet owners confirmed via on-chain analysis of tagged Mobula trades.
@@ -85,6 +85,10 @@ type solanaTxResp struct {
 			} `json:"message"`
 		} `json:"transaction"`
 	} `json:"result"`
+	Error *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 type tokBal struct {
@@ -145,6 +149,9 @@ func fetchOnChainFee(rpcClient *http.Client, txHash, sender string) (float64, er
 	var out solanaTxResp
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return 0, fmt.Errorf("decode: %w", err)
+	}
+	if out.Error != nil {
+		return 0, fmt.Errorf("rpc %d: %s", out.Error.Code, out.Error.Message)
 	}
 	if out.Result == nil {
 		return 0, fmt.Errorf("not found")
