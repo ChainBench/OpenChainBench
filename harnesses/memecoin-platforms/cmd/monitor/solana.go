@@ -40,6 +40,11 @@ var skipAccounts = map[string]bool{
 	"CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": true,
 	"CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": true,
 	"675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": true,
+	// Trojan (Scorched) program accounts — escrow-based, fees collected separately
+	"SCoRcH8c2dpjvcJD6FiPbCSQyQgu3PcUAWj2Xxx3mqn": true,
+	"ojh19ojaKduoJZuaJADhcVGp4xt1TcdAvZmpVsCorch": true,
+	// Jupiter aggregator
+	"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": true,
 }
 
 type cacheEntry struct {
