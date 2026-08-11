@@ -22,25 +22,28 @@ func main() {
 
 	heliusKey := os.Getenv("HELIUS_API_KEY")
 
-	mobulaClient := &http.Client{Timeout: 30 * time.Second}
+	mobulaClient := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: &http.Transport{Proxy: nil},
+	}
 
 	// rpcClient routes through rotating proxy to avoid per-IP rate limits
 	var rpcClient *http.Client
 	if proxyRaw := os.Getenv("HTTPS_PROXY"); proxyRaw != "" {
 		if proxyURL, err := url.Parse(proxyRaw); err == nil {
 			rpcClient = &http.Client{
-				Timeout:   15 * time.Second,
+				Timeout:   30 * time.Second,
 				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
 			}
 			log.Printf("rpc: rotating proxy enabled")
 		}
 	}
 	if rpcClient == nil {
-		rpcClient = &http.Client{Timeout: 15 * time.Second}
+		rpcClient = &http.Client{Timeout: 30 * time.Second}
 	}
 
 	// heliusClient used as fallback for older tx not in public RPC history
-	heliusClient := &http.Client{Timeout: 15 * time.Second}
+	heliusClient := &http.Client{Timeout: 30 * time.Second}
 
 	setSolPrice(175.0)
 	updateSolPrice(mobulaClient)
