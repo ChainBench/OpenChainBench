@@ -292,6 +292,11 @@ const RAW: Record<string, string> = {
   subscan: "/logos/subscan.png",
   oklink: "/logos/oklink.png",
 
+  // ─── Solana memecoin platforms (bench № 200) ───
+  "pump-fun": "/logos/pump-fun.jpg",
+  trojan: "/logos/trojan.jpg",
+  gmgn: "/logos/gmgn.jpg",
+  maestro: "/logos/maestro.jpg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",
