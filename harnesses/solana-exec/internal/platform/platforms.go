@@ -57,6 +57,26 @@ var FeeAccounts = map[string][]string{
 		// because postTokenBalances.owner = wallet, not ATA.
 		"HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq", // USDC ATA of fee wallet
 	},
+	// Trojan — confirmed via DeFiLlama dexs/trojan/index.ts (master, 2026-08)
+	"trojan": {
+		"9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco", // primary bot fee wallet
+		"92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH", // terminal
+		"2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ",
+		"65gDv7pZQCZELsNpNYSFEBtNFpWZAbxmRFB6BGMqFkHH",
+		"BWgb8wR1FEGiu1jCDSKuHKf752W27b4iN6SvoNCiK4qp",
+		"8jgg7moFJkHyTtAv9M6RBSPMp2oXeXhuiUMKW8YbYCWn",
+	},
+	// Banana Gun — confirmed via DeFiLlama fees/banana-gun-trading.ts (master, 2026-08)
+	"banana-gun": {
+		"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF",
+		"4BBNEVRgrxVKv9f7pMNE788XM1tt379X9vNjpDH2KCL7",
+		"8r2hZoDfk5hDWJ1sDujAi2Qr45ZyZw5EQxAXiMZWLKh2",
+	},
+	// Maestro — confirmed via DeFiLlama fees/maestro.ts (master, 2026-08)
+	"maestro": {
+		"MaestroUL88UBnZr3wfoN7hqmNWFi3ZYCGqZoJJHE36",
+		"FRMxAnZgkW58zbYcE7Bxqsg99VWpJh6sMP5xLzAWNabN",
+	},
 }
 
 // FeeToken maps platform name → SPL token mint used for platform fee collection.

@@ -85,17 +85,22 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
-	// Banana Gun — bananagun-fees.eth resolves to this address, confirmed via Etherscan/Basescan labels
-	// BSC fee wallet unconfirmed — skipped until verified
+	// Banana Gun — confirmed via DeFiLlama fees/banana-gun-trading.ts (master, 2026-08)
 	"banana-gun": {
 		"ethereum": {
-			FeeCollector:  "0x72172c02da4c39d6d05c2b9458501faf671d8ef8",
+			FeeCollector:  "0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49",
 			NativeEnabled: true,
 			ERC20Tokens:   []string{USDC_ETH},
 			BootstrapDays: 30,
 		},
+		"bsc": {
+			FeeCollector:  "0x461efe0100be0682545972ebfc8b4a13253bd602",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
 		"base": {
-			FeeCollector:  "0x72172c02da4c39d6d05c2b9458501faf671d8ef8",
+			FeeCollector:  "0x1fba6b0bbae2b74586fba407fb45bd4788b7b130",
 			NativeEnabled: false,
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
