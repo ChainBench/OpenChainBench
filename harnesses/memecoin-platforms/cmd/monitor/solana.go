@@ -42,8 +42,15 @@ var skipAccounts = map[string]bool{
 	"675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": true,
 }
 
+type cacheEntry struct {
+	fee float64
+	ts  time.Time
+}
+
+const txCacheTTL = 2 * time.Hour
+
 var (
-	txCache      sync.Map
+	txCache      sync.Map // string → cacheEntry
 	txCacheSize  atomic.Int64
 	solPriceAtom uint64
 )
@@ -110,7 +117,12 @@ func computeExplicitFees(proxyClient, heliusClient *http.Client, heliusKey, txHa
 		return 0
 	}
 	if v, ok := txCache.Load(txHash); ok {
-		return v.(float64)
+		e := v.(cacheEntry)
+		if time.Since(e.ts) < txCacheTTL {
+			return e.fee
+		}
+		txCache.Delete(txHash)
+		txCacheSize.Add(-1)
 	}
 	if txCacheSize.Load() > 100_000 {
 		txCache.Range(func(k, _ any) bool { txCache.Delete(k); return true })
@@ -129,11 +141,11 @@ func computeExplicitFees(proxyClient, heliusClient *http.Client, heliusKey, txHa
 		if err.Error() != "not found" {
 			log.Printf("[solana] %s: %v", txHash[:min(12, len(txHash))], err)
 		}
-		txCache.Store(txHash, float64(0))
+		txCache.Store(txHash, cacheEntry{fee: 0, ts: time.Now()})
 		txCacheSize.Add(1)
 		return 0
 	}
-	txCache.Store(txHash, fee)
+	txCache.Store(txHash, cacheEntry{fee: fee, ts: time.Now()})
 	txCacheSize.Add(1)
 	time.Sleep(rpcSleep)
 	return fee
