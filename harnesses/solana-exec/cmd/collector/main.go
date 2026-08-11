@@ -24,11 +24,7 @@ func main() {
 	}
 	defer db.Close()
 
-	rpcURL := os.Getenv("SOLANA_RPC_URL")
-	if rpcURL == "" {
-		rpcURL = "https://api.mainnet-beta.solana.com"
-	}
-	h := helius.NewWithRPC(mustEnv("HELIUS_API_KEY"), rpcURL)
+	h := helius.New(mustEnv("HELIUS_API_KEY"))
 
 	log.Printf("collector: monitoring %d platforms", len(platform.FeeAccounts))
 
@@ -48,9 +44,10 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		return fmt.Errorf("get cursor: %w", err)
 	}
 
-	// Solana RPC supports up to 1000 sigs per getSignaturesForAddress call.
-	// Using 1000 reduces page count ~10x vs 100: 45K sigs = 45 pages instead of 450.
-	const sigLimit = 1000
+	const sigLimit = 100
+	// Paginate through ALL signatures newer than cursor (newest-first per page).
+	// Each page uses `before=oldestSigInPreviousPage` to walk backwards until
+	// we exhaust the window. This guarantees complete coverage regardless of volume.
 	var sigs []helius.SigEntry
 	before := ""
 	for {
@@ -63,7 +60,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 			break // last page
 		}
 		before = batch[len(batch)-1].Signature
-		time.Sleep(100 * time.Millisecond) // Helius free-tier RPC: 10 req/s max
+		time.Sleep(300 * time.Millisecond) // respect Helius free-tier rate limit between pages
 	}
 	if len(sigs) == 0 {
 		return nil
@@ -97,7 +94,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 		bucket := time.Unix(s.BlockTime, 0).UTC().Truncate(time.Hour)
 		hourBuckets[bucket]++
 	}
-	if err := db.UpsertRawCounts(ctx, plt, cursor.LastSig, hourBuckets); err != nil {
+	if err := db.UpsertRawCounts(ctx, plt, hourBuckets); err != nil {
 		return fmt.Errorf("upsert raw counts: %w", err)
 	}
 
@@ -108,14 +105,9 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 	}
 
 	// Cap enhanced API at 100 sigs per poll (Helius free-tier budget: ~432K CUs/month).
-	// Evenly stride across the window so the sample represents the full period, not just the oldest txs.
+	// Fee quality metrics are sampled; tx_count comes from raw counts above.
 	if len(sigStrs) > 100 {
-		step := len(sigStrs) / 100
-		sampled := make([]string, 0, 100)
-		for i := 0; i < len(sigStrs) && len(sampled) < 100; i += step {
-			sampled = append(sampled, sigStrs[i])
-		}
-		sigStrs = sampled
+		sigStrs = sigStrs[:100]
 	}
 
 	txs, err := h.GetEnhancedTransactions(ctx, sigStrs)
@@ -168,17 +160,6 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt, feeAccoun
 
 	if err := db.UpsertEvents(ctx, events); err != nil {
 		return fmt.Errorf("upsert: %w", err)
-	}
-
-	// Store raw CU price samples for true percentile computation (not AVG of hourly p50).
-	cuSamples := make([]store.CUSample, 0, len(events))
-	for _, e := range events {
-		if e.CUPriceMicro > 0 {
-			cuSamples = append(cuSamples, store.CUSample{Sig: e.Sig, BlockTime: e.BlockTime, CUPriceMicro: e.CUPriceMicro})
-		}
-	}
-	if err := db.InsertCUSamples(ctx, plt, cuSamples); err != nil {
-		return fmt.Errorf("insert cu samples: %w", err)
 	}
 
 	// Advance cursor to the newest sig (first in original order = last in reversed).
