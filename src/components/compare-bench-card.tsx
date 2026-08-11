@@ -277,7 +277,9 @@ function AggregatePanel({
               <dt>p99</dt>
               <dd className="text-right text-ink-soft">{fmtUnit(details.p99, unit)}</dd>
               <dt>rank</dt>
-              <dd className="text-right text-ink-soft">#{details.rank}</dd>
+              <dd className="text-right text-ink-soft">
+                {details.rank > 0 ? `#${details.rank}` : "—"}
+              </dd>
               {details.sampleSize ? (
                 <>
                   <dt>samples</dt>
