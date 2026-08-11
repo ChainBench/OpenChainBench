@@ -43,6 +43,27 @@ var BlocksPerDay = map[string]uint64{
 
 // PlatformConfig maps platform → chain → configuration.
 var PlatformConfig = map[string]map[string]EVMPlatform{
+	// pump.fun Terminal (acquired Terminal.fun/Padre Oct 2025) — confirmed via DeFiLlama
+	"pumpfun": {
+		"ethereum": {
+			FeeCollector:  "0xa74fa823bc8617fa320a966b3d11b0f722ef09ee",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_ETH},
+			BootstrapDays: 30,
+		},
+		"bsc": {
+			FeeCollector:  "0x2b0a28a0a9197f8af5d1b8371c048e92dd78b640",
+			NativeEnabled: true,
+			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
+		"base": {
+			FeeCollector:  "0x16388de42c5829fd0e88c8eb001ef43bfc93f177",
+			NativeEnabled: false, // no free trace API on Base; USDC only
+			ERC20Tokens:   []string{USDC_BASE},
+			BootstrapDays: 30,
+		},
+	},
 	"gmgn": {
 		"ethereum": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
