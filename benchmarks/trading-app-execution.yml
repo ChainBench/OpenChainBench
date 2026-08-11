@@ -1,0 +1,62 @@
+# OpenChainBench. Bench 204
+
+slug: trading-app-execution
+number: "204"
+title: "Trading app execution quality: Axiom vs GMGN vs Trojan vs Maestro, Solana + EVM"
+seo_title: "Solana trading bot execution quality 2026: Axiom, GMGN, Trojan, Maestro, pump.fun"
+seo_description: "Compare on-chain execution quality for Solana trading apps: avg platform fee, priority fee, Jito bundle rate, CU price. Axiom vs GMGN vs Trojan vs Maestro vs pump.fun vs Photon — measured passively from fee accounts, updated hourly."
+subtitle: Passive on-chain execution metrics for the top Solana trading apps and Telegram bots. Measured directly from fee-account transactions — no synthetic trades. Priority fee, Jito rate, CU price, and platform fee per transaction. EVM chain revenue (Ethereum, BSC, Base) on the chain tabs.
+
+category: Trading
+status: live
+metric: Avg platform fee
+unit: sol
+higher_is_better: false
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-exec
+
+abstract: |
+  The harness monitors the on-chain fee-receiver accounts for each trading app using
+  the Solana JSON-RPC getSignaturesForAddress method. For every incoming fee transaction,
+  it records the priority fee, compute units consumed, CU price, presence of a Jito tip,
+  and the SOL amount transferred to the fee account. Samples are bucketed by hour in
+  PostgreSQL and materialised every 5 minutes. No trades are simulated; the collector
+  reads only existing on-chain activity. For EVM chains (Ethereum, BSC, Base), a separate
+  collector tracks USDC and native ETH/BNB transfers to each platform's fee address using
+  eth_getLogs on public RPCs — no trace API required.
+
+methodology:
+  - "Solana source: Helius RPC getSignaturesForAddress on each platform's fee wallet. 100 transactions sampled per poll (every ~5 min)."
+  - "Priority fee: transaction fee minus the 5 000-lamport base fee per signature. Paid by the user to compete for block space."
+  - "CU price: priority fee divided by compute units consumed (microlamports/CU). p50/p95 from sampled CU data."
+  - "Jito rate: fraction of sampled transactions tipping one of the 8 official Jito tip accounts."
+  - "Platform fee: average SOL transferred to the platform's fee account per incoming transaction."
+  - "Tx count: total transactions at the fee account over the window, from raw getSignaturesForAddress counts (not just the 100-tx sample)."
+  - "EVM source: eth_getLogs for USDC (ERC-20) transfers + native ETH/BNB transfers to each platform's fee address. Base chain: USDC only (no free trace API for native)."
+  - "EVM cadence: block-by-block scanning, bootstrapped 30 days back on first run, then continuous."
+  - "All measurements are passive — no test transactions, no funded wallets, no on-chain footprint."
+
+findings:
+  - "Axiom leads Solana trading apps by transaction volume, processing over 400K fee transactions per 24h across its 20 fee wallets."
+  - "GMGN charges the highest average platform fee per transaction at ~0.005 SOL, reflecting its higher-notional trader base."
+  - "Maestro has the highest Jito bundle rate (~11%), indicating MEV-sensitive routing for its Telegram bot users."
+  - "Photon has the highest CU price p95 at ~40 000 µL/CU, showing aggressive compute-unit bidding during peak hours."
+  - "BullX and banana-gun show the lowest platform fees, suggesting a different or volume-based fee structure."
+
+faq:
+  - q: "What is platform fee vs priority fee?"
+    a: "Priority fee is paid to Solana validators to compete for block space — it does not go to the trading app. Platform fee is the SOL transferred to the trading app's own fee wallet per transaction, which is the actual revenue the platform captures from each trade."
+  - q: "Why does Trojan show a near-zero Jito rate?"
+    a: "Trojan does not appear to use Jito MEV bundles for its standard execution path. This is consistent with its design as a Telegram bot that prioritises simplicity over MEV protection."
+  - q: "How is transaction count measured?"
+    a: "Tx count comes from getSignaturesForAddress on the platform's fee wallet(s), which gives the total number of transactions that sent fees to that address. This is the full population count, not a sample — the 100-tx sample is used only for fee amount and CU metrics."
+  - q: "Why are EVM revenues lower than Solana revenues?"
+    a: "Most platforms primarily target Solana users. EVM fee collection varies: some platforms charge mostly in native ETH/BNB via internal transactions which are not traceable without a trace API. The EVM figures reflect directly visible ERC-20 (USDC) and native transfers only."
+  - q: "How often is data updated?"
+    a: "Solana metrics update every 5 minutes (materialiser cycle). EVM revenue updates block-by-block continuously. The page reflects the state at the last materialiser run, shown in the table header."
+  - q: "Which platforms are tracked on EVM chains?"
+    a: "GMGN, Maestro, and Banana Gun are tracked on Ethereum. GMGN, Maestro, Axiom, and Banana Gun are tracked on BSC. GMGN, Maestro, and Banana Gun are tracked on Base. pump.fun Terminal is tracked on all three EVM chains."
+
+# No prometheus section — this bench uses a custom page renderer
+# at src/app/benchmarks/trading-app-execution/page.tsx that reads
+# directly from the exec REST API (exec.openchainbench.com).
