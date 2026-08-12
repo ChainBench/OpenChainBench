@@ -32,6 +32,8 @@ export type PanelScope = {
   higherIsBetter: boolean;
   aValue: number;
   bValue: number;
+  /** When true, don't apply win/lose coloring — size/scale metric, not quality. */
+  neutral?: boolean;
 };
 
 export type CompareBench = {
@@ -49,6 +51,8 @@ export type CompareBench = {
   regionBreakdown: BreakdownRow[];
   chainRegionMatrix: ChainRegionEntry[];
   panelScopes: PanelScope[];
+  /** Optional in-panel note shown below the metric cards (e.g. scope clarification). */
+  note?: string;
 };
 
 function decideWinner(
@@ -140,7 +144,13 @@ export function CompareBenchCard({
         </>
       )}
 
-      <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      {bench.note && (
+        <p className="mt-4 text-[11px] text-ink-faint leading-snug border-t border-rule pt-3">
+          {bench.note}
+        </p>
+      )}
+
+      <footer className="mt-4 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
         <span>Rolling 24h · {bench.metric}</span>
         <Link
           href={`/api/stat/${bench.slug}`}
@@ -195,8 +205,8 @@ function ScopeTable({
                 {cols.map((c) => {
                   const val = side === "a" ? c.aValue : c.bValue;
                   const winner = decideWinner(c.aValue, c.bValue, c.higherIsBetter);
-                  const leads = winner === side;
-                  const trails = winner !== side && winner !== "tie";
+                  const leads = !c.neutral && winner === side;
+                  const trails = !c.neutral && winner !== side && winner !== "tie";
                   const hasData = val > 0;
                   return (
                     <td
