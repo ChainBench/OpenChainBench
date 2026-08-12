@@ -1226,13 +1226,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   fomo: {
     url: "https://fomo.family",
     description:
-      "FOMO is a multi-chain trading app (Solana, Base, BNB Chain) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools. Backed by Index Ventures and USV.",
+      "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
   },
   "pump-fun": {
     url: "https://pump.fun",
     description:
-      "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to PumpSwap (pump.fun's native AMM, launched March 2025) when the curve completes. The platform charges a 1% fee on every buy and sell on the bonding curve.",
+      "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to PumpSwap (pump.fun's native AMM, launched March 2025) when the curve completes.",
     twitter: "@pumpdotfun",
   },
   trojan: {
