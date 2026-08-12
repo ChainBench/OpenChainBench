@@ -28,6 +28,17 @@ type blockscoutTx struct {
 	Index           string `json:"index"` // trace position within the tx (event key)
 }
 
+// blockscoutNormalTx matches the Blockscout txlist (normal/external tx) result shape.
+// Field names differ from txlistinternal: hash vs transactionHash, no index.
+type blockscoutNormalTx struct {
+	Hash        string `json:"hash"`
+	BlockNumber string `json:"blockNumber"`
+	TimeStamp   string `json:"timeStamp"`
+	Value       string `json:"value"`
+	To          string `json:"to"`
+	IsError     string `json:"isError"`
+}
+
 // GetBlockscoutInternalTxs fetches internal ETH transfers to address via Blockscout.
 // apiURL is the chain-specific Blockscout API base (e.g. blockscoutRobinhood).
 func GetBlockscoutInternalTxs(ctx context.Context, apiURL, address string, startBlock uint64) ([]NativeTx, uint64, error) {
@@ -117,6 +128,129 @@ func GetBlockscoutInternalTxs(ctx context.Context, apiURL, address string, start
 					BlockTime: bt,
 					Amount:    amt,
 					EventKey:  tx.Index,
+				}
+				windowTxs = append(windowTxs, ntx)
+				if blockNum > highestBlock {
+					highestBlock = blockNum
+				}
+			}
+
+			if len(txs) < offset {
+				break
+			}
+			if page == maxPage {
+				hitCap = true
+				break
+			}
+		}
+
+		all = append(all, windowTxs...)
+
+		if !hitCap || len(windowTxs) == 0 {
+			break
+		}
+
+		var lastBlock uint64
+		for _, tx := range windowTxs {
+			if tx.BlockNum > lastBlock {
+				lastBlock = tx.BlockNum
+			}
+		}
+		if lastBlock <= curStart {
+			break
+		}
+		curStart = lastBlock
+	}
+
+	return all, highestBlock, nil
+}
+
+// GetBlockscoutNormalTxs fetches direct ETH transfers (tx.value > 0, to == address) via txlist.
+// Complements GetBlockscoutInternalTxs: direct EOA sends don't appear in txlistinternal.
+func GetBlockscoutNormalTxs(ctx context.Context, apiURL, address string, startBlock uint64) ([]NativeTx, uint64, error) {
+	const offset = 1000
+	const maxPage = 20
+
+	addrLower := strings.ToLower(address)
+	var all []NativeTx
+	highestBlock := startBlock
+	curStart := startBlock
+
+	for {
+		var windowTxs []NativeTx
+		hitCap := false
+
+		for page := 1; page <= maxPage; page++ {
+			time.Sleep(300 * time.Millisecond)
+
+			params := url.Values{
+				"module":     {"account"},
+				"action":     {"txlist"},
+				"address":    {address},
+				"startblock": {fmt.Sprintf("%d", curStart)},
+				"endblock":   {"99999999"},
+				"page":       {fmt.Sprintf("%d", page)},
+				"offset":     {fmt.Sprintf("%d", offset)},
+				"sort":       {"asc"},
+			}
+
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"?"+params.Encode(), nil)
+			if err != nil {
+				return all, highestBlock, err
+			}
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				return all, highestBlock, fmt.Errorf("blockscout txlist page %d: %w", page, err)
+			}
+
+			var out struct {
+				Status  string          `json:"status"`
+				Message string          `json:"message"`
+				Result  json.RawMessage `json:"result"`
+			}
+			decErr := json.NewDecoder(resp.Body).Decode(&out)
+			resp.Body.Close()
+			if decErr != nil {
+				return all, highestBlock, fmt.Errorf("blockscout txlist decode: %w", decErr)
+			}
+
+			if out.Status == "0" {
+				break
+			}
+			if out.Status != "1" && out.Status != "2" {
+				break
+			}
+
+			var txs []blockscoutNormalTx
+			if err := json.Unmarshal(out.Result, &txs); err != nil {
+				break
+			}
+
+			for _, tx := range txs {
+				if tx.IsError == "1" || tx.Value == "" || tx.Value == "0" {
+					continue
+				}
+				if strings.ToLower(tx.To) != addrLower {
+					continue
+				}
+				amt, ok := new(big.Int).SetString(tx.Value, 10)
+				if !ok || amt.Sign() <= 0 {
+					continue
+				}
+				blockNum, parseErr := parseDecU64(tx.BlockNumber)
+				if parseErr != nil {
+					continue
+				}
+				var bt time.Time
+				if ts, tsErr := parseDecU64(tx.TimeStamp); tsErr == nil && ts > 0 {
+					bt = time.Unix(int64(ts), 0).UTC()
+				}
+				ntx := NativeTx{
+					TxHash:    strings.ToLower(tx.Hash),
+					BlockNum:  blockNum,
+					BlockTime: bt,
+					Amount:    amt,
+					EventKey:  "top", // direct tx value, not a trace
 				}
 				windowTxs = append(windowTxs, ntx)
 				if blockNum > highestBlock {

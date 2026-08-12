@@ -23,6 +23,7 @@ var apps = []struct {
 	{"binance-us", "1492670702"},
 	{"robinhood", "938003185"},
 	{"cryptocom", "1262148500"},
+	{"invo", "1601301148"},
 }
 
 func main() {
