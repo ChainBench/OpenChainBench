@@ -39,6 +39,8 @@ export const BRAND_WHITELIST: ReadonlySet<string> = new Set([
   "opensea", "blockscout",
   // HL frontends flagged as curated targets
   "axiom", "phantom-perps",
+  // Solana memecoin platforms (hottest compare topic 2026)
+  "fomo", "pump-fun",
   // Chains (compare pages already work; whitelist keeps chain-vs-chain live)
   "ethereum", "solana", "base", "arbitrum", "optimism", "polygon",
   "avalanche", "sui", "monero", "ton", "bnb", "zksync",
