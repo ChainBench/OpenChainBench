@@ -335,5 +335,54 @@ func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (flo
 		}
 	}
 
+	// 4. Pool-intermediated WSOL/USDC fees (pump.fun AMM, etc.).
+	// In AMM swaps the pool routes small WSOL/USDC fractions to protocol/creator fee wallets.
+	// Only run when the sender is NOT losing this token (i.e. section 3 didn't handle it),
+	// to avoid double-counting.
+	absF := func(x float64) float64 {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}
+	for _, feeMint := range []string{wsolMint, usdcMint} {
+		isSOL := feeMint == wsolMint
+		// Skip if sender's delta for this mint is negative (section 3 already ran for it).
+		senderDelta := tokDelta[ownerMint{sender, feeMint}]
+		if senderDelta < 0 {
+			continue
+		}
+		var maxFlow float64
+		for key, delta := range tokDelta {
+			if key.mint != feeMint {
+				continue
+			}
+			if a := absF(delta); a > maxFlow {
+				maxFlow = a
+			}
+		}
+		if maxFlow < 0.001 {
+			continue
+		}
+		for key, delta := range tokDelta {
+			if key.mint != feeMint || delta <= 0 {
+				continue
+			}
+			if skipAccounts[key.owner] || key.owner == sender {
+				continue
+			}
+			if _, ok := platformFeeOwners[key.owner]; ok {
+				continue
+			}
+			if delta < maxFlow*0.05 {
+				if isSOL {
+					smallTokFeeUSD += delta * solPrice
+				} else {
+					smallTokFeeUSD += delta
+				}
+			}
+		}
+	}
+
 	return gasUSD + knownFeeUSD + smallSolFeeUSD + smallTokFeeUSD, nil
 }
