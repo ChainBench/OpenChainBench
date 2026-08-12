@@ -44,6 +44,7 @@ type WindowStats struct {
 	P50CUPriceMicro        float64 `json:"p50CUPriceMicro"`
 	P95CUPriceMicro        float64 `json:"p95CUPriceMicro"`
 	AvgPlatformFeeLamports float64 `json:"avgPlatformFeeLamports"`
+	SumPlatformFeeLamports int64   `json:"sumPlatformFeeLamports"`
 	JitoRate               float64 `json:"jitoRate"`
 	AvgCUConsumed          float64 `json:"avgCUConsumed"`
 }
@@ -91,6 +92,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				MAX(c.h24_p95) AS h24_p95,
 				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_pfee,
+				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_sum_pfee,
 				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_jito,
 				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
@@ -103,6 +105,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				MAX(c.d7_p95) AS d7_p95,
 				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_pfee,
+				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_sum_pfee,
 				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_jito,
 				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
@@ -115,6 +118,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				MAX(c.d30_p95) AS d30_p95,
 				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_pfee,
+				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_sum_pfee,
 				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
 				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_jito,
 				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
@@ -138,17 +142,20 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var plt, latestBkt string
 			var h24Prio, h24P50, h24P95, h24Pfee, h24Jito, h24Cu *float64
+			var h24SumPfee int64
 			var h24Count *int64
 			var d7Prio, d7P50, d7P95, d7Pfee, d7Jito, d7Cu *float64
+			var d7SumPfee int64
 			var d7Count *int64
 			var d30Prio, d30P50, d30P95, d30Pfee, d30Jito, d30Cu *float64
+			var d30SumPfee int64
 			var d30Count *int64
 
 			if err := rows.Scan(
 				&plt,
-				&h24Prio, &h24P50, &h24P95, &h24Pfee, &h24Jito, &h24Cu, &h24Count,
-				&d7Prio, &d7P50, &d7P95, &d7Pfee, &d7Jito, &d7Cu, &d7Count,
-				&d30Prio, &d30P50, &d30P95, &d30Pfee, &d30Jito, &d30Cu, &d30Count,
+				&h24Prio, &h24P50, &h24P95, &h24Pfee, &h24SumPfee, &h24Jito, &h24Cu, &h24Count,
+				&d7Prio, &d7P50, &d7P95, &d7Pfee, &d7SumPfee, &d7Jito, &d7Cu, &d7Count,
+				&d30Prio, &d30P50, &d30P95, &d30Pfee, &d30SumPfee, &d30Jito, &d30Cu, &d30Count,
 				&latestBkt,
 			); err != nil {
 				log.Printf("exec-api: scan: %v", err)
@@ -159,9 +166,9 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				Platform:  plt,
 				LatestBkt: latestBkt,
 				Windows: map[string]WindowStats{
-					"24h": buildWindow(h24Prio, h24P50, h24P95, h24Pfee, h24Jito, h24Cu, h24Count),
-					"7d":  buildWindow(d7Prio, d7P50, d7P95, d7Pfee, d7Jito, d7Cu, d7Count),
-					"30d": buildWindow(d30Prio, d30P50, d30P95, d30Pfee, d30Jito, d30Cu, d30Count),
+					"24h": buildWindow(h24Prio, h24P50, h24P95, h24Pfee, h24SumPfee, h24Jito, h24Cu, h24Count),
+					"7d":  buildWindow(d7Prio, d7P50, d7P95, d7Pfee, d7SumPfee, d7Jito, d7Cu, d7Count),
+					"30d": buildWindow(d30Prio, d30P50, d30P95, d30Pfee, d30SumPfee, d30Jito, d30Cu, d30Count),
 				},
 			}
 			platforms = append(platforms, p)
@@ -181,7 +188,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func buildWindow(prio, p50, p95, pfee, jito, cu *float64, count *int64) WindowStats {
+func buildWindow(prio, p50, p95, pfee *float64, sumPfee int64, jito, cu *float64, count *int64) WindowStats {
 	ws := WindowStats{}
 	if count != nil {
 		ws.TxCount = *count
@@ -198,6 +205,7 @@ func buildWindow(prio, p50, p95, pfee, jito, cu *float64, count *int64) WindowSt
 	if pfee != nil {
 		ws.AvgPlatformFeeLamports = *pfee
 	}
+	ws.SumPlatformFeeLamports = sumPfee
 	if jito != nil {
 		ws.JitoRate = *jito
 	}

@@ -59,7 +59,7 @@ export default async function AppsHubPage() {
       if (solRow && solPrice !== null) {
         const wData = solRow.windows[w];
         if (wData) {
-          solanaFees = (wData.txCount * wData.avgPlatformFeeLamports) / 1e9 * solPrice;
+          solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
         }
       }
 
