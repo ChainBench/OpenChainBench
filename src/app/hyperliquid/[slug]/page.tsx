@@ -15,6 +15,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
+import { BenchAppearancesSection } from "@/components/bench-appearances-section";
 
 /**
  * Per-frontend detail page for the Hyperliquid grid overview. Server
@@ -291,6 +292,8 @@ export default async function HlFrontendPage({
           </ul>
         </section>
       )}
+
+      <BenchAppearancesSection providerSlug={slug} />
 
       <RelatedProvidersSection providerSlug={slug} providerName={frontend.name} />
 
