@@ -92,9 +92,11 @@ function ChainCell({ value, stableOnly, hideBelow }: ChainCellProps) {
 export function TradingAppsLeaderboard({
   rows,
   updatedAt,
+  fomoLatestDate,
 }: {
   rows: UnifiedAppRow[];
   updatedAt: string | null;
+  fomoLatestDate: string | null;
 }) {
   const [tab, setTab] = useState<TabKey>("all");
   const [window, setWindow] = useState<WindowKey>("24h");
@@ -258,6 +260,18 @@ export function TradingAppsLeaderboard({
           EVM 7d/30d shows USDC only; native ETH/BNB added for 24h.
         </p>
       )}
+      <FOMODataNotice latestDate={fomoLatestDate} />
     </div>
+  );
+}
+
+function FOMODataNotice({ latestDate }: { latestDate: string | null }) {
+  if (!latestDate) return null;
+  const ageHours = (Date.now() - new Date(latestDate).getTime()) / 3_600_000;
+  if (ageHours <= 36) return null;
+  return (
+    <p className="px-4 sm:px-6 py-2.5 text-[11px] border-t border-rule text-amber-400/80">
+      FOMO relay data last updated {Math.round(ageHours)}h ago — figures may be stale.
+    </p>
   );
 }

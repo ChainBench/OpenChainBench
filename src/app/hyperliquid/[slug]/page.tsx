@@ -14,6 +14,7 @@ import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { ProviderLogo } from "@/components/provider-logo";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
+import { RelatedProvidersSection } from "@/components/related-providers-section";
 
 /**
  * Per-frontend detail page for the Hyperliquid grid overview. Server
@@ -290,6 +291,8 @@ export default async function HlFrontendPage({
           </ul>
         </section>
       )}
+
+      <RelatedProvidersSection providerSlug={slug} providerName={frontend.name} />
 
       <p className="mt-10 text-[11px] text-ink-faint italic">
         Source: local hl node tailing every Hyperliquid mainnet fill. This

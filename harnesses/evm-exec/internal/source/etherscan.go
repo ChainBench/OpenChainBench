@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	etherscanV2    = "https://api.etherscan.io/v2/api"
-	basescanAPI    = "https://api.basescan.org/api"
+	etherscanV2     = "https://api.etherscan.io/v2/api"
 	ChainIDEthereum = "1"
-	ChainIDBase     = "" // BaseScan is single-chain; no chainid param needed
+	ChainIDBase     = "8453" // Base via Etherscan V2 (same key as Ethereum, no separate BaseScan key)
 )
 
 // NativeTx is an ETH transfer (internal or normal) to a monitored address.
@@ -155,9 +154,6 @@ func fetchEtherscanTxs(ctx context.Context, apiKey, chainID, address string, sta
 
 func etherscanPage(ctx context.Context, apiKey, chainID, address, action string, startBlock uint64, endBlock, page, offset int) ([]etherscanTx, error) {
 	apiURL := etherscanV2
-	if chainID == "" {
-		apiURL = basescanAPI
-	}
 	params := url.Values{
 		"module":     {"account"},
 		"action":     {action},
