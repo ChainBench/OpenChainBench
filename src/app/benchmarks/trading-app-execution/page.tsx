@@ -11,19 +11,19 @@ export const revalidate = 60;
 
 export const metadata: Metadata = pageMetadata({
   path: "/benchmarks/trading-app-execution",
-  title: "Trading App Execution Quality — Axiom vs GMGN vs Trojan vs Maestro | OpenChainBench",
+  title: "Trading App Execution Quality: Axiom vs GMGN vs Trojan vs Maestro | OpenChainBench",
   description:
-    "Compare on-chain execution quality for Solana trading apps: avg platform fee, priority fee, Jito bundle rate, CU price. Axiom vs GMGN vs Trojan vs Maestro — measured passively from fee accounts, updated hourly.",
+    "Compare on-chain execution quality for Solana trading apps: avg platform fee, priority fee, Jito bundle rate, CU price. Axiom vs GMGN vs Trojan vs Maestro, measured passively from fee accounts, updated hourly.",
 });
 
 const FAQ = [
   {
     q: "What is platform fee vs priority fee?",
-    a: "Priority fee is paid to Solana validators to compete for block space — it does not go to the trading app. Platform fee is the SOL transferred to the trading app's own fee wallet per transaction, which is the actual revenue the platform captures from each trade.",
+    a: "Priority fee is paid to Solana validators to compete for block space; it does not go to the trading app. Platform fee is the SOL transferred to the trading app's own fee wallet per transaction, which is the actual revenue the platform captures from each trade.",
   },
   {
     q: "How is transaction count measured?",
-    a: "Tx count comes from getSignaturesForAddress on the platform's fee wallet(s), giving the total number of transactions that sent fees to that address. This is the full population count, not a sample — the 100-tx sample is used only for fee amount and CU metrics.",
+    a: "Tx count comes from getSignaturesForAddress on the platform's fee wallet(s), giving the total number of transactions that sent fees to that address. This is the full population count, not a sample; the 100-tx sample is used only for fee amount and CU metrics.",
   },
   {
     q: "Why does Trojan show a near-zero Jito rate?",
@@ -97,7 +97,7 @@ export default async function TradingAppExecutionPage() {
       </h1>
       <p className="mt-4 max-w-2xl text-base text-ink-soft leading-snug">
         Passive on-chain execution metrics for the top Solana trading apps and Telegram bots.
-        Priority fee, Jito rate, CU price, and platform fee per transaction — measured directly
+        Priority fee, Jito rate, CU price, and platform fee per transaction, measured directly
         from fee accounts, no synthetic trades. EVM chain revenue on the chain tabs below.
       </p>
 
