@@ -11,7 +11,12 @@ import (
 	"time"
 )
 
-const etherscanV2 = "https://api.etherscan.io/v2/api"
+const (
+	etherscanV2    = "https://api.etherscan.io/v2/api"
+	basescanAPI    = "https://api.basescan.org/api"
+	ChainIDEthereum = "1"
+	ChainIDBase     = "" // BaseScan is single-chain; no chainid param needed
+)
 
 // NativeTx is an ETH transfer (internal or normal) to a monitored address.
 type NativeTx struct {
@@ -33,8 +38,8 @@ type etherscanTx struct {
 }
 
 // GetEtherscanInternalTxs fetches ETH internal transfers to address starting from startBlock.
-func GetEtherscanInternalTxs(ctx context.Context, apiKey, address string, startBlock uint64) ([]NativeTx, uint64, error) {
-	return fetchEtherscanTxs(ctx, apiKey, address, startBlock, "txlistinternal", func(tx etherscanTx) (NativeTx, bool) {
+func GetEtherscanInternalTxs(ctx context.Context, apiKey, chainID, address string, startBlock uint64) ([]NativeTx, uint64, error) {
+	return fetchEtherscanTxs(ctx, apiKey, chainID, address, startBlock, "txlistinternal", func(tx etherscanTx) (NativeTx, bool) {
 		if tx.IsError == "1" || tx.Value == "0" || tx.Value == "" {
 			return NativeTx{}, false
 		}
@@ -55,9 +60,9 @@ func GetEtherscanInternalTxs(ctx context.Context, apiKey, address string, startB
 }
 
 // GetEtherscanNormalTxs fetches plain ETH value transfers to address starting from startBlock.
-func GetEtherscanNormalTxs(ctx context.Context, apiKey, address string, startBlock uint64) ([]NativeTx, uint64, error) {
+func GetEtherscanNormalTxs(ctx context.Context, apiKey, chainID, address string, startBlock uint64) ([]NativeTx, uint64, error) {
 	addrLower := strings.ToLower(address)
-	return fetchEtherscanTxs(ctx, apiKey, address, startBlock, "txlist", func(tx etherscanTx) (NativeTx, bool) {
+	return fetchEtherscanTxs(ctx, apiKey, chainID, address, startBlock, "txlist", func(tx etherscanTx) (NativeTx, bool) {
 		if tx.IsError == "1" || tx.Value == "0" || tx.Value == "" {
 			return NativeTx{}, false
 		}
@@ -83,7 +88,7 @@ func GetEtherscanNormalTxs(ctx context.Context, apiKey, address string, startBlo
 type filterFn func(etherscanTx) (NativeTx, bool)
 
 // fetchEtherscanTxs handles Etherscan pagination including the 10k-result cap.
-func fetchEtherscanTxs(ctx context.Context, apiKey, address string, startBlock uint64, action string, filter filterFn) ([]NativeTx, uint64, error) {
+func fetchEtherscanTxs(ctx context.Context, apiKey, chainID, address string, startBlock uint64, action string, filter filterFn) ([]NativeTx, uint64, error) {
 	const (
 		offset   = 1000
 		maxPage  = 10
@@ -102,7 +107,7 @@ func fetchEtherscanTxs(ctx context.Context, apiKey, address string, startBlock u
 		for page <= maxPage {
 			time.Sleep(250 * time.Millisecond)
 
-			batch, err := etherscanPage(ctx, apiKey, address, action, curStart, endBlock, page, offset)
+			batch, err := etherscanPage(ctx, apiKey, chainID, address, action, curStart, endBlock, page, offset)
 			if err != nil {
 				return all, highestBlock, fmt.Errorf("etherscan %s page %d: %w", action, page, err)
 			}
@@ -148,9 +153,12 @@ func fetchEtherscanTxs(ctx context.Context, apiKey, address string, startBlock u
 	return all, highestBlock, nil
 }
 
-func etherscanPage(ctx context.Context, apiKey, address, action string, startBlock uint64, endBlock, page, offset int) ([]etherscanTx, error) {
+func etherscanPage(ctx context.Context, apiKey, chainID, address, action string, startBlock uint64, endBlock, page, offset int) ([]etherscanTx, error) {
+	apiURL := etherscanV2
+	if chainID == "" {
+		apiURL = basescanAPI
+	}
 	params := url.Values{
-		"chainid":    {"1"},
 		"module":     {"account"},
 		"action":     {action},
 		"address":    {address},
@@ -161,8 +169,11 @@ func etherscanPage(ctx context.Context, apiKey, address, action string, startBlo
 		"sort":       {"asc"},
 		"apikey":     {apiKey},
 	}
+	if chainID != "" {
+		params.Set("chainid", chainID)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, etherscanV2+"?"+params.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"?"+params.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}

@@ -94,8 +94,15 @@ func collectPlatform(ctx context.Context, db *store.DB, etherscanKey, plt, chain
 	if cfg.NativeEnabled {
 		switch chain {
 		case "ethereum":
-			if err := collectNativeETH(ctx, db, etherscanKey, plt, chain, cfg.FeeCollector, toBlock); err != nil {
+			if err := collectNativeEtherscan(ctx, db, etherscanKey, source.ChainIDEthereum, plt, chain, cfg.FeeCollector, toBlock); err != nil {
 				log.Printf("collector: %s/%s native ETH: %v", plt, chain, err)
+			}
+		case "base":
+			basescanKey := os.Getenv("BASESCAN_API_KEY")
+			if basescanKey != "" {
+				if err := collectNativeEtherscan(ctx, db, basescanKey, source.ChainIDBase, plt, chain, cfg.FeeCollector, toBlock); err != nil {
+					log.Printf("collector: %s/%s native ETH on Base: %v", plt, chain, err)
+				}
 			}
 		case "bsc":
 			if err := collectNativeBSC(ctx, db, plt, chain, cfg.FeeCollector, toBlock); err != nil {
@@ -152,17 +159,17 @@ func collectERC20(ctx context.Context, db *store.DB, rpc, plt, chain, collector,
 	return nil
 }
 
-func collectNativeETH(ctx context.Context, db *store.DB, apiKey, plt, chain, collector string, toBlock uint64) error {
+func collectNativeEtherscan(ctx context.Context, db *store.DB, apiKey, chainID, plt, chain, collector string, toBlock uint64) error {
 	cursor, _, err := db.GetCursor(ctx, chain, plt, "native")
 	if err != nil {
 		return fmt.Errorf("get cursor: %w", err)
 	}
 
-	internalTxs, lastInt, err := source.GetEtherscanInternalTxs(ctx, apiKey, collector, cursor)
+	internalTxs, lastInt, err := source.GetEtherscanInternalTxs(ctx, apiKey, chainID, collector, cursor)
 	if err != nil {
 		return err
 	}
-	normalTxs, lastNorm, err := source.GetEtherscanNormalTxs(ctx, apiKey, collector, cursor)
+	normalTxs, lastNorm, err := source.GetEtherscanNormalTxs(ctx, apiKey, chainID, collector, cursor)
 	if err != nil {
 		return err
 	}

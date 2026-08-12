@@ -78,7 +78,7 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 		}
 
 		const sigLimit = 1000
-		const maxPages = 30 // cap backfill at 30k sigs per account to avoid unbounded first-run pagination
+		const maxPages = 300 // cap backfill at 300k sigs per account (~20 days for busy wallets)
 		var sigs []helius.SigEntry
 		before := ""
 		for page := 0; page < maxPages; page++ {
@@ -191,10 +191,23 @@ func collect(ctx context.Context, db *store.DB, h *helius.Client, plt string, fe
 
 		if feeToken == "" {
 			// SOL-fee platform: detect via native SOL transfers.
-			for _, xfer := range tx.NativeTransfers {
-				if feeSet[xfer.ToUserAccount] {
-					platformFeeLamports += xfer.Amount
+			// Skip any tx where a fee wallet is also a sender — these are internal sweeps
+			// (e.g. Axiom consolidating 20 wallets) that would inflate the average fee.
+			hasFeeWalletSender := false
+			for _, sender := range tx.SenderAccounts {
+				if feeSet[sender] {
+					hasFeeWalletSender = true
+					break
 				}
+			}
+			if !hasFeeWalletSender {
+				for _, xfer := range tx.NativeTransfers {
+					if feeSet[xfer.ToUserAccount] {
+						platformFeeLamports += xfer.Amount
+					}
+				}
+			}
+			for _, xfer := range tx.NativeTransfers {
 				if platform.JitoTipAccounts[xfer.ToUserAccount] {
 					jitoTipLamports += xfer.Amount
 					isJito = true

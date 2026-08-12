@@ -109,10 +109,12 @@ export function ExecChainTabs({
 }) {
   const [chain, setChain] = useState<Chain>("solana");
 
+  const visibleTabs = evmData ? TABS : TABS.filter((t) => t.key === "solana");
+
   return (
     <div>
       <div className="flex gap-1 border-b border-rule mb-6">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
