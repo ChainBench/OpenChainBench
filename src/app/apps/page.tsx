@@ -7,13 +7,14 @@ import { fetchExecLeaderboard } from "@/lib/solana-exec";
 import { fetchSolPrice } from "@/lib/sol-price";
 import { fetchFOMORelayFees } from "@/lib/dune";
 import { TRADING_APPS } from "@/lib/trading-apps-config";
+import { fetchDeFiLlamaData, type DLPlatformData } from "@/lib/defillama";
 import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
 import { RevenueSummary } from "@/components/revenue-summary";
 import { ExecChainTabs } from "@/components/exec-chain-tabs";
 import Link from "next/link";
 
 const DESCRIPTION =
-  "Protocol fees collected by trading apps: meme bots and telegram bots. On-chain data, updated hourly.";
+  "Protocol fees collected by trading apps and meme trading terminals — Solana, Ethereum, BSC. On-chain data, updated every 5 min.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/apps",
@@ -26,12 +27,21 @@ export const revalidate = 300;
 const WINDOWS = ["24h", "7d", "30d"] as const;
 
 export default async function AppsHubPage() {
-  const [evmData, solanaData, solPrice, fomoRelay] = await Promise.all([
+  const dlSlugMap = Object.fromEntries(
+    TRADING_APPS.filter((a) => a.defillamaSlug).map((a) => [a.id, a.defillamaSlug!])
+  );
+
+  const [evmData, solanaData, solPrice, fomoRelay, dlData] = await Promise.all([
     fetchEVMRevenue(),
     fetchExecLeaderboard(),
     fetchSolPrice(),
     fetchFOMORelayFees(),
+    fetchDeFiLlamaData(dlSlugMap),
   ]);
+
+  // Market share = each platform's DL 24h fees / cohort total (active only)
+  const activeDlTotal = TRADING_APPS.filter((a) => !a.inactive && a.defillamaSlug)
+    .reduce((sum, a) => sum + (dlData.get(a.id)?.total24h ?? 0), 0);
 
   const evmByPlatform = new Map(
     (evmData?.platforms ?? []).map((p) => [p.platform, p])
@@ -97,6 +107,11 @@ export default async function AppsHubPage() {
       };
     }
 
+    const dl = dlData.get(meta.id) ?? null;
+    const marketSharePct = dl && activeDlTotal > 0 && !meta.inactive
+      ? (dl.total24h / activeDlTotal) * 100
+      : null;
+
     return {
       meta,
       windows,
@@ -106,6 +121,8 @@ export default async function AppsHubPage() {
         base: baseChain?.coverage === "stable-only",
         robinhood: rhChain?.coverage === "stable-only",
       },
+      dl,
+      marketSharePct,
     };
   });
 
@@ -135,7 +152,7 @@ export default async function AppsHubPage() {
       </p>
 
       <div className="mt-10">
-        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} fomoRelayAvailable={fomoRelay !== null} />
+        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} fomoRelayAvailable={fomoRelay !== null} activeDlTotal={activeDlTotal} />
       </div>
 
       <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
