@@ -16,9 +16,10 @@ var chainRPC map[string]string
 
 func main() {
 	chainRPC = map[string]string{
-		"ethereum": envOrDefault("ETH_RPC_URL", "https://eth.drpc.org"),
-		"bsc":      bscRPC(),
-		"base":     envOrDefault("BASE_RPC_URL", "https://base.drpc.org"),
+		"ethereum":  envOrDefault("ETH_RPC_URL", "https://eth.drpc.org"),
+		"bsc":       bscRPC(),
+		"base":      envOrDefault("BASE_RPC_URL", "https://base.drpc.org"),
+		"robinhood": envOrDefault("RH_RPC_URL", "https://rpc.mainnet.chain.robinhood.com"),
 	}
 
 	ctx := context.Background()

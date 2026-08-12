@@ -11,13 +11,14 @@ type FeeWindow = {
   ethereum: number | null;
   bsc: number | null;
   base: number | null;
+  robinhood: number | null;
   total: number;
 };
 
 export type UnifiedAppRow = {
   meta: AppMeta;
   windows: Record<string, FeeWindow>;
-  stableOnly: { ethereum: boolean; bsc: boolean; base: boolean };
+  stableOnly: { ethereum: boolean; bsc: boolean; base: boolean; robinhood: boolean };
 };
 
 type TabKey = "all" | "trading-terminal" | "telegram-bot";
@@ -59,18 +60,25 @@ function Dash() {
 type ChainCellProps = {
   value: number | null;
   stableOnly?: boolean;
+  hideBelow?: "md" | "lg";
 };
 
-function ChainCell({ value, stableOnly }: ChainCellProps) {
+const HIDE_CLASS: Record<NonNullable<ChainCellProps["hideBelow"]>, string> = {
+  md: "hidden md:table-cell",
+  lg: "hidden lg:table-cell",
+};
+
+function ChainCell({ value, stableOnly, hideBelow }: ChainCellProps) {
+  const hide = hideBelow ? ` ${HIDE_CLASS[hideBelow]}` : "";
   if (value === null) {
     return (
-      <td className="py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle text-ink-faint">
+      <td className={`py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle text-ink-faint${hide}`}>
         <Dash />
       </td>
     );
   }
   return (
-    <td className="py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle">
+    <td className={`py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle${hide}`}>
       <span className={value > 0 ? "text-ink" : "text-ink-muted"}>
         {fmtUSD(value)}
         {stableOnly && value > 0 && (
@@ -99,7 +107,7 @@ export function TradingAppsLeaderboard({
   });
 
   const hasStableOnly = sorted.some(
-    (r) => r.stableOnly.ethereum || r.stableOnly.bsc || r.stableOnly.base
+    (r) => r.stableOnly.ethereum || r.stableOnly.bsc || r.stableOnly.base || r.stableOnly.robinhood
   );
 
   return (
@@ -161,6 +169,7 @@ export function TradingAppsLeaderboard({
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Ethereum</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">BSC</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Base</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden lg:table-cell">Robinhood</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">
                 Total {window}
               </th>
@@ -169,7 +178,7 @@ export function TradingAppsLeaderboard({
           <tbody>
             {sorted.map((row, i) => {
               const { meta, stableOnly } = row;
-              const fees = row.windows[window] ?? { solana: null, ethereum: null, bsc: null, base: null, total: 0 };
+              const fees = row.windows[window] ?? { solana: null, ethereum: null, bsc: null, base: null, robinhood: null, total: 0 };
               const logo = meta.logoKey ? logoPath(meta.logoKey) : null;
 
               return (
@@ -227,6 +236,7 @@ export function TradingAppsLeaderboard({
                   <ChainCell value={fees.ethereum} stableOnly={stableOnly.ethereum} />
                   <ChainCell value={fees.bsc} stableOnly={stableOnly.bsc} />
                   <ChainCell value={fees.base} stableOnly={stableOnly.base} />
+                  <ChainCell value={fees.robinhood} stableOnly={stableOnly.robinhood} hideBelow="lg" />
                   <td className="py-4 pr-4 sm:pr-6 text-right font-mono font-semibold text-ink tabular-nums align-middle">
                     {fees.total > 0 ? fmtUSD(fees.total) : <Dash />}
                   </td>
