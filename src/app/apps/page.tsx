@@ -45,14 +45,18 @@ export default async function AppsHubPage() {
     const evmRow = meta.evmKey ? evmByPlatform.get(meta.evmKey) : undefined;
     const solRow = meta.solanaKey ? solanaByPlatform.get(meta.solanaKey) : undefined;
 
+    const rhRow = meta.robinhoodKey ? evmByPlatform.get(meta.robinhoodKey) : undefined;
+
     const ethChain = evmRow?.chains["ethereum"];
     const bscChain = evmRow?.chains["bsc"];
     const baseChain = evmRow?.chains["base"];
+    const rhChain = rhRow?.chains["robinhood"];
 
     const ethFees = ethChain ? ethChain.stable24h + (ethChain.native?.usd ?? 0) : null;
     const bscFees = bscChain ? bscChain.stable24h + (bscChain.native?.usd ?? 0) : null;
     const baseFees = baseChain ? baseChain.stable24h + (baseChain.native?.usd ?? 0) : null;
-    const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0);
+    const rhFees = rhChain ? rhChain.stable24h + (rhChain.native?.usd ?? 0) : null;
+    const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0) + (rhFees ?? 0);
 
     const windows: UnifiedAppRow["windows"] = {};
 
@@ -77,6 +81,7 @@ export default async function AppsHubPage() {
         ethereum: ethFees,
         bsc: bscFees,
         base: baseFees,
+        robinhood: rhFees,
         total: (solanaFees ?? 0) + evmTotal,
       };
     }
@@ -88,6 +93,7 @@ export default async function AppsHubPage() {
         ethereum: ethChain?.coverage === "stable-only",
         bsc: bscChain?.coverage === "stable-only",
         base: baseChain?.coverage === "stable-only",
+        robinhood: rhChain?.coverage === "stable-only",
       },
     };
   });

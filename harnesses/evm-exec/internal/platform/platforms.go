@@ -14,16 +14,18 @@ type EVMPlatform struct {
 
 // USDC contract addresses, lowercase.
 const (
-	USDC_ETH  = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // 6 decimals
-	USDC_BSC  = "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d" // 18 decimals (Binance-Peg)
-	USDC_BASE = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" // 6 decimals
+	USDC_ETH        = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" // 6 decimals
+	USDC_BSC        = "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d" // 18 decimals (Binance-Peg)
+	USDC_BASE       = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" // 6 decimals
+	USDG_ROBINHOOD  = "0x5fc5360d0400a0fd4f2af552add042d716f1d168" // 6 decimals, Robinhood Chain stablecoin
 )
 
 // TokenDecimals maps known token addresses to their decimal places.
 var TokenDecimals = map[string]int{
-	USDC_ETH:  6,
-	USDC_BSC:  18,
-	USDC_BASE: 6,
+	USDC_ETH:       6,
+	USDC_BSC:       18,
+	USDC_BASE:      6,
+	USDG_ROBINHOOD: 6,
 }
 
 // NativeSymbol returns the native asset symbol for a chain.
@@ -36,9 +38,10 @@ func NativeSymbol(chain string) string {
 
 // BlocksPerDay is the approximate number of blocks produced per day per chain.
 var BlocksPerDay = map[string]uint64{
-	"ethereum": 7_200,
-	"bsc":      28_800,
-	"base":     43_200,
+	"ethereum":   7_200,
+	"bsc":        28_800,
+	"base":       43_200,
+	"robinhood":  864_000, // ~10 blocks/second (Arbitrum Orbit)
 }
 
 // PlatformConfig maps platform → chain → configuration.
@@ -132,6 +135,24 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			FeeCollector:  "0xdec29d79e8cdf009d2fa33e0558cb5648481cac3",
 			NativeEnabled: true,
 			ERC20Tokens:   []string{USDC_BSC},
+			BootstrapDays: 30,
+		},
+	},
+	// GMGN + Maestro on Robinhood Chain (Arbitrum Orbit L2, chainId=4663)
+	// Same fee-collector addresses as ETH/BSC; stablecoin is USDG (Robinhood's native stable)
+	"gmgn-robinhood": {
+		"robinhood": {
+			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
+			NativeEnabled: false, // no block explorer API for ETH traces on this L2
+			ERC20Tokens:   []string{USDG_ROBINHOOD},
+			BootstrapDays: 30,
+		},
+	},
+	"maestro-robinhood": {
+		"robinhood": {
+			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
+			NativeEnabled: false,
+			ERC20Tokens:   []string{USDG_ROBINHOOD},
 			BootstrapDays: 30,
 		},
 	},
