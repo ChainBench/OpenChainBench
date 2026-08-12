@@ -131,8 +131,6 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			}
 			_, cached := txCache.Load(t.Hash)
 			if !cached && (freshLookups >= 40 || globalFreshLookups >= 300) {
-				s.tradeValueSum += t.AmountUSD
-				s.n++
 				continue
 			}
 			if !cached {
