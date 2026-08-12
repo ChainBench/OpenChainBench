@@ -174,7 +174,7 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 		INSERT INTO solana_exec_facts
 			(platform, bucket_start, tx_count,
 			 avg_priority_fee_lamports, p50_cu_price_micro, p95_cu_price_micro,
-			 avg_platform_fee_lamports, jito_rate, avg_cu_consumed, computed_at)
+			 avg_platform_fee_lamports, sum_platform_fee_lamports, jito_rate, avg_cu_consumed, computed_at)
 		SELECT
 			e.platform,
 			date_trunc('hour', e.block_time) AS bucket_start,
@@ -183,6 +183,7 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p50_cu_price_micro,
 			COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p95_cu_price_micro,
 			AVG(e.platform_fee_lamports) AS avg_platform_fee_lamports,
+			SUM(e.platform_fee_lamports) AS sum_platform_fee_lamports,
 			AVG(CASE WHEN e.is_jito_bundle THEN 1.0 ELSE 0.0 END) AS jito_rate,
 			AVG(e.cu_consumed) AS avg_cu_consumed,
 			now()
@@ -200,6 +201,7 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			p50_cu_price_micro = EXCLUDED.p50_cu_price_micro,
 			p95_cu_price_micro = EXCLUDED.p95_cu_price_micro,
 			avg_platform_fee_lamports = EXCLUDED.avg_platform_fee_lamports,
+			sum_platform_fee_lamports = EXCLUDED.sum_platform_fee_lamports,
 			jito_rate = EXCLUDED.jito_rate,
 			avg_cu_consumed = EXCLUDED.avg_cu_consumed,
 			computed_at = now()`,

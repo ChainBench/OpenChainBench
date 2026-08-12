@@ -45,14 +45,12 @@ export default async function AppsHubPage() {
     const evmRow = meta.evmKey ? evmByPlatform.get(meta.evmKey) : undefined;
     const solRow = meta.solanaKey ? solanaByPlatform.get(meta.solanaKey) : undefined;
 
+    const rhRow = meta.robinhoodKey ? evmByPlatform.get(meta.robinhoodKey) : undefined;
+
     const ethChain = evmRow?.chains["ethereum"];
     const bscChain = evmRow?.chains["bsc"];
     const baseChain = evmRow?.chains["base"];
-
-    const ethFees = ethChain ? ethChain.stable24h + (ethChain.native?.usd ?? 0) : null;
-    const bscFees = bscChain ? bscChain.stable24h + (bscChain.native?.usd ?? 0) : null;
-    const baseFees = baseChain ? baseChain.stable24h + (baseChain.native?.usd ?? 0) : null;
-    const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0);
+    const rhChain = rhRow?.chains["robinhood"];
 
     const windows: UnifiedAppRow["windows"] = {};
 
@@ -61,7 +59,7 @@ export default async function AppsHubPage() {
       if (solRow && solPrice !== null) {
         const wData = solRow.windows[w];
         if (wData) {
-          solanaFees = (wData.txCount * wData.avgPlatformFeeLamports) / 1e9 * solPrice;
+          solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
         }
       }
 
@@ -72,11 +70,24 @@ export default async function AppsHubPage() {
         solanaFees = (solanaFees ?? 0) + relayFee;
       }
 
+      // EVM: 24h adds native ETH/BNB in USD; 7d/30d stable only (no historical prices).
+      const evmStable = (chain: typeof ethChain) =>
+        !chain ? null : w === "24h" ? chain.stable24h : w === "7d" ? chain.stable7d : chain.stable30d;
+      const evmNative = (chain: typeof ethChain) =>
+        w === "24h" && chain ? (chain.native?.usd ?? 0) : 0;
+
+      const ethFees = ethChain ? evmStable(ethChain)! + evmNative(ethChain) : null;
+      const bscFees = bscChain ? evmStable(bscChain)! + evmNative(bscChain) : null;
+      const baseFees = baseChain ? evmStable(baseChain)! + evmNative(baseChain) : null;
+      const rhFees = rhChain ? evmStable(rhChain)! + evmNative(rhChain) : null;
+      const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0) + (rhFees ?? 0);
+
       windows[w] = {
         solana: solanaFees,
         ethereum: ethFees,
         bsc: bscFees,
         base: baseFees,
+        robinhood: rhFees,
         total: (solanaFees ?? 0) + evmTotal,
       };
     }
@@ -88,6 +99,7 @@ export default async function AppsHubPage() {
         ethereum: ethChain?.coverage === "stable-only",
         bsc: bscChain?.coverage === "stable-only",
         base: baseChain?.coverage === "stable-only",
+        robinhood: rhChain?.coverage === "stable-only",
       },
     };
   });

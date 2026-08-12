@@ -6,7 +6,9 @@ export type NativeRevenue = {
 
 export type EVMChainRevenue = {
   stable24h: number;
-  native: NativeRevenue | null;
+  stable7d: number;
+  stable30d: number;
+  native: NativeRevenue | null; // 24h only
   coverage: "full" | "stable-only";
 };
 
