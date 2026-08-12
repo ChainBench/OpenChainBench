@@ -133,14 +133,21 @@ func computeExplicitFees(proxyClient, heliusClient *http.Client, heliusKey, txHa
 		txCache.Range(func(k, _ any) bool { txCache.Delete(k); return true })
 		txCacheSize.Store(0)
 	}
-	fee, err := fetchOnChainFee(proxyClient, rpcPublic, txHash, sender)
-	if err != nil && heliusKey != "" {
+	var fee float64
+	var err error
+	if heliusKey != "" {
+		// Helius is faster and more reliable; use it as primary when available.
 		fee, err = fetchOnChainFee(heliusClient, rpcHelius+heliusKey, txHash, sender)
 		if err != nil && err.Error() != "not found" {
 			// retry once on transient EOF from Helius
 			time.Sleep(500 * time.Millisecond)
 			fee, err = fetchOnChainFee(heliusClient, rpcHelius+heliusKey, txHash, sender)
 		}
+		if err != nil && err.Error() != "not found" {
+			fee, err = fetchOnChainFee(proxyClient, rpcPublic, txHash, sender)
+		}
+	} else {
+		fee, err = fetchOnChainFee(proxyClient, rpcPublic, txHash, sender)
 	}
 	if err != nil {
 		if err.Error() != "not found" {
