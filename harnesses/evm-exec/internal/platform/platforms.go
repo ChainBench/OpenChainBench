@@ -88,23 +88,25 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 			BootstrapDays: 30,
 		},
 	},
-	// Banana Gun — confirmed via DeFiLlama fees/banana-gun-trading.ts (master, 2026-08)
+	// Banana Gun — these addresses are routers, not pure fee wallets.
+	// Native ETH/BNB disabled to avoid counting trade principal as revenue.
+	// USDC inflows tracked as proxy; proper event-based decoding (topic 0x72015ace…) pending.
 	"banana-gun": {
 		"ethereum": {
 			FeeCollector:  "0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49",
-			NativeEnabled: true,
+			NativeEnabled: false,
 			ERC20Tokens:   []string{USDC_ETH},
 			BootstrapDays: 30,
 		},
 		"bsc": {
 			FeeCollector:  "0x461efe0100be0682545972ebfc8b4a13253bd602",
-			NativeEnabled: true,
+			NativeEnabled: false,
 			ERC20Tokens:   []string{USDC_BSC},
 			BootstrapDays: 30,
 		},
 		"base": {
 			FeeCollector:  "0x1fba6b0bbae2b74586fba407fb45bd4788b7b130",
-			NativeEnabled: true, // Etherscan V2 chainid=8453
+			NativeEnabled: false,
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
@@ -139,11 +141,12 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 	},
 	// GMGN + Maestro on Robinhood Chain (Arbitrum Orbit L2, chainId=4663)
-	// Same fee-collector addresses as ETH/BSC; stablecoin is USDG (Robinhood's native stable)
+	// Same fee-collector addresses as ETH/BSC; stablecoin is USDG (Robinhood's native stable).
+	// Native ETH collected via Blockscout (robinhoodchain.blockscout.com/api, txlistinternal).
 	"gmgn-robinhood": {
 		"robinhood": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
-			NativeEnabled: false, // no block explorer API for ETH traces on this L2
+			NativeEnabled: true,
 			ERC20Tokens:   []string{USDG_ROBINHOOD},
 			BootstrapDays: 30,
 		},
@@ -151,7 +154,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 	"maestro-robinhood": {
 		"robinhood": {
 			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
-			NativeEnabled: false,
+			NativeEnabled: true,
 			ERC20Tokens:   []string{USDG_ROBINHOOD},
 			BootstrapDays: 30,
 		},

@@ -304,7 +304,9 @@ type NativeRevenue struct {
 
 type EVMChainRevenue struct {
 	Stable24h float64        `json:"stable24h"`
-	Native    *NativeRevenue `json:"native"`
+	Stable7d  float64        `json:"stable7d"`
+	Stable30d float64        `json:"stable30d"`
+	Native    *NativeRevenue `json:"native"` // 24h only; historical prices not stored
 	Coverage  string         `json:"coverage"`
 }
 
@@ -325,11 +327,13 @@ func handleEVMRevenue(pool *pgxpool.Pool) http.HandlerFunc {
 
 		rows, err := pool.Query(ctx, `
 			SELECT chain, platform,
-			       COALESCE(SUM(revenue_stable), 0),
-			       COALESCE(SUM(revenue_native), 0),
+			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0),
+			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0),
+			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0),
+			       COALESCE(SUM(revenue_native) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0),
 			       COALESCE(MAX(native_symbol), '')
 			FROM evm_exec_facts
-			WHERE bucket_start >= now() - INTERVAL '24 hours'
+			WHERE bucket_start >= now() - INTERVAL '30 days'
 			GROUP BY chain, platform`)
 		if err != nil {
 			log.Printf("evm-revenue: query: %v", err)
@@ -344,8 +348,8 @@ func handleEVMRevenue(pool *pgxpool.Pool) http.HandlerFunc {
 		byPlatform := make(map[string]map[string]EVMChainRevenue)
 		for rows.Next() {
 			var chain, plt, nativeSym string
-			var stable, native float64
-			if err := rows.Scan(&chain, &plt, &stable, &native, &nativeSym); err != nil {
+			var stable24h, stable7d, stable30d, native float64
+			if err := rows.Scan(&chain, &plt, &stable24h, &stable7d, &stable30d, &native, &nativeSym); err != nil {
 				continue
 			}
 			if byPlatform[plt] == nil {
@@ -376,7 +380,9 @@ func handleEVMRevenue(pool *pgxpool.Pool) http.HandlerFunc {
 			}
 
 			byPlatform[plt][chain] = EVMChainRevenue{
-				Stable24h: stable,
+				Stable24h: stable24h,
+				Stable7d:  stable7d,
+				Stable30d: stable30d,
 				Native:    nat,
 				Coverage:  coverage,
 			}

@@ -109,6 +109,10 @@ func collectPlatform(ctx context.Context, db *store.DB, etherscanKey, plt, chain
 			if err := collectNativeBSC(ctx, db, plt, chain, cfg.FeeCollector, toBlock); err != nil {
 				log.Printf("collector: %s/%s native BNB: %v", plt, chain, err)
 			}
+		case "robinhood":
+			if err := collectNativeBlockscout(ctx, db, plt, chain, cfg.FeeCollector, toBlock); err != nil {
+				log.Printf("collector: %s/%s native ETH (Blockscout): %v", plt, chain, err)
+			}
 		}
 	}
 	return nil
@@ -206,6 +210,54 @@ func collectNativeEtherscan(ctx context.Context, db *store.DB, apiKey, chainID, 
 	}
 	if len(events) > 0 {
 		log.Printf("collector: %s/%s native ETH %d events", plt, chain, len(events))
+	}
+	return nil
+}
+
+func collectNativeBlockscout(ctx context.Context, db *store.DB, plt, chain, collector string, toBlock uint64) error {
+	cursor, _, err := db.GetCursor(ctx, chain, plt, "native")
+	if err != nil {
+		return fmt.Errorf("get cursor: %w", err)
+	}
+	if cursor >= toBlock {
+		return nil
+	}
+	rpc := chainRPC[chain]
+
+	txs, lastBlock, err := source.GetBlockscoutInternalTxs(ctx, source.BlockscoutRobinhood, collector, cursor)
+	if err != nil {
+		return err
+	}
+
+	var events []store.EVMEvent
+	for _, tx := range txs {
+		if tx.BlockNum > toBlock {
+			continue
+		}
+		var bt time.Time
+		if !tx.BlockTime.IsZero() {
+			bt = tx.BlockTime
+			_ = db.CacheBlockTime(ctx, chain, tx.BlockNum, bt)
+		} else {
+			bt, err = resolveBlockTime(ctx, db, rpc, chain, tx.BlockNum)
+			if err != nil {
+				continue
+			}
+		}
+		events = append(events, store.EVMEvent{
+			Chain: chain, TxHash: tx.TxHash, BlockNum: tx.BlockNum, BlockTime: bt,
+			Platform: plt, Asset: "native", AmountRaw: tx.Amount,
+			Decimals: 18, EventKey: tx.EventKey,
+		})
+	}
+	if err := db.UpsertEvents(ctx, events); err != nil {
+		return err
+	}
+	if lastBlock > cursor {
+		_ = db.SaveCursor(ctx, chain, plt, "native", lastBlock)
+	}
+	if len(events) > 0 {
+		log.Printf("collector: %s/%s native ETH (Blockscout) %d events block=%d", plt, chain, len(events), lastBlock)
 	}
 	return nil
 }

@@ -249,13 +249,13 @@ export function TradingAppsLeaderboard({
 
       {hasStableOnly && (
         <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
-          <sup>°</sup> USDC only (no native trace on Base).
-          {window !== "24h" && " EVM fees are always 24h — only Solana has multi-window data."}
+          <sup>°</sup> USDC only — native ETH/BNB not traceable for this platform.
+          {window !== "24h" && " EVM 7d/30d shows USDC only; native ETH/BNB added for 24h."}
         </p>
       )}
       {!hasStableOnly && window !== "24h" && (
         <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
-          EVM fees (ETH/BSC/Base) are always 24h — only Solana has multi-window data.
+          EVM 7d/30d shows USDC only; native ETH/BNB added for 24h.
         </p>
       )}
     </div>
