@@ -93,10 +93,12 @@ export function TradingAppsLeaderboard({
   rows,
   updatedAt,
   fomoLatestDate,
+  fomoRelayAvailable,
 }: {
   rows: UnifiedAppRow[];
   updatedAt: string | null;
   fomoLatestDate: string | null;
+  fomoRelayAvailable: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("all");
   const [window, setWindow] = useState<WindowKey>("24h");
@@ -258,6 +260,16 @@ export function TradingAppsLeaderboard({
       {!hasStableOnly && window !== "24h" && (
         <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
           EVM 7d/30d shows USDC only; native ETH/BNB added for 24h.
+        </p>
+      )}
+      {fomoRelayAvailable && window === "24h" && (
+        <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
+          FOMO 24h relay = fees since midnight UTC (calendar day), not rolling window.
+        </p>
+      )}
+      {!fomoRelayAvailable && (
+        <p className="px-4 sm:px-6 py-2.5 text-[11px] border-t border-rule text-amber-400/80">
+          FOMO relay data unavailable — showing on-chain fees only (~4% of actual revenue).
         </p>
       )}
       <FOMODataNotice latestDate={fomoLatestDate} />
