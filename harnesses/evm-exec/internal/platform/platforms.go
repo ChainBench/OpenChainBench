@@ -106,7 +106,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x1fba6b0bbae2b74586fba407fb45bd4788b7b130",
-			NativeEnabled: false,
+			NativeEnabled: true, // Etherscan V2 chainid=8453
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
