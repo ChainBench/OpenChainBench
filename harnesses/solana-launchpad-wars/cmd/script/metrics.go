@@ -73,6 +73,13 @@ func publishLighthouse(data *lighthouseData) {
 		launchpadFees24h.WithLabelValues(slug).Set(e.FeesPaidUSD.H24)
 		launchpadTrades24h.WithLabelValues(slug).Set(e.Trades.H24)
 		launchpadHealth.WithLabelValues(slug).Set(1)
+		// pump.fun trades via its own frontend are in byLaunchpad; publish as platform
+		// so bench 201 can compare it against GMGN, Axiom, Fomo etc. (same attribution logic).
+		if slug == "pumpfun" {
+			platformVol24h.WithLabelValues("pump-fun").Set(e.VolumeUSD.H24)
+			platformFees24h.WithLabelValues("pump-fun").Set(e.FeesPaidUSD.H24)
+			platformHealth.WithLabelValues("pump-fun").Set(1)
+		}
 	}
 	for _, e := range data.ByPlatform {
 		slug := slugify(e.Name)

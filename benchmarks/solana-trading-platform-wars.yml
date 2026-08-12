@@ -2,9 +2,9 @@
 
 slug: solana-trading-platform-wars
 number: "201"
-title: "Solana trading platform leaderboard: GMGN vs Axiom vs Fomo vs Trojan, live 24h volume"
-seo_title: "Solana trading platform comparison 2026: GMGN, Axiom, Fomo, Trojan"
-seo_description: "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Padre vs Phantom ranked live from Mobula lighthouse data."
+title: "Solana trading platform leaderboard: pump.fun vs GMGN vs Axiom vs Fomo, live 24h volume"
+seo_title: "Solana trading platform comparison 2026: pump.fun, GMGN, Axiom, Fomo, Trojan"
+seo_description: "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume. pump.fun vs GMGN vs Axiom vs Fomo vs Trojan vs Padre vs Phantom ranked live from Mobula lighthouse data."
 subtitle: Live 24-hour trading volume for each Solana trading platform and Telegram bot. Polled every 15 minutes from Mobula lighthouse, which aggregates on-chain swap events routed through each frontend across all Solana DEX programs.
 
 category: Trading
@@ -45,7 +45,8 @@ methodology:
   - "Volume: sum of all swap event notional values (in USD at time of swap) within the last 24 hours for swaps attributed to this platform. Higher = more user activity routed through this frontend."
   - "Fees: on-chain protocol fees collected or attributable to this platform within the last 24 hours. Bot fee charging through referral accounts is included where attributable."
   - "Attribution method: Mobula uses a combination of on-chain referral tags embedded by each platform SDK and program-level routing heuristics. Attribution may undercount platforms that do not use standard referral tags."
-  - "Scope: this bench covers trading frontends and Telegram bots that route swap orders across Solana DEX programs. Launchpads with dedicated bonding-curve programs (PumpFun, Flap, Bankr) are a separate bench (200)."
+  - "Scope: this bench covers trading frontends and Telegram bots that route swap orders across Solana DEX programs. pump.fun is included here via its byLaunchpad attribution, representing trades routed through pump.fun's own frontend. Other launchpads (Flap, Bankr) are in bench 200."
+  - "pump.fun note: pump.fun volume comes from Mobula's byLaunchpad bucket (bonding-curve swaps via pump.fun's own site). Trades on pump.fun tokens routed through GMGN or Axiom are counted under those platforms, not under pump.fun. Attribution is mutually exclusive."
   - "Phantom note: Phantom is primarily a wallet; its swap volume here reflects users initiating swaps from the Phantom interface via Jupiter or other aggregators."
 
 findings:
@@ -73,6 +74,19 @@ faq:
     a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like PumpFun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. A single trade on PumpFun via GMGN is counted in both benches."
 
 providers:
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Solana meme launchpad, bonding curve"
+    formula: "24h swap volume in USD on pump.fun's bonding curve via pump.fun's own frontend (Mobula lighthouse byLaunchpad[name=PumpFun].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="pump-fun"}
+      p90: solana_platform_volume_24h_usd{platform="pump-fun"}
+      p99: solana_platform_volume_24h_usd{platform="pump-fun"}
+      mean: solana_platform_volume_24h_usd{platform="pump-fun"}
+      success: solana_platform_health{platform="pump-fun"}
+      sample_size: solana_platform_fees_24h_usd{platform="pump-fun"}
+      series: solana_platform_volume_24h_usd{platform="pump-fun"}
+
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal on Solana"
