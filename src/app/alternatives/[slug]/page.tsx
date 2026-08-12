@@ -22,6 +22,7 @@ import { isRegion } from "@/lib/brand";
 import { PERP_VENUE_META, benchRowsForVenue } from "@/lib/perp-venue-context";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
+import { LedgerTable } from "@/components/ledger-table";
 
 export const dynamic = "force-dynamic";
 
@@ -341,12 +342,17 @@ export default async function AlternativePage({
         </div>
       )}
 
-      {/* Latency / rate / USD benches: field stats + trend chart.
-          The full provider table lives on the canonical benchmark page —
-          linking there keeps this page focused on the alternatives angle
-          without duplicating the complete leaderboard. */}
+      {/* Latency / rate / USD benches: full ranked table + trend chart.
+          LedgerTable gives readers the complete ranked list on this page
+          (better search-intent match than a CTA-only pattern) while
+          /benchmarks/ remains canonical for the interactive bar chart,
+          distribution view, and per-chain drilldowns. */}
       {!isDraft && bench.unit !== "count" && (
         <>
+          <div className="mt-10">
+            <LedgerTable benchmark={bench} />
+          </div>
+
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
@@ -383,22 +389,19 @@ export default async function AlternativePage({
         </>
       )}
 
-      {/* CTA to the canonical benchmark page where the full ranked
-          leaderboard (all providers, p50/p90/p99, success rate, trend)
-          lives. Keeps the alternatives page focused while giving readers
-          a clear path to the complete data. */}
+      {/* Link to canonical benchmark for interactive views not present here:
+          ranked bar chart, distribution, per-chain drilldowns, chart export. */}
       {!isDraft && (
         <div className="mt-10 rounded-xl card-soft px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <p className="flex-1 text-sm text-ink-soft">
-            Full leaderboard: {bench.results.length} providers ranked by{" "}
-            {bench.metric.toLowerCase()}, with p50/p90/p99, success rate and
-            24h trend.
+            Interactive bar chart, distribution view, per-chain drilldowns and
+            chart export on the benchmark page.
           </p>
           <Link
             href={benchUrl}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-ink text-paper text-sm font-medium px-4 py-2 hover:opacity-80 transition-opacity"
           >
-            View full benchmark
+            Open benchmark
             <ArrowUpRight size={14} strokeWidth={2} />
           </Link>
         </div>

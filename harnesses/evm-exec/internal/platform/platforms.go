@@ -59,7 +59,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x16388de42c5829fd0e88c8eb001ef43bfc93f177",
-			NativeEnabled: false, // no free trace API on Base; USDC only
+			NativeEnabled: true, // via BaseScan API (gated on BASESCAN_API_KEY env)
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
@@ -80,7 +80,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0xb0999731f7c2581844658a9d2ced1be0077b7397",
-			NativeEnabled: false,
+			NativeEnabled: true, // Etherscan V2 chainid=8453
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
@@ -101,7 +101,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x1fba6b0bbae2b74586fba407fb45bd4788b7b130",
-			NativeEnabled: false,
+			NativeEnabled: true, // Etherscan V2 chainid=8453
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
@@ -121,7 +121,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0xb8159ba378904f803639d274cec79f788931c9c8",
-			NativeEnabled: false, // no free trace API; USDC only
+			NativeEnabled: true, // Etherscan V2 chainid=8453
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
