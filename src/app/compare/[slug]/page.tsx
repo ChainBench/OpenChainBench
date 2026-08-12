@@ -297,6 +297,14 @@ type ChainRegionEntry = BreakdownRow & {
 
 type SharedBench = CompareBench;
 
+/** Short display titles for compare verdict/FAQ prose.
+ *  Overrides shortBenchTitle() for benches whose YAML title is written
+ *  for the bench page (long, SEO-optimised) rather than inline prose. */
+const COMPARE_BENCH_TITLES: Record<string, string> = {
+  "memecoin-platforms": "Memecoin trading fees",
+  "app-store-ratings": "iOS App Store rating",
+};
+
 /** Maps a bench to the right comparative verb for FAQ questions. */
 function verbForBench(bench: SharedBench): string {
   const unit = (bench.unit ?? "").toLowerCase();
@@ -357,12 +365,13 @@ function buildComparisonProse(
     if (aP50 <= 0 || bP50 <= 0) continue;
     const aVal = fmtUnit(aP50, s.unit);
     const bVal = fmtUnit(bP50, s.unit);
+    const dt = s.compareTitle ?? shortBenchTitle(s.title);
     if (s.aggregateWinner === "a") {
-      aWinTitles.push(shortBenchTitle(s.title));
-      aWinLines.push(`${shortBenchTitle(s.title)} (${aVal} vs ${bVal})`);
+      aWinTitles.push(dt);
+      aWinLines.push(`${dt} (${aVal} vs ${bVal})`);
     } else if (s.aggregateWinner === "b") {
-      bWinTitles.push(shortBenchTitle(s.title));
-      bWinLines.push(`${shortBenchTitle(s.title)} (${bVal} vs ${aVal})`);
+      bWinTitles.push(dt);
+      bWinLines.push(`${dt} (${bVal} vs ${aVal})`);
     } else {
       ties += 1;
     }
@@ -370,9 +379,6 @@ function buildComparisonProse(
 
   const total = aWinTitles.length + bWinTitles.length + ties;
   if (total === 0) {
-    // No live data yet — return a neutral sentence rather than the old
-    // templated intro so the meta description + title remain the only
-    // duplicate-adjacent text on cold-cache pages.
     return `${aName} vs ${bName} on ${shared.length} shared OpenChainBench ${shared.length === 1 ? "benchmark" : "benchmarks"}, awaiting live measurements.`;
   }
 
@@ -384,7 +390,10 @@ function buildComparisonProse(
     const word = total === 1 ? "the only live benchmark" : total === 2 ? "both live benchmarks" : `all ${total} live benchmarks`;
     parts.push(`${aName} leads on ${word}.`);
   } else if (aWinTitles.length === bWinTitles.length) {
-    parts.push(`Split decision: ${aName} leads on ${aWinTitles.slice(0, 2).join(", ")}; ${bName} leads on ${bWinTitles.slice(0, 2).join(", ")}.`);
+    // Fused: one line with values — this also becomes the meta description.
+    const aPart = `${aName} leads on ${aWinLines.slice(0, 2).join(" and ")}`;
+    const bPart = `${bName} leads on ${bWinLines.slice(0, 2).join(" and ")}`;
+    return `Split decision: ${aPart}; ${bPart}.`;
   } else {
     parts.push(
       `${aName} leads on ${aWinTitles.length} of ${total} shared benchmarks, ${bName} on ${bWinTitles.length}${ties > 0 ? ` (${ties} tied)` : ""}.`,
@@ -651,7 +660,7 @@ async function buildSharedBenches(
             : Promise.resolve<ChainRegionEntry[]>([]),
         ]);
 
-      const panelScopes = (fullBench.metricPanels ?? [])
+      const extraScopes = (fullBench.metricPanels ?? [])
         .filter((p) => p.tab !== false)
         .flatMap((p) => {
           const aVal = p.values[aAppearances.slug];
@@ -671,9 +680,28 @@ async function buildSharedBenches(
           ];
         });
 
+      // When extra panels exist, prepend the main bench metric as the
+      // first column so the primary comparison is never hidden by the
+      // scope table replacing the aggregate panel.
+      const panelScopes =
+        extraScopes.length > 0 && aPanel.p50 > 0 && bPanel.p50 > 0
+          ? [
+              {
+                id: "main",
+                label: fullBench.metric,
+                unit: fullBench.unit,
+                higherIsBetter,
+                aValue: aPanel.p50,
+                bValue: bPanel.p50,
+              },
+              ...extraScopes,
+            ]
+          : extraScopes;
+
       return {
         slug: fullBench.slug,
         title: fullBench.title,
+        compareTitle: COMPARE_BENCH_TITLES[fullBench.slug],
         category: fullBench.category,
         unit: fullBench.unit,
         metric: fullBench.metric,
@@ -827,7 +855,7 @@ export default async function ComparePage({
   const bWinsBench = shared.find((s) => s.aggregateWinner === "b" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
   faqEntries.push({
     q: `${a.name} vs ${b.name}: which one is better?`,
-    a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${shortBenchTitle(aWinsBench.title)}.` : ""} ${bWinsBench ? `${b.name} leads on ${shortBenchTitle(bWinsBench.title)}.` : ""} See the live table on this page for every metric.`.trim(),
+    a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${aWinsBench.compareTitle ?? shortBenchTitle(aWinsBench.title)}.` : ""} ${bWinsBench ? `${b.name} leads on ${bWinsBench.compareTitle ?? shortBenchTitle(bWinsBench.title)}.` : ""} See the live table on this page for every metric.`.trim(),
   });
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);

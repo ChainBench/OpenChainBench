@@ -8,11 +8,11 @@ seo_description: "Compare real on-chain trading fees across pump.fun, Fomo, Phan
 subtitle: Average explicit on-chain fee per trade (gas + platform fee transfers) as a percent of trade value, sampled across the top 10 pump.fun tokens every 5 minutes.
 category: Trading
 status: live
-metric: Avg total fee
+metric: Median fee
 unit: pct
 
 disclaimer: |
-  Explicit platform fee only — pool-embedded costs (bonding-curve pricing, AMM LP fees) are not captured and apply equally across all frontends. The effective round-trip cost of trading may differ from the figure shown. See methodology for full scope.
+  Measures explicit, separately charged platform fees on sampled trades above $5 USD. Costs embedded in pool pricing (bonding-curve spread, AMM LP fees, price impact) are not captured. Effective round-trip cost may differ — see methodology for sampling scope.
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoin-platforms
 
