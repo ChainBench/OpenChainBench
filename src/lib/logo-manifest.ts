@@ -353,7 +353,7 @@ const RAW: Record<string, string> = {
   coin98: "/logos/coin98.png",
   coinpilot: "/logos/coinpilot.png",
   echosync: "/logos/echosync.png",
-  fomo: "/logos/fomo.png",
+  fomo: "/logos/fomo.svg",
   slash: "/logos/slash.png",
   topdog: "/logos/topdog.jpg",
   "markets-mobile": "/logos/markets-mobile.svg",
