@@ -1,18 +1,4 @@
 // DeFiLlama fees API — slugs verified against api.llama.fi/summary/fees/{slug} (2026-08)
-const DEFILLAMA_SLUG: Record<string, string> = {
-  "pump.fun": "pump.fun",
-  "gmgn": "gmgn",
-  "axiom": "axiom",
-  "maestro": "maestro",
-  "banana-gun": "banana-gun",
-  "photon": "photon",
-  "trojan": "trojan",
-  "fomo": "fomo",
-  "bullx": "bullx",
-};
-
-// Chains we surface in the leaderboard (normalized to lowercase)
-const TRACKED_CHAINS = new Set(["solana", "ethereum", "bsc", "base"]);
 
 type DLBreakdown = Record<string, Record<string, number>>;
 
@@ -20,16 +6,24 @@ type DLSummary = {
   total24h: number | null;
   total7d: number | null;
   total30d: number | null;
+  change_1d: number | null;
   breakdown24h: DLBreakdown | null;
 };
 
-export type DLPlatformRevenue = {
+// Chains we surface in the leaderboard (normalized to lowercase)
+const TRACKED_CHAINS = new Set(["solana", "ethereum", "bsc", "base"]);
+
+export type DLPlatformData = {
   total24h: number;
   total7d: number;
   total30d: number;
+  change_1d: number | null;
   // Per-chain 24h fees in USD (keys: solana, ethereum, bsc, base)
   chain24h: Partial<Record<string, number>>;
 };
+
+/** @deprecated use DLPlatformData */
+export type DLPlatformRevenue = DLPlatformData;
 
 function extractChain24h(breakdown: DLBreakdown | null): Partial<Record<string, number>> {
   if (!breakdown) return {};
@@ -55,11 +49,11 @@ async function fetchDLSummary(slug: string): Promise<DLSummary | null> {
   }
 }
 
-export async function fetchDeFiLlamaRevenue(): Promise<Map<string, DLPlatformRevenue>> {
-  const entries = Object.entries(DEFILLAMA_SLUG);
+export async function fetchDeFiLlamaData(slugMap: Record<string, string>): Promise<Map<string, DLPlatformData>> {
+  const entries = Object.entries(slugMap);
   const responses = await Promise.all(entries.map(([, slug]) => fetchDLSummary(slug)));
 
-  const result = new Map<string, DLPlatformRevenue>();
+  const result = new Map<string, DLPlatformData>();
   for (let i = 0; i < entries.length; i++) {
     const [appId] = entries[i];
     const data = responses[i];
@@ -68,8 +62,14 @@ export async function fetchDeFiLlamaRevenue(): Promise<Map<string, DLPlatformRev
       total24h: data.total24h ?? 0,
       total7d: data.total7d ?? 0,
       total30d: data.total30d ?? 0,
+      change_1d: data.change_1d ?? null,
       chain24h: extractChain24h(data.breakdown24h),
     });
   }
   return result;
+}
+
+/** @deprecated use fetchDeFiLlamaData */
+export async function fetchDeFiLlamaRevenue(): Promise<Map<string, DLPlatformData>> {
+  return new Map();
 }
