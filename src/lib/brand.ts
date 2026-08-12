@@ -81,7 +81,7 @@ const BRANDS: Record<string, Brand> = {
   invo: { color: "#7B5EA7" },          // invo purple
   robinhood: { color: "#00C805" },     // robinhood green
   cryptocom: { color: "#002D74", dark: true }, // crypto.com navy
-  pumpfun: { color: "#00C851" },       // pump.fun green
+  "pump-fun": { color: "#00C851" },    // pump.fun green
   moonshot: { color: "#F97316" },      // moonshot orange
   fomo: { color: "#7C3AED" },          // fomo violet
   coinbase: { color: "#0052FF" },      // coinbase blue
