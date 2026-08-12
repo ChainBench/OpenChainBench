@@ -1,14 +1,17 @@
 // solana-dex-volume -- Bench 205
 //
 // Polls the DeFiLlama DEX API every 30 minutes for each tracked platform
-// and exposes per-platform 24h volume and fees as Prometheus gauges.
+// and exposes per-platform 24h/7d volume and protocol revenue as Prometheus gauges.
 //
 // No API key required. Endpoint: https://api.llama.fi/summary/dexs/{slug}
 //
 // Metrics on :2112/metrics:
 //
 //	defillama_dex_volume_24h_usd{platform}
-//	defillama_dex_fees_24h_usd{platform}
+//	defillama_dex_volume_7d_usd{platform}
+//	defillama_dex_fees_24h_usd{platform}   (protocol revenue, ?dataType=dailyRevenue)
+//	defillama_dex_fees_7d_usd{platform}
+//	defillama_dex_take_rate{platform}       (fees24h / volume24h)
 //	defillama_dex_health{platform}
 package main
 
@@ -43,6 +46,7 @@ var platforms = []struct {
 	{"fomo-wallet", "fomo"},
 	{"trojan", "trojan"},
 	{"photon", "photon"},
+	{"bullx", "bullx"},
 }
 
 var (
@@ -51,9 +55,24 @@ var (
 		Help: "24h DEX trading volume in USD from DeFiLlama",
 	}, []string{"platform"})
 
+	volume7d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "defillama_dex_volume_7d_usd",
+		Help: "7-day DEX trading volume in USD from DeFiLlama",
+	}, []string{"platform"})
+
 	fees24h = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "defillama_dex_fees_24h_usd",
-		Help: "24h DEX protocol fees in USD from DeFiLlama",
+		Help: "24h protocol revenue in USD from DeFiLlama (dailyRevenue dataType)",
+	}, []string{"platform"})
+
+	fees7d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "defillama_dex_fees_7d_usd",
+		Help: "7-day protocol revenue in USD from DeFiLlama (dailyRevenue dataType)",
+	}, []string{"platform"})
+
+	takeRate = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "defillama_dex_take_rate",
+		Help: "Protocol revenue as fraction of trading volume (fees24h / volume24h)",
 	}, []string{"platform"})
 
 	health = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -64,49 +83,65 @@ var (
 
 type llamaResponse struct {
 	Total24h float64 `json:"total24h"`
+	Total7d  float64 `json:"total7d"`
 }
 
-func fetch(endpoint, slug string) (float64, error) {
+func fetch(endpoint, slug, query string) (llamaResponse, error) {
 	url := fmt.Sprintf("%s/summary/%s/%s", baseURL, endpoint, slug)
+	if query != "" {
+		url += "?" + query
+	}
 	resp, err := http.Get(url)
 	if err != nil {
-		return 0, err
+		return llamaResponse{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return 0, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return llamaResponse{}, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, err
+		return llamaResponse{}, err
 	}
 	var r llamaResponse
 	if err := json.Unmarshal(body, &r); err != nil {
-		return 0, err
+		return llamaResponse{}, err
 	}
-	return r.Total24h, nil
+	return r, nil
 }
 
 func runOnce() {
 	for _, p := range platforms {
-		vol, err := fetch("dexs", p.slug)
+		vol, err := fetch("dexs", p.slug, "")
 		if err != nil {
 			fmt.Printf("[poll] volume %s: %v\n", p.slug, err)
 			health.WithLabelValues(p.label).Set(0)
 			continue
 		}
 
-		fees, err := fetch("fees", p.slug)
+		rev, err := fetch("fees", p.slug, "dataType=dailyRevenue")
 		if err != nil {
 			fmt.Printf("[poll] fees %s: %v (volume ok)\n", p.slug, err)
-			fees = 0
 		}
 
-		volume24h.WithLabelValues(p.label).Set(vol)
-		fees24h.WithLabelValues(p.label).Set(fees)
+		volume24h.WithLabelValues(p.label).Set(vol.Total24h)
+		volume7d.WithLabelValues(p.label).Set(vol.Total7d)
+		fees24h.WithLabelValues(p.label).Set(rev.Total24h)
+		fees7d.WithLabelValues(p.label).Set(rev.Total7d)
+		if vol.Total24h > 0 {
+			takeRate.WithLabelValues(p.label).Set(rev.Total24h / vol.Total24h)
+		}
 		health.WithLabelValues(p.label).Set(1)
-		fmt.Printf("[poll] %s: vol=$%.0f fees=$%.0f\n", p.label, vol, fees)
+		fmt.Printf("[poll] %s: vol24=$%.0f vol7d=$%.0f rev24=$%.0f rate=%.4f\n",
+			p.label, vol.Total24h, vol.Total7d, rev.Total24h, rev.Total24h/max(vol.Total24h, 1))
 	}
+}
+
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func main() {

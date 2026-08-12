@@ -1259,6 +1259,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "GMGN is a Solana and EVM memecoin trading terminal combining wallet tracking, smart money copy trading and a Telegram bot. It routes swaps through pump.fun and DEX pools with a configurable slippage and fee.",
     twitter: "@gmgnai",
   },
+  bullx: {
+    url: "https://bullx.io",
+    description:
+      "BullX is a multi-chain trading terminal for memecoins supporting Solana, Ethereum, Base and other EVM chains. It provides token sniping, copy trading, and limit orders with a per-trade platform fee.",
+    twitter: "@bullx_io",
+  },
 
   // ─── Crypto trading apps — iOS App Store ratings (bench № 202) ─────────
   moonshot: {
