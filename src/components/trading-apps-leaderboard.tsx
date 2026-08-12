@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { logoPath } from "@/lib/logo-manifest";
 import type { AppMeta } from "@/lib/trading-apps-config";
+import type { DLPlatformData } from "@/lib/defillama";
 
 type FeeWindow = {
   solana: number | null;
@@ -19,6 +20,8 @@ export type UnifiedAppRow = {
   meta: AppMeta;
   windows: Record<string, FeeWindow>;
   stableOnly: { ethereum: boolean; bsc: boolean; base: boolean; robinhood: boolean };
+  dl: DLPlatformData | null;
+  marketSharePct: number | null;
 };
 
 type TabKey = "all" | "trading-terminal" | "telegram-bot";
@@ -41,9 +44,15 @@ const CATEGORY_BADGE: Record<AppMeta["category"], string> = {
   "telegram-bot": "bg-blue-500/10 text-blue-400 border border-blue-500/20",
 };
 
+const FORM_FACTOR_ICON: Record<AppMeta["formFactor"], string> = {
+  web: "🌐",
+  mobile: "📱",
+  telegram: "✈️",
+};
+
 const CATEGORY_LABEL: Record<AppMeta["category"], string> = {
-  "trading-terminal": "Trading Terminal",
-  "telegram-bot": "Telegram Bot",
+  "trading-terminal": "Terminal",
+  "telegram-bot": "Bot",
 };
 
 function fmtUSD(n: number | null): string {
@@ -99,6 +108,7 @@ export function TradingAppsLeaderboard({
   updatedAt: string | null;
   fomoLatestDate: string | null;
   fomoRelayAvailable: boolean;
+  activeDlTotal: number;
 }) {
   const [tab, setTab] = useState<TabKey>("all");
   const [window, setWindow] = useState<WindowKey>("24h");
@@ -112,6 +122,11 @@ export function TradingAppsLeaderboard({
 
   const hasStableOnly = sorted.some(
     (r) => r.stableOnly.ethereum || r.stableOnly.bsc || r.stableOnly.base || r.stableOnly.robinhood
+  );
+
+  // Any active platform with >50% daily swing makes Share numbers unreliable for the whole cohort
+  const hasExtremeMove = sorted.some(
+    (r) => !r.meta.inactive && r.dl && Math.abs(r.dl.change_1d ?? 0) > 50
   );
 
   return (
@@ -164,16 +179,20 @@ export function TradingAppsLeaderboard({
             <tr className="border-b border-rule">
               <th className="text-left py-3 pl-4 sm:pl-6 pr-3 font-medium text-ink-muted text-xs w-8">#</th>
               <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs">App</th>
-              <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs hidden sm:table-cell">Category</th>
+              <th className="text-left py-3 pr-4 font-medium text-ink-muted text-xs hidden sm:table-cell">Type</th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">
                 <Link href="/benchmarks/memecoin-platforms" className="hover:text-ink-soft transition-colors underline decoration-dotted">
                   Solana
                 </Link>
               </th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Ethereum</th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">BSC</th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">Base</th>
-              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden lg:table-cell">Robinhood</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden md:table-cell">ETH/BSC/Base</th>
+              <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden lg:table-cell" title="Net revenue per DeFiLlama (fees minus referral/cashback)">DL Rev</th>
+              <th
+                className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs hidden lg:table-cell"
+                title={hasExtremeMove ? "Share distorted — at least one platform has a >50% daily swing (possible data gap)" : undefined}
+              >
+                Share{hasExtremeMove ? " ⚠" : ""}
+              </th>
               <th className="text-right py-3 pr-4 sm:pr-6 font-medium text-ink-muted text-xs">
                 Total {window}
               </th>
@@ -181,9 +200,10 @@ export function TradingAppsLeaderboard({
           </thead>
           <tbody>
             {sorted.map((row, i) => {
-              const { meta, stableOnly } = row;
+              const { meta, dl, marketSharePct } = row;
               const fees = row.windows[window] ?? { solana: null, ethereum: null, bsc: null, base: null, robinhood: null, total: 0 };
               const logo = meta.logoKey ? logoPath(meta.logoKey) : null;
+              const evmTotal = (fees.ethereum ?? 0) + (fees.bsc ?? 0) + (fees.base ?? 0) + (fees.robinhood ?? 0);
 
               return (
                 <tr
@@ -216,6 +236,25 @@ export function TradingAppsLeaderboard({
                           Suspended
                         </span>
                       )}
+                      {dl?.change_1d !== null && dl?.change_1d !== undefined && !meta.inactive && dl.total24h >= 5000 && (
+                        (() => {
+                          const extreme = Math.abs(dl.change_1d) > 50;
+                          return (
+                            <span
+                              className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono tabular-nums shrink-0 ${
+                                extreme
+                                  ? "text-amber-400/80 bg-amber-500/10"
+                                  : dl.change_1d >= 0
+                                  ? "text-green-400 bg-green-500/10"
+                                  : "text-red-400 bg-red-500/10"
+                              }`}
+                              title={extreme ? "Large move — possible data ingestion gap, not verified" : "DeFiLlama revenue 24h vs prior 24h"}
+                            >
+                              {extreme ? "⚠ " : dl.change_1d >= 0 ? "+" : ""}{dl.change_1d.toFixed(1)}%
+                            </span>
+                          );
+                        })()
+                      )}
                       {meta.benchUrl && (
                         <a
                           href={meta.productUrl}
@@ -232,15 +271,51 @@ export function TradingAppsLeaderboard({
                     </div>
                   </td>
                   <td className="py-4 pr-4 align-middle hidden sm:table-cell">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${CATEGORY_BADGE[meta.category]}`}>
-                      {CATEGORY_LABEL[meta.category]}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm" title={meta.formFactor}>{FORM_FACTOR_ICON[meta.formFactor]}</span>
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${CATEGORY_BADGE[meta.category]}`}>
+                        {CATEGORY_LABEL[meta.category]}
+                      </span>
+                    </div>
                   </td>
                   <ChainCell value={fees.solana} />
-                  <ChainCell value={fees.ethereum} stableOnly={stableOnly.ethereum} />
-                  <ChainCell value={fees.bsc} stableOnly={stableOnly.bsc} />
-                  <ChainCell value={fees.base} stableOnly={stableOnly.base} />
-                  <ChainCell value={fees.robinhood} stableOnly={stableOnly.robinhood} hideBelow="lg" />
+                  <td className="py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle hidden md:table-cell">
+                    {evmTotal > 0 ? (
+                      <span className="text-ink">{fmtUSD(evmTotal)}</span>
+                    ) : <span className="text-ink-faint">—</span>}
+                  </td>
+                  <td className="py-4 pr-4 sm:pr-6 text-right font-mono tabular-nums align-middle hidden lg:table-cell">
+                    {dl && !meta.inactive ? (
+                      <span className="text-ink-soft">
+                        {fmtUSD(dl.total24h)}
+                        {meta.defillamaScope === "venue" && (
+                          <sup className="ml-0.5 text-[10px] text-ink-muted font-normal" title="Venue-level: includes creator/cashback fees not retained by the platform">²</sup>
+                        )}
+                      </span>
+                    ) : <span className="text-ink-faint">—</span>}
+                  </td>
+                  <td className="py-4 pr-4 sm:pr-6 text-right align-middle hidden lg:table-cell">
+                    {marketSharePct !== null ? (
+                      (() => {
+                        const rowExtreme = !meta.inactive && dl && Math.abs(dl.change_1d ?? 0) > 50;
+                        return rowExtreme ? (
+                          <span className="font-mono text-xs text-amber-400/60 tabular-nums" title="Share unreliable — data gap suspected">⚠</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <div className="w-12 h-1.5 rounded-full bg-paper-soft overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-accent/60"
+                                style={{ width: `${Math.min(marketSharePct, 100)}%` }}
+                              />
+                            </div>
+                            <span className={`font-mono text-xs tabular-nums w-8 text-right ${hasExtremeMove ? "text-amber-400/60" : "text-ink-muted"}`}>
+                              {marketSharePct.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })()
+                    ) : <span className="text-ink-faint">—</span>}
+                  </td>
                   <td className="py-4 pr-4 sm:pr-6 text-right font-mono font-semibold text-ink tabular-nums align-middle">
                     {fees.total > 0 ? fmtUSD(fees.total) : <Dash />}
                   </td>
@@ -273,6 +348,9 @@ export function TradingAppsLeaderboard({
         </p>
       )}
       <FOMODataNotice latestDate={fomoLatestDate} />
+      <p className="px-4 sm:px-6 py-2.5 text-[11px] text-ink-faint border-t border-rule">
+        DL Rev = net revenue per DeFiLlama (fees minus referral/cashback). <sup>²</sup> Venue-level: bonding curve + creator slice, not frontend-only.
+      </p>
     </div>
   );
 }

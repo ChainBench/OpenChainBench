@@ -12,7 +12,7 @@ metric: Median fee
 unit: pct
 
 disclaimer: |
-  Measures explicit, separately charged platform fees on sampled trades above $5 USD. Costs embedded in pool pricing (bonding-curve spread, AMM LP fees, price impact) are not captured. Effective round-trip cost may differ — see methodology for sampling scope.
+  Measures explicit, separately charged platform fees on sampled trades above $5 USD. Costs embedded in pool pricing (bonding-curve spread, AMM LP fees, price impact) are not captured. Effective round-trip cost may differ; see methodology for sampling scope.
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoin-platforms
 
