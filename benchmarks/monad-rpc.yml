@@ -47,7 +47,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads the free Monad RPC field at {{best_p50}} (p50, 24h) across 5 measured providers."
-  - "{{name:monad-official}} answers at {{p50:monad-official}}. The Foundation fronts its primary endpoint with QuickNode infrastructure and rate-limits at 25 rps, generous for development traffic."
+  - "{{name:monad-official}} answers at {{p50:monad-official}}. On-chain response headers (`x-node-id: monad_monad-mainnet_fra`) confirm geo-distributed nodes co-located with our Railway probes in GCP datacenters (Frankfurt for eu-west, equivalent US and Singapore nodes). The sub-2 ms figure reflects network co-location, not what a developer outside GCP infra will experience — expect 30-120 ms from a typical connection. Rate-limit: 25 rps."
   - "{{name:drpc}} sits at {{p50:drpc}} and {{name:tenderly}} at {{p50:tenderly}}: the multi-chain gateways reached Monad within weeks of mainnet, but route through their global meshes rather than chain-local nodes."
   - "{{name:bloxroute}} at {{p50:bloxroute}} is the outlier entry: a BDN operator exposing a keyless endpoint, unusual for a company whose core product is paid low-latency access."
 

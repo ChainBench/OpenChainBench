@@ -137,7 +137,7 @@ func (db *DB) CacheBlockTime(ctx context.Context, chain string, blockNum uint64,
 	return err
 }
 
-// Materialize recomputes hourly revenue facts from the last 48h of events.
+// Materialize recomputes hourly revenue facts from the last 31 days of events.
 func (db *DB) Materialize(ctx context.Context) error {
 	_, err := db.pool.Exec(ctx, `
 		INSERT INTO evm_exec_facts
@@ -151,7 +151,7 @@ func (db *DB) Materialize(ctx context.Context) error {
 			CASE WHEN chain = 'bsc' THEN 'BNB' ELSE 'ETH' END,
 			now()
 		FROM evm_exec_events
-		WHERE block_time > now() - INTERVAL '48 hours'
+		WHERE block_time > now() - INTERVAL '31 days'
 		GROUP BY 1, 2, 3
 		ON CONFLICT (chain, platform, bucket_start) DO UPDATE SET
 			revenue_stable = EXCLUDED.revenue_stable,

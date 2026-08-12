@@ -4,6 +4,7 @@ export type ExecWindowStats = {
   p50CUPriceMicro: number;
   p95CUPriceMicro: number;
   avgPlatformFeeLamports: number;
+  sumPlatformFeeLamports: number;
   jitoRate: number;
   avgCUConsumed: number;
 };
