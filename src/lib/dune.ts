@@ -1,6 +1,6 @@
-// Dune query 8304081: FOMO relay fees from dune.tryfomo.fomo_relay_fees
-// Aggregated by: latest day (24h), last 7d, last 30d. Updated on each execution.
-const FOMO_QUERY_ID = 8304081;
+// Dune query 8306192: FOMO relay fees — MAX(platform_fees) per fee_period (rows are cumulative snapshots)
+// Old query 8304081 summed all cumulative rows → ~8-16x inflation. Fixed by deduping with MAX.
+const FOMO_QUERY_ID = 8306192;
 
 export type FOMORelayFees = {
   fees24h: number;
