@@ -2,10 +2,10 @@
 
 slug: memecoin-platforms
 number: "203"
-title: Cheapest platform to trade memecoins (pump.fun vs Fomo vs Photon vs bots)
-seo_title: "Solana memecoin trading fees compared 2026"
-seo_description: "Compare real on-chain trading fees across pump.fun, Fomo, Phantom, Photon, Axiom, Trojan and GMGN. Fees measured directly from Solana transactions on the top 10 pump.fun tokens."
-subtitle: Average explicit on-chain fee per trade (gas + platform fee transfers) as a percent of trade value, sampled across the top 10 pump.fun tokens every 5 minutes.
+title: Explicit platform fees for trading memecoins (pump.fun vs Fomo vs Photon vs bots)
+seo_title: "Solana memecoin explicit platform fees compared 2026"
+seo_description: "Explicit on-chain platform fees across pump.fun, Fomo, Phantom, Photon, Axiom, Trojan and GMGN. Fees measured directly from Solana transactions on top pump.fun tokens. Escrow-based bots (Trojan, Maestro) show gas only."
+subtitle: Explicit on-chain platform fee per trade as a percent of trade value, sampled across the top pump.fun tokens every 5 minutes. Escrow-based bots charge via a separate settlement mechanism not visible in the swap transaction.
 category: Trading
 status: live
 metric: Median fee
