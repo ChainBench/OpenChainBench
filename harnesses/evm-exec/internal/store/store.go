@@ -146,8 +146,8 @@ func (db *DB) Materialize(ctx context.Context) error {
 			chain,
 			platform,
 			date_trunc('hour', block_time) AS bucket_start,
-			COALESCE(SUM(amount_raw / POW(10, decimals)) FILTER (WHERE asset <> 'native'), 0),
-			COALESCE(SUM(amount_raw / POW(10, decimals)) FILTER (WHERE asset  = 'native'), 0),
+			COALESCE(SUM(amount_raw::numeric / (10::numeric ^ decimals)) FILTER (WHERE asset <> 'native'), 0),
+			COALESCE(SUM(amount_raw::numeric / (10::numeric ^ decimals)) FILTER (WHERE asset  = 'native'), 0),
 			CASE WHEN chain = 'bsc' THEN 'BNB' ELSE 'ETH' END,
 			now()
 		FROM evm_exec_events

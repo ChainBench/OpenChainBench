@@ -241,9 +241,10 @@ var evmCoverage = map[string]map[string]string{
 	"gmgn":              {"ethereum": "full", "bsc": "full", "base": "full"},
 	"maestro":           {"ethereum": "full", "bsc": "full", "base": "full"},
 	"axiom":             {"bsc": "full"},
-	"banana-gun":        {"ethereum": "stable-only", "bsc": "stable-only", "base": "stable-only"},
 	"gmgn-robinhood":    {"robinhood": "full"},
 	"maestro-robinhood": {"robinhood": "full"},
+	// banana-gun: evmKey=null in frontend config; EVM data intentionally not displayed
+	// (router addresses receive trade principal, not fees; pending eth_getLogs on topic 0x72015ace…)
 }
 
 // coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.
