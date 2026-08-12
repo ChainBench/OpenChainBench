@@ -11,6 +11,9 @@ status: live
 metric: Avg total fee
 unit: pct
 
+disclaimer: |
+  Explicit platform fee only — pool-embedded costs (bonding-curve pricing, AMM LP fees) are not captured and apply equally across all frontends. The effective round-trip cost of trading may differ from the figure shown. See methodology for full scope.
+
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoin-platforms
 
 seo_intro: |
