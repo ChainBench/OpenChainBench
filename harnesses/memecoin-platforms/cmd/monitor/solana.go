@@ -24,6 +24,7 @@ const (
 // Key = owner address of the token account receiving the fee.
 var platformFeeOwners = map[string]string{
 	"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX": "fomo",
+	"69yhtoJR4JYPPABZcSNkzuqbaFbwHsCkja1nzh7Wdt2": "trojan", // Jupiter referral fee, ~0.1% on-chain
 }
 
 // Program/system accounts that should never be treated as fee recipients.
@@ -40,11 +41,20 @@ var skipAccounts = map[string]bool{
 	"CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": true,
 	"CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": true,
 	"675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": true,
-	// Trojan (Scorched) program accounts — escrow-based, fees collected separately
+	// Trojan (Scorched) program accounts
 	"SCoRcH8c2dpjvcJD6FiPbCSQyQgu3PcUAWj2Xxx3mqn": true,
 	"ojh19ojaKduoJZuaJADhcVGp4xt1TcdAvZmpVsCorch": true,
 	// Jupiter aggregator
 	"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": true,
+	// Jito tip accounts — native SOL tips, not platform fees
+	"96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5": true,
+	"DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh": true,
+	"Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY": true,
+	"ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt": true,
+	"3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT": true,
+	"ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49": true,
+	"HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe": true,
+	"DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL": true,
 }
 
 type cacheEntry struct {
@@ -337,20 +347,20 @@ func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (flo
 
 	// 4. Pool-intermediated WSOL/USDC fees (pump.fun AMM, etc.).
 	// In AMM swaps the pool routes small WSOL/USDC fractions to protocol/creator fee wallets.
-	// Only run when the sender is NOT losing this token (i.e. section 3 didn't handle it),
-	// to avoid double-counting.
+	// Only run when the sender is NOT losing this token (section 3 didn't handle it).
+	// Capped at 1.5% of dominant flow to prevent multi-hop Jupiter false positives.
 	absF := func(x float64) float64 {
 		if x < 0 {
 			return -x
 		}
 		return x
 	}
+	var sec4USD float64
+	var sec4MaxFlowUSD float64
 	for _, feeMint := range []string{wsolMint, usdcMint} {
 		isSOL := feeMint == wsolMint
-		// Skip if sender's delta for this mint is negative (section 3 already ran for it).
-		senderDelta := tokDelta[ownerMint{sender, feeMint}]
-		if senderDelta < 0 {
-			continue
+		if tokDelta[ownerMint{sender, feeMint}] < 0 {
+			continue // section 3 already handled this mint
 		}
 		var maxFlow float64
 		for key, delta := range tokDelta {
@@ -364,6 +374,13 @@ func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (flo
 		if maxFlow < 0.001 {
 			continue
 		}
+		flowUSD := maxFlow * solPrice
+		if !isSOL {
+			flowUSD = maxFlow
+		}
+		if flowUSD > sec4MaxFlowUSD {
+			sec4MaxFlowUSD = flowUSD
+		}
 		for key, delta := range tokDelta {
 			if key.mint != feeMint || delta <= 0 {
 				continue
@@ -376,13 +393,20 @@ func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (flo
 			}
 			if delta < maxFlow*0.05 {
 				if isSOL {
-					smallTokFeeUSD += delta * solPrice
+					sec4USD += delta * solPrice
 				} else {
-					smallTokFeeUSD += delta
+					sec4USD += delta
 				}
 			}
 		}
 	}
+	if sec4MaxFlowUSD > 0 {
+		cap4 := sec4MaxFlowUSD * 0.015
+		if sec4USD > cap4 {
+			sec4USD = cap4
+		}
+	}
+	smallTokFeeUSD += sec4USD
 
 	return gasUSD + knownFeeUSD + smallSolFeeUSD + smallTokFeeUSD, nil
 }
