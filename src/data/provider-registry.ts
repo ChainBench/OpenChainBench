@@ -1249,12 +1249,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Crypto trading apps — iOS App Store ratings (bench № 202) ─────────
-  pumpfun: {
-    url: "https://pump.fun",
-    description:
-      "pump.fun is the leading Solana memecoin launchpad and trading app. Tokens launch on a bonding curve and graduate to Raydium at a $69k market cap, with a 1% fee on every buy and sell.",
-    twitter: "@pumpdotfun",
-  },
   moonshot: {
     url: "https://moonshot.money",
     description:
