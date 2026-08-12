@@ -147,6 +147,9 @@ type EnhancedTx struct {
 	// This is the authoritative price — use it directly, no division needed.
 	// 0 = no priority fee set (base fee only).
 	CUPriceDeclared int64
+	// SenderAccounts is the set of accounts whose SOL balance decreased in this tx.
+	// Used by the collector to detect internal fee-wallet sweeps and skip them.
+	SenderAccounts []string
 }
 
 const b58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -360,7 +363,9 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 	}
 
 	// NativeTransfers: accounts whose SOL balance increased received SOL.
+	// SenderAccounts: accounts whose SOL balance decreased (used for sweep detection).
 	var nativeTransfers []NativeTransfer
+	var senderAccounts []string
 	for i, key := range accounts {
 		if i >= len(m.PreBalances) || i >= len(m.PostBalances) {
 			break
@@ -368,6 +373,8 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		diff := m.PostBalances[i] - m.PreBalances[i]
 		if diff > 0 {
 			nativeTransfers = append(nativeTransfers, NativeTransfer{ToUserAccount: key.Pubkey, Amount: diff})
+		} else if diff < 0 {
+			senderAccounts = append(senderAccounts, key.Pubkey)
 		}
 	}
 
@@ -463,5 +470,6 @@ func (c *Client) getTransaction(ctx context.Context, sig string) (EnhancedTx, er
 		ComputeUnitsConsumed: cuConsumed,
 		CULimit:              cuLimit,
 		CUPriceDeclared:      cuPriceDeclared,
+		SenderAccounts:       senderAccounts,
 	}, nil
 }
