@@ -21,10 +21,23 @@ const (
 )
 
 // Known fee wallet owners confirmed via on-chain analysis of tagged Mobula trades.
-// Key = owner address of the token account receiving the fee.
+// For token fees: key = owner authority of the receiving token account.
+// For native SOL fees (pump.fun curve): key = the account pubkey itself (system account, no indirection).
 var platformFeeOwners = map[string]string{
 	"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX": "fomo",
 	"69yhtoJR4JYPPABZcSNkzuqbaFbwHsCkja1nzh7Wdt2": "trojan", // Jupiter referral fee, ~0.1% on-chain
+	// pump.fun bonding curve — 8 fee recipients in rotation (~0.95% of trade in native SOL)
+	// Verified from fees/pumpdotfun.ts in DeFiLlama dimension-adapters (2026-08-12).
+	"CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM": "pump-fun",
+	"62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV": "pump-fun",
+	"FWsW1xNtWscwNmKv6wVsU1iTzRN6wmmk3MjxRP5tT7hz": "pump-fun",
+	"7hTckgnGnLQR6sdH7YkqFTAA7VwTfYFaZ6EhEsU3saCX": "pump-fun",
+	"AVmoTthdrX6tKt4nDjco2D775W2YK3sDhxPcMmzUAmTY": "pump-fun",
+	"9rPYyANsfQZw3DnDmKE3YCQF5E8oD89UXoHn9JFEhJUz": "pump-fun",
+	"G5UZAVbAf46s7cKWoyKu8kYTip9DGTpbLZ2qa9Aq69dP": "pump-fun",
+	"7VtfL8fvgNfhz17qKRMjzQEXgbdpnHHHQRh54R9jP2RJ": "pump-fun",
+	// pump.fun Mayhem mode — receives native SOL and WSOL
+	"GesfTA3X2arioaHp8bbKdjG9vJtskViWACZoYvxp4twS": "pump-fun",
 }
 
 // Program/system accounts that should never be treated as fee recipients.
@@ -46,6 +59,9 @@ var skipAccounts = map[string]bool{
 	"ojh19ojaKduoJZuaJADhcVGp4xt1TcdAvZmpVsCorch": true,
 	// Jupiter aggregator
 	"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": true,
+	// pump.fun program and migrator — PDAs/programs, not fee recipients
+	"6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P": true,
+	"39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg": true,
 	// Jito tip accounts — native SOL tips, not platform fees
 	"96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5": true,
 	"DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh": true,
@@ -273,8 +289,24 @@ func fetchOnChainFee(rpcClient *http.Client, rpcURL, txHash, sender string) (flo
 		}
 	}
 
+	// 1bis. Known fee wallet owners — native SOL lamport receipts.
+	// pump.fun bonding curve pays ~0.95% in native SOL (no token account involved).
+	// platformFeeOwners[acc] works directly here because these are ordinary system accounts
+	// (pubkey == effective key, no owner/authority indirection like token accounts).
+	for i, acc := range accounts {
+		if _, ok := platformFeeOwners[acc]; !ok {
+			continue
+		}
+		d := meta.PostBalances[i] - meta.PreBalances[i]
+		if d <= 0 {
+			continue
+		}
+		knownFeeUSD += float64(d) / 1e9 * solPrice
+	}
+
 	// 2. Small SOL recipients heuristic (bot fees / referral tips in native SOL).
 	// Anything receiving < 5% of the user's net SOL flow that isn't a system account.
+	// Note: platformFeeOwners accounts are skipped below to avoid double-counting with 1bis.
 	userIdx := -1
 	for i, acc := range accounts {
 		if acc == sender {
