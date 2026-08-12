@@ -224,13 +224,17 @@ func collectNativeBlockscout(ctx context.Context, db *store.DB, plt, chain, coll
 	}
 	rpc := chainRPC[chain]
 
-	txs, lastBlock, err := source.GetBlockscoutInternalTxs(ctx, source.BlockscoutRobinhood, collector, cursor)
+	internalTxs, lastInt, err := source.GetBlockscoutInternalTxs(ctx, source.BlockscoutRobinhood, collector, cursor)
+	if err != nil {
+		return err
+	}
+	normalTxs, lastNorm, err := source.GetBlockscoutNormalTxs(ctx, source.BlockscoutRobinhood, collector, cursor)
 	if err != nil {
 		return err
 	}
 
 	var events []store.EVMEvent
-	for _, tx := range txs {
+	for _, tx := range append(internalTxs, normalTxs...) {
 		if tx.BlockNum > toBlock {
 			continue
 		}
@@ -253,11 +257,11 @@ func collectNativeBlockscout(ctx context.Context, db *store.DB, plt, chain, coll
 	if err := db.UpsertEvents(ctx, events); err != nil {
 		return err
 	}
-	if lastBlock > cursor {
-		_ = db.SaveCursor(ctx, chain, plt, "native", lastBlock)
+	if high := max64(lastInt, lastNorm); high > cursor {
+		_ = db.SaveCursor(ctx, chain, plt, "native", high)
 	}
 	if len(events) > 0 {
-		log.Printf("collector: %s/%s native ETH (Blockscout) %d events block=%d", plt, chain, len(events), lastBlock)
+		log.Printf("collector: %s/%s native ETH (Blockscout) %d events block=%d", plt, chain, len(events), max64(lastInt, lastNorm))
 	}
 	return nil
 }
