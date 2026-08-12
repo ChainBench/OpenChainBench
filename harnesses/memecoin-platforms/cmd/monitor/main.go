@@ -28,7 +28,7 @@ func main() {
 
 	mobulaClient := &http.Client{
 		Timeout:   30 * time.Second,
-		Transport: &http.Transport{Proxy: nil},
+		Transport: &http.Transport{Proxy: http.ProxyURL(nil)},
 	}
 
 	// rpcClient routes through rotating proxy to avoid per-IP rate limits
