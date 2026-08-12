@@ -234,16 +234,18 @@ var evmCoverage = map[string]map[string]string{
 
 // coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.
 var coinGeckoIDs = map[string]string{
-	"ethereum": "ethereum",
-	"bsc":      "binancecoin",
-	"base":     "ethereum",
+	"ethereum":  "ethereum",
+	"bsc":       "binancecoin",
+	"base":      "ethereum",
+	"robinhood": "ethereum",
 }
 
 // nativeSymbols maps chain → native asset ticker.
 var nativeSymbols = map[string]string{
-	"ethereum": "ETH",
-	"bsc":      "BNB",
-	"base":     "ETH",
+	"ethereum":  "ETH",
+	"bsc":       "BNB",
+	"base":      "ETH",
+	"robinhood": "ETH",
 }
 
 type priceCache struct {
