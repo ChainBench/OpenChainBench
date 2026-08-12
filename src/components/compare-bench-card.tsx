@@ -39,6 +39,8 @@ export type PanelScope = {
 export type CompareBench = {
   slug: string;
   title: string;
+  /** Short display title for verdict/FAQ prose — overrides shortBenchTitle(). */
+  compareTitle?: string;
   category: Benchmark["category"];
   unit: Benchmark["unit"];
   metric: string;
