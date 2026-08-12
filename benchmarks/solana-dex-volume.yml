@@ -14,16 +14,16 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume and fee data sourced from DeFiLlama's DEX aggregator, which tracks on-chain swap events attributed to each protocol. DeFiLlama attribution relies on on-chain referral tags and program IDs — platforms that do not embed standard tags may be undercounted. Figures are 24-hour rolling totals updated every 30 minutes.
+  Volume and fee data sourced from DeFiLlama's DEX aggregator, which tracks on-chain swap events attributed to each protocol. DeFiLlama attribution relies on on-chain referral tags and program IDs; platforms that do not embed standard tags may be undercounted. Figures are 24-hour rolling totals updated every 30 minutes.
 
 seo_intro: |
   The Solana DEX market is a contested three-way race between PumpSwap, Axiom and
-  GMGN in the summer of 2026. PumpSwap — pump.fun's new AMM — surged to over $500
+  GMGN in the summer of 2026. PumpSwap (pump.fun's new AMM) surged to over $500
   million in daily volume after pump.fun cut trading fees to zero on August 7, making
   it the dominant Solana DEX by raw volume. Axiom and GMGN each process around $70
   million per day, competing for the power-trader segment. Fomo's DEX reached $50
   million daily volume and briefly overtook Axiom in revenue for the first time on
-  August 6, 2026 — a milestone that triggered pump.fun's fee cut the following day.
+  August 6, 2026, a milestone that triggered pump.fun's fee cut the following day.
   This benchmark tracks all five platforms plus Trojan and Photon in real time from
   DeFiLlama's DEX data feed, refreshed every 30 minutes.
 
@@ -38,12 +38,12 @@ abstract: |
 methodology:
   - "Source: DeFiLlama public DEX API (api.llama.fi/summary/dexs/{slug}) and fees API (api.llama.fi/summary/fees/{slug}). No authentication required."
   - "Poll cadence: harness fetches each platform every 30 minutes and updates Prometheus gauges immediately."
-  - "Volume: total24h field from DeFiLlama — sum of all swap notional values in USD attributed to this platform in the last 24 hours."
-  - "Fees: total24h from the fees endpoint — on-chain protocol fee revenue captured by the platform. Excludes LP fees that remain in pool accounts."
+  - "Volume: total24h field from DeFiLlama, sum of all swap notional values in USD attributed to this platform in the last 24 hours."
+  - "Fees: total24h from the fees endpoint, on-chain protocol fee revenue captured by the platform. Excludes LP fees that remain in pool accounts."
   - "Attribution: DeFiLlama uses on-chain referral tags, program IDs and memo fields. Platforms without standard tagging may be undercounted."
   - "PumpSwap (slug pumpswap): pump.fun's new constant-product AMM launched April 2025. Charges 0.25% LP fee + 0.05% protocol fee. Volume surged after pump.fun cut bonding-curve trading fees to zero on Aug 7 2026."
-  - "pump.fun (slug pump.fun): the original bonding-curve launchpad. Charges 1% on buys/sells on the curve. Distinct from PumpSwap — a token graduates from the curve to PumpSwap's AMM at ~$69K market cap."
-  - "Axiom (slug axiom): web-based Solana trading terminal. 0.25–0.5% platform fee on routed swaps. Revenue briefly overtaken by Fomo on Aug 6 2026."
+  - "pump.fun (slug pump.fun): the original bonding-curve launchpad. Charges 1% on buys/sells on the curve. Distinct from PumpSwap: a token graduates from the curve to PumpSwap's AMM at ~$69K market cap."
+  - "Axiom (slug axiom): web-based Solana trading terminal. 0.25 to 0.5% platform fee on routed swaps. Revenue briefly overtaken by Fomo on Aug 6 2026."
   - "GMGN (slug gmgn): AI-powered trading terminal on Solana. ~1% fee on routed swaps."
   - "fomo Wallet (slug fomo-wallet): Fomo's DEX routing layer. 0.5% platform fee. First crossed Axiom on daily revenue Aug 6 2026."
   - "Trojan (slug trojan): Telegram trading bot on Solana. Lower volume than web terminals but serves a distinct Telegram-native user base."
