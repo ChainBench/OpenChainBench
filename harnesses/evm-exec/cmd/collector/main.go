@@ -99,11 +99,8 @@ func collectPlatform(ctx context.Context, db *store.DB, etherscanKey, plt, chain
 				log.Printf("collector: %s/%s native ETH: %v", plt, chain, err)
 			}
 		case "base":
-			basescanKey := os.Getenv("BASESCAN_API_KEY")
-			if basescanKey != "" {
-				if err := collectNativeEtherscan(ctx, db, basescanKey, source.ChainIDBase, plt, chain, cfg.FeeCollector, toBlock); err != nil {
-					log.Printf("collector: %s/%s native ETH on Base: %v", plt, chain, err)
-				}
+			if err := collectNativeEtherscan(ctx, db, etherscanKey, source.ChainIDBase, plt, chain, cfg.FeeCollector, toBlock); err != nil {
+				log.Printf("collector: %s/%s native ETH on Base: %v", plt, chain, err)
 			}
 		case "bsc":
 			if err := collectNativeBSC(ctx, db, plt, chain, cfg.FeeCollector, toBlock); err != nil {

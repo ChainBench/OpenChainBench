@@ -62,7 +62,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x16388de42c5829fd0e88c8eb001ef43bfc93f177",
-			NativeEnabled: true, // via BaseScan API (gated on BASESCAN_API_KEY env)
+			NativeEnabled: true, // Etherscan V2 chainid=8453, same ETHERSCAN_API_KEY
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
@@ -89,8 +89,9 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 	},
 	// Banana Gun — these addresses are routers, not pure fee wallets.
-	// Native ETH/BNB disabled to avoid counting trade principal as revenue.
-	// USDC inflows tracked as proxy; proper event-based decoding (topic 0x72015ace…) pending.
+	// Native disabled on all chains: internal ETH/BNB = trade principal, not fees.
+	// USDC inflows are also router throughput; evmKey=null in frontend so nothing is displayed.
+	// Proper fix: eth_getLogs on topic 0x72015ace… for actual fee events.
 	"banana-gun": {
 		"ethereum": {
 			FeeCollector:  "0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49",
@@ -106,7 +107,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x1fba6b0bbae2b74586fba407fb45bd4788b7b130",
-			NativeEnabled: true, // Etherscan V2 chainid=8453
+			NativeEnabled: false, // was incorrectly true; same router logic applies on Base
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
