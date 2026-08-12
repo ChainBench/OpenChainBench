@@ -39,9 +39,10 @@ function extractChain24h(breakdown: DLBreakdown | null): Partial<Record<string, 
 
 async function fetchDLSummary(slug: string): Promise<DLSummary | null> {
   try {
-    const res = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 300 },
-    });
+    const res = await fetch(
+      `https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?dataType=dailyRevenue`,
+      { next: { revalidate: 300 } }
+    );
     if (!res.ok) return null;
     return res.json() as Promise<DLSummary>;
   } catch {
