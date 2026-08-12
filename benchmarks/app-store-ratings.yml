@@ -189,18 +189,18 @@ providers:
       sample_size: app_store_reviews_total{app="gmgn"}
       series: app_store_rating{app="gmgn"}
 
-  - slug: pumpfun
+  - slug: pump-fun
     name: PumpFun
     tag: "Solana meme launchpad app"
-    formula: "Apple App Store average rating (iTunes lookup API, app ID 6717572591, US store, all-time average). Review count from app_store_reviews_total{app=\"pumpfun\"}."
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 6717572591, US store, all-time average). Review count from app_store_reviews_total{app=\"pump-fun\"}."
     queries:
-      p50: app_store_rating{app="pumpfun"}
-      p90: app_store_rating{app="pumpfun"}
-      p99: app_store_rating{app="pumpfun"}
-      mean: app_store_rating{app="pumpfun"}
-      success: app_store_health{app="pumpfun"}
-      sample_size: app_store_reviews_total{app="pumpfun"}
-      series: app_store_rating{app="pumpfun"}
+      p50: app_store_rating{app="pump-fun"}
+      p90: app_store_rating{app="pump-fun"}
+      p99: app_store_rating{app="pump-fun"}
+      mean: app_store_rating{app="pump-fun"}
+      success: app_store_health{app="pump-fun"}
+      sample_size: app_store_reviews_total{app="pump-fun"}
+      series: app_store_rating{app="pump-fun"}
 
   - slug: moonshot
     name: Moonshot
