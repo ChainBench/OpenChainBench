@@ -56,10 +56,15 @@ export default async function AppsHubPage() {
 
     for (const w of WINDOWS) {
       let solanaFees: number | null = null;
-      if (solRow && solPrice !== null) {
+      if (solRow) {
         const wData = solRow.windows[w];
         if (wData) {
-          solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
+          if (meta.solanaFeeIsUSDC) {
+            // Fees collected in USDC (6 dec): raw units / 1e6 = USD directly
+            solanaFees = wData.sumPlatformFeeLamports / 1e6;
+          } else if (solPrice !== null) {
+            solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
+          }
         }
       }
 
@@ -130,11 +135,11 @@ export default async function AppsHubPage() {
       </p>
 
       <div className="mt-10">
-        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} />
+        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} />
       </div>
 
       <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
-        Solana fees = <span className="font-mono">txCount × avgPlatformFeeLamports / 1e9 × SOL price</span>.
+        Solana fees = <span className="font-mono">sum(platform_fee) / 1e9 × SOL price</span>.
         EVM fees = stable (USDC/USDT) + native where traceable, always 24h.
       </p>
 
