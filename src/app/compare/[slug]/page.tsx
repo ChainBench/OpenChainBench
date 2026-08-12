@@ -302,6 +302,7 @@ type SharedBench = CompareBench;
 function verbForBench(bench: SharedBench): string {
   const unit = (bench.unit ?? "").toLowerCase();
   if (unit === "usd" || unit === "gwei" || unit === "bps" || unit === "bp") return "cheaper";
+  if ((unit === "pct" || unit === "sol") && !bench.higherIsBetter) return "cheaper";
   if (bench.higherIsBetter) return "more reliable";
   return "faster";
 }
@@ -363,9 +364,15 @@ function buildComparisonProse(
   }
 
   const parts: string[] = [];
-  parts.push(
-    `${aName} leads on ${aWinTitles.length} of ${total} shared benchmarks, ${bName} on ${bWinTitles.length}${ties > 0 ? ` (${ties} tied)` : ""}.`,
-  );
+  if (aWinTitles.length === 0) {
+    parts.push(`${bName} leads on all ${total} live ${total === 1 ? "benchmark" : "benchmarks"}.`);
+  } else if (bWinTitles.length === 0) {
+    parts.push(`${aName} leads on all ${total} live ${total === 1 ? "benchmark" : "benchmarks"}.`);
+  } else {
+    parts.push(
+      `${aName} leads on ${aWinTitles.length} of ${total} shared benchmarks, ${bName} on ${bWinTitles.length}${ties > 0 ? ` (${ties} tied)` : ""}.`,
+    );
+  }
   if (aWinLines.length > 0) {
     parts.push(`${aName} wins on ${aWinLines.slice(0, 4).join(", ")}.`);
   }
@@ -986,14 +993,14 @@ export default async function ComparePage({
           How this pair was selected
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-          A pair is published when all four conditions hold. Both
-          providers run in the same OpenChainBench benchmark for at
-          least seven consecutive days. Each provider has at least 1000
-          samples in the measurement window. The head to head query has
-          observable third party search demand. Both providers have a
-          public <code>/products/[slug]</code> page on OCB. The full
-          pair ledger is versioned in the public repo so the
-          methodology is externally verifiable.
+          Auto-generated pairs require: both providers in the same
+          benchmark for seven consecutive days, at least 1000 samples
+          per provider, observable third-party search demand, and a
+          public <code>/products/[slug]</code> page on OCB. Editorially
+          curated pairs (like this one) may publish early when search
+          demand is high and data is accruing — panels with fewer than
+          100 samples are shown as provisional. The full pair ledger is
+          versioned in the public repo.
         </p>
       </section>
 
