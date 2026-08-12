@@ -20,12 +20,12 @@ export type UnifiedAppRow = {
   stableOnly: { ethereum: boolean; bsc: boolean; base: boolean };
 };
 
-type TabKey = "all" | "meme-bot" | "telegram-bot";
+type TabKey = "all" | "trading-terminal" | "telegram-bot";
 type WindowKey = "24h" | "7d" | "30d";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "meme-bot", label: "Meme Bots" },
+  { key: "trading-terminal", label: "Trading Terminals" },
   { key: "telegram-bot", label: "Telegram Bots" },
 ];
 
@@ -36,12 +36,12 @@ const WINDOWS: { key: WindowKey; label: string }[] = [
 ];
 
 const CATEGORY_BADGE: Record<AppMeta["category"], string> = {
-  "meme-bot": "bg-orange-500/10 text-orange-400 border border-orange-500/20",
+  "trading-terminal": "bg-orange-500/10 text-orange-400 border border-orange-500/20",
   "telegram-bot": "bg-blue-500/10 text-blue-400 border border-blue-500/20",
 };
 
 const CATEGORY_LABEL: Record<AppMeta["category"], string> = {
-  "meme-bot": "Meme Bot",
+  "trading-terminal": "Trading Terminal",
   "telegram-bot": "Telegram Bot",
 };
 
