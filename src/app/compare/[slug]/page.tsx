@@ -187,7 +187,6 @@ export async function generateMetadata({
   // portion. The suffix "· OpenChainBench" is added by Next's title
   // template so we don't spend chars on it here.
   const currentYear = new Date().getUTCFullYear();
-  const title = `${a.name} vs ${b.name} Benchmark ${currentYear}`;
 
   // Compute shared bench count from appearances (already loaded via
   // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
@@ -199,6 +198,8 @@ export async function generateMetadata({
     : Array.from(aSlugs).filter((s) => bSlugs.has(s));
   const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
   const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
+
+  const title = `${a.name} vs ${b.name} Benchmark${sharedCount === 1 ? "" : "s"} ${currentYear}`;
 
   // Thin-content gate (SEO audit 2026-07-08): a pair whose shared
   // benches carry live data for both providers on fewer than 2 of them
@@ -307,11 +308,16 @@ function verbForBench(bench: SharedBench): string {
   return "faster";
 }
 
-/** Strips the provider-list parenthetical from bench titles for use in
- *  FAQ questions: "Cheapest platform (A vs B vs C)" → "Cheapest platform". */
+/** Strips provider-list suffixes from bench titles for use in FAQ and
+ *  verdict prose. Handles two patterns:
+ *   "(A vs B vs C)" parenthetical → "Cheapest platform to trade memecoins"
+ *   ": A vs B, live" colon suffix  → "Crypto trading app iOS ratings" */
 function shortBenchTitle(title: string): string {
-  const idx = title.indexOf(" (");
-  return idx > 0 ? title.slice(0, idx) : title;
+  const parenIdx = title.indexOf(" (");
+  if (parenIdx > 0) return title.slice(0, parenIdx);
+  const colonIdx = title.indexOf(": ");
+  if (colonIdx > 0) return title.slice(0, colonIdx);
+  return title;
 }
 
 /** Sort comparator that respects `higherIsBetter`. Returns:
@@ -352,11 +358,11 @@ function buildComparisonProse(
     const aVal = fmtUnit(aP50, s.unit);
     const bVal = fmtUnit(bP50, s.unit);
     if (s.aggregateWinner === "a") {
-      aWinTitles.push(s.title);
-      aWinLines.push(`${s.title} (${aVal} vs ${bVal})`);
+      aWinTitles.push(shortBenchTitle(s.title));
+      aWinLines.push(`${shortBenchTitle(s.title)} (${aVal} vs ${bVal})`);
     } else if (s.aggregateWinner === "b") {
-      bWinTitles.push(s.title);
-      bWinLines.push(`${s.title} (${bVal} vs ${aVal})`);
+      bWinTitles.push(shortBenchTitle(s.title));
+      bWinLines.push(`${shortBenchTitle(s.title)} (${bVal} vs ${aVal})`);
     } else {
       ties += 1;
     }
@@ -809,25 +815,32 @@ export default async function ComparePage({
   // derived from live measurements — no editorial claim. Skipped when
   // shared is empty (never actually reached because notFound() short-
   // circuits above, but defensive).
+  // Appends "(provisional)" when sampleSize < 100 so FAQ answers
+  // don't assert a fact the table already flags as uncertain.
+  const fmtResult = (val: number, unit: CompareBench["unit"], n?: number) => {
+    const s = fmtUnit(val, unit);
+    return (n ?? 0) > 0 && (n ?? 0) < 100 ? `${s} (provisional)` : s;
+  };
+
   const faqEntries: Array<{ q: string; a: string }> = [];
   const aWinsBench = shared.find((s) => s.aggregateWinner === "a" && s.aResult.p50 !== 0 && s.bResult.p50 !== 0);
   const bWinsBench = shared.find((s) => s.aggregateWinner === "b" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
   faqEntries.push({
     q: `${a.name} vs ${b.name}: which one is better?`,
-    a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${aWinsBench.title}.` : ""} ${bWinsBench ? `${b.name} leads on ${bWinsBench.title}.` : ""} See the live table on this page for every metric.`.trim(),
+    a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${shortBenchTitle(aWinsBench.title)}.` : ""} ${bWinsBench ? `${b.name} leads on ${shortBenchTitle(bWinsBench.title)}.` : ""} See the live table on this page for every metric.`.trim(),
   });
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
     faqEntries.push({
       q: `Which is ${verbForBench(aWinsBench)}, ${a.name} or ${b.name}?`,
-      a: `On the ${st} benchmark, ${a.name} leads at ${fmtUnit(aWinsBench.aResult.p50, aWinsBench.unit)} versus ${b.name} at ${fmtUnit(aWinsBench.bResult.p50, aWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
+      a: `On the ${st} benchmark, ${a.name} leads at ${fmtResult(aWinsBench.aResult.p50, aWinsBench.unit, aWinsBench.aResult.sampleSize)} versus ${b.name} at ${fmtResult(aWinsBench.bResult.p50, aWinsBench.unit, aWinsBench.bResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     const st = shortBenchTitle(bWinsBench.title);
     faqEntries.push({
       q: `Which is ${verbForBench(bWinsBench)}, ${a.name} or ${b.name}?`,
-      a: `On the ${st} benchmark, ${b.name} leads at ${fmtUnit(bWinsBench.bResult.p50, bWinsBench.unit)} versus ${a.name} at ${fmtUnit(bWinsBench.aResult.p50, bWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
+      a: `On the ${st} benchmark, ${b.name} leads at ${fmtResult(bWinsBench.bResult.p50, bWinsBench.unit, bWinsBench.bResult.sampleSize)} versus ${a.name} at ${fmtResult(bWinsBench.aResult.p50, bWinsBench.unit, bWinsBench.aResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   faqEntries.push({
