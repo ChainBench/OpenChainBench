@@ -120,6 +120,10 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			if t.AmountUSD < minTradeUSD {
 				continue
 			}
+			_, cached := txCache.Load(t.Hash)
+			if !cached && (freshLookups >= 40 || globalFreshLookups >= 300) {
+				continue
+			}
 			p := t.Platform
 			if p == "" {
 				p = "pump-fun"
@@ -128,10 +132,6 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			if s == nil {
 				s = &platformStats{}
 				byPlatform[p] = s
-			}
-			_, cached := txCache.Load(t.Hash)
-			if !cached && (freshLookups >= 40 || globalFreshLookups >= 300) {
-				continue
 			}
 			if !cached {
 				freshLookups++
