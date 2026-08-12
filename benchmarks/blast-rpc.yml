@@ -30,7 +30,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads free Blast RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
-  - "`rpc.blast.io` posts ~2 ms in every region simultaneously, physically impossible for one origin. Read it as an edge-terminated endpoint: heads are fresh per our stale detection, but the latency column measures CDN termination rather than a node round trip, the same class of caution we document for Cloudflare-eth."
+  - "`rpc.blast.io` posts ~2 ms in every region simultaneously. On-chain response headers confirm geo-distributed nodes: `blast_blast-mainnet_fra` from eu-west, `blast_blast-mainnet_sin` from Singapore, a US node from us-east. Blast runs RPC nodes inside the same GCP datacenters as our Railway probes, producing sub-2 ms figures that reflect co-located infrastructure rather than typical user latency. A user in Paris reaches the Frankfurt node in ~40 ms; a user outside GCP will see 30-100 ms depending on location. Heads are fresh per stale detection."
   - "{{name:drpc}} ({{p50:drpc}}) is the honest-infrastructure comparison point: anycast consistency across the three regions with real node round trips behind it, the profile that wins it 10 of the 12 expansion chains."
   - "{{name:tenderly}} sits at the expansion's familiar flat ~330 ms in all regions on Blast, single-origin routing on a gateway that is genuinely quick on the major chains."
 
@@ -44,7 +44,7 @@ faq:
   - q: "How is Blast RPC latency measured here?"
     a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Is rpc.blast.io really that fast, or is something else going on?"
-    a: "Something else. Two milliseconds simultaneously from Virginia, Amsterdam and Singapore is below the physical round-trip floor for any single origin, so the endpoint is answering at an anycast/CDN edge. Our stale-head detection shows the blocks it returns are current, so it is not serving a stale cache today, but edge termination means the latency figure describes the edge network, not node processing. We keep it ranked with the caveat documented, exactly as we do for Cloudflare's fast-but-permissioned Ethereum endpoint."
+    a: "Blast runs geo-distributed RPC nodes inside major cloud datacenters (GCP us-east, GCP europe-west4/Frankfurt, GCP asia-southeast1/Singapore). Our Railway probes run in the same three GCP regions, so each probe hits the co-located Blast node with a sub-LAN round trip. The `x-node-id` response header confirms this: `blast_blast-mainnet_fra` from eu-west, `blast_blast-mainnet_sin` from Singapore. The blocks are fresh — this is not a cache hit — but the 1-2 ms figure reflects network co-location, not what a developer outside GCP infra will experience. From a typical residential connection or a non-GCP cloud, expect 30-100 ms."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -87,9 +87,8 @@ per_chain_explainer:
       or higher.
 
 findings:
-  - "{{best_name}} leads the cost-slope leaderboard at {{best_p50}} (24h average). A slope of 1.00 means the venue charges the same basis points per unit of notional at $1M as at $1k."
-  - "{{name:gains}} and {{name:gmx}} are the only venues in the cohort that structurally score 1.00: they use oracle pricing with no orderbook, so the fee is a flat percentage of position size regardless of trade size."
-  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} cost slope (24h avg). The deepest onchain orderbook in the cohort keeps its impact low, but it still exceeds 1.00 at $1M notional on most assets."
+  - "{{name:gains}} and {{name:gmx}} always score 1.00 by construction, not by performance: oracle-priced venues charge a flat percentage of notional with no orderbook, so the $1M all-in is identical to the $1k all-in in basis points regardless of market conditions. Their top leaderboard position reflects fee structure, not execution quality."
+  - "Among orderbook venues, {{name:hyperliquid}} sits at {{p50:hyperliquid}} cost slope (24h avg) — the lowest impact in the cohort at $1M notional, driven by the deepest onchain book."
   - "Venues showing N/A in the slope column cannot reliably fill a $1M market order. The fill-rate panel shows what fraction of measurement cycles the $1M tier was successfully absorbed."
   - "The cost slope is asset-specific: use the chain tabs to compare ETH (deepest books), BTC (tightest books) and SOL (thinnest books) separately."
 
