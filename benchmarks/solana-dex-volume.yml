@@ -101,11 +101,7 @@ faq:
   - q: "What is the difference between pump.fun and PumpSwap?"
     a: "pump.fun is the original bonding-curve launchpad where new tokens are created and traded. PumpSwap is pump.fun's separate constant-product AMM where tokens migrate after graduating from the bonding curve at roughly $69K market cap. Both are tracked separately because they serve different trading stages and have different fee structures."
   - q: "Why did PumpSwap volume surge in August 2026?"
-<<<<<<< HEAD
     a: "pump.fun reduced bonding-curve trading fees in August 2026, shifting more swap activity toward PumpSwap's AMM layer and driving PumpSwap volume above $500 million per day. Revenue reported by DeFiLlama for pump.fun still includes creator fees, graduation fees, and other lifecycle revenue components, so the revenue figure does not drop to zero even after the fee reduction."
-=======
-    a: "On August 7 2026, pump.fun cut trading fees on its bonding curve to zero in response to Fomo's growing revenue. This shifted more activity to PumpSwap's AMM layer (which still charges a 0.05% protocol fee) and drove total PumpSwap volume above $500 million per day."
->>>>>>> origin/dev
   - q: "Why is Phantom not tracked here?"
     a: "Phantom is the largest Solana wallet by user count but it routes swaps through aggregators like Jupiter rather than operating its own DEX contract. DeFiLlama does not assign Phantom a DEX slug because its on-chain footprint is the aggregator's, not Phantom's. Those swaps appear in Jupiter's figures. This bench tracks the platforms that DeFiLlama can attribute volume to directly."
   - q: "How is this different from the Solana trading platform leaderboard (bench 201)?"
@@ -212,8 +208,4 @@ providers:
       p99: defillama_dex_volume_24h_usd{platform="bullx"}
       mean: defillama_dex_volume_24h_usd{platform="bullx"}
       success: defillama_dex_health{platform="bullx"}
-<<<<<<< HEAD
-=======
-      sample_size: defillama_dex_fees_24h_usd{platform="bullx"}
->>>>>>> origin/dev
       series: defillama_dex_volume_24h_usd{platform="bullx"}
