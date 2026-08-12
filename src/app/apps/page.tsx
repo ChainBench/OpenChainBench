@@ -52,12 +52,6 @@ export default async function AppsHubPage() {
     const baseChain = evmRow?.chains["base"];
     const rhChain = rhRow?.chains["robinhood"];
 
-    const ethFees = ethChain ? ethChain.stable24h + (ethChain.native?.usd ?? 0) : null;
-    const bscFees = bscChain ? bscChain.stable24h + (bscChain.native?.usd ?? 0) : null;
-    const baseFees = baseChain ? baseChain.stable24h + (baseChain.native?.usd ?? 0) : null;
-    const rhFees = rhChain ? rhChain.stable24h + (rhChain.native?.usd ?? 0) : null;
-    const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0) + (rhFees ?? 0);
-
     const windows: UnifiedAppRow["windows"] = {};
 
     for (const w of WINDOWS) {
@@ -75,6 +69,18 @@ export default async function AppsHubPage() {
         const relayFee = w === "24h" ? fomoRelay.fees24h : w === "7d" ? fomoRelay.fees7d : fomoRelay.fees30d;
         solanaFees = (solanaFees ?? 0) + relayFee;
       }
+
+      // EVM: 24h adds native ETH/BNB in USD; 7d/30d stable only (no historical prices).
+      const evmStable = (chain: typeof ethChain) =>
+        !chain ? null : w === "24h" ? chain.stable24h : w === "7d" ? chain.stable7d : chain.stable30d;
+      const evmNative = (chain: typeof ethChain) =>
+        w === "24h" && chain ? (chain.native?.usd ?? 0) : 0;
+
+      const ethFees = ethChain ? evmStable(ethChain)! + evmNative(ethChain) : null;
+      const bscFees = bscChain ? evmStable(bscChain)! + evmNative(bscChain) : null;
+      const baseFees = baseChain ? evmStable(baseChain)! + evmNative(baseChain) : null;
+      const rhFees = rhChain ? evmStable(rhChain)! + evmNative(rhChain) : null;
+      const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0) + (rhFees ?? 0);
 
       windows[w] = {
         solana: solanaFees,
