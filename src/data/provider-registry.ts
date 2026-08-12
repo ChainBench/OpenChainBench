@@ -1238,7 +1238,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   pumpswap: {
     url: "https://pump.fun",
     description:
-      "PumpSwap is pump.fun's constant-product AMM where tokens migrate after graduating from the bonding curve at roughly $69K market cap. Launched March 2025, it charges a 0.25% LP fee plus 0.05% protocol fee and surged to over $500M daily volume in August 2026 after pump.fun eliminated bonding-curve trading fees.",
+      "PumpSwap is pump.fun's constant-product AMM where tokens migrate after graduating from the bonding curve. Launched March 2025, it uses a tiered fee schedule (LP, protocol, and creator shares) that varies by pool parameters. It surged to over $500M daily volume in August 2026 after pump.fun reduced bonding-curve trading fees.",
     twitter: "@pumpdotfun",
   },
   photon: {
