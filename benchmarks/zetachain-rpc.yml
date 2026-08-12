@@ -34,7 +34,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"zetachain\"`. Provider coverage: 1 no-key endpoint (Thirdweb). BlockPI returned 404; AllThatNode DNS is dead."
 
 findings:
-  - "{{best_name}} currently leads free ZetaChain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
+  - "Provider coverage is critically limited: only Thirdweb (`7000.rpc.thirdweb.com`) is configured, and its current success rate from our probes is below 1% — the endpoint responds to one-off requests but blocks sustained per-IP probing. Latency figures reflect the rare successful call and do not represent reliable availability. BlockPI and AllThatNode are dead for ZetaChain; no other free keyless endpoint was found operational at audit time."
+  - "Manual use of `7000.rpc.thirdweb.com` works for individual calls. The 0.5% probe success rate is an artifact of rate-limiting against our fixed Railway probe IPs, not a general outage."
 
 faq:
   - q: "What is the fastest free ZetaChain RPC right now?"
