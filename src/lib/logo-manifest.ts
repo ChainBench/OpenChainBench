@@ -302,7 +302,6 @@ const RAW: Record<string, string> = {
   "banana-gun": "/logos/banana-gun.png",
 
   // ─── App Store ratings (bench № 202) ───
-  pumpfun: "/logos/pumpfun.svg",
   moonshot: "/logos/moonshot.svg",
   "binance-us": "/logos/binance-us.svg",
   cryptocom: "/logos/cryptocom.svg",
