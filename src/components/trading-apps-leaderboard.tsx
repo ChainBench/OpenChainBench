@@ -92,9 +92,11 @@ export function TradingAppsLeaderboard({
   const [window, setWindow] = useState<WindowKey>("24h");
 
   const filtered = tab === "all" ? rows : rows.filter((r) => r.meta.category === tab);
-  const sorted = [...filtered].sort(
-    (a, b) => (b.windows[window]?.total ?? 0) - (a.windows[window]?.total ?? 0)
-  );
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.meta.inactive && !b.meta.inactive) return 1;
+    if (!a.meta.inactive && b.meta.inactive) return -1;
+    return (b.windows[window]?.total ?? 0) - (a.windows[window]?.total ?? 0);
+  });
 
   const hasStableOnly = sorted.some(
     (r) => r.stableOnly.ethereum || r.stableOnly.bsc || r.stableOnly.base
@@ -173,7 +175,7 @@ export function TradingAppsLeaderboard({
               return (
                 <tr
                   key={meta.id}
-                  className="border-b border-rule last:border-0 hover:bg-paper-soft transition-colors"
+                  className={`border-b border-rule last:border-0 hover:bg-paper-soft transition-colors ${meta.inactive ? "opacity-50" : ""}`}
                 >
                   <td className="py-4 pl-4 sm:pl-6 pr-3 text-ink-muted font-mono text-xs tabular-nums align-middle">
                     {i + 1}
@@ -196,6 +198,11 @@ export function TradingAppsLeaderboard({
                         )}
                         <span className="font-medium text-ink">{meta.name}</span>
                       </Link>
+                      {meta.inactive && (
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20 shrink-0" title={`Trading suspended since ${meta.inactiveSince}`}>
+                          Suspended
+                        </span>
+                      )}
                       {meta.benchUrl && (
                         <a
                           href={meta.productUrl}

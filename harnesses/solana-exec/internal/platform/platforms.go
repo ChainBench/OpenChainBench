@@ -5,8 +5,18 @@ package platform
 // paginates each independently and aggregates before sampling.
 // Sources: DefiLlama dimension-adapters, verified 2026-08.
 var FeeAccounts = map[string][]string{
+	// 8 bonding-curve fee recipients (round-robin) + Mayhem wallet.
+	// Sources: DeFiLlama fees/pumpdotfun adapter (master, 2026-08).
 	"pump.fun": {
 		"CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM",
+		"62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV",
+		"FWsW1xNtWscwNmKv6wVsU1iTzRN6wmmk3MjxRP5tT7hz",
+		"7hTckgnGnLQR6sdH7YkqFTAA7VwTfYFaZ6EhEsU3saCX",
+		"AVmoTthdrX6tKt4nDjco2D775W2YK3sDhxPcMmzUAmTY",
+		"9rPYyANsfQZw3DnDmKE3YCQF5E8oD89UXoHn9JFEhJUz",
+		"G5UZAVbAf46s7cKWoyKu8kYTip9DGTpbLZ2qa9Aq69dP",
+		"7VtfL8fvgNfhz17qKRMjzQEXgbdpnHHHQRh54R9jP2RJ",
+		"GesfTA3X2arioaHp8bbKdjG9vJtskViWACZoYvxp4twS", // Mayhem mode
 	},
 	"photon": {
 		"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH",
