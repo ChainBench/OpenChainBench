@@ -65,6 +65,15 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 900
 
+metric_panels:
+  - id: trade_count
+    label: Trade count (24h)
+    label_key: platform
+    metric: memecoin_platform_trade_count
+    unit: count
+    higher_is_better: true
+    description: "Total number of trades sampled across top pump.fun tokens in the last 24h, weighted across all tracked tokens. Higher count = more active trading activity routed through this platform."
+
 providers:
   - slug: pump-fun
     name: pump.fun
