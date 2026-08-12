@@ -183,7 +183,13 @@ func (db *DB) Materialize(ctx context.Context, platform string) error {
 			COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p50_cu_price_micro,
 			COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY e.cu_price_micro) FILTER (WHERE e.cu_price_micro > 0), 0) AS p95_cu_price_micro,
 			AVG(e.platform_fee_lamports) AS avg_platform_fee_lamports,
-			SUM(e.platform_fee_lamports) AS sum_platform_fee_lamports,
+			-- Scale sampled fee sum by raw/sampled ratio so the total reflects full volume.
+			-- Without scaling, sum would be ~1/N of reality for high-volume platforms.
+			CASE
+				WHEN r.success_count IS NOT NULL AND COUNT(*) > 0
+				THEN (SUM(e.platform_fee_lamports)::numeric * r.success_count / COUNT(*))::bigint
+				ELSE SUM(e.platform_fee_lamports)
+			END AS sum_platform_fee_lamports,
 			AVG(CASE WHEN e.is_jito_bundle THEN 1.0 ELSE 0.0 END) AS jito_rate,
 			AVG(e.cu_consumed) AS avg_cu_consumed,
 			now()
