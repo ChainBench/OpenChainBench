@@ -135,7 +135,7 @@ export default async function AppsHubPage() {
       </p>
 
       <div className="mt-10">
-        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} />
+        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} fomoRelayAvailable={fomoRelay !== null} />
       </div>
 
       <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
