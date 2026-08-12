@@ -13,7 +13,7 @@ var apps = []struct {
 	slug string
 	id   string
 }{
-	{"pumpfun", "6717572591"},
+	{"pump-fun", "6717572591"},
 	{"fomo", "6741115427"},
 	{"gmgn", "6745328711"},
 	{"moonshot", "6503993131"},
