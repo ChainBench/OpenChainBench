@@ -5,6 +5,7 @@ import { SITE } from "@/data/site";
 import { fetchEVMRevenue } from "@/lib/evm-exec";
 import { fetchExecLeaderboard } from "@/lib/solana-exec";
 import { fetchSolPrice } from "@/lib/sol-price";
+import { fetchFOMORelayFees } from "@/lib/dune";
 import { TRADING_APPS } from "@/lib/trading-apps-config";
 import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
 import { RevenueSummary } from "@/components/revenue-summary";
@@ -25,10 +26,11 @@ export const revalidate = 300;
 const WINDOWS = ["24h", "7d", "30d"] as const;
 
 export default async function AppsHubPage() {
-  const [evmData, solanaData, solPrice] = await Promise.all([
+  const [evmData, solanaData, solPrice, fomoRelay] = await Promise.all([
     fetchEVMRevenue(),
     fetchExecLeaderboard(),
     fetchSolPrice(),
+    fetchFOMORelayFees(),
   ]);
 
   const evmByPlatform = new Map(
@@ -62,6 +64,14 @@ export default async function AppsHubPage() {
           solanaFees = (wData.txCount * wData.avgPlatformFeeLamports) / 1e9 * solPrice;
         }
       }
+
+      // FOMO: supplement on-chain fees with off-chain relay fees from Dune
+      // (relay accounts for ~96% of FOMO's actual revenue)
+      if (meta.id === "fomo" && fomoRelay) {
+        const relayFee = w === "24h" ? fomoRelay.fees24h : w === "7d" ? fomoRelay.fees7d : fomoRelay.fees30d;
+        solanaFees = (solanaFees ?? 0) + relayFee;
+      }
+
       windows[w] = {
         solana: solanaFees,
         ethereum: ethFees,
