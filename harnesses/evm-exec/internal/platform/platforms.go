@@ -59,7 +59,7 @@ var PlatformConfig = map[string]map[string]EVMPlatform{
 		},
 		"base": {
 			FeeCollector:  "0x16388de42c5829fd0e88c8eb001ef43bfc93f177",
-			NativeEnabled: false, // requires BASESCAN_API_KEY (paid plan)
+			NativeEnabled: true, // via BaseScan API (gated on BASESCAN_API_KEY env)
 			ERC20Tokens:   []string{USDC_BASE},
 			BootstrapDays: 30,
 		},
