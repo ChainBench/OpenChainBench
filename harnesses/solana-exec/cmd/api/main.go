@@ -234,10 +234,17 @@ func mustEnv(key string) string {
 // ---- EVM revenue endpoint ----
 
 // evmCoverage is the static coverage map derived from the evm-exec platform config.
-// "full" = native + stable; "stable-only" = only ERC-20 USDC tracked.
+// "full" = native + stable; "stable-only" = only ERC-20 USDC/USDG tracked.
+// Mirrors platform.Coverage() in evm-exec/internal/platform/platforms.go.
 var evmCoverage = map[string]map[string]string{
-	"gmgn":    {"ethereum": "full", "bsc": "full", "base": "stable-only"},
-	"pumpfun": {"ethereum": "full", "bsc": "full", "base": "stable-only"},
+	"pumpfun":           {"ethereum": "full", "bsc": "full", "base": "full"},
+	"gmgn":              {"ethereum": "full", "bsc": "full", "base": "full"},
+	"maestro":           {"ethereum": "full", "bsc": "full", "base": "full"},
+	"axiom":             {"bsc": "full"},
+	"gmgn-robinhood":    {"robinhood": "full"},
+	"maestro-robinhood": {"robinhood": "full"},
+	// banana-gun: evmKey=null in frontend config; EVM data intentionally not displayed
+	// (router addresses receive trade principal, not fees; pending eth_getLogs on topic 0x72015ace…)
 }
 
 // coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.

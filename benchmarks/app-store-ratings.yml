@@ -3,8 +3,8 @@
 slug: app-store-ratings
 number: "202"
 title: "Crypto trading app iOS ratings: Coinbase vs Robinhood vs Crypto.com vs Bybit, live"
-seo_title: "Crypto trading app App Store ratings 2026: Coinbase, Robinhood, Crypto.com, Bybit, Kraken, Fomo, PumpFun, GMGN, Moonshot"
-seo_description: "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars. Coinbase vs Robinhood vs Crypto.com vs Bybit vs Kraken vs Fomo vs PumpFun vs GMGN vs Moonshot ranked live from iTunes ratings."
+seo_title: "Crypto trading app App Store ratings 2026: Coinbase, Robinhood, Crypto.com, Bybit, Kraken, Invo, Fomo, PumpFun, GMGN, Moonshot"
+seo_description: "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars. Coinbase vs Robinhood vs Crypto.com vs Bybit vs Kraken vs Invo vs Fomo vs PumpFun vs GMGN vs Moonshot ranked live from iTunes ratings."
 subtitle: Live Apple App Store ratings for the leading crypto trading apps on iOS. Updated every 30 minutes from the iTunes lookup API. Rating is the current average across all user reviews. Review count shows how many users voted.
 
 category: Trading
@@ -51,6 +51,7 @@ methodology:
   - "GMGN (ID 6745328711): AI-powered trading terminal focused on Solana meme coins."
   - "PumpFun (ID 6717572591): launched Oct 2024. Bonding-curve launchpad and trading app for Solana meme coins."
   - "Moonshot (ID 6503993131): mobile-first meme coin launchpad with fiat onramp via Apple Pay, by DEX Screener."
+  - "Invo (ID 1601301148): Hyperliquid-native social trading mobile app with 170+ perp pairs, copy trading, and 25k+ referrals via its registered builder code."
 
 findings:
   - "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars."
@@ -226,3 +227,16 @@ providers:
       success: app_store_health{app="binance-us"}
       sample_size: app_store_reviews_total{app="binance-us"}
       series: app_store_rating{app="binance-us"}
+
+  - slug: invo
+    name: Invo
+    tag: "Hyperliquid social trading app"
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 1601301148, US store, all-time average). Review count from app_store_reviews_total{app=\"invo\"}."
+    queries:
+      p50: app_store_rating{app="invo"}
+      p90: app_store_rating{app="invo"}
+      p99: app_store_rating{app="invo"}
+      mean: app_store_rating{app="invo"}
+      success: app_store_health{app="invo"}
+      sample_size: app_store_reviews_total{app="invo"}
+      series: app_store_rating{app="invo"}
