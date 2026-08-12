@@ -128,6 +128,8 @@ const CANONICAL_NAMES: Record<string, string> = {
   "near-intents": "NEAR Intents",
   edgex: "edgeX",
   sui: "Sui",
+  fomo: "FOMO",
+  "pump-fun": "pump.fun",
 };
 
 function titleCaseSlug(s: string): string {
