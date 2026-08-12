@@ -83,6 +83,7 @@ const BRANDS: Record<string, Brand> = {
   photon: { color: "#8B5CF6" },        // photon violet
   trojan: { color: "#EF4444" },        // trojan red
   gmgn: { color: "#3B82F6" },          // gmgn blue
+  bullx: { color: "#F59E0B" },         // bullx amber
 
   // ─── Crypto trading apps (bench № 202) ───
   invo: { color: "#7B5EA7" },          // invo purple
