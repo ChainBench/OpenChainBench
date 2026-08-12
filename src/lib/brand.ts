@@ -77,6 +77,13 @@ const BRANDS: Record<string, Brand> = {
   relay: { color: "#26D49B" },         // mint
   across: { color: "#6CF9D8" },        // across aqua
 
+  // ─── Solana DEX platforms (bench № 205) ───
+  pumpswap: { color: "#00C851" },      // pump.fun green (shares brand)
+  axiom: { color: "#6EE7B7" },         // axiom mint
+  photon: { color: "#8B5CF6" },        // photon violet
+  trojan: { color: "#EF4444" },        // trojan red
+  gmgn: { color: "#3B82F6" },          // gmgn blue
+
   // ─── Crypto trading apps (bench № 202) ───
   invo: { color: "#7B5EA7" },          // invo purple
   robinhood: { color: "#00C805" },     // robinhood green
