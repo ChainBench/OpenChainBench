@@ -2,9 +2,9 @@
 
 slug: solana-dex-volume
 number: "205"
-title: "Solana DEX volume: PumpSwap vs Axiom vs GMGN vs Fomo, live 24h"
-seo_title: "Solana DEX trading volume 2026: PumpSwap vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX"
-seo_description: "{{best_name}} leads Solana DEX trading platforms at ${{best_p50}} 24h volume. PumpSwap vs Axiom vs GMGN vs Fomo vs Trojan vs pump.fun vs Photon vs BullX ranked live from DeFiLlama."
+title: "Solana DEX volume: pump.fun vs Axiom vs GMGN vs Fomo, live 24h"
+seo_title: "Solana DEX trading volume 2026: pump.fun vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX"
+seo_description: "{{best_name}} leads Solana DEX trading platforms at ${{best_p50}} 24h volume. pump.fun vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX ranked live from DeFiLlama."
 subtitle: Live 24-hour trading volume and protocol revenue for the top Solana DEX platforms. Updated every 30 minutes from DeFiLlama. The fee column shows what each protocol earns, not what users pay in gas.
 
 category: Trading
@@ -14,18 +14,19 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume and revenue data sourced from DeFiLlama's DEX and fees APIs, which track on-chain swap events attributed to each protocol. DeFiLlama attribution relies on on-chain referral tags and program IDs; platforms that do not embed standard tags may be undercounted. Figures are 24-hour and 7-day rolling totals updated every 30 minutes. Revenue figures use DeFiLlama's dailyRevenue dataType, which strips LP fees and reports only the share captured by the protocol itself.
+  Volume and revenue data sourced from DeFiLlama's DEX and fees APIs. DeFiLlama attributes volume via on-chain referral tags and program IDs; platforms without standard tags may be undercounted. Figures are 24-hour and 7-day rolling totals updated every 30 minutes. Revenue uses DeFiLlama's dailyRevenue dataType, stripping LP fees. Terminal volume (Axiom, GMGN, Fomo) and launchpad volume (pump.fun) use different attribution methods and are not directly additive.
 
 seo_intro: |
-  The Solana DEX market is a contested three-way race between PumpSwap, Axiom and
-  GMGN in the summer of 2026. PumpSwap (pump.fun's new AMM) surged to over $500
-  million in daily volume after pump.fun reduced bonding-curve trading fees in August 2026, making
-  it the dominant Solana DEX by raw volume. Axiom and GMGN each process around $70
-  million per day, competing for the power-trader segment. Fomo's DEX reached $50
-  million daily volume and briefly overtook Axiom in revenue for the first time on
-  August 6, 2026, a milestone that triggered pump.fun's fee cut the following day.
-  This benchmark tracks all eight platforms in real time from DeFiLlama's DEX data
-  feed, refreshed every 30 minutes.
+  The Solana DEX market in summer 2026 is split between pump.fun's launchpad,
+  which dominates early-stage token trading, and a set of competing terminals
+  (Axiom, GMGN, Fomo) targeting active traders on graduated tokens. pump.fun
+  cut its bonding-curve trading fees to zero on August 7 2026 in response to
+  Fomo briefly overtaking Axiom in daily revenue the day before, reshaping the
+  competitive landscape overnight. Axiom and GMGN each process around $70
+  million per day in terminal volume. Fomo reached $50 million daily volume and
+  crossed Axiom on revenue for the first time on August 6 2026. This benchmark
+  tracks all seven platforms in real time from DeFiLlama's DEX data feed,
+  refreshed every 30 minutes.
 
 abstract: |
   The harness polls DeFiLlama's public DEX API (api.llama.fi/summary/dexs/{slug})
@@ -43,22 +44,22 @@ methodology:
   - "Revenue: total24h and total7d from the fees endpoint with dataType=dailyRevenue. This strips LP fees that stay in pool accounts and returns only the protocol's own share."
   - "Take rate: protocol revenue divided by trading volume (defillama_dex_fees_24h_usd / defillama_dex_volume_24h_usd). Measures how much of each dollar traded the platform captures."
   - "Attribution: DeFiLlama uses on-chain referral tags, program IDs and memo fields. Platforms without standard tagging may be undercounted."
-  - "PumpSwap (slug pumpswap, layer AMM): pump.fun's constant-product AMM launched April 2025. Volume surged after pump.fun reduced bonding-curve trading fees in August 2026."
-  - "pump.fun (slug pump.fun, layer Launchpad): the original bonding-curve launchpad. A token graduates from the curve to PumpSwap's AMM when it reaches its market cap target. Revenue includes creator fees, graduation fees, and protocol fees across the full lifecycle."
+  - "pump.fun (slug pump.fun, layer Launchpad): the original bonding-curve launchpad. Users trade tokens directly on the curve; a token graduates to PumpSwap's AMM at roughly $69K market cap. Cut bonding-curve fees to zero on Aug 7 2026."
   - "Axiom (slug axiom, layer Terminal): web-based Solana trading terminal. 0.25 to 0.5% platform fee on routed swaps. Revenue briefly overtaken by Fomo on Aug 6 2026."
   - "GMGN (slug gmgn, layer Terminal): AI-powered trading terminal on Solana. Approximately 1% fee on routed swaps."
   - "fomo Wallet (slug fomo-wallet, layer Terminal): Fomo's DEX routing layer. 0.5% platform fee. First crossed Axiom on daily revenue Aug 6 2026."
   - "Trojan (slug trojan, layer Bot): Telegram trading bot on Solana. Lower volume than web terminals but serves a distinct Telegram-native user base."
   - "Photon (slug photon, layer Terminal): Solana trading terminal targeted at advanced traders."
   - "BullX (slug bullx, layer Terminal): Solana and multi-chain trading terminal. Volume fell sharply from its 2025 highs after competitors expanded; now a fraction of peak levels."
-  - "Phantom: Phantom Wallet is the largest Solana wallet by user count but does not have its own DeFiLlama DEX slug and is therefore not tracked here. Phantom routes swaps through Jupiter and other aggregators, which appear in those protocols' volume figures."
+  - "PumpSwap is pump.fun's backend AMM where graduated tokens trade. It is not tracked here because its volume overlaps with terminal volume: when Axiom or GMGN route a swap to PumpSwap, that trade appears in both the terminal's figures and PumpSwap's. Tracking PumpSwap alongside the terminals would double-count activity."
+  - "Phantom: Phantom Wallet is the largest Solana wallet by user count but does not have its own DeFiLlama DEX slug. Phantom routes swaps through Jupiter and other aggregators, which appear in those protocols' volume figures."
 
 findings:
   - "{{best_name}} leads Solana DEX platforms at ${{best_p50}} 24h volume."
-  - "PumpSwap is the dominant Solana DEX by raw volume, propelled by pump.fun's fee reductions in August 2026 which shifted bonding-curve activity to the AMM."
-  - "Axiom and GMGN are the top independent trading terminals, each routing around $70 million per day."
-  - "Fomo's DEX briefly outpaced Axiom in daily revenue on Aug 6 2026, the event that triggered pump.fun's zero-fee response."
-  - "The fee column shows the business model split: pump.fun monetises token launches, PumpSwap monetises secondary trading, while Axiom, GMGN and Fomo charge frontend routing fees."
+  - "pump.fun dominates early-stage token volume with its bonding-curve launchpad, even after cutting trading fees to zero on Aug 7 2026."
+  - "Axiom and GMGN are the leading independent trading terminals, each routing around $70 million per day on graduated tokens."
+  - "Fomo briefly outpaced Axiom in daily revenue on Aug 6 2026, the event that triggered pump.fun's zero-fee response the following day."
+  - "The take rate column reveals the business model split: pump.fun earns on token launches and lifecycle fees, while Axiom, GMGN and Fomo charge frontend routing fees on each swap."
   - "BullX is tracked but operates at a fraction of peak volume following market share losses in 2026."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-dex-volume
@@ -98,33 +99,33 @@ ledger_columns:
   - { label: "7d Volume", panel: volume_7d }
 
 faq:
-  - q: "What is the difference between pump.fun and PumpSwap?"
-    a: "pump.fun is the original bonding-curve launchpad where new tokens are created and traded. PumpSwap is pump.fun's separate constant-product AMM where tokens migrate after graduating from the bonding curve at roughly $69K market cap. Both are tracked separately because they serve different trading stages and have different fee structures."
-  - q: "Why did PumpSwap volume surge in August 2026?"
-    a: "pump.fun reduced bonding-curve trading fees in August 2026, shifting more swap activity toward PumpSwap's AMM layer and driving PumpSwap volume above $500 million per day. Revenue reported by DeFiLlama for pump.fun still includes creator fees, graduation fees, and other lifecycle revenue components, so the revenue figure does not drop to zero even after the fee reduction."
+  - q: "Why is PumpSwap not tracked here?"
+    a: "PumpSwap is pump.fun's backend AMM where tokens trade after graduating from the bonding curve. It is excluded because its volume overlaps with the terminal volume already tracked: when Axiom, GMGN or Fomo routes a swap to PumpSwap, that trade appears in both the terminal's DeFiLlama figures and PumpSwap's. Including PumpSwap alongside the terminals would double-count that activity and distort the comparison. The bench tracks platforms where users go directly to trade, not the underlying AMM they route through."
+  - q: "What is Fomo?"
+    a: "Fomo (fomo.family) is a Solana trading platform and wallet launched in April 2025 by a team backed by Index Ventures and USV. It charges 0.5% on routed swaps and briefly led Solana daily DEX revenue on August 6 2026, overtaking Axiom for the first time."
+  - q: "Why did pump.fun cut its fees to zero?"
+    a: "On August 6 2026, Fomo briefly overtook Axiom in daily protocol revenue, signaling that frontend trading terminals were capturing an increasing share of the Solana DEX market. pump.fun responded on August 7 by eliminating bonding-curve trading fees, making it cheaper to launch and trade new tokens on pump.fun than on competing platforms."
   - q: "Why is Phantom not tracked here?"
     a: "Phantom is the largest Solana wallet by user count but it routes swaps through aggregators like Jupiter rather than operating its own DEX contract. DeFiLlama does not assign Phantom a DEX slug because its on-chain footprint is the aggregator's, not Phantom's. Those swaps appear in Jupiter's figures. This bench tracks the platforms that DeFiLlama can attribute volume to directly."
   - q: "How is this different from the Solana trading platform leaderboard (bench 201)?"
-    a: "Bench 201 uses Mobula's lighthouse API to attribute swaps to the frontend UI (GMGN, Axiom, Fomo, etc.). This bench uses DeFiLlama's protocol-level DEX data, which tracks the on-chain contracts and programs. The two data sources cross-validate each other and may differ when users route through multiple aggregators."
-  - q: "What is Fomo?"
-    a: "Fomo (fomo.family) is a Solana trading platform and wallet launched in April 2025 by a team backed by Index Ventures and USV. It charges 0.5% on routed swaps and briefly led Solana daily DEX revenue on August 6 2026, overtaking Axiom for the first time."
+    a: "Bench 201 uses Mobula's lighthouse API to attribute swaps to the frontend UI (GMGN, Axiom, Fomo, etc.). This bench uses DeFiLlama's protocol-level DEX data, which tracks on-chain referral tags and program IDs. The two data sources cross-validate each other and may differ when users route through multiple aggregators."
   - q: "Why does Photon show less volume than GMGN and Axiom?"
     a: "Photon targets advanced traders and has a smaller but higher-frequency user base. Volume varies by day and market conditions. DeFiLlama attribution may also undercount platforms that do not embed standard on-chain referral tags."
   - q: "What is the take rate and why does it matter?"
-    a: "The take rate is protocol revenue divided by trading volume. It shows how much of each dollar traded the platform keeps. A launchpad like pump.fun has a high take rate because it charges 1% on bonding-curve trades. A pure AMM like PumpSwap has a lower take rate because most of the fee goes to liquidity providers, not the protocol. Comparing take rates reveals which platforms extract more value from their users."
+    a: "The take rate is protocol revenue divided by trading volume. It shows how much of each dollar traded the platform keeps. pump.fun has a high take rate because it earns creator fees, graduation fees and protocol fees across the token lifecycle. Terminals like Axiom, GMGN and Fomo earn a routing fee on each swap. Comparing take rates reveals which platforms extract more value per dollar of activity."
 
 providers:
-  - slug: pumpswap
-    name: PumpSwap
-    tag: "AMM, pump.fun"
-    formula: "24h DEX trading volume in USD for PumpSwap (DeFiLlama summary/dexs/pumpswap, total24h, updated every 30 min)."
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Launchpad, Solana"
+    formula: "24h DEX trading volume in USD for pump.fun bonding curve (DeFiLlama summary/dexs/pump.fun, total24h, updated every 30 min)."
     queries:
-      p50: defillama_dex_volume_24h_usd{platform="pumpswap"}
-      p90: defillama_dex_volume_24h_usd{platform="pumpswap"}
-      p99: defillama_dex_volume_24h_usd{platform="pumpswap"}
-      mean: defillama_dex_volume_24h_usd{platform="pumpswap"}
-      success: defillama_dex_health{platform="pumpswap"}
-      series: defillama_dex_volume_24h_usd{platform="pumpswap"}
+      p50: defillama_dex_volume_24h_usd{platform="pump-fun"}
+      p90: defillama_dex_volume_24h_usd{platform="pump-fun"}
+      p99: defillama_dex_volume_24h_usd{platform="pump-fun"}
+      mean: defillama_dex_volume_24h_usd{platform="pump-fun"}
+      success: defillama_dex_health{platform="pump-fun"}
+      series: defillama_dex_volume_24h_usd{platform="pump-fun"}
 
   - slug: axiom
     name: Axiom
@@ -161,18 +162,6 @@ providers:
       mean: defillama_dex_volume_24h_usd{platform="fomo"}
       success: defillama_dex_health{platform="fomo"}
       series: defillama_dex_volume_24h_usd{platform="fomo"}
-
-  - slug: pump-fun
-    name: pump.fun
-    tag: "Launchpad, Solana"
-    formula: "24h DEX trading volume in USD for pump.fun bonding curve (DeFiLlama summary/dexs/pump.fun, total24h, updated every 30 min)."
-    queries:
-      p50: defillama_dex_volume_24h_usd{platform="pump-fun"}
-      p90: defillama_dex_volume_24h_usd{platform="pump-fun"}
-      p99: defillama_dex_volume_24h_usd{platform="pump-fun"}
-      mean: defillama_dex_volume_24h_usd{platform="pump-fun"}
-      success: defillama_dex_health{platform="pump-fun"}
-      series: defillama_dex_volume_24h_usd{platform="pump-fun"}
 
   - slug: trojan
     name: Trojan

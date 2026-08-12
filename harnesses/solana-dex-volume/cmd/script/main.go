@@ -39,7 +39,6 @@ var platforms = []struct {
 	slug  string
 	label string
 }{
-	{"pumpswap", "pumpswap"},
 	{"pump.fun", "pump-fun"},
 	{"gmgn", "gmgn"},
 	{"axiom", "axiom"},
