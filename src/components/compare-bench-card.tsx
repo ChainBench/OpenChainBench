@@ -274,8 +274,12 @@ function AggregatePanel({
           </p>
           {details && (
             <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] text-ink-muted tabular">
-              <dt>p99</dt>
-              <dd className="text-right text-ink-soft">{fmtUnit(details.p99, unit)}</dd>
+              {(details.sampleSize ?? 0) >= 100 ? (
+                <>
+                  <dt>p99</dt>
+                  <dd className="text-right text-ink-soft">{fmtUnit(details.p99, unit)}</dd>
+                </>
+              ) : null}
               <dt>rank</dt>
               <dd className="text-right text-ink-soft">
                 {details.rank > 0 ? `#${details.rank}` : "—"}
@@ -285,6 +289,14 @@ function AggregatePanel({
                   <dt>samples</dt>
                   <dd className="text-right text-ink-soft">
                     {Math.round(details.sampleSize).toLocaleString()}
+                    {details.sampleSize < 100 && (
+                      <span
+                        className="ml-1 text-amber-400/80"
+                        title="Fewer than 100 samples — treat as provisional"
+                      >
+                        provisional
+                      </span>
+                    )}
                   </dd>
                 </>
               ) : null}
