@@ -372,13 +372,13 @@ function buildComparisonProse(
 
   const parts: string[] = [];
   if (aWinTitles.length === 0) {
-    const word = total === 1 ? "the only live benchmark" : `all ${total} live benchmarks`;
+    const word = total === 1 ? "the only live benchmark" : total === 2 ? "both live benchmarks" : `all ${total} live benchmarks`;
     parts.push(`${bName} leads on ${word}.`);
   } else if (bWinTitles.length === 0) {
-    const word = total === 1 ? "the only live benchmark" : `all ${total} live benchmarks`;
+    const word = total === 1 ? "the only live benchmark" : total === 2 ? "both live benchmarks" : `all ${total} live benchmarks`;
     parts.push(`${aName} leads on ${word}.`);
   } else if (aWinTitles.length === bWinTitles.length) {
-    parts.push(`Split: ${aName} leads on ${aWinTitles.slice(0, 2).join(", ")}; ${bName} leads on ${bWinTitles.slice(0, 2).join(", ")}.`);
+    parts.push(`Split decision: ${aName} leads on ${aWinTitles.slice(0, 2).join(", ")}; ${bName} leads on ${bWinTitles.slice(0, 2).join(", ")}.`);
   } else {
     parts.push(
       `${aName} leads on ${aWinTitles.length} of ${total} shared benchmarks, ${bName} on ${bWinTitles.length}${ties > 0 ? ` (${ties} tied)` : ""}.`,
@@ -819,14 +819,14 @@ export default async function ComparePage({
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(aWinsBench)} on ${st}, ${a.name} or ${b.name}?`,
+      q: `Which is ${verbForBench(aWinsBench)}, ${a.name} or ${b.name}?`,
       a: `On the ${st} benchmark, ${a.name} leads at ${fmtUnit(aWinsBench.aResult.p50, aWinsBench.unit)} versus ${b.name} at ${fmtUnit(aWinsBench.bResult.p50, aWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     const st = shortBenchTitle(bWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(bWinsBench)} on ${st}, ${a.name} or ${b.name}?`,
+      q: `Which is ${verbForBench(bWinsBench)}, ${a.name} or ${b.name}?`,
       a: `On the ${st} benchmark, ${b.name} leads at ${fmtUnit(bWinsBench.bResult.p50, bWinsBench.unit)} versus ${a.name} at ${fmtUnit(bWinsBench.aResult.p50, bWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }

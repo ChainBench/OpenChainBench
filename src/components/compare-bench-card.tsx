@@ -197,10 +197,20 @@ function ScopeTable({
         <tbody>
           {(["a", "b"] as const).map((side) => {
             const name = side === "a" ? aName : bName;
+            const sampleSize = side === "a" ? (bench.aResult?.sampleSize ?? 0) : (bench.bResult?.sampleSize ?? 0);
+            const provisional = sampleSize > 0 && sampleSize < 100;
             return (
               <tr key={side} className="border-t border-rule">
                 <td className="py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted sticky left-0 bg-bg border-r border-rule/40">
                   {name}
+                  {provisional && (
+                    <span
+                      className="ml-1.5 text-amber-400/80 font-normal normal-case tracking-normal"
+                      title={`${Math.round(sampleSize)} samples — treat as provisional`}
+                    >
+                      provisional
+                    </span>
+                  )}
                 </td>
                 {cols.map((c) => {
                   const val = side === "a" ? c.aValue : c.bValue;
