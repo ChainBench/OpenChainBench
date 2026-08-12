@@ -176,3 +176,16 @@ providers:
       success: solana_platform_health{platform="maestro"}
       sample_size: solana_platform_fees_24h_usd{platform="maestro"}
       series: solana_platform_volume_24h_usd{platform="maestro"}
+
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Solana meme launchpad and trading app"
+    formula: "24h swap volume in USD attributed to pump.fun (Mobula lighthouse byPlatform[name=pump-fun].volumeUSD.24h, updated every 15 min)."
+    queries:
+      p50: solana_platform_volume_24h_usd{platform="pump-fun"}
+      p90: solana_platform_volume_24h_usd{platform="pump-fun"}
+      p99: solana_platform_volume_24h_usd{platform="pump-fun"}
+      mean: solana_platform_volume_24h_usd{platform="pump-fun"}
+      success: solana_platform_health{platform="pump-fun"}
+      sample_size: solana_platform_fees_24h_usd{platform="pump-fun"}
+      series: solana_platform_volume_24h_usd{platform="pump-fun"}
