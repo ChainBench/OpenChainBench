@@ -13,6 +13,13 @@ type MobulaTrade struct {
 	Hash      string  `json:"hash"`
 	Sender    string  `json:"sender"`
 	AmountUSD float64 `json:"amountUSD"`
+	PoolType  string  `json:"poolType"`
+}
+
+// isPumpFunNative returns true for trades on pump.fun's bonding curve or
+// PumpSwap AMM (post-migration). Uses poolType field from token/trades-enriched.
+func (t *MobulaTrade) isPumpFunNative() bool {
+	return t.PoolType == "pumpfun" || t.PoolType == "pumpswap"
 }
 
 type mobulaTradesResp struct {
