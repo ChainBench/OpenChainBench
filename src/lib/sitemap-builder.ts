@@ -412,12 +412,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.85,
           };
         } catch {
-          return {
-            url: `${SITE.url}/chains/${c.slug}`,
-            lastModified: catalogTs,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-          };
+          // Fail-safe: if we can't verify this chain has benches, omit it.
+          // Emitting unverified URLs causes smoke-test 404s that block every
+          // prod deploy. Chains with real bench data re-enter the sitemap on
+          // the next successful build.
+          return null;
         }
       }),
     )
