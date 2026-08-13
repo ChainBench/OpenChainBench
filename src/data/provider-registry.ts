@@ -1642,6 +1642,38 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@BitgetWallet",
   },
 
+  // ─── App store / CEX (bench № 202) ─────────────────────────────────
+  coinbase: {
+    url: "https://www.coinbase.com",
+    description:
+      "Coinbase is the largest US-regulated centralized exchange, publicly listed on Nasdaq (COIN). It offers spot trading, staking, and a self-custody wallet, primarily targeting retail investors in the United States.",
+    twitter: "@coinbase",
+  },
+  kraken: {
+    url: "https://www.kraken.com",
+    description:
+      "Kraken is a US-registered centralized exchange founded in 2011, offering spot, margin and futures trading across 300+ assets with a strong reputation for security and regulatory compliance.",
+    twitter: "@krakenfx",
+  },
+  "binance-us": {
+    url: "https://www.binance.us",
+    description:
+      "Binance.US is the US-regulated affiliate of Binance, operating under FinCEN MSB registration. It offers spot trading for US customers on a subset of the global Binance order book.",
+    twitter: "@BinanceUS",
+  },
+  robinhood: {
+    url: "https://robinhood.com",
+    description:
+      "Robinhood is a US commission-free investing app with 25M+ funded accounts. It added crypto trading in 2018, launched its own L2 chain (Robinhood Chain) in 2025, and is the #1 most-reviewed financial app on the US App Store with nearly 5 million ratings.",
+    twitter: "@RobinhoodApp",
+  },
+  cryptocom: {
+    url: "https://crypto.com",
+    description:
+      "Crypto.com is a Singapore-headquartered centralized exchange serving 100M+ users globally. The app offers spot and derivatives trading, a Visa card, DeFi wallet and staking, making it one of the most feature-complete crypto super apps on iOS.",
+    twitter: "@cryptocom",
+  },
+
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
     url: "https://www.bybit.com",
