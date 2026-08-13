@@ -134,6 +134,7 @@ func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, que
 	// Aggregate rows per platform (Dune may return multiple rows).
 	type totals struct{ feesUSD float64 }
 	byPlatform := make(map[string]*totals)
+	var latestBlockTime string
 	for _, r := range rows {
 		if r.Platform == "" {
 			continue
@@ -144,6 +145,14 @@ func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, que
 			byPlatform[r.Platform] = t
 		}
 		t.feesUSD += r.USDCFees24h + r.WSOLFees24h*solUSD + r.SOLFees24h*solUSD
+		if r.DataFreshness > latestBlockTime {
+			latestBlockTime = r.DataFreshness
+		}
+	}
+	if latestBlockTime != "" {
+		if ts, err := time.Parse("2006-01-02T15:04:05", latestBlockTime[:19]); err == nil {
+			duneDataFreshness.Set(float64(ts.Unix()))
+		}
 	}
 
 	// Fomo fees: on-chain USDC sweeps + off-chain relay fees only accessible

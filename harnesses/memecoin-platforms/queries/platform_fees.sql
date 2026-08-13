@@ -1,11 +1,13 @@
 -- OCB Bench 203: Memecoin Platform Fees (Dune Trino SQL)
 -- Monitors known fee wallets for native SOL, USDC, and WSOL inflows.
 -- Key: native SOL uses address column, SPL tokens use token_balance_owner column.
--- Columns returned: platform, usdc_fees_24h, wsol_fees_24h, sol_fees_24h
+--
+-- Columns: platform, usdc_fees_24h, wsol_fees_24h, sol_fees_24h, data_freshness
+-- data_freshness = MAX(block_time) across all matched rows; alerts if table lags
+-- and the nominal 24h window silently shrinks (e.g. table only refreshed 20h ago).
 
 WITH
 
--- All known fee wallet addresses mapped to platform
 wallet_platform AS (
   SELECT address, platform FROM (VALUES
     ('BB5dnY55FXS1e1NXqZDwCzgdYJdMCj3B92PU6Q5Fb6DT','gmgn'),
@@ -59,9 +61,8 @@ wallet_platform AS (
   ) AS t(address, platform)
 ),
 
--- Native SOL inflows: address column matches the fee wallet directly
 native_sol AS (
-  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow
+  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.address = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -69,9 +70,8 @@ native_sol AS (
     AND a.post_balance > a.pre_balance
 ),
 
--- USDC inflows: token_balance_owner is the fee wallet, token account address differs
 usdc_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow
+  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -79,27 +79,29 @@ usdc_inflows AS (
     AND a.post_token_balance > a.pre_token_balance
 ),
 
--- WSOL inflows: same join pattern as USDC
 wsol_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow
+  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
     AND a.post_token_balance > a.pre_token_balance
+),
+
+combined AS (
+  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow, block_time FROM native_sol
+  UNION ALL
+  SELECT platform, inflow, 0.0, 0.0, block_time FROM usdc_inflows
+  UNION ALL
+  SELECT platform, 0.0, inflow, 0.0, block_time FROM wsol_inflows
 )
 
 SELECT
   platform,
   COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
   COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
-  COALESCE(SUM(sol_inflow), 0) AS sol_fees_24h
-FROM (
-  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow FROM native_sol
-  UNION ALL
-  SELECT platform, inflow AS usdc_inflow, 0.0, 0.0 FROM usdc_inflows
-  UNION ALL
-  SELECT platform, 0.0, inflow AS wsol_inflow, 0.0 FROM wsol_inflows
-) combined
+  COALESCE(SUM(sol_inflow), 0)  AS sol_fees_24h,
+  MAX(block_time)                AS data_freshness
+FROM combined
 GROUP BY platform
 ORDER BY platform
