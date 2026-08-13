@@ -2,61 +2,161 @@
 
 slug: trading-app-execution
 number: "204"
-title: "Trading app execution quality: Axiom vs GMGN vs Trojan vs Maestro, Solana + EVM"
+title: "Trading app execution quality: Jito rate, CU price, priority fee — Solana"
 seo_title: "Solana trading bot execution quality 2026: Axiom, GMGN, Trojan, Maestro, pump.fun"
-seo_description: "Compare on-chain execution quality for Solana trading apps: avg platform fee, priority fee, Jito bundle rate, CU price. Axiom vs GMGN vs Trojan vs Maestro vs pump.fun vs Photon, measured passively from fee accounts, updated hourly."
-subtitle: Passive on-chain execution metrics for the top Solana trading apps and Telegram bots. Measured directly from fee-account transactions, no synthetic trades. Priority fee, Jito rate, CU price, and platform fee per transaction. EVM chain revenue (Ethereum, BSC, Base) on the chain tabs.
+seo_description: "Compare on-chain execution quality for Solana trading apps: Jito bundle rate, compute unit price, priority fee, platform fee per transaction. Axiom vs GMGN vs Trojan vs Maestro vs Photon, measured passively from fee accounts."
+subtitle: Passive on-chain execution metrics for the top Solana trading apps and bots. Measured directly from fee-account transactions — no synthetic trades. Jito rate, CU price p50/p95, priority fee, and platform fee per transaction.
 
 category: Trading
 status: live
-metric: Avg platform fee
-unit: sol
+metric: Jito rate
+unit: pct
 higher_is_better: false
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-exec
 
 abstract: |
   The harness monitors the on-chain fee-receiver accounts for each trading app using
-  the Solana JSON-RPC getSignaturesForAddress method. For every incoming fee transaction,
-  it records the priority fee, compute units consumed, CU price, presence of a Jito tip,
-  and the SOL amount transferred to the fee account. Samples are bucketed by hour in
-  PostgreSQL and materialised every 5 minutes. No trades are simulated; the collector
-  reads only existing on-chain activity. For EVM chains (Ethereum, BSC, Base), a separate
-  collector tracks USDC and native ETH/BNB transfers to each platform's fee address using
-  eth_getLogs on public RPCs; no trace API required.
+  getSignaturesForAddress on the Solana JSON-RPC. For every incoming fee transaction,
+  it records the priority fee, compute units consumed, CU price (microlamports/CU),
+  presence of a Jito tip, and the SOL amount transferred to the fee account. Samples
+  are bucketed by hour in PostgreSQL and materialised every 5 minutes. No trades are
+  simulated; the collector reads only existing on-chain activity.
 
 methodology:
-  - "Solana source: Helius RPC getSignaturesForAddress on each platform's fee wallet. 100 transactions sampled per poll (every ~5 min)."
-  - "Priority fee: transaction fee minus the 5 000-lamport base fee per signature. Paid by the user to compete for block space."
-  - "CU price: priority fee divided by compute units consumed (microlamports/CU). p50/p95 from sampled CU data."
+  - "Source: Helius RPC getSignaturesForAddress on each platform's confirmed fee wallet(s). 100 transactions sampled per 5-minute poll."
+  - "Priority fee: transaction fee minus 5 000 lamports base fee per signature. Paid to Solana validators to compete for block space."
+  - "CU price: priority fee divided by compute units consumed (microlamports/CU). p50 and p95 from sampled CU data per platform."
   - "Jito rate: fraction of sampled transactions tipping one of the 8 official Jito tip accounts."
   - "Platform fee: average SOL transferred to the platform's fee account per incoming transaction."
-  - "Tx count: total transactions at the fee account over the window, from raw getSignaturesForAddress counts (not just the 100-tx sample)."
-  - "EVM source: eth_getLogs for USDC (ERC-20) transfers + native ETH/BNB transfers to each platform's fee address. Base chain: USDC only (no free trace API for native)."
-  - "EVM cadence: block-by-block scanning, bootstrapped 30 days back on first run, then continuous."
-  - "All measurements are passive; no test transactions, no funded wallets, no on-chain footprint."
+  - "Tx count: total transactions at the fee wallet(s) over the window from raw getSignaturesForAddress counts, scaled by sample ratio."
+  - "All measurements are passive — no test transactions, no funded wallets, no on-chain footprint."
 
 findings:
   - "Axiom leads Solana trading apps by transaction volume, processing over 400K fee transactions per 24h across its 20 fee wallets."
   - "GMGN charges the highest average platform fee per transaction among actively-charging platforms, reflecting its higher-notional trader base."
   - "Maestro has the highest Jito bundle rate, indicating MEV-sensitive routing for its Telegram bot users."
+  - "Trojan shows near-zero Jito rate, consistent with its design prioritising simplicity over MEV protection."
   - "Photon has the highest CU price p95, showing aggressive compute-unit bidding during peak hours."
   - "pump.fun fee wallets have received near-zero inflows since August 7 2026 when the bonding-curve was paused; its platform fee row reflects gas only."
 
 faq:
   - q: "What is platform fee vs priority fee?"
-    a: "Priority fee is paid to Solana validators to compete for block space; it does not go to the trading app. Platform fee is the SOL transferred to the trading app's own fee wallet per transaction, which is the actual revenue the platform captures from each trade."
-  - q: "Why does Trojan show a near-zero Jito rate?"
-    a: "Trojan does not appear to use Jito MEV bundles for its standard execution path. This is consistent with its design as a Telegram bot that prioritises simplicity over MEV protection."
+    a: "Priority fee is paid to Solana validators to compete for block space; it does not go to the trading app. Platform fee is the SOL transferred to the trading app's own fee wallet per transaction — the actual revenue the platform captures from each trade."
   - q: "How is transaction count measured?"
-    a: "Tx count comes from getSignaturesForAddress on the platform's fee wallet(s), which gives the total number of transactions that sent fees to that address. This is the full population count, not a sample; the 100-tx sample is used only for fee amount and CU metrics."
-  - q: "Why are EVM revenues lower than Solana revenues?"
-    a: "Most platforms primarily target Solana users. EVM fee collection varies: some platforms charge mostly in native ETH/BNB via internal transactions which are not traceable without a trace API. The EVM figures reflect directly visible ERC-20 (USDC) and native transfers only."
+    a: "Tx count comes from getSignaturesForAddress on the platform's fee wallet(s), giving the total number of transactions that sent fees to that address. This is the full population count, not a sample; the 100-tx sample is used only for fee amount and CU metrics."
+  - q: "Why does Trojan show near-zero Jito rate?"
+    a: "Trojan does not appear to use Jito MEV bundles for its standard execution path, consistent with its design as a Telegram bot that prioritises simplicity over MEV protection. A near-zero value here is expected behaviour, not a data gap."
+  - q: "Why does pump.fun show near-zero platform fee?"
+    a: "pump.fun's bonding-curve fee wallets stopped receiving inflows after August 7 2026 when the bonding-curve mechanism was paused. The displayed platform fee reflects gas costs only for the current period. PumpSwap AMM fees go to LP accounts and are not tracked here."
   - q: "How often is data updated?"
-    a: "Solana metrics update every 5 minutes (materialiser cycle). EVM revenue updates block-by-block continuously. The page reflects the state at the last materialiser run, shown in the table header."
+    a: "Metrics update every 5 minutes (materialiser cycle). The timestamp in the table header reflects the last materialiser run."
   - q: "Which platforms are tracked on EVM chains?"
-    a: "GMGN, Maestro, and Banana Gun are tracked on Ethereum. GMGN, Maestro, Axiom, and Banana Gun are tracked on BSC. GMGN, Maestro, and Banana Gun are tracked on Base. pump.fun Terminal is tracked on all three EVM chains."
+    a: "GMGN, Maestro, and Banana Gun are tracked on Ethereum. GMGN, Maestro, Axiom, and Banana Gun are tracked on BSC. GMGN, Maestro, and Banana Gun are tracked on Base."
 
-# No prometheus section -- this bench uses a custom page renderer
-# at src/app/benchmarks/trading-app-execution/page.tsx that reads
-# directly from the exec REST API (exec.openchainbench.com).
+# Custom page renderer — does not use the standard [slug] bench pipeline.
+# Data comes from exec.openchainbench.com REST API (PostgreSQL-backed, not Prometheus).
+# The /metrics endpoint on the exec API exposes Prometheus gauges for future integration.
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 900
+
+metric_panels:
+  - id: jito_rate
+    label: Jito rate (24h)
+    label_key: platform
+    metric: solana_exec_jito_rate
+    unit: pct
+    higher_is_better: false
+    description: "Fraction of transactions tipping a Jito tip account. Higher = more MEV-sensitive routing."
+
+  - id: cu_price_p50
+    label: CU price p50 (24h)
+    label_key: platform
+    metric: solana_exec_cu_price_p50_micro
+    unit: count
+    higher_is_better: false
+    description: "Median compute unit price in microlamports/CU. Higher = more aggressive block-space bidding."
+
+  - id: platform_fee
+    label: Platform fee avg (24h)
+    label_key: platform
+    metric: solana_exec_platform_fee_lamports
+    unit: count
+    higher_is_better: false
+    description: "Average SOL transferred to the platform fee wallet per transaction (lamports)."
+
+providers:
+  - slug: gmgn
+    name: GMGN
+    tag: Trading bot
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="gmgn"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="gmgn"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="gmgn"}
+
+  - slug: axiom
+    name: Axiom
+    tag: Trading bot
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="axiom"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="axiom"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="axiom"}
+
+  - slug: trojan
+    name: Trojan
+    tag: Trading bot
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="trojan"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="trojan"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="trojan"}
+
+  - slug: maestro
+    name: Maestro
+    tag: Trading bot
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="maestro"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="maestro"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="maestro"}
+
+  - slug: photon
+    name: Photon
+    tag: Trading terminal
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="photon"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="photon"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="photon"}
+
+  - slug: pump-fun
+    name: pump.fun
+    tag: Launchpad
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="pump.fun"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="pump.fun"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="pump.fun"}
+
+  - slug: fomo
+    name: FOMO
+    tag: Trading terminal
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="fomo"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="fomo"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="fomo"}
+
+  - slug: bullx
+    name: BullX
+    tag: Trading terminal
+    inactive: true
+    inactiveSince: "2026-06-01"
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="bullx"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="bullx"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="bullx"}
+
+  - slug: banana-gun
+    name: Banana Gun
+    tag: Trading bot
+    queries:
+      p50: avg_over_time(solana_exec_jito_rate{platform="banana-gun"}[24h])
+      mean: avg_over_time(solana_exec_jito_rate{platform="banana-gun"}[24h])
+      sample_size: solana_exec_tx_count_24h{platform="banana-gun"}
