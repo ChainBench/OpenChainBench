@@ -20,9 +20,9 @@ seo_intro: |
   The Solana DEX market in summer 2026 is split between pump.fun's launchpad,
   which dominates early-stage token trading, and a set of competing terminals
   (Axiom, GMGN, Fomo) targeting active traders on graduated tokens. pump.fun
-  cut its bonding-curve trading fees to zero on August 7 2026 in response to
-  Fomo briefly overtaking Axiom in daily revenue the day before, reshaping the
-  competitive landscape overnight. Axiom and GMGN each process around $70
+  cut its bonding-curve trading fees to zero on August 7 2026, one day after
+  Fomo briefly overtook Axiom in daily revenue. The timing is consistent with
+  a competitive response, though pump.fun has not formally confirmed causality. Axiom and GMGN each process around $70
   million per day in terminal volume. Fomo reached $50 million daily volume and
   crossed Axiom on revenue for the first time on August 6 2026. This benchmark
   tracks all seven platforms in real time from DeFiLlama's DEX data feed,
@@ -41,13 +41,13 @@ methodology:
   - "Source: DeFiLlama public DEX API (api.llama.fi/summary/dexs/{slug}) and fees API (api.llama.fi/summary/fees/{slug}?dataType=dailyRevenue). No authentication required."
   - "Poll cadence: harness fetches each platform every 30 minutes and updates Prometheus gauges immediately."
   - "Volume: total24h and total7d fields from DeFiLlama's DEX endpoint, sum of all swap notional values in USD attributed to this platform."
-  - "Revenue: total24h and total7d from the fees endpoint with dataType=dailyRevenue. This strips LP fees that stay in pool accounts and returns only the protocol's own share."
+  - "Revenue: total24h and total7d from the fees endpoint with dataType=dailyRevenue. This strips LP fees that stay in pool accounts and returns only the protocol's own share. Note: dailyRevenue also nets out referral paybacks (e.g. GMGN nets ~34% back to affiliates) and for pump.fun reflects the buyback-adjusted split introduced in 2026. Use dailyFees if comparing what users pay, not what protocols retain."
   - "Take rate: protocol revenue divided by trading volume (defillama_dex_fees_24h_usd / defillama_dex_volume_24h_usd). Measures how much of each dollar traded the platform captures."
   - "Attribution: DeFiLlama uses on-chain referral tags, program IDs and memo fields. Platforms without standard tagging may be undercounted."
   - "pump.fun (slug pump.fun, layer Launchpad): the original bonding-curve launchpad. Users trade tokens directly on the curve; a token graduates to PumpSwap's AMM at roughly $69K market cap. Cut bonding-curve fees to zero on Aug 7 2026."
-  - "Axiom (slug axiom, layer Terminal): web-based Solana trading terminal. 0.25 to 0.5% platform fee on routed swaps. Revenue briefly overtaken by Fomo on Aug 6 2026."
+  - "Axiom (slug axiom, layer Terminal): web-based Solana trading terminal. Observed take rate 0.85-1.10% (stated approximately 1%). Revenue briefly overtaken by Fomo on Aug 6 2026."
   - "GMGN (slug gmgn, layer Terminal): AI-powered trading terminal on Solana. Approximately 1% fee on routed swaps."
-  - "fomo Wallet (slug fomo-wallet, layer Terminal): Fomo's DEX routing layer. 0.5% platform fee. First crossed Axiom on daily revenue Aug 6 2026."
+  - "fomo Wallet (slug fomo-wallet, layer Terminal): Fomo's DEX routing layer. Observed take rate approximately 1% on routed swaps. First crossed Axiom on daily revenue Aug 6 2026."
   - "Trojan (slug trojan, layer Bot): Telegram trading bot on Solana. Lower volume than web terminals but serves a distinct Telegram-native user base."
   - "Photon (slug photon, layer Terminal): Solana trading terminal targeted at advanced traders."
   - "BullX (slug bullx, layer Terminal): Solana and multi-chain trading terminal. Volume fell sharply from its 2025 highs after competitors expanded; now a fraction of peak levels."
@@ -104,11 +104,11 @@ faq:
   - q: "What is Fomo?"
     a: "Fomo (fomo.family) is a Solana trading platform and wallet launched in April 2025 by a team backed by Index Ventures and USV. It charges 0.5% on routed swaps and briefly led Solana daily DEX revenue on August 6 2026, overtaking Axiom for the first time."
   - q: "Why did pump.fun cut its fees to zero?"
-    a: "On August 6 2026, Fomo briefly overtook Axiom in daily protocol revenue, signaling that frontend trading terminals were capturing an increasing share of the Solana DEX market. pump.fun responded on August 7 by eliminating bonding-curve trading fees, making it cheaper to launch and trade new tokens on pump.fun than on competing platforms."
+    a: "On August 6 2026, Fomo briefly overtook Axiom in daily protocol revenue. pump.fun eliminated bonding-curve trading fees the following day. The back-to-back timing is consistent with a competitive response to frontend terminals gaining share, though pump.fun has not publicly confirmed that causal link. Bonding-curve trading continues under the fee-free model; protocol revenue now comes from token graduation fees and creator fees."
   - q: "Why is Phantom not tracked here?"
     a: "Phantom is the largest Solana wallet by user count but it routes swaps through aggregators like Jupiter rather than operating its own DEX contract. DeFiLlama does not assign Phantom a DEX slug because its on-chain footprint is the aggregator's, not Phantom's. Those swaps appear in Jupiter's figures. This bench tracks the platforms that DeFiLlama can attribute volume to directly."
   - q: "How is this different from the Solana trading platform leaderboard (bench 201)?"
-    a: "Bench 201 uses Mobula's lighthouse API to attribute swaps to the frontend UI (GMGN, Axiom, Fomo, etc.). This bench uses DeFiLlama's protocol-level DEX data, which tracks on-chain referral tags and program IDs. The two data sources cross-validate each other and may differ when users route through multiple aggregators."
+    a: "Bench 201 uses Mobula's lighthouse API to attribute swaps to the frontend UI (GMGN, Axiom, Fomo, etc.). This bench uses DeFiLlama's protocol-level DEX data. The two sources diverge significantly in practice: on Aug 13 2026 Mobula ranked GMGN ($108M) ahead of Axiom ($94M) while DeFiLlama fees put Axiom 5x above GMGN. Attribution breadth differs because Mobula includes trades where the platform's referral tag is present regardless of fee collection, while DeFiLlama tracks fee-wallet inflows. Neither is wrong; they measure different populations."
   - q: "Why does Photon show less volume than GMGN and Axiom?"
     a: "Photon targets advanced traders and has a smaller but higher-frequency user base. Volume varies by day and market conditions. DeFiLlama attribution may also undercount platforms that do not embed standard on-chain referral tags."
   - q: "What is the take rate and why does it matter?"
