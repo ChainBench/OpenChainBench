@@ -46,27 +46,35 @@ func (c *lighthouseClient) fetchVolumes() (map[string]float64, error) {
 		return nil, fmt.Errorf("status %d: %.200s", resp.StatusCode, body)
 	}
 
+	type entry struct {
+		Name      string `json:"name"`
+		VolumeUSD struct {
+			H24 float64 `json:"24h"`
+		} `json:"volumeUSD"`
+	}
 	var out struct {
 		Data struct {
-			ByPlatform []struct {
-				Name      string `json:"name"`
-				VolumeUSD struct {
-					H24 float64 `json:"24h"`
-				} `json:"volumeUSD"`
-			} `json:"byPlatform"`
+			ByPlatform []entry `json:"byPlatform"`
+			ByLaunchpad []entry `json:"byLaunchpad"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	volumes := make(map[string]float64, len(out.Data.ByPlatform))
+	volumes := make(map[string]float64)
 	for _, p := range out.Data.ByPlatform {
 		if p.Name == "" {
 			continue
 		}
-		// Normalize platform names to lowercase to match Dune output.
 		volumes[strings.ToLower(p.Name)] = p.VolumeUSD.H24
+	}
+	// pump.fun bonding curve is under byLaunchpad as "PumpFun"
+	for _, p := range out.Data.ByLaunchpad {
+		key := strings.ToLower(p.Name)
+		if key == "pumpfun" {
+			volumes["pump-fun"] = p.VolumeUSD.H24
+		}
 	}
 	return volumes, nil
 }
