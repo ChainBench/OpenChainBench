@@ -26,10 +26,9 @@ seo_intro: |
   days. Axiom competes closely behind and the two regularly trade places as
   market conditions shift. Fomo has been narrowing the gap and on active days
   has matched or exceeded Axiom, making the top three increasingly competitive.
-  Trojan and Padre serve the Telegram-native trader segment, each capturing
-  significant bot-driven flow. Phantom routes wallet-initiated swaps through
-  its interface, representing users who prefer the wallet UI over dedicated
-  trading terminals. The fee column shows which platforms capture the most
+  Trojan serves the Telegram-native trader segment with significant bot-driven
+  flow. Padre is a web trading terminal. Phantom routes wallet-initiated swaps
+  and collects a 0.85% platform fee on those trades. The fee column shows which platforms capture the most
   protocol revenue per dollar traded; see methodology for Fomo's fee source.
 
 abstract: |
@@ -53,9 +52,9 @@ methodology:
 findings:
   - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
   - "GMGN and Axiom consistently rank at the top of the leaderboard and regularly trade places. Both serve power traders with web-based terminals; GMGN emphasizes AI copy-trading while Axiom focuses on execution speed."
-  - "Fomo has been closing the gap on Axiom and on competitive days overtakes it, making the top three a genuinely contested race rather than a fixed hierarchy."
-  - "Trojan and Padre serve the Telegram-native segment and together account for a significant fraction of bot-driven Solana swap flow."
-  - "Phantom is the dominant Solana wallet by installs; its volume here represents wallet-initiated swaps via Jupiter, a different usage pattern than active trading sessions."
+  - "Fomo closed the gap on Axiom and briefly overtook it on daily revenue around August 5-8 2026; as of mid-August Axiom leads again, making the top three a contested race with positions that shift by the week."
+  - "Trojan serves the Telegram-native segment and accounts for significant bot-driven Solana swap flow. Padre is a web trading terminal, not a Telegram bot."
+  - "Phantom collects a 0.85% platform fee on in-wallet swaps routed to its own fee wallets; it is a monetised frontend, not a passive aggregator pass-through."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-trading-platform-wars
 
@@ -71,9 +70,9 @@ faq:
   - q: "What is the difference between GMGN and Axiom?"
     a: "Both are web-based Solana trading terminals targeting power traders. GMGN emphasizes AI-powered wallet analysis and copy trading. Axiom is a terminal-style platform focused on chart speed and order execution. Both route through Jupiter and direct DEX pools."
   - q: "Why does Fomo's fee column use a different source?"
-    a: "Fomo collects protocol fees in USDC swept in batches to a dedicated fee wallet, separate from individual swap transactions. Mobula's attribution tracks fees via referral tags embedded per trade and misses the batch sweeps, understating Fomo fees by roughly 9x. The fee column for Fomo uses DeFiLlama, which monitors the Fomo fee wallet directly and captures the full revenue. All other platforms use Mobula."
+    a: "Fomo collects fees in SOL and USDC to a dedicated fee wallet (R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX), plus an off-chain relay fee component stored in a private Dune table (dune.tryfomo.fomo_relay_fees) that only DeFiLlama can read via a data partnership. Mobula's referral-tag attribution captures only the on-chain component, understating Fomo's total revenue. The fee column for Fomo uses DeFiLlama, which adds both components. All other platforms use Mobula."
   - q: "Are Trojan and Padre Telegram bots?"
-    a: "Yes. Trojan and Padre are Telegram-native trading bots that execute Solana swaps on behalf of users. They embed referral tags in transactions which Mobula uses to attribute volume."
+    a: "Trojan is a Telegram-native trading bot. Padre is a web trading terminal with an AI assistant, not a Telegram bot. Both embed referral tags in transactions which Mobula uses to attribute volume."
   - q: "How is trading platform volume different from launchpad volume?"
     a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like pump.fun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. Attribution is mutually exclusive per Mobula's referral tag system: a trade on pump.fun tokens routed through GMGN counts under GMGN, not under pump.fun."
   - q: "Why does BullX show zero or low volume?"
@@ -147,7 +146,7 @@ providers:
 
   - slug: padre
     name: Padre
-    tag: "AI Telegram bot on Solana"
+    tag: "AI web trading terminal on Solana"
     formula: "24h swap volume in USD attributed to Padre (Mobula lighthouse byPlatform[name=Padre].volumeUSD.24h, updated every 15 min)."
     queries:
       p50: solana_platform_volume_24h_usd{platform="padre"}
