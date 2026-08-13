@@ -14,7 +14,7 @@ unit: pct
 higher_is_better: false
 
 disclaimer: |
-  Take rate = fees_usd_24h / volume_usd_24h * 100. Fees are on-chain inflows to known protocol fee wallets (Dune query 8316589, refreshed every 6h). Fomo fees are sourced from DeFiLlama which combines on-chain USDC inflows and off-chain relay fees from a private data feed. Volume is the total attributed volume from Mobula lighthouse, which includes all trades tagged to each platform regardless of whether a fee was charged. The effective take rate is therefore a lower bound on the stated per-trade fee rate; platforms with variable or waivable fees will show lower observed rates.
+  Take rate = fees / volume * 100. Fees are on-chain inflows to known fee wallets (Dune query 8316589, refreshed every 6h). Fomo fees come from DeFiLlama (on-chain USDC + off-chain relay). Volume is total Mobula-attributed volume; the take rate is a lower bound since platforms with variable or waivable fees will show lower observed rates.
 
 seo_intro: |
   Solana memecoin platforms charge fees in different ways and at different rates,
@@ -57,7 +57,7 @@ methodology:
 findings:
   - "{{best_name}} has the highest observed take rate at {{best_p50}} over the last 24h."
   - "Axiom leads on absolute protocol revenue at roughly $800K per day, consistent with its 0.9% stated fee applied across high-volume memecoin flow."
-  - "Using the self-consistent fee-paying volume denominator (Dune tx join), Axiom shows ~1.25%, GMGN ~1.73%, Trojan ~1.35%, and Maestro ~1.87% — clustered closer to stated rates than the Mobula-volume figures, which are depressed by volume attribution breadth."
+  - "Using the self-consistent fee-paying volume denominator (Dune tx join), Axiom shows ~1.25%, GMGN ~1.73%, Trojan ~1.35%, and Maestro ~1.87%, clustered closer to stated rates than the Mobula-volume figures, which are depressed by volume attribution breadth."
   - "pump.fun cut its bonding-curve trading fees to 0% in August 2026; its observed take rate has dropped near zero as protocol fee revenue is now only graduation fees. Creator and LP fee shares flow to separate recipients."
   - "GMGN and Trojan show ~8% coverage (fee-paying volume / Mobula volume), meaning only 8% of attributed volume generates a fee inflow. Their Dune fee captures match DeFiLlama Solana within 5-6%, confirming the wallet list is complete."
   - "Fomo fees include both on-chain USDC sweeps and off-chain relay fees; the latter are not directly capturable via Dune without access to Fomo's private data feed."
@@ -80,7 +80,7 @@ faq:
   - q: "How reliable are the fee wallet addresses?"
     a: "GMGN's 9 Solana wallets are verified by DeFiLlama's adapter (reviewed 2026-06) as pure fee collectors with no inter-wallet flows. Our 5% match to DeFiLlama Solana confirms the list is current. Axiom, Trojan, Photon, and Maestro wallets were identified by reverse-engineering tagged trades and cross-checked against DeFiLlama. A monthly diff of the DeFiLlama adapter detects any rotation."
   - q: "What is memecoin_platform_fee_paying_rate_pct and how does it differ from fee_rate_pct?"
-    a: "memecoin_platform_fee_rate_pct uses Mobula's total attributed volume as the denominator — it is a lower bound because Mobula attributes more trades to each platform than those that actually paid a fee. memecoin_platform_fee_paying_rate_pct uses only the volume of trades that generated a fee inflow (from Dune: for each fee-receiving transaction, we look up the largest swap in dex_solana.trades via tx_id match and sum those). This denominator is self-consistent with the fee numerator, so the resulting rate is comparable across platforms and approximates the actual per-trade fee. memecoin_platform_coverage_pct shows what fraction of Mobula volume actually generated a fee."
+    a: "memecoin_platform_fee_rate_pct uses Mobula's total attributed volume as the denominator, which is a lower bound because Mobula attributes more trades to each platform than those that actually paid a fee. memecoin_platform_fee_paying_rate_pct uses only the volume of trades that generated a fee inflow (from Dune: for each fee-receiving transaction, we look up the largest swap in dex_solana.trades via tx_id match and sum those). This denominator is self-consistent with the fee numerator, so the resulting rate is comparable across platforms and approximates the actual per-trade fee. memecoin_platform_coverage_pct shows what fraction of Mobula volume actually generated a fee."
   - q: "What is memecoin_dune_data_freshness_seconds?"
     a: "It is the Unix timestamp of the most recent block_time seen in the Dune query results. If Dune's solana.account_activity table lags, the nominal 24-hour window silently shrinks. A gap of more than 4 hours between this metric and the current time indicates stale data."
 
