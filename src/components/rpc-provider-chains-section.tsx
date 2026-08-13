@@ -124,7 +124,7 @@ export async function RpcProviderChainsSection({
                   </Link>
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
-                  {r.rank != null ? (
+                  {r.rank != null && r.rank > 0 ? (
                     <>
                       <span
                         style={{

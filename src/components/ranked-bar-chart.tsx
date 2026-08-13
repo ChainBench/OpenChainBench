@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
@@ -64,7 +65,8 @@ export function RankedBarChart({
     // surface doesn't open with a long stack of empty bars that tie at
     // the bottom (or, when lower-is-better, falsely lead the ranking).
     const scored = benchmark.results.filter(
-      (r) => r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0
+      (r) => (r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0) &&
+        (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT
     );
     const sorted = scored.sort((a, b) =>
       benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
