@@ -65,6 +65,7 @@ func main() {
 	}
 
 	lighthouse := newLighthouseClient(mobulaKey)
+	llama := newDefillamaClient()
 
 	startSolPriceRefresher(solPriceRefresh)
 
@@ -80,14 +81,14 @@ func main() {
 
 	// On startup: fetch cached Dune result + current lighthouse data immediately,
 	// then trigger a fresh Dune execution in the background.
-	runPoll(dune, lighthouse, queryID)
+	runPoll(dune, lighthouse, llama, queryID)
 	go func() {
 		execID, err := dune.execute(queryID)
 		if err != nil {
 			fmt.Printf("[refresh] execute failed: %v\n", err)
 			return
 		}
-		pollUntilDone(dune, lighthouse, queryID, execID)
+		pollUntilDone(dune, lighthouse, llama, queryID, execID)
 	}()
 
 	fetchTick := time.NewTicker(fetchInterval)
@@ -101,19 +102,19 @@ func main() {
 			fmt.Println("[shutdown] received signal")
 			return
 		case <-fetchTick.C:
-			runPoll(dune, lighthouse, queryID)
+			runPoll(dune, lighthouse, llama, queryID)
 		case <-refreshTick.C:
 			execID, err := dune.execute(queryID)
 			if err != nil {
 				fmt.Printf("[refresh] execute failed: %v\n", err)
 				continue
 			}
-			go pollUntilDone(dune, lighthouse, queryID, execID)
+			go pollUntilDone(dune, lighthouse, llama, queryID, execID)
 		}
 	}
 }
 
-func runPoll(dune *duneClient, lh *lighthouseClient, queryID string) {
+func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, queryID string) {
 	rows, err := dune.latestResult(queryID)
 	if err != nil {
 		fmt.Printf("[fetch] dune failed: %v\n", err)
@@ -130,10 +131,8 @@ func runPoll(dune *duneClient, lh *lighthouseClient, queryID string) {
 
 	solUSD := getSolPrice()
 
-	// Aggregate rows per platform (Dune may return multiple rows for pump-fun).
-	type totals struct {
-		feesUSD float64
-	}
+	// Aggregate rows per platform (Dune may return multiple rows).
+	type totals struct{ feesUSD float64 }
 	byPlatform := make(map[string]*totals)
 	for _, r := range rows {
 		if r.Platform == "" {
@@ -145,6 +144,15 @@ func runPoll(dune *duneClient, lh *lighthouseClient, queryID string) {
 			byPlatform[r.Platform] = t
 		}
 		t.feesUSD += r.USDCFees24h + r.WSOLFees24h*solUSD + r.SOLFees24h*solUSD
+	}
+
+	// Fomo fees: on-chain USDC sweeps + off-chain relay fees only accessible
+	// via DeFiLlama (private Dune table dune.tryfomo.fomo_relay_fees).
+	fomoFees, err := llama.fetchFomoFees()
+	if err != nil {
+		fmt.Printf("[fetch] fomo/defillama failed: %v\n", err)
+	} else if fomoFees > 0 {
+		byPlatform["fomo"] = &totals{feesUSD: fomoFees}
 	}
 
 	for platform, t := range byPlatform {
@@ -163,7 +171,7 @@ func runPoll(dune *duneClient, lh *lighthouseClient, queryID string) {
 	fmt.Printf("[fetch] updated %d platform(s), sol=$%.2f\n", len(byPlatform), solUSD)
 }
 
-func pollUntilDone(dune *duneClient, lh *lighthouseClient, queryID, execID string) {
+func pollUntilDone(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, queryID, execID string) {
 	for range 30 {
 		time.Sleep(30 * time.Second)
 		state, err := dune.executionState(execID)
@@ -174,7 +182,7 @@ func pollUntilDone(dune *duneClient, lh *lighthouseClient, queryID, execID strin
 		switch state {
 		case "QUERY_STATE_COMPLETED":
 			fmt.Printf("[poll] execution %s complete\n", execID)
-			runPoll(dune, lh, queryID)
+			runPoll(dune, lh, llama, queryID)
 			return
 		case "QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED":
 			fmt.Printf("[poll] execution %s ended with state %s\n", execID, state)
