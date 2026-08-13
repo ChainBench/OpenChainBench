@@ -1,5 +1,6 @@
 # Fragment to merge into /opt/ocb/docker-compose.yml on VPS.
-# Requires: ocb-postgres (from docker-compose.apps.yml), HELIUS_API_KEY in env.
+# Requires: ocb-postgres (from docker-compose.apps.yml).
+# Optional: SOLANA_RPC_URL (defaults to api.mainnet-beta.solana.com).
 
 services:
   solana-exec-collector:

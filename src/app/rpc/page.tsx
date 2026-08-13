@@ -109,9 +109,10 @@ export default async function RpcHubPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Every free, no-key public RPC endpoint, measured per chain with
-          the same probe: one identical <code>eth_blockNumber</code> call
-          every 15 seconds from 3 regions (N. Virginia, Amsterdam,
-          Singapore). The matrix below folds the per-chain leaderboards
+          the same probe: one identical{" "}
+          <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
+          rotating request id (defeats CDN body-keyed caches) every 15
+          seconds from 3 regions (N. Virginia, Amsterdam, Singapore). The matrix below folds the per-chain leaderboards
           into one view: fastest provider per chain, fastest per region,
           and which gateway covers your whole multichain stack. Headline
           numbers are 24h p50 round-trip latency; methodology and
@@ -229,8 +230,8 @@ export default async function RpcHubPage() {
         <p className="label-mono text-ink-faint mb-2">Methodology</p>
         <p>
           Each chain row aggregates that chain&apos;s dedicated bench: an
-          identical JSON-RPC POST (<code>eth_blockNumber</code> or the
-          chain&apos;s equivalent head call) sent every 15 seconds to
+          identical JSON-RPC POST (<code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> with
+          rotating request id, or the chain&apos;s equivalent head call) sent every 15 seconds to
           every free, no-key public endpoint from us-east, eu-west and
           Singapore. Headline figures are the 50th percentile of
           client-side round-trip latency over the trailing 24 hours,

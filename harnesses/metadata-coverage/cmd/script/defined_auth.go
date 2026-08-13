@@ -58,6 +58,33 @@ func decodeJWTExpiration(token string) (time.Time, error) {
 	return time.Unix(claims.Exp, 0), nil
 }
 
+// tryTokenService fetches a fresh JWE from the Paris-box sidecar.
+func tryTokenService(baseURL string) (string, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	for _, path := range []string{"/token", "/jwt", "/"} {
+		resp, err := client.Get(baseURL + path)
+		if err != nil {
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			continue
+		}
+		var parsed struct {
+			Token string `json:"token"`
+		}
+		if err := json.Unmarshal(body, &parsed); err == nil && parsed.Token != "" {
+			return parsed.Token, nil
+		}
+		s := strings.TrimSpace(string(body))
+		if len(s) > 50 {
+			return s, nil
+		}
+	}
+	return "", fmt.Errorf("no working path on sidecar")
+}
+
 // GetDefinedJWTToken returns a cached JWT token or generates a new one if expired.
 // If CODEX_JWT env var is set, it is returned directly (bypasses session-cookie flow).
 func GetDefinedJWTToken(sessionCookie string) (string, error) {
@@ -82,6 +109,17 @@ func GetDefinedJWTToken(sessionCookie string) (string, error) {
 	// Double-check after acquiring write lock
 	if globalTokenCache.token != "" && time.Now().Before(globalTokenCache.expiresAt.Add(-1*time.Hour)) {
 		return globalTokenCache.token, nil
+	}
+
+	// Sidecar (Paris box, fresh every 8 min via Tor+utls, bypasses Kasada)
+	if svcURL := os.Getenv("DEFINED_TOKEN_SERVICE_URL"); svcURL != "" {
+		if tok, err := tryTokenService(svcURL); err == nil && tok != "" {
+			fmt.Printf("[DEFINED-AUTH] Got token from sidecar (len=%d)\n", len(tok))
+			globalTokenCache.token = tok
+			globalTokenCache.expiresAt = time.Now().Add(8 * time.Minute)
+			globalTokenCache.lastRefresh = time.Now()
+			return tok, nil
+		}
 	}
 
 	// Generate new token
