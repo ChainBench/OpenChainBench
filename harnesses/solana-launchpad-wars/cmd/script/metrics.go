@@ -40,6 +40,11 @@ var (
 		Help: "24h platform fees in USD collected by this Solana trading platform.",
 	}, []string{"platform"})
 
+	platformTrades24h = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "solana_platform_trades_24h",
+		Help: "24h trade count attributed to this Solana trading platform (Mobula lighthouse).",
+	}, []string{"platform"})
+
 	platformHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "solana_platform_health",
 		Help: "1 if this platform returned data in the last lighthouse poll.",
@@ -54,6 +59,7 @@ func init() {
 		launchpadHealth,
 		platformVol24h,
 		platformFees24h,
+		platformTrades24h,
 		platformHealth,
 	)
 }
@@ -78,6 +84,7 @@ func publishLighthouse(data *lighthouseData) {
 		if slug == "pumpfun" {
 			platformVol24h.WithLabelValues("pump-fun").Set(e.VolumeUSD.H24)
 			platformFees24h.WithLabelValues("pump-fun").Set(e.FeesPaidUSD.H24)
+			platformTrades24h.WithLabelValues("pump-fun").Set(e.Trades.H24)
 			platformHealth.WithLabelValues("pump-fun").Set(1)
 		}
 	}
@@ -85,6 +92,7 @@ func publishLighthouse(data *lighthouseData) {
 		slug := slugify(e.Name)
 		platformVol24h.WithLabelValues(slug).Set(e.VolumeUSD.H24)
 		platformFees24h.WithLabelValues(slug).Set(e.FeesPaidUSD.H24)
+		platformTrades24h.WithLabelValues(slug).Set(e.Trades.H24)
 		platformHealth.WithLabelValues(slug).Set(1)
 	}
 }
