@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -29,6 +30,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/exec-leaderboard", corsJSON(handleExecLeaderboard(pool)))
 	mux.HandleFunc("/api/evm-revenue", corsJSON(handleEVMRevenue(pool)))
+	mux.HandleFunc("/metrics", handleMetrics(pool))
 
 	addr := ":2116"
 	log.Printf("exec-api listening on %s", addr)
@@ -229,6 +231,120 @@ func mustEnv(key string) string {
 		log.Fatalf("missing env: %s", key)
 	}
 	return v
+}
+
+// ---- Prometheus /metrics endpoint ----
+
+type latestBucketRow struct {
+	platform             string
+	jitoRate             float64
+	p50CUPriceMicro      float64
+	p95CUPriceMicro      float64
+	avgPriorityFeeLamports float64
+	avgPlatformFeeLamports float64
+	txCount              int64
+}
+
+func handleMetrics(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+
+		// Latest hourly bucket per platform.
+		latestRows, err := pool.Query(ctx, `
+			SELECT DISTINCT ON (platform)
+				platform, jito_rate, p50_cu_price_micro, p95_cu_price_micro,
+				avg_priority_fee_lamports, avg_platform_fee_lamports, tx_count
+			FROM solana_exec_facts
+			ORDER BY platform, bucket_start DESC`)
+		if err != nil {
+			log.Printf("metrics: latest query: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		defer latestRows.Close()
+
+		var latest []latestBucketRow
+		for latestRows.Next() {
+			var row latestBucketRow
+			if err := latestRows.Scan(
+				&row.platform,
+				&row.jitoRate,
+				&row.p50CUPriceMicro,
+				&row.p95CUPriceMicro,
+				&row.avgPriorityFeeLamports,
+				&row.avgPlatformFeeLamports,
+				&row.txCount,
+			); err != nil {
+				log.Printf("metrics: scan: %v", err)
+				continue
+			}
+			latest = append(latest, row)
+		}
+		latestRows.Close()
+
+		// 24h tx counts.
+		countRows, err := pool.Query(ctx, `
+			SELECT platform, SUM(tx_count) AS count_24h
+			FROM solana_exec_facts
+			WHERE bucket_start >= now() - INTERVAL '24 hours'
+			GROUP BY platform`)
+		if err != nil {
+			log.Printf("metrics: count query: %v", err)
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		defer countRows.Close()
+
+		counts24h := make(map[string]int64)
+		for countRows.Next() {
+			var plt string
+			var cnt int64
+			if err := countRows.Scan(&plt, &cnt); err != nil {
+				continue
+			}
+			counts24h[plt] = cnt
+		}
+		countRows.Close()
+
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+
+		fmt.Fprint(w, "# HELP solana_exec_jito_rate Fraction of transactions with a Jito tip, latest hourly bucket\n")
+		fmt.Fprint(w, "# TYPE solana_exec_jito_rate gauge\n")
+		for _, row := range latest {
+			fmt.Fprintf(w, "solana_exec_jito_rate{platform=%q} %g\n", row.platform, row.jitoRate)
+		}
+
+		fmt.Fprint(w, "# HELP solana_exec_cu_price_p50_micro Median compute unit price microlamports/CU, latest hourly bucket\n")
+		fmt.Fprint(w, "# TYPE solana_exec_cu_price_p50_micro gauge\n")
+		for _, row := range latest {
+			fmt.Fprintf(w, "solana_exec_cu_price_p50_micro{platform=%q} %g\n", row.platform, row.p50CUPriceMicro)
+		}
+
+		fmt.Fprint(w, "# HELP solana_exec_cu_price_p95_micro p95 compute unit price microlamports/CU, latest hourly bucket\n")
+		fmt.Fprint(w, "# TYPE solana_exec_cu_price_p95_micro gauge\n")
+		for _, row := range latest {
+			fmt.Fprintf(w, "solana_exec_cu_price_p95_micro{platform=%q} %g\n", row.platform, row.p95CUPriceMicro)
+		}
+
+		fmt.Fprint(w, "# HELP solana_exec_priority_fee_lamports Average priority fee in lamports, latest hourly bucket\n")
+		fmt.Fprint(w, "# TYPE solana_exec_priority_fee_lamports gauge\n")
+		for _, row := range latest {
+			fmt.Fprintf(w, "solana_exec_priority_fee_lamports{platform=%q} %g\n", row.platform, row.avgPriorityFeeLamports)
+		}
+
+		fmt.Fprint(w, "# HELP solana_exec_platform_fee_lamports Average platform fee in lamports, latest hourly bucket\n")
+		fmt.Fprint(w, "# TYPE solana_exec_platform_fee_lamports gauge\n")
+		for _, row := range latest {
+			fmt.Fprintf(w, "solana_exec_platform_fee_lamports{platform=%q} %g\n", row.platform, row.avgPlatformFeeLamports)
+		}
+
+		fmt.Fprint(w, "# HELP solana_exec_tx_count_24h Total transaction count over the last 24 hours\n")
+		fmt.Fprint(w, "# TYPE solana_exec_tx_count_24h gauge\n")
+		for plt, cnt := range counts24h {
+			fmt.Fprintf(w, "solana_exec_tx_count_24h{platform=%q} %d\n", plt, cnt)
+		}
+	}
 }
 
 // ---- EVM revenue endpoint ----

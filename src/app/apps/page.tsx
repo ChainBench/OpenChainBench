@@ -7,10 +7,9 @@ import { fetchExecLeaderboard } from "@/lib/solana-exec";
 import { fetchSolPrice } from "@/lib/sol-price";
 import { fetchFOMORelayFees } from "@/lib/dune";
 import { TRADING_APPS } from "@/lib/trading-apps-config";
-import { fetchDeFiLlamaData, type DLPlatformData } from "@/lib/defillama";
+import { fetchDeFiLlamaData } from "@/lib/defillama";
 import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
 import { RevenueSummary } from "@/components/revenue-summary";
-import { ExecChainTabs } from "@/components/exec-chain-tabs";
 import Link from "next/link";
 
 const DESCRIPTION =
@@ -165,18 +164,6 @@ export default async function AppsHubPage() {
           <RevenueSummary evm={evmData} />
         </div>
       )}
-
-      <div className="mt-10">
-        <ExecChainTabs solanaData={solanaData} evmData={evmData} />
-      </div>
-
-      <div className="mt-8 text-xs text-ink-muted leading-relaxed max-w-2xl space-y-2">
-        <p><strong>Priority fee</strong> = total transaction fee minus the 5 000-lamport base fee per signature.</p>
-        <p><strong>CU price</strong> = priority fee ÷ compute units consumed (microlamports/CU). p50/p95 shows median and tail pressure.</p>
-        <p><strong>Jito rate</strong> = fraction of transactions tipping one of the 8 official Jito tip accounts.</p>
-        <p><strong>Platform fee</strong> = average SOL transferred to the platform&apos;s fee account per transaction.</p>
-        <p>Source: standard Solana JSON-RPC. Passive monitoring — no synthetic trades, no on-chain footprint.</p>
-      </div>
 
       <div className="mt-10 border-t border-rule pt-8">
         <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">Related benchmarks</p>
