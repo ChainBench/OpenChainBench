@@ -9,13 +9,12 @@ import (
 	"time"
 )
 
-// querySQL counts unique fee-paying wallets per Solana trading platform.
+// querySQL counts unique fee-touching transactions per Solana trading platform.
 // Source: solana.account_activity filtered to known fee wallet addresses.
-// pump_fun_solana.trades (Dune Spellbook) is unavailable on our API tier;
-// pump.fun is tracked via its 9 on-chain fee wallets instead. Since pump.fun
-// cut bonding-curve trading fees to 0% on 2026-08-07, its count reflects only
-// wallets that generated non-zero protocol fees (graduation, creator fees).
-// Mirrors harnesses/solana-unique-traders/queries/unique_traders.sql.
+// Count distinct tx_ids per platform as a proxy for daily active traders.
+// pump_fun_solana.trades (Dune Spellbook) is unavailable on our API tier.
+// Since pump.fun cut bonding-curve trading fees to 0% on 2026-08-07,
+// its count reflects only transactions generating graduation/creator fees.
 const querySQL = `
 WITH fee_wallets AS (
   SELECT address, platform FROM (VALUES
@@ -68,19 +67,12 @@ WITH fee_wallets AS (
     ('MaestroUL88UBnZr3wfoN7hqmNWFi3ZYCGqZoJJHE36','maestro'),
     ('FRMxAnZgkW58zbYcE7Bxqsg99VWpJh6sMP5xLzAWNabN','maestro')
   ) AS t(address, platform)
-),
-fee_txs AS (
-  SELECT DISTINCT fw.platform, a.tx_id
-  FROM solana.account_activity a
-  JOIN fee_wallets fw ON a.address = fw.address
-  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
 )
-SELECT ft.platform, COUNT(DISTINCT t.taker) AS unique_traders_24h
-FROM fee_txs ft
-JOIN dex_solana.trades t
-  ON t.tx_id = ft.tx_id
-  AND t.block_time >= NOW() - INTERVAL '1' DAY
-GROUP BY ft.platform
+SELECT fw.platform, COUNT(DISTINCT a.tx_id) AS unique_traders_24h
+FROM solana.account_activity a
+JOIN fee_wallets fw ON a.address = fw.address
+WHERE a.block_time >= NOW() - INTERVAL '1' DAY
+GROUP BY fw.platform
 ORDER BY unique_traders_24h DESC
 `
 
