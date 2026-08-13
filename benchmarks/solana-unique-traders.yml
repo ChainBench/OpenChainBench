@@ -30,14 +30,16 @@ seo_intro: |
 
 abstract: |
   The harness wraps the Dune Analytics API. A single saved query counts distinct
-  tx_id values from solana.account_activity where the fee wallet address received
-  a native SOL inflow (post_balance > pre_balance) or a USDC/WSOL token inflow
-  (post_token_balance > pre_token_balance via token_balance_owner) in the rolling
-  24-hour window. All platforms use the same inflow-only attribution against
-  solana.account_activity (standard Dune tier, no trace API required). The harness
-  re-executes the query every hour, polls for completion, then updates the Prometheus
-  gauge solana_platform_unique_traders_24h per platform. Between executions it serves
-  the latest cached result every 15 minutes.
+  tx_id values from solana.account_activity using four inflow-only attribution branches:
+  (1) native SOL inflow to a known fee wallet (address = fw, token_mint IS NULL,
+  post_balance > pre_balance); (2) USDC inflow to wallets that own fee-collecting
+  token accounts (token_balance_owner = fw, USDC mint, inflow filter); (3) WSOL
+  inflow via the same owner-wallet match; (4) USDC inflow to fee token accounts
+  matched directly by their ATA address (address = fw, USDC mint, inflow filter),
+  used for platforms like Fomo whose fee token account address is tracked rather
+  than the owner wallet. All four branches run against solana.account_activity
+  on standard Dune tier. The harness re-executes the query every hour and serves
+  cached results every 15 minutes.
 
 methodology:
   - "Source: Dune Analytics (dune.com). Query updated hourly, results fetched every 15 min."
@@ -68,8 +70,8 @@ faq:
     a: "pump.fun is the default entry point for new Solana users and meme coin traders. Its bonding curve launch mechanic triggers massive multi-wallet bot activity as snipers race to buy newly created tokens. GMGN serves a more deliberate, power-trader segment that skews toward fewer unique wallets but larger position sizes."
   - q: "Is this apple-to-apple between pump.fun and the others?"
     a: "The methodology is consistent: all platforms use fee wallet attribution from solana.account_activity. However, pump.fun's results are substantially undercounted since August 7, 2026, when its bonding-curve trading fees were cut to zero. Fee wallet attribution now captures only graduation and creator fee events, not the hundreds of thousands of daily swaps. For trading terminals (GMGN, Axiom, Fomo, Trojan, Maestro), the comparison is directly apple-to-apple."
-  - q: "Why might Fomo's unique trader count be understated?"
-    a: "Fomo collects protocol fees in USDC via a single fee wallet. Some of Fomo's fee revenue is swept in batches rather than collected per-trade, which may mean some user transactions do not touch the fee wallet directly. The count reflects wallets whose transactions include the fee wallet as an account key."
+  - q: "How is Fomo tracked? Its fee model is different from the others."
+    a: "Fomo collects fees in USDC to a known token account (ATA). Unlike SOL-fee platforms where the wallet address is the signer or recipient, Fomo's fee account is tracked by matching the ATA address directly in solana.account_activity (address = ATA, USDC mint, positive balance change). This captures the per-trade USDC fee transfer that Fomo routes through Jupiter's referral fee mechanism inside each user's swap transaction. Fomo's off-chain relay fees (batched separately) are not counted here; the figure reflects only on-chain per-trade USDC fee events."
   - q: "How is this different from bench 201 (24h volume)?"
     a: "Bench 201 ranks platforms by 24h swap volume in USD. This bench ranks by unique daily active wallets. A platform can have high volume with few wallets (whale-concentrated) or low volume with many wallets (retail-dominated). Both metrics together reveal the full picture."
 
@@ -115,8 +117,8 @@ providers:
 
   - slug: fomo
     name: Fomo
-    tag: "Solana trading platform"
-    formula: "Unique wallet addresses in transactions touching Fomo USDC fee wallet in the last 24h (Dune, hourly refresh)."
+    tag: "Solana mobile trading app"
+    formula: "Unique tx count for transactions where Fomo's USDC fee token account (HrTf9C...) received a positive USDC balance change in the last 24h (Dune: solana.account_activity, address = ATA, hourly refresh). Captures per-trade Jupiter referral fee events; off-chain relay fees excluded."
     queries:
       p50: solana_platform_unique_traders_24h{platform="fomo"}
       p90: solana_platform_unique_traders_24h{platform="fomo"}

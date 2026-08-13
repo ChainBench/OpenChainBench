@@ -56,7 +56,7 @@ WITH fee_wallets AS (
     ('Hbj6XdxX6eV4nfbYTseysibp4zZJtVRRPn2J3BhGRuK9','axiom'),
     ('846ah7iBSu9ApuCyEhA5xpnjHHX7d4QJKetWLbwzmJZ8','axiom'),
     ('5BqYhuD4q1YD3DMAYkc1FeTu9vqQVYYdfBAmkZjamyZg','axiom'),
-    ('R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX','fomo'),
+    ('HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq','fomo'),
     ('9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco','trojan'),
     ('92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH','trojan'),
     ('2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ','trojan'),
@@ -88,6 +88,13 @@ fee_activity AS (
   JOIN fee_wallets fw ON a.token_balance_owner = fw.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
+    AND a.post_token_balance > a.pre_token_balance
+  UNION
+  SELECT fw.platform, a.tx_id
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.address = fw.address
+  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
+    AND a.token_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
     AND a.post_token_balance > a.pre_token_balance
 )
 SELECT platform, COUNT(DISTINCT tx_id) AS unique_traders_24h
