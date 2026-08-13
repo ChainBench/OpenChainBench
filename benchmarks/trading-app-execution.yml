@@ -38,10 +38,10 @@ methodology:
 
 findings:
   - "Axiom leads Solana trading apps by transaction volume, processing over 400K fee transactions per 24h across its 20 fee wallets."
-  - "GMGN charges the highest average platform fee per transaction at ~0.005 SOL, reflecting its higher-notional trader base."
-  - "Maestro has the highest Jito bundle rate (~11%), indicating MEV-sensitive routing for its Telegram bot users."
-  - "Photon has the highest CU price p95 at ~40 000 µL/CU, showing aggressive compute-unit bidding during peak hours."
-  - "BullX and banana-gun show the lowest platform fees, suggesting a different or volume-based fee structure."
+  - "GMGN charges the highest average platform fee per transaction among actively-charging platforms, reflecting its higher-notional trader base."
+  - "Maestro has the highest Jito bundle rate, indicating MEV-sensitive routing for its Telegram bot users."
+  - "Photon has the highest CU price p95, showing aggressive compute-unit bidding during peak hours."
+  - "pump.fun fee wallets have received near-zero inflows since August 7 2026 when the bonding-curve was paused; its platform fee row reflects gas only."
 
 faq:
   - q: "What is platform fee vs priority fee?"

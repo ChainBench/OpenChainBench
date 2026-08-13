@@ -1,11 +1,17 @@
 -- OCB Bench 203: Memecoin Platform Fees (Dune Trino SQL)
 -- Monitors known fee wallets for native SOL, USDC, and WSOL inflows.
 -- Key: native SOL uses address column, SPL tokens use token_balance_owner column.
--- Columns returned: platform, usdc_fees_24h, wsol_fees_24h, sol_fees_24h
+--
+-- Columns: platform, usdc_fees_24h, wsol_fees_24h, sol_fees_24h, data_freshness,
+--          fee_paying_volume_usd_24h
+-- fee_paying_volume_usd_24h = sum of the largest swap (amount_usd) in each tx that
+--   generated a fee inflow; provides a self-consistent denominator so take_rate is
+--   comparable across platforms (vs. Mobula total volume which includes non-fee trades).
+-- data_freshness = MAX(block_time) across all matched rows; alerts if table lags
+--   and the nominal 24h window silently shrinks (e.g. table only refreshed 20h ago).
 
 WITH
 
--- All known fee wallet addresses mapped to platform
 wallet_platform AS (
   SELECT address, platform FROM (VALUES
     ('BB5dnY55FXS1e1NXqZDwCzgdYJdMCj3B92PU6Q5Fb6DT','gmgn'),
@@ -59,9 +65,8 @@ wallet_platform AS (
   ) AS t(address, platform)
 ),
 
--- Native SOL inflows: address column matches the fee wallet directly
 native_sol AS (
-  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow
+  SELECT wp.platform, a.tx_id, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.address = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -69,9 +74,8 @@ native_sol AS (
     AND a.post_balance > a.pre_balance
 ),
 
--- USDC inflows: token_balance_owner is the fee wallet, token account address differs
 usdc_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow
+  SELECT wp.platform, a.tx_id, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -79,27 +83,62 @@ usdc_inflows AS (
     AND a.post_token_balance > a.pre_token_balance
 ),
 
--- WSOL inflows: same join pattern as USDC
 wsol_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow
+  SELECT wp.platform, a.tx_id, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
     AND a.post_token_balance > a.pre_token_balance
+),
+
+combined AS (
+  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow, block_time FROM native_sol
+  UNION ALL
+  SELECT platform, inflow, 0.0, 0.0, block_time FROM usdc_inflows
+  UNION ALL
+  SELECT platform, 0.0, inflow, 0.0, block_time FROM wsol_inflows
+),
+
+-- All (platform, tx_id) pairs where a fee inflow was received (deduplicated)
+fee_tx_ids AS (
+  SELECT platform, tx_id FROM native_sol
+  UNION
+  SELECT platform, tx_id FROM usdc_inflows
+  UNION
+  SELECT platform, tx_id FROM wsol_inflows
+),
+
+-- For each fee-generating tx, take the largest swap trade (max amount_usd per tx)
+-- to avoid double-counting multi-hop swaps in the same transaction.
+fee_paying_vol AS (
+  SELECT sub.platform, SUM(sub.max_swap) AS fee_paying_volume_usd_24h
+  FROM (
+    SELECT ft.platform, ft.tx_id, MAX(COALESCE(ABS(t.amount_usd), 0)) AS max_swap
+    FROM fee_tx_ids ft
+    JOIN dex_solana.trades t ON t.tx_id = ft.tx_id
+    WHERE t.block_time >= NOW() - INTERVAL '1' DAY
+    GROUP BY ft.platform, ft.tx_id
+  ) sub
+  GROUP BY sub.platform
 )
 
 SELECT
-  platform,
-  COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
-  COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
-  COALESCE(SUM(sol_inflow), 0) AS sol_fees_24h
+  fees.platform,
+  fees.usdc_fees_24h,
+  fees.wsol_fees_24h,
+  fees.sol_fees_24h,
+  fees.data_freshness,
+  COALESCE(fpv.fee_paying_volume_usd_24h, 0) AS fee_paying_volume_usd_24h
 FROM (
-  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow FROM native_sol
-  UNION ALL
-  SELECT platform, inflow AS usdc_inflow, 0.0, 0.0 FROM usdc_inflows
-  UNION ALL
-  SELECT platform, 0.0, inflow AS wsol_inflow, 0.0 FROM wsol_inflows
-) combined
-GROUP BY platform
-ORDER BY platform
+  SELECT
+    platform,
+    COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
+    COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
+    COALESCE(SUM(sol_inflow), 0)  AS sol_fees_24h,
+    MAX(block_time)               AS data_freshness
+  FROM combined
+  GROUP BY platform
+) fees
+LEFT JOIN fee_paying_vol fpv ON fpv.platform = fees.platform
+ORDER BY fees.platform

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -68,7 +69,7 @@ wallet_platform AS (
 ),
 
 native_sol AS (
-  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow
+  SELECT wp.platform, a.tx_id, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.address = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -77,7 +78,7 @@ native_sol AS (
 ),
 
 usdc_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow
+  SELECT wp.platform, a.tx_id, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -86,28 +87,61 @@ usdc_inflows AS (
 ),
 
 wsol_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow
+  SELECT wp.platform, a.tx_id, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
     AND a.post_token_balance > a.pre_token_balance
+),
+
+combined AS (
+  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow, block_time FROM native_sol
+  UNION ALL
+  SELECT platform, inflow, 0.0, 0.0, block_time FROM usdc_inflows
+  UNION ALL
+  SELECT platform, 0.0, inflow, 0.0, block_time FROM wsol_inflows
+),
+
+fee_tx_ids AS (
+  SELECT platform, tx_id FROM native_sol
+  UNION
+  SELECT platform, tx_id FROM usdc_inflows
+  UNION
+  SELECT platform, tx_id FROM wsol_inflows
+),
+
+fee_paying_vol AS (
+  SELECT sub.platform, SUM(sub.max_swap) AS fee_paying_volume_usd_24h
+  FROM (
+    SELECT ft.platform, ft.tx_id, MAX(COALESCE(ABS(t.amount_usd), 0)) AS max_swap
+    FROM fee_tx_ids ft
+    JOIN dex_solana.trades t ON t.tx_id = ft.tx_id
+    WHERE t.block_time >= NOW() - INTERVAL '1' DAY
+    GROUP BY ft.platform, ft.tx_id
+  ) sub
+  GROUP BY sub.platform
 )
 
 SELECT
-  platform,
-  COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
-  COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
-  COALESCE(SUM(sol_inflow), 0) AS sol_fees_24h
+  fees.platform,
+  fees.usdc_fees_24h,
+  fees.wsol_fees_24h,
+  fees.sol_fees_24h,
+  fees.data_freshness,
+  COALESCE(fpv.fee_paying_volume_usd_24h, 0) AS fee_paying_volume_usd_24h
 FROM (
-  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow FROM native_sol
-  UNION ALL
-  SELECT platform, inflow AS usdc_inflow, 0.0, 0.0 FROM usdc_inflows
-  UNION ALL
-  SELECT platform, 0.0, inflow AS wsol_inflow, 0.0 FROM wsol_inflows
-) combined
-GROUP BY platform
-ORDER BY platform
+  SELECT
+    platform,
+    COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
+    COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
+    COALESCE(SUM(sol_inflow), 0)  AS sol_fees_24h,
+    MAX(block_time)               AS data_freshness
+  FROM combined
+  GROUP BY platform
+) fees
+LEFT JOIN fee_paying_vol fpv ON fpv.platform = fees.platform
+ORDER BY fees.platform
 `
 
 const duneBase = "https://api.dune.com/api/v1"
@@ -118,10 +152,20 @@ type duneClient struct {
 }
 
 type duneRow struct {
-	Platform    string  `json:"platform"`
-	USDCFees24h float64 `json:"usdc_fees_24h"`
-	WSOLFees24h float64 `json:"wsol_fees_24h"`
-	SOLFees24h  float64 `json:"sol_fees_24h"`
+	Platform               string  `json:"platform"`
+	USDCFees24h            float64 `json:"usdc_fees_24h"`
+	WSOLFees24h            float64 `json:"wsol_fees_24h"`
+	SOLFees24h             float64 `json:"sol_fees_24h"`
+	DataFreshness          string  `json:"data_freshness"`
+	FeePayingVolumeUSD24h  float64 `json:"fee_paying_volume_usd_24h"`
+}
+
+func isNoExecutionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.HasPrefix(s, "HTTP 40") && strings.Contains(s, "No execution")
 }
 
 func newDuneClient(apiKey string) *duneClient {
@@ -174,6 +218,22 @@ func (d *duneClient) createQuery() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%d", out.QueryID), nil
+}
+
+func (d *duneClient) updateQuery(queryID string) error {
+	payload := map[string]any{
+		"query_sql": feesSQL,
+	}
+	resp, err := d.req("PATCH", "/query/"+queryID, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, b)
+	}
+	return nil
 }
 
 func (d *duneClient) execute(queryID string) (string, error) {

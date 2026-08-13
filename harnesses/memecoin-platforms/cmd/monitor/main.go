@@ -79,6 +79,14 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
+	// Sync Dune query SQL to the embedded feesSQL constant, then trigger a fresh execution.
+	// This ensures new SQL columns (e.g. fee_paying_volume_usd_24h) are picked up automatically.
+	if err := dune.updateQuery(queryID); err != nil {
+		fmt.Printf("[init] Dune query update failed (continuing with cached SQL): %v\n", err)
+	} else {
+		fmt.Println("[init] Dune query SQL synced")
+	}
+
 	// On startup: fetch cached Dune result + current lighthouse data immediately,
 	// then trigger a fresh Dune execution in the background.
 	runPoll(dune, lighthouse, llama, queryID)
@@ -117,8 +125,14 @@ func main() {
 func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, queryID string) {
 	rows, err := dune.latestResult(queryID)
 	if err != nil {
-		fmt.Printf("[fetch] dune failed: %v\n", err)
-		platformHealth.Set(0)
+		if isNoExecutionError(err) {
+			// After a SQL update, Dune creates a new version with no execution yet.
+			// The background goroutine will execute and call runPoll when done.
+			fmt.Printf("[fetch] dune: no execution for current query version, waiting for background refresh\n")
+		} else {
+			fmt.Printf("[fetch] dune failed: %v\n", err)
+			platformHealth.Set(0)
+		}
 		return
 	}
 
@@ -132,8 +146,12 @@ func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, que
 	solUSD := getSolPrice()
 
 	// Aggregate rows per platform (Dune may return multiple rows).
-	type totals struct{ feesUSD float64 }
+	type totals struct {
+		feesUSD            float64
+		feePayingVolumeUSD float64
+	}
 	byPlatform := make(map[string]*totals)
+	var latestBlockTime string
 	for _, r := range rows {
 		if r.Platform == "" {
 			continue
@@ -144,6 +162,22 @@ func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, que
 			byPlatform[r.Platform] = t
 		}
 		t.feesUSD += r.USDCFees24h + r.WSOLFees24h*solUSD + r.SOLFees24h*solUSD
+		t.feePayingVolumeUSD += r.FeePayingVolumeUSD24h
+		if r.DataFreshness > latestBlockTime {
+			latestBlockTime = r.DataFreshness
+		}
+	}
+	if latestBlockTime != "" {
+		s := latestBlockTime
+		if len(s) > 19 {
+			s = s[:19]
+		}
+		for _, layout := range []string{"2006-01-02T15:04:05", "2006-01-02 15:04:05"} {
+			if ts, err := time.Parse(layout, s); err == nil {
+				duneDataFreshness.Set(float64(ts.Unix()))
+				break
+			}
+		}
 	}
 
 	// Fomo fees: on-chain USDC sweeps + off-chain relay fees only accessible
@@ -156,14 +190,23 @@ func runPoll(dune *duneClient, lh *lighthouseClient, llama *defillamaClient, que
 	}
 
 	for platform, t := range byPlatform {
-		vol := volumes[platform]
+		mobulaVol := volumes[platform]
 		feesUSD24h.WithLabelValues(platform).Set(t.feesUSD)
-		volumeUSD24h.WithLabelValues(platform).Set(vol)
+		volumeUSD24h.WithLabelValues(platform).Set(mobulaVol)
+		feePayingVolumeUSD24h.WithLabelValues(platform).Set(t.feePayingVolumeUSD)
+
 		rate := 0.0
-		if vol > 0 {
-			rate = t.feesUSD / vol * 100
+		if mobulaVol > 0 {
+			rate = t.feesUSD / mobulaVol * 100
 		}
 		feeRatePct.WithLabelValues(platform).Set(rate)
+
+		if t.feePayingVolumeUSD > 0 {
+			feePayingRatePct.WithLabelValues(platform).Set(t.feesUSD / t.feePayingVolumeUSD * 100)
+			if mobulaVol > 0 {
+				coveragePct.WithLabelValues(platform).Set(t.feePayingVolumeUSD / mobulaVol * 100)
+			}
+		}
 	}
 
 	lastPollTime.SetToCurrentTime()

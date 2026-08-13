@@ -37,6 +37,10 @@ const FAQ = [
     q: "How often is data updated?",
     a: "Solana metrics update every 5 minutes (materialiser cycle). EVM revenue updates block-by-block continuously. The timestamp in the table header reflects the last materialiser run.",
   },
+  {
+    q: "Which platforms are tracked on EVM chains?",
+    a: "GMGN, Maestro, and Banana Gun are tracked on Ethereum. GMGN, Maestro, Axiom, and Banana Gun are tracked on BSC. GMGN, Maestro, and Banana Gun are tracked on Base. pump.fun Terminal is tracked on all three EVM chains.",
+  },
 ];
 
 export default async function TradingAppExecutionPage() {

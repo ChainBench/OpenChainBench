@@ -40,6 +40,11 @@ export const PLATFORM_DISPLAY: Record<string, string> = {
   "fomo": "FOMO",
   "axiom": "Axiom",
   "gmgn": "GMGN",
+  "photon": "Photon",
+  "bullx": "BullX",
+  "trojan": "Trojan",
+  "banana-gun": "Banana Gun",
+  "maestro": "Maestro",
 };
 
 // Converts lamports to SOL (string with 5 decimals).
