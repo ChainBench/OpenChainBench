@@ -21,15 +21,16 @@ seo_intro: |
   Fomo, with Trojan and Padre close behind as the dominant Telegram bots. This
   benchmark tracks the 24-hour trading volume routed through each platform in
   real time using Mobula's lighthouse aggregator, which attributes on-chain
-  swap events to the originating frontend. GMGN and Axiom consistently rank at
-  the top, regularly trading places as market conditions shift. Fomo has been
-  narrowing the gap and on active days has matched or exceeded Axiom, making
-  the top three increasingly competitive. Trojan and Padre serve the
-  Telegram-native trader segment, each capturing significant bot-driven flow.
-  Phantom routes wallet-initiated swaps through its interface, representing
-  users who prefer the wallet UI over dedicated trading terminals. The fee
-  column shows which platforms capture the most protocol revenue per dollar
-  traded; see methodology for Fomo's fee source.
+  swap events to the originating frontend. GMGN consistently ranks at or near
+  the top, regularly processing over $100 million in daily volume on active
+  days. Axiom competes closely behind and the two regularly trade places as
+  market conditions shift. Fomo has been narrowing the gap and on active days
+  has matched or exceeded Axiom, making the top three increasingly competitive.
+  Trojan and Padre serve the Telegram-native trader segment, each capturing
+  significant bot-driven flow. Phantom routes wallet-initiated swaps through
+  its interface, representing users who prefer the wallet UI over dedicated
+  trading terminals. The fee column shows which platforms capture the most
+  protocol revenue per dollar traded; see methodology for Fomo's fee source.
 
 abstract: |
   The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
