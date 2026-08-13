@@ -6,6 +6,7 @@ import {
   fetchHlCohort,
   fetchHlHistory,
   isHlBuilderSlug,
+  type HlBuilderStats,
   type HlCohortRow,
   type HlHistoryFrontendCompact,
 } from "@/lib/hl-builder-stats";
@@ -111,6 +112,19 @@ export default async function HlFrontendPage({
   if (!history || !frontend) {
     if (!(await isHlBuilderSlug(slug))) notFound();
     const cohortRow = cohort?.rows.find((r) => r.slug === slug);
+    // If we have live builder stats (Prom snapshot), show the dashboard
+    // without the history-dependent sections (firstDay, peakFees, peer group).
+    if (hlStats) {
+      const name = cohortRow?.name ?? titleCaseSlug(slug);
+      return (
+        <HlBuilderNoHistory
+          slug={slug}
+          name={name}
+          stats={hlStats}
+          cohortRow={cohortRow}
+        />
+      );
+    }
     return <HlBuilderPending slug={slug} cohortRow={cohortRow} />;
   }
 
@@ -315,6 +329,82 @@ function titleCaseSlug(slug: string): string {
     .filter(Boolean)
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(" ");
+}
+
+/** Full dashboard rendered when builder stats are available but the
+ *  12-month history blob doesn't include this frontend yet (e.g. fees
+ *  were 0 when the blob was last built). Shows all live KPIs and charts
+ *  from hlStats; skips history-dependent sections (firstDay, peak, peers). */
+function HlBuilderNoHistory({
+  slug,
+  name,
+  stats,
+  cohortRow,
+}: {
+  slug: string;
+  name: string;
+  stats: HlBuilderStats;
+  cohortRow: HlCohortRow | undefined;
+}) {
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://openchainbench.com/" },
+      { "@type": "ListItem", position: 2, name: "Hyperliquid", item: "https://openchainbench.com/hyperliquid" },
+      { "@type": "ListItem", position: 3, name, item: `https://openchainbench.com/hyperliquid/${slug}` },
+    ],
+  };
+  return (
+    <article className="mx-auto max-w-[1200px] px-4 sm:px-6 py-12 sm:py-16">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
+      />
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Hyperliquid", href: "/hyperliquid" },
+          { label: name },
+        ]}
+      />
+      <header className="mb-8">
+        <p className="label-mono text-ink-faint mb-2">Hyperliquid frontend</p>
+        <div className="flex items-center gap-4">
+          <ProviderLogo slug={slug} name={name} size={56} />
+          <h1 className="display text-4xl sm:text-5xl text-ink">{name}</h1>
+        </div>
+        <p
+          className="mt-2 text-[12px] text-ink-faint"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          {slug}
+        </p>
+        <div className="mt-4 flex items-baseline gap-3">
+          <span className="text-4xl font-semibold tabular-nums text-ink">
+            {fmtUSDShort(stats.revenue30d)}
+          </span>
+          <span className="text-sm text-ink-soft">rolling 30d builder fees</span>
+        </div>
+        {cohortRow && (
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-faint">
+            <span>
+              Volume 30d:{" "}
+              <span className="text-ink-soft tabular-nums">{fmtUSDShort(cohortRow.volume30d)}</span>
+            </span>
+            <span>
+              Users 30d:{" "}
+              <span className="text-ink-soft tabular-nums">{cohortRow.users30d.toLocaleString()}</span>
+            </span>
+          </div>
+        )}
+      </header>
+      <HlBuilderDashboard stats={stats} name={name} />
+      <BenchAppearancesSection providerSlug={slug} />
+      <RelatedProvidersSection providerSlug={slug} providerName={name} />
+    </article>
+  );
 }
 
 /** Lightweight placeholder rendered with HTTP 200 when a builder is in
