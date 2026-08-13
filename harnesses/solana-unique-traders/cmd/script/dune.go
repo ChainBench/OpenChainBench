@@ -74,16 +74,12 @@ fee_txs AS (
   FROM solana.account_activity a
   JOIN fee_wallets fw ON a.address = fw.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
-),
-signers AS (
-  SELECT a.tx_id, a.address AS signer
-  FROM solana.account_activity a
-  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
-    AND a.account_index = 0
 )
-SELECT ft.platform, COUNT(DISTINCT s.signer) AS unique_traders_24h
+SELECT ft.platform, COUNT(DISTINCT t.taker) AS unique_traders_24h
 FROM fee_txs ft
-JOIN signers s ON s.tx_id = ft.tx_id
+JOIN dex_solana.trades t
+  ON t.tx_id = ft.tx_id
+  AND t.block_time >= NOW() - INTERVAL '1' DAY
 GROUP BY ft.platform
 ORDER BY unique_traders_24h DESC
 `
