@@ -46,7 +46,7 @@ methodology:
 findings:
   - "{{best_name}} attracts the largest average swap at ${{best_p50}} per transaction."
   - "pump.fun has the smallest average swap size in the set, dominated by bot sniping and micro-cap degen retail flow on its bonding-curve launchpad."
-  - "GMGN and Trojan consistently lead on average swap size, serving more sophisticated traders with larger position sizes."
+  - "GMGN and Trojan consistently lead on average swap size, serving more sophisticated traders with larger position sizes. Note: Mobula's volume attribution for GMGN and Trojan is broader than fee-paying volume (only ~8% of attributed volume generates a fee event per bench 203), so average size comparisons with pump.fun should be treated as directional."
   - "Fomo sits mid-market between retail launchpad activity and professional terminals."
   - "Trade count tells the other story: pump.fun processes more trades per day than all other platforms combined."
 
@@ -64,7 +64,7 @@ faq:
   - q: "Is this apple-to-apple between pump.fun and the other platforms?"
     a: "Directionally yes. Mobula attributes each swap to exactly one frontend using referral tags. A pump.fun token bought via GMGN counts under GMGN, not pump.fun. So both reflect genuine frontend-attributed activity. The difference is that pump.fun's activity skews heavily toward bots and micro-trades on bonding-curve launches, while GMGN and Axiom serve more secondary-market trading."
   - q: "Why is Fomo's average trade size lower than GMGN despite similar positioning?"
-    a: "Fomo attracts a broader retail base through its social copy-trading and wallet features, which pulls the average down compared to GMGN's power-trader demographic. Fomo also has notably low protocol fees in Mobula's data relative to DeFiLlama, suggesting part of its fee model may not be captured by on-chain referral attribution."
+    a: "Fomo attracts a broader retail base through its social copy-trading and wallet features, which pulls the average down compared to GMGN's power-trader demographic. Fomo's protocol fees appear lower in Mobula's data than in DeFiLlama because Fomo collects part of its revenue as off-chain relay fees stored in a private Dune table (dune.tryfomo.fomo_relay_fees); on-chain attribution alone misses this component."
 
 providers:
   - slug: pump-fun
