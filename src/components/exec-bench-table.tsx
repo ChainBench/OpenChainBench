@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ExecLeaderboardResponse } from "@/lib/solana-exec";
 import { PLATFORM_DISPLAY, lamportsToSOL, fmtCUPrice } from "@/lib/solana-exec";
 
@@ -28,13 +28,11 @@ export function ExecBenchTable({
   data: ExecLeaderboardResponse | null;
 }) {
   const [win, setWin] = useState<Window>("24h");
-  const stale = useMemo(
-    () =>
-      data?.updatedAt
-        ? Date.now() - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
-        : false,
-    [data?.updatedAt]
-  );
+  // eslint-disable-next-line react-compiler/react-compiler
+  const stale =
+    data?.updatedAt
+      ? Date.now() - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
+      : false;
 
   if (!data) {
     return (
