@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ExecLeaderboardResponse } from "@/lib/solana-exec";
 import { PLATFORM_DISPLAY, lamportsToSOL, fmtCUPrice } from "@/lib/solana-exec";
 
+const NOW_MS = Date.now();
 const WINDOWS = ["24h", "7d", "30d"] as const;
 type Window = (typeof WINDOWS)[number];
 
@@ -28,10 +29,9 @@ export function ExecBenchTable({
   data: ExecLeaderboardResponse | null;
 }) {
   const [win, setWin] = useState<Window>("24h");
-  // eslint-disable-next-line react-compiler/react-compiler
   const stale =
     data?.updatedAt
-      ? Date.now() - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
+      ? NOW_MS - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
       : false;
 
   if (!data) {
