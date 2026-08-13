@@ -32,11 +32,15 @@ export type PanelScope = {
   higherIsBetter: boolean;
   aValue: number;
   bValue: number;
+  /** When true, don't apply win/lose coloring — size/scale metric, not quality. */
+  neutral?: boolean;
 };
 
 export type CompareBench = {
   slug: string;
   title: string;
+  /** Short display title for verdict/FAQ prose — overrides shortBenchTitle(). */
+  compareTitle?: string;
   category: Benchmark["category"];
   unit: Benchmark["unit"];
   metric: string;
@@ -49,6 +53,8 @@ export type CompareBench = {
   regionBreakdown: BreakdownRow[];
   chainRegionMatrix: ChainRegionEntry[];
   panelScopes: PanelScope[];
+  /** Optional in-panel note shown below the metric cards (e.g. scope clarification). */
+  note?: string;
 };
 
 function decideWinner(
@@ -140,7 +146,13 @@ export function CompareBenchCard({
         </>
       )}
 
-      <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      {bench.note && (
+        <p className="mt-4 text-[11px] text-ink-faint leading-snug border-t border-rule pt-3">
+          {bench.note}
+        </p>
+      )}
+
+      <footer className="mt-4 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
         <span>Rolling 24h · {bench.metric}</span>
         <Link
           href={`/api/stat/${bench.slug}`}
@@ -187,16 +199,26 @@ function ScopeTable({
         <tbody>
           {(["a", "b"] as const).map((side) => {
             const name = side === "a" ? aName : bName;
+            const sampleSize = side === "a" ? (bench.aResult?.sampleSize ?? 0) : (bench.bResult?.sampleSize ?? 0);
+            const provisional = sampleSize > 0 && sampleSize < 100;
             return (
               <tr key={side} className="border-t border-rule">
                 <td className="py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted sticky left-0 bg-bg border-r border-rule/40">
                   {name}
+                  {provisional && (
+                    <span
+                      className="ml-1.5 text-amber-400/80 font-normal normal-case tracking-normal"
+                      title={`${Math.round(sampleSize)} samples — treat as provisional`}
+                    >
+                      provisional
+                    </span>
+                  )}
                 </td>
                 {cols.map((c) => {
                   const val = side === "a" ? c.aValue : c.bValue;
                   const winner = decideWinner(c.aValue, c.bValue, c.higherIsBetter);
-                  const leads = winner === side;
-                  const trails = winner !== side && winner !== "tie";
+                  const leads = !c.neutral && winner === side;
+                  const trails = !c.neutral && winner !== side && winner !== "tie";
                   const hasData = val > 0;
                   return (
                     <td
@@ -274,15 +296,29 @@ function AggregatePanel({
           </p>
           {details && (
             <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] text-ink-muted tabular">
-              <dt>p99</dt>
-              <dd className="text-right text-ink-soft">{fmtUnit(details.p99, unit)}</dd>
+              {(details.sampleSize ?? 0) >= 100 ? (
+                <>
+                  <dt>p99</dt>
+                  <dd className="text-right text-ink-soft">{fmtUnit(details.p99, unit)}</dd>
+                </>
+              ) : null}
               <dt>rank</dt>
-              <dd className="text-right text-ink-soft">#{details.rank}</dd>
+              <dd className="text-right text-ink-soft">
+                {details.rank > 0 ? `#${details.rank}` : "—"}
+              </dd>
               {details.sampleSize ? (
                 <>
                   <dt>samples</dt>
                   <dd className="text-right text-ink-soft">
                     {Math.round(details.sampleSize).toLocaleString()}
+                    {details.sampleSize < 100 && (
+                      <span
+                        className="ml-1 text-amber-400/80"
+                        title="Fewer than 100 samples — treat as provisional"
+                      >
+                        provisional
+                      </span>
+                    )}
                   </dd>
                 </>
               ) : null}
