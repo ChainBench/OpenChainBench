@@ -30,13 +30,14 @@ seo_intro: |
 
 abstract: |
   The harness wraps the Dune Analytics API. A single saved query counts distinct
-  fee_payer addresses in solana.transactions that touched each platform's known fee
-  wallet addresses in the rolling 24-hour window, joined from solana.account_activity
-  for efficiency. All platforms including pump.fun use the same fee wallet attribution
-  approach against solana.account_activity (standard Dune tier). The harness re-executes
-  the query every hour, polls for completion, then updates the Prometheus gauge
-  solana_platform_unique_traders_24h per platform. Between executions it serves the
-  latest cached result every 15 minutes.
+  tx_id values from solana.account_activity where the fee wallet address received
+  a native SOL inflow (post_balance > pre_balance) or a USDC/WSOL token inflow
+  (post_token_balance > pre_token_balance via token_balance_owner) in the rolling
+  24-hour window. All platforms use the same inflow-only attribution against
+  solana.account_activity (standard Dune tier, no trace API required). The harness
+  re-executes the query every hour, polls for completion, then updates the Prometheus
+  gauge solana_platform_unique_traders_24h per platform. Between executions it serves
+  the latest cached result every 15 minutes.
 
 methodology:
   - "Source: Dune Analytics (dune.com). Query updated hourly, results fetched every 15 min."
@@ -62,7 +63,7 @@ prometheus:
 
 faq:
   - q: "What does unique daily traders measure?"
-    a: "Unique daily traders counts the number of distinct wallet addresses (fee_payer in Solana transactions) that executed at least one trade through a platform in the rolling 24-hour window. It measures user breadth, not volume or frequency. A wallet that trades 1000 times counts as 1 unique trader."
+    a: "Unique daily traders counts the number of distinct fee-touching transactions (tx_id) in solana.account_activity where a platform fee wallet received SOL or USDC/WSOL in the rolling 24-hour window. It is a proxy for user breadth: the actual unique-wallet count is typically 3-10x lower since active traders execute multiple transactions per day. A wallet that trades 1000 times generates up to 1000 counted transactions."
   - q: "Why does pump.fun have so many more unique traders than GMGN?"
     a: "pump.fun is the default entry point for new Solana users and meme coin traders. Its bonding curve launch mechanic triggers massive multi-wallet bot activity as snipers race to buy newly created tokens. GMGN serves a more deliberate, power-trader segment that skews toward fewer unique wallets but larger position sizes."
   - q: "Is this apple-to-apple between pump.fun and the others?"

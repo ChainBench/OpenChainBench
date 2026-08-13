@@ -56,7 +56,7 @@ WITH fee_wallets AS (
     ('Hbj6XdxX6eV4nfbYTseysibp4zZJtVRRPn2J3BhGRuK9','axiom'),
     ('846ah7iBSu9ApuCyEhA5xpnjHHX7d4QJKetWLbwzmJZ8','axiom'),
     ('5BqYhuD4q1YD3DMAYkc1FeTu9vqQVYYdfBAmkZjamyZg','axiom'),
-    ('HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq','fomo'),
+    ('R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX','fomo'),
     ('9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco','trojan'),
     ('92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH','trojan'),
     ('2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ','trojan'),
