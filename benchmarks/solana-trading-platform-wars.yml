@@ -55,7 +55,7 @@ findings:
   - "Fomo is the third web platform with around 50 million USD per day. Trojan and Padre serve Telegram-native traders at 40 and 20 million USD respectively."
   - "Phantom routes roughly 10 million USD per day through its wallet swap interface, confirming that a large share of retail Solana volume touches the wallet layer."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-launchpad-wars
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-trading-platform-wars
 
 prometheus:
   window: 24h
@@ -71,7 +71,7 @@ faq:
   - q: "Why does Bullx show zero volume?"
     a: "BullX has limited Solana attribution in Mobula's lighthouse data. BullX primarily targets Ethereum and EVM chains and its Solana swap volume may not be tagged with referral data that Mobula can attribute."
   - q: "How is trading platform volume different from launchpad volume?"
-    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like PumpFun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. A single trade on PumpFun via GMGN is counted in both benches."
+    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like PumpFun or Flap. Platform volume here counts swaps attributed to a trading frontend via Mobula's referral tag attribution. Attribution is mutually exclusive: a trade on pump.fun tokens routed through GMGN counts under GMGN here, not under pump.fun. The pump.fun entry on this bench only covers trades routed through pump.fun's own frontend."
 
 providers:
   - slug: pump-fun
