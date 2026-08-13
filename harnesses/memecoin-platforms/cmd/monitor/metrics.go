@@ -32,10 +32,15 @@ var (
 		Name: "memecoin_last_poll_timestamp_seconds",
 		Help: "Unix timestamp of the last successful poll",
 	})
+
+	duneDataFreshness = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "memecoin_dune_data_freshness_seconds",
+		Help: "Unix timestamp of the most recent block_time seen in the Dune query results. Gap from now() indicates solana.account_activity table lag.",
+	})
 )
 
 func init() {
-	prometheus.MustRegister(feeRatePct, feesUSD24h, volumeUSD24h, platformHealth, lastPollTime)
+	prometheus.MustRegister(feeRatePct, feesUSD24h, volumeUSD24h, platformHealth, lastPollTime, duneDataFreshness)
 }
 
 func startMetricsServer(addr string) error {

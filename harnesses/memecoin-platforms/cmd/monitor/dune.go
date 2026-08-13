@@ -68,7 +68,7 @@ wallet_platform AS (
 ),
 
 native_sol AS (
-  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow
+  SELECT wp.platform, CAST(a.post_balance - a.pre_balance AS DOUBLE) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.address = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -77,7 +77,7 @@ native_sol AS (
 ),
 
 usdc_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow
+  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e6 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
@@ -86,26 +86,29 @@ usdc_inflows AS (
 ),
 
 wsol_inflows AS (
-  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow
+  SELECT wp.platform, GREATEST(a.post_token_balance - a.pre_token_balance, 0) / 1e9 AS inflow, a.block_time
   FROM solana.account_activity a
   JOIN wallet_platform wp ON a.token_balance_owner = wp.address
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
     AND a.post_token_balance > a.pre_token_balance
+),
+
+combined AS (
+  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow, block_time FROM native_sol
+  UNION ALL
+  SELECT platform, inflow, 0.0, 0.0, block_time FROM usdc_inflows
+  UNION ALL
+  SELECT platform, 0.0, inflow, 0.0, block_time FROM wsol_inflows
 )
 
 SELECT
   platform,
   COALESCE(SUM(usdc_inflow), 0) AS usdc_fees_24h,
   COALESCE(SUM(wsol_inflow), 0) AS wsol_fees_24h,
-  COALESCE(SUM(sol_inflow), 0) AS sol_fees_24h
-FROM (
-  SELECT platform, 0.0 AS usdc_inflow, 0.0 AS wsol_inflow, inflow AS sol_inflow FROM native_sol
-  UNION ALL
-  SELECT platform, inflow AS usdc_inflow, 0.0, 0.0 FROM usdc_inflows
-  UNION ALL
-  SELECT platform, 0.0, inflow AS wsol_inflow, 0.0 FROM wsol_inflows
-) combined
+  COALESCE(SUM(sol_inflow), 0)  AS sol_fees_24h,
+  MAX(block_time)                AS data_freshness
+FROM combined
 GROUP BY platform
 ORDER BY platform
 `
@@ -118,10 +121,11 @@ type duneClient struct {
 }
 
 type duneRow struct {
-	Platform    string  `json:"platform"`
-	USDCFees24h float64 `json:"usdc_fees_24h"`
-	WSOLFees24h float64 `json:"wsol_fees_24h"`
-	SOLFees24h  float64 `json:"sol_fees_24h"`
+	Platform        string  `json:"platform"`
+	USDCFees24h     float64 `json:"usdc_fees_24h"`
+	WSOLFees24h     float64 `json:"wsol_fees_24h"`
+	SOLFees24h      float64 `json:"sol_fees_24h"`
+	DataFreshness   string  `json:"data_freshness"`
 }
 
 func newDuneClient(apiKey string) *duneClient {
