@@ -17,17 +17,19 @@ disclaimer: |
   Volume figures are sourced from Mobula's lighthouse aggregator, which indexes on-chain swap events attributed to each trading platform or Telegram bot. Data is refreshed every 15 minutes. Platforms with zero volume may indicate no attributable on-chain activity in the last 24 hours or a temporary attribution gap in Mobula's indexing.
 
 seo_intro: |
-  Solana's trading frontend market is a three-way race between GMGN, Axiom and
+  Solana's trading frontend market is a contested race between GMGN, Axiom and
   Fomo, with Trojan and Padre close behind as the dominant Telegram bots. This
   benchmark tracks the 24-hour trading volume routed through each platform in
   real time using Mobula's lighthouse aggregator, which attributes on-chain
-  swap events to the originating frontend. GMGN and Axiom typically trade
-  places at the top with 80 to 100 million USD in daily volume each. Fomo
-  processes roughly 50 million USD per day, while Trojan and Padre serve the
-  Telegram-native trader segment at 40 and 20 million USD respectively.
-  Phantom, the dominant Solana wallet, routes roughly 10 million USD per day
-  through its swap interface. The fee column reveals which platforms capture
-  the most protocol revenue per dollar traded.
+  swap events to the originating frontend. GMGN and Axiom consistently rank at
+  the top, regularly trading places as market conditions shift. Fomo has been
+  narrowing the gap and on active days has matched or exceeded Axiom, making
+  the top three increasingly competitive. Trojan and Padre serve the
+  Telegram-native trader segment, each capturing significant bot-driven flow.
+  Phantom routes wallet-initiated swaps through its interface, representing
+  users who prefer the wallet UI over dedicated trading terminals. The fee
+  column shows which platforms capture the most protocol revenue per dollar
+  traded; see methodology for Fomo's fee source.
 
 abstract: |
   The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
@@ -43,17 +45,17 @@ methodology:
   - "Source: Mobula lighthouse (api.mobula.io/api/2/market/lighthouse), byPlatform field. Mobula attributes swap events using on-chain referral tags, program IDs and memo fields."
   - "Poll cadence: harness fetches the endpoint every 15 minutes and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
   - "Volume: sum of all swap event notional values (in USD at time of swap) within the last 24 hours for swaps attributed to this platform. Higher = more user activity routed through this frontend."
-  - "Fees: on-chain protocol fees collected or attributable to this platform within the last 24 hours. Bot fee charging through referral accounts is included where attributable."
-  - "Attribution method: Mobula uses a combination of on-chain referral tags embedded by each platform SDK and program-level routing heuristics. Attribution may undercount platforms that do not use standard referral tags."
-  - "Scope: this bench covers trading frontends and Telegram bots that route swap orders across Solana DEX programs. pump.fun is included here via its byLaunchpad attribution, representing trades routed through pump.fun's own frontend. Other launchpads (Flap, Bankr) are in bench 200."
-  - "pump.fun note: pump.fun volume comes from Mobula's byLaunchpad bucket (bonding-curve swaps via pump.fun's own site). Trades on pump.fun tokens routed through GMGN or Axiom are counted under those platforms, not under pump.fun. Attribution is mutually exclusive."
-  - "Phantom note: Phantom is primarily a wallet; its swap volume here reflects users initiating swaps from the Phantom interface via Jupiter or other aggregators."
+  - "Fees column: for all platforms except Fomo, fees come from Mobula lighthouse (on-chain protocol fees attributable via referral tags). For Fomo, fees come from DeFiLlama dailyRevenue (defillama_dex_fees_24h_usd). Fomo collects protocol fees in USDC swept in batches to a fee wallet, outside the per-trade referral tag flow that Mobula tracks, causing Mobula to undercount Fomo fees by approximately 9x. DeFiLlama monitors the fee wallet directly and is accurate."
+  - "Attribution method: Mobula uses on-chain referral tags embedded by each platform SDK and program-level routing heuristics. Attribution is mutually exclusive: each swap is attributed to exactly one platform. Platforms that do not embed standard referral tags may be undercounted."
+  - "pump.fun scope: pump.fun volume comes from Mobula's byLaunchpad bucket, which covers bonding-curve swaps via pump.fun's own frontend only. PumpSwap (the AMM pump.fun launched for graduated tokens) is a separate program; swaps on PumpSwap routed through GMGN or Axiom count under those platforms. Direct PumpSwap trades via pump.fun's interface may be partially included depending on Mobula's indexing of the PumpSwap program."
+  - "Phantom note: Phantom is primarily a wallet; its swap volume here reflects users initiating swaps from the Phantom interface via Jupiter or other aggregators, not active trading sessions."
 
 findings:
   - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
-  - "GMGN and Axiom dominate the web-based trading terminal segment, each processing over 80 million USD in daily volume. Their fee rates and UX differentiate them for power traders."
-  - "Fomo is the third web platform with around 50 million USD per day. Trojan and Padre serve Telegram-native traders at 40 and 20 million USD respectively."
-  - "Phantom routes roughly 10 million USD per day through its wallet swap interface, confirming that a large share of retail Solana volume touches the wallet layer."
+  - "GMGN and Axiom consistently rank at the top of the leaderboard and regularly trade places. Both serve power traders with web-based terminals; GMGN emphasizes AI copy-trading while Axiom focuses on execution speed."
+  - "Fomo has been closing the gap on Axiom and on competitive days overtakes it, making the top three a genuinely contested race rather than a fixed hierarchy."
+  - "Trojan and Padre serve the Telegram-native segment and together account for a significant fraction of bot-driven Solana swap flow."
+  - "Phantom is the dominant Solana wallet by installs; its volume here represents wallet-initiated swaps via Jupiter, a different usage pattern than active trading sessions."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-trading-platform-wars
 
@@ -63,15 +65,19 @@ prometheus:
 
 faq:
   - q: "Which Solana trading platform has the most volume?"
-    a: "GMGN and Axiom trade places at the top depending on the day, each routing 80 to 100 million USD in daily on-chain swap volume. Fomo is close behind at around 50 million USD. The leaderboard updates every 15 minutes from live Mobula lighthouse data."
+    a: "GMGN and Axiom consistently trade places at the top, and Fomo has been narrowing the gap. The leaderboard is live and updates every 15 minutes, so the current ranking is always visible at the top of the page. Headlines claiming one platform has overtaken another are often based on a single day or a specific metric; this bench tracks the rolling 24h window continuously."
+  - q: "Does the pump.fun volume here include PumpSwap?"
+    a: "Partially. The pump.fun line comes from Mobula's byLaunchpad bucket, which covers bonding-curve swaps via pump.fun's own frontend. PumpSwap (the AMM for graduated tokens) is a separate program launched in 2025. Direct PumpSwap trades via pump.fun's interface may be partially included depending on Mobula's indexing of the PumpSwap program. Trades on pump.fun tokens routed through GMGN or Axiom to PumpSwap count under those platforms, not under pump.fun."
   - q: "What is the difference between GMGN and Axiom?"
     a: "Both are web-based Solana trading terminals targeting power traders. GMGN emphasizes AI-powered wallet analysis and copy trading. Axiom is a terminal-style platform focused on chart speed and order execution. Both route through Jupiter and direct DEX pools."
+  - q: "Why does Fomo's fee column use a different source?"
+    a: "Fomo collects protocol fees in USDC swept in batches to a dedicated fee wallet, separate from individual swap transactions. Mobula's attribution tracks fees via referral tags embedded per trade and misses the batch sweeps, understating Fomo fees by roughly 9x. The fee column for Fomo uses DeFiLlama, which monitors the Fomo fee wallet directly and captures the full revenue. All other platforms use Mobula."
   - q: "Are Trojan and Padre Telegram bots?"
-    a: "Yes. Trojan and Padre are Telegram-native trading bots that execute Solana swaps on behalf of users. They embed referral tags in transactions which Mobula uses to attribute volume. Padre is particularly popular among meme coin traders using bonding-curve launchpads."
-  - q: "Why does Bullx show zero volume?"
-    a: "BullX has limited Solana attribution in Mobula's lighthouse data. BullX primarily targets Ethereum and EVM chains and its Solana swap volume may not be tagged with referral data that Mobula can attribute."
+    a: "Yes. Trojan and Padre are Telegram-native trading bots that execute Solana swaps on behalf of users. They embed referral tags in transactions which Mobula uses to attribute volume."
   - q: "How is trading platform volume different from launchpad volume?"
-    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like PumpFun or Flap. Platform volume here counts swaps attributed to a trading frontend via Mobula's referral tag attribution. Attribution is mutually exclusive: a trade on pump.fun tokens routed through GMGN counts under GMGN here, not under pump.fun. The pump.fun entry on this bench only covers trades routed through pump.fun's own frontend."
+    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like pump.fun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. Attribution is mutually exclusive per Mobula's referral tag system: a trade on pump.fun tokens routed through GMGN counts under GMGN, not under pump.fun."
+  - q: "Why does BullX show zero or low volume?"
+    a: "BullX has limited Solana attribution in Mobula's lighthouse data. BullX primarily targets EVM chains and its Solana swap volume may not be tagged with referral data that Mobula can attribute. DEX volume for BullX across chains is tracked in bench 205."
 
 providers:
   - slug: pump-fun
