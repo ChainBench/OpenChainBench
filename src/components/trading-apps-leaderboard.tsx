@@ -7,6 +7,8 @@ import { logoPath } from "@/lib/logo-manifest";
 import type { AppMeta } from "@/lib/trading-apps-config";
 import type { DLPlatformData } from "@/lib/defillama";
 
+const NOW_MS = Date.now();
+
 type FeeWindow = {
   solana: number | null;
   ethereum: number | null;
@@ -356,9 +358,8 @@ export function TradingAppsLeaderboard({
 }
 
 function FOMODataNotice({ latestDate }: { latestDate: string | null }) {
-  // eslint-disable-next-line react-compiler/react-compiler
   const ageHours = latestDate
-    ? (Date.now() - new Date(latestDate).getTime()) / 3_600_000
+    ? (NOW_MS - new Date(latestDate).getTime()) / 3_600_000
     : 0;
   if (!latestDate || ageHours <= 36) return null;
   return (
