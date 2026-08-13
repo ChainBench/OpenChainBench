@@ -331,8 +331,6 @@ const RAW: Record<string, string> = {
   kraken: "/logos/kraken.png",
   kucoin: "/logos/kucoin.png",
   mexc: "/logos/mexc.png",
-  "binance-us": "/logos/binance-us.svg",
-  cryptocom: "/logos/cryptocom.svg",
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
@@ -356,10 +354,6 @@ const RAW: Record<string, string> = {
   coinpilot: "/logos/coinpilot.png",
   echosync: "/logos/echosync.png",
   fomo: "/logos/fomo.png",
-  "pump-fun": "/logos/pump-fun.jpg",
-  gmgn: "/logos/gmgn.jpg",
-  moonshot: "/logos/moonshot.svg",
-  bullx: "/logos/bullx.png",
   slash: "/logos/slash.png",
   topdog: "/logos/topdog.jpg",
   "markets-mobile": "/logos/markets-mobile.svg",

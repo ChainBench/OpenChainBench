@@ -104,14 +104,6 @@ const BRANDS: Record<string, Brand> = {
   lighter: { color: "#FF2E63" },       // hot magenta
   gains: { color: "#10E2A4" },         // emerald
 
-  // ─── App store / CEX ───
-  invo: { color: "#7B5EA7" },          // invo purple
-  robinhood: { color: "#00C805" },     // robinhood green
-  cryptocom: { color: "#002D74", dark: true }, // crypto.com navy
-  coinbase: { color: "#0052FF" },      // coinbase blue
-  bybit: { color: "#F7A600" },         // bybit yellow
-  kraken: { color: "#5741D9" },        // kraken purple
-  "binance-us": { color: "#F0B90B" },  // binance yellow
 };
 
 const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
