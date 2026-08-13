@@ -18,12 +18,14 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoi
 
 seo_intro: |
   Not all Solana memecoin frontends charge the same. This benchmark parses every
-  trade transaction directly from the Solana blockchain to measure what each
-  platform actually takes out of the user's pocket. Gas, explicit fee transfers to
-  platform wallets, and referral tips are all included. AMM LP fees that stay
-  inside pool accounts are excluded because they apply equally regardless of which
-  frontend you use. The result is the true all-in cost of hitting the buy or sell
-  button on each platform.
+  trade transaction directly from the Solana blockchain to measure the explicit
+  on-chain cost per trade: Solana gas, direct fee transfers to platform wallets,
+  and referral tips visible in the transaction. AMM LP fees embedded in pool
+  pricing are excluded because they are settled inside pool accounts, not
+  transferred to any platform. Costs not visible in the swap transaction itself
+  (escrow-based bot fees, spread, slippage) are also out of scope; see
+  methodology. The result is a reproducible measure of the fees each platform
+  charges that are verifiable on-chain.
 
 abstract: |
   The harness fetches the top 25 tokens by market cap from pump.fun every 5
@@ -43,26 +45,26 @@ methodology:
   - "Fee source: Solana public RPC getTransaction (jsonParsed) for each trade hash. No third-party fee API."
   - "Gas: meta.fee (lamports) converted to USD at the current SOL/USD price fetched from CoinGecko every 5 min."
   - "Platform fees: explicit SOL or USDC/WSOL transfers to known fee wallet owners (confirmed on-chain). Unknown small recipients are captured via heuristics: SOL recipients receiving less than 5% of the user net flow, USDC/WSOL recipients receiving less than 5% of the largest pool receipt. Trading bots that use pre-funded escrow accounts (Trojan, Maestro) collect fees through a separate settlement mechanism not visible in the swap transaction; their displayed fee represents gas only."
-  - "AMM LP fees excluded: the 0.20% PumpSwap fee and 0.25% Raydium fee stay inside pool accounts and are not counted because they apply equally to all frontends routing through the same pool."
-  - "Grouping: trades are split by the platform field returned by Mobula. Trades with no platform tag are assigned to pump-fun."
+  - "AMM LP fees excluded: the 0.20% PumpSwap fee and 0.25% Raydium fee are settled inside pool accounts as LP fees — they are not transferred to any platform wallet and are outside this benchmark's scope."
+  - "Grouping: trades are split by the platform field returned by Mobula. Trades with no platform tag are currently assigned to pump-fun — known limitation: untagged traffic (MEV bots, snipers, direct scripts) inflates the pump-fun sample with zero-platform-fee trades, pulling its median toward gas-only. A dedicated Unattributed bucket is on the roadmap."
   - "Cadence: full sweep every 5 minutes; tx results are cached to avoid re-parsing the same hash."
   - "Aggregation: headline is the 24h median of the trade-count-weighted average of memecoin_platform_fee_pct across all tracked tokens."
 
 findings:
-  - "{{best_name}} currently leads with the lowest average trading fee at {{best_p50}} (p50, 24h) across top pump.fun tokens."
-  - "{{worst_name}} has the highest average fee at {{worst_p50}} (p50, 24h)."
+  - "{{best_name}} currently has the lowest median explicit platform fee at {{best_p50}} (p50, 24h) across top pump.fun tokens."
+  - "{{worst_name}} has the highest median explicit platform fee at {{worst_p50}} (p50, 24h) among fully-captured providers. Escrow-based bots (Trojan, Maestro) show near-zero because their fees are collected outside the swap transaction and are not captured by this benchmark."
 
 faq:
   - q: "Are AMM LP fees included?"
-    a: "No. The 0.20% PumpSwap fee and 0.25% Raydium fee stay inside pool accounts and are not transferred anywhere. Since they apply equally to every frontend routing through the same pool, including them would not differentiate platforms. This benchmark measures only explicit transfers out of the user's wallet to platform or protocol fee recipients."
+    a: "No. The 0.20% PumpSwap fee and 0.25% Raydium fee are settled inside pool accounts as LP fees — they are not transferred to any platform wallet. This benchmark measures only explicit transfers out of the user's wallet to platform or protocol fee recipients. Costs embedded in pool pricing (spread, price impact) are also out of scope."
   - q: "What fees do memecoin trading platforms charge?"
-    a: "Native clients (pump.fun) collect a small protocol fee on each swap. Aggregator frontends (Phantom) add a referral tip on top, visible as a small SOL or USDC transfer in the swap transaction. Trading bots using pre-funded escrow (Trojan, Maestro) charge a fixed percentage but collect it via a separate settlement mechanism outside the swap transaction. Gas is a separate Solana transaction fee paid per signature."
+    a: "Native clients (pump.fun) collect a protocol fee on each swap. Aggregator frontends (Phantom) add a referral tip on top, visible as a SOL or USDC transfer in the swap transaction. Trading bots using pre-funded escrow (Trojan, Maestro) charge a percentage fee but collect it via a separate settlement mechanism outside the swap transaction — this benchmark does not capture those fees; their rows show gas only. Gas is a separate Solana transaction fee paid per signature."
   - q: "How are fee wallets identified?"
     a: "For confirmed platforms like Fomo, the fee wallet owner address is verified by inspecting multiple tagged trades on-chain. For platforms without a confirmed wallet, the harness uses a heuristic: any non-system, non-pool account receiving less than 5% of the user's net SOL flow, or less than 5% of the largest token pool receipt, is counted as a fee recipient. This captures Phantom-style referral tips without hardcoding every address."
   - q: "Why does Trojan show near-zero fee?"
-    a: "Trojan and similar escrow-based bots (Maestro) pre-fund a shared wallet, execute trades from it, then settle with users in a separate transaction. The swap transaction itself shows a fair-price trade with no fee deduction. Their advertised ~0.9% fee is collected in the settlement step, which is not a swap and not captured by this benchmark. Trojan's displayed value reflects gas only."
-  - q: "Why is pump.fun near zero?"
-    a: "Since August 7 2026, pump.fun charges 0% on bonding-curve trades following a competitive response to Fomo's growing revenue. Before that date, pump.fun collected a small protocol fee routed into a program-owned pool account rather than an identifiable external wallet, which this benchmark could not capture. Either way, the result is near-zero measured fee."
+    a: "Trojan and similar escrow-based bots (Maestro) pre-fund a shared wallet, execute trades from it, then settle with users in a separate transaction. The swap transaction itself shows a fair-price trade with no fee deduction. Their advertised ~0.9% fee is collected in the settlement step, which is not a swap and not captured by this benchmark. A near-zero value here does not mean Trojan is free — it means their fee is outside the on-chain scope this benchmark measures. Trojan's displayed value reflects gas only."
+  - q: "Why does pump.fun show near-zero?"
+    a: "Two factors combine. First, trades with no Mobula platform tag are assigned to the pump-fun row — this includes MEV bots, snipers, and untagged scripts that pay no platform fee, pulling the pump-fun median toward gas-only. Second, pump.fun's bonding-curve fee is embedded in the output token amount rather than a discrete SOL or USDC transfer to an identifiable wallet, so it is not captured by on-chain fee parsing. PumpSwap (the AMM for graduated tokens) does charge explicit protocol and creator fees as on-chain transfers — these are captured when they appear in tagged trades. The unattributed-to-pump-fun assignment rule is a known limitation; a dedicated Unattributed bucket is on the roadmap."
 
 prometheus:
   window: 24h
