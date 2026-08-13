@@ -61,8 +61,8 @@ faq:
     a: "For confirmed platforms like Fomo, the fee wallet owner address is verified by inspecting multiple tagged trades on-chain. For platforms without a confirmed wallet, the harness uses a heuristic: any non-system, non-pool account receiving less than 5% of the user's net SOL flow, or less than 5% of the largest token pool receipt, is counted as a fee recipient. This captures Phantom-style referral tips without hardcoding every address."
   - q: "Why does Trojan show near-zero fee?"
     a: "Trojan and similar escrow-based bots (Maestro) pre-fund a shared wallet, execute trades from it, then settle with users in a separate transaction. The swap transaction itself shows a fair-price trade with no fee deduction. Their advertised ~0.9% fee is collected in the settlement step, which is not a swap and not captured by this benchmark. Trojan's displayed value reflects gas only."
-  - q: "Why is pump.fun near zero?"
-    a: "pump.fun's protocol fee goes to a program-owned pool account, not to an identifiable external wallet. Without a price oracle for the memecoin itself, the fee taken in the output token cannot be converted to USD. The benchmark measures explicit USD-denominated or SOL-denominated transfers; pump.fun's LP-style fee is currently outside that scope."
+  - q: "Why is pump.fun lower than its advertised 0.95% bonding-curve fee?"
+    a: "The top-25 tokens by market cap skew toward graduated tokens that trade on PumpSwap (0.20% LP + 0.05% protocol) or Raydium (0.25% LP), not the bonding curve. Since the benchmark weights by trade count, the large volume on graduated tokens (Fartcoin, Pnut, ZEREBRO, jellyjelly…) pulls the average well below 0.95%. Trades still on the bonding curve show 0.2–0.5% in the per-token breakdown. The displayed figure is the accurate blended cost for buying any top pump.fun token via the pump.fun interface today."
 
 prometheus:
   window: 24h
