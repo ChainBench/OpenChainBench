@@ -28,6 +28,13 @@ export function ExecBenchTable({
   data: ExecLeaderboardResponse | null;
 }) {
   const [win, setWin] = useState<Window>("24h");
+  const stale = useMemo(
+    () =>
+      data?.updatedAt
+        ? Date.now() - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
+        : false,
+    [data?.updatedAt]
+  );
 
   if (!data) {
     return (
@@ -40,14 +47,6 @@ export function ExecBenchTable({
   const sorted = [...data.platforms].sort(
     (a, b) =>
       (b.windows[win]?.txCount ?? 0) - (a.windows[win]?.txCount ?? 0),
-  );
-
-  const stale = useMemo(
-    () =>
-      data.updatedAt
-        ? Date.now() - new Date(data.updatedAt).getTime() > 3 * 60 * 60 * 1000
-        : false,
-    [data.updatedAt]
   );
 
   return (
