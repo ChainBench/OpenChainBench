@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// querySQL counts unique fee-touching transactions per Solana trading platform.
-// Source: solana.account_activity filtered to known fee wallet addresses.
-// Count distinct tx_ids per platform as a proxy for daily active traders.
-// pump_fun_solana.trades (Dune Spellbook) is unavailable on our API tier.
-// Since pump.fun cut bonding-curve trading fees to 0% on 2026-08-07,
-// its count reflects only transactions generating graduation/creator fees.
+// querySQL counts unique fee-paying transactions per Solana trading platform.
+// Uses the same inflow-only filter as bench 203: only rows where the fee wallet
+// actually received SOL (post_balance > pre_balance) or USDC/WSOL tokens
+// (post_token_balance > pre_token_balance via token_balance_owner).
+// This avoids counting transactions where fee wallet addresses appear as
+// program IDs or read-only accounts without any balance change.
 const querySQL = `
 WITH fee_wallets AS (
   SELECT address, platform FROM (VALUES
@@ -67,12 +67,32 @@ WITH fee_wallets AS (
     ('MaestroUL88UBnZr3wfoN7hqmNWFi3ZYCGqZoJJHE36','maestro'),
     ('FRMxAnZgkW58zbYcE7Bxqsg99VWpJh6sMP5xLzAWNabN','maestro')
   ) AS t(address, platform)
+),
+fee_activity AS (
+  SELECT fw.platform, a.tx_id
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.address = fw.address
+  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
+    AND a.token_mint_address IS NULL
+    AND a.post_balance > a.pre_balance
+  UNION
+  SELECT fw.platform, a.tx_id
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.token_balance_owner = fw.address
+  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
+    AND a.token_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+    AND a.post_token_balance > a.pre_token_balance
+  UNION
+  SELECT fw.platform, a.tx_id
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.token_balance_owner = fw.address
+  WHERE a.block_time >= NOW() - INTERVAL '1' DAY
+    AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
+    AND a.post_token_balance > a.pre_token_balance
 )
-SELECT fw.platform, COUNT(DISTINCT a.tx_id) AS unique_traders_24h
-FROM solana.account_activity a
-JOIN fee_wallets fw ON a.address = fw.address
-WHERE a.block_time >= NOW() - INTERVAL '1' DAY
-GROUP BY fw.platform
+SELECT platform, COUNT(DISTINCT tx_id) AS unique_traders_24h
+FROM fee_activity
+GROUP BY platform
 ORDER BY unique_traders_24h DESC
 `
 
