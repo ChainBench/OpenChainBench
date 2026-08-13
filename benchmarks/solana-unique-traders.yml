@@ -1,0 +1,169 @@
+# OpenChainBench. Bench 207
+
+slug: solana-unique-traders
+number: "207"
+title: "Unique daily swap transactions on Solana: pump.fun vs GMGN vs Fomo vs Axiom vs Trojan, live"
+seo_title: "Unique daily swap transactions by Solana platform 2026: pump.fun vs GMGN vs Fomo vs Axiom vs Trojan"
+seo_description: "{{best_name}} leads Solana platforms with {{best_p50}} unique swap transactions in 24h. pump.fun vs GMGN vs Fomo vs Axiom vs Trojan ranked by daily trading activity, live from Dune Analytics."
+subtitle: Live count of unique swap transactions executed through each Solana trading platform in the last 24 hours. Refreshed hourly via Dune Analytics. Reveals which platforms drive the most trading activity and which serve concentrated whales vs broad retail flow.
+
+category: Trading
+status: live
+metric: Unique swap tx 24h
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  Counts unique tx_ids per platform, not unique wallets. Actual unique-wallet count is 3-10x lower since active traders execute multiple transactions per day. Includes bots, MEV searchers, and multi-wallet traders. Terminals (GMGN, Axiom, Fomo, Trojan, Photon, Maestro) use fee wallet inflow detection; pump.fun uses Dune Spellbook (dex_solana.trades, project IN pumpdotfun/pumpswap) to avoid noise from fee-wallet micro-inflows at 0% fee.
+
+seo_intro: |
+  pump.fun leads Solana platforms by raw swap transaction count, driven by bonding-curve
+  launch activity and bot sniping on newly created tokens. Axiom ranks second among
+  trading terminals, reflecting its broad web-native user base. GMGN and Fomo each
+  attract hundreds of thousands of unique daily swap transactions, while Trojan and
+  Maestro serve a smaller but high-conviction Telegram-native segment.
+  pump.fun's count comes from Dune Spellbook (dex_solana.trades) covering both the
+  bonding-curve program (pumpdotfun) and the graduated PumpSwap AMM, making the
+  comparison directly comparable to terminal fee-wallet attribution. This benchmark
+  tracks unique daily swap transactions per platform live, updated hourly from
+  Dune Analytics on-chain data.
+
+abstract: |
+  The harness wraps the Dune Analytics API. A single saved query counts distinct
+  tx_id values per platform using two sources. For trading terminals (GMGN, Axiom,
+  Fomo, Trojan, Photon, Maestro): solana.account_activity where the platform fee
+  wallet received a native SOL inflow (post_balance > pre_balance) or a USDC/WSOL
+  token inflow (token_balance_owner match, post > pre) in the rolling 24h window.
+  For pump.fun: dex_solana.trades where project IN ('pumpdotfun', 'pumpswap') in
+  the rolling 24h window. This avoids the ~60% noise introduced by micro-SOL
+  inflows (rent, account creation) to pump.fun fee wallets after the 0% fee cut
+  on 2026-08-07. The harness re-executes the query every hour, polls for completion,
+  then updates the Prometheus gauge solana_platform_unique_traders_24h per platform.
+
+methodology:
+  - "Source: Dune Analytics (dune.com). Query updated hourly, results fetched every 15 min."
+  - "Terminals (GMGN, Axiom, Fomo, Trojan, Photon, Maestro): COUNT(DISTINCT tx_id) from solana.account_activity WHERE fee wallet received SOL inflow (address match) or USDC/WSOL inflow (token_balance_owner match) in rolling 24h window."
+  - "pump.fun: COUNT(DISTINCT tx_id) from dex_solana.trades WHERE project IN ('pumpdotfun', 'pumpswap') in rolling 24h window. Covers bonding-curve swaps and graduated PumpSwap AMM trades."
+  - "pump.fun switched from fee wallet to dex_solana.trades on 2026-08-13. The fee wallet approach overcounted by ~60% after the 0% bonding-curve fee cut (2026-08-07), as micro-SOL inflows from rent and account creation triggered false positives on every swap tx."
+  - "Metric represents unique swap transactions per platform. Actual unique-wallet count is 3-10x lower since active traders (and bots) execute multiple transactions per day."
+  - "Bot inclusion: all transactions counted including automated traders, sniping bots, and copy-trade bots."
+  - "Double-count across platforms: a tx touching two fee wallets is counted in both. Counts are not mutually exclusive."
+
+findings:
+  - "{{best_name}} leads Solana platforms with {{best_p50}} unique daily swap transactions."
+  - "pump.fun dominates by raw swap count driven by bonding-curve launch activity and bot sniping; its 6M daily txs come from dex_solana.trades (pumpdotfun + pumpswap), comparable to terminal fee-wallet attribution."
+  - "Axiom leads trading terminals on unique swap tx count, reflecting its broad web-native user base and high-frequency retail flow."
+  - "Trojan and Maestro serve a smaller but highly active Telegram-native segment, with fewer unique transactions but higher average trade size."
+  - "Unique swap tx and volume rankings diverge: Axiom leads terminals on tx count while Photon and Trojan serve more concentrated user bases with higher average position sizes."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-unique-traders
+
+prometheus:
+  window: 24h
+  freshness_metric: solana_platform_unique_traders_24h
+
+faq:
+  - q: "What does unique daily swap transactions measure?"
+    a: "Unique daily swap transactions counts the number of distinct tx_ids per platform in the rolling 24-hour window. For terminals it detects fee wallet inflows; for pump.fun it uses dex_solana.trades (pumpdotfun + pumpswap). Each tx_id represents one swap event. Actual unique-wallet count is 3-10x lower since active traders and bots execute many transactions per day."
+  - q: "Why does pump.fun have so many more transactions than GMGN?"
+    a: "pump.fun's bonding curve launch mechanic triggers massive bot sniping activity as automated traders race to buy newly created tokens in the first seconds of each launch. GMGN serves a more deliberate, power-trader segment with larger positions and fewer but higher-value transactions."
+  - q: "Is this apple-to-apple between pump.fun and the others?"
+    a: "Approximately yes. Both measure COUNT(DISTINCT tx_id) over 24h: terminals via fee wallet inflow detection (all trades generate a fee inflow), pump.fun via dex_solana.trades Spellbook (all indexed swap events). The methodological difference is the data source, not the underlying event type. Both capture real on-chain swap activity."
+  - q: "Why did you switch pump.fun from fee wallets to dex_solana.trades?"
+    a: "After pump.fun cut bonding-curve trading fees to 0% on 2026-08-07, its fee wallets still appeared in every bonding-curve tx as required program accounts, with micro-SOL balance changes from rent and account-creation side-effects. This inflated the fee-wallet count by ~60% (9.7M vs 6M real swaps). dex_solana.trades indexes actual swap events via the Dune Spellbook, eliminating the noise."
+  - q: "How is Fomo tracked given its off-chain relay fees?"
+    a: "Fomo collects per-trade fees in USDC to a protocol-owned token account. The Dune query matches on token_balance_owner = Fomo's fee wallet in solana.account_activity with USDC mint and positive balance change, capturing on-chain per-trade fee inflows. Fomo's off-chain relay fee component is not counted here."
+  - q: "How is this different from bench 201 (24h volume)?"
+    a: "Bench 201 ranks platforms by 24h swap volume in USD. This bench ranks by unique daily swap transactions. A platform can have high volume with few transactions (large trades) or high tx count with low volume (micro-trades and bots). Both metrics together reveal the full trader profile."
+
+providers:
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Solana meme launchpad"
+    formula: "Unique tx_ids from dex_solana.trades WHERE project IN ('pumpdotfun','pumpswap') in the last 24h (Dune Spellbook, hourly). Covers bonding-curve swaps and graduated PumpSwap AMM."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="pump-fun"}
+      p90: solana_platform_unique_traders_24h{platform="pump-fun"}
+      p99: solana_platform_unique_traders_24h{platform="pump-fun"}
+      mean: solana_platform_unique_traders_24h{platform="pump-fun"}
+      success: solana_platform_trader_health{platform="pump-fun"}
+      sample_size: solana_platform_unique_traders_24h{platform="pump-fun"}
+      series: solana_platform_unique_traders_24h{platform="pump-fun"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal on Solana"
+    formula: "Unique tx_ids where GMGN fee wallets received SOL or USDC/WSOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="gmgn"}
+      p90: solana_platform_unique_traders_24h{platform="gmgn"}
+      p99: solana_platform_unique_traders_24h{platform="gmgn"}
+      mean: solana_platform_unique_traders_24h{platform="gmgn"}
+      success: solana_platform_trader_health{platform="gmgn"}
+      sample_size: solana_platform_unique_traders_24h{platform="gmgn"}
+      series: solana_platform_unique_traders_24h{platform="gmgn"}
+
+  - slug: axiom
+    name: Axiom
+    tag: "Web trading terminal on Solana"
+    formula: "Unique tx_ids where Axiom fee wallets received SOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="axiom"}
+      p90: solana_platform_unique_traders_24h{platform="axiom"}
+      p99: solana_platform_unique_traders_24h{platform="axiom"}
+      mean: solana_platform_unique_traders_24h{platform="axiom"}
+      success: solana_platform_trader_health{platform="axiom"}
+      sample_size: solana_platform_unique_traders_24h{platform="axiom"}
+      series: solana_platform_unique_traders_24h{platform="axiom"}
+
+  - slug: fomo
+    name: Fomo
+    tag: "Solana mobile trading app"
+    formula: "Unique tx_ids where Fomo's fee wallet (token_balance_owner match) received USDC inflow in the last 24h (Dune: solana.account_activity, hourly). On-chain Jupiter referral fees only."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="fomo"}
+      p90: solana_platform_unique_traders_24h{platform="fomo"}
+      p99: solana_platform_unique_traders_24h{platform="fomo"}
+      mean: solana_platform_unique_traders_24h{platform="fomo"}
+      success: solana_platform_trader_health{platform="fomo"}
+      sample_size: solana_platform_unique_traders_24h{platform="fomo"}
+      series: solana_platform_unique_traders_24h{platform="fomo"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram trading bot on Solana"
+    formula: "Unique tx_ids where Trojan fee wallets received SOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="trojan"}
+      p90: solana_platform_unique_traders_24h{platform="trojan"}
+      p99: solana_platform_unique_traders_24h{platform="trojan"}
+      mean: solana_platform_unique_traders_24h{platform="trojan"}
+      success: solana_platform_trader_health{platform="trojan"}
+      sample_size: solana_platform_unique_traders_24h{platform="trojan"}
+      series: solana_platform_unique_traders_24h{platform="trojan"}
+
+  - slug: photon
+    name: Photon
+    tag: "Solana trading terminal"
+    formula: "Unique tx_ids where Photon fee wallet received SOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="photon"}
+      p90: solana_platform_unique_traders_24h{platform="photon"}
+      p99: solana_platform_unique_traders_24h{platform="photon"}
+      mean: solana_platform_unique_traders_24h{platform="photon"}
+      success: solana_platform_trader_health{platform="photon"}
+      sample_size: solana_platform_unique_traders_24h{platform="photon"}
+      series: solana_platform_unique_traders_24h{platform="photon"}
+
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram trading bot on Solana"
+    formula: "Unique tx_ids where Maestro fee wallets received SOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="maestro"}
+      p90: solana_platform_unique_traders_24h{platform="maestro"}
+      p99: solana_platform_unique_traders_24h{platform="maestro"}
+      mean: solana_platform_unique_traders_24h{platform="maestro"}
+      success: solana_platform_trader_health{platform="maestro"}
+      sample_size: solana_platform_unique_traders_24h{platform="maestro"}
+      series: solana_platform_unique_traders_24h{platform="maestro"}
