@@ -64,7 +64,7 @@ export default async function SolanaExecPage() {
           the 8 official Jito tip accounts. Higher = more MEV-sensitive routing.
         </p>
         <p>
-          <strong>Platform fee</strong> = average SOL transferred to the platform's fee account
+          <strong>Platform fee</strong> = average SOL transferred to the platform&apos;s fee account
           per transaction. For pump.fun this is the 1% AMM fee recipient.
         </p>
         <p>
