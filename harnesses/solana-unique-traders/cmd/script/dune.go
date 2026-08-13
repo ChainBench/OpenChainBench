@@ -9,24 +9,23 @@ import (
 	"time"
 )
 
-// querySQL counts unique fee-generating transactions per Solana trading platform.
-// Mirrors bench 203: only rows where the fee wallet actually received SOL
-// (post_balance > pre_balance) or USDC/WSOL tokens (token_balance_owner match,
-// post > pre). Avoids counting txs where fee wallet addresses appear as
-// program IDs or read-only accounts without any balance change.
-// Fomo uses R4rN... (owner wallet) for token_balance_owner matching.
+// querySQL counts unique swap transactions per Solana trading platform in 24h.
+//
+// Terminals (GMGN, Axiom, Fomo, Trojan, Photon, Maestro): fee wallet inflow
+// detection via solana.account_activity. SOL branch matches address = fee wallet
+// with post_balance > pre_balance. USDC/WSOL branch matches token_balance_owner
+// = fee wallet. Since terminals charge fees on every trade, this captures all
+// real swap activity. Fomo uses R4rN... (owner wallet) for token_balance_owner.
+//
+// pump.fun: switched from fee wallet to dex_solana.trades (project IN
+// ('pumpdotfun','pumpswap')). After pump.fun cut bonding-curve fees to 0% on
+// 2026-08-07, its fee wallets still received micro-SOL inflows on every tx
+// (rent/account-creation side-effects), inflating the count by ~60% with noise.
+// dex_solana.trades indexes actual swap events: 'pumpdotfun' = bonding curve,
+// 'pumpswap' = graduated AMM. Validated: 6.0M unique tx vs 9.7M via fee wallet.
 const querySQL = `
 WITH fee_wallets AS (
   SELECT address, platform FROM (VALUES
-    ('CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM','pump-fun'),
-    ('62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV','pump-fun'),
-    ('FWsW1xNtWscwNmKv6wVsU1iTzRN6wmmk3MjxRP5tT7hz','pump-fun'),
-    ('7hTckgnGnLQR6sdH7YkqFTAA7VwTfYFaZ6EhEsU3saCX','pump-fun'),
-    ('AVmoTthdrX6tKt4nDjco2D775W2YK3sDhxPcMmzUAmTY','pump-fun'),
-    ('9rPYyANsfQZw3DnDmKE3YCQF5E8oD89UXoHn9JFEhJUz','pump-fun'),
-    ('G5UZAVbAf46s7cKWoyKu8kYTip9DGTpbLZ2qa9Aq69dP','pump-fun'),
-    ('7VtfL8fvgNfhz17qKRMjzQEXgbdpnHHHQRh54R9jP2RJ','pump-fun'),
-    ('GesfTA3X2arioaHp8bbKdjG9vJtskViWACZoYvxp4twS','pump-fun'),
     ('BB5dnY55FXS1e1NXqZDwCzgdYJdMCj3B92PU6Q5Fb6DT','gmgn'),
     ('7sHXjs1j7sDJGVSMSPjD1b4v3FD6uRSvRWfhRdfv5BiA','gmgn'),
     ('HeZVpHj9jLwTVtMMbzQRf6mLtFPkWNSg11o68qrbUBa3','gmgn'),
@@ -89,6 +88,11 @@ fee_activity AS (
   WHERE a.block_time >= NOW() - INTERVAL '1' DAY
     AND a.token_mint_address = 'So11111111111111111111111111111111111111112'
     AND a.post_token_balance > a.pre_token_balance
+  UNION
+  SELECT 'pump-fun' AS platform, tx_id
+  FROM dex_solana.trades
+  WHERE project IN ('pumpdotfun', 'pumpswap')
+    AND block_time >= NOW() - INTERVAL '1' DAY
 )
 SELECT platform, COUNT(DISTINCT tx_id) AS unique_traders_24h
 FROM fee_activity
