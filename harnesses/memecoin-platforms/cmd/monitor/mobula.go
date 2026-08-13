@@ -9,38 +9,17 @@ import (
 )
 
 type MobulaTrade struct {
-	Platform    string  `json:"platform"`
-	Hash        string  `json:"hash"`
-	Sender      string  `json:"sender"`
-	AmountUSD   float64 `json:"amountUSD"`
-	PoolAddress string  `json:"poolAddress"`
-	PairData    struct {
-		Base struct {
-			BondingCurveAddress    string `json:"bondingCurveAddress"`
-			Bonded                 bool   `json:"bonded"`
-			SourceFactoryMetadata  struct {
-				Name string `json:"name"`
-			} `json:"sourceFactoryMetadata"`
-		} `json:"base"`
-	} `json:"pairData"`
+	Platform  string  `json:"platform"`
+	Hash      string  `json:"hash"`
+	Sender    string  `json:"sender"`
+	AmountUSD float64 `json:"amountUSD"`
+	PoolType  string  `json:"poolType"`
 }
 
-// isPumpFunNative returns true when the trade happened on pump.fun's bonding
-// curve (pre-migration). Identified by matching poolAddress to bondingCurveAddress,
-// or by sourceFactoryMetadata.name containing "pump" when bonded is false.
+// isPumpFunNative returns true for trades on pump.fun's bonding curve or
+// PumpSwap AMM (post-migration). Uses poolType field from token/trades-enriched.
 func (t *MobulaTrade) isPumpFunNative() bool {
-	if t.PoolAddress != "" && t.PairData.Base.BondingCurveAddress != "" {
-		if t.PoolAddress == t.PairData.Base.BondingCurveAddress {
-			return true
-		}
-	}
-	if !t.PairData.Base.Bonded {
-		name := t.PairData.Base.SourceFactoryMetadata.Name
-		if name == "pump.fun" || name == "pumpfun" || name == "PumpFun" {
-			return true
-		}
-	}
-	return false
+	return t.PoolType == "pumpfun" || t.PoolType == "pumpswap"
 }
 
 type mobulaTradesResp struct {
