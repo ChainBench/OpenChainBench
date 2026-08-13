@@ -126,7 +126,11 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 			}
 			p := t.Platform
 			if p == "" {
-				p = "unattributed"
+				if t.isPumpFunNative() {
+					p = "pump-fun"
+				} else {
+					p = "unattributed"
+				}
 			}
 			s := byPlatform[p]
 			if s == nil {
