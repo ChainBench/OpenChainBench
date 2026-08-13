@@ -292,20 +292,6 @@ const RAW: Record<string, string> = {
   subscan: "/logos/subscan.png",
   oklink: "/logos/oklink.png",
 
-  // ─── Solana memecoin platforms (bench № 200 / 205) ───
-  "pump-fun": "/logos/pump-fun.jpg",
-  pumpswap: "/logos/pump-fun.jpg",
-  trojan: "/logos/trojan.jpg",
-  gmgn: "/logos/gmgn.jpg",
-  maestro: "/logos/maestro.jpg",
-  bullx: "/logos/bullx.png",
-  photon: "/logos/photon.webp",
-  "banana-gun": "/logos/banana-gun.png",
-
-  // ─── App Store ratings (bench № 202) ───
-  moonshot: "/logos/moonshot.svg",
-  "binance-us": "/logos/binance-us.svg",
-  cryptocom: "/logos/cryptocom.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",

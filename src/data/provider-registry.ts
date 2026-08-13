@@ -1226,88 +1226,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   fomo: {
     url: "https://fomo.family",
     description:
-      "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
+      "FOMO is a social trading app on Telegram, iOS and Android that surfaces signals from consistently profitable Hyperliquid traders and routes perp orders via a registered builder code.",
     twitter: "@tryfomo",
-  },
-  "pump-fun": {
-    url: "https://pump.fun",
-    description:
-      "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to PumpSwap (pump.fun's native AMM, launched March 2025) when the curve completes.",
-    twitter: "@pumpdotfun",
-  },
-  pumpswap: {
-    url: "https://pump.fun",
-    description:
-      "PumpSwap is pump.fun's constant-product AMM where tokens migrate after graduating from the bonding curve. Launched March 2025, it uses a tiered fee schedule (LP, protocol, and creator shares) that varies by pool parameters. It surged to over $500M daily volume in August 2026 after pump.fun reduced bonding-curve trading fees.",
-    twitter: "@pumpdotfun",
-  },
-  photon: {
-    url: "https://photon-sol.tinyastro.io",
-    description:
-      "Photon is a Solana trading terminal targeting advanced traders with fast token sniping, smart-money wallet tracking, and direct DEX routing. It charges a per-trade platform fee on swap volume.",
-    twitter: "@photon_sol",
-  },
-  trojan: {
-    url: "https://trojan.bot",
-    description:
-      "Trojan is a Telegram trading bot for Solana memecoins. It provides fast sniping, copy trading, limit orders and MEV protection, charging a 0.9% fee per trade routed through pump.fun and Raydium pools.",
-    twitter: "@solana_trojan",
-  },
-  gmgn: {
-    url: "https://gmgn.ai",
-    description:
-      "GMGN is a Solana and EVM memecoin trading terminal combining wallet tracking, smart money copy trading and a Telegram bot. It routes swaps through pump.fun and DEX pools with a configurable slippage and fee.",
-    twitter: "@gmgnai",
-  },
-  bullx: {
-    url: "https://bullx.io",
-    description:
-      "BullX is a multi-chain trading terminal for memecoins supporting Solana, Ethereum, Base and other EVM chains. It provides token sniping, copy trading, and limit orders with a per-trade platform fee.",
-    twitter: "@bullx_io",
-  },
-
-  // ─── Crypto trading apps — iOS App Store ratings (bench № 202) ─────────
-  moonshot: {
-    url: "https://moonshot.money",
-    description:
-      "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
-    twitter: "@moonshotapp",
-  },
-  coinbase: {
-    url: "https://www.coinbase.com",
-    description:
-      "Coinbase is the largest US-regulated centralized exchange, publicly listed on Nasdaq (COIN). It offers spot trading, staking, and a self-custody wallet, primarily targeting retail investors in the United States.",
-    twitter: "@coinbase",
-  },
-  kraken: {
-    url: "https://www.kraken.com",
-    description:
-      "Kraken is a US-registered centralized exchange founded in 2011, offering spot, margin and futures trading across 300+ assets with a strong reputation for security and regulatory compliance.",
-    twitter: "@krakenfx",
-  },
-  "binance-us": {
-    url: "https://www.binance.us",
-    description:
-      "Binance.US is the US-regulated affiliate of Binance, operating under FinCEN MSB registration. It offers spot trading for US customers on a subset of the global Binance order book.",
-    twitter: "@BinanceUS",
-  },
-  robinhood: {
-    url: "https://robinhood.com",
-    description:
-      "Robinhood is a US commission-free investing app with 25M+ funded accounts. It added crypto trading in 2018, launched its own L2 chain (Robinhood Chain) in 2025, and is the #1 most-reviewed financial app on the US App Store with nearly 5 million ratings.",
-    twitter: "@RobinhoodApp",
-  },
-  cryptocom: {
-    url: "https://crypto.com",
-    description:
-      "Crypto.com is a Singapore-headquartered centralized exchange serving 100M+ users globally. The app offers spot and derivatives trading, a Visa card, DeFi wallet and staking, making it one of the most feature-complete crypto super apps on iOS.",
-    twitter: "@cryptocom",
-  },
-  maestro: {
-    url: "https://maestrobots.com",
-    description:
-      "Maestro is a suite of Telegram trading bots for DeFi — Sniper, Wallet, Whale and Buy — trusted by traders on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
-    twitter: "@MaestroBots",
   },
   dextrabot: {
     url: "https://dextrabot.com",

@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,8 +26,6 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 	mux.HandleFunc("/api/exec-leaderboard", corsJSON(handleExecLeaderboard(pool)))
-	mux.HandleFunc("/api/evm-revenue", corsJSON(handleEVMRevenue(pool)))
-	mux.HandleFunc("/metrics", handleMetrics(pool))
 
 	addr := ":2116"
 	log.Printf("exec-api listening on %s", addr)
@@ -46,7 +41,6 @@ type WindowStats struct {
 	P50CUPriceMicro        float64 `json:"p50CUPriceMicro"`
 	P95CUPriceMicro        float64 `json:"p95CUPriceMicro"`
 	AvgPlatformFeeLamports float64 `json:"avgPlatformFeeLamports"`
-	SumPlatformFeeLamports int64   `json:"sumPlatformFeeLamports"`
 	JitoRate               float64 `json:"jitoRate"`
 	AvgCUConsumed          float64 `json:"avgCUConsumed"`
 }
@@ -68,70 +62,48 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 		defer cancel()
 
 		rows, err := pool.Query(ctx, `
-			WITH cu AS (
-				SELECT platform,
-					percentile_cont(0.5) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '24 hours') AS h24_p50,
-					percentile_cont(0.95) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '24 hours') AS h24_p95,
-					percentile_cont(0.5) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '7 days') AS d7_p50,
-					percentile_cont(0.95) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '7 days') AS d7_p95,
-					percentile_cont(0.5) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '30 days') AS d30_p50,
-					percentile_cont(0.95) WITHIN GROUP (ORDER BY cu_price_micro)
-						FILTER (WHERE block_time >= now() - INTERVAL '30 days') AS d30_p95
-				FROM solana_exec_cu_samples
-				GROUP BY platform
-			)
 			SELECT
-				f.platform,
+				platform,
 				-- weighted averages: SUM(avg×count)/SUM(count) avoids skewing by small off-peak buckets
-				SUM(f.avg_priority_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_prio,
-				MAX(c.h24_p50) AS h24_p50,
-				MAX(c.h24_p95) AS h24_p95,
-				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_pfee,
-				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_sum_pfee,
-				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_jito,
-				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_cu,
-				SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '24 hours') AS h24_count,
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0) AS h24_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours') AS h24_count,
 
-				SUM(f.avg_priority_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_prio,
-				MAX(c.d7_p50) AS d7_p50,
-				MAX(c.d7_p95) AS d7_p95,
-				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_pfee,
-				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_sum_pfee,
-				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_jito,
-				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_cu,
-				SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '7 days') AS d7_count,
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0) AS d7_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days') AS d7_count,
 
-				SUM(f.avg_priority_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_prio,
-				MAX(c.d30_p50) AS d30_p50,
-				MAX(c.d30_p95) AS d30_p95,
-				SUM(f.avg_platform_fee_lamports * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_pfee,
-				COALESCE(SUM(f.sum_platform_fee_lamports) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_sum_pfee,
-				SUM(f.jito_rate * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_jito,
-				SUM(f.avg_cu_consumed * f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days')
-				  / NULLIF(SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_cu,
-				SUM(f.tx_count) FILTER (WHERE f.bucket_start >= now() - INTERVAL '30 days') AS d30_count,
+				SUM(avg_priority_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_prio,
+				AVG(p50_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_p50,
+				AVG(p95_cu_price_micro) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_p95,
+				SUM(avg_platform_fee_lamports * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_pfee,
+				SUM(jito_rate * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_jito,
+				SUM(avg_cu_consumed * tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days')
+				  / NULLIF(SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0) AS d30_cu,
+				SUM(tx_count) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days') AS d30_count,
 
-				MAX(f.bucket_start)::text AS latest_bucket
-			FROM solana_exec_facts f
-			LEFT JOIN cu c USING (platform)
-			WHERE f.bucket_start >= now() - INTERVAL '31 days'
-			GROUP BY f.platform`,
+				MAX(bucket_start)::text AS latest_bucket
+			FROM solana_exec_facts
+			GROUP BY platform`,
 		)
 		if err != nil {
 			log.Printf("exec-api: query: %v", err)
@@ -144,20 +116,17 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var plt, latestBkt string
 			var h24Prio, h24P50, h24P95, h24Pfee, h24Jito, h24Cu *float64
-			var h24SumPfee int64
 			var h24Count *int64
 			var d7Prio, d7P50, d7P95, d7Pfee, d7Jito, d7Cu *float64
-			var d7SumPfee int64
 			var d7Count *int64
 			var d30Prio, d30P50, d30P95, d30Pfee, d30Jito, d30Cu *float64
-			var d30SumPfee int64
 			var d30Count *int64
 
 			if err := rows.Scan(
 				&plt,
-				&h24Prio, &h24P50, &h24P95, &h24Pfee, &h24SumPfee, &h24Jito, &h24Cu, &h24Count,
-				&d7Prio, &d7P50, &d7P95, &d7Pfee, &d7SumPfee, &d7Jito, &d7Cu, &d7Count,
-				&d30Prio, &d30P50, &d30P95, &d30Pfee, &d30SumPfee, &d30Jito, &d30Cu, &d30Count,
+				&h24Prio, &h24P50, &h24P95, &h24Pfee, &h24Jito, &h24Cu, &h24Count,
+				&d7Prio, &d7P50, &d7P95, &d7Pfee, &d7Jito, &d7Cu, &d7Count,
+				&d30Prio, &d30P50, &d30P95, &d30Pfee, &d30Jito, &d30Cu, &d30Count,
 				&latestBkt,
 			); err != nil {
 				log.Printf("exec-api: scan: %v", err)
@@ -168,9 +137,9 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 				Platform:  plt,
 				LatestBkt: latestBkt,
 				Windows: map[string]WindowStats{
-					"24h": buildWindow(h24Prio, h24P50, h24P95, h24Pfee, h24SumPfee, h24Jito, h24Cu, h24Count),
-					"7d":  buildWindow(d7Prio, d7P50, d7P95, d7Pfee, d7SumPfee, d7Jito, d7Cu, d7Count),
-					"30d": buildWindow(d30Prio, d30P50, d30P95, d30Pfee, d30SumPfee, d30Jito, d30Cu, d30Count),
+					"24h": buildWindow(h24Prio, h24P50, h24P95, h24Pfee, h24Jito, h24Cu, h24Count),
+					"7d":  buildWindow(d7Prio, d7P50, d7P95, d7Pfee, d7Jito, d7Cu, d7Count),
+					"30d": buildWindow(d30Prio, d30P50, d30P95, d30Pfee, d30Jito, d30Cu, d30Count),
 				},
 			}
 			platforms = append(platforms, p)
@@ -190,7 +159,7 @@ func handleExecLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func buildWindow(prio, p50, p95, pfee *float64, sumPfee int64, jito, cu *float64, count *int64) WindowStats {
+func buildWindow(prio, p50, p95, pfee, jito, cu *float64, count *int64) WindowStats {
 	ws := WindowStats{}
 	if count != nil {
 		ws.TxCount = *count
@@ -207,7 +176,6 @@ func buildWindow(prio, p50, p95, pfee *float64, sumPfee int64, jito, cu *float64
 	if pfee != nil {
 		ws.AvgPlatformFeeLamports = *pfee
 	}
-	ws.SumPlatformFeeLamports = sumPfee
 	if jito != nil {
 		ws.JitoRate = *jito
 	}
@@ -231,309 +199,4 @@ func mustEnv(key string) string {
 		log.Fatalf("missing env: %s", key)
 	}
 	return v
-}
-
-// ---- Prometheus /metrics endpoint ----
-
-type latestBucketRow struct {
-	platform             string
-	jitoRate             float64
-	p50CUPriceMicro      float64
-	p95CUPriceMicro      float64
-	avgPriorityFeeLamports float64
-	avgPlatformFeeLamports float64
-	txCount              int64
-}
-
-func handleMetrics(pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-		defer cancel()
-
-		// Latest hourly bucket per platform.
-		latestRows, err := pool.Query(ctx, `
-			SELECT DISTINCT ON (platform)
-				platform, jito_rate, p50_cu_price_micro, p95_cu_price_micro,
-				avg_priority_fee_lamports, avg_platform_fee_lamports, tx_count
-			FROM solana_exec_facts
-			ORDER BY platform, bucket_start DESC`)
-		if err != nil {
-			log.Printf("metrics: latest query: %v", err)
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
-		}
-		defer latestRows.Close()
-
-		var latest []latestBucketRow
-		for latestRows.Next() {
-			var row latestBucketRow
-			if err := latestRows.Scan(
-				&row.platform,
-				&row.jitoRate,
-				&row.p50CUPriceMicro,
-				&row.p95CUPriceMicro,
-				&row.avgPriorityFeeLamports,
-				&row.avgPlatformFeeLamports,
-				&row.txCount,
-			); err != nil {
-				log.Printf("metrics: scan: %v", err)
-				continue
-			}
-			latest = append(latest, row)
-		}
-		latestRows.Close()
-
-		// 24h tx counts.
-		countRows, err := pool.Query(ctx, `
-			SELECT platform, SUM(tx_count) AS count_24h
-			FROM solana_exec_facts
-			WHERE bucket_start >= now() - INTERVAL '24 hours'
-			GROUP BY platform`)
-		if err != nil {
-			log.Printf("metrics: count query: %v", err)
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
-		}
-		defer countRows.Close()
-
-		counts24h := make(map[string]int64)
-		for countRows.Next() {
-			var plt string
-			var cnt int64
-			if err := countRows.Scan(&plt, &cnt); err != nil {
-				continue
-			}
-			counts24h[plt] = cnt
-		}
-		countRows.Close()
-
-		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-
-		fmt.Fprint(w, "# HELP solana_exec_jito_rate Fraction of transactions with a Jito tip, latest hourly bucket\n")
-		fmt.Fprint(w, "# TYPE solana_exec_jito_rate gauge\n")
-		for _, row := range latest {
-			fmt.Fprintf(w, "solana_exec_jito_rate{platform=%q} %g\n", row.platform, row.jitoRate)
-		}
-
-		fmt.Fprint(w, "# HELP solana_exec_cu_price_p50_micro Median compute unit price microlamports/CU, latest hourly bucket\n")
-		fmt.Fprint(w, "# TYPE solana_exec_cu_price_p50_micro gauge\n")
-		for _, row := range latest {
-			fmt.Fprintf(w, "solana_exec_cu_price_p50_micro{platform=%q} %g\n", row.platform, row.p50CUPriceMicro)
-		}
-
-		fmt.Fprint(w, "# HELP solana_exec_cu_price_p95_micro p95 compute unit price microlamports/CU, latest hourly bucket\n")
-		fmt.Fprint(w, "# TYPE solana_exec_cu_price_p95_micro gauge\n")
-		for _, row := range latest {
-			fmt.Fprintf(w, "solana_exec_cu_price_p95_micro{platform=%q} %g\n", row.platform, row.p95CUPriceMicro)
-		}
-
-		fmt.Fprint(w, "# HELP solana_exec_priority_fee_lamports Average priority fee in lamports, latest hourly bucket\n")
-		fmt.Fprint(w, "# TYPE solana_exec_priority_fee_lamports gauge\n")
-		for _, row := range latest {
-			fmt.Fprintf(w, "solana_exec_priority_fee_lamports{platform=%q} %g\n", row.platform, row.avgPriorityFeeLamports)
-		}
-
-		fmt.Fprint(w, "# HELP solana_exec_platform_fee_lamports Average platform fee in lamports, latest hourly bucket\n")
-		fmt.Fprint(w, "# TYPE solana_exec_platform_fee_lamports gauge\n")
-		for _, row := range latest {
-			fmt.Fprintf(w, "solana_exec_platform_fee_lamports{platform=%q} %g\n", row.platform, row.avgPlatformFeeLamports)
-		}
-
-		fmt.Fprint(w, "# HELP solana_exec_tx_count_24h Total transaction count over the last 24 hours\n")
-		fmt.Fprint(w, "# TYPE solana_exec_tx_count_24h gauge\n")
-		for plt, cnt := range counts24h {
-			fmt.Fprintf(w, "solana_exec_tx_count_24h{platform=%q} %d\n", plt, cnt)
-		}
-	}
-}
-
-// ---- EVM revenue endpoint ----
-
-// evmCoverage is the static coverage map derived from the evm-exec platform config.
-// "full" = native + stable; "stable-only" = only ERC-20 USDC/USDG tracked.
-// Mirrors platform.Coverage() in evm-exec/internal/platform/platforms.go.
-var evmCoverage = map[string]map[string]string{
-	"pumpfun":           {"ethereum": "full", "bsc": "full", "base": "full"},
-	"gmgn":              {"ethereum": "full", "bsc": "full", "base": "full"},
-	"maestro":           {"ethereum": "full", "bsc": "full", "base": "full"},
-	"axiom":             {"bsc": "full"},
-	"gmgn-robinhood":    {"robinhood": "full"},
-	"maestro-robinhood": {"robinhood": "full"},
-	// banana-gun: evmKey=null in frontend config; EVM data intentionally not displayed
-	// (router addresses receive trade principal, not fees; pending eth_getLogs on topic 0x72015ace…)
-}
-
-// coinGeckoIDs maps chain name → CoinGecko asset ID for native price lookup.
-var coinGeckoIDs = map[string]string{
-	"ethereum":  "ethereum",
-	"bsc":       "binancecoin",
-	"base":      "ethereum",
-	"robinhood": "ethereum",
-}
-
-// nativeSymbols maps chain → native asset ticker.
-var nativeSymbols = map[string]string{
-	"ethereum":  "ETH",
-	"bsc":       "BNB",
-	"base":      "ETH",
-	"robinhood": "ETH",
-}
-
-type priceCache struct {
-	mu        sync.Mutex
-	prices    map[string]float64 // coingecko id → USD price
-	fetchedAt time.Time
-}
-
-var globalPrices = &priceCache{prices: make(map[string]float64)}
-
-func (p *priceCache) get(ctx context.Context) map[string]float64 {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if time.Since(p.fetchedAt) < 15*time.Minute && len(p.prices) > 0 {
-		out := make(map[string]float64, len(p.prices))
-		for k, v := range p.prices {
-			out[k] = v
-		}
-		return out
-	}
-	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet,
-		"https://api.coingecko.com/api/v3/simple/price?ids=ethereum,binancecoin&vs_currencies=usd", nil)
-	if err != nil {
-		return nil
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	var raw map[string]map[string]float64
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil
-	}
-	for id, vs := range raw {
-		if usd, ok := vs["usd"]; ok {
-			p.prices[id] = usd
-		}
-	}
-	p.fetchedAt = time.Now()
-	out := make(map[string]float64, len(p.prices))
-	for k, v := range p.prices {
-		out[k] = v
-	}
-	return out
-}
-
-type NativeRevenue struct {
-	Symbol string   `json:"symbol"`
-	Amount float64  `json:"amount"`
-	USD    *float64 `json:"usd"`
-}
-
-type EVMChainRevenue struct {
-	Stable24h float64        `json:"stable24h"`
-	Stable7d  float64        `json:"stable7d"`
-	Stable30d float64        `json:"stable30d"`
-	Native    *NativeRevenue `json:"native"` // 24h only; historical prices not stored
-	Coverage  string         `json:"coverage"`
-}
-
-type EVMPlatformRow struct {
-	Platform string                     `json:"platform"`
-	Chains   map[string]EVMChainRevenue `json:"chains"`
-}
-
-type EVMRevenueResponse struct {
-	UpdatedAt string           `json:"updatedAt"`
-	Platforms []EVMPlatformRow `json:"platforms"`
-}
-
-func handleEVMRevenue(pool *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-		defer cancel()
-
-		rows, err := pool.Query(ctx, `
-			SELECT chain, platform,
-			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0),
-			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '7 days'), 0),
-			       COALESCE(SUM(revenue_stable) FILTER (WHERE bucket_start >= now() - INTERVAL '30 days'), 0),
-			       COALESCE(SUM(revenue_native) FILTER (WHERE bucket_start >= now() - INTERVAL '24 hours'), 0),
-			       COALESCE(MAX(native_symbol), '')
-			FROM evm_exec_facts
-			WHERE bucket_start >= now() - INTERVAL '30 days'
-			GROUP BY chain, platform`)
-		if err != nil {
-			log.Printf("evm-revenue: query: %v", err)
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		prices := globalPrices.get(r.Context())
-
-		// Group by platform.
-		byPlatform := make(map[string]map[string]EVMChainRevenue)
-		for rows.Next() {
-			var chain, plt, nativeSym string
-			var stable24h, stable7d, stable30d, native float64
-			if err := rows.Scan(&chain, &plt, &stable24h, &stable7d, &stable30d, &native, &nativeSym); err != nil {
-				continue
-			}
-			if byPlatform[plt] == nil {
-				byPlatform[plt] = make(map[string]EVMChainRevenue)
-			}
-
-			coverage := "stable-only"
-			if m, ok := evmCoverage[plt]; ok {
-				if c, ok := m[chain]; ok {
-					coverage = c
-				}
-			}
-
-			var nat *NativeRevenue
-			if native > 0 || coverage == "full" {
-				sym := nativeSym
-				if sym == "" {
-					sym = nativeSymbols[chain]
-				}
-				nr := &NativeRevenue{Symbol: sym, Amount: native}
-				if cgID := coinGeckoIDs[chain]; cgID != "" && prices != nil {
-					if price, ok := prices[cgID]; ok {
-						usd := native * price
-						nr.USD = &usd
-					}
-				}
-				nat = nr
-			}
-
-			byPlatform[plt][chain] = EVMChainRevenue{
-				Stable24h: stable24h,
-				Stable7d:  stable7d,
-				Stable30d: stable30d,
-				Native:    nat,
-				Coverage:  coverage,
-			}
-		}
-		if err := rows.Err(); err != nil {
-			log.Printf("evm-revenue: rows: %v", err)
-		}
-
-		var platforms []EVMPlatformRow
-		for plt, chains := range byPlatform {
-			platforms = append(platforms, EVMPlatformRow{Platform: plt, Chains: chains})
-		}
-		sort.Slice(platforms, func(i, j int) bool {
-			return platforms[i].Platform < platforms[j].Platform
-		})
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(EVMRevenueResponse{
-			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
-			Platforms: platforms,
-		})
-	}
 }
