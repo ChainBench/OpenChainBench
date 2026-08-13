@@ -41,7 +41,7 @@ findings:
   - "GMGN charges the highest average platform fee per transaction among actively-charging platforms, reflecting its higher-notional trader base."
   - "Maestro has the highest Jito bundle rate, indicating MEV-sensitive routing for its Telegram bot users."
   - "Photon has the highest CU price p95, showing aggressive compute-unit bidding during peak hours."
-  - "pump.fun fee wallets have received near-zero inflows since August 7 2026 when the bonding-curve was paused; its platform fee row reflects gas only."
+  - "pump.fun moved to a fee-free model on August 7 2026; bonding-curve trading continues but the protocol no longer collects a per-swap fee in native SOL. PumpSwap protocol fees arrive as WSOL on ATA recipients and are not captured by this harness's SOL-native collector, so the platform fee row understates true pump.fun revenue."
 
 faq:
   - q: "What is platform fee vs priority fee?"
