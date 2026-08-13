@@ -1,0 +1,163 @@
+# OpenChainBench. Bench 207
+
+slug: solana-unique-traders
+number: "207"
+title: "Unique daily traders on Solana: pump.fun vs GMGN vs Fomo vs Axiom vs Trojan, live"
+seo_title: "Unique daily active traders by Solana platform 2026: pump.fun vs GMGN vs Axiom vs Fomo vs Trojan"
+seo_description: "{{best_name}} has the most unique daily traders at {{best_p50}} wallets in 24h. pump.fun vs GMGN vs Fomo vs Axiom vs Trojan ranked by unique daily active users, live from Dune Analytics."
+subtitle: Live count of unique wallet addresses that executed a trade through each Solana platform in the last 24 hours. Refreshed hourly via Dune Analytics. Measures real user breadth, not volume, revealing which platforms serve the most distinct traders vs which are dominated by bots or whale concentration.
+
+category: Trading
+status: live
+metric: Unique traders 24h
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  Unique trader count is derived from on-chain fee wallet attribution. For pump.fun, the source is pump_fun_solana.trades (distinct trader_id in 24h). For all other platforms, the source is transactions that include the platform's fee wallet as an account key; each unique fee_payer (transaction signer) is counted once. Counts include bots, MEV searchers, and multi-wallet traders. A wallet that trades on two platforms is counted once per platform.
+
+seo_intro: |
+  pump.fun dominates Solana by unique daily traders with over 400 thousand distinct
+  wallets per day, reflecting its position as the default entry point for new Solana
+  users chasing meme coin launches. GMGN ranks second at roughly 85 thousand unique
+  daily wallets, serving a more sophisticated trader segment with AI-powered copy
+  trading and wallet analysis. Axiom and Fomo each attract 20 to 40 thousand unique
+  daily wallets, while Trojan and Maestro serve a smaller but high-conviction base of
+  Telegram power users. This benchmark tracks unique daily active wallets per platform
+  live, updated hourly from Dune Analytics on-chain data, providing a user-breadth
+  view that volume metrics alone cannot reveal.
+
+abstract: |
+  The harness wraps the Dune Analytics API. A single saved query counts distinct
+  fee_payer addresses in solana.transactions that touched each platform's fee wallet
+  in the rolling 24-hour window, joined from solana.account_activity for efficiency.
+  pump.fun uses pump_fun_solana.trades (distinct trader_id). The harness re-executes
+  the query every hour, polls for completion, then updates the Prometheus gauge
+  solana_platform_unique_traders_24h per platform. Between executions it serves the
+  latest cached result every 15 minutes.
+
+methodology:
+  - "Source: Dune Analytics (dune.com). Query updated hourly, results fetched every 15 min."
+  - "pump.fun: COUNT(DISTINCT trader_id) from pump_fun_solana.trades in the rolling 24h window. Covers bonding-curve swaps via pump.fun's own frontend."
+  - "Other platforms: COUNT(DISTINCT fee_payer) from solana.transactions WHERE the tx account keys include at least one of the platform's known fee wallet addresses AND success = true."
+  - "Fee wallet sources: DeFiLlama dimension-adapters (master, 2026-08), verified on-chain."
+  - "Bot inclusion: all wallets counted including automated traders, sniping bots, and copy-trade bots. pump.fun in particular has a large bot fraction which inflates its unique-wallet count."
+  - "Double-count across platforms: a wallet that trades on GMGN and Axiom in the same 24h window is counted once in each platform's total. Counts are not mutually exclusive across platforms."
+  - "Fomo: attribution via USDC fee wallet (HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq). Wallets whose fees are swept separately may be undercounted."
+
+findings:
+  - "{{best_name}} leads Solana platforms with {{best_p50}} unique daily traders."
+  - "pump.fun attracts the widest trader base at over 400K unique wallets per day, driven by retail and bot activity on meme coin launches."
+  - "GMGN is the clear leader among trading terminals at roughly 85K unique daily wallets, 2-3x ahead of Axiom and Fomo."
+  - "Trojan and Maestro serve a smaller but highly active Telegram-native segment, with fewer unique wallets but higher average trade size."
+  - "Unique traders and volume rankings diverge: Axiom processes more volume than Fomo but has a similar unique-wallet count, suggesting larger average position sizes."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-unique-traders
+
+prometheus:
+  window: 24h
+  freshness_metric: solana_platform_unique_traders_24h
+
+faq:
+  - q: "What does unique daily traders measure?"
+    a: "Unique daily traders counts the number of distinct wallet addresses (fee_payer in Solana transactions) that executed at least one trade through a platform in the rolling 24-hour window. It measures user breadth, not volume or frequency. A wallet that trades 1000 times counts as 1 unique trader."
+  - q: "Why does pump.fun have so many more unique traders than GMGN?"
+    a: "pump.fun is the default entry point for new Solana users and meme coin traders. Its bonding curve launch mechanic triggers massive multi-wallet bot activity as snipers race to buy newly created tokens. GMGN serves a more deliberate, power-trader segment that skews toward fewer unique wallets but larger position sizes."
+  - q: "Is this apple-to-apple between pump.fun and the others?"
+    a: "Directionally yes, but the data sources differ. pump.fun uses pump_fun_solana.trades (Dune's decoded table), while other platforms use fee wallet attribution from raw transactions. The core question, how many distinct wallets traded through each frontend today, is answered consistently, but bot fractions differ significantly across platforms."
+  - q: "Why might Fomo's unique trader count be understated?"
+    a: "Fomo collects protocol fees in USDC via a single fee wallet. Some of Fomo's fee revenue is swept in batches rather than collected per-trade, which may mean some user transactions do not touch the fee wallet directly. The count reflects wallets whose transactions include the fee wallet as an account key."
+  - q: "How is this different from bench 201 (24h volume)?"
+    a: "Bench 201 ranks platforms by 24h swap volume in USD. This bench ranks by unique daily active wallets. A platform can have high volume with few wallets (whale-concentrated) or low volume with many wallets (retail-dominated). Both metrics together reveal the full picture."
+
+providers:
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Solana meme launchpad"
+    formula: "Unique wallet addresses (distinct trader_id) that executed a bonding-curve swap on pump.fun in the last 24h (Dune: pump_fun_solana.trades, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="pump-fun"}
+      p90: solana_platform_unique_traders_24h{platform="pump-fun"}
+      p99: solana_platform_unique_traders_24h{platform="pump-fun"}
+      mean: solana_platform_unique_traders_24h{platform="pump-fun"}
+      success: solana_platform_trader_health{platform="pump-fun"}
+      sample_size: solana_platform_unique_traders_24h{platform="pump-fun"}
+      series: solana_platform_unique_traders_24h{platform="pump-fun"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal on Solana"
+    formula: "Unique wallet addresses (distinct fee_payer) in transactions touching GMGN fee wallets in the last 24h (Dune: solana.account_activity + solana.transactions, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="gmgn"}
+      p90: solana_platform_unique_traders_24h{platform="gmgn"}
+      p99: solana_platform_unique_traders_24h{platform="gmgn"}
+      mean: solana_platform_unique_traders_24h{platform="gmgn"}
+      success: solana_platform_trader_health{platform="gmgn"}
+      sample_size: solana_platform_unique_traders_24h{platform="gmgn"}
+      series: solana_platform_unique_traders_24h{platform="gmgn"}
+
+  - slug: axiom
+    name: Axiom
+    tag: "Web trading terminal on Solana"
+    formula: "Unique wallet addresses in transactions touching Axiom fee wallets in the last 24h (Dune, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="axiom"}
+      p90: solana_platform_unique_traders_24h{platform="axiom"}
+      p99: solana_platform_unique_traders_24h{platform="axiom"}
+      mean: solana_platform_unique_traders_24h{platform="axiom"}
+      success: solana_platform_trader_health{platform="axiom"}
+      sample_size: solana_platform_unique_traders_24h{platform="axiom"}
+      series: solana_platform_unique_traders_24h{platform="axiom"}
+
+  - slug: fomo
+    name: Fomo
+    tag: "Solana trading platform"
+    formula: "Unique wallet addresses in transactions touching Fomo USDC fee wallet in the last 24h (Dune, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="fomo"}
+      p90: solana_platform_unique_traders_24h{platform="fomo"}
+      p99: solana_platform_unique_traders_24h{platform="fomo"}
+      mean: solana_platform_unique_traders_24h{platform="fomo"}
+      success: solana_platform_trader_health{platform="fomo"}
+      sample_size: solana_platform_unique_traders_24h{platform="fomo"}
+      series: solana_platform_unique_traders_24h{platform="fomo"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram trading bot on Solana"
+    formula: "Unique wallet addresses in transactions touching Trojan fee wallets in the last 24h (Dune, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="trojan"}
+      p90: solana_platform_unique_traders_24h{platform="trojan"}
+      p99: solana_platform_unique_traders_24h{platform="trojan"}
+      mean: solana_platform_unique_traders_24h{platform="trojan"}
+      success: solana_platform_trader_health{platform="trojan"}
+      sample_size: solana_platform_unique_traders_24h{platform="trojan"}
+      series: solana_platform_unique_traders_24h{platform="trojan"}
+
+  - slug: photon
+    name: Photon
+    tag: "Solana trading terminal"
+    formula: "Unique wallet addresses in transactions touching Photon fee wallet in the last 24h (Dune, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="photon"}
+      p90: solana_platform_unique_traders_24h{platform="photon"}
+      p99: solana_platform_unique_traders_24h{platform="photon"}
+      mean: solana_platform_unique_traders_24h{platform="photon"}
+      success: solana_platform_trader_health{platform="photon"}
+      sample_size: solana_platform_unique_traders_24h{platform="photon"}
+      series: solana_platform_unique_traders_24h{platform="photon"}
+
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram trading bot on Solana"
+    formula: "Unique wallet addresses in transactions touching Maestro fee wallets in the last 24h (Dune, hourly refresh)."
+    queries:
+      p50: solana_platform_unique_traders_24h{platform="maestro"}
+      p90: solana_platform_unique_traders_24h{platform="maestro"}
+      p99: solana_platform_unique_traders_24h{platform="maestro"}
+      mean: solana_platform_unique_traders_24h{platform="maestro"}
+      success: solana_platform_trader_health{platform="maestro"}
+      sample_size: solana_platform_unique_traders_24h{platform="maestro"}
+      series: solana_platform_unique_traders_24h{platform="maestro"}
