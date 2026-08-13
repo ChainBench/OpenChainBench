@@ -62,7 +62,7 @@ faq:
   - q: "Why does Trojan show near-zero fee?"
     a: "Trojan and similar escrow-based bots (Maestro) pre-fund a shared wallet, execute trades from it, then settle with users in a separate transaction. The swap transaction itself shows a fair-price trade with no fee deduction. Their advertised ~0.9% fee is collected in the settlement step, which is not a swap and not captured by this benchmark. Trojan's displayed value reflects gas only."
   - q: "Why is pump.fun near zero?"
-    a: "pump.fun's protocol fee goes to a program-owned pool account, not to an identifiable external wallet. Without a price oracle for the memecoin itself, the fee taken in the output token cannot be converted to USD. The benchmark measures explicit USD-denominated or SOL-denominated transfers; pump.fun's LP-style fee is currently outside that scope."
+    a: "Since August 7 2026, pump.fun charges 0% on bonding-curve trades following a competitive response to Fomo's growing revenue. Before that date, pump.fun collected a small protocol fee routed into a program-owned pool account rather than an identifiable external wallet, which this benchmark could not capture. Either way, the result is near-zero measured fee."
 
 prometheus:
   window: 24h
