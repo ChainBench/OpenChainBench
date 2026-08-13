@@ -157,19 +157,6 @@ providers:
       sample_size: solana_platform_fees_24h_usd{platform="padre"}
       series: solana_platform_volume_24h_usd{platform="padre"}
 
-  - slug: phantom
-    name: Phantom
-    tag: "Solana wallet, DEX aggregator"
-    formula: "24h swap volume in USD attributed to Phantom wallet (Mobula lighthouse byPlatform[name=Phantom].volumeUSD.24h, updated every 15 min)."
-    queries:
-      p50: solana_platform_volume_24h_usd{platform="phantom"}
-      p90: solana_platform_volume_24h_usd{platform="phantom"}
-      p99: solana_platform_volume_24h_usd{platform="phantom"}
-      mean: solana_platform_volume_24h_usd{platform="phantom"}
-      success: solana_platform_health{platform="phantom"}
-      sample_size: solana_platform_fees_24h_usd{platform="phantom"}
-      series: solana_platform_volume_24h_usd{platform="phantom"}
-
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
