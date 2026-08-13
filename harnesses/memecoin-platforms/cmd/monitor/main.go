@@ -142,6 +142,10 @@ func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiK
 				globalFreshLookups++
 			}
 			feeUSD := computeExplicitFees(rpcClient, heliusClient, heliusKey, t.Hash, t.Sender)
+			// For platforms without hardcoded fee wallets (gmgn, axiom, photon, etc.),
+			// add Mobula's own on-chain detection. Mobula returns 0 for fomo and pump-fun
+			// (which we already capture via platformFeeOwners), so no double-count occurs.
+			feeUSD += t.PlatformFeesUSD
 			s.totalFeeSum += feeUSD
 			s.tradeValueSum += t.AmountUSD
 			s.n++

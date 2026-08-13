@@ -9,11 +9,14 @@ import (
 )
 
 type MobulaTrade struct {
-	Platform  string  `json:"platform"`
-	Hash      string  `json:"hash"`
-	Sender    string  `json:"sender"`
-	AmountUSD float64 `json:"amountUSD"`
-	PoolType  string  `json:"poolType"`
+	Platform        string  `json:"platform"`
+	Hash            string  `json:"hash"`
+	Sender          string  `json:"sender"`
+	AmountUSD       float64 `json:"amountUSD"`
+	PoolType        string  `json:"poolType"`
+	// PlatformFeesUSD is Mobula's own on-chain fee detection (wSOL/sweep patterns, march 2026).
+	// Used as fallback for platforms without hardcoded fee wallets in platformFeeOwners.
+	PlatformFeesUSD float64 `json:"platformFeesUSD"`
 }
 
 // isPumpFunNative returns true for trades on pump.fun's bonding curve or
