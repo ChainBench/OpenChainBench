@@ -2,130 +2,22 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { fetchEVMRevenue } from "@/lib/evm-exec";
-import { fetchExecLeaderboard } from "@/lib/solana-exec";
-import { fetchSolPrice } from "@/lib/sol-price";
-import { fetchFOMORelayFees } from "@/lib/dune";
-import { TRADING_APPS } from "@/lib/trading-apps-config";
-import { fetchDeFiLlamaData } from "@/lib/defillama";
-import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
-import { RevenueSummary } from "@/components/revenue-summary";
-import Link from "next/link";
+import { fetchAppsLeaderboard, type ProtocolRow } from "@/lib/apps-leaderboard";
+import { AppsLeaderboardTable } from "@/components/apps-leaderboard-table";
 
 const DESCRIPTION =
-  "Protocol fees collected by trading apps and meme trading terminals — Solana, Ethereum, BSC. On-chain data, updated every 5 min.";
+  "Protocol revenue leaderboard for on-chain apps: fees captured by treasury, token holders, and LPs. Reproducible methodology, refreshed daily, sources public.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/apps",
-  title: "Trading App Revenue — pump.fun, Axiom, GMGN, BullX | OpenChainBench",
+  title: "Protocol Revenue Leaderboard 2026 — OpenChainBench",
   description: DESCRIPTION,
 });
 
 export const revalidate = 300;
 
-const WINDOWS = ["24h", "7d", "30d"] as const;
-
 export default async function AppsHubPage() {
-  const dlSlugMap = Object.fromEntries(
-    TRADING_APPS.filter((a) => a.defillamaSlug).map((a) => [a.id, a.defillamaSlug!])
-  );
-
-  const [evmData, solanaData, solPrice, fomoRelay, dlData] = await Promise.all([
-    fetchEVMRevenue(),
-    fetchExecLeaderboard(),
-    fetchSolPrice(),
-    fetchFOMORelayFees(),
-    fetchDeFiLlamaData(dlSlugMap),
-  ]);
-
-  // Market share = each platform's DL 24h fees / cohort total (active only)
-  const activeDlTotal = TRADING_APPS.filter((a) => !a.inactive && a.defillamaSlug)
-    .reduce((sum, a) => sum + (dlData.get(a.id)?.total24h ?? 0), 0);
-
-  const evmByPlatform = new Map(
-    (evmData?.platforms ?? []).map((p) => [p.platform, p])
-  );
-
-  const solanaByPlatform = new Map(
-    (solanaData?.platforms ?? []).map((p) => [p.platform, p])
-  );
-
-  const rows: UnifiedAppRow[] = TRADING_APPS.map((meta) => {
-    const evmRow = meta.evmKey ? evmByPlatform.get(meta.evmKey) : undefined;
-    const solRow = meta.solanaKey ? solanaByPlatform.get(meta.solanaKey) : undefined;
-
-    const rhRow = meta.robinhoodKey ? evmByPlatform.get(meta.robinhoodKey) : undefined;
-
-    const ethChain = evmRow?.chains["ethereum"];
-    const bscChain = evmRow?.chains["bsc"];
-    const baseChain = evmRow?.chains["base"];
-    const rhChain = rhRow?.chains["robinhood"];
-
-    const windows: UnifiedAppRow["windows"] = {};
-
-    for (const w of WINDOWS) {
-      let solanaFees: number | null = null;
-      if (solRow) {
-        const wData = solRow.windows[w];
-        if (wData) {
-          if (meta.solanaFeeIsUSDC) {
-            // Fees collected in USDC (6 dec): raw units / 1e6 = USD directly
-            solanaFees = wData.sumPlatformFeeLamports / 1e6;
-          } else if (solPrice !== null) {
-            solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
-          }
-        }
-      }
-
-      // FOMO: supplement on-chain fees with off-chain relay fees from Dune
-      // (relay accounts for ~96% of FOMO's actual revenue)
-      if (meta.id === "fomo" && fomoRelay) {
-        const relayFee = w === "24h" ? fomoRelay.fees24h : w === "7d" ? fomoRelay.fees7d : fomoRelay.fees30d;
-        solanaFees = (solanaFees ?? 0) + relayFee;
-      }
-
-      // EVM: 24h adds native ETH/BNB in USD; 7d/30d stable only (no historical prices).
-      const evmStable = (chain: typeof ethChain) =>
-        !chain ? null : w === "24h" ? chain.stable24h : w === "7d" ? chain.stable7d : chain.stable30d;
-      const evmNative = (chain: typeof ethChain) =>
-        w === "24h" && chain ? (chain.native?.usd ?? 0) : 0;
-
-      const ethFees = ethChain ? evmStable(ethChain)! + evmNative(ethChain) : null;
-      const bscFees = bscChain ? evmStable(bscChain)! + evmNative(bscChain) : null;
-      const baseFees = baseChain ? evmStable(baseChain)! + evmNative(baseChain) : null;
-      const rhFees = rhChain ? evmStable(rhChain)! + evmNative(rhChain) : null;
-      const evmTotal = (ethFees ?? 0) + (bscFees ?? 0) + (baseFees ?? 0) + (rhFees ?? 0);
-
-      windows[w] = {
-        solana: solanaFees,
-        ethereum: ethFees,
-        bsc: bscFees,
-        base: baseFees,
-        robinhood: rhFees,
-        total: (solanaFees ?? 0) + evmTotal,
-      };
-    }
-
-    const dl = dlData.get(meta.id) ?? null;
-    const marketSharePct = dl && activeDlTotal > 0 && !meta.inactive
-      ? (dl.total24h / activeDlTotal) * 100
-      : null;
-
-    return {
-      meta,
-      windows,
-      stableOnly: {
-        ethereum: ethChain?.coverage === "stable-only",
-        bsc: bscChain?.coverage === "stable-only",
-        base: baseChain?.coverage === "stable-only",
-        robinhood: rhChain?.coverage === "stable-only",
-      },
-      dl,
-      marketSharePct,
-    };
-  });
-
-  const updatedAt = evmData?.updatedAt ?? solanaData?.updatedAt ?? null;
+  const data = await fetchAppsLeaderboard();
 
   const breadcrumb = {
     "@context": "https://schema.org",
@@ -144,58 +36,22 @@ export default async function AppsHubPage() {
       />
 
       <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
-        Trading app revenue.
+        Protocol revenue.
       </h1>
       <p className="mt-4 max-w-2xl text-base text-ink-soft leading-snug">
         {DESCRIPTION}
       </p>
 
       <div className="mt-10">
-        <TradingAppsLeaderboard rows={rows} updatedAt={updatedAt} fomoLatestDate={fomoRelay?.latestDate ?? null} fomoRelayAvailable={fomoRelay !== null} activeDlTotal={activeDlTotal} />
+        <AppsLeaderboardTable protocols={data?.protocols ?? []} updatedAt={data?.updatedAt ?? null} />
       </div>
 
-      <p className="mt-6 text-xs text-ink-muted leading-relaxed max-w-2xl">
-        Solana fees = <span className="font-mono">sum(platform_fee) / 1e9 × SOL price</span>.
-        EVM fees = stable (USDC/USDT) + native where traceable, always 24h.
+      <p className="mt-8 text-xs text-ink-muted leading-relaxed max-w-2xl">
+        <strong>Gross fees</strong> = all fees collected by the protocol before any distribution.{" "}
+        <strong>Net value captured</strong> = burn + treasury + token holder − emissions.
+        Builder/interface fees (paid to frontend operators) are excluded.
+        Methodology versions and allocation params are on-chain verifiable.
       </p>
-
-      {evmData && evmData.platforms.length > 0 && (
-        <div className="mt-10 border-t border-rule pt-8">
-          <RevenueSummary evm={evmData} />
-        </div>
-      )}
-
-      <div className="mt-10 border-t border-rule pt-8">
-        <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">Related benchmarks</p>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/benchmarks/app-store-ratings"
-            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
-          >
-            <span className="text-lg">⭐</span>
-            <div>
-              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">App Store Ratings</p>
-              <p className="text-xs text-ink-muted">iOS ratings for crypto trading apps, live</p>
-            </div>
-            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-          <Link
-            href="/benchmarks/trading-app-execution"
-            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
-          >
-            <span className="text-lg">⚡</span>
-            <div>
-              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality</p>
-              <p className="text-xs text-ink-muted">Priority fees, Jito rates, platform fees</p>
-            </div>
-            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-        </div>
-      </div>
     </article>
   );
 }
