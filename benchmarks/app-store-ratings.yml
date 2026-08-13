@@ -51,7 +51,7 @@ methodology:
   - "GMGN (ID 6745328711): AI-powered trading terminal focused on Solana meme coins."
   - "PumpFun (ID 6717572591): launched Oct 2024. Bonding-curve launchpad and trading app for Solana meme coins."
   - "Moonshot (ID 6503993131): mobile-first meme coin launchpad with fiat onramp via Apple Pay, by DEX Screener."
-  - "Invo (ID 1601301148): Hyperliquid-native social trading mobile app with 170+ perp pairs, copy trading, and 25k+ referrals via its registered builder code."
+  - "Invo (ID 1601301148): Hyperliquid-native social trading mobile app with 170+ perp pairs and copy trading via its registered builder code on Hyperliquid."
 
 findings:
   - "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars."
