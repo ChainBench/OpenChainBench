@@ -1,177 +1,185 @@
+// memecoin-platforms -- Bench 203
+//
+// Computes per-platform take rates for Solana memecoin trading bots by combining:
+//   - Dune Analytics: fee wallet inflows (USDC + WSOL + native SOL) -> fees_usd_24h
+//   - Mobula lighthouse: platform trading volume -> volume_usd_24h
+//   - take_rate = fees_usd_24h / volume_usd_24h * 100
+//
+// Required env vars:
+//
+//	DUNE_API_KEY      - Dune Analytics API key
+//	DUNE_QUERY_ID     - Dune query ID (leave empty on first run; harness prints it and exits)
+//	MOBULA_API_KEY    - Mobula API key
+//
+// Metrics on :2112/metrics:
+//
+//	memecoin_platform_fee_rate_pct{platform}
+//	memecoin_platform_fees_usd_24h{platform}
+//	memecoin_platform_volume_usd_24h{platform}
+//	memecoin_platform_health
+//	memecoin_last_poll_timestamp_seconds
 package main
 
 import (
-	"log"
-	"net/http"
-	"net/url"
+	"fmt"
 	"os"
-	"strings"
-	"sync"
+	"os/signal"
+	"syscall"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const minTradeUSD = 5.0
-
-var pollMu sync.Mutex
+const (
+	fetchInterval   = 15 * time.Minute
+	refreshInterval = 6 * time.Hour
+	solPriceRefresh = 5 * time.Minute
+)
 
 func main() {
-	log.Println("memecoin-platforms monitor starting...")
+	fmt.Println("=== memecoin-platforms harness ===")
+	fmt.Println("OpenChainBench Bench 203 -- Memecoin platform fee rates via Dune + Mobula lighthouse.")
 
-	apiKey := os.Getenv("MOBULA_API_KEY")
-	if apiKey == "" {
-		log.Fatal("MOBULA_API_KEY is required")
+	duneKey := os.Getenv("DUNE_API_KEY")
+	if duneKey == "" {
+		fmt.Fprintln(os.Stderr, "[fatal] DUNE_API_KEY not set")
+		os.Exit(1)
+	}
+	mobulaKey := os.Getenv("MOBULA_API_KEY")
+	if mobulaKey == "" {
+		fmt.Fprintln(os.Stderr, "[fatal] MOBULA_API_KEY not set")
+		os.Exit(1)
 	}
 
-	heliusKey := os.Getenv("HELIUS_API_KEY")
+	queryID := os.Getenv("DUNE_QUERY_ID")
+	dune := newDuneClient(duneKey)
 
-	mobulaClient := &http.Client{
-		Timeout:   30 * time.Second,
-		Transport: &http.Transport{Proxy: http.ProxyURL(nil)},
+	if queryID == "" {
+		fmt.Println("[init] DUNE_QUERY_ID not set, creating Dune query...")
+		id, err := dune.createQuery()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[fatal] failed to create Dune query: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("[init] Dune query created: %s\n", id)
+		fmt.Printf("[init] Set DUNE_QUERY_ID=%s and restart the harness.\n", id)
+		os.Exit(0)
 	}
 
-	// rpcClient routes through rotating proxy to avoid per-IP rate limits
-	var rpcClient *http.Client
-	if proxyRaw := os.Getenv("HTTPS_PROXY"); proxyRaw != "" {
-		if proxyURL, err := url.Parse(proxyRaw); err == nil {
-			rpcClient = &http.Client{
-				Timeout:   5 * time.Second,
-				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
+	lighthouse := newLighthouseClient(mobulaKey)
+
+	startSolPriceRefresher(solPriceRefresh)
+
+	go func() {
+		if err := startMetricsServer(":2112"); err != nil {
+			fmt.Printf("[fatal] metrics server: %v\n", err)
+			os.Exit(1)
+		}
+	}()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+
+	// On startup: fetch cached Dune result + current lighthouse data immediately,
+	// then trigger a fresh Dune execution in the background.
+	runPoll(dune, lighthouse, queryID)
+	go func() {
+		execID, err := dune.execute(queryID)
+		if err != nil {
+			fmt.Printf("[refresh] execute failed: %v\n", err)
+			return
+		}
+		pollUntilDone(dune, lighthouse, queryID, execID)
+	}()
+
+	fetchTick := time.NewTicker(fetchInterval)
+	refreshTick := time.NewTicker(refreshInterval)
+	defer fetchTick.Stop()
+	defer refreshTick.Stop()
+
+	for {
+		select {
+		case <-sig:
+			fmt.Println("[shutdown] received signal")
+			return
+		case <-fetchTick.C:
+			runPoll(dune, lighthouse, queryID)
+		case <-refreshTick.C:
+			execID, err := dune.execute(queryID)
+			if err != nil {
+				fmt.Printf("[refresh] execute failed: %v\n", err)
+				continue
 			}
-			log.Printf("rpc: rotating proxy enabled")
+			go pollUntilDone(dune, lighthouse, queryID, execID)
 		}
-	}
-	if rpcClient == nil {
-		rpcClient = &http.Client{Timeout: 30 * time.Second}
-	}
-
-	// heliusClient used as fallback for older tx not in public RPC history
-	heliusClient := &http.Client{Timeout: 30 * time.Second}
-
-	setSolPrice(76.0)
-	updateSolPrice(mobulaClient)
-
-	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			updateSolPrice(mobulaClient)
-		}
-	}()
-
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(200)
-		})
-		log.Println("serving metrics on :9090")
-		log.Fatal(http.ListenAndServe(":9090", nil))
-	}()
-
-	runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
-
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-		if !pollMu.TryLock() {
-			log.Println("[poll] previous poll still running, skipping tick")
-			continue
-		}
-		go func() {
-			defer pollMu.Unlock()
-			runPoll(mobulaClient, rpcClient, heliusClient, heliusKey, apiKey)
-		}()
 	}
 }
 
-type platformStats struct {
-	totalFeeSum   float64
-	tradeValueSum float64
-	n             int
-}
-
-func runPoll(mobulaClient, rpcClient, heliusClient *http.Client, heliusKey, apiKey string) {
-	tokens, err := fetchTopTokens(mobulaClient, 25)
+func runPoll(dune *duneClient, lh *lighthouseClient, queryID string) {
+	rows, err := dune.latestResult(queryID)
 	if err != nil {
-		log.Printf("[pump.fun] %v", err)
-		pollErrors.WithLabelValues("pumpfun").Inc()
+		fmt.Printf("[fetch] dune failed: %v\n", err)
+		platformHealth.Set(0)
 		return
 	}
-	log.Printf("[pump.fun] %d tokens", len(tokens))
 
-	globalFreshLookups := 0
-	for _, tok := range tokens {
-		if tok.Mint == "" {
+	volumes, err := lh.fetchVolumes()
+	if err != nil {
+		fmt.Printf("[fetch] lighthouse failed: %v\n", err)
+		platformHealth.Set(0)
+		return
+	}
+
+	solUSD := getSolPrice()
+
+	// Aggregate rows per platform (Dune may return multiple rows for pump-fun).
+	type totals struct {
+		feesUSD float64
+	}
+	byPlatform := make(map[string]*totals)
+	for _, r := range rows {
+		if r.Platform == "" {
 			continue
 		}
-
-		trades, err := fetchTrades(mobulaClient, apiKey, tok.Mint)
-		if err != nil {
-			log.Printf("[mobula][%s] %v", tok.Symbol, err)
-			pollErrors.WithLabelValues("mobula").Inc()
-			time.Sleep(500 * time.Millisecond)
-			continue
+		t, ok := byPlatform[r.Platform]
+		if !ok {
+			t = &totals{}
+			byPlatform[r.Platform] = t
 		}
+		t.feesUSD += r.USDCFees24h + r.WSOLFees24h*solUSD + r.SOLFees24h*solUSD
+	}
 
-		byPlatform := make(map[string]*platformStats)
-		freshLookups := 0
-		for _, t := range trades {
-			if t.AmountUSD < minTradeUSD {
-				continue
-			}
-			_, cached := txCache.Load(t.Hash)
-			if !cached && (freshLookups >= 40 || globalFreshLookups >= 300) {
-				continue
-			}
-			p := t.Platform
-			if p == "" {
-				if t.isPumpFunNative() {
-					p = "pump-fun"
-				} else {
-					p = "unattributed"
-				}
-			}
-			s := byPlatform[p]
-			if s == nil {
-				s = &platformStats{}
-				byPlatform[p] = s
-			}
-			if !cached {
-				freshLookups++
-				globalFreshLookups++
-			}
-			feeUSD := computeExplicitFees(rpcClient, heliusClient, heliusKey, t.Hash, t.Sender)
-			// For platforms without hardcoded fee wallets (gmgn, axiom, photon, etc.),
-			// add Mobula's own on-chain detection. Mobula returns 0 for fomo and pump-fun
-			// (which we already capture via platformFeeOwners), so no double-count occurs.
-			feeUSD += t.PlatformFeesUSD
-			s.totalFeeSum += feeUSD
-			s.tradeValueSum += t.AmountUSD
-			s.n++
+	for platform, t := range byPlatform {
+		vol := volumes[platform]
+		feesUSD24h.WithLabelValues(platform).Set(t.feesUSD)
+		volumeUSD24h.WithLabelValues(platform).Set(vol)
+		rate := 0.0
+		if vol > 0 {
+			rate = t.feesUSD / vol * 100
 		}
-
-		sym := strings.TrimSpace(tok.Symbol)
-		if sym == "" {
-			sym = tok.Mint[:8]
-		}
-
-		for p, s := range byPlatform {
-			n := float64(s.n)
-			avgTotal := s.totalFeeSum / n
-			avgVal := s.tradeValueSum / n
-			feePct := 0.0
-			if avgVal > 0 {
-				feePct = (avgTotal / avgVal) * 100
-			}
-			platformFeePct.WithLabelValues(p, sym).Set(feePct)
-			platformTotalFeeUSD.WithLabelValues(p, sym).Set(avgTotal)
-			platformTradeCount.WithLabelValues(p, sym).Set(n)
-		}
-
-		log.Printf("[mobula][%s] %d trades across %d platforms", sym, len(trades), len(byPlatform))
-		time.Sleep(500 * time.Millisecond)
+		feeRatePct.WithLabelValues(platform).Set(rate)
 	}
 
 	lastPollTime.SetToCurrentTime()
+	platformHealth.Set(1)
+	fmt.Printf("[fetch] updated %d platform(s), sol=$%.2f\n", len(byPlatform), solUSD)
+}
+
+func pollUntilDone(dune *duneClient, lh *lighthouseClient, queryID, execID string) {
+	for range 30 {
+		time.Sleep(30 * time.Second)
+		state, err := dune.executionState(execID)
+		if err != nil {
+			fmt.Printf("[poll] state check failed: %v\n", err)
+			return
+		}
+		switch state {
+		case "QUERY_STATE_COMPLETED":
+			fmt.Printf("[poll] execution %s complete\n", execID)
+			runPoll(dune, lh, queryID)
+			return
+		case "QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED":
+			fmt.Printf("[poll] execution %s ended with state %s\n", execID, state)
+			return
+		}
+	}
+	fmt.Printf("[poll] execution %s timed out waiting\n", execID)
 }

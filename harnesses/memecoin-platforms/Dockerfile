@@ -17,6 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /memecoin-platforms .
 
-EXPOSE 9090
+EXPOSE 2112
 
 CMD ["./memecoin-platforms"]
