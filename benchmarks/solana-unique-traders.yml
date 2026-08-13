@@ -77,7 +77,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Solana meme launchpad"
-    formula: "Unique wallet addresses (distinct fee_payer) whose transaction touched a pump.fun fee wallet in the last 24h (Dune: solana.account_activity, hourly refresh). Substantially undercounted post 2026-08-07 due to zero-fee policy."
+    formula: "Unique tx count touching pump.fun fee wallets in the last 24h (Dune: solana.account_activity, hourly). Undercounted post 2026-08-07 due to zero bonding-curve fee."
     queries:
       p50: solana_platform_unique_traders_24h{platform="pump-fun"}
       p90: solana_platform_unique_traders_24h{platform="pump-fun"}
@@ -116,7 +116,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana mobile trading app"
-    formula: "Unique tx count for transactions where Fomo's USDC fee wallet received a positive USDC inflow in the last 24h (Dune: solana.account_activity token_balance_owner match, hourly refresh). Captures on-chain per-trade Jupiter referral fee events; off-chain relay fees excluded."
+    formula: "Unique tx count where Fomo's fee wallet (token_balance_owner match) received USDC inflow in the last 24h (Dune: solana.account_activity, hourly). On-chain Jupiter referral fees only; off-chain relay excluded."
     queries:
       p50: solana_platform_unique_traders_24h{platform="fomo"}
       p90: solana_platform_unique_traders_24h{platform="fomo"}
