@@ -22,9 +22,11 @@ seo_intro: |
   bonding-curve programs on Solana competing for the same launch traffic. This
   benchmark tracks the 24-hour trading volume, protocol fees and trade count for
   each platform in real time. PumpFun consistently leads with over 100 million
-  USD in daily volume and more than 1 million USD in daily fees. Flap and Meteora
-  DBC occupy the challenger positions. The fee efficiency column (fees divided by
-  volume) reveals which launchpad extracts the most revenue per dollar traded.
+  USD in daily volume. In August 2026 PumpFun cut its bonding-curve trading fees
+  to zero, so its daily protocol fee revenue now comes primarily from token
+  graduations rather than per-swap charges. Flap and Meteora DBC occupy the
+  challenger positions. The fee efficiency column (fees divided by volume)
+  reveals which launchpad extracts the most revenue per dollar traded.
 
 abstract: |
   The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
@@ -46,7 +48,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads Solana meme launchpads at ${{best_p50}} 24h volume."
-  - "PumpFun commands the market with over $100 million in daily bonding-curve volume and over $1 million in daily protocol fees, roughly 70 percent of total tracked launchpad volume."
+  - "PumpFun commands the market with over $100 million in daily bonding-curve volume, roughly 70 percent of total tracked launchpad volume. Protocol fee revenue is now primarily from token graduations after cutting bonding-curve trading fees to zero in August 2026."
   - "Flap and Meteora DBC are the closest challengers, each processing tens of millions in daily volume. Flap has the highest fee-to-volume ratio among active launchpads."
   - "Bankr, LetsCash and NOXA Fun each run active programs with single-digit millions in daily volume and tens of thousands in daily fees."
 
@@ -62,7 +64,7 @@ faq:
   - q: "What counts as launchpad volume here?"
     a: "On-chain swap events routed through the launchpad's bonding-curve program, aggregated over a rolling 24-hour window by Mobula. For PumpFun this is the bonding-curve phase only; tokens that have graduated to the PumpSwap AMM are not included in this figure."
   - q: "How does PumpFun compare to Flap on fees?"
-    a: "PumpFun collects over $1 million in daily protocol fees on $100M+ volume, an effective rate near 1 percent. Flap has a higher fee-to-volume ratio, extracting roughly 1.2 percent of volume as fees. The solana_launchpad_fees_24h_usd gauge tracks this live."
+    a: "PumpFun cut its bonding-curve trading fees to zero in August 2026, so its daily protocol fee revenue now comes almost entirely from graduation fees rather than per-swap charges. Flap charges a higher per-trade fee rate. The solana_launchpad_fees_24h_usd gauge tracks live fees for each launchpad."
   - q: "What is Meteora DBC?"
     a: "Meteora Dynamic Bonding Curve is Meteora's launchpad product on Solana, competing directly with PumpFun. It uses a configurable bonding curve and routes graduated tokens into Meteora's DLMM liquidity pools."
   - q: "Are trading bots like GMGN and Axiom included?"

@@ -10,7 +10,17 @@ import (
 var (
 	feeRatePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "memecoin_platform_fee_rate_pct",
-		Help: "Platform take rate: fees_usd_24h / volume_usd_24h * 100",
+		Help: "Take rate using Mobula total volume: fees_usd_24h / mobula_volume_usd_24h * 100 (lower bound; denominator includes non-fee trades)",
+	}, []string{"platform"})
+
+	feePayingRatePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "memecoin_platform_fee_paying_rate_pct",
+		Help: "Take rate using fee-paying volume only: fees_usd_24h / fee_paying_volume_usd_24h * 100 (comparable across platforms)",
+	}, []string{"platform"})
+
+	coveragePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "memecoin_platform_coverage_pct",
+		Help: "Fee-paying volume / Mobula total volume * 100: fraction of attributed volume that generated a fee inflow",
 	}, []string{"platform"})
 
 	feesUSD24h = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -20,7 +30,12 @@ var (
 
 	volumeUSD24h = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "memecoin_platform_volume_usd_24h",
-		Help: "Trading volume in USD in the last 24h (Mobula lighthouse)",
+		Help: "Trading volume in USD in the last 24h (Mobula lighthouse, total attributed volume)",
+	}, []string{"platform"})
+
+	feePayingVolumeUSD24h = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "memecoin_platform_fee_paying_volume_usd_24h",
+		Help: "Volume of trades that generated a fee inflow in the last 24h (Dune: largest swap per fee-receiving tx)",
 	}, []string{"platform"})
 
 	platformHealth = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -40,7 +55,11 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(feeRatePct, feesUSD24h, volumeUSD24h, platformHealth, lastPollTime, duneDataFreshness)
+	prometheus.MustRegister(
+		feeRatePct, feePayingRatePct, coveragePct,
+		feesUSD24h, volumeUSD24h, feePayingVolumeUSD24h,
+		platformHealth, lastPollTime, duneDataFreshness,
+	)
 }
 
 func startMetricsServer(addr string) error {
