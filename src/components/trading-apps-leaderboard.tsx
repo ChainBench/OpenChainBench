@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { logoPath } from "@/lib/logo-manifest";
 import type { AppMeta } from "@/lib/trading-apps-config";
 import type { DLPlatformData } from "@/lib/defillama";
@@ -357,7 +357,10 @@ export function TradingAppsLeaderboard({
 
 function FOMODataNotice({ latestDate }: { latestDate: string | null }) {
   if (!latestDate) return null;
-  const ageHours = (Date.now() - new Date(latestDate).getTime()) / 3_600_000;
+  const ageHours = useMemo(
+    () => (Date.now() - new Date(latestDate).getTime()) / 3_600_000,
+    [latestDate]
+  );
   if (ageHours <= 36) return null;
   return (
     <p className="px-4 sm:px-6 py-2.5 text-[11px] border-t border-rule text-amber-400/80">
