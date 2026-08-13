@@ -14,7 +14,7 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  The metric counts unique transaction IDs (not unique wallet addresses) whose transactions touched a known platform fee wallet in the rolling 24h window. This is a proxy for unique daily active traders; the actual unique-wallet count is typically 3-10x lower since active traders execute multiple trades per day. Counts include bots, MEV searchers, and multi-wallet traders. A transaction that touches two platform fee wallets is counted in both. pump.fun tracking relies on its 9 on-chain fee wallets; since pump.fun cut bonding-curve trading fees to 0% on 2026-08-07, its count reflects only transactions generating graduation and creator fees and substantially understates true trading activity.
+  Counts unique tx_ids touching a platform fee wallet in the rolling 24h window, not unique wallets. Actual unique-wallet count is 3-10x lower since active traders execute multiple trades per day. Includes bots, MEV searchers, and multi-wallet traders. A tx touching two fee wallets is counted in both. pump.fun is substantially undercounted since its bonding-curve trading fees were cut to 0% on 2026-08-07; its count now reflects only graduation and creator fee events.
 
 seo_intro: |
   GMGN leads Solana trading terminals by unique daily active wallets, serving a broad
