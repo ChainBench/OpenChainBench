@@ -116,14 +116,14 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "24h swap volume in USD attributed to Fomo (Mobula lighthouse byPlatform[name=Fomo].volumeUSD.24h, updated every 15 min)."
+    formula: "24h swap volume in USD attributed to Fomo (Mobula lighthouse byPlatform[name=Fomo].volumeUSD.24h, updated every 15 min). Fees from DeFiLlama (dailyRevenue)."
     queries:
       p50: solana_platform_volume_24h_usd{platform="fomo"}
       p90: solana_platform_volume_24h_usd{platform="fomo"}
       p99: solana_platform_volume_24h_usd{platform="fomo"}
       mean: solana_platform_volume_24h_usd{platform="fomo"}
       success: solana_platform_health{platform="fomo"}
-      sample_size: solana_platform_fees_24h_usd{platform="fomo"}
+      sample_size: defillama_dex_fees_24h_usd{platform="fomo"}
       series: solana_platform_volume_24h_usd{platform="fomo"}
 
   - slug: trojan
