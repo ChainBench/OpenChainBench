@@ -40,7 +40,7 @@ methodology:
   - "Average swap size: solana_platform_volume_24h_usd / solana_platform_trades_24h, computed in PromQL."
   - "Attribution: Mobula assigns each on-chain swap to a platform via referral tags, program IDs and memo fields embedded in transactions. Each swap is attributed to exactly one platform."
   - "Bot inclusion: all attributed swaps are counted including bots and MEV. Platforms with high bot activity (notably pump.fun snipers) show lower average sizes than human-only baselines would suggest."
-  - "pump.fun: sourced from byLaunchpad (bonding-curve swaps on pump.fun's own site, $123M+ on Aug 13 2026 confirming bonding-curve volume persists under the fee-free model). Trades routed through GMGN or Axiom to pump.fun tokens count under those platforms. Caveat: if Mobula's trades.24h field counts fee events rather than raw swap transactions, pump.fun's trade count would be artificially suppressed in fee-free regime, inflating the computed average size — verify with Mobula before interpreting the pump.fun row as directionally lower."
+  - "pump.fun: sourced from byLaunchpad (bonding-curve swaps on pump.fun's own site, $123M+ on Aug 13 2026 confirming bonding-curve volume persists under the fee-free model). Trades routed through GMGN or Axiom to pump.fun tokens count under those platforms. Mobula documents trades as swap-level count (not fee-event gated); whether zero-fee swaps post August 7 are indexed identically is an implementation detail not confirmed by docs — pending Mobula support response."
   - "Meteora DBC excluded: Meteora DBC counts LP provision events and micro-rebalances as trades, making its avg size of ~$12 not comparable to pure swap activity."
 
 findings:
@@ -48,7 +48,7 @@ findings:
   - "pump.fun has the smallest average swap size in the set, dominated by bot sniping and micro-cap degen retail flow on its bonding-curve launchpad."
   - "GMGN and Trojan consistently lead on average swap size, serving more sophisticated traders with larger position sizes. Note: Mobula's volume attribution for GMGN and Trojan is broader than fee-paying volume (only ~8% of attributed volume generates a fee event per bench 203), so average size comparisons with pump.fun should be treated as directional."
   - "Fomo sits mid-market between retail launchpad activity and professional terminals."
-  - "Trade count tells the other story: pump.fun processes more trades per day than all other platforms combined, though this figure may be affected if Mobula's trades.24h counts fee events rather than swaps in the fee-free regime post August 7."
+  - "Trade count tells the other story: pump.fun processes more trades per day than all other platforms combined. Mobula defines trades as swap-level count; whether zero-fee bonding-curve swaps post August 7 are included identically is unconfirmed — pending Mobula support."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-launchpad-wars
 
@@ -60,7 +60,7 @@ faq:
   - q: "What does average swap size measure?"
     a: "Average swap size is total 24h attributed volume divided by total 24h attributed trade count. It reflects the typical notional size of a single swap on each platform. A platform with many small trades will show a low average; one with fewer but larger trades will show a high average."
   - q: "Why does pump.fun have so many trades?"
-    a: "pump.fun's bonding curve generates enormous transaction volume from sniping bots, copy-trade bots and retail buyers all racing to buy newly launched tokens in the first seconds. Bonding-curve volume persists after August 7 2026 under the fee-free model ($123M+ on Aug 13). The trade count in this bench comes from Mobula's trades.24h field; if that field counts fee events rather than raw swap transactions, the count may be understated in fee-free regime (inflating the displayed average size). Pending confirmation from Mobula, treat the pump.fun average size as directional."
+    a: "pump.fun's bonding curve generates enormous transaction volume from sniping bots, copy-trade bots and retail buyers all racing to buy newly launched tokens in the first seconds. Bonding-curve volume persists after August 7 2026 under the fee-free model ($123M+ on Aug 13). Mobula documents trades.24h as a swap-level count, not a fee-event count, so the denominator should not be affected by the fee cut. Whether zero-fee swaps are indexed identically in practice is an implementation detail not confirmed by Mobula docs; treat the pump.fun average size as directional until Mobula support confirms."
   - q: "Is this apple-to-apple between pump.fun and the other platforms?"
     a: "Directionally yes. Mobula attributes each swap to exactly one frontend using referral tags. A pump.fun token bought via GMGN counts under GMGN, not pump.fun. So both reflect genuine frontend-attributed activity. The difference is that pump.fun's activity skews heavily toward bots and micro-trades on bonding-curve launches, while GMGN and Axiom serve more secondary-market trading."
   - q: "Why is Fomo's average trade size lower than GMGN despite similar positioning?"
