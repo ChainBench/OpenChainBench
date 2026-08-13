@@ -122,7 +122,7 @@ func callLatestBlock(ctx context.Context, url string) (block uint64, hash string
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	latencyMs = float64(time.Since(start).Milliseconds())
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
@@ -309,7 +309,7 @@ func callLatestSlot(ctx context.Context, url string) (slot uint64, result string
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	latencyMs = float64(time.Since(start).Milliseconds())
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
@@ -375,7 +375,7 @@ func callSubstrateHeader(ctx context.Context, url string) (block uint64, hash st
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	latencyMs = float64(time.Since(start).Milliseconds())
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
@@ -449,7 +449,7 @@ func callCosmosStatus(ctx context.Context, url string) (block uint64, hash strin
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	latencyMs = float64(time.Since(start).Milliseconds())
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {

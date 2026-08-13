@@ -109,6 +109,11 @@ export async function generateMetadata({
   // `isAwaiting = isDraft && editorialStatus === "live"` gate below.
   const metaIsDraft = b.status === "draft";
   const metaIsAwaiting = metaIsDraft && b.editorialStatus === "live";
+  // RPC benches with fewer than 3 providers are thin-content: a single
+  // provider leaderboard has no comparative value and no search demand.
+  // noindex/follow keeps crawl equity flowing without letting an
+  // empty-looking table rank for "fastest X rpc".
+  const metaThinRpc = b.category === "RPCs" && (b.results?.length ?? 0) < 3;
   const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
@@ -146,7 +151,7 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
-    ...(metaIsAwaiting
+    ...((metaIsAwaiting || metaThinRpc)
       ? { robots: { index: false, follow: true } }
       : {}),
     openGraph: {
