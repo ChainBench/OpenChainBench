@@ -45,10 +45,9 @@ methodology:
   - "Source: Mobula lighthouse (api.mobula.io/api/2/market/lighthouse), byPlatform field. Mobula attributes swap events using on-chain referral tags, program IDs and memo fields."
   - "Poll cadence: harness fetches the endpoint every 15 minutes and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
   - "Volume: sum of all swap event notional values (in USD at time of swap) within the last 24 hours for swaps attributed to this platform. Higher = more user activity routed through this frontend."
-  - "Fees column: for all platforms except Fomo, fees come from Mobula lighthouse (on-chain protocol fees attributable via referral tags). For Fomo, fees come from DeFiLlama dailyRevenue (defillama_dex_fees_24h_usd). Fomo collects protocol fees in USDC swept in batches to a fee wallet, outside the per-trade referral tag flow that Mobula tracks, causing Mobula to undercount Fomo fees by approximately 9x. DeFiLlama monitors the fee wallet directly and is accurate."
-  - "Attribution method: Mobula uses on-chain referral tags embedded by each platform SDK and program-level routing heuristics. Attribution is mutually exclusive: each swap is attributed to exactly one platform. Platforms that do not embed standard referral tags may be undercounted."
-  - "pump.fun scope: pump.fun volume comes from Mobula's byLaunchpad bucket, which covers bonding-curve swaps via pump.fun's own frontend only. PumpSwap (the AMM pump.fun launched for graduated tokens) is a separate program; swaps on PumpSwap routed through GMGN or Axiom count under those platforms. Direct PumpSwap trades via pump.fun's interface may be partially included depending on Mobula's indexing of the PumpSwap program."
-  - "Phantom note: Phantom is primarily a wallet; its swap volume here reflects users initiating swaps from the Phantom interface via Jupiter or other aggregators, not active trading sessions."
+  - "Attribution: Mobula uses on-chain referral tags, program IDs and memo fields. Each swap is attributed to exactly one platform. Platforms without standard referral tags may be undercounted."
+  - "pump.fun: sourced from Mobula's byLaunchpad bucket (bonding-curve swaps via pump.fun's own frontend). PumpSwap trades routed through GMGN or Axiom count under those platforms."
+  - "Phantom: wallet-initiated swaps via Jupiter or other aggregators, not active trading sessions."
 
 findings:
   - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
