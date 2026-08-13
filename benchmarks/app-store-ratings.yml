@@ -21,11 +21,13 @@ seo_intro: |
   user rating, updated live every 30 minutes from the iTunes lookup API. It
   spans both centralized exchange apps (Coinbase, Robinhood, Crypto.com, Bybit,
   Kraken, Binance.US) and on-chain trading terminals (Fomo, GMGN, PumpFun,
-  Moonshot). Robinhood leads on raw review volume with nearly 5 million ratings,
-  making it the most statistically reliable data point in the set. Coinbase
-  follows with over 1.8 million ratings. On-chain apps like Fomo have accumulated
-  over 7,000 ratings since launching in April 2025, signaling strong early
-  engagement from DeFi-native traders.
+  Moonshot, Invo). Robinhood leads on raw review volume with nearly 5 million
+  ratings, making it the most statistically reliable data point in the set.
+  Coinbase follows with nearly 1.8 million ratings. On-chain apps like Fomo
+  have been accumulating reviews quickly since launching in May 2025, signaling
+  strong early engagement from DeFi-native traders. GMGN has a large global
+  user base but its US App Store review count is structurally low; the US
+  storefront undercounts apps with primarily Asian user bases.
 
 abstract: |
   The harness polls the iTunes public lookup API
@@ -37,28 +39,31 @@ abstract: |
   but updates it within hours of new reviews arriving.
 
 methodology:
-  - "Source: Apple iTunes public lookup API (itunes.apple.com/lookup?id=<appID>&country=us). No authentication required. Returns averageUserRating and userRatingCount."
-  - "Poll cadence: harness fetches each app every 30 minutes. Ratings change slowly (daily to weekly) so 30-minute polling captures all meaningful changes while respecting Apple caching."
-  - "Rating: Apple computes the average across all all-time user reviews. Apple does not expose time-windowed (e.g. current version only) averages via the public API endpoint used here."
-  - "Review count: total number of ratings ever submitted on the US App Store. Higher = more statistically reliable average."
-  - "Robinhood (ID 938003185): the most-reviewed financial app on the US App Store with nearly 5 million ratings. Commission-free investing with crypto added in 2018."
-  - "Coinbase (ID 886427730): the largest US-regulated crypto exchange. Over 1.8 million App Store ratings."
-  - "Crypto.com (ID 1262148500): Singapore-headquartered super app with 100M+ users globally, offering spot, derivatives, Visa card and DeFi wallet."
-  - "Bybit (ID 1488296980): major global exchange strong on derivatives and spot trading."
+  - "Source: Apple iTunes public lookup API (itunes.apple.com/lookup?id=<appID>&country=us&entity=software). Returns averageUserRating and userRatingCount."
+  - "Poll cadence: harness fetches each app every 30 minutes. Ratings change slowly so 30-minute polling captures all meaningful changes while respecting Apple caching."
+  - "Rating: Apple computes the average across all all-time user reviews. Time-windowed averages (current version only) are not available via the public API."
+  - "Review count: total number of ratings ever submitted on the US App Store. Higher = more statistically reliable average. At very low counts (<100 reviews) a single new review can move the displayed rating by 0.1 stars."
+  - "Storefront: this bench uses the US App Store (&country=us) as an editorial choice. Apps with primarily non-US user bases (notably GMGN) are structurally undercounted on this storefront."
+  - "Inclusion criteria: apps must be listed on the US App Store, have crypto trading as a primary function, and have at least 50 US ratings. CEX and on-chain apps are included in the same bench because they compete for the same mobile trader."
+  - "ID validation: the harness asserts the trackName and bundleId returned by Apple against the expected values at each poll. A wrong or swapped app ID would silently return the rating of a different app without this check."
+  - "Robinhood (ID 938003185): commission-free investing app with crypto added in 2018. Largest review base in this bench."
+  - "Coinbase (ID 886427730): the largest US-regulated crypto exchange."
+  - "Crypto.com (ID 1262148500): global exchange and super app with spot, derivatives, Visa card and DeFi wallet."
+  - "Bybit (ID 1488296980): global derivatives exchange. Listed on the US App Store but access is restricted for US residents; included for international comparison."
   - "Kraken (ID 1481947260): veteran US exchange with strong security reputation."
-  - "Binance.US (ID 1492670702): US-regulated arm of Binance, available on the US App Store."
-  - "Fomo (ID 6741115427): launched Apr 2025. Social copy-trading and meme coin terminal, backed by Index Ventures and USV."
-  - "GMGN (ID 6745328711): AI-powered trading terminal focused on Solana meme coins."
+  - "Binance.US (ID 1492670702): US-regulated arm of Binance."
+  - "Fomo (ID 6741115427): launched May 2025. Social copy-trading and meme coin terminal on Solana."
+  - "GMGN (ID 6745328711): AI-powered trading terminal focused on Solana meme coins. Primarily Asian user base; US review count is not representative of global usage."
   - "PumpFun (ID 6717572591): launched Oct 2024. Bonding-curve launchpad and trading app for Solana meme coins."
-  - "Moonshot (ID 6503993131): mobile-first meme coin launchpad with fiat onramp via Apple Pay, by DEX Screener."
-  - "Invo (ID 1601301148): Hyperliquid-native social trading mobile app with 170+ perp pairs and copy trading via its registered builder code on Hyperliquid."
+  - "Moonshot (ID 6503993131): mobile-first meme coin trading app with fiat onramp via Apple Pay, by DEX Screener."
+  - "Invo (ID 1601301148): social trading app on Hyperliquid perps. Note: this app ID was previously used by Involio (a generalist social portfolio app launched ~2021); the all-time rating history predates the current Hyperliquid-focused product."
 
 findings:
   - "{{best_name}} leads crypto trading apps on the iOS App Store at {{best_p50}} stars."
-  - "Robinhood dominates on review volume with nearly 5 million ratings, making it the most statistically robust data point in the set."
-  - "Coinbase follows with over 1.8 million ratings and is the top pure-crypto exchange by review count."
-  - "Fomo has accumulated over 7,000 ratings since its April 2025 launch despite being one of the newest entrants, signaling strong mobile-native engagement."
-  - "On-chain trading apps (Fomo, GMGN, PumpFun, Moonshot) compete directly with major CEX apps for the same mobile trader."
+  - "Robinhood leads on review volume, making it the most statistically robust data point in the set."
+  - "Coinbase is the top pure-crypto exchange by review count and holds a strong rating despite serving the most regulated and compliance-constrained market."
+  - "On-chain apps have been gaining ratings quickly; Fomo in particular accumulated thousands of reviews within months of its May 2025 launch."
+  - "On-chain trading apps (Fomo, GMGN, PumpFun, Moonshot) compete directly with major CEX apps for the same mobile trader, and several already match or exceed the ratings of established exchanges."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/app-store-ratings
 
@@ -73,7 +78,7 @@ metric_panels:
     metric: app_store_reviews_total
     unit: count
     higher_is_better: true
-    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Robinhood leads with 4.8M+ ratings, Coinbase follows at 1.8M+."
+    description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Robinhood leads with nearly 5M ratings, Coinbase follows at nearly 1.8M."
 
 ledger_columns:
   - { label: "Rating", slot: p50 }
@@ -81,21 +86,25 @@ ledger_columns:
 
 faq:
   - q: "Why does the App Store rating matter for a trading app?"
-    a: "App Store ratings are the most visible public signal of user satisfaction for mobile products. For trading apps competing for the same users, a higher rating and more reviews signals a better-received product."
+    a: "App Store ratings are the most visible public signal of user satisfaction for mobile products. For trading apps competing for the same users, a higher rating and more reviews signals a better-received product. This bench also shows review count alongside rating so you can judge statistical confidence yourself."
   - q: "How often do App Store ratings change?"
-    a: "Slowly. Individual ratings accumulate continuously but the average moves over days to weeks. The harness polls every 30 minutes to capture any meaningful shift; in practice the number updates at most once or twice per day."
+    a: "Slowly for large apps. Individual ratings accumulate continuously but the average moves over days to weeks for apps with millions of reviews. For newer apps with few hundred reviews, a single review can move the displayed rating by 0.1 stars. The harness polls every 30 minutes to capture any shift."
   - q: "Why is this the US App Store only?"
-    a: "The iTunes public lookup API returns US store data by default. Review counts and ratings can differ by country. The US store is the largest single market and the standard reference for app comparisons."
+    a: "This is an editorial choice, not a technical constraint. The harness explicitly requests the US storefront (&country=us). The US App Store is the largest single market and the standard reference for cross-app comparisons. The tradeoff: apps with primarily Asian or non-US user bases (notably GMGN) are structurally undercounted here. A global-storefront variant is on the roadmap."
   - q: "Does this include Google Play ratings?"
-    a: "No. This benchmark covers the US App Store only. CEX apps like Coinbase and Bybit have Android versions but on-chain apps like Fomo and PumpFun are iOS-only as of 2026."
+    a: "No. This benchmark covers the US App Store only. Several apps in this bench also have Android versions. A Google Play companion benchmark is on the roadmap."
   - q: "Why does Robinhood have so many more reviews than Coinbase?"
-    a: "Robinhood launched in 2013 as a stock trading app and had 13 million funded accounts before adding crypto in 2018. Its larger and older user base has had more time to leave App Store reviews. Its nearly 5 million ratings make it the most statistically reliable data point in this benchmark."
+    a: "Robinhood has been available since 2015 and built a large retail investing base before adding crypto. Its older and larger user base has had more time to leave App Store reviews. Its review count makes it the most statistically reliable data point in this benchmark."
   - q: "What is Crypto.com and why is it included?"
-    a: "Crypto.com is one of the largest crypto exchanges globally with 100M+ registered users. Its iOS app combines spot trading, a crypto Visa card, DeFi wallet and staking in a single super app, making it a major competitor to Coinbase for everyday crypto users."
+    a: "Crypto.com is one of the largest crypto exchanges globally. Its iOS app combines spot trading, a crypto Visa card, DeFi wallet and staking in a single super app, making it a major competitor to Coinbase for everyday crypto users."
   - q: "What is Moonshot?"
-    a: "Moonshot is a mobile-first meme coin launchpad built by DEX Screener, the leading token analytics platform. It differentiates via fiat onboarding through Apple Pay, targeting users who want to buy meme coins without setting up a crypto wallet first."
+    a: "Moonshot is a mobile-first meme coin trading app built by DEX Screener, the leading token analytics platform. It differentiates via fiat onboarding through Apple Pay, targeting users who want to buy meme coins without setting up a crypto wallet first."
   - q: "Why Binance.US and not Binance?"
-    a: "The global Binance app is not available on the US App Store due to regulatory restrictions. Binance.US is the separate US-licensed entity with its own app (ID 1492670702) available to American users."
+    a: "The global Binance app is not available on the US App Store due to regulatory restrictions. Binance.US is the separate US-licensed entity with its own app available to American users."
+  - q: "Where are Axiom, Phantom and Trojan?"
+    a: "Axiom and Trojan do not have iOS apps; they are web and Telegram-based respectively. Phantom is a Solana wallet rather than a trading app and is not included here. If any of these launch iOS apps meeting the inclusion criteria they will be added."
+  - q: "Can App Store ratings be gamed?"
+    a: "Yes, via incentivized reviews. This is why the review count column matters: a suspiciously high rating with very few reviews is statistically unreliable and potentially gamed. Apple removes fraudulent reviews periodically which can cause visible drops. This bench shows the count alongside the rating so readers can calibrate accordingly."
 
 providers:
   - slug: robinhood
@@ -204,7 +213,7 @@ providers:
 
   - slug: moonshot
     name: Moonshot
-    tag: "Meme launchpad, Apple Pay"
+    tag: "Meme coin trading, Apple Pay"
     formula: "Apple App Store average rating (iTunes lookup API, app ID 6503993131, US store, all-time average). Review count from app_store_reviews_total{app=\"moonshot\"}."
     queries:
       p50: app_store_rating{app="moonshot"}
@@ -231,7 +240,7 @@ providers:
   - slug: invo
     name: Invo
     tag: "Hyperliquid social trading app"
-    formula: "Apple App Store average rating (iTunes lookup API, app ID 1601301148, US store, all-time average). Review count from app_store_reviews_total{app=\"invo\"}."
+    formula: "Apple App Store average rating (iTunes lookup API, app ID 1601301148, US store, all-time average). Note: this ID was previously listed as Involio (generalist social portfolio app, ~2021); all-time rating history predates the current Hyperliquid perps product."
     queries:
       p50: app_store_rating{app="invo"}
       p90: app_store_rating{app="invo"}
