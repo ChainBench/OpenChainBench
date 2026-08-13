@@ -77,26 +77,6 @@ const BRANDS: Record<string, Brand> = {
   relay: { color: "#26D49B" },         // mint
   across: { color: "#6CF9D8" },        // across aqua
 
-  // ─── Solana DEX platforms (bench № 205) ───
-  pumpswap: { color: "#00C851" },      // pump.fun green (shares brand)
-  axiom: { color: "#6EE7B7" },         // axiom mint
-  photon: { color: "#8B5CF6" },        // photon violet
-  trojan: { color: "#EF4444" },        // trojan red
-  gmgn: { color: "#3B82F6" },          // gmgn blue
-  bullx: { color: "#F59E0B" },         // bullx amber
-
-  // ─── Crypto trading apps (bench № 202) ───
-  invo: { color: "#7B5EA7" },          // invo purple
-  robinhood: { color: "#00C805" },     // robinhood green
-  cryptocom: { color: "#002D74", dark: true }, // crypto.com navy
-  "pump-fun": { color: "#00C851" },    // pump.fun green
-  moonshot: { color: "#F97316" },      // moonshot orange
-  fomo: { color: "#7C3AED" },          // fomo violet
-  coinbase: { color: "#0052FF" },      // coinbase blue
-  bybit: { color: "#F7A600" },         // bybit yellow
-  kraken: { color: "#5741D9" },        // kraken purple
-  "binance-us": { color: "#F0B90B" },  // binance yellow
-
   // ─── Trading / perps ───
   hyperliquid: { color: "#22D3EE" },   // cyan
   dydx: { color: "#C084FC" },          // bright violet

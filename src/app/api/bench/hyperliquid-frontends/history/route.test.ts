@@ -211,7 +211,7 @@ describe("GET /api/bench/hyperliquid-frontends/history", () => {
       source: "archive",
       rows: [
         {
-          slug: "phantom",
+          slug: "0xphantom",
           name: "Phantom",
           volume_usd: 9_000_000,
           fees_usd: 90_000,
@@ -219,7 +219,7 @@ describe("GET /api/bench/hyperliquid-frontends/history", () => {
           rank: 1,
         },
         {
-          slug: "metamask",
+          slug: "0xmetamask",
           volume_usd: 4_500_000,
           rank: 2,
         },

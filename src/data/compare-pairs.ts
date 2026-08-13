@@ -140,12 +140,6 @@ export const COMPARE_PAIRS: ComparePair[] = [
     publishedAt: "2026-06-17",
   },
   {
-    slug: "fomo-vs-pump-fun",
-    providerA: "fomo",
-    providerB: "pump-fun",
-    publishedAt: "2026-08-12",
-  },
-  {
     slug: "gmx-vs-hyperliquid",
     providerA: "gmx",
     providerB: "hyperliquid",
