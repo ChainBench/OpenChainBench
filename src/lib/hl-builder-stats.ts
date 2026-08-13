@@ -779,7 +779,9 @@ function toCompactFrontend(
  *  unstable_cache TTL is 1h rather than 60 s — no need to fan out
  *  20 range queries against Prom on every ISR cycle. */
 async function fetchHlHistoryRaw(): Promise<HlHistorySummary | null> {
-  const snapshot = await readCohortSnapshot<HlHistorySummary>(HL_HISTORY_KEY);
+  // 2h: history is daily-stepped data, 10-min default is too aggressive and
+  // causes unnecessary 200-query Prom rebuilds on every staleness window.
+  const snapshot = await readCohortSnapshot<HlHistorySummary>(HL_HISTORY_KEY, 2 * 60 * 60 * 1000);
   if (snapshot) return snapshot.data;
   const fresh = await fetchHlHistoryFresh();
   if (fresh) {
