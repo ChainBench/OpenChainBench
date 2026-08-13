@@ -17,14 +17,15 @@ disclaimer: |
   Average swap size is computed as 24h attributed volume divided by 24h attributed trade count from Mobula lighthouse. Both numerator and denominator include bot and MEV activity; the metric reflects all on-chain swaps attributed to each platform, not human-only trades. pump.fun volume comes from the byLaunchpad bucket (bonding-curve swaps via pump.fun's own frontend); all other platforms come from byPlatform. Attribution is mutually exclusive per Mobula's referral-tag methodology.
 
 seo_intro: |
-  The average swap size on Solana varies by more than 6x across platforms, revealing
-  sharply different trader profiles. pump.fun sits at the bottom with roughly $35 per
-  swap across 3.7 million daily transactions, reflecting the micro-cap degen activity
-  of its bonding-curve launchpad. GMGN and Trojan sit at the top near $100 to $120 per
-  swap, serving more sophisticated traders running larger positions. Fomo lands in the
-  middle at around $79 per swap. This benchmark tracks average swap size live across
-  all major Solana trading frontends and launchpads, updated every 15 minutes from
-  Mobula lighthouse attribution data.
+  The average swap size on Solana varies by several multiples across platforms,
+  revealing sharply different trader profiles. pump.fun consistently sits at the
+  bottom of the leaderboard, reflecting the micro-cap degen activity of its
+  bonding-curve launchpad and the heavy bot sniping that inflates trade count while
+  compressing average size. GMGN and Trojan serve more sophisticated traders running
+  larger positions and consistently rank at the top. Fomo sits in the middle,
+  positioning between retail and professional. This benchmark tracks average swap
+  size live across all major Solana trading frontends and launchpads, updated every
+  15 minutes from Mobula lighthouse attribution data.
 
 abstract: |
   The harness polls Mobula lighthouse (api.mobula.io/api/2/market/lighthouse) every
@@ -44,9 +45,9 @@ methodology:
 
 findings:
   - "{{best_name}} attracts the largest average swap at ${{best_p50}} per transaction."
-  - "pump.fun has the smallest average swap size at around $35 across 3.7 million daily transactions, dominated by bot sniping and micro-cap degen retail flow."
-  - "GMGN and Trojan lead at $100 to $120 per swap, serving more sophisticated traders with larger position sizes."
-  - "Fomo sits mid-market at around $79 per swap, positioned between retail and professional."
+  - "pump.fun has the smallest average swap size in the set, dominated by bot sniping and micro-cap degen retail flow on its bonding-curve launchpad."
+  - "GMGN and Trojan consistently lead on average swap size, serving more sophisticated traders with larger position sizes."
+  - "Fomo sits mid-market between retail launchpad activity and professional terminals."
   - "Trade count tells the other story: pump.fun processes more trades per day than all other platforms combined."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-launchpad-wars
