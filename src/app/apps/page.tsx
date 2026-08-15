@@ -10,6 +10,7 @@ import { TRADING_APPS } from "@/lib/trading-apps-config";
 import { fetchDeFiLlamaData } from "@/lib/defillama";
 import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
 import { RevenueSummary } from "@/components/revenue-summary";
+import { SolanaExecTable } from "@/components/solana-exec-table";
 import Link from "next/link";
 
 const DESCRIPTION =
@@ -38,7 +39,6 @@ export default async function AppsHubPage() {
     fetchDeFiLlamaData(dlSlugMap),
   ]);
 
-  // Market share = each platform's DL 24h fees / cohort total (active only)
   const activeDlTotal = TRADING_APPS.filter((a) => !a.inactive && a.defillamaSlug)
     .reduce((sum, a) => sum + (dlData.get(a.id)?.total24h ?? 0), 0);
 
@@ -69,7 +69,6 @@ export default async function AppsHubPage() {
         const wData = solRow.windows[w];
         if (wData) {
           if (meta.solanaFeeIsUSDC) {
-            // Fees collected in USDC (6 dec): raw units / 1e6 = USD directly
             solanaFees = wData.sumPlatformFeeLamports / 1e6;
           } else if (solPrice !== null) {
             solanaFees = wData.sumPlatformFeeLamports / 1e9 * solPrice;
@@ -77,14 +76,11 @@ export default async function AppsHubPage() {
         }
       }
 
-      // FOMO: supplement on-chain fees with off-chain relay fees from Dune
-      // (relay accounts for ~96% of FOMO's actual revenue)
       if (meta.id === "fomo" && fomoRelay) {
         const relayFee = w === "24h" ? fomoRelay.fees24h : w === "7d" ? fomoRelay.fees7d : fomoRelay.fees30d;
         solanaFees = (solanaFees ?? 0) + relayFee;
       }
 
-      // EVM: 24h adds native ETH/BNB in USD; 7d/30d stable only (no historical prices).
       const evmStable = (chain: typeof ethChain) =>
         !chain ? null : w === "24h" ? chain.stable24h : w === "7d" ? chain.stable7d : chain.stable30d;
       const evmNative = (chain: typeof ethChain) =>
@@ -166,6 +162,32 @@ export default async function AppsHubPage() {
       )}
 
       <div className="mt-10 border-t border-rule pt-8">
+        <h2 className="text-lg font-semibold text-ink mb-1">Solana execution quality</h2>
+        <p className="text-sm text-ink-soft mb-6">
+          Priority fees, Jito bundle rates, and platform fees per transaction — measured passively from on-chain data.
+        </p>
+        <SolanaExecTable
+          platforms={solanaData?.platforms ?? []}
+          updatedAt={solanaData?.updatedAt ?? null}
+        />
+        <div className="mt-4 text-xs text-ink-muted leading-relaxed max-w-2xl space-y-1.5">
+          <p>
+            <strong>Priority fee</strong> = total tx fee minus the 5 000-lamport base fee per signature.
+          </p>
+          <p>
+            <strong>CU price</strong> = priority fee ÷ compute units consumed (microlamports/CU). p50/p95 shows median and tail pressure.
+          </p>
+          <p>
+            <strong>Jito rate</strong> = fraction of transactions tipping a Jito tip account. Higher = more MEV-sensitive routing.
+          </p>
+          <p>
+            <strong>Platform fee</strong> = avg SOL to the platform fee account per transaction.
+            Source: Helius enhanced transaction API. No synthetic trades, no on-chain footprint.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-10 border-t border-rule pt-8">
         <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">Related benchmarks</p>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -187,8 +209,8 @@ export default async function AppsHubPage() {
           >
             <span className="text-lg">⚡</span>
             <div>
-              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality</p>
-              <p className="text-xs text-ink-muted">Priority fees, Jito rates, platform fees</p>
+              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality Bench</p>
+              <p className="text-xs text-ink-muted">Priority fees, Jito rates, platform fees — full dataset</p>
             </div>
             <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
