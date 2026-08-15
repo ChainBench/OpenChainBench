@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
-import { readSnapshot } from "@/lib/snapshot";
-import type { SnapshotPayload } from "@/lib/snapshot";
+import { getBenchmark } from "@/data/benchmarks";
+import type { ProviderResult } from "@/types/benchmark";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -85,9 +85,9 @@ const COLUMNS = [
 
 type ColKey = (typeof COLUMNS)[number]["key"];
 
-function indexBySlug(snap: SnapshotPayload | null): Record<string, number> {
+function indexBySlug(results: ProviderResult[] | undefined): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const r of snap?.results ?? []) {
+  for (const r of results ?? []) {
     out[r.slug] = r.ms.mean;
   }
   return out;
@@ -146,20 +146,20 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volumeSnap, tradersSnap, tradeSizeSnap, feeSnap, ratingsSnap] =
+  const [volBench, tradersBench, tradeSizeBench, feeBench, ratingsBench] =
     await Promise.all([
-      readSnapshot("solana-trading-platform-wars"),
-      readSnapshot("solana-unique-traders"),
-      readSnapshot("solana-avg-trade-size"),
-      readSnapshot("memecoin-platforms"),
-      readSnapshot("app-store-ratings"),
+      getBenchmark("solana-trading-platform-wars"),
+      getBenchmark("solana-unique-traders"),
+      getBenchmark("solana-avg-trade-size"),
+      getBenchmark("memecoin-platforms"),
+      getBenchmark("app-store-ratings"),
     ]);
 
-  const volIdx = indexBySlug(volumeSnap);
-  const tradersIdx = indexBySlug(tradersSnap);
-  const tradeSizeIdx = indexBySlug(tradeSizeSnap);
-  const feeIdx = indexBySlug(feeSnap);
-  const ratingIdx = indexBySlug(ratingsSnap);
+  const volIdx = indexBySlug(volBench?.results);
+  const tradersIdx = indexBySlug(tradersBench?.results);
+  const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
+  const feeIdx = indexBySlug(feeBench?.results);
+  const ratingIdx = indexBySlug(ratingsBench?.results);
 
   type Row = {
     slug: string;
@@ -193,8 +193,8 @@ export default async function TradingAppsHubPage() {
     bests[col.key] = best(col.key, col.higherBetter);
   }
 
-  const topVolume = volumeSnap?.results[0];
-  const topRating = ratingsSnap?.results.find((r) =>
+  const topVolume = volBench?.results[0];
+  const topRating = ratingsBench?.results.find((r) =>
     PLATFORMS.some((p) => p.slug === r.slug)
   );
 
