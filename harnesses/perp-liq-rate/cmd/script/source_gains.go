@@ -158,6 +158,9 @@ type ethLog struct {
 }
 
 // FetchLiquidationsSince scans TradeClosed logs from lastBlock+1 (first tick:
+// HasLiquidationSource reports true — TradeClosed on-chain logs give full coverage.
+func (g *Gains) HasLiquidationSource() bool { return true }
+
 // latest-43200) to latest and returns those decoded as liquidations of the
 // requested asset. sinceMs is unused: block cursoring replaces it here.
 func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error) {

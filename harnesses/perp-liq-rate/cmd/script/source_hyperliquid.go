@@ -148,6 +148,9 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 	return events, nil
 }
 
+// HasLiquidationSource reports true — 0xArchive or vault fallback is always available.
+func (h *Hyperliquid) HasLiquidationSource() bool { return true }
+
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
 // Uses 0xArchive when OXARCHIVE_API_KEY is set; otherwise falls back to the
 // HLP liquidator vault (backstop liquidations only).
