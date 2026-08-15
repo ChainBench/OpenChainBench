@@ -114,6 +114,9 @@ func (l *Lighter) findMarket(asset string) (lighterMarketDetail, error) {
 }
 
 // FetchLiquidationsSince returns hourly liquidation buckets from Coinalyze,
+// HasLiquidationSource reports true — Coinalyze provides hourly liq buckets.
+func (l *Lighter) HasLiquidationSource() bool { return true }
+
 // converted to USD using the current mark_price from orderBookDetails.
 // Returns empty if COINALYZE_API_KEY is not set.
 func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {

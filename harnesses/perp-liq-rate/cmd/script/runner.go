@@ -29,28 +29,34 @@ func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool
 	w.MarkTick(now)
 
 	ok := true
+	hasLiqSource := va.Source.HasLiquidationSource()
+	setSourceAvailable(va.Venue, hasLiqSource)
 
-	events, liqErr := va.Source.FetchLiquidationsSince(va.Asset, sinceMs)
-	if liqErr != nil {
-		handleFetchError(va, "liquidations", liqErr)
-		ok = false
-	} else {
-		added := 0
-		for _, e := range events {
-			if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
-				continue
+	var liqErr error
+	if hasLiqSource {
+		var events []LiqEvent
+		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs)
+		if liqErr != nil {
+			handleFetchError(va, "liquidations", liqErr)
+			ok = false
+		} else {
+			added := 0
+			for _, e := range events {
+				if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
+					continue
+				}
+				if e.TimestampMs < cutoffMs {
+					continue // older than the window; irrelevant
+				}
+				if seen.Add(e.Key, e.TimestampMs) {
+					w.Add(e.TimestampMs, e.NotionalUSD)
+					added++
+				}
 			}
-			if e.TimestampMs < cutoffMs {
-				continue // older than the window; irrelevant
+			if added > 0 {
+				log.Printf("[%s/%s] +%d liquidation event(s), window now %d event(s)",
+					va.Venue, va.Asset, added, w.Len())
 			}
-			if seen.Add(e.Key, e.TimestampMs) {
-				w.Add(e.TimestampMs, e.NotionalUSD)
-				added++
-			}
-		}
-		if added > 0 {
-			log.Printf("[%s/%s] +%d liquidation event(s), window now %d event(s)",
-				va.Venue, va.Asset, added, w.Len())
 		}
 	}
 
@@ -63,20 +69,23 @@ func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool
 		ok = false
 	}
 
-	// Publish. Volume is valid whenever the liquidation fetch succeeded; the
-	// rate additionally needs a positive OI. On failure the previous gauge
-	// values are kept as-is (spec: "on error keep previous gauge").
-	if liqErr == nil {
+	// Publish OI unconditionally (all venues have OI).
+	// Publish liq_volume and liq_rate only for venues with a liquidation source —
+	// absent series display as N/A in the frontend, not as 0%.
+	if oiErr == nil {
+		if oi > 0 {
+			liqOpenInterest.WithLabelValues(va.Venue, va.Asset).Set(oi)
+		} else {
+			recordFetchError(va.Venue, va.Asset, "oi_zero")
+			log.Printf("[%s/%s] OI endpoint returned non-positive value %.4f; keeping previous OI gauge", va.Venue, va.Asset, oi)
+			ok = false
+		}
+	}
+	if hasLiqSource && liqErr == nil {
 		volume := w.Sum()
 		setLiqVolume(va.Venue, va.Asset, volume)
-		if oiErr == nil {
-			if oi > 0 {
-				setOIAndRate(va.Venue, va.Asset, volume, oi)
-			} else {
-				recordFetchError(va.Venue, va.Asset, "oi_zero")
-				log.Printf("[%s/%s] OI endpoint returned non-positive value %.4f; keeping previous OI/rate gauges", va.Venue, va.Asset, oi)
-				ok = false
-			}
+		if oiErr == nil && oi > 0 {
+			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / oi * 100)
 		}
 	}
 
