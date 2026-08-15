@@ -269,7 +269,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/apps",
-        destination: "/benchmarks",
+        destination: "/trading-apps",
         permanent: true,
       },
       ...chainRedirects,
