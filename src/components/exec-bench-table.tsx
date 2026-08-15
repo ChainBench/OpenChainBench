@@ -42,7 +42,7 @@ export function ExecBenchTable({
     );
   }
 
-  const sorted = [...data.platforms].sort(
+  const sorted = [...(data.platforms ?? [])].sort(
     (a, b) =>
       (b.windows[win]?.txCount ?? 0) - (a.windows[win]?.txCount ?? 0),
   );
