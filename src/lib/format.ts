@@ -96,6 +96,13 @@ export function fmtUnit(value: number, unit: string) {
     // clean integers, not decimal noise.
     return formatCompactCount(Math.round(value));
   }
+  if (unit === "sol") {
+    if (value === 0) return "0 SOL";
+    if (value > 0 && value < 0.0001) return `${value.toExponential(2)} SOL`;
+    if (value < 0.001) return `${value.toFixed(6)} SOL`;
+    if (value < 1) return `${value.toFixed(4)} SOL`;
+    return `${value.toFixed(3)} SOL`;
+  }
   if (unit === "gwei") {
     // Same near-zero semantics as count (gas-estimation gaps converge
     // toward zero), but the unit is carried so API consumers and the
@@ -177,6 +184,7 @@ export function unitSuffix(unit: string, value?: number): string {
   if (unit === "count") return "";
   if (unit === "gwei") return " gwei";
   if (unit === "usd") return "";
+  if (unit === "sol") return " SOL";
   return " ms";
 }
 

@@ -7,6 +7,8 @@ import { logoPath } from "@/lib/logo-manifest";
 import type { AppMeta } from "@/lib/trading-apps-config";
 import type { DLPlatformData } from "@/lib/defillama";
 
+const NOW_MS = Date.now();
+
 type FeeWindow = {
   solana: number | null;
   ethereum: number | null;
@@ -356,9 +358,10 @@ export function TradingAppsLeaderboard({
 }
 
 function FOMODataNotice({ latestDate }: { latestDate: string | null }) {
-  if (!latestDate) return null;
-  const ageHours = (Date.now() - new Date(latestDate).getTime()) / 3_600_000;
-  if (ageHours <= 36) return null;
+  const ageHours = latestDate
+    ? (NOW_MS - new Date(latestDate).getTime()) / 3_600_000
+    : 0;
+  if (!latestDate || ageHours <= 36) return null;
   return (
     <p className="px-4 sm:px-6 py-2.5 text-[11px] border-t border-rule text-amber-400/80">
       FOMO relay data last updated {Math.round(ageHours)}h ago — figures may be stale.

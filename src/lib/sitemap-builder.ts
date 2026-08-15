@@ -169,21 +169,34 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
 
 /** Last-resort sitemap, returned when even buildFullSitemap throws.
  *  Emits the static hubs + every chain hub + every answer URL because
- *  those three paths are filesystem driven and never depend on KV. */
+ *  those three paths are filesystem driven and never depend on KV.
+ *  Only emits /chains/<slug> when a matching bench YAML exists on disk
+ *  (convention: <slug>-rpc.yml) so chains without bench pages don't
+ *  land in the sitemap and fail the smoke gate. */
 async function buildStaticFallback(): Promise<MetadataRoute.Sitemap> {
   const answers = await safeLoad<Answer[]>(
     "answers (fallback)",
     () => loadAllAnswers(),
     [],
   );
-  const fallback: MetadataRoute.Sitemap = [
-    ...staticHubRoutes(BUILD_TIME),
-    ...CHAINS.map((c) => ({
+  const benchesDir = path.join(process.cwd(), "benchmarks");
+  const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
+    // Only emit the chain hub when a known bench YAML exists for it.
+    // Convention: <chain-slug>-rpc.yml is the primary match.
+    const hasRpc = (() => {
+      try { readFileSync(path.join(benchesDir, `${c.slug}-rpc.yml`)); return true; } catch { return false; }
+    })();
+    if (!hasRpc) return [];
+    return [{
       url: `${SITE.url}/chains/${c.slug}`,
       lastModified: BUILD_TIME,
       changeFrequency: "daily" as const,
       priority: 0.85,
-    })),
+    }];
+  });
+  const fallback: MetadataRoute.Sitemap = [
+    ...staticHubRoutes(BUILD_TIME),
+    ...chainRoutes,
     ...answers.map((a) => ({
       url: `${SITE.url}/answers/${a.slug}`,
       lastModified: BUILD_TIME,
@@ -412,12 +425,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 0.85,
           };
         } catch {
-          return {
-            url: `${SITE.url}/chains/${c.slug}`,
-            lastModified: catalogTs,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-          };
+          // Fail-safe: if we can't verify this chain has benches, omit it.
+          // Emitting unverified URLs causes smoke-test 404s that block every
+          // prod deploy. Chains with real bench data re-enter the sitemap on
+          // the next successful build.
+          return null;
         }
       }),
     )

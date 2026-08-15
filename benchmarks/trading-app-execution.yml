@@ -57,6 +57,24 @@ faq:
   - q: "Which platforms are tracked on EVM chains?"
     a: "GMGN, Maestro, and Banana Gun are tracked on Ethereum. GMGN, Maestro, Axiom, and Banana Gun are tracked on BSC. GMGN, Maestro, and Banana Gun are tracked on Base. pump.fun Terminal is tracked on all three EVM chains."
 
+providers:
+  - slug: axiom
+    name: Axiom
+  - slug: gmgn
+    name: GMGN
+  - slug: trojan
+    name: Trojan
+  - slug: maestro
+    name: Maestro
+  - slug: pump-fun
+    name: pump.fun
+  - slug: photon
+    name: Photon
+  - slug: bullx
+    name: BullX
+  - slug: banana-gun
+    name: Banana Gun
+
 # No prometheus section -- this bench uses a custom page renderer
 # at src/app/benchmarks/trading-app-execution/page.tsx that reads
 # directly from the exec REST API (exec.openchainbench.com).
