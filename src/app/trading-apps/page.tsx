@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import { readSnapshot } from "@/lib/snapshot";
+import type { SnapshotPayload } from "@/lib/snapshot";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -27,140 +28,175 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
-const PRODUCTS = [
+const PLATFORMS = [
+  { slug: "pump-fun", name: "pump.fun" },
+  { slug: "gmgn", name: "GMGN" },
+  { slug: "axiom", name: "Axiom" },
+  { slug: "fomo", name: "FOMO" },
+  { slug: "trojan", name: "Trojan" },
+  { slug: "photon", name: "Photon" },
+  { slug: "maestro", name: "Maestro" },
+  { slug: "banana-gun", name: "Banana Gun" },
+  { slug: "bullx", name: "BullX" },
+] as const;
+
+const COLUMNS = [
   {
-    slug: "pump-fun",
-    name: "pump.fun",
-    description: "Leading Solana memecoin launchpad and AMM",
+    key: "volume" as const,
+    label: "24h Volume",
+    bench: "solana-trading-platform-wars",
+    fmt: fmtUSD,
+    tip: "Attributed 24h trading volume",
+    higherBetter: true,
   },
   {
-    slug: "fomo",
-    name: "FOMO",
-    description: "Multi-chain memecoin trading with social copy-trading",
+    key: "traders" as const,
+    label: "Unique Traders",
+    bench: "solana-unique-traders",
+    fmt: fmtCount,
+    tip: "Unique swap transactions in 24h",
+    higherBetter: true,
   },
   {
-    slug: "gmgn",
-    name: "GMGN",
-    description: "Memecoin terminal with smart money tracking and Telegram bot",
+    key: "tradeSize" as const,
+    label: "Avg Trade",
+    bench: "solana-avg-trade-size",
+    fmt: fmtUSD,
+    tip: "Average swap size in USD",
+    higherBetter: false,
   },
   {
-    slug: "axiom",
-    name: "Axiom",
-    description: "Telegram trading bot for Solana memecoins",
+    key: "feeRate" as const,
+    label: "Fee Rate",
+    bench: "memecoin-platforms",
+    fmt: fmtPct,
+    tip: "Protocol fee revenue ÷ volume (take rate)",
+    higherBetter: false,
   },
   {
-    slug: "trojan",
-    name: "Trojan",
-    description: "Fast Solana Telegram bot with sniping and MEV protection",
-  },
-  {
-    slug: "photon",
-    name: "Photon",
-    description: "Advanced Solana trading terminal with wallet tracking",
-  },
-  {
-    slug: "maestro",
-    name: "Maestro",
-    description: "Multi-chain Telegram trading bot with limit orders",
-  },
-  {
-    slug: "banana-gun",
-    name: "Banana Gun",
-    description: "Multi-chain Telegram bot for memecoins and EVM tokens",
-  },
-  {
-    slug: "bullx",
-    name: "BullX",
-    description: "Multi-chain terminal for memecoins on Solana and EVM",
+    key: "rating" as const,
+    label: "App Rating",
+    bench: "app-store-ratings",
+    fmt: fmtRating,
+    tip: "Apple App Store rating (out of 5)",
+    higherBetter: true,
   },
 ] as const;
 
-const GROUPS = [
-  {
-    label: "Volume & activity",
-    items: [
-      {
-        slug: "solana-trading-platform-wars",
-        title: "Trading platform volume",
-        description:
-          "24h volume for pump.fun, GMGN, Axiom, FOMO and Telegram bots",
-      },
-      {
-        slug: "solana-dex-volume",
-        title: "DEX volume & protocol revenue",
-        description: "24h trading volume and protocol fees from DeFiLlama",
-      },
-      {
-        slug: "solana-unique-traders",
-        title: "Unique traders",
-        description: "Unique swap transactions per platform in the last 24h",
-      },
-      {
-        slug: "solana-avg-trade-size",
-        title: "Average trade size",
-        description: "Average swap size in USD per platform",
-      },
-    ],
-  },
-  {
-    label: "Launchpads",
-    items: [
-      {
-        slug: "solana-launchpad-wars",
-        title: "Launchpad volume",
-        description:
-          "24h volume for pump.fun, Flap, Bankr and other bonding-curve programs",
-      },
-    ],
-  },
-  {
-    label: "Fees & execution",
-    items: [
-      {
-        slug: "memecoin-platforms",
-        title: "Platform fee rates",
-        description:
-          "Protocol fee revenue divided by volume — who earns most per dollar traded",
-      },
-      {
-        slug: "trading-app-execution",
-        title: "Execution quality",
-        description:
-          "Priority fees, Jito bundle rates, CU price and platform fee per transaction",
-      },
-    ],
-  },
-  {
-    label: "App store",
-    items: [
-      {
-        slug: "app-store-ratings",
-        title: "iOS app store ratings",
-        description:
-          "Live Apple App Store ratings for Coinbase, Robinhood, Crypto.com and more",
-      },
-    ],
-  },
-] as const;
+type ColKey = (typeof COLUMNS)[number]["key"];
 
-function fmtUSD(v: number): string {
+function indexBySlug(snap: SnapshotPayload | null): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of snap?.results ?? []) {
+    out[r.slug] = r.ms.mean;
+  }
+  return out;
+}
+
+function fmtUSD(v: number | null): string {
+  if (v === null) return "—";
   if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(0)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
   return `$${v.toFixed(0)}`;
 }
 
-export default async function TradingAppsHubPage() {
-  const [volumeSnap, ratingsSnap] = await Promise.all([
-    readSnapshot("solana-trading-platform-wars"),
-    readSnapshot("app-store-ratings"),
-  ]);
+function fmtCount(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+  return v.toFixed(0);
+}
 
-  const topVolumePlatform = volumeSnap?.results[0];
-  const topRatedApp = ratingsSnap?.results[0];
-  const platformsTracked = new Set(
-    PRODUCTS.map((p) => p.slug)
-  ).size;
+function fmtPct(v: number | null): string {
+  if (v === null) return "—";
+  return `${v.toFixed(2)}%`;
+}
+
+function fmtRating(v: number | null): string {
+  if (v === null) return "—";
+  return `${v.toFixed(1)} / 5`;
+}
+
+const GROUPS = [
+  {
+    label: "Volume & activity",
+    items: [
+      { slug: "solana-trading-platform-wars", title: "Trading platform volume" },
+      { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
+      { slug: "solana-unique-traders", title: "Unique traders" },
+      { slug: "solana-avg-trade-size", title: "Average trade size" },
+    ],
+  },
+  {
+    label: "Launchpads",
+    items: [{ slug: "solana-launchpad-wars", title: "Launchpad volume" }],
+  },
+  {
+    label: "Fees & execution",
+    items: [
+      { slug: "memecoin-platforms", title: "Platform fee rates" },
+      { slug: "trading-app-execution", title: "Execution quality" },
+    ],
+  },
+  {
+    label: "App store",
+    items: [{ slug: "app-store-ratings", title: "iOS app store ratings" }],
+  },
+] as const;
+
+export default async function TradingAppsHubPage() {
+  const [volumeSnap, tradersSnap, tradeSizeSnap, feeSnap, ratingsSnap] =
+    await Promise.all([
+      readSnapshot("solana-trading-platform-wars"),
+      readSnapshot("solana-unique-traders"),
+      readSnapshot("solana-avg-trade-size"),
+      readSnapshot("memecoin-platforms"),
+      readSnapshot("app-store-ratings"),
+    ]);
+
+  const volIdx = indexBySlug(volumeSnap);
+  const tradersIdx = indexBySlug(tradersSnap);
+  const tradeSizeIdx = indexBySlug(tradeSizeSnap);
+  const feeIdx = indexBySlug(feeSnap);
+  const ratingIdx = indexBySlug(ratingsSnap);
+
+  type Row = {
+    slug: string;
+    name: string;
+    volume: number | null;
+    traders: number | null;
+    tradeSize: number | null;
+    feeRate: number | null;
+    rating: number | null;
+  };
+
+  const matrix: Row[] = PLATFORMS.map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    volume: volIdx[p.slug] ?? null,
+    traders: tradersIdx[p.slug] ?? null,
+    tradeSize: tradeSizeIdx[p.slug] ?? null,
+    feeRate: feeIdx[p.slug] ?? null,
+    rating: ratingIdx[p.slug] ?? null,
+  })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
+
+  // Find the best value per column (for highlighting)
+  function best(key: ColKey, higherBetter: boolean): number | null {
+    const vals = matrix.map((r) => r[key]).filter((v): v is number => v !== null);
+    if (!vals.length) return null;
+    return higherBetter ? Math.max(...vals) : Math.min(...vals);
+  }
+
+  const bests: Partial<Record<ColKey, number | null>> = {};
+  for (const col of COLUMNS) {
+    bests[col.key] = best(col.key, col.higherBetter);
+  }
+
+  const topVolume = volumeSnap?.results[0];
+  const topRating = ratingsSnap?.results.find((r) =>
+    PLATFORMS.some((p) => p.slug === r.slug)
+  );
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -203,7 +239,8 @@ export default async function TradingAppsHubPage() {
         dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
       />
 
-      <header className="mb-8">
+      {/* Header */}
+      <header className="mb-10">
         <p
           className="label-mono text-emerald-600 mb-2"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
@@ -214,34 +251,10 @@ export default async function TradingAppsHubPage() {
           Solana trading app benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Eight independent benchmarks across four categories: 24h platform
-          volume, launchpad activity, execution fees, and app store ratings.
-          Every number is measured live from the same harness on the same
-          schedule. No marketing claims, just on-chain data.
+          {PLATFORMS.length} platforms measured across {BENCH_SLUGS.length}{" "}
+          independent benchmarks: volume, unique traders, average trade size, fee
+          rates, and app store ratings. Live data, no marketing claims.
         </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
-          {BENCH_SLUGS.slice(0, 5).map((slug) => (
-            <Link
-              key={slug}
-              href={`/benchmarks/${slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/8 px-3 py-1 hover:bg-emerald-500/14 transition-colors"
-            >
-              <span
-                className="label-mono text-ink-faint text-[10px]"
-                style={{ fontFamily: "var(--font-mono, monospace)" }}
-              >
-                Bench
-              </span>
-              <span className="text-ink text-[11px]">{slug}</span>
-            </Link>
-          ))}
-          {BENCH_SLUGS.length > 5 && (
-            <span className="text-[11px] text-ink-faint">
-              +{BENCH_SLUGS.length - 5} more
-            </span>
-          )}
-        </div>
       </header>
 
       {/* KPI strip */}
@@ -249,61 +262,109 @@ export default async function TradingAppsHubPage() {
         <KpiCard
           label="Top volume platform"
           value={
-            topVolumePlatform
-              ? `${topVolumePlatform.name} · ${fmtUSD(topVolumePlatform.ms.mean)}`
-              : "..."
+            topVolume
+              ? `${topVolume.name} · ${fmtUSD(topVolume.ms.mean)}`
+              : "Awaiting data"
           }
           accent="#10b981"
-          tip="Platform with highest 24h volume on solana-trading-platform-wars."
         />
         <KpiCard
           label="Top-rated app"
           value={
-            topRatedApp
-              ? `${topRatedApp.name} · ${topRatedApp.ms.mean.toFixed(2)}`
-              : "..."
+            topRating
+              ? `${topRating.name} · ${topRating.ms.mean.toFixed(1)} / 5`
+              : "Awaiting data"
           }
           accent="#f59e0b"
-          tip="Highest Apple App Store rating on app-store-ratings."
         />
-        <KpiCard
-          label="Platforms tracked"
-          value={String(platformsTracked)}
-          accent="#6366f1"
-        />
-        <KpiCard
-          label="Active benchmarks"
-          value={String(BENCH_SLUGS.length)}
-        />
+        <KpiCard label="Platforms tracked" value={String(PLATFORMS.length)} accent="#6366f1" />
+        <KpiCard label="Active benchmarks" value={String(BENCH_SLUGS.length)} />
       </section>
 
-      {/* Product grid */}
-      <section className="mb-12">
+      {/* Comparison table */}
+      <section className="mb-14">
         <p
           className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          Platforms covered
+          Platform comparison
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {PRODUCTS.map((product) => (
-            <Link
-              key={product.slug}
-              href={`/products/${product.slug}`}
-              className="group card-soft rounded-lg border border-ink/10 p-3 sm:p-4 hover:border-emerald-500/30 hover:bg-emerald-500/4 transition-colors"
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <ProviderLogo slug={product.slug} name={product.name} size={28} />
-                <span className="text-sm font-medium text-ink group-hover:text-emerald-700 transition-colors leading-tight">
-                  {product.name}
-                </span>
-              </div>
-              <p className="text-[11px] text-ink-faint leading-snug">
-                {product.description}
-              </p>
-            </Link>
-          ))}
+        <div className="overflow-x-auto rounded-lg border border-ink/10">
+          <table className="w-full text-sm border-collapse min-w-[640px]">
+            <thead>
+              <tr className="border-b border-ink/10 bg-ink/3">
+                <th className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap w-[160px]">
+                  Platform
+                </th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className="text-right px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap"
+                  >
+                    <Link
+                      href={`/benchmarks/${col.bench}`}
+                      className="inline-flex items-center gap-1 hover:text-ink transition-colors"
+                      title={col.tip}
+                    >
+                      {col.label}
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path
+                          d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </Link>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {matrix.map((row, i) => (
+                <tr
+                  key={row.slug}
+                  className={`border-b border-ink/6 hover:bg-ink/2 transition-colors ${i % 2 === 1 ? "bg-ink/[0.015]" : ""}`}
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/products/${row.slug}`}
+                      className="flex items-center gap-2.5 group"
+                    >
+                      <ProviderLogo slug={row.slug} name={row.name} size={24} />
+                      <span className="font-medium text-ink group-hover:text-emerald-700 transition-colors leading-tight text-sm">
+                        {row.name}
+                      </span>
+                    </Link>
+                  </td>
+                  {COLUMNS.map((col) => {
+                    const val = row[col.key];
+                    const isBest = val !== null && val === bests[col.key];
+                    return (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3 text-right tabular-nums text-sm ${
+                          val === null
+                            ? "text-ink-faint"
+                            : isBest
+                              ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                              : "text-ink"
+                        }`}
+                      >
+                        {col.fmt(val)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <p className="mt-2 text-[11px] text-ink-faint">
+          Best value per column highlighted in green. Sorted by 24h volume.
+          Data refreshes every 60 s.
+        </p>
       </section>
 
       {/* Benchmarks grouped list */}
@@ -312,9 +373,9 @@ export default async function TradingAppsHubPage() {
           className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          Benchmarks
+          All benchmarks
         </p>
-        <div className="space-y-10">
+        <div className="grid sm:grid-cols-2 gap-x-10 gap-y-8">
           {GROUPS.map((group) => (
             <div key={group.label}>
               <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">
@@ -326,20 +387,15 @@ export default async function TradingAppsHubPage() {
                     {i > 0 && <div className="border-t border-rule" />}
                     <Link
                       href={`/benchmarks/${item.slug}`}
-                      className="flex items-center justify-between py-4 group"
+                      className="flex items-center justify-between py-3 group"
                     >
-                      <div className="min-w-0 pr-4">
-                        <span className="text-sm font-medium text-ink group-hover:text-accent transition-colors">
-                          {item.title}
-                        </span>
-                        <span className="block mt-0.5 text-xs text-ink-faint leading-snug">
-                          {item.description}
-                        </span>
-                      </div>
+                      <span className="text-sm text-ink group-hover:text-accent transition-colors">
+                        {item.title}
+                      </span>
                       <svg
-                        className="text-ink-faint group-hover:text-ink-muted transition-colors shrink-0"
-                        width="14"
-                        height="14"
+                        className="text-ink-faint group-hover:text-ink-muted transition-colors shrink-0 ml-3"
+                        width="12"
+                        height="12"
                         viewBox="0 0 12 12"
                         fill="none"
                         aria-hidden="true"
@@ -369,13 +425,12 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume figures are pulled from on-chain program activity and
-          DeFiLlama aggregates. Platform fee rates compare fee revenue to
-          reported volume over the same 24h window. Execution quality probes
-          submit a representative transaction per platform and records the
-          priority fee, Jito bundle cost, and compute unit price. App store
-          ratings are fetched directly from the Apple App Store API. All
-          harnesses are open source on{" "}
+          Volume and unique-trader figures are pulled from on-chain program
+          activity via Mobula Lighthouse and Dune Analytics. Fee rates compare
+          fee-wallet inflows to reported volume over the same 24h window.
+          Execution quality monitors Jito bundle rates, priority fees, and
+          compute unit price passively from fee accounts. App store ratings are
+          fetched from the Apple App Store API. All harnesses are open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"
@@ -404,18 +459,13 @@ function KpiCard({
   label,
   value,
   accent,
-  tip,
 }: {
   label: string;
   value: string;
   accent?: string;
-  tip?: string;
 }) {
   return (
-    <div
-      className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15"
-      title={tip}
-    >
+    <div className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15">
       <p
         className="label-mono text-[10px] text-ink-faint mb-1 flex items-center gap-1.5"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
