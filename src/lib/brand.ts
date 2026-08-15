@@ -103,6 +103,7 @@ const BRANDS: Record<string, Brand> = {
   gmx: { color: "#4F8BFF" },           // royal blue
   lighter: { color: "#FF2E63" },       // hot magenta
   gains: { color: "#10E2A4" },         // emerald
+
 };
 
 const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
