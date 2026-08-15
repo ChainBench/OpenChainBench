@@ -10,7 +10,6 @@ import { TRADING_APPS } from "@/lib/trading-apps-config";
 import { fetchDeFiLlamaData } from "@/lib/defillama";
 import { TradingAppsLeaderboard, type UnifiedAppRow } from "@/components/trading-apps-leaderboard";
 import { RevenueSummary } from "@/components/revenue-summary";
-import { SolanaExecTable } from "@/components/solana-exec-table";
 import Link from "next/link";
 
 const DESCRIPTION =
@@ -162,57 +161,30 @@ export default async function AppsHubPage() {
       )}
 
       <div className="mt-10 border-t border-rule pt-8">
-        <h2 className="text-lg font-semibold text-ink mb-1">Solana execution quality</h2>
-        <p className="text-sm text-ink-soft mb-6">
-          Priority fees, Jito bundle rates, and platform fees per transaction — measured passively from on-chain data.
-        </p>
-        <SolanaExecTable
-          platforms={solanaData?.platforms ?? []}
-          updatedAt={solanaData?.updatedAt ?? null}
-        />
-        <div className="mt-4 text-xs text-ink-muted leading-relaxed max-w-2xl space-y-1.5">
-          <p>
-            <strong>Priority fee</strong> = total tx fee minus the 5 000-lamport base fee per signature.
-          </p>
-          <p>
-            <strong>CU price</strong> = priority fee ÷ compute units consumed (microlamports/CU). p50/p95 shows median and tail pressure.
-          </p>
-          <p>
-            <strong>Jito rate</strong> = fraction of transactions tipping a Jito tip account. Higher = more MEV-sensitive routing.
-          </p>
-          <p>
-            <strong>Platform fee</strong> = avg SOL to the platform fee account per transaction.
-            Source: Helius enhanced transaction API. No synthetic trades, no on-chain footprint.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-10 border-t border-rule pt-8">
         <p className="text-xs font-medium text-ink-muted uppercase tracking-wide mb-3">Related benchmarks</p>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-px">
           <Link
             href="/benchmarks/app-store-ratings"
-            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
+            className="flex items-center justify-between py-3 group"
           >
-            <span className="text-lg">⭐</span>
             <div>
-              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">App Store Ratings</p>
-              <p className="text-xs text-ink-muted">iOS ratings for crypto trading apps, live</p>
+              <span className="text-sm font-medium text-ink group-hover:text-accent transition-colors">App Store Ratings</span>
+              <span className="ml-3 text-xs text-ink-faint">iOS ratings for crypto trading apps, live</span>
             </div>
-            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <svg className="text-ink-faint group-hover:text-ink-muted transition-colors shrink-0" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </Link>
+          <div className="border-t border-rule" />
           <Link
             href="/benchmarks/trading-app-execution"
-            className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-rule bg-paper hover:bg-paper-soft transition-colors group"
+            className="flex items-center justify-between py-3 group"
           >
-            <span className="text-lg">⚡</span>
             <div>
-              <p className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality Bench</p>
-              <p className="text-xs text-ink-muted">Priority fees, Jito rates, platform fees — full dataset</p>
+              <span className="text-sm font-medium text-ink group-hover:text-accent transition-colors">Execution Quality</span>
+              <span className="ml-3 text-xs text-ink-faint">Priority fees, Jito rates, platform fees</span>
             </div>
-            <svg className="ml-auto text-ink-faint group-hover:text-ink-muted transition-colors" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <svg className="text-ink-faint group-hover:text-ink-muted transition-colors shrink-0" width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </Link>
