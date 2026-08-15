@@ -45,6 +45,9 @@ type dydxTradesResp struct {
 	Trades []dydxTrade `json:"trades"`
 }
 
+// HasLiquidationSource reports true — public trade tape exposes LIQUIDATED type.
+func (d *Dydx) HasLiquidationSource() bool { return true }
+
 // FetchLiquidationsSince pages the trade feed backwards until sinceMs.
 func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	ticker, ok := dydxTickers[asset]

@@ -78,8 +78,12 @@ func gmxAssetMatches(marketName, asset string) bool {
 		strings.HasPrefix(upper, a+"-")
 }
 
-// FetchLiquidationsSince returns empty — no public GMX V2 liquidation source
-// is available (TheGraph subgraph defunct, no REST alternative found).
+// HasLiquidationSource reports false — GMX has no accessible liquidation source.
+// TheGraph subgraph is defunct; Subsquid positionChanges does not expose an
+// orderType/isLiquidation flag. liq_rate is not published (N/A, not 0%).
+func (g *GMX) HasLiquidationSource() bool { return false }
+
+// FetchLiquidationsSince returns empty — GMX has no accessible liquidation source.
 func (g *GMX) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error) {
 	if !gmxTrackedAssets[asset] {
 		return nil, fmt.Errorf("gmx: unsupported asset %q", asset)

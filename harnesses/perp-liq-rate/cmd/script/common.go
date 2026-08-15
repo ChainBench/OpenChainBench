@@ -34,6 +34,10 @@ type LiqEvent struct {
 type Source interface {
 	FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error)
 	FetchOI(asset string) (float64, error)
+	// HasLiquidationSource reports whether this venue has an actual liquidation
+	// data source. When false, FetchLiquidationsSince always returns empty and
+	// the runner must not publish liq_rate or liq_volume (N/A, not 0%).
+	HasLiquidationSource() bool
 }
 
 // ErrVenueUnavailable marks a venue as temporarily unavailable for this tick

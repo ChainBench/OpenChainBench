@@ -47,6 +47,9 @@ type paradexTradesResp struct {
 	Next    *string        `json:"next"`
 }
 
+// HasLiquidationSource reports true — public trade tape exposes LIQUIDATION trade_type.
+func (p *Paradex) HasLiquidationSource() bool { return true }
+
 // FetchLiquidationsSince pages the public trade tape and keeps LIQUIDATION rows.
 func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	market, ok := paradexMarkets[asset]
