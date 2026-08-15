@@ -36,8 +36,6 @@ const PLATFORMS = [
   { slug: "trojan", name: "Trojan" },
   { slug: "photon", name: "Photon" },
   { slug: "maestro", name: "Maestro" },
-  { slug: "banana-gun", name: "Banana Gun" },
-  { slug: "bullx", name: "BullX" },
 ] as const;
 
 const COLUMNS = [
