@@ -27,6 +27,10 @@ type Aevo struct {
 // NewAevo returns the Aevo source.
 func NewAevo() *Aevo { return &Aevo{baseURL: aevoBaseURL} }
 
+// HasLiquidationSource reports false — Aevo has no public liquidation feed.
+// liq_rate is not published (N/A, not 0%).
+func (a *Aevo) HasLiquidationSource() bool { return false }
+
 // FetchLiquidationsSince returns empty — Aevo has no public liquidation feed.
 func (a *Aevo) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	if _, ok := aevoInstruments[asset]; !ok {
