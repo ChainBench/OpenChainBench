@@ -264,7 +264,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/apps/exec",
-        destination: "/apps",
+        destination: "/benchmarks/trading-app-execution",
+        permanent: true,
+      },
+      {
+        source: "/apps",
+        destination: "/trading-apps",
         permanent: true,
       },
       ...chainRedirects,

@@ -158,10 +158,10 @@ export default async function TradingAppExecutionPage() {
 
       <div className="mt-10 pt-6 border-t border-rule">
         <Link
-          href="/apps"
+          href="/benchmarks"
           className="text-sm text-ink-muted hover:text-ink-soft transition-colors"
         >
-          Back to trading app revenue
+          Back to benchmarks
         </Link>
       </div>
     </article>
