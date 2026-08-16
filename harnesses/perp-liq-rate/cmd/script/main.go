@@ -126,6 +126,25 @@ func main() {
 			}
 			setVenueWarming(venue, !venueWarm[venue])
 		}
+		// Realized vol is asset-level (not venue-specific). Fetch once per asset.
+		assetsPublished := make(map[string]bool)
+		for _, p := range pairs {
+			if assetsPublished[p.va.Asset] {
+				continue
+			}
+			assetsPublished[p.va.Asset] = true
+			go func(asset string) {
+				vol, err := fetchRealizedVol24h(asset)
+				if err != nil {
+					log.Printf("[vol/%s] realized vol error: %v", asset, err)
+					return
+				}
+				if vol > 0 {
+					realizedVol.WithLabelValues(asset).Set(vol)
+				}
+			}(p.va.Asset)
+		}
+
 		log.Printf("tick complete in %s", time.Since(tickStart).Round(time.Millisecond))
 	}
 
