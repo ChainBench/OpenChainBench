@@ -2,12 +2,13 @@ package main
 
 // source_lighter.go — Lighter (mainnet.zklighter.elliot.ai).
 //
-// Liquidations: Lighter /api/v1/trades requires auth (HTTP 400). Data comes
-// from Coinalyze /v1/liquidation-history (symbols 0.T=ETH, 1.T=BTC), hourly
-// buckets in base asset units; multiplied by current mark_price from
-// orderBookDetails. Requires env COINALYZE_API_KEY; returns empty without it.
-// OI: GET /api/v1/orderBookDetails?filter=perp; open_interest (base units) ×
-// mark_price (USD). Market IDs resolved dynamically by symbol prefix match.
+// Liquidations: native /api/v1/trades requires auth. Data comes from Coinalyze
+// /v1/liquidation-history (symbols 0.T=ETH 1.T=BTC), 1-hour buckets in base
+// units. Queried with a fixed 25h lookback on every tick (not sinceMs) so that
+// completed buckets, published ~1h after the hour ends, are never missed.
+// SeenSet dedup prevents double-counting. Requires COINALYZE_API_KEY.
+// OI: GET /api/v1/orderBookDetails?filter=perp; open_interest × mark_price.
+// Market IDs resolved dynamically by symbol prefix match.
 // 404/501 marks the venue unavailable; after 3 consecutive failures the source
 // logs once and suppresses further error increments until recovery.
 
@@ -139,8 +140,14 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 
 	markPx := float64(market.MarkPrice)
 
-	from := sinceMs / 1000
-	to := time.Now().Unix()
+	// Query from now-25h instead of sinceMs: Coinalyze publishes completed
+	// hourly buckets (~1h after the hour ends), so by the time a bucket is
+	// available the sinceMs high-water mark has already advanced past it.
+	// Using a fixed 25h lookback ensures every tick re-fetches the full
+	// window; the SeenSet dedup prevents double-counting.
+	now := time.Now()
+	from := now.Add(-25 * time.Hour).Unix()
+	to := now.Unix()
 	cz := &czClient{apiKey: l.czAPIKey, baseURL: l.czBaseURL}
 	buckets, err := cz.fetchLiqBuckets(czSym, from, to)
 	if err != nil {
@@ -148,7 +155,7 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	}
 
 	// Per-bucket prices via HL candleSnapshot (same asset, free endpoint).
-	priceMap, _ := fetchHourlyCloses(asset, sinceMs, to*1000, l.hlInfoURL)
+	priceMap, _ := fetchHourlyCloses(asset, from*1000, to*1000, l.hlInfoURL)
 	// markPx is the fallback for buckets that have no candle.
 	events := bucketsToEvents("czlighter", asset, buckets, priceMap, markPx, sinceMs)
 	return events, nil
