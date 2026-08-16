@@ -46,6 +46,16 @@ var (
 		Name: "perp_liq_fetch_errors_total",
 		Help: "Fetch/decode errors per venue, asset and error type.",
 	}, []string{"venue", "chain", "error_type"})
+
+	liqSourceAvailable = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_source_available",
+		Help: "1 if a liquidation data source exists for the venue, 0 if liq_rate is structurally unavailable (not a data gap — use to display N/A instead of 0%).",
+	}, []string{"venue"})
+
+	realizedVol = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_realized_vol_24h_pct",
+		Help: "24h realized volatility (%) computed from hourly HL close prices: sqrt(sum of squared log-returns). Asset-level, not venue-specific. Use as denominator companion to liq_rate.",
+	}, []string{"chain"})
 )
 
 // registerMetrics builds a dedicated registry containing only this
@@ -60,6 +70,8 @@ func registerMetrics() *prometheus.Registry {
 		liqHealth,
 		liqLastRefresh,
 		liqFetchErrors,
+		liqSourceAvailable,
+		realizedVol,
 	)
 	return reg
 }
@@ -84,6 +96,15 @@ func setOIAndRate(venue, asset string, volumeUSD, oiUSD float64) {
 // recordFetchError increments the error counter with a classified type.
 func recordFetchError(venue, asset, errType string) {
 	liqFetchErrors.WithLabelValues(venue, asset, errType).Inc()
+}
+
+// setSourceAvailable publishes whether a liquidation source exists for the venue.
+func setSourceAvailable(venue string, available bool) {
+	v := 0.0
+	if available {
+		v = 1.0
+	}
+	liqSourceAvailable.WithLabelValues(venue).Set(v)
 }
 
 // setVenueHealth publishes venue health (1 healthy / 0 degraded).

@@ -229,11 +229,14 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeHappyPath(t *testing.T) {
 			})
 			return
 		}
-		w.WriteHeader(http.StatusNotFound)
+		// candleSnapshot: return a candle for the bucket timestamp so conversion uses $2000.
+		_ = json.NewEncoder(w).Encode([]map[string]any{
+			{"t": int64(1786233600000), "c": "2000.0"},
+		})
 	}))
 	defer srv.Close()
 
-	l := &Lighter{baseURL: srv.URL, czBaseURL: srv.URL, czAPIKey: "testkey"}
+	l := &Lighter{baseURL: srv.URL, czBaseURL: srv.URL, czAPIKey: "testkey", hlInfoURL: srv.URL}
 	events, err := l.FetchLiquidationsSince("ETH", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
