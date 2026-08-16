@@ -51,6 +51,11 @@ var (
 		Name: "perp_liq_source_available",
 		Help: "1 if a liquidation data source exists for the venue, 0 if liq_rate is structurally unavailable (not a data gap — use to display N/A instead of 0%).",
 	}, []string{"venue"})
+
+	realizedVol = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_realized_vol_24h_pct",
+		Help: "24h realized volatility (%) computed from hourly HL close prices: sqrt(sum of squared log-returns). Asset-level, not venue-specific. Use as denominator companion to liq_rate.",
+	}, []string{"chain"})
 )
 
 // registerMetrics builds a dedicated registry containing only this
@@ -66,6 +71,7 @@ func registerMetrics() *prometheus.Registry {
 		liqLastRefresh,
 		liqFetchErrors,
 		liqSourceAvailable,
+		realizedVol,
 	)
 	return reg
 }

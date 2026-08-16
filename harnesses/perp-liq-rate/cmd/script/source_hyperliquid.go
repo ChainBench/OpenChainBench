@@ -31,7 +31,8 @@ const (
 type Hyperliquid struct {
 	infoURL        string // defaults to hyperliquidInfoURL
 	archiveBaseURL string // 0xArchive API base, defaults to oxArchiveBaseURL
-	archiveAPIKey  string // from env OXARCHIVE_API_KEY
+	archiveAPIKey  string // from env OXARCHIVE_API_KEY (currently returns empty data)
+	// Note: Coinalyze does not cover Hyperliquid — no HL symbols in /future-markets.
 }
 
 // NewHyperliquid returns the Hyperliquid source.
@@ -148,12 +149,12 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 	return events, nil
 }
 
-// HasLiquidationSource reports true — 0xArchive or vault fallback is always available.
+// HasLiquidationSource reports true — Coinalyze (preferred), 0xArchive, or vault fallback.
 func (h *Hyperliquid) HasLiquidationSource() bool { return true }
 
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
-// Uses 0xArchive when OXARCHIVE_API_KEY is set; otherwise falls back to the
-// HLP liquidator vault (backstop liquidations only).
+// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault backstop fallback.
+// Coinalyze does not cover Hyperliquid.
 func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {
