@@ -32,25 +32,16 @@ type Hyperliquid struct {
 	infoURL        string // defaults to hyperliquidInfoURL
 	archiveBaseURL string // 0xArchive API base, defaults to oxArchiveBaseURL
 	archiveAPIKey  string // from env OXARCHIVE_API_KEY (currently returns empty data)
-
-	// Coinalyze is the preferred liquidation source when COINALYZE_API_KEY is set.
-	// Symbols are discovered dynamically from /future-markets on first use.
-	cz        *czClient
-	czSymbols map[string]string // asset -> Coinalyze symbol, populated on first call
+	// Note: Coinalyze does not cover Hyperliquid — no HL symbols in /future-markets.
 }
 
 // NewHyperliquid returns the Hyperliquid source.
 func NewHyperliquid() *Hyperliquid {
-	h := &Hyperliquid{
+	return &Hyperliquid{
 		infoURL:        hyperliquidInfoURL,
 		archiveBaseURL: oxArchiveBaseURL,
 		archiveAPIKey:  os.Getenv("OXARCHIVE_API_KEY"),
-		czSymbols:      make(map[string]string),
 	}
-	if key := os.Getenv("COINALYZE_API_KEY"); key != "" {
-		h.cz = &czClient{apiKey: key, baseURL: czBaseURLConst}
-	}
-	return h
 }
 
 var hyperliquidCoins = map[string]string{
@@ -161,52 +152,13 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 // HasLiquidationSource reports true — Coinalyze (preferred), 0xArchive, or vault fallback.
 func (h *Hyperliquid) HasLiquidationSource() bool { return true }
 
-// czSymbol returns the Coinalyze symbol for the asset, discovering it on first call.
-func (h *Hyperliquid) czSymbol(asset string) (string, error) {
-	if sym, ok := h.czSymbols[asset]; ok {
-		return sym, nil
-	}
-	sym, err := h.cz.czDiscoverSymbol("hyperliquid", asset)
-	if err != nil {
-		return "", err
-	}
-	h.czSymbols[asset] = sym
-	return sym, nil
-}
-
-// fetchCzLiquidations uses Coinalyze hourly buckets with per-bucket HL candle prices.
-func (h *Hyperliquid) fetchCzLiquidations(coin, asset string, sinceMs int64) ([]LiqEvent, error) {
-	sym, err := h.czSymbol(asset)
-	if err != nil {
-		return nil, fmt.Errorf("hyperliquid coinalyze symbol: %w", err)
-	}
-	fromSec := sinceMs / 1000
-	toSec := time.Now().Unix()
-	buckets, err := h.cz.fetchLiqBuckets(sym, fromSec, toSec)
-	if err != nil {
-		return nil, err
-	}
-	// Fetch per-bucket close prices from HL candleSnapshot (free, no key).
-	priceMap, err := fetchHourlyCloses(coin, sinceMs, toSec*1000, h.infoURL)
-	if err != nil {
-		// Non-fatal: fall back to empty priceMap, bucketsToEvents uses fallbackPx=0
-		// which causes buckets without a price to be skipped.
-		priceMap = nil
-	}
-	return bucketsToEvents("czhl", asset, buckets, priceMap, 0, sinceMs), nil
-}
-
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
-// Priority: (1) Coinalyze when COINALYZE_API_KEY is set, (2) 0xArchive when
-// OXARCHIVE_API_KEY is set, (3) HLP vault backstop fallback.
+// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault backstop fallback.
+// Coinalyze does not cover Hyperliquid.
 func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {
 		return nil, fmt.Errorf("hyperliquid: unsupported asset %q", asset)
-	}
-
-	if h.cz != nil {
-		return h.fetchCzLiquidations(coin, asset, sinceMs)
 	}
 
 	if h.archiveAPIKey != "" {
