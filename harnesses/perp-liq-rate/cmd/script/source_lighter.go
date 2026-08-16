@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -48,6 +47,7 @@ type Lighter struct {
 	baseURL   string // defaults to lighterBaseURL
 	czBaseURL string // Coinalyze API base, defaults to czBaseURLDefault
 	czAPIKey  string // from env COINALYZE_API_KEY
+	hlInfoURL string // HL candleSnapshot URL, defaults to hlCandleSnapshotURL (overridable in tests)
 
 	mu          sync.Mutex
 	markets     []lighterMarketDetail
@@ -138,45 +138,19 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	}
 
 	markPx := float64(market.MarkPrice)
-	if markPx == 0 {
-		return nil, nil
-	}
 
 	from := sinceMs / 1000
 	to := time.Now().Unix()
-	u := fmt.Sprintf("%s/liquidation-history?symbols=%s&interval=1hour&from=%d&to=%d&api_key=%s",
-		l.czBaseURL, url.QueryEscape(czSym), from, to, l.czAPIKey)
-
-	var resp []struct {
-		Symbol  string `json:"symbol"`
-		History []struct {
-			T int64   `json:"t"` // unix seconds (bucket start)
-			L float64 `json:"l"` // long liqs (base asset)
-			S float64 `json:"s"` // short liqs (base asset)
-		} `json:"history"`
-	}
-	if err := httpGetJSON(u, &resp); err != nil {
+	cz := &czClient{apiKey: l.czAPIKey, baseURL: l.czBaseURL}
+	buckets, err := cz.fetchLiqBuckets(czSym, from, to)
+	if err != nil {
 		return nil, fmt.Errorf("lighter coinalyze liquidations: %w", err)
 	}
 
-	var events []LiqEvent
-	for _, r := range resp {
-		for _, h := range r.History {
-			tsMs := h.T * 1000
-			if tsMs < sinceMs {
-				continue
-			}
-			total := (h.L + h.S) * markPx
-			if total == 0 {
-				continue
-			}
-			events = append(events, LiqEvent{
-				Key:         fmt.Sprintf("czlighter:%s:%d", asset, h.T),
-				NotionalUSD: total,
-				TimestampMs: tsMs,
-			})
-		}
-	}
+	// Per-bucket prices via HL candleSnapshot (same asset, free endpoint).
+	priceMap, _ := fetchHourlyCloses(asset, sinceMs, to*1000, l.hlInfoURL)
+	// markPx is the fallback for buckets that have no candle.
+	events := bucketsToEvents("czlighter", asset, buckets, priceMap, markPx, sinceMs)
 	return events, nil
 }
 
