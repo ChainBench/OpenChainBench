@@ -64,7 +64,7 @@ methodology:
   - "GMX v2 (Arbitrum): OI from arbitrum-api.gmxinfra.io/markets/info (openInterestLong + openInterestShort per market, 30-decimal USD, summed across all listed markets for the asset). Liquidation source: unavailable (TheGraph subgraph defunct; Subsquid positionChanges does not expose orderType/isLiquidation). liq_rate and liq_volume are not published for GMX; perp_liq_source_available{venue='gmx'} = 0."
   - "Lighter: OI from GET /api/v1/orderBookDetails?filter=perp (open_interest in base units × mark_price). Liquidations from Coinalyze /v1/liquidation-history (hourly buckets, symbols 0.T=ETH 1.T=BTC, base asset units × current mark_price). Requires COINALYZE_API_KEY."
   - "gains.trade (Base): OI from GET backend-base.gains.trade/trading-variables, sum of oiLongCollateral + oiShortCollateral for the USDC collateral at the asset's pair index (BTC=0, ETH=1), divided by 1e6. Liquidations from eth_getLogs on the Gains diamond (0x6cd5ac19...) filtering TradeClosed events with cancelReason=1; notional = collateralAmount/1e6 × leverage/1e3."
-  - "Aevo: OI from GET /statistics?asset=BASE&instrument_type=PERPETUAL (open_interest.total contracts * mark_price). Liquidation source: none — Aevo has no public liquidation feed as of 2025-08. liq_rate and liq_volume are not published; perp_liq_source_available{venue='aevo'} = 0."
+  - "Aevo: OI from GET /statistics?asset=BASE&instrument_type=PERPETUAL (open_interest.total contracts * mark_price). Liquidation source: none; Aevo has no public liquidation feed as of 2025-08. liq_rate and liq_volume are not published; perp_liq_source_available{venue='aevo'} = 0."
   - "Paradex: OI from GET /v1/markets/summary?market=X (open_interest base units * mark_price). Liquidations from GET /v1/trades?market=X&start_at=<ms>&end_at=<ms> paginated by cursor, keeping trade_type == LIQUIDATION rows."
   - "Apple-to-apple: OI = current notional USD (collateral × leverage) at all venues. Liquidation events = notional USD of forcibly closed positions. Both sides use the same definition across all venues with available data."
   - "GMX caveat: liq_rate is effectively 0% due to missing liquidation data; OI is real and per-asset. Do not compare GMX liq_rate to other venues until a working source is added."
@@ -160,7 +160,7 @@ providers:
   - slug: gains
     name: gains.trade
     tag: Synthetic perps on Base, liquidations from TradeClosed on-chain logs
-    formula: "24h sum of liquidated notional (collateralAmount/1e6 × leverage/1e3 from TradeClosed logs with cancelReason=1 on Base) divided by per-pair OI (oiLongCollateral + oiShortCollateral from trading-variables / 1e6, USDC collateral only), as a percentage."
+    formula: "TradeClosed logs (cancelReason=1) on Base: notional = collateralAmount/1e6 x leverage/1e3. OI = oiLongCollateral + oiShortCollateral from trading-variables / 1e6. Liq rate = 24h notional / OI."
     queries:
       p50: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
