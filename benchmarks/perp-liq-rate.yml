@@ -9,7 +9,7 @@ subtitle: "Liquidated notional over the trailing 24 hours divided by current ope
 category: Trading
 status: live
 metric: Liquidation rate
-unit: "%"
+unit: pct
 higher_is_better: false
 
 seo_intro: |
