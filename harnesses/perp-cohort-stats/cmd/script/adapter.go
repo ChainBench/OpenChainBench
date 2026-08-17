@@ -148,9 +148,9 @@ func priorityMap(venue, metric string) []string {
 			// DefiLlama is the only path.
 			return []string{srcDefillama}
 		case "ostium":
-			// Subgraph exposes OI but no 24h rolling volume; defer
-			// vol_24h to DefiLlama.
-			return []string{srcDefillama}
+			// Native source queries trade.notional from Ormi subgraph.
+			// DefiLlama vol24h is paywalled; native is the only path.
+			return []string{srcOstiumNative}
 		case "polymarket":
 			return []string{srcPolymarketNative}
 		}
