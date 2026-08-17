@@ -135,10 +135,8 @@ export function StackedShareChart({ slug }: { slug: string }) {
       return next;
     });
 
-  if (loading) return <LoadingSkeleton />;
-  if (!displayData || displayData.providers.length === 0) return null;
-
   // Sort venues by total volume (biggest = bottom of stack, most stable).
+  // Must be before any conditional return to satisfy rules-of-hooks.
   const sorted = useMemo(() => {
     if (!displayData) return [];
     return [...displayData.providers].sort((a, b) => {
@@ -148,6 +146,9 @@ export function StackedShareChart({ slug }: { slug: string }) {
     });
   }, [displayData]);
 
+  if (loading) return <LoadingSkeleton />;
+
+  const noData = !displayData || displayData.providers.length === 0;
   const visibleSorted = sorted.filter((p) => !excluded.has(p.slug));
 
   const RANGES: BarRange[] = ["30d", "90d", "1y"];
@@ -174,53 +175,68 @@ export function StackedShareChart({ slug }: { slug: string }) {
             Volume share · historical
           </p>
           <p className="text-sm text-ink-faint mt-0.5">
-            {mode === "abs"
+            {noData
+              ? "Historical data accumulates over the first 24 hours"
+              : mode === "abs"
               ? "Daily 24h rolling notional per venue (USD)"
               : "Market share per venue (% of daily total)"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Mode toggle */}
-          <div className="flex rounded-md border border-ink/15 overflow-hidden text-[11px]">
-            {(["abs", "pct"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={
-                  "px-3 py-1.5 font-medium transition-colors " +
-                  (mode === m
-                    ? "bg-ink text-paper"
-                    : "text-ink-faint hover:text-ink hover:bg-ink/5")
-                }
-              >
-                {m === "abs" ? "Volume" : "Share %"}
-              </button>
-            ))}
+        {!noData && (
+          <div className="flex items-center gap-2">
+            {/* Mode toggle */}
+            <div className="flex rounded-md border border-ink/15 overflow-hidden text-[11px]">
+              {(["abs", "pct"] as Mode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={
+                    "px-3 py-1.5 font-medium transition-colors " +
+                    (mode === m
+                      ? "bg-ink text-paper"
+                      : "text-ink-faint hover:text-ink hover:bg-ink/5")
+                  }
+                >
+                  {m === "abs" ? "Volume" : "Share %"}
+                </button>
+              ))}
+            </div>
+            {/* Range pills */}
+            <div className="flex gap-1">
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => handleRangeClick(r)}
+                  className={
+                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors " +
+                    (range === r
+                      ? "bg-ink/10 text-ink"
+                      : "text-ink-faint hover:text-ink hover:bg-ink/5")
+                  }
+                >
+                  {RANGE_LABEL[r]}
+                </button>
+              ))}
+            </div>
           </div>
-          {/* Range pills */}
-          <div className="flex gap-1">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => handleRangeClick(r)}
-                className={
-                  "px-2.5 py-1 rounded text-[11px] font-medium transition-colors " +
-                  (range === r
-                    ? "bg-ink/10 text-ink"
-                    : "text-ink-faint hover:text-ink hover:bg-ink/5")
-                }
-              >
-                {RANGE_LABEL[r]}
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
+      {/* Empty state */}
+      {noData && (
+        <div className="flex flex-col items-center justify-center h-[180px] gap-2 text-ink-faint">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-40">
+            <path d="M3 3v18h18" /><path d="M7 16l4-4 4 4 4-6" />
+          </svg>
+          <p className="text-sm">Gathering historical data</p>
+          <p className="text-[11px] opacity-60">Check back in a few hours</p>
+        </div>
+      )}
+
       {/* Chart */}
-      {displayData && visibleSorted.length > 0 && (
+      {!noData && displayData && visibleSorted.length > 0 && (
         <ChartCanvas
           timestamps={displayData.timestamps}
           providers={visibleSorted}
@@ -230,28 +246,30 @@ export function StackedShareChart({ slug }: { slug: string }) {
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
-        {sorted.map((p) => {
-          const hidden = excluded.has(p.slug);
-          return (
-            <button
-              key={p.slug}
-              type="button"
-              onClick={() => toggleExclude(p.slug)}
-              className={
-                "flex items-center gap-1.5 text-[11px] transition-opacity " +
-                (hidden ? "opacity-35" : "opacity-100 hover:opacity-75")
-              }
-            >
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: p.color }}
-              />
-              <span className="font-medium text-ink">{p.name}</span>
-            </button>
-          );
-        })}
-      </div>
+      {!noData && (
+        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
+          {sorted.map((p) => {
+            const hidden = excluded.has(p.slug);
+            return (
+              <button
+                key={p.slug}
+                type="button"
+                onClick={() => toggleExclude(p.slug)}
+                className={
+                  "flex items-center gap-1.5 text-[11px] transition-opacity " +
+                  (hidden ? "opacity-35" : "opacity-100 hover:opacity-75")
+                }
+              >
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
+                  style={{ background: p.color }}
+                />
+                <span className="font-medium text-ink">{p.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
