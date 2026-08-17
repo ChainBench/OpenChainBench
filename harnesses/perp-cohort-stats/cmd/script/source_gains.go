@@ -8,20 +8,20 @@ import (
 	"time"
 )
 
-// GainsNativeSource queries the Gains Network (GNS) backend REST API for
-// rolling 24h trading volume across Arbitrum and Polygon deployments.
+// GainsNativeSource queries the Gains Network stats backend for rolling 24h
+// trading volume across all active chains.
 //
 // Endpoint:
 //
-//	GET https://backend-arbitrum.gains.trade/total-stats
-//	GET https://backend-polygon.gains.trade/total-stats
+//	GET https://stats.gains.trade/volume
 //
-// The response exposes protocol-level aggregate stats including the last 24h
-// volume. Arbitrum and Polygon results are summed for the total cohort value.
+// The response includes a `totalVolume` field (rolling 24h USD notional) and
+// a `sources` array with per-chain breakdowns (arbitrum, base, polygon, etc.).
+// We use the `totalVolume` field as the canonical single-number for the venue.
 //
 // Derived metrics:
 //
-//	volume_24h_usd = lastDayVolume (arb) + lastDayVolume (polygon), in USD
+//	volume_24h_usd = totalVolume (USD, 24h rolling, all chains combined)
 type GainsNativeSource struct {
 	client *http.Client
 }
@@ -34,71 +34,43 @@ func NewGainsNativeSource() *GainsNativeSource {
 
 func (s *GainsNativeSource) Name() string { return srcGainsNative }
 
-// gainsTotalStats covers multiple possible field names seen across GNS backend
-// versions so the source stays resilient to minor API drift.
-type gainsTotalStats struct {
-	// v1 field names
-	LastDayVolume  float64 `json:"lastDayVolume"`
-	TotalVolumeUsd float64 `json:"totalVolumeUsd"`
-	// v2 / alternative field names
-	Volume24h     float64 `json:"volume24h"`
-	VolumeUsd24h  float64 `json:"volumeUsd24h"`
-	DailyVolumeUsd float64 `json:"dailyVolumeUsd"`
-}
-
-// vol24h returns the best-available 24h volume field from the parsed response.
-func (g *gainsTotalStats) vol24h() float64 {
-	if g.LastDayVolume > 0 {
-		return g.LastDayVolume
-	}
-	if g.Volume24h > 0 {
-		return g.Volume24h
-	}
-	if g.VolumeUsd24h > 0 {
-		return g.VolumeUsd24h
-	}
-	if g.DailyVolumeUsd > 0 {
-		return g.DailyVolumeUsd
-	}
-	return 0
+type gainsVolumeResp struct {
+	TotalVolume   float64 `json:"totalVolume"`
+	LastRefreshed string  `json:"lastRefreshed"`
+	Sources       []struct {
+		Chain  string  `json:"chain"`
+		Volume float64 `json:"volume"`
+	} `json:"sources"`
 }
 
 func (s *GainsNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
 	venue := "gains"
 
-	backends := []struct {
-		chain string
-		url   string
-	}{
-		{"arbitrum", "https://backend-arbitrum.gains.trade/total-stats"},
-		{"polygon", "https://backend-polygon.gains.trade/total-stats"},
+	body, err := s.get("https://stats.gains.trade/volume")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err: %v\n", venue, srcGainsNative, err)
+		return res, nil
 	}
 
-	var totalVol float64
-	anyOK := false
-	for _, b := range backends {
-		body, err := s.get(b.url)
-		if err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, classifyError(err.Error())).Inc()
-			fmt.Printf("[perp-cohort][%s][%s] err chain=%s: %v\n", venue, srcGainsNative, b.chain, err)
-			continue
-		}
-		var stats gainsTotalStats
-		if err := json.Unmarshal(body, &stats); err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, "parse").Inc()
-			fmt.Printf("[perp-cohort][%s][%s] err parse chain=%s: %v\n", venue, srcGainsNative, b.chain, err)
-			continue
-		}
-		v := stats.vol24h()
-		fmt.Printf("[perp-cohort][%s][%s] ok: chain=%s vol24h=%.0f\n", venue, srcGainsNative, b.chain, v)
-		totalVol += v
-		anyOK = true
+	var resp gainsVolumeResp
+	if err := json.Unmarshal(body, &resp); err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err parse: %v\n", venue, srcGainsNative, err)
+		return res, nil
 	}
 
-	if anyOK {
-		res.SetIfPositive(venue, mVolume24h, totalVol)
-		fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f\n", venue, srcGainsNative, totalVol)
+	if resp.TotalVolume > 0 {
+		res.SetIfPositive(venue, mVolume24h, resp.TotalVolume)
+		fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f (refreshed=%s)\n",
+			venue, srcGainsNative, resp.TotalVolume, resp.LastRefreshed)
+		for _, src := range resp.Sources {
+			if src.Volume > 0 {
+				fmt.Printf("[perp-cohort][%s][%s]   chain=%s vol=%.0f\n",
+					venue, srcGainsNative, src.Chain, src.Volume)
+			}
+		}
 	}
 	return res, nil
 }
