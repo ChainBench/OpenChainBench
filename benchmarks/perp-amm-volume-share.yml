@@ -4,8 +4,8 @@ slug: perp-amm-volume-share
 number: "043"
 title: Perp AMM volume share, live 24h notional ranked
 seo_title: "Perp DEX AMM volume 24h ranking 2026"
-seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains Network, Ostium, Variational, Pacifica. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
-subtitle: 24h rolling notional volume in USD for AMM-style perpetual futures venues. Covers GMX V2, Gains Network, Ostium, Variational and Pacifica. Read live from each venue's public API.
+seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains Network, Ostium and Pacifica. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
+subtitle: 24h rolling notional volume in USD for AMM-style perpetual futures venues. Covers GMX V2, Gains Network, Ostium and Pacifica. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
@@ -14,39 +14,38 @@ higher_is_better: true
 
 seo_intro: |
   This benchmark isolates the AMM-style, pool-as-counterparty and synthetic
-  perp DEX segment by ranking five venues: GMX V2, Gains Network, Ostium,
-  Variational and Pacifica. These venues differ fundamentally from orderbook
-  perps: traders open positions against a liquidity pool or a synthetic
-  counterparty rather than a matching engine. Volume here measures where
-  AMM-native perp flow actually settles. We poll each venue's public API
-  every 5 minutes and publish a rolling 24h USD notional gauge per venue.
-  The companion bench perp-volume-share covers the full cohort including
-  orderbook venues; this one prices the AMM segment only.
+  perp DEX segment by ranking four venues: GMX V2, Gains Network, Ostium
+  and Pacifica. These venues differ fundamentally from orderbook perps:
+  traders open positions against a liquidity pool or a synthetic counterparty
+  rather than a matching engine. Volume here measures where AMM-native perp
+  flow actually settles. We poll each venue's public API every 5 minutes and
+  publish a rolling 24h USD notional gauge per venue. The companion bench
+  perp-volume-share covers the full cohort including orderbook venues; this
+  one prices the AMM segment only.
 
 abstract: |
-  The bench polls five AMM-style perp DEX venues every 5 minutes and
+  The bench polls four AMM-style perp DEX venues every 5 minutes and
   exposes a rolling 24h USD notional gauge per venue. Sources: GMX V2
-  stats API (hourly buckets across Arbitrum and Avalanche), Gains Network
-  backend REST API (Arbitrum and Polygon), Ostium via DefiLlama, Variational
-  via DefiLlama, Pacifica onchain Solana program state. Each value carries
-  a freshness timestamp and a health gauge. Higher is better.
+  via the public Subsquid squid (gmx.squids.live) summing Arbitrum and
+  Avalanche 24h volume buckets; Gains Network backend REST API at
+  stats.gains.trade; Ostium via the Ormi subgraph trade entity on Base;
+  Pacifica onchain Solana program state. Each value carries a freshness
+  timestamp and a health gauge. Higher is better.
 
 methodology:
-  - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
-  - "GMX V2: stats.gmx.io hourly-volume API (groupPeriod=3600) for Arbitrum and Avalanche; last 24 hourly buckets summed for the rolling 24h notional in USD."
-  - "Gains Network: backend-arbitrum and backend-polygon REST APIs, lastDayVolume summed across both chains in USD."
-  - "Ostium: DefiLlama derivatives overview total24h for ostium slug, in USD."
-  - "Variational: DefiLlama derivatives overview total24h for variational slug, in USD."
+  - "Cadence: every 5 minutes per venue in parallel, 15 second timeout per request."
+  - "GMX V2: public Subsquid squid at gmx.squids.live for Arbitrum and Avalanche; queries the most recent 1d volume bucket where timestamp >= now-86400, sums both chains in USD. volumeUsd is a BigInt scaled 1e30; dividing by 1e30 yields USD."
+  - "Gains Network: stats.gains.trade/volume REST endpoint; totalVolume field gives rolling 24h notional in USD across all chains."
+  - "Ostium: Ormi-hosted subgraph (api.subgraph.ormilabs.com); sums trade.notional for all trades opened in the last 24h (timestamp_gte=now-86400); notional is in USDC internal units (1e6 per USD)."
   - "Pacifica: onchain reads on the Solana program state for trailing 24h taker notional."
   - "Headline. avg_over_time of the 24 hour volume gauge over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw gauge."
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} leads the AMM perp cohort at {{best_p50}} of 24h notional across 5 AMM-style venues."
-  - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM pool model on Arbitrum and Avalanche."
+  - "{{best_name}} leads the AMM perp cohort at {{best_p50}} of 24h notional across 4 AMM-style venues."
+  - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GM pool model on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic counterparty model on Arbitrum and Polygon."
   - "{{name:ostium}} sits at {{p50:ostium}} of 24h notional. Real-world asset perps with AMM liquidity on Base."
-  - "{{name:variational}} sits at {{p50:variational}} of 24h notional. Automated market maker perps on Ethereum."
   - "{{name:pacifica}} sits at {{p50:pacifica}} of 24h notional. Solana-native AMM perps."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
@@ -60,7 +59,9 @@ faq:
   - q: "What makes a perp venue AMM-style?"
     a: "AMM-style perps use a liquidity pool or a synthetic counterparty as the other side of every trade instead of a matching engine pairing two human orders. GMX uses GM pools (liquidity providers take the other side), Gains Network uses a synthetic model where the protocol is the counterparty, Pacifica uses a dynamic AMM on Solana, and Ostium uses real-world asset collateral pools."
   - q: "How does this differ from perp-volume-share?"
-    a: "perp-volume-share covers the full 13-venue cohort including orderbook venues (Hyperliquid, dYdX, Lighter, GRVT etc.). This bench isolates the five AMM-style venues so the comparison is within a single execution model."
+    a: "perp-volume-share covers the full cohort including orderbook venues (Hyperliquid, dYdX, Lighter, GRVT etc.). This bench isolates AMM-style venues so the comparison is within a single execution model."
+  - q: "Why not include Variational?"
+    a: "Variational's public API (api.variational.io) fails to resolve. No authenticated or public alternative endpoint currently provides rolling 24h volume. The venue will be added once a reliable source becomes available."
   - q: "Why not include Drift or other Solana AMMs?"
     a: "Drift's public REST surface is currently blocked for automated probes; the venue is parked pending a Solana RPC and Anchor IDL adapter. It will be added once the native source ships."
 
@@ -68,7 +69,7 @@ providers:
   - slug: gmx-v2
     name: GMX V2
     tag: GLP/GM AMM perps on Arbitrum and Avalanche
-    formula: "Sum of the last 24 hourly volume buckets from the GMX V2 stats API across Arbitrum and Avalanche, in USD; headline is the 24h time average."
+    formula: "Sum of the most recent 1d volume buckets from the GMX V2 Subsquid squid (gmx.squids.live) across Arbitrum and Avalanche, in USD; volumeUsd divided by 1e30; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="gmx-v2"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gmx-v2"}[24h])
@@ -81,7 +82,7 @@ providers:
   - slug: gains
     name: Gains Network
     tag: Synthetic leveraged trading on Arbitrum and Polygon
-    formula: "lastDayVolume summed across Arbitrum and Polygon from the Gains Network backend REST API, in USD; headline is the 24h time average."
+    formula: "totalVolume from stats.gains.trade/volume REST API, rolling 24h USD notional across all chains; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gains"}[24h])
@@ -94,7 +95,7 @@ providers:
   - slug: ostium
     name: Ostium
     tag: RWA perps with AMM liquidity on Base
-    formula: "24h volume from DefiLlama derivatives overview for ostium, in USD; headline is the 24h time average."
+    formula: "Sum of trade.notional for all trades opened in the last 24h via the Ormi subgraph; notional in USDC internal units divided by 1e6 to yield USD; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="ostium"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="ostium"}[24h])
@@ -103,19 +104,6 @@ providers:
       success: avg_over_time(perp_venue_health{venue="ostium"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="ostium"}[24h])
       series: perp_venue_volume_24h_usd{venue="ostium"}
-
-  - slug: variational
-    name: Variational
-    tag: AMM perps on Ethereum
-    formula: "24h volume from DefiLlama derivatives overview for variational, in USD; headline is the 24h time average."
-    queries:
-      p50: avg_over_time(perp_venue_volume_24h_usd{venue="variational"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="variational"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="variational"}[24h])
-      mean: avg_over_time(perp_venue_volume_24h_usd{venue="variational"}[24h])
-      success: avg_over_time(perp_venue_health{venue="variational"}[24h])
-      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="variational"}[24h])
-      series: perp_venue_volume_24h_usd{venue="variational"}
 
   - slug: pacifica
     name: Pacifica
