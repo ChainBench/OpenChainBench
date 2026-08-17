@@ -137,6 +137,7 @@ export function buildEditorial(
     editorialStatus: spec.status,
     metric: spec.metric,
     panelMainLabel: spec.panel_main_label,
+    stackedShare: spec.stacked_share,
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
     abstract: spec.abstract,
