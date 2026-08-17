@@ -31,6 +31,7 @@ import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
 import { FileText, Check } from "lucide-react";
 import { Hint } from "@/components/hint";
+import { StackedShareChart } from "@/components/stacked-share-chart";
 
 type ChainOption = { value: string; label: string };
 
@@ -934,6 +935,10 @@ export function BenchmarkBody({
               )}
             </div>
           </div>
+
+          {benchmark.stackedShare && (
+            <StackedShareChart slug={benchmark.slug} />
+          )}
 
           <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
             {hasLongHistory && longRangeKey ? (

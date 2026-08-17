@@ -1,0 +1,197 @@
+# OpenChainBench. Bench 208
+
+slug: perp-liq-rate
+number: "208"
+title: "Perp DEX liquidation rate: 24h liquidated notional as % of open interest, live"
+seo_title: "Perp DEX liquidation rate 2026"
+seo_description: "{{best_name}} shows the lowest 24h liquidation rate at {{best_p50}}% of open interest. Live comparison of liquidated notional over OI across Hyperliquid, GMX, dYdX, Lighter, gains.trade, Aevo and Paradex on ETH and BTC."
+subtitle: "Liquidated notional over the trailing 24 hours divided by current open interest, in percent. Higher means more positions are being forcibly closed relative to the venue's total exposure. Measured live every 5 minutes on ETH and BTC across 7 perpetual DEX venues."
+category: Trading
+status: live
+metric: Liquidation rate
+unit: pct
+higher_is_better: false
+
+seo_intro: |
+  Every perpetual futures platform liquidates positions when a trader's
+  margin falls below the maintenance requirement. The liquidation rate,
+  defined as 24-hour liquidated notional divided by current open interest,
+  measures how aggressively a venue's position book turns over by force.
+  A low rate can mean tight margin parameters that leave little room for
+  error, a highly sophisticated trader base that manages risk carefully,
+  or simply low volatility during the measurement window. A high rate
+  signals that many positions are being closed at a loss, which matters
+  for traders sizing their margin buffers and for LPs trying to understand
+  adverse selection risk. This benchmark measures that rate live, every
+  five minutes, using native on-chain and API sources for both numerator
+  and denominator so the figure is apples-to-apples across venues.
+
+  The liquidation source varies by venue. Hyperliquid uses the 0xArchive
+  REST indexer, which covers all liquidation types including market-order
+  fills, giving full coverage rather than the backstop-only subset
+  accessible through the HLP vault endpoint. dYdX, Paradex and Aevo use
+  their own native REST APIs. Lighter uses Coinalyze hourly liquidation
+  buckets converted to USD at the current mark price. Gains Network on Base
+  scans TradeClosed event logs on-chain and keeps only cancelReason=1
+  (liquidation). GMX v2 open interest is read from the arbitrum-api
+  gmxinfra endpoint, giving real per-asset notional rather than a TVL
+  proxy; liquidation data remains unavailable (TheGraph subgraph defunct)
+  so GMX shows OI but a zero liquidation rate until a source is found.
+
+  Open interest is the total current notional value of all open positions
+  at each venue, sourced natively: Hyperliquid metaAndAssetCtxs, Lighter
+  orderBookDetails, dYdX REST, Paradex REST, Aevo REST, Gains Network
+  trading-variables per pair, GMX arbitrum-api markets/info. All figures
+  are in USD and use current mark price rather than entry price where a
+  live price is available.
+
+abstract: |
+  A Go exporter polls each venue every 5 minutes. Liquidation events are
+  accumulated in a 24-hour sliding window with deduplication by event key
+  (trade hash or composite). Open interest is fetched fresh each tick.
+  The liquidation rate is published as
+  perp_liq_rate_24h_pct = sum(liquidated_notional_usd, last 24h) / oi_usd * 100.
+  The first 24 hours of each venue's life in the exporter are flagged as
+  warming up (perp_liq_warming_up=1) because the sliding window is not
+  yet full. Fetch failures leave the previous gauge value unchanged and
+  increment perp_liq_fetch_errors_total; the health gauge drops to 0.
+
+methodology:
+  - "Cadence: every 5 minutes, in parallel across all venue/asset pairs."
+  - "Sliding window: liquidation events are stored in a 24-hour ring buffer keyed by a dedup string (trade hash or composite timestamp+size key). Events older than 24 hours are pruned on each tick. The window sum is the numerator of the liq rate."
+  - "Hyperliquid: OI from POST /info {type:metaAndAssetCtxs} (openInterest in base units × midPx). Liquidations from 0xArchive GET /v1/hyperliquid/liquidations/{coin} with cursor pagination, covering all liquidation types. Fallback without OXARCHIVE_API_KEY: userFillsByTime on HLP vault address (backstop-only subset)."
+  - "dYdX v4: OI from GET /v4/perpetualMarkets (openInterest base units * oraclePrice). Liquidations from GET /v4/trades/perpetualMarket/{ticker}?limit=100 paginated backwards, keeping type == LIQUIDATED rows; notional = size * price."
+  - "GMX v2 (Arbitrum): OI from arbitrum-api.gmxinfra.io/markets/info (openInterestLong + openInterestShort per market, 30-decimal USD, summed across all listed markets for the asset). Liquidation source: unavailable (TheGraph subgraph defunct; Subsquid positionChanges does not expose orderType/isLiquidation). liq_rate and liq_volume are not published for GMX; perp_liq_source_available{venue='gmx'} = 0."
+  - "Lighter: OI from GET /api/v1/orderBookDetails?filter=perp (open_interest in base units × mark_price). Liquidations from Coinalyze /v1/liquidation-history (hourly buckets, symbols 0.T=ETH 1.T=BTC, base asset units × current mark_price). Requires COINALYZE_API_KEY."
+  - "gains.trade (Base): OI from GET backend-base.gains.trade/trading-variables, sum of oiLongCollateral + oiShortCollateral for the USDC collateral at the asset's pair index (BTC=0, ETH=1), divided by 1e6. Liquidations from eth_getLogs on the Gains diamond (0x6cd5ac19...) filtering TradeClosed events with cancelReason=1; notional = collateralAmount/1e6 × leverage/1e3."
+  - "Aevo: OI from GET /statistics?asset=BASE&instrument_type=PERPETUAL (open_interest.total contracts * mark_price). Liquidation source: none; Aevo has no public liquidation feed as of 2025-08. liq_rate and liq_volume are not published; perp_liq_source_available{venue='aevo'} = 0."
+  - "Paradex: OI from GET /v1/markets/summary?market=X (open_interest base units * mark_price). Liquidations from GET /v1/trades?market=X&start_at=<ms>&end_at=<ms> paginated by cursor, keeping trade_type == LIQUIDATION rows."
+  - "Apple-to-apple: OI = current notional USD (collateral × leverage) at all venues. Liquidation events = notional USD of forcibly closed positions. Both sides use the same definition across all venues with available data."
+  - "GMX caveat: liq_rate is effectively 0% due to missing liquidation data; OI is real and per-asset. Do not compare GMX liq_rate to other venues until a working source is added."
+
+findings:
+  - "{{best_name}} records the lowest 24h liquidation rate at {{best_p50}}% of open interest (24h average, ETH and BTC combined)."
+  - "{{name:hyperliquid}} shows {{p50:hyperliquid}}% liq rate on a combined ETH+BTC open interest of over $4B. Hyperliquid dominates perpetual DEX volume and its liquidation coverage is the most complete of any venue here, sourced from 0xArchive which captures all liquidation types."
+  - "{{name:lighter}} shows {{p50:lighter}}% liq rate. Liquidation data via Coinalyze is available in hourly buckets; the USD conversion uses the current mark price rather than the exact price at liquidation time, so intra-hour values are approximate."
+  - "{{name:gains}} shows {{p50:gains}}% liq rate on a small Base deployment ($55K ETH OI, $161K BTC OI). Zero liquidations in quiet 24-hour windows is consistent with this OI level."
+  - "GMX and Aevo show no liquidation rate because no public liquidation data source exists for either venue. GMX OI is correct ($29M ETH, $21M BTC). Aevo OI is correct ($3M ETH). The perp_liq_source_available gauge is 0 for both, so the frontend displays N/A rather than 0%."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-liq-rate
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+  freshness_metric: perp_liq_last_refresh_timestamp_seconds
+
+faq:
+  - q: "What is the liquidation rate and why does it matter?"
+    a: "The liquidation rate is the fraction of a venue's open interest that gets forcibly closed in 24 hours. A high rate means many traders are hitting their margin limits and being liquidated by the venue's insurance or backstop system. For a trader it signals how aggressively the venue's risk engine operates and whether the margin buffer they need to survive a volatile session is larger or smaller than on a competing venue."
+  - q: "Why does GMX show no liquidation rate?"
+    a: "GMX v2 open interest is fetched correctly from the gmxinfra /markets/info endpoint ($29M ETH, $21M BTC). There is no accessible liquidation source: the TheGraph subgraph is defunct, and the Subsquid positionChanges API does not expose an orderType or isLiquidation flag to distinguish liquidations from voluntary closes. The bench publishes perp_liq_source_available=0 for GMX, so the frontend shows N/A rather than a misleading 0%. OI can still be compared across venues."
+  - q: "How is Lighter liquidation data obtained?"
+    a: "Lighter's /api/v1/trades endpoint requires authentication, so direct liquidation data is not available. The bench uses Coinalyze /v1/liquidation-history for Lighter's exchange ID (symbols 0.T=ETH, 1.T=BTC), which provides hourly buckets of long and short liquidation volume in base asset units. These are converted to USD using the current mark price from orderBookDetails at the time of each 5-minute tick. The USD value of old buckets may be slightly off if the price moved significantly during the hour, but the error is bounded."
+  - q: "How is Hyperliquid liquidation data obtained?"
+    a: "With the OXARCHIVE_API_KEY environment variable set, the bench uses the 0xArchive REST API /v1/hyperliquid/liquidations/{coin} with cursor pagination, which covers all liquidation types including positions closed via market orders (not just backstop vault liquidations). Without the key the bench falls back to userFillsByTime on the HLP liquidator vault address, which captures backstop liquidations only (a minority of volume)."
+  - q: "What does the warming up period mean?"
+    a: "The first 24 hours after the harness starts, the sliding window is not yet full. The liq_rate during this period underestimates the true 24-hour rate because fewer than 24 hours of liquidation events have been accumulated. The perp_liq_warming_up metric is 1 during this period so the UI can flag the value as provisional."
+  - q: "Why are gains.trade OI values so small compared to other venues?"
+    a: "The Gains Network deployment on Base is a newer, smaller deployment than their Arbitrum and Polygon deployments. The $55K ETH OI and $161K BTC OI reported here reflect actual trading-variables from the Base chain, not the venue's total cross-chain OI. The liq_rate for Gains Base should be interpreted in this context: 0 liquidations on $55K OI is a different regime than 0 liquidations on $1B OI."
+  - q: "Is this an apples-to-apples comparison across all venues?"
+    a: "Yes for OI and liquidation definition: both sides use notional USD (position size including leverage) at all venues with available data. Hyperliquid, Lighter, dYdX and Paradex use current mark price for OI; Gains uses entry-price notional from the protocol's internal accounting (oiLongCollateral), which may differ from current-price notional if ETH/BTC prices have moved significantly since positions were opened. The main non-comparability is GMX with 0 liquidation data and Aevo/Paradex with typically low liquidation counts. The OI numbers are comparable across all venues."
+
+dimensions:
+  chain:
+    - { value: ETH, label: ETH }
+    - { value: BTC, label: BTC }
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1, full liquidation coverage via 0xArchive
+    formula: "24h sum of liquidated notional USD (0xArchive /v1/hyperliquid/liquidations, all types) divided by current OI (openInterest × midPx from metaAndAssetCtxs), as a percentage. Sliding window with event-key deduplication."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_liq_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      series: perp_liq_rate_24h_pct{venue="hyperliquid"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain perps, native liquidation API
+    formula: "24h sum of liquidated notional USD (dYdX indexer liquidation endpoint) divided by current OI (native REST), as a percentage."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      success: avg_over_time(perp_liq_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      series: perp_liq_rate_24h_pct{venue="dydx"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: Arbitrum synthetics, OI from gmxinfra API, liq data unavailable
+    formula: "Liq rate = 0 (TheGraph subgraph defunct, no alternative source). OI from arbitrum-api.gmxinfra.io/markets/info, sum of openInterestLong + openInterestShort across all listed markets for the asset, divided by 1e30."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      success: avg_over_time(perp_liq_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      series: perp_liq_rate_24h_pct{venue="gmx"}
+
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup, liquidations via Coinalyze hourly buckets
+    formula: "24h sum of (long_liqs + short_liqs) × current_mark_price (Coinalyze /v1/liquidation-history, 1-hour resolution) divided by current OI (open_interest × mark_price from orderBookDetails), as a percentage."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      success: avg_over_time(perp_liq_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      series: perp_liq_rate_24h_pct{venue="lighter"}
+
+  - slug: gains
+    name: gains.trade
+    tag: Synthetic perps on Base, liquidations from TradeClosed on-chain logs
+    formula: "TradeClosed logs (cancelReason=1) on Base: notional = collateralAmount/1e6 x leverage/1e3. OI = oiLongCollateral + oiShortCollateral from trading-variables / 1e6. Liq rate = 24h notional / OI."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gains"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
+      success: avg_over_time(perp_liq_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
+      series: perp_liq_rate_24h_pct{venue="gains"}
+
+  - slug: aevo
+    name: Aevo
+    tag: Optimism rollup perps, no public liquidation API
+    formula: "OI from native Aevo REST API. Liquidation source: no public API found, liq_rate = 0."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      success: avg_over_time(perp_liq_health{venue="aevo"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      series: perp_liq_rate_24h_pct{venue="aevo"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain perps, native liquidation API
+    formula: "24h sum of liquidated notional USD (Paradex native REST) divided by current OI (native REST), as a percentage."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      success: avg_over_time(perp_liq_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      series: perp_liq_rate_24h_pct{venue="paradex"}

@@ -67,6 +67,9 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "perp_funding_",
   "perp_venue_",
   "perp_execution_",
+  // Perp liquidation rate bench (bench 208)
+  "perp_liq_",
+  "perp_realized_vol_",
   "ocb_buyback_",
   "ocb_oracle_",
   "ocb_validator_",
@@ -351,6 +354,7 @@ const mcpHandler = createMcpHandler(
           "  metadata_coverage_*, metadata_api_latency_*, network_coverage_*,",
           "    networks_supported, wallet_labels_*",
           "  perp_fees_*, perp_funding_*, perp_venue_*, perp_execution_*,",
+          "  perp_liq_*, perp_realized_vol_*,",
           "  ocb_buyback_*, ocb_oracle_*, ocb_validator_*, ocb_chain_*",
           "  gas_error_*, gas_predicted_*, gas_realized_*, gas_oracle_*",
           "  peg_* (stablecoin peg, both variants)",
