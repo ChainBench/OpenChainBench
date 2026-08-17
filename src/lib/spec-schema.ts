@@ -426,6 +426,11 @@ export const SpecSchema = z
      * to `metric`; set it when the panels are size/window variants and
      * the headline needs its variant spelled out (e.g. "All-in at $1k"). */
     panel_main_label: z.string().min(1).max(80).optional(),
+    /** When true, renders a stacked bar chart (absolute + % share) below
+     *  the main chart on the bench page. Intended for volume-share benches
+     *  where the relative contribution of each venue over time is the
+     *  primary signal. */
+    stacked_share: z.boolean().optional(),
     metric_panels: z
       .array(
         z.object({
