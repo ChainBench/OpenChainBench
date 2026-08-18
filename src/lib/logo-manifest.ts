@@ -177,7 +177,7 @@ const RAW: Record<string, string> = {
   "xrpl-labs": "/logos/xrp.jpg",
   // ─── Algorand providers (bench 214) ───
   algonode: "/logos/algorand.svg",
-  nodely: "/logos/nodely.svg",
+  nodely: "/logos/nodely.png",
   // ─── Gram/TON providers (bench 215) ───
   toncenter: "/logos/ton.svg",
   nownodes: "/logos/nownodes.svg",
