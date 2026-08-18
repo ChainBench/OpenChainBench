@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -38,11 +39,8 @@ type cgDerivExchangeResp struct {
 	TradeVolume24hBTC float64 `json:"trade_volume_24h_btc,string"`
 }
 
-type cgSimplePriceResp struct {
-	Bitcoin struct {
-		USD float64 `json:"usd"`
-	} `json:"bitcoin"`
-}
+// hlAllMidsResp is the Hyperliquid allMids response: map of coin -> mid price string.
+type hlAllMidsResp map[string]string
 
 func (s *SynFuturesNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
@@ -78,16 +76,35 @@ func (s *SynFuturesNativeSource) Fetch() (*SourceResult, error) {
 	return res, nil
 }
 
+// fetchBTCPrice fetches the BTC mid price from Hyperliquid's allMids endpoint.
+// This avoids CoinGecko rate limits since Hyperliquid is already queried by
+// the harness and has no rate-limiting on the public info API.
 func (s *SynFuturesNativeSource) fetchBTCPrice() (float64, error) {
-	body, err := s.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+	req, _ := http.NewRequest("POST", "https://api.hyperliquid.xyz/info", strings.NewReader(`{"type":"allMids"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@mobula.io")
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
-	var resp cgSimplePriceResp
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, fmt.Errorf("parse btc price: %w", err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
 	}
-	return resp.Bitcoin.USD, nil
+	var mids hlAllMidsResp
+	if err := json.Unmarshal(body, &mids); err != nil {
+		return 0, fmt.Errorf("parse hl allMids: %w", err)
+	}
+	priceStr, ok := mids["BTC"]
+	if !ok {
+		return 0, fmt.Errorf("BTC not in hl allMids")
+	}
+	var price float64
+	if _, err := fmt.Sscanf(priceStr, "%f", &price); err != nil {
+		return 0, fmt.Errorf("parse btc price %q: %w", priceStr, err)
+	}
+	return price, nil
 }
 
 func (s *SynFuturesNativeSource) get(url string) ([]byte, error) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -75,15 +76,31 @@ func (s *KiloExNativeSource) Fetch() (*SourceResult, error) {
 }
 
 func (s *KiloExNativeSource) fetchBTCPrice() (float64, error) {
-	body, err := s.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+	req, _ := http.NewRequest("POST", "https://api.hyperliquid.xyz/info", strings.NewReader(`{"type":"allMids"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@mobula.io")
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
-	var resp cgSimplePriceResp
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, fmt.Errorf("parse btc price: %w", err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
 	}
-	return resp.Bitcoin.USD, nil
+	var mids hlAllMidsResp
+	if err := json.Unmarshal(body, &mids); err != nil {
+		return 0, fmt.Errorf("parse hl allMids: %w", err)
+	}
+	priceStr, ok := mids["BTC"]
+	if !ok {
+		return 0, fmt.Errorf("BTC not in hl allMids")
+	}
+	var price float64
+	if _, err := fmt.Sscanf(priceStr, "%f", &price); err != nil {
+		return 0, fmt.Errorf("parse btc price %q: %w", priceStr, err)
+	}
+	return price, nil
 }
 
 func (s *KiloExNativeSource) get(url string) ([]byte, error) {
