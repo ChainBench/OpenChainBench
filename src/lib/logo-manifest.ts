@@ -704,6 +704,27 @@ const ALIASES: Record<string, string> = {
   "orai-official": "oraichain",
   "peaq-official": "peaq",
 
+  // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
+  "ecadinfra": "tezos",
+  "tzbeta": "tezos",
+  "tzkt": "tezos",
+  "greymass": "eos",
+  "eosnation": "eos",
+  "alohaeos": "eos",
+  "vechain-foundation": "vechain",
+  "vethor-node": "vechain",
+  "vechain-energy": "vechain",
+  "wavesnodes": "waves",
+  "wx-network": "waves",
+  "waves-exchange": "waves",
+  "eosusa": "wax",
+  "waxsweden": "wax",
+  "neon-p2p": "neon",
+  "merlin-official": "merlin",
+  "viction-official": "viction",
+  "thundercore-official": "thundercore",
+  "oktc-official": "oktc",
+
 };
 
 export function logoPath(slug: string): string | null {
