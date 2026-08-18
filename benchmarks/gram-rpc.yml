@@ -4,7 +4,7 @@ slug: gram-rpc
 number: "215"
 title: Fastest free Gram RPC, live no-key endpoint latency
 seo_title: "Fastest free Gram (TON) RPC 2026"
-seo_description: "{{best_name}} leads free Gram RPC at {{best_p50}} (getMasterchainInfo seqno p50, 24h). Measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Gram RPC at {{best_p50}} (getMasterchainInfo seqno p50, 24h). 4 providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for getMasterchainInfo against every available public Gram (TON) node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Gram (formerly TON/Toncoin) is a high-throughput L1 blockchain using the BAG (Byzantine Agreement for Gram) consensus protocol and a multi-workchain architecture anchored by a masterchain. The masterchain seqno advances roughly every 5 seconds with deterministic finality. TON Center provides a public JSON-RPC endpoint keyless at 1 req/s (matching our 60-second probe cadence exactly). Every provider was live-verified with consecutive getMasterchainInfo probes at launch.
+  Gram (formerly TON/Toncoin) is a high-throughput L1 blockchain using the BAG (Byzantine Agreement for Gram) consensus protocol and a multi-workchain architecture anchored by a masterchain. The masterchain seqno advances roughly every 5 seconds with deterministic finality. Public JSON-RPC endpoints are available from TON Center, OnFinality, Tatum and Uniblock. Every provider was live-verified with consecutive getMasterchainInfo probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Gram.
   We measure the round-trip latency of a single JSON-RPC call
   (getMasterchainInfo) against every available public Gram node that
-  sustains continuous probing: 1 provider at launch, every 60 seconds,
+  sustains continuous probing: 4 providers at launch, every 60 seconds,
   from us-east, eu-west and Singapore. The harness classifies every
   response (ok / http_err / jsonrpc_err / stale / timeout) with a
   Gram-scaled staleness gap (60 seqnos, around 5 min). The cross-chain
@@ -33,16 +33,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable result.last.seqno), http_err, jsonrpc_err, stale (seqno more than 60 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=gram. Provider coverage at launch: 1 endpoint (TON Center, keyless at 1 req/s)."
+  - "Chain scope: every query on this page is pinned to chain=gram. Provider coverage at launch: 4 endpoints (TON Center, OnFinality, Tatum, Uniblock)."
 
 findings:
-  - "{{best_name}} currently leads Gram RPC at {{best_p50}} (getMasterchainInfo seqno p50, 24h)."
+  - "{{best_name}} currently leads Gram RPC at {{best_p50}} (getMasterchainInfo seqno p50, 24h) across 4 measured providers."
 
 faq:
   - q: "What is the fastest free Gram (TON) RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (getMasterchainInfo seqno p50 over the last 24h), measured against keyless providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (getMasterchainInfo seqno p50 over the last 24h), measured against 4 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Gram RPC endpoints work without an API key?"
-    a: "TON Center provides keyless access at up to 1 request per second, which fits our 60-second probe cadence exactly. Every listed endpoint was live-verified with a getMasterchainInfo call returning a parsable seqno before inclusion."
+    a: "4 endpoints sustain continuous keyless probing at launch: TON Center (1 req/s), OnFinality, Tatum and Uniblock. Every listed endpoint was live-verified with a getMasterchainInfo call returning a parsable seqno before inclusion."
   - q: "Does the fastest Gram RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Gram RPC latency measured here, technically?"
@@ -86,3 +86,72 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="toncenter", chain="gram", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="toncenter", chain="gram", region="sgp"}[1h])
+
+  - slug: onfinality
+    name: OnFinality
+    tag: Multi-chain RPC provider with TON support, public endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to OnFinality's TON endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="gram"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="gram"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="gram"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="gram"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="gram"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="gram"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="gram"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="gram"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="gram", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="gram", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="gram", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="gram", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="gram", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="gram", region="sgp"}[1h])
+
+  - slug: tatum
+    name: Tatum
+    tag: Multi-chain RPC gateway with TON support, public endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to Tatum's TON gateway."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="gram"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tatum", chain="gram"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tatum", chain="gram"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tatum", chain="gram"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tatum", chain="gram"}) / sum(ocb:rpc_call:rate_24h{provider="tatum", chain="gram"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tatum", chain="gram"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="gram"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="gram", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="gram", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="gram", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="gram", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="gram", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="gram", region="sgp"}[1h])
+
+  - slug: uniblock
+    name: Uniblock
+    tag: Multi-chain RPC aggregator with TON support, public endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to Uniblock's TON endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="uniblock", chain="gram"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="uniblock", chain="gram"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="uniblock", chain="gram"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="uniblock", chain="gram"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="uniblock", chain="gram"}) / sum(ocb:rpc_call:rate_24h{provider="uniblock", chain="gram"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="uniblock", chain="gram"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="uniblock", chain="gram"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="uniblock", chain="gram", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="uniblock", chain="gram", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="uniblock", chain="gram", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="uniblock", chain="gram", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="uniblock", chain="gram", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="uniblock", chain="gram", region="sgp"}[1h])
