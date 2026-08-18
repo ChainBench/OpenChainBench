@@ -4,8 +4,8 @@ slug: perp-volume-share
 number: "041"
 title: Perp DEX volume share, live 24h notional ranked
 seo_title: "Perp DEX volume 24h ranking 2026"
-seo_description: "Live 24h perp DEX volume in USD notional across 13 major venues: Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex, Polymarket. Refreshed every 5 minutes."
-subtitle: 24h rolling perpetual futures notional volume in USD across 13 major decentralized venues. Higher means more flow. Read live from each venue's public API.
+seo_description: "Live 24h perp DEX volume in USD notional across 15 major venues: Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex, Polymarket, Orderly and Backpack. Refreshed every 5 minutes."
+subtitle: 24h rolling perpetual futures notional volume in USD across 15 major decentralized venues. Higher means more flow. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
@@ -18,15 +18,15 @@ seo_intro: |
   for where perpetual futures flow actually lives today. We poll each
   venue's public API every 5 minutes, read the venue's own trailing 24
   hour taker notional in USD, and publish a single gauge per venue.
-  The cohort covers 13 venues: Hyperliquid, GMX V2, Gains Network, Aster,
-  Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex and
-  Polymarket. Headline number is the 24h average of the live 24h gauge so
+  The cohort covers 15 venues: Hyperliquid, GMX V2, Gains Network, Aster,
+  Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex,
+  Polymarket, Orderly and Backpack. Headline number is the 24h average of the live 24h gauge so
   a single noisy print does not move the ranking. The companion benches
   price the cost side (perp-fees for opening, perp-funding for holding);
   this one prices flow.
 
 abstract: |
-  The bench polls 13 perp DEX venues every 5 minutes for the trailing
+  The bench polls 15 perp DEX venues every 5 minutes for the trailing
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   GMX V2 stats API (hourly buckets summed across Arbitrum and Avalanche),
@@ -51,11 +51,13 @@ methodology:
   - "dYdX v4: indexer perpetualMarkets, volume24H summed across markets in USD."
   - "Aevo: public markets endpoint, 24h volume per instrument summed in USD."
   - "Paradex: markets summary on Starknet L2, 24h volume summed across perps."
+  - "Orderly: public volume/stats endpoint at api-evm.orderly.org; perp_volume_last_1_day gives rolling 24h USD notional across all EVM chains."
+  - "Backpack: public tickers endpoint at api.backpack.exchange; quoteVolume summed across all *_PERP symbols in USDC."
   - "Headline. avg_over_time of the 24 hour volume gauge over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw gauge."
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 13 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 15 measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM AMM perp DEX on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum and Polygon."
@@ -68,6 +70,8 @@ findings:
   - "{{name:vertex}} sits at {{p50:vertex}} of 24h notional. Arbitrum orderbook plus AMM hybrid."
   - "{{name:paradex}} sits at {{p50:paradex}} of 24h notional. Starknet L2 perps."
   - "{{name:aevo}} sits at {{p50:aevo}} of 24h notional. Optimism L2 orderbook perps."
+  - "{{name:orderly}} sits at {{p50:orderly}} of 24h notional. Cross-chain CLOB infrastructure on Arbitrum and Base."
+  - "{{name:backpack}} sits at {{p50:backpack}} of 24h notional. Hybrid orderbook on Solana with self-custody."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 stacked_share: true
@@ -82,7 +86,7 @@ faq:
   - q: "Why 24h rolling instead of daily snapshots?"
     a: "Every venue in the cohort publishes a live rolling 24 hour window on its own public API, so a rolling comparison sidesteps timezone bucketing and the noise of a single calendar day. The 24h average smooths intraday micro-spikes without hiding regime shifts within the window."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex and Polymarket, the 13 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex, Polymarket, Orderly and Backpack: 15 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is this the same as DeFiLlama volume?"
     a: "Methodology is similar in spirit but each venue is queried directly here, not via an aggregator. Numbers should sit close to DeFiLlama on most days, divergences usually mean a downstream feed lagged."
 
@@ -255,3 +259,29 @@ providers:
       success: avg_over_time(perp_venue_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       series: perp_venue_volume_24h_usd{venue="gains"}
+
+  - slug: orderly
+    name: Orderly
+    tag: Cross-chain CLOB on Arbitrum, Base, Optimism
+    formula: "perp_volume_last_1_day from api-evm.orderly.org/v1/public/volume/stats, rolling 24h USD notional across all EVM chains; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="orderly"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="orderly"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="orderly"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="orderly"}[24h])
+      success: avg_over_time(perp_venue_health{venue="orderly"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="orderly"}[24h])
+      series: perp_venue_volume_24h_usd{venue="orderly"}
+
+  - slug: backpack
+    name: Backpack
+    tag: Hybrid self-custody orderbook on Solana
+    formula: "quoteVolume summed across all *_PERP symbols from api.backpack.exchange/api/v1/tickers, in USDC; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="backpack"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="backpack"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="backpack"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="backpack"}[24h])
+      success: avg_over_time(perp_venue_health{venue="backpack"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="backpack"}[24h])
+      series: perp_venue_volume_24h_usd{venue="backpack"}

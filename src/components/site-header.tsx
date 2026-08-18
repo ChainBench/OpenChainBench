@@ -55,6 +55,19 @@ const NAV: NavItem[] = [
   { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute" },
 ];
 
+const HUB_NAV: NavItem[] = [
+  { href: "/chains", label: "Chains", match: (p) => p === "/chains" || p.startsWith("/chains/") },
+  { href: "/prediction-markets", label: "Prediction markets", match: (p) => p === "/prediction-markets" || p.startsWith("/prediction-markets/") },
+  { href: "/rpc", label: "RPC", match: (p) => p === "/rpc" || p.startsWith("/rpc/") },
+  { href: "/data-api", label: "Data APIs", match: (p) => p === "/data-api" || p.startsWith("/data-api/") },
+  { href: "/perps", label: "Perpetuals", match: (p) => p === "/perps" || p.startsWith("/perps/") },
+  { href: "/bridge", label: "Bridge", match: (p) => p === "/bridge" || p.startsWith("/bridge/") },
+  { href: "/trading-apps", label: "Trading apps", match: (p) => p === "/trading-apps" || p.startsWith("/trading-apps/") },
+  { href: "/compare", label: "Compare", match: (p) => p === "/compare" || p.startsWith("/compare/") },
+  { href: "/alternatives", label: "Alternatives", match: (p) => p === "/alternatives" || p.startsWith("/alternatives/") },
+  { href: "/answers", label: "Answers", match: (p) => p === "/answers" || p.startsWith("/answers/") },
+];
+
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
@@ -175,7 +188,7 @@ export function SiteHeader() {
             className="md:hidden absolute left-0 right-0 top-full border-b border-rule bg-surface shadow-lg"
           >
             <ul className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2 flex flex-col">
-              {NAV.map((item) => {
+              {[...NAV, ...HUB_NAV].map((item) => {
                 const active = item.match(pathname);
                 return (
                   <li key={item.href}>
@@ -211,6 +224,40 @@ export function SiteHeader() {
           </nav>
         )}
       </header>
+
+      {/* Hub strip — scrollable horizontal band below the main header.
+          Shows secondary hub pages that don't fit the primary nav.
+          Hidden on mobile when the hamburger menu is open (all hubs
+          are already listed there). Scrollable on narrow viewports. */}
+      {!open && (
+        <div className="border-b border-rule overflow-x-auto scrollbar-none shrink-0">
+          <nav
+            aria-label="Hub pages"
+            className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center h-8"
+          >
+            {HUB_NAV.map((item, i) => {
+              const active = item.match(pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "relative flex items-center h-full shrink-0 transition-colors whitespace-nowrap text-[12px] font-medium",
+                    i > 0 ? "ml-6" : "",
+                    active ? "text-ink" : "text-ink-muted hover:text-ink",
+                  ].join(" ")}
+                >
+                  {item.label}
+                  {active && (
+                    <span aria-hidden className="absolute inset-x-0 -bottom-px h-[2px] bg-accent" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </div>
   );
 }

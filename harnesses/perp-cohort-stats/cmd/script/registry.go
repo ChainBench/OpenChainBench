@@ -42,6 +42,10 @@ var Registry = []Venue{
 	{Slug: "variational", Name: "Variational", Type: "perp", Chain: "arbitrum"},
 	{Slug: "ostium", Name: "Ostium", Type: "perp", Chain: "arbitrum"},
 	{Slug: "polymarket", Name: "Polymarket", Type: "perp", Chain: "polygon"},
+	{Slug: "synfutures", Name: "SynFutures", Type: "perp", Chain: "base"},
+	{Slug: "kiloex", Name: "KiloEx", Type: "perp", Chain: "bnb"},
+	{Slug: "orderly", Name: "Orderly", Type: "perp", Chain: "arbitrum"},
+	{Slug: "backpack", Name: "Backpack", Type: "perp", Chain: "solana"},
 }
 
 // VenueBySlug returns the Venue with the given slug, or nil if not found.
