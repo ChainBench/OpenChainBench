@@ -170,6 +170,7 @@ const RAW: Record<string, string> = {
   suiet: "/logos/suiet.svg",
   // ─── Aptos providers (bench 212) ───
   aptoslabs: "/logos/aptoslabs.svg",
+  "aptos-fullnode": "/logos/aptoslabs.svg",
   nodereal: "/logos/nodereal.svg",
   // ─── XRP providers (bench 213) ───
   ripple: "/logos/ripple.svg",

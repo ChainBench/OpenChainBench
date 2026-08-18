@@ -2218,6 +2218,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Official Aptos Labs public mainnet node at api.mainnet.aptoslabs.com. No API key required; the canonical reference endpoint maintained by the Aptos Foundation and Aptos Labs.",
     twitter: "@AptosLabs",
   },
+  "aptos-fullnode": {
+    url: "https://aptoslabs.com",
+    description:
+      "Aptos Labs fullnode endpoint at fullnode.mainnet.aptoslabs.com. No API key required; a second publicly accessible REST endpoint maintained by Aptos Labs alongside the primary API node.",
+    twitter: "@AptosLabs",
+    parent: "aptoslabs",
+  },
   nodereal: {
     url: "https://nodereal.io",
     description:

@@ -4,7 +4,7 @@ slug: algorand-rpc
 number: "214"
 title: Fastest free Algorand RPC, live no-key endpoint latency
 seo_title: "Fastest free Algorand RPC 2026"
-seo_description: "{{best_name}} leads free Algorand RPC at {{best_p50}} (algod /v2/status last-round p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Algorand RPC at {{best_p50}} (algod /v2/status last-round p50, 24h). Measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Algorand algod status endpoint (last-round) against every free, no-key public Algorand node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Algorand is an L1 blockchain using a Pure Proof-of-Stake consensus (BA* Byzantine Agreement) that commits one round every roughly 3.5 seconds with immediate finality and no forks. Algorand nodes expose a REST algod API rather than JSON-RPC: GET /v2/status returns the current last-round (equivalent to block height). Free public API endpoints are available without a key from AlgoNode, Nodely and Ankr. Every provider was live-verified with consecutive keyless GET /v2/status probes at launch.
+  Algorand is an L1 blockchain using a Pure Proof-of-Stake consensus (BA* Byzantine Agreement) that commits one round every roughly 3.5 seconds with immediate finality and no forks. Algorand nodes expose a REST algod API rather than JSON-RPC: GET /v2/status returns the current last-round (equivalent to block height). The AlgoNode community endpoint is available free without a key. Every provider was live-verified with consecutive keyless GET /v2/status probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Algorand.
   We measure the round-trip latency of a single REST GET to /v2/status
   against every no-key public Algorand algod node that sustains
-  continuous probing: 3 providers at launch, every 60 seconds, from
+  continuous probing: 1 provider at launch, every 60 seconds, from
   us-east, eu-west and Singapore. The harness classifies every response
   (ok / http_err / stale / timeout) with an Algorand-scaled staleness
   gap (90 rounds, around 5 min). The cross-chain view lives on the parent
@@ -33,16 +33,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable last-round), http_err, stale (round more than 90 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=algorand. Provider coverage at launch: 3 no-key endpoints (AlgoNode, Nodely, Ankr)."
+  - "Chain scope: every query on this page is pinned to chain=algorand. Provider coverage at launch: 1 no-key endpoint (AlgoNode)."
 
 findings:
-  - "{{best_name}} currently leads free Algorand RPC at {{best_p50}} (algod /v2/status last-round p50, 24h) across 3 measured providers."
+  - "{{best_name}} currently leads free Algorand RPC at {{best_p50}} (algod /v2/status last-round p50, 24h)."
 
 faq:
   - q: "What is the fastest free Algorand RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Algorand algod /v2/status last-round p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (Algorand algod /v2/status last-round p50 over the last 24h), measured against keyless providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Algorand nodes work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: AlgoNode community node, Nodely (formerly AlgoExplorer by Randlabs) and Ankr. Every listed endpoint was live-verified with a GET /v2/status returning a parsable last-round before inclusion."
+    a: "AlgoNode is the primary community-operated endpoint that sustains continuous keyless probing. Every listed endpoint was live-verified with a GET /v2/status returning a parsable last-round before inclusion."
   - q: "Does the fastest Algorand RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Algorand RPC latency measured here, technically?"
@@ -86,49 +86,3 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="algonode", chain="algorand", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="algonode", chain="algorand", region="sgp"}[1h])
-
-  - slug: nodely
-    name: Nodely
-    tag: Nodely (formerly AlgoExplorer by Randlabs), professional Algorand infrastructure, free public tier
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v2/status sent every 60s from 3 regions to Nodely's Algorand endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodely", chain="algorand"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodely", chain="algorand"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodely", chain="algorand"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodely", chain="algorand"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodely", chain="algorand"}) / sum(ocb:rpc_call:rate_24h{provider="nodely", chain="algorand"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodely", chain="algorand"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodely", chain="algorand"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodely", chain="algorand", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodely", chain="algorand", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodely", chain="algorand", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodely", chain="algorand", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodely", chain="algorand", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodely", chain="algorand", region="sgp"}[1h])
-
-  - slug: ankr
-    name: Ankr
-    tag: Multi-cloud RPC provider, 50+ chains, public tier with no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v2/status sent every 60s from 3 regions to Ankr's Algorand endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="algorand"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="algorand"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="algorand"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="algorand"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="algorand"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="algorand"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="algorand"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="algorand"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="algorand", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="algorand", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="algorand", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="algorand", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="algorand", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="algorand", region="sgp"}[1h])

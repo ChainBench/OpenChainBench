@@ -4,7 +4,7 @@ slug: aptos-rpc
 number: "212"
 title: Fastest free Aptos RPC, live no-key endpoint latency
 seo_title: "Fastest free Aptos RPC 2026"
-seo_description: "{{best_name}} leads free Aptos RPC at {{best_p50}} (REST ledger block_height p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Aptos RPC at {{best_p50}} (REST ledger block_height p50, 24h). 2 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Aptos REST ledger endpoint (block_height) against every free, no-key public Aptos node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Aptos is a Move-based L1 blockchain targeting over 100,000 TPS via Block-STM parallel execution, producing roughly one block per second with sub-second finality. Unlike EVM chains, Aptos exposes a REST API rather than JSON-RPC: GET /v1/ returns the current ledger block_height as a decimal string. Free public API endpoints are available without a key from Aptos Labs, PublicNode, Ankr and NodeReal. Every provider was live-verified with consecutive keyless GET /v1/ probes at launch.
+  Aptos is a Move-based L1 blockchain targeting over 100,000 TPS via Block-STM parallel execution, producing roughly one block per second with sub-second finality. Unlike EVM chains, Aptos exposes a REST API rather than JSON-RPC: GET /v1/ returns the current ledger block_height as a decimal string. Free public API endpoints are available without a key from Aptos Labs (two endpoints). Every provider was live-verified with consecutive keyless GET /v1/ probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Aptos.
   We measure the round-trip latency of a single REST GET to /v1/ against
   every no-key public Aptos node that sustains continuous probing:
-  4 providers at launch, every 60 seconds, from us-east, eu-west and
+  2 providers at launch, every 60 seconds, from us-east, eu-west and
   Singapore. The harness classifies every response (ok / http_err /
   stale / timeout) with an Aptos-scaled staleness gap (300 blocks,
   around 5 min). The cross-chain view lives on the parent
@@ -33,16 +33,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable block_height), http_err, stale (block more than 300 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=aptos. Provider coverage at launch: 4 no-key endpoints (Aptos Labs, PublicNode, Ankr, NodeReal)."
+  - "Chain scope: every query on this page is pinned to chain=aptos. Provider coverage at launch: 2 no-key endpoints (Aptos Labs api, Aptos Labs fullnode)."
 
 findings:
-  - "{{best_name}} currently leads free Aptos RPC at {{best_p50}} (ledger block_height p50, 24h) across 4 measured providers."
+  - "{{best_name}} currently leads free Aptos RPC at {{best_p50}} (ledger block_height p50, 24h) across 2 measured providers."
 
 faq:
   - q: "What is the fastest free Aptos RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Aptos REST /v1/ block_height p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (Aptos REST /v1/ block_height p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Aptos nodes work without an API key?"
-    a: "4 endpoints sustain continuous keyless probing at launch: Aptos Labs official node, PublicNode, Ankr and NodeReal. Every listed endpoint was live-verified with a GET /v1/ returning a parsable block_height before inclusion."
+    a: "2 endpoints sustain continuous keyless probing at launch: the Aptos Labs official API node and the Aptos Labs fullnode endpoint. Every listed endpoint was live-verified with a GET /v1/ returning a parsable block_height before inclusion."
   - q: "Does the fastest Aptos RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Aptos RPC latency measured here, technically?"
@@ -87,71 +87,25 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptoslabs", chain="aptos", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="aptoslabs", chain="aptos", region="sgp"}[1h])
 
-  - slug: publicnode
-    name: PublicNode
-    tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to PublicNode's Aptos endpoint."
+  - slug: aptos-fullnode
+    name: Aptos Labs (Fullnode)
+    tag: Aptos Labs fullnode endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to the Aptos Labs fullnode endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="aptos"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="aptos"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="aptos"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="aptos"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="aptos"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="aptos"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="aptos"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="aptos"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptos-fullnode", chain="aptos"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="aptos-fullnode", chain="aptos"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="aptos-fullnode", chain="aptos"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="aptos-fullnode", chain="aptos"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="aptos-fullnode", chain="aptos"}) / sum(ocb:rpc_call:rate_24h{provider="aptos-fullnode", chain="aptos"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="aptos-fullnode", chain="aptos"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="aptos-fullnode", chain="aptos"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="aptos", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="aptos", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptos-fullnode", chain="aptos", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="aptos-fullnode", chain="aptos", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="aptos", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="aptos", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptos-fullnode", chain="aptos", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="aptos-fullnode", chain="aptos", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="aptos", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="aptos", region="sgp"}[1h])
-
-  - slug: ankr
-    name: Ankr
-    tag: Multi-cloud RPC provider, 50+ chains, public tier with no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to Ankr's Aptos endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="aptos"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="aptos"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="aptos"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="aptos"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="aptos"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="aptos"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="aptos"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="aptos"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="aptos", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="aptos", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="aptos", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="aptos", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="aptos", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="aptos", region="sgp"}[1h])
-
-  - slug: nodereal
-    name: NodeReal
-    tag: Enterprise-grade multi-chain infrastructure, public Aptos endpoint, no key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to NodeReal's Aptos endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodereal", chain="aptos"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodereal", chain="aptos"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodereal", chain="aptos"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodereal", chain="aptos"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodereal", chain="aptos"}) / sum(ocb:rpc_call:rate_24h{provider="nodereal", chain="aptos"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodereal", chain="aptos"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodereal", chain="aptos"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodereal", chain="aptos", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodereal", chain="aptos", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodereal", chain="aptos", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodereal", chain="aptos", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodereal", chain="aptos", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodereal", chain="aptos", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptos-fullnode", chain="aptos", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="aptos-fullnode", chain="aptos", region="sgp"}[1h])
