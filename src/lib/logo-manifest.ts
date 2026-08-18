@@ -164,6 +164,22 @@ const RAW: Record<string, string> = {
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.png",
+  // ─── Sui providers (bench 211) ───
+  fullnode: "/logos/mysten.svg",
+  blockvision: "/logos/blockvision.svg",
+  suiet: "/logos/suiet.svg",
+  // ─── Aptos providers (bench 212) ───
+  aptoslabs: "/logos/aptoslabs.svg",
+  nodereal: "/logos/nodereal.svg",
+  // ─── XRP providers (bench 213) ───
+  ripple: "/logos/ripple.svg",
+  "xrpl-labs": "/logos/xrpl-labs.svg",
+  // ─── Algorand providers (bench 214) ───
+  algonode: "/logos/algonode.svg",
+  nodely: "/logos/nodely.svg",
+  // ─── Gram/TON providers (bench 215) ───
+  toncenter: "/logos/toncenter.svg",
+  nownodes: "/logos/nownodes.svg",
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
   chainstack: "/logos/chainstack.svg",
