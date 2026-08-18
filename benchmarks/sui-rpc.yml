@@ -1,0 +1,181 @@
+# OpenChainBench. Bench No 211
+
+slug: sui-rpc
+number: "211"
+title: Fastest free Sui RPC, live no-key endpoint latency
+seo_title: "Fastest free Sui RPC 2026"
+seo_description: "{{best_name}} leads free Sui RPC at {{best_p50}} (sui_getLatestCheckpointSequenceNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for sui_getLatestCheckpointSequenceNumber against every free, no-key public Sui RPC endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Sui is a Move-based L1 blockchain using the Mysticeti DAG-BFT consensus protocol, producing checkpoints every roughly 3 seconds with deterministic sub-second finality. Free public RPC endpoints are available without an API key from Mysten Labs, PublicNode, BlockVision, Suiet and OnFinality. Every provider was live-verified with consecutive keyless sui_getLatestCheckpointSequenceNumber probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Sui.
+  We measure the round-trip latency of a single, identical JSON-RPC call
+  (sui_getLatestCheckpointSequenceNumber) against every no-key public Sui
+  endpoint that sustains continuous probing: 5 providers at launch,
+  every 60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) with a Sui-scaled staleness gap (100 checkpoints, around 5 min).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Sui-scoped answer with per-region breakdowns as a
+  first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"sui_getLatestCheckpointSequenceNumber\",\"params\":[]}. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + non-empty result with a parsable checkpoint sequence number), http_err, jsonrpc_err (HTTP 200 carrying an error body), stale (checkpoint more than 100 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=sui. Provider coverage at launch: 5 no-key endpoints (Mysten Labs, PublicNode, BlockVision, Suiet, OnFinality)."
+
+findings:
+  - "{{best_name}} currently leads free Sui RPC at {{best_p50}} (sui_getLatestCheckpointSequenceNumber p50, 24h) across 5 measured providers."
+
+faq:
+  - q: "What is the fastest free Sui RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (sui_getLatestCheckpointSequenceNumber p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Sui RPCs work without an API key?"
+    a: "5 endpoints sustain continuous keyless probing at launch: Mysten Labs fullnode, PublicNode, BlockVision, Suiet and OnFinality. Every listed endpoint was live-verified with a sui_getLatestCheckpointSequenceNumber POST returning a parsable checkpoint number before inclusion."
+  - q: "Does the fastest Sui RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Sui RPC latency measured here, technically?"
+    a: "One identical sui_getLatestCheckpointSequenceNumber POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="sui"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: fullnode
+    name: Mysten Labs
+    tag: Official Mysten Labs public Sui fullnode, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to the Mysten Labs fullnode."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="fullnode", chain="sui"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="fullnode", chain="sui"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="fullnode", chain="sui"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="fullnode", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="fullnode", chain="sui"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="fullnode", chain="sui"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to PublicNode's Sui endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sui"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="sui"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="sui"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="sui"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="sui"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="sui"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sui"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sui", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sui", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sui", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sui", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sui", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sui", region="sgp"}[1h])
+
+  - slug: blockvision
+    name: BlockVision
+    tag: High-throughput Sui mainnet RPC by BlockVision, public endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to BlockVision's Sui endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvision", chain="sui"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockvision", chain="sui"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockvision", chain="sui"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockvision", chain="sui"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockvision", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="blockvision", chain="sui"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockvision", chain="sui"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockvision", chain="sui"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvision", chain="sui", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvision", chain="sui", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvision", chain="sui", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvision", chain="sui", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvision", chain="sui", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvision", chain="sui", region="sgp"}[1h])
+
+  - slug: suiet
+    name: Suiet
+    tag: Suiet wallet-operated public Sui RPC, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to Suiet's Sui endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="suiet", chain="sui"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="suiet", chain="sui"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="suiet", chain="sui"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="suiet", chain="sui"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="suiet", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="suiet", chain="sui"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="suiet", chain="sui"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="suiet", chain="sui"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="suiet", chain="sui", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="suiet", chain="sui", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="suiet", chain="sui", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="suiet", chain="sui", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="suiet", chain="sui", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="suiet", chain="sui", region="sgp"}[1h])
+
+  - slug: onfinality
+    name: OnFinality
+    tag: Global multi-chain gateway, 70+ networks, rate-limited public tier, 5 req/sec
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to OnFinality's Sui endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="sui"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="sui"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="sui"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="sui"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="sui"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="sui"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="sui"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="sui", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="sui", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="sui", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="sui", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="sui", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="sui", region="sgp"}[1h])

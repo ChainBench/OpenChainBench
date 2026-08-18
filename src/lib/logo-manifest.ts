@@ -27,6 +27,7 @@ const RAW: Record<string, string> = {
   litecoin: "/logos/litecoin.png",
   monero: "/logos/monero.png",
   xrp: "/logos/xrp.jpg",
+  algorand: "/logos/algorand.svg",
 
   // ─── EVM L2s & sidechains ───
   base: "/logos/base.jpeg",
