@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#5856D6"/>
-  <text x="32" y="42" font-family="system-ui,sans-serif" font-size="20" font-weight="700" fill="#fff" text-anchor="middle">TAT</text>
+<svg width="64" height="64" viewBox="0 0 270 270" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="270" height="270" fill="#fff"/>
+  <g transform="translate(0,30)">
+    <path d="M185.47 89.37H120.09V209.51H185.47V89.37Z" fill="#4F37FD"/>
+    <path d="M269.54 0H149.39V60.07H269.54V0Z" fill="#2CCD9A"/>
+    <path d="M120.09 29.29H0V89.37H120.09V29.29Z" fill="#4F37FD"/>
+  </g>
 </svg>
