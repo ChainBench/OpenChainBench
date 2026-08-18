@@ -7,7 +7,7 @@ period: "August 2026"
 summary: "Four independent benchmarks across quote latency, effective fees, and cross-chain messaging protocols reveal a market split along architectural lines. Intent layers quote faster and cost less on liquid corridors. Messaging networks differ by up to 15 minutes on the same Ethereum source lane depending on whether they wait for finality. No single bridge leads across all measured dimensions."
 heroFinding: "Intent layers return a usable bridge quote in under 100 ms. The same layers take the same 15 to 60 seconds to settle as every other bridge once the transaction is signed. Speed in the API and speed in the settlement are entirely decoupled."
 author: "OpenChainBench Research"
-readingTime: 16
+readingTime: 18
 canonical: "https://openchainbench.com/reports/bridge/2026-08-state-of-cross-chain-bridges"
 ---
 
@@ -16,16 +16,16 @@ Four live benchmarks across quote APIs, effective fees, and cross-chain messagin
 
 No single provider leads quote speed, fee efficiency, and messaging latency simultaneously. The market is structurally split by architecture.
 
-Quote latency spans from under 100 ms (intent layers) to over 2 seconds (route-searching aggregators) on identical USDC corridors probed from 3 geographic regions.
+Quote latency spans from under 100 ms (intent layers) to over 2 seconds (route-searching aggregators) on identical USDC corridors probed from 3 geographic regions. The ranking shifts by corridor: a provider that leads Sol to Base can trail on Base to Arb.
 
-Effective fee is not the same as the advertised fee. Total cost (fees plus slippage plus destination gas) at $300 notional is the figure that actually leaves a user's wallet. The gap between intent layers and aggregators widens at small notionals and compresses above $1,000.
+Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The gap between intent layers and aggregators widens at small notionals.
 
 Cross-chain messaging networks (LayerZero, Wormhole, Chainlink CCIP, Axelar) differ by a structural finality tax that a source chain choice imposes. Ethereum-source CCIP lanes average 12 to 15 minutes. BNB-source LayerZero delivers in single-digit seconds. Same protocol, 100x difference, entirely driven by source-chain finality.
 
-Regional geography matters for quote latency but not for settlement time. A Singapore-based probe sees meaningfully different quote API rankings than a US-East probe. Settlement time is determined by the destination chain, not by where the API request originated.
+Regional geography matters for quote latency but not for settlement time.
 </Summary>
 
-<TOC sections="Methodology|Two Layers of Cross-Chain Performance|Bridge Quote API Speed|The Architecture Divide|Regional Geography of Bridge APIs|The True Cost of Bridging|The Finality Tax: Messaging Protocol Latency by Source Chain|LayerZero: Pre-Finality DVN Architecture|Wormhole: Guardian Quorum and Source-Chain Floors|Chainlink CCIP: Safety Before Speed|Axelar: Cosmos Validator Quorum|Decision Framework|Conclusion|Sources" />
+<TOC sections="Methodology|Two Layers of Cross-Chain Performance|Bridge Quote API Speed: Cross-Corridor Aggregate|Per-Corridor Breakdown|Regional Quote Latency|The Architecture Divide|The True Cost of Bridging|Cost by Corridor|The Finality Tax: Messaging Protocol Latency by Source Chain|LayerZero: Pre-Finality DVN Architecture|Wormhole: Guardian Quorum and Source-Chain Floors|Chainlink CCIP: Safety Before Speed|Axelar: Cosmos Validator Quorum|Decision Framework|Conclusion|Sources" />
 
 ## Methodology
 
@@ -33,11 +33,11 @@ Every number in this report is derived from OpenChainBench's live Prometheus ins
 
 The [bridge-quote-latency](/benchmarks/bridge-quote-latency) harness issues identical USDC quote requests against 8 bridge APIs every 5 minutes from 3 geographic regions (EU-West, US-East, Singapore), across 4 corridors (Sol to Base, Base to Arb, Arb to Sol, Arb to HyperCore) and 3 notional sizes ($5, $50, $300). Latency is wall-clock milliseconds from request dispatch to last byte received. Failed quotes are excluded from the latency histogram and counted toward a separate success rate metric.
 
-The [bridge-fee](/benchmarks/bridge-fee) harness records total cost as a percentage of notional, defined as quoted USD in minus quoted USD delivered, all-in (fees plus slippage plus destination gas). This definition prevents providers that bake cost into a spread from appearing to cost 0% on an explicit-fee-only view.
+The [bridge-fee](/benchmarks/bridge-fee) harness records total cost as a percentage of notional — quoted USD in minus quoted USD delivered, all-in (fees plus slippage plus destination gas). This definition prevents providers that bake cost into a spread from appearing at 0% on explicit-fee-only comparisons.
 
-The [layerzero-message-latency](/benchmarks/layerzero-message-latency), [wormhole-vaa-latency](/benchmarks/wormhole-vaa-latency), [chainlink-ccip-latency](/benchmarks/chainlink-ccip-latency), and [axelar-gmp-latency](/benchmarks/axelar-gmp-latency) harnesses observe real user traffic from public scan APIs. No canary transactions are sent and no gas is paid. Each harness records the wall-clock delta between source-chain transaction timestamp and destination-chain execution (or, for Wormhole, Guardian signing quorum). p50/p90/p99 are computed via Prometheus `histogram_quantile` over a rolling 24-hour window.
+The [layerzero-message-latency](/benchmarks/layerzero-message-latency), [wormhole-vaa-latency](/benchmarks/wormhole-vaa-latency), [chainlink-ccip-latency](/benchmarks/chainlink-ccip-latency), and [axelar-gmp-latency](/benchmarks/axelar-gmp-latency) harnesses observe real user traffic from public scan APIs. No canary transactions are sent and no gas is paid. p50/p90/p99 computed via Prometheus `histogram_quantile` over a rolling 24-hour window.
 
-All harness source code is open at [github.com/ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses). Every figure on this page is reproducible by querying the Prometheus endpoint directly.
+All harness source code is open at [github.com/ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses).
 
 ## Two Layers of Cross-Chain Performance
 
@@ -45,143 +45,187 @@ The phrase "bridge speed" conflates two things that have almost no relationship 
 
 The first layer is **API quote latency**: how fast the bridge returns a price, a route, and an estimated output amount. This is what a wallet integration feels in its loading spinner. It is measured in milliseconds and is entirely determined by the bridge's server architecture.
 
-The second layer is **settlement latency**: how long funds take to arrive on the destination chain after the user signs. This is what the user waits for. It is measured in seconds to minutes and is determined by the source chain's finality model, the bridge's validation mechanism, and the destination chain's block time.
+The second layer is **settlement latency**: how long funds take to arrive on the destination chain after the user signs. This is measured in seconds to minutes and is determined by the source chain's finality model, the bridge's validation mechanism, and the destination chain's block time.
 
-<Mark>These two numbers are structurally independent. The fastest quote API in this cohort and the slowest quote API in this cohort produce settlements in nearly the same time window once the transaction is signed.</Mark>
+<Mark>These two numbers are structurally independent. The fastest quote API in this cohort and the slowest produce settlements in nearly the same time window once the transaction is signed.</Mark>
 
-Every "fastest bridge" article on the web picks one of these two dimensions and ignores the other. The result is rankings that are both true and misleading. This report benchmarks both separately.
+Every "fastest bridge" article on the web picks one of these two dimensions and ignores the other. This report benchmarks both separately.
 
-## Bridge Quote API Speed
+## Bridge Quote API Speed: Cross-Corridor Aggregate
 
-<StatTable bench="bridge-quote-latency" caption="Bridge quote API latency (p50, 24 h) across 8 providers. Identical USDC routes, identical notionals, probed every 5 minutes from 3 regions. Lower is better." />
+<StatTable bench="bridge-quote-latency" caption="Bridge quote API latency (p50, 24 h) — cross-corridor aggregate across all 4 USDC routes and 3 regions. Identical notional ($300), probed every 5 minutes. Lower is better." />
 
-The leaderboard splits cleanly along architectural lines. Intent layers and relay networks return quotes in tens of milliseconds because the API call is a thin price-discovery query against a pool of pre-positioned solvers. Route-searching aggregators return quotes in hundreds of milliseconds to over a second because each request triggers a graph traversal across their integrated bridge set to find the best output.
+The leaderboard splits cleanly along architectural lines. Intent layers and relay networks return quotes in tens of milliseconds because the API call is a thin price-discovery query against a pool of pre-positioned solvers. Route-searching aggregators return quotes in hundreds of milliseconds to over a second because each request triggers a graph traversal across their integrated bridge set.
 
-<Mark>The fastest providers in this cohort quote 8 to 20 times faster than the slowest.</Mark> At p50, that gap is between a nearly-invisible API call and a clearly-perceptible loading state.
+<Mark>The fastest providers in this cohort quote 8 to 20 times faster than the slowest.</Mark> Tail latency deserves its own reading: p99 is what dictates timeout policies in production wallets. A bridge with a 90 ms p50 and a 3,500 ms p99 means one in a hundred quote requests will sit at the three-second spinner threshold under load.
 
-Tail latency deserves its own reading. p99 is what dictates timeout policies in production wallets. A bridge with a 90 ms p50 and a 3,500 ms p99 means that one in a hundred quote requests — the worst seconds, under load, on a bad corridor — will sit at the three-second spinner threshold. SDK integrations that wait for the slowest bridge in a parallelized multi-bridge query degrade the whole UX when one provider has a bad minute.
+## Per-Corridor Breakdown
 
-### Why intent layers are structurally faster
+The aggregate above averages across all four corridors. That average conceals real differences: solver inventory, destination gas, and routing depth vary sharply by route. The four tables below isolate each corridor.
 
-Intent-based bridges (Relay, Across, Near Intents) and aggregator-intent hybrids (Mobula) are faster at the quote step because the API does not solve the routing problem per request. Solvers maintain pre-staged inventory on both legs of common corridors. A quote request resolves to the best solver offer available on that corridor at that moment, which is a price lookup, not a route computation.
+### Sol to Base
 
-Aggregators (LI.FI, Squid, Socket) do more work per quote call: they enumerate available routes across their integrated bridge set, apply fee normalization, filter by output amount, and rank by output or speed. That work is irreducible. <Mark>An aggregator that covers 30+ underlying bridges will always trade latency for route breadth.</Mark> The correct frame is not that aggregators are slower because of inferior engineering; they are slower because they are solving a harder problem per request.
+<StatTable bench="bridge-quote-latency" chain="Base" caption="Quote latency for the Solana → Base corridor (p50, 24 h). Providers without Solana support are absent from this table. Lower is better." />
 
-## The Architecture Divide
+Solana-origin routes require providers to maintain Solana-aware quoting logic, which narrows the field. Providers absent here return `unsupported` on this corridor and are excluded from the latency aggregate rather than penalised. The success rate column surfaces who is quoting reliably versus occasionally failing on this route.
 
-Three pricing architectures coexist in this benchmark and they do not compete on equal terms:
+### Base to Arbitrum
 
-**Direct protocols** (deBridge) charge a native-token fee declared upfront in the quote. The latency reflects raw API plumbing against a single canonical route. Quote speed is fast. Route optionality is absent by design.
+<StatTable bench="bridge-quote-latency" chain="Arbitrum" caption="Quote latency for the Base → Arbitrum corridor (p50, 24 h). Pure EVM hop, largest competitive field. Lower is better." />
 
-**Aggregators** (LI.FI, Squid, Socket) route through whichever underlying bridge is cheapest or fastest at quote time. Their latency reflects route-search complexity. Their cost reflects the underlying bridge's fee plus a thin aggregator markup. The value proposition is coverage and route optimization, not speed.
+Base to Arbitrum is the most contested corridor: a same-ecosystem EVM hop with mature liquidity on both sides. Intent layers that pre-stage USDC inventory between Base and Arbitrum quote near-instantly; aggregators enumerate routes through Stargate, CCTP, and Across. <Mark>This is the corridor where the intent-vs-aggregator latency gap is most pronounced.</Mark>
 
-**Intent and relay layers** (Mobula, Relay, Across, Near Intents) bake cost into a spread on a settlement intent or optimistic fill. The API is a price-discovery layer. The actual bridge mechanism is a solver who fills the intent and later claims reimbursement. <Mark>Quote latency and fee structure are both determined by solver competition, not by a fixed fee schedule.</Mark>
+### Arb to Solana
 
-The architectural type predicts both quote latency and fee dynamics more reliably than any other variable in this dataset.
+<StatTable bench="bridge-quote-latency" chain="Solana" caption="Quote latency for the Arbitrum → Solana corridor (p50, 24 h). Cross-VM route, thinner provider coverage. Lower is better." />
 
-## Regional Geography of Bridge APIs
+Arbitrum to Solana is the cross-VM route with the thinnest coverage. Several EVM-only aggregators return `unsupported` here. Of the providers that do quote, Near Intents shows a bimodal distribution on this corridor: solver-cached routes return in under 30 ms while uncached routes wait the full 3-second solver auction window, producing a wide spread between p50 and p99.
+
+### Arb to HyperCore
+
+<StatTable bench="bridge-quote-latency" chain="HyperCore" caption="Quote latency for the Arbitrum → HyperCore corridor (p50, 24 h). Newest corridor, thinnest solver pool. Lower is better." />
+
+HyperCore is the newest destination in the harness. Solver inventory is thinner here than on established EVM corridors and the quote latency distribution is wider as a result. <Mark>Providers that lead on Base to Arbitrum do not necessarily lead here.</Mark> Monitor the success rate column closely on this corridor: a low rate signals sparse solver coverage rather than API infrastructure failure.
+
+## Regional Quote Latency
+
+Geographic proximity to the bridge API's origin servers predicts quote latency in ways that matter for production integrations. The same provider can rank differently in EU-West versus Singapore, reflecting where each team has deployed API infrastructure.
+
+### EU-West
+
+<StatTable bench="bridge-quote-latency" region="eu-west" caption="Quote latency from EU-West probe (p50, 24 h), cross-corridor aggregate. Reflects API latency for European backends. Lower is better." />
+
+### US-East
+
+<StatTable bench="bridge-quote-latency" region="us-east" caption="Quote latency from US-East probe (p50, 24 h), cross-corridor aggregate. Most providers have primary infrastructure in this region. Lower is better." />
+
+### Singapore
+
+<StatTable bench="bridge-quote-latency" region="sgp" caption="Quote latency from Singapore probe (p50, 24 h), cross-corridor aggregate. Reflects API latency for Asian backends. Lower is better." />
+
+US-East is where most bridge APIs have their primary infrastructure; providers with no Asian PoP carry a visible penalty in the Singapore table. The cross-regional summary below shows which providers hold their rank globally and which degrade as geographic distance grows.
 
 <RegionWinners bench="bridge-quote-latency" />
 
-Geographic proximity to the bridge API's origin servers predicts quote latency in ways that matter for production integrations. The same provider can rank differently in EU-West versus Singapore, reflecting where the company has deployed API infrastructure.
-
-The practical implication: if your wallet backend is in Singapore and your bridge integration is selected based on a US benchmark, you may be routing users through a provider whose Asia latency is materially worse than its headline figure. The [bridge-quote-latency](/benchmarks/bridge-quote-latency) bench exposes per-region breakdowns queryable via `?region=eu-west|us-east|sgp`.
-
 Settlement time, once the transaction is signed, does not vary by region of API request. The source chain and destination chain determine settlement; the geographic location of the HTTP client does not.
+
+## The Architecture Divide
+
+Three pricing architectures coexist in this benchmark:
+
+**Direct protocols** (deBridge) charge a native-token fee declared upfront in the quote. Quote speed is fast. Route optionality is absent by design.
+
+**Aggregators** (LI.FI, Squid, Socket) route through whichever underlying bridge is cheapest or fastest at quote time. Their latency reflects route-search complexity. The value proposition is coverage and route optimization, not speed.
+
+**Intent and relay layers** (Mobula, Relay, Across, Near Intents) bake cost into a spread on a settlement intent or optimistic fill. <Mark>Quote latency and fee structure are both determined by solver competition, not a fixed fee schedule.</Mark>
+
+The architectural type predicts both quote latency and fee dynamics more reliably than any other variable in this dataset. An aggregator that covers 30+ underlying bridges will always trade latency for route breadth. That is not an engineering deficit — it is a harder problem solved per request.
 
 ## The True Cost of Bridging
 
-<StatTable bench="bridge-fee" caption="Effective bridge fee at $300 USDC notional (p50, 24 h). Total cost includes fees, slippage, and destination gas. Lower is better. Measured across Sol to Base, Base to Arb, Arb to Sol, and Arb to HyperCore corridors." />
+The cost figure that matters is not the fee field in a bridge's quote object. It is quoted USD in minus quoted USD delivered. Providers that bake cost into a spread appear at 0% on explicit-fee-only comparisons. This benchmark records `bridge_cost_percent`, the all-in number, so spread-based and fee-based pricing land on the same axis.
 
-The cost figure that matters is not the fee field in a bridge's quote object. It is quoted USD in minus quoted USD delivered. Providers that bake cost into a spread rather than declaring an explicit fee appear to cost 0% on explicit-fee-only comparisons, which is how most bridge leaderboards are built. This benchmark records `bridge_cost_percent`, the all-in number, so spread-based and fee-based pricing are on the same axis.
+<StatTable bench="bridge-fee" caption="Effective bridge fee at $300 USDC notional (p50, 24 h) — cross-corridor aggregate. Includes fees, slippage, and destination gas. Lower is better." />
 
-At $300 notional, fixed costs (destination gas, base protocol fee) dominate the percentage. A bridge that charges $2 in destination gas on a $300 transfer is already at 0.67% before any spread or protocol fee. The same $2 charge on a $3,000 transfer is 0.07%. <Mark>Published bridge fee tables at $10,000 notional systematically understate what retail users pay at $300.</Mark>
+At $300 notional, fixed costs (destination gas, base protocol fee) dominate the percentage. A bridge charging $2 in destination gas on a $300 transfer is already at 0.67% before any spread or protocol fee. <Mark>Published bridge fee tables at $10,000 notional systematically understate what retail users pay at $300.</Mark>
 
-The corridor matters as much as the provider. Per-corridor effective costs diverge sharply from the aggregate because solver inventory and destination gas prices vary by destination chain. A provider that leads the aggregate cost ranking can trail on a specific corridor where it has thin solver inventory or no competitive quote. The [bridge-fee](/benchmarks/bridge-fee) bench exposes the full per-corridor view with the chain dimension selector.
+## Cost by Corridor
 
-### Cost dynamics across notional sizes
+Effective cost diverges sharply by corridor because solver inventory and destination gas prices vary by chain. The aggregate above is honest — every provider is queried on the same 4 routes — but the per-corridor view reveals where each provider is structurally cheap and where it is not.
 
-The leaderboard re-orders as notional increases. Intent layers lead at small sizes ($5, $50, $300) because their spread-based pricing scales with notional while fixed costs stay flat. At larger notionals, the fixed-fee component of direct protocols dilutes, and the ranking compresses. The $300 figures in this report are the most relevant for the modal real-world bridge transfer; aggregators and intent layers converge at higher notionals where route optimization matters more than spread efficiency.
+### Sol to Base — Effective Fee
+
+<StatTable bench="bridge-fee" chain="Base" caption="Effective fee for Sol → Base at $300 USDC (p50, 24 h). Includes all costs. Lower is better." />
+
+### Base to Arbitrum — Effective Fee
+
+<StatTable bench="bridge-fee" chain="Arbitrum" caption="Effective fee for Base → Arb at $300 USDC (p50, 24 h). Deepest solver competition, tightest spreads. Lower is better." />
+
+Base to Arbitrum is the liquid EVM corridor where solver competition is strongest. <Mark>The gap between the cheapest and most expensive provider is smallest here</Mark> and narrows further at larger notionals where fixed fees dilute into the percentage.
+
+### Arb to Solana — Effective Fee
+
+<StatTable bench="bridge-fee" chain="Solana" caption="Effective fee for Arb → Sol at $300 USDC (p50, 24 h). Cross-VM route, wider spreads. Lower is better." />
+
+Cross-VM corridors carry higher effective fees because settlement requires a cross-ecosystem liquidity layer. Solvers hold inventory on both sides but at a premium to compensate for the capital inefficiency of bridging across virtual machine boundaries.
+
+### Arb to HyperCore — Effective Fee
+
+<StatTable bench="bridge-fee" chain="HyperCore" caption="Effective fee for Arb → HyperCore at $300 USDC (p50, 24 h). Newest corridor, widest spreads. Lower is better." />
+
+HyperCore is the newest corridor in the bench. Thin solver competition produces the widest effective fees of any route in this dataset. As solver inventory deepens, this table will compress toward the EVM-to-EVM spreads.
 
 ## The Finality Tax: Messaging Protocol Latency by Source Chain
 
-The second half of this report covers cross-chain messaging protocols: networks that carry arbitrary messages (or token transfers built on those messages) between chains. LayerZero, Wormhole, Chainlink CCIP, and Axelar each operate differently, but all four face the same constraint: <Mark>they must wait for the source chain to finalize before safely signing an attestation that a message was sent.</Mark> The source chain's finality model is the floor on end-to-end delivery time.
+The second half of this report covers cross-chain messaging protocols. LayerZero, Wormhole, Chainlink CCIP, and Axelar each operate differently, but all four face the same constraint: <Mark>they must wait for the source chain to finalize before safely signing an attestation that a message was sent.</Mark>
 
-This creates what this report calls the finality tax. Choosing Ethereum as a source chain imposes a ~12 to 15 minute finality wait on every CCIP delivery. Choosing BNB Chain imposes a 3-second block time. Same message, same destination, different source: the difference is 200x on p50 latency.
+This creates the finality tax. Choosing Ethereum as a source chain imposes a 12 to 15 minute finality wait on every CCIP delivery. Choosing BNB Chain imposes a 3-second block time. Same message, same destination, different source: the difference is 200x at p50.
 
 ## LayerZero: Pre-Finality DVN Architecture
 
-<StatTable bench="layerzero-message-latency" caption="LayerZero end-to-end message delivery latency by source chain (p50, 24 h). Source-tx block timestamp to destination-tx execution. Observed on real user traffic, not canary transactions. Lower is better." />
+<StatTable bench="layerzero-message-latency" caption="LayerZero end-to-end message delivery latency by source chain (p50, 24 h). Source-tx to destination-tx execution. Real user traffic, not canary transactions. Lower is better." />
 
-LayerZero's DVN (Decentralized Verifier Network) architecture is application-configurable: each app selects which DVNs must sign and which Executor delivers. The default configuration used by most applications (including Stargate) signs pre-finality, meaning Guardians attest a message as soon as the source block is observed, without waiting for Casper FFG or equivalent chain-level finality.
+LayerZero's DVN (Decentralized Verifier Network) architecture signs pre-finality by default: attestations are issued as soon as the source block is observed, without waiting for Casper FFG or equivalent chain-level finality. This makes LayerZero the fastest messaging network in this benchmark on Ethereum-source lanes.
 
-This design choice makes LayerZero the fastest messaging network in this benchmark on Ethereum-source lanes. A pre-finality attestation can reduce ETH-source delivery to under 2 minutes versus CCIP's 12 to 15 minutes. <Mark>The security trade-off is explicit: pre-finality signing means the DVN could attest a message that is later re-orged out of the source chain.</Mark> For most application-layer use cases at current Ethereum re-org rates, this risk is acceptable; for high-value settlements, CCIP's finality-first model is the more conservative choice.
+<Mark>The security trade-off is explicit: pre-finality signing means the DVN could attest a message that is later re-orged out of the source chain.</Mark> For most application-layer use cases at current Ethereum re-org rates, this risk is acceptable. For high-value settlements, CCIP's finality-first model is the more conservative choice.
 
-BNB Chain and Solana lead LayerZero delivery because their source blocks finalize (or reach sufficient confidence) in sub-second to low-second windows. DVN verification and Executor delivery then dominate the remaining latency, typically adding 5 to 15 seconds on top. Ethereum-source lanes inherit the block-time floor before DVN work even begins.
+BNB Chain and Solana lead LayerZero delivery because their source blocks finalize in sub-second to low-second windows. DVN verification and Executor delivery then dominate, adding typically 5 to 15 seconds. Ethereum-source lanes inherit the ~12s block-time floor before DVN work begins.
 
 ## Wormhole: Guardian Quorum and Source-Chain Floors
 
-<StatTable bench="wormhole-vaa-latency" caption="Wormhole VAA finalization latency by source chain (p50, 24 h). Source-tx observation to Guardian signing quorum (13 of 19 Guardians). Observed on real user traffic. Lower is better." />
+<StatTable bench="wormhole-vaa-latency" caption="Wormhole VAA finalization latency by source chain (p50, 24 h). Source-tx observation to Guardian signing quorum (13 of 19). Real user traffic. Lower is better." />
 
-Wormhole's Guardian network (19 nodes, 13-of-19 quorum) observes each source chain and signs a VAA once the source block reaches the chain's own finality threshold. Unlike LayerZero, Wormhole Guardians wait for finality before attesting. The finality latency by chain maps almost exactly to VAA availability:
+Wormhole Guardians (19 nodes, 13-of-19 quorum) wait for finality before attesting. The finality latency by chain maps almost exactly to VAA availability: Sui and BNB with sub-second BFT finality produce VAAs in 5 to 10 seconds; Solana's 32-slot finalized commitment floors Solana-source VAAs at 15 to 25 seconds; Ethereum-source inherits the Casper FFG two-epoch wait.
 
-Sui and BNB Chain with sub-second BFT finality produce VAAs in 5 to 10 seconds, dominated by Guardian signing round-trip. Solana's 32-slot finalized commitment (~13 seconds) floors Solana-source VAAs at 15 to 25 seconds. Ethereum-source VAAs inherit the Casper FFG two-epoch wait.
-
-<Mark>Wormhole VAA availability is a direct function of source-chain finality. Choosing the source chain for a Wormhole integration is choosing a finality latency floor.</Mark> The network adds roughly 5 to 10 seconds of overhead above that floor for Guardian signing and wormholescan indexing.
-
-This benchmark measures VAA availability, not destination delivery. Once a VAA reaches quorum, any relayer can submit it to any destination chain. Destination-side delivery time is caller-driven and outside scope.
+<Mark>Wormhole VAA availability is a direct function of source-chain finality.</Mark> The network adds roughly 5 to 10 seconds of overhead above that floor for Guardian signing and wormholescan indexing. Once a VAA reaches quorum, any relayer can deliver it to any destination chain.
 
 ## Chainlink CCIP: Safety Before Speed
 
-<StatTable bench="chainlink-ccip-latency" caption="Chainlink CCIP end-to-end delivery latency by source chain (p50, 24 h). Source-tx timestamp to destination-tx execution. SUCCESS messages only. Lower is better." />
+<StatTable bench="chainlink-ccip-latency" caption="Chainlink CCIP end-to-end delivery latency by source chain (p50, 24 h). Source-tx to destination-tx execution. SUCCESS messages only. Lower is better." />
 
-CCIP's DON (Decentralized Oracle Network) commits a merkle root only after source-chain finality is confirmed. This is the strongest safety guarantee among the four messaging networks in this benchmark: a CCIP delivery is only possible after the source-chain block it references has reached economic finality, so the message cannot be invalidated by a re-org.
+CCIP's DON commits a merkle root only after source-chain finality is confirmed — the strongest safety guarantee among the four networks. A delivery is only possible after the source block has reached economic finality, so the message cannot be invalidated by a re-org.
 
-The consequence is structural latency on Ethereum-source lanes. <Mark>Ethereum-source CCIP deliveries routinely take 12 to 15 minutes at p50.</Mark> This is not a CCIP performance failure; it is Ethereum's finality model expressed as a delivery time. L2s that inherit Ethereum finality (Arbitrum, Optimism) show similar floors because CCIP waits for L1 finality before committing their messages. Sub-second BFT source chains (BNB, Solana, Avalanche) allow CCIP to commit within minutes rather than quarters of an hour.
-
-The CCIP trade-off is explicit in Chainlink's positioning: CCIP is built for high-value, security-critical transfers (DeFi protocols, institutional asset bridges) where a 12-minute delivery is acceptable given the finality guarantee. It is not optimized for low-latency consumer applications. The source chain selection guide is therefore simple: <Mark>use BNB or Avalanche as the source chain if CCIP delivery latency matters for your use case.</Mark>
+<Mark>Ethereum-source CCIP deliveries routinely take 12 to 15 minutes at p50.</Mark> L2s that inherit Ethereum finality (Arbitrum, Optimism) show similar floors. Sub-second BFT source chains (BNB, Solana, Avalanche) allow CCIP to commit within minutes. The source chain selection guide is simple: use BNB or Avalanche as source chain if CCIP delivery latency matters for your use case.
 
 ## Axelar: Cosmos Validator Quorum
 
 <StatTable bench="axelar-gmp-latency" caption="Axelar GMP end-to-end delivery latency by source chain (p50, 24 h). Source-tx to destination execution. Measured via AxelarScan API on real traffic. Lower is better." />
 
-Axelar processes cross-chain messages through its own Cosmos-SDK chain: source-chain validators observe the message, a quorum of Axelar validators confirms it, and a gateway contract on the destination chain executes it. The Axelar chain itself has a 6-second block time, which floors all per-stage latencies at 6-second increments.
+Axelar processes messages through its own Cosmos-SDK chain: source-chain validators observe the message, an Axelar validator quorum confirms it, and a gateway contract on the destination executes it. The Axelar chain has a 6-second block time, which floors all per-stage latencies at 6-second increments.
 
-The two latency stages AxelarScan exposes are `call_confirm` (source tx to Axelar validator quorum) and `total` (source tx to destination execution). The gap between them reflects the destination chain's approve and execute stages: an Ethereum destination adds ETH finality before the approve transaction; an L2 destination with fast block times adds sub-second execution.
-
-Axelar-based applications (Squid Router, Interchain Amplifier, ITS token bridges) are the primary traffic this benchmark observes. Squid's presence in both the quote-latency bench (as an aggregator using Axelar as its routing layer) and the GMP-latency bench (as a traffic source on Axelar itself) illustrates how aggregator latency and settlement latency connect: Squid quotes fast as an aggregator, but its actual settlement flows through Axelar's GMP network with the validator confirmation overhead included.
+The two stages AxelarScan exposes are `call_confirm` (source tx to Axelar quorum) and `total` (source tx to destination execution). Applications built on Axelar (Squid Router, ITS token bridges) are the primary traffic this benchmark observes — their presence in both the quote-latency bench and this GMP bench illustrates how aggregator quote speed and settlement speed are decoupled in practice.
 
 ## Decision Framework
 
 <UseCase label="Wallet or dApp integrating a swap UI">
-Quote latency is the primary UX variable at the API layer. The per-region breakdown on the [bridge-quote-latency](/benchmarks/bridge-quote-latency) bench shows the current leader for your user base's geography. Parallelize quote requests across 2 to 3 providers and display the fastest valid response. Success rate is the secondary filter: a bridge that returns a quote 30% of the time is not a reliable default regardless of its latency ranking on successful calls.
+Quote latency is the primary UX variable. Use the per-region tables above (EU-West, US-East, Singapore) to find the current leader for your users' geography, then cross-reference with the per-corridor tables for the specific routes your wallet offers. The aggregate leader may trail on a specific corridor. Parallelize quote requests across 2 to 3 providers and display the fastest valid response. The success rate column is the secondary filter: a bridge quoting successfully 30% of the time is not a reliable default regardless of its latency rank on successful calls.
 </UseCase>
 
 <UseCase label="High-volume or recurring cross-chain transfers">
-Effective fee at your typical notional is the primary variable. Check the [bridge-fee](/benchmarks/bridge-fee) bench at the $300 and $50 notional tabs for the corridors you use. The leaderboard at $300 and $10,000 are different rankings; verify at the size that matches your transfers. Intent layers lead at small to mid notionals on liquid USDC corridors. The ranking compresses as notional grows.
+Effective fee at your typical notional is the primary variable. The per-corridor cost tables surface where each provider is structurally cheap and where it is not. The aggregate leaderboard at $300 and $10,000 are different rankings; verify at the size that matches your transfers. On the Arb to HyperCore corridor, expect wider spreads until solver inventory deepens.
 </UseCase>
 
 <UseCase label="DeFi protocol requiring cross-chain message delivery">
-Source chain choice is the most important decision you will make for messaging latency. If you need delivery in under 60 seconds, Ethereum as a source chain is structurally incompatible with finality-first protocols (CCIP, Wormhole). LayerZero with pre-finality DVN signing is the fastest option on Ethereum-source lanes at the cost of a finality trade-off. If the security model of your protocol requires finality guarantees, choose a source chain with sub-second BFT finality (BNB, Solana, Avalanche) regardless of which messaging network you use.
+Source chain choice is the most important decision for messaging latency. If you need delivery in under 60 seconds, Ethereum as source chain is structurally incompatible with finality-first protocols (CCIP, Wormhole). LayerZero with pre-finality DVN signing is the fastest option on Ethereum-source lanes at the cost of a finality trade-off. If your protocol requires finality guarantees, choose a source chain with sub-second BFT finality (BNB, Solana, Avalanche) regardless of which messaging network you use.
 </UseCase>
 
 <UseCase label="Institutional or high-value asset bridge">
-Chainlink CCIP's finality-first model is the conservative choice. CCIP only delivers after source-chain economic finality; no re-org can invalidate a committed message. Accept the 12 to 15 minute delivery time on Ethereum-source lanes as a property of the security guarantee, not a defect. For use cases where finality guarantees are required but 15-minute delivery is too slow, use BNB Chain or Avalanche as the source chain to cut delivery to 2 to 5 minutes while keeping the same CCIP security model.
+Chainlink CCIP's finality-first model is the conservative choice. No re-org can invalidate a committed CCIP message. Accept the 12 to 15 minute delivery time on Ethereum-source lanes as a property of the security guarantee. For use cases where finality is required but 15 minutes is too slow, use BNB Chain or Avalanche as source chain to cut delivery to 2 to 5 minutes while keeping the same CCIP security model.
 </UseCase>
 
 <UseCase label="Cross-chain application requiring broad corridor coverage">
-Aggregators (LI.FI, Socket, Squid) cover more source chain and destination chain combinations than direct protocols or single-network intent layers. Their broader corridor support comes with higher quote latency and, on uncongested corridors, slightly higher effective fees. The [bridge-quote-latency](/benchmarks/bridge-quote-latency) success rate column surfaces which corridors each provider actually quotes reliably versus returning `unsupported` responses.
+Aggregators (LI.FI, Socket, Squid) cover more source and destination chain combinations than direct protocols or single-network intent layers. Check the per-corridor success rate column in the quote-latency tables: a provider that shows as available in the aggregate may return `unsupported` on the specific corridor you need. Their broader coverage comes with higher quote latency and, on uncongested corridors, slightly higher effective fees.
 </UseCase>
 
 ## Conclusion
 
 The clearest pattern across all four bridge benchmarks is that the market is split along two independent axes: the API layer and the settlement layer.
 
-At the API layer, intent-based architectures lead on quote speed and on effective cost for liquid corridors. That advantage is not permanent: as corridor liquidity deepens, solver competition on aggregator-routed paths will compress the cost gap. The quote latency gap is structural and will persist as long as aggregators solve routing per request.
+At the API layer, intent-based architectures lead on quote speed and on effective cost for liquid corridors. The per-corridor tables make this concrete: the intent-vs-aggregator gap is largest on Base to Arbitrum where solver competition is deepest, and smallest on the newer HyperCore corridor where all providers face thin inventory.
 
 At the settlement layer, the source chain is the dominant variable, not the protocol. A builder who switches from LayerZero to CCIP on an Ethereum-source lane does not get faster delivery; they get a stronger finality guarantee at the cost of 10 additional minutes. A builder who switches the source chain from Ethereum to BNB while keeping CCIP cuts delivery from 15 minutes to 3 minutes. <Mark>Source chain selection is a larger lever on settlement latency than messaging protocol selection.</Mark>
 
-No provider in this cohort leads all four dimensions. Quote speed, fee efficiency, corridor coverage, and settlement latency are determined by different architectural choices that trade against each other. Production applications that need a combination of fast quotes, competitive fees, and broad corridor support will need at least two providers: one intent layer for speed and cost on liquid corridors, one aggregator as fallback for niche corridors. The messaging protocol choice should follow the source chain constraint, not precede it.
+No provider in this cohort leads all four dimensions. Production applications will need at least two providers: one intent layer for speed and cost on liquid corridors, one aggregator as fallback for niche corridors. The messaging protocol choice should follow the source chain constraint, not precede it.
 
 ## Sources
 
