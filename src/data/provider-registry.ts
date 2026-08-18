@@ -2173,6 +2173,23 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "B² Network team-operated public RPC (rpc.bsquared.network) for B² Network mainnet (chain 223), a Bitcoin L2 combining ZK proof verification with Rollup+Restaking. Standard EVM JSON-RPC, keyless.",
     twitter: "@BSquaredNetwork",
   },
+  gateway: {
+    url: "https://gateway.fm",
+    description:
+      "Gateway.fm operates decentralized RPC infrastructure across multiple chains including Stellar Soroban. Public no-key endpoint with generous free tier, routing through a distributed node network.",
+    twitter: "@gateway_eth",
+  },
+  sorobanrpc: {
+    url: "https://sorobanrpc.com",
+    description:
+      "Community-operated free public Soroban RPC endpoint dedicated to the Stellar smart contract platform. No API key required; maintained for open developer access to Soroban RPC.",
+  },
+  lightsail: {
+    url: "https://quasar.lightsail.network",
+    description:
+      "Lightsail Network operates Quasar, a multi-endpoint Stellar infrastructure suite offering a public no-key Soroban RPC (rpc.lightsail.network) and a full archive RPC (archive-rpc.lightsail.network) for Stellar mainnet.",
+    twitter: "@lightsailnet",
+  },
 };
 
 /**

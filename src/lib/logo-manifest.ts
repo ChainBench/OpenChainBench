@@ -521,6 +521,11 @@ const RAW: Record<string, string> = {
   ecostake: "/logos/ecostake.png",
   autostake: "/logos/autostake.png",
   stavr: "/logos/stavr.png",
+
+  // ─── Stellar Soroban RPC providers (bench № 210) ───
+  gateway: "/logos/gateway.svg",
+  sorobanrpc: "/logos/sorobanrpc.svg",
+  lightsail: "/logos/lightsail.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
