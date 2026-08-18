@@ -4,8 +4,8 @@ slug: perp-amm-volume-share
 number: "043"
 title: Perp AMM volume share, live 24h notional ranked
 seo_title: "Perp DEX AMM volume 24h ranking 2026"
-seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains Network, Ostium and Pacifica. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
-subtitle: 24h rolling notional volume in USD for AMM-style perpetual futures venues. Covers GMX V2, Gains Network, Ostium and Pacifica. Read live from each venue's public API.
+seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains Network, Ostium, Pacifica, SynFutures and KiloEx. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
+subtitle: 24h rolling notional volume in USD for AMM-style perpetual futures venues. Covers GMX V2, Gains Network, Ostium, Pacifica, SynFutures and KiloEx. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
@@ -14,22 +14,24 @@ higher_is_better: true
 
 seo_intro: |
   This benchmark isolates the AMM-style, pool-as-counterparty and synthetic
-  perp DEX segment by ranking four venues: GMX V2, Gains Network, Ostium
-  and Pacifica. These venues differ fundamentally from orderbook perps:
-  traders open positions against a liquidity pool or a synthetic counterparty
-  rather than a matching engine. Volume here measures where AMM-native perp
-  flow actually settles. We poll each venue's public API every 5 minutes and
-  publish a rolling 24h USD notional gauge per venue. The companion bench
-  perp-volume-share covers the full cohort including orderbook venues; this
-  one prices the AMM segment only.
+  perp DEX segment by ranking six venues: GMX V2, Gains Network, Ostium,
+  Pacifica, SynFutures and KiloEx. These venues differ fundamentally from
+  orderbook perps: traders open positions against a liquidity pool or a
+  synthetic counterparty rather than a matching engine. Volume here measures
+  where AMM-native perp flow actually settles. We poll each venue's public
+  API every 5 minutes and publish a rolling 24h USD notional gauge per venue.
+  The companion bench perp-volume-share covers the full cohort including
+  orderbook venues; this one prices the AMM segment only.
 
 abstract: |
-  The bench polls four AMM-style perp DEX venues every 5 minutes and
+  The bench polls six AMM-style perp DEX venues every 5 minutes and
   exposes a rolling 24h USD notional gauge per venue. Sources: GMX V2
   via the public Subsquid squid (gmx.squids.live) summing Arbitrum and
   Avalanche 24h volume buckets; Gains Network backend REST API at
   stats.gains.trade; Ostium via the Ormi subgraph trade entity on Base;
-  Pacifica onchain Solana program state. Each value carries a freshness
+  Pacifica onchain Solana program state; SynFutures and KiloEx via
+  CoinGecko's public derivatives exchange endpoint (trade_volume_24h_btc
+  converted to USD via BTC spot price). Each value carries a freshness
   timestamp and a health gauge. Higher is better.
 
 methodology:
@@ -38,15 +40,19 @@ methodology:
   - "Gains Network: stats.gains.trade/volume REST endpoint; totalVolume field gives rolling 24h notional in USD across all chains."
   - "Ostium: Ormi-hosted subgraph (api.subgraph.ormilabs.com); sums trade.notional for all trades opened in the last 24h (timestamp_gte=now-86400); notional is in USDC internal units (1e6 per USD)."
   - "Pacifica: onchain reads on the Solana program state for trailing 24h taker notional."
+  - "SynFutures: CoinGecko public derivatives exchange endpoint (id=synfutures); trade_volume_24h_btc multiplied by BTC/USD spot price from CoinGecko simple/price. SynFutures uses the oAMM (Oyster AMM) model on Base and Arbitrum."
+  - "KiloEx: CoinGecko public derivatives exchange endpoint summed across three chains (kiloex-bsc, kiloex-base, kiloex-opbnb); trade_volume_24h_btc summed then multiplied by BTC/USD spot price. KiloEx is an oracle-based AMM perp DEX."
   - "Headline. avg_over_time of the 24 hour volume gauge over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw gauge."
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} leads the AMM perp cohort at {{best_p50}} of 24h notional across 4 AMM-style venues."
+  - "{{best_name}} leads the AMM perp cohort at {{best_p50}} of 24h notional across 6 AMM-style venues."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GM pool model on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic counterparty model on Arbitrum and Polygon."
   - "{{name:ostium}} sits at {{p50:ostium}} of 24h notional. Real-world asset perps with AMM liquidity on Base."
   - "{{name:pacifica}} sits at {{p50:pacifica}} of 24h notional. Solana-native AMM perps."
+  - "{{name:synfutures}} sits at {{p50:synfutures}} of 24h notional. oAMM model on Base and Arbitrum."
+  - "{{name:kiloex}} sits at {{p50:kiloex}} of 24h notional. Oracle-based AMM perps on BSC, Base and opBNB."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 stacked_share: true
@@ -62,8 +68,10 @@ faq:
     a: "perp-volume-share covers the full cohort including orderbook venues (Hyperliquid, dYdX, Lighter, GRVT etc.). This bench isolates AMM-style venues so the comparison is within a single execution model."
   - q: "Why not include Variational?"
     a: "Variational's public API (api.variational.io) fails to resolve. No authenticated or public alternative endpoint currently provides rolling 24h volume. The venue will be added once a reliable source becomes available."
-  - q: "Why not include Drift or other Solana AMMs?"
-    a: "Drift's public REST surface is currently blocked for automated probes; the venue is parked pending a Solana RPC and Anchor IDL adapter. It will be added once the native source ships."
+  - q: "Why not include Drift or Jupiter Perps?"
+    a: "Drift's public REST surface is currently blocked for automated probes and its API domain does not resolve. Jupiter Perps stats API (perps-stats.jup.ag) is suspended. Both are parked pending a working public endpoint."
+  - q: "Why is SynFutures data sourced from CoinGecko instead of a direct API?"
+    a: "SynFutures' REST API requires authentication (AWS API Gateway). CoinGecko's free derivatives exchange endpoint provides the same rolling 24h volume figure with no API key required."
 
 providers:
   - slug: gmx-v2
@@ -117,3 +125,29 @@ providers:
       success: avg_over_time(perp_venue_health{venue="pacifica"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h])
       series: perp_venue_volume_24h_usd{venue="pacifica"}
+
+  - slug: synfutures
+    name: SynFutures
+    tag: oAMM perps on Base and Arbitrum
+    formula: "CoinGecko derivatives exchange endpoint (id=synfutures), trade_volume_24h_btc multiplied by BTC/USD spot price; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="synfutures"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="synfutures"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="synfutures"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="synfutures"}[24h])
+      success: avg_over_time(perp_venue_health{venue="synfutures"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="synfutures"}[24h])
+      series: perp_venue_volume_24h_usd{venue="synfutures"}
+
+  - slug: kiloex
+    name: KiloEx
+    tag: Oracle-based AMM perps on BSC, Base and opBNB
+    formula: "CoinGecko derivatives exchange endpoint summed across kiloex-bsc, kiloex-base and kiloex-opbnb; total trade_volume_24h_btc multiplied by BTC/USD spot price; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="kiloex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="kiloex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="kiloex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="kiloex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kiloex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="kiloex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="kiloex"}

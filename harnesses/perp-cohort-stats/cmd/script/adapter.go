@@ -105,6 +105,10 @@ const (
 	srcPolymarketNative  = "polymarket_native"
 	srcGMXNative         = "gmx_native"
 	srcGainsNative       = "gains_native"
+	srcSynFuturesNative  = "synfutures_native"
+	srcKiloExNative      = "kiloex_native"
+	srcOrderlyNative     = "orderly_native"
+	srcBackpackNative    = "backpack_native"
 	srcDefillama         = "defillama"
 	srcMobulaPairs   = "mobula_pairs"
 	srcMobulaFund    = "mobula_funding"
@@ -153,6 +157,14 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcOstiumNative}
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "synfutures":
+			return []string{srcSynFuturesNative}
+		case "kiloex":
+			return []string{srcKiloExNative}
+		case "orderly":
+			return []string{srcOrderlyNative}
+		case "backpack":
+			return []string{srcBackpackNative}
 		}
 	case mVolume30d:
 		switch venue {
@@ -354,6 +366,10 @@ func NewRouter(cfg *Config) *Router {
 		NewPolymarketNativeSource(),
 		NewGMXNativeSource(),
 		NewGainsNativeSource(),
+		NewSynFuturesNativeSource(),
+		NewKiloExNativeSource(),
+		NewOrderlyNativeSource(),
+		NewBackpackNativeSource(),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {
