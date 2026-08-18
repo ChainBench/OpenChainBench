@@ -1,0 +1,135 @@
+# OpenChainBench. Bench No 226
+
+slug: wax-rpc
+number: "226"
+title: Fastest free WAX RPC, live no-key endpoint latency
+seo_title: "Fastest free WAX RPC 2026"
+seo_description: "{{best_name}} leads free WAX RPC at {{best_p50}} (get_info head_block_num p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for GET /v1/chain/get_info against every available public WAX (Antelope) node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  WAX (Worldwide Asset eXchange) is a delegated proof-of-stake blockchain built on the Antelope protocol, specialising in NFTs and gaming assets. It produces one block every 0.5 seconds and operates the same /v1/chain/get_info REST endpoint as EOS. Public endpoints are available without an API key from Greymass, EOSUSA and WAX Sweden. Every provider was live-verified with consecutive get_info probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to WAX.
+  We measure the round-trip latency of a single REST call (GET
+  /v1/chain/get_info) against every available public WAX node that
+  sustains continuous probing: 3 providers at launch, every 60
+  seconds, from us-east, eu-west and Singapore. The harness classifies
+  every response (ok / http_err / jsonrpc_err / stale / timeout) with
+  a WAX-scaled staleness gap (600 blocks, around 5 min at 0.5 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the WAX-scoped answer with per-region breakdowns as a
+  first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: HTTP GET /v1/chain/get_info. Plain REST call. The response carries head_block_num as a plain integer."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable head_block_num integer), http_err, jsonrpc_err, stale (block more than 600 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=wax. Provider coverage at launch: 3 endpoints (Greymass, EOSUSA, WAX Sweden)."
+
+findings:
+  - "{{best_name}} currently leads WAX RPC at {{best_p50}} (get_info head_block_num p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free WAX RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (WAX head block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which WAX RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
+  - q: "Does the fastest WAX RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is WAX RPC latency measured here, technically?"
+    a: "One GET /v1/chain/get_info REST call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="wax"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: greymass
+    name: Greymass
+    tag: Greymass public WAX Antelope API, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to wax.greymass.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="greymass", chain="wax"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="greymass", chain="wax"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="greymass", chain="wax"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="greymass", chain="wax"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="greymass", chain="wax"}) / sum(ocb:rpc_call:rate_24h{provider="greymass", chain="wax"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="greymass", chain="wax"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="greymass", chain="wax"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="greymass", chain="wax", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="greymass", chain="wax", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="greymass", chain="wax", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="greymass", chain="wax", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="greymass", chain="wax", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="greymass", chain="wax", region="sgp"}[1h])
+
+  - slug: eosusa
+    name: EOSUSA
+    tag: EOSUSA public WAX Antelope API, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to wax.eosusa.io."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="eosusa", chain="wax"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="eosusa", chain="wax"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="eosusa", chain="wax"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="eosusa", chain="wax"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="eosusa", chain="wax"}) / sum(ocb:rpc_call:rate_24h{provider="eosusa", chain="wax"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="eosusa", chain="wax"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="eosusa", chain="wax"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="eosusa", chain="wax", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="eosusa", chain="wax", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="eosusa", chain="wax", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="eosusa", chain="wax", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="eosusa", chain="wax", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="eosusa", chain="wax", region="sgp"}[1h])
+
+  - slug: waxsweden
+    name: WAX Sweden
+    tag: WAX Sweden public Antelope API, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to api.waxsweden.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waxsweden", chain="wax"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="waxsweden", chain="wax"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="waxsweden", chain="wax"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="waxsweden", chain="wax"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="waxsweden", chain="wax"}) / sum(ocb:rpc_call:rate_24h{provider="waxsweden", chain="wax"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="waxsweden", chain="wax"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="waxsweden", chain="wax"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waxsweden", chain="wax", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waxsweden", chain="wax", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waxsweden", chain="wax", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waxsweden", chain="wax", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waxsweden", chain="wax", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waxsweden", chain="wax", region="sgp"}[1h])

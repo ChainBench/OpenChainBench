@@ -1616,6 +1616,111 @@ func chains() []Chain {
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
 			},
 		},
+		// 2026-08-18 wave-8. Tezos L1 — REST GET /chains/main/blocks/head/header, ~30 s/block. 3 keyless providers.
+		{
+			Slug: "tezos",
+			Name: "Tezos",
+			Kind: "tezos",
+			Providers: []Provider{
+				{Slug: "ecadinfra", Name: "ECADinfra", URL: envDefault("RPC_URL_TEZOS_ECADINFRA", "https://mainnet.ecadinfra.com")},
+				{Slug: "tzbeta", Name: "TezBeta", URL: envDefault("RPC_URL_TEZOS_TZBETA", "https://rpc.tzbeta.net")},
+				{Slug: "tzkt", Name: "TzKT (Baking Bad)", URL: envDefault("RPC_URL_TEZOS_TZKT", "https://rpc.tzkt.io/mainnet")},
+			},
+		},
+		// 2026-08-18 wave-8. EOS (Antelope) L1 — REST GET /v1/chain/get_info, ~0.5 s/block. 3 keyless providers.
+		{
+			Slug: "eos",
+			Name: "EOS",
+			Kind: "antelope",
+			Providers: []Provider{
+				{Slug: "greymass", Name: "Greymass", URL: envDefault("RPC_URL_EOS_GREYMASS", "https://eos.greymass.com")},
+				{Slug: "eosnation", Name: "EOS Nation", URL: envDefault("RPC_URL_EOS_EOSNATION", "https://eos.api.eosnation.io")},
+				{Slug: "alohaeos", Name: "Aloha EOS", URL: envDefault("RPC_URL_EOS_ALOHAEOS", "https://api.main.alohaeos.com")},
+			},
+		},
+		// 2026-08-18 wave-8. VeChain L1 — REST GET /blocks/best, ~10 s/block. 3 keyless providers.
+		{
+			Slug: "vechain",
+			Name: "VeChain",
+			Kind: "vechain",
+			Providers: []Provider{
+				{Slug: "vechain-foundation", Name: "VeChain Foundation", URL: envDefault("RPC_URL_VECHAIN_FOUNDATION", "https://mainnet.vechain.org")},
+				{Slug: "vethor-node", Name: "VeThor Node", URL: envDefault("RPC_URL_VECHAIN_VETHOR", "https://vethor-node.vechain.com")},
+				{Slug: "vechain-energy", Name: "VeChain.energy", URL: envDefault("RPC_URL_VECHAIN_ENERGY", "https://node-mainnet.vechain.energy")},
+			},
+		},
+		// 2026-08-18 wave-8. Waves L1 — REST GET /blocks/last, ~60 s/block. 3 keyless providers.
+		{
+			Slug: "waves",
+			Name: "Waves",
+			Kind: "waves",
+			Providers: []Provider{
+				{Slug: "wavesnodes", Name: "Waves Foundation", URL: envDefault("RPC_URL_WAVES_WAVESNODES", "https://nodes.wavesnodes.com")},
+				{Slug: "wx-network", Name: "Waves.Exchange", URL: envDefault("RPC_URL_WAVES_WX", "https://nodes.wx.network")},
+				{Slug: "waves-exchange", Name: "WavesExchange", URL: envDefault("RPC_URL_WAVES_EXCHANGE", "https://nodes.waves.exchange")},
+			},
+		},
+		// 2026-08-18 wave-8. WAX gaming blockchain (Antelope) — REST GET /v1/chain/get_info, ~0.5 s/block. 3 keyless providers.
+		{
+			Slug: "wax",
+			Name: "WAX",
+			Kind: "antelope",
+			Providers: []Provider{
+				{Slug: "greymass", Name: "Greymass", URL: envDefault("RPC_URL_WAX_GREYMASS", "https://wax.greymass.com")},
+				{Slug: "eosusa", Name: "EOSUSA", URL: envDefault("RPC_URL_WAX_EOSUSA", "https://wax.eosusa.io")},
+				{Slug: "waxsweden", Name: "WAX Sweden", URL: envDefault("RPC_URL_WAX_SWEDEN", "https://api.waxsweden.org")},
+			},
+		},
+		// 2026-08-18 wave-8. Neon EVM — EVM runtime on Solana (chain 245022934), eth_getBlockByNumber probe. 3 keyless providers.
+		{
+			Slug: "neon",
+			Name: "Neon EVM",
+			Providers: []Provider{
+				{Slug: "neon-p2p", Name: "P2P Neon Proxy", URL: envDefault("RPC_URL_NEON_P2P", "https://neon-proxy-mainnet.solana.p2p.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_NEON_THIRDWEB", "https://245022934.rpc.thirdweb.com")},
+				{Slug: "everstake", Name: "Everstake", URL: envDefault("RPC_URL_NEON_EVERSTAKE", "https://neon-mainnet.everstake.one")},
+			},
+		},
+		// 2026-08-18 wave-8. Merlin Chain — Bitcoin L2 EVM (chain 4200), eth_getBlockByNumber probe. 3 keyless providers.
+		{
+			Slug: "merlin",
+			Name: "Merlin Chain",
+			Providers: []Provider{
+				{Slug: "merlin-official", Name: "Merlin Official", URL: envDefault("RPC_URL_MERLIN_OFFICIAL", "https://rpc.merlinchain.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MERLIN_DRPC", "https://merlin.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MERLIN_THIRDWEB", "https://4200.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-08-18 wave-8. Viction (TomoChain) — EVM L1 (chain 88), eth_getBlockByNumber probe. 3 keyless providers.
+		{
+			Slug: "viction",
+			Name: "Viction",
+			Providers: []Provider{
+				{Slug: "viction-official", Name: "Viction Official", URL: envDefault("RPC_URL_VICTION_OFFICIAL", "https://rpc.viction.xyz")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_VICTION_THIRDWEB", "https://88.rpc.thirdweb.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_VICTION_DRPC", "https://viction.drpc.org")},
+			},
+		},
+		// 2026-08-18 wave-8. ThunderCore — EVM L1 (chain 108), eth_getBlockByNumber probe. 3 keyless providers.
+		{
+			Slug: "thundercore",
+			Name: "ThunderCore",
+			Providers: []Provider{
+				{Slug: "thundercore-official", Name: "ThunderCore Official", URL: envDefault("RPC_URL_THUNDERCORE_OFFICIAL", "https://mainnet-rpc.thundercore.com")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_THUNDERCORE_THIRDWEB", "https://108.rpc.thirdweb.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_THUNDERCORE_DRPC", "https://thundercore.drpc.org")},
+			},
+		},
+		// 2026-08-18 wave-8. OKTC (OKX Token Chain) — EVM L1 (chain 66), eth_getBlockByNumber probe. 3 keyless providers.
+		{
+			Slug: "oktc",
+			Name: "OKTC",
+			Providers: []Provider{
+				{Slug: "oktc-official", Name: "OKX Chain Official", URL: envDefault("RPC_URL_OKTC_OFFICIAL", "https://exchainrpc.okex.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_OKTC_THIRDWEB", "https://66.rpc.thirdweb.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OKTC_DRPC", "https://oktc.drpc.org")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
