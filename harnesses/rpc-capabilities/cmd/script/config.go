@@ -1507,16 +1507,14 @@ func chains() []Chain {
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_SUI_ONFINALITY", "https://sui.api.onfinality.io/public")},
 			},
 		},
-		// Aptos — Move VM, REST GET /v1/ block_height probe, ~1 block/s. 3 keyless providers.
+		// Aptos — Move VM, REST GET /v1/ block_height probe, ~1 block/s. 2 verified-free providers.
 		{
 			Slug: "aptos",
 			Name: "Aptos",
 			Kind: "aptos",
 			Providers: []Provider{
 				{Slug: "aptoslabs", Name: "Aptos Labs", URL: envDefault("RPC_URL_APTOS_APTOSLABS", "https://api.mainnet.aptoslabs.com/v1/")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_APTOS_PUBLICNODE", "https://aptos-mainnet.publicnode.com/v1/")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_APTOS_ANKR", "https://rpc.ankr.com/http/aptos/v1")},
-				{Slug: "nodereal", Name: "NodeReal", URL: envDefault("RPC_URL_APTOS_NODEREAL", "https://aptos-mainnet.nodereal.io/v1/")},
+				{Slug: "aptos-fullnode", Name: "Aptos Labs (Fullnode)", URL: envDefault("RPC_URL_APTOS_FULLNODE", "https://fullnode.mainnet.aptoslabs.com/v1/")},
 			},
 		},
 		// XRP Ledger — ledger_current JSON-RPC probe, ~3-4 s ledger close. 3 keyless providers.
@@ -1530,26 +1528,22 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_XRP_PUBLICNODE", "https://xrp-rpc.publicnode.com")},
 			},
 		},
-		// Algorand — REST GET /v2/status last-round probe, ~3.5 s per round. 2 keyless providers.
+		// Algorand — REST GET /v2/status last-round probe, ~3.5 s per round. 1 verified-free provider.
 		{
 			Slug: "algorand",
 			Name: "Algorand",
 			Kind: "algorand",
 			Providers: []Provider{
 				{Slug: "algonode", Name: "AlgoNode", URL: envDefault("RPC_URL_ALGORAND_ALGONODE", "https://mainnet-api.algonode.cloud")},
-				{Slug: "nodely", Name: "Nodely", URL: envDefault("RPC_URL_ALGORAND_NODELY", "https://mainnet-api.4160.nodely.io")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_ALGORAND_ANKR", "https://rpc.ankr.com/algorand")},
 			},
 		},
-		// Gram — TON masterchain, getMasterchainInfo JSON-RPC, ~5 s seqno. 3 providers (toncenter keyless).
+		// Gram — TON masterchain, getMasterchainInfo JSON-RPC, ~5 s seqno. 1 verified-free provider.
 		{
 			Slug: "gram",
 			Name: "Gram",
 			Kind: "gram",
 			Providers: []Provider{
 				{Slug: "toncenter", Name: "TON Center", URL: envDefault("RPC_URL_GRAM_TONCENTER", "https://toncenter.com/api/v2/jsonRPC")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GRAM_DRPC", "https://ton.drpc.org")},
-				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_GRAM_NOWNODES", "https://ton.nownodes.io/jsonRPC")},
 			},
 		},
 	}
