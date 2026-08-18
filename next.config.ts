@@ -262,16 +262,6 @@ const nextConfig: NextConfig = {
         destination: "/benchmarks/pm-resolution-delay/:path*",
         permanent: true,
       },
-      {
-        source: "/apps/exec",
-        destination: "/benchmarks/trading-app-execution",
-        permanent: true,
-      },
-      {
-        source: "/apps",
-        destination: "/trading-apps",
-        permanent: true,
-      },
       ...chainRedirects,
       ...rpcClusterRedirects,
     ];
