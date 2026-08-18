@@ -4,26 +4,26 @@ category: "bridge"
 slug: "2026-08-state-of-cross-chain-bridges"
 publishedAt: "2026-08-18"
 period: "August 2026"
-summary: "Two live benchmarks across quote latency and effective fees reveal a market split along architectural lines. Intent layers quote 8 to 20 times faster than aggregators and cost less on liquid corridors. The ranking shifts by corridor and by region. No single provider leads across all measured dimensions."
-heroFinding: "The fastest bridge quote in this cohort returns in under 100 ms. The slowest takes over 2 seconds on the same corridor with the same notional. Both settle in the same 15 to 60 second window once the transaction is signed."
+summary: "Two live benchmarks across quote latency and effective fees reveal a 10x spread in quote speed between the fastest and slowest providers. Rankings shift by corridor and region. No single provider leads on every measured dimension."
+heroFinding: "The spread between the fastest and slowest quote API in this cohort is nearly 10x at aggregate. Both settle in the same 15 to 60 second window once the transaction is signed."
 author: "OpenChainBench Research"
-readingTime: 12
+readingTime: 13
 canonical: "https://openchainbench.com/reports/bridge/2026-08-state-of-cross-chain-bridges"
 ---
 
 <Summary>
 Two live benchmarks across quote APIs and effective fees covering 8 bridge providers on 4 USDC corridors and 3 geographic regions.
 
-No single provider leads quote speed and fee efficiency simultaneously across all corridors. The market is structurally split by architecture.
+No single provider leads quote speed and fee efficiency simultaneously across all corridors. Rankings shift by direction: Sol to Base and Base to Arb have 6 to 7 competing providers; Arb to Sol and Arb to HyperCore thin to 4.
 
-Quote latency spans from under 100 ms (intent layers) to over 2 seconds (route-searching aggregators) on identical USDC corridors. The ranking shifts by corridor: a provider that leads Sol to Base can trail on Base to Arb.
+Quote latency spans from under 200 ms to over 1,500 ms on identical USDC corridors at aggregate. The ranking shifts by corridor and by region. A provider that leads Sol to Base can trail on Base to Arb.
 
-Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The gap between intent layers and aggregators widens at small notionals and compresses above $1,000.
+Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The cheapest single corridor recorded in this dataset is Sol to Base at 0.0087% via Near Intents.
 
-Regional geography matters: the same provider can rank differently in EU-West versus Singapore depending on where its API infrastructure is deployed.
+Geographic probe region changes results: EU-West returns the tightest latency distributions for most providers in this cohort.
 </Summary>
 
-<TOC sections="Methodology|Why Quote Latency and Settlement Are Different Numbers|Bridge Quote API Speed: Cross-Corridor Aggregate|Per-Corridor Breakdown|Regional Quote Latency|The Architecture Divide|The True Cost of Bridging|Cost by Corridor|Decision Framework|Conclusion|Sources" />
+<TOC sections="Methodology|Why Quote Latency and Settlement Are Different Numbers|Bridge Quote API Speed: Cross-Corridor Aggregate|Per-Corridor Breakdown|Regional Quote Latency|Architecture and Pricing Models|The True Cost of Bridging|Cost by Corridor|Decision Framework|Conclusion|Sources" />
 
 ## Methodology
 
@@ -47,37 +47,37 @@ Quote latency is how fast the bridge API returns a price. It is measured in mill
 
 <StatTable bench="bridge-quote-latency" caption="Bridge quote API latency (p50, 24 h) — cross-corridor aggregate across all 4 USDC routes and 3 regions. Identical notional ($300), probed every 5 minutes. Lower is better." />
 
-The leaderboard splits cleanly along architectural lines. Intent layers and relay networks return quotes in tens of milliseconds because the API call is a thin price-discovery query against a pool of pre-positioned solvers. Route-searching aggregators return quotes in hundreds of milliseconds to over a second because each request triggers a graph traversal across their integrated bridge set.
+<Mark>The fastest provider in this cohort quotes at aggregate under 200 ms. The slowest takes over 1,500 ms on the same corridors.</Mark> That is a nearly 10x spread on the same notional, same corridors, same probe timing.
 
-<Mark>The fastest providers in this cohort quote 8 to 20 times faster than the slowest.</Mark> Tail latency deserves its own reading: p99 is what dictates timeout policies in production wallets. A bridge with a 90 ms p50 and a 3,500 ms p99 means one in a hundred quote requests will sit at the three-second spinner threshold under load.
+Tail latency deserves its own reading. One provider in this cohort posts a 355 ms p50 at aggregate but a p99 near 5 seconds. That gap means one in a hundred quote requests will sit at the three-second spinner threshold under load — a different risk profile than the p50 alone suggests. Near Intents shows this pattern: its median looks competitive, but the tail reflects the solver auction window firing on uncached routes.
 
 ## Per-Corridor Breakdown
 
-The aggregate above averages across all four corridors. That average conceals real differences: solver inventory, destination gas, and routing depth vary sharply by route. The four tables below isolate each corridor.
+The aggregate above averages across all four corridors. That average conceals real differences: provider coverage, solver inventory, and routing depth vary sharply by route. The four tables below isolate each corridor.
 
 ### Sol to Base
 
-<StatTable bench="bridge-quote-latency" chain="Base" caption="Quote latency for the Solana → Base corridor (p50, 24 h). Providers without Solana support are absent from this table. Lower is better." />
+<StatTable bench="bridge-quote-latency" chain="Base" caption="Quote latency for the Solana to Base corridor (p50, 24 h). 6 providers active. Providers without Solana support are absent. Lower is better." />
 
-Solana-origin routes require providers to maintain Solana-aware quoting logic, which narrows the field. Providers absent here return `unsupported` on this corridor. The success rate column surfaces who is quoting reliably versus occasionally failing on this route.
+Solana-origin routes require providers to maintain Solana-aware quoting logic. <Mark>Six providers cover this corridor</Mark> — Squid and Socket are absent. The success rate column surfaces who is quoting reliably versus occasionally failing on this route.
 
 ### Base to Arbitrum
 
-<StatTable bench="bridge-quote-latency" chain="Arbitrum" caption="Quote latency for the Base → Arbitrum corridor (p50, 24 h). Pure EVM hop, largest competitive field. Lower is better." />
+<StatTable bench="bridge-quote-latency" chain="Arbitrum" caption="Quote latency for the Base to Arbitrum corridor (p50, 24 h). 7 providers active — the deepest competitive field. Lower is better." />
 
-Base to Arbitrum is the most contested corridor: a same-ecosystem EVM hop with mature liquidity on both sides. Intent layers that pre-stage USDC inventory quote near-instantly; aggregators enumerate routes through Stargate, CCTP, and Across. <Mark>This is the corridor where the intent-vs-aggregator latency gap is most pronounced.</Mark>
+Base to Arbitrum is the most contested corridor: a same-ecosystem EVM hop with mature liquidity on both sides. <Mark>Seven providers compete here</Mark>, the largest field in the dataset. Providers with pre-staged inventory on both chains quote in under 400 ms; those that enumerate routes across their integrated bridge set take over a second.
 
 ### Arb to Solana
 
-<StatTable bench="bridge-quote-latency" chain="Solana" caption="Quote latency for the Arbitrum → Solana corridor (p50, 24 h). Cross-VM route, thinner provider coverage. Lower is better." />
+<StatTable bench="bridge-quote-latency" chain="Solana" caption="Quote latency for the Arbitrum to Solana corridor (p50, 24 h). 4 providers active — thinner cross-VM coverage. Lower is better." />
 
-Arbitrum to Solana is the cross-VM route with the thinnest coverage. Several EVM-only aggregators return `unsupported` here. Near Intents shows a bimodal distribution on this corridor: solver-cached routes return in under 30 ms while uncached routes wait the full 3-second solver auction window, producing a wide spread between p50 and p99.
+Arbitrum to Solana is the cross-VM route with the thinnest coverage: <Mark>only 4 providers quote this direction</Mark>. Near Intents shows a bimodal latency profile here: solver-cached routes return under 400 ms while uncached routes wait the full 3-second auction window, producing a wide spread between p50 and p99. A low p50 from Near Intents on this corridor should be read alongside its p99.
 
 ### Arb to HyperCore
 
-<StatTable bench="bridge-quote-latency" chain="HyperCore" caption="Quote latency for the Arbitrum → HyperCore corridor (p50, 24 h). Newest corridor, thinnest solver pool. Lower is better." />
+<StatTable bench="bridge-quote-latency" chain="HyperCore" caption="Quote latency for the Arbitrum to HyperCore corridor (p50, 24 h). 4 providers active. Newest corridor, thinnest solver pool. Lower is better." />
 
-HyperCore is the newest destination in the harness. Solver inventory is thinner here and the latency distribution is wider as a result. <Mark>Providers that lead on Base to Arbitrum do not necessarily lead here.</Mark> A low success rate on this corridor signals sparse solver coverage rather than API infrastructure failure.
+HyperCore is the newest destination in the harness. <Mark>Only 4 providers quote this corridor.</Mark> Near Intents leads here, but that figure reflects a pre-computed price from cached solver inventory — the same bimodal dynamic applies. Providers that lead on Base to Arbitrum do not necessarily lead here.
 
 ## Regional Quote Latency
 
@@ -87,27 +87,29 @@ Geographic proximity to the bridge API's origin servers predicts quote latency i
 
 <StatTable bench="bridge-quote-latency" region="eu-west" caption="Quote latency from EU-West probe (p50, 24 h), cross-corridor aggregate. Lower is better." />
 
+EU-West returns the tightest latency distributions in this cohort. <Mark>Most providers achieve their best or near-best ranking from this region.</Mark>
+
 ### US-East
 
-<StatTable bench="bridge-quote-latency" region="us-east" caption="Quote latency from US-East probe (p50, 24 h), cross-corridor aggregate. Most providers have primary infrastructure in this region. Lower is better." />
+<StatTable bench="bridge-quote-latency" region="us-east" caption="Quote latency from US-East probe (p50, 24 h), cross-corridor aggregate. Lower is better." />
 
 ### Singapore
 
 <StatTable bench="bridge-quote-latency" region="sgp" caption="Quote latency from Singapore probe (p50, 24 h), cross-corridor aggregate. Lower is better." />
 
-US-East is where most bridge APIs have their primary infrastructure; providers without an Asian PoP carry a visible penalty in the Singapore table. The cross-regional summary below shows which providers hold their rank globally and which degrade as geographic distance grows.
+Provider rankings shift between regions. Providers without an Asian point of presence carry a visible penalty in the Singapore table. The cross-regional summary below shows which providers hold their rank globally and which degrade as geographic distance grows.
 
 <RegionWinners bench="bridge-quote-latency" />
 
-## The Architecture Divide
+## Architecture and Pricing Models
 
 Three pricing architectures coexist in this benchmark:
 
-**Direct protocols** (deBridge) charge a native-token fee declared upfront in the quote. Quote speed is fast. Route optionality is absent by design.
+**Direct protocols** (deBridge) return a pre-computed cost using a native-token fee declared upfront in the quote response. Quote speed is fast. Route optionality is absent by design. <Mark>deBridge leads the aggregate quote-latency leaderboard</Mark> in this dataset — a direct protocol, not an intent layer.
 
 **Aggregators** (LI.FI, Squid, Socket) route through whichever underlying bridge is cheapest or fastest at quote time. Their latency reflects route-search complexity. The value proposition is coverage and route optimization, not speed.
 
-**Intent and relay layers** (Mobula, Relay, Across, Near Intents) bake cost into a spread on a settlement intent or optimistic fill. <Mark>Quote latency and fee structure are both determined by solver competition, not a fixed fee schedule.</Mark>
+**Relay and intent layers** (Mobula, Relay, Across, Near Intents) bake cost into a spread on a settlement intent or optimistic fill. <Mark>Quote latency and fee structure are both determined by solver competition, not a fixed fee schedule.</Mark> Solver-cached routes return fast; uncached routes wait on the auction — which is why p50 and p99 can diverge sharply for the same provider.
 
 The architectural type predicts both quote latency and fee dynamics more reliably than any other variable in this dataset. An aggregator that covers 30+ underlying bridges will always trade latency for route breadth. That is not an engineering deficit — it is a harder problem solved per request.
 
@@ -117,55 +119,65 @@ The cost figure that matters is not the fee field in a bridge's quote object. It
 
 <StatTable bench="bridge-fee" caption="Effective bridge fee at $300 USDC notional (p50, 24 h) — cross-corridor aggregate. Includes fees, slippage, and destination gas. Lower is better." />
 
+Two things to read alongside the aggregate table:
+
+First, **coverage is not uniform**. The lowest-ranked aggregate fee in this table reflects a single corridor covered, not the full four-corridor dataset. The per-corridor tables below put every provider on a level field.
+
+Second, **success rate matters on fees**. <Mark>A provider that returns a valid fee quote two-thirds of the time is not a reliable default, regardless of its cost rank on successful calls.</Mark> Check the success rate column alongside the fee figure.
+
 At $300 notional, fixed costs (destination gas, base protocol fee) dominate the percentage. A bridge charging $2 in destination gas on a $300 transfer is already at 0.67% before any spread or protocol fee. <Mark>Published bridge fee tables at $10,000 notional systematically understate what retail users pay at $300.</Mark>
 
 ## Cost by Corridor
 
-Effective cost diverges sharply by corridor because solver inventory and destination gas prices vary by chain. The aggregate above is honest — every provider is queried on the same 4 routes — but the per-corridor view reveals where each provider is structurally cheap and where it is not.
+Effective cost diverges sharply by corridor because solver inventory and destination gas prices vary by chain. The aggregate above is computed across every route each provider covers — but coverage asymmetry means some aggregates are wider samples than others. The per-corridor view below puts every provider on the same four routes.
 
 ### Sol to Base — Effective Fee
 
-<StatTable bench="bridge-fee" chain="Base" caption="Effective fee for Sol → Base at $300 USDC (p50, 24 h). Includes all costs. Lower is better." />
+<StatTable bench="bridge-fee" chain="Base" caption="Effective fee for Sol to Base at $300 USDC (p50, 24 h). Includes all costs. Lower is better." />
+
+Sol to Base is the <Mark>cheapest corridor in this dataset</Mark>. The lowest fee recorded on this route is 0.0087% — the tightest all-in cost in the benchmark. The cross-VM boundary (Solana to EVM) does not translate to higher cost when solver inventory is deep on both sides.
 
 ### Base to Arbitrum — Effective Fee
 
-<StatTable bench="bridge-fee" chain="Arbitrum" caption="Effective fee for Base → Arb at $300 USDC (p50, 24 h). Deepest solver competition, tightest spreads. Lower is better." />
+<StatTable bench="bridge-fee" chain="Arbitrum" caption="Effective fee for Base to Arb at $300 USDC (p50, 24 h). Deepest solver competition, tightest spreads. Lower is better." />
 
 Base to Arbitrum is the liquid EVM corridor where solver competition is strongest. <Mark>The gap between the cheapest and most expensive provider is smallest here</Mark> and narrows further at larger notionals where fixed fees dilute into the percentage.
 
 ### Arb to Solana — Effective Fee
 
-<StatTable bench="bridge-fee" chain="Solana" caption="Effective fee for Arb → Sol at $300 USDC (p50, 24 h). Cross-VM route, wider spreads. Lower is better." />
+<StatTable bench="bridge-fee" chain="Solana" caption="Effective fee for Arb to Sol at $300 USDC (p50, 24 h). Cross-VM route, wider spreads. Lower is better." />
 
-Cross-VM corridors carry higher effective fees because settlement requires a cross-ecosystem liquidity layer. Solvers hold inventory on both sides but at a premium to compensate for the capital inefficiency of bridging across virtual machine boundaries.
+Arb to Sol carries noticeably higher effective fees than Sol to Base despite both crossing the same VM boundary. Direction matters: fewer providers cover this direction. <Mark>Thinner solver coverage on this direction drives wider spreads</Mark>, not the VM boundary itself. The most expensive providers on this corridor charge over 5x what the cheapest charge on Sol to Base.
 
 ### Arb to HyperCore — Effective Fee
 
-<StatTable bench="bridge-fee" chain="HyperCore" caption="Effective fee for Arb → HyperCore at $300 USDC (p50, 24 h). Newest corridor, widest spreads. Lower is better." />
+<StatTable bench="bridge-fee" chain="HyperCore" caption="Effective fee for Arb to HyperCore at $300 USDC (p50, 24 h). Newest corridor, widest spreads. Lower is better." />
 
 HyperCore is the newest corridor in the bench. Thin solver competition produces the widest effective fees of any route in this dataset. As solver inventory deepens, this table will compress toward the EVM-to-EVM spreads.
 
 ## Decision Framework
 
 <UseCase label="Wallet or dApp integrating a swap UI">
-Quote latency is the primary UX variable. Use the per-region tables (EU-West, US-East, Singapore) to find the current leader for your users' geography, then cross-reference with the per-corridor tables for the specific routes your wallet offers. The aggregate leader may trail on a specific corridor. Parallelize quote requests across 2 to 3 providers and display the fastest valid response. The success rate column is the secondary filter: a bridge quoting successfully 30% of the time is not a reliable default regardless of its latency rank on successful calls.
+Quote latency is the primary UX variable. Use the per-region tables (EU-West, US-East, Singapore) to find the current leader for your users' geography, then cross-reference with the per-corridor tables for the specific routes your wallet offers. The aggregate leader may trail on a specific corridor. Parallelize quote requests across 2 to 3 providers and display the fastest valid response. The success rate column is the secondary filter: a bridge with a weak success rate is not a reliable default regardless of its latency rank on successful calls.
 </UseCase>
 
 <UseCase label="High-volume or recurring cross-chain transfers">
-Effective fee at your typical notional is the primary variable. The per-corridor cost tables surface where each provider is structurally cheap and where it is not. The aggregate leaderboard at $300 and $10,000 are different rankings; verify at the size that matches your transfers. On the Arb to HyperCore corridor, expect wider spreads until solver inventory deepens.
+Effective fee at your typical notional is the primary variable. The per-corridor cost tables surface where each provider is structurally cheap and where it is not. The aggregate leaderboard at $300 and $10,000 are different rankings — verify at the size that matches your transfers. Aggregate fee ranks can be misleading when a provider covers fewer corridors than its peers; the per-corridor tables remove that asymmetry.
 </UseCase>
 
 <UseCase label="Cross-chain application requiring broad corridor coverage">
-Aggregators (LI.FI, Socket, Squid) cover more source and destination chain combinations than direct protocols or single-network intent layers. Check the per-corridor success rate column in the quote-latency tables: a provider that shows as available in the aggregate may return `unsupported` on the specific corridor you need. Their broader coverage comes with higher quote latency and, on uncongested corridors, slightly higher effective fees.
+Aggregators (LI.FI, Socket, Squid) cover more source and destination chain combinations than direct protocols or single-network relay layers. Check the per-corridor success rate column in the quote-latency tables: a provider that shows as available in the aggregate may return `unsupported` on the specific corridor you need. Their broader coverage comes with higher quote latency and, on uncongested corridors, slightly higher effective fees.
 </UseCase>
 
 ## Conclusion
 
-The clearest pattern across both bridge benchmarks is that the market splits along architectural lines and the split is corridor-dependent.
+The clearest pattern across both bridge benchmarks is that architecture predicts quote speed and fee structure, but the ranking depends on direction.
 
-Intent-based architectures lead on quote speed and on effective cost for liquid EVM corridors. The per-corridor tables make this concrete: the intent-vs-aggregator gap is largest on Base to Arbitrum where solver competition is deepest, and smallest on HyperCore where all providers face thin inventory. <Mark>No provider leads on every corridor simultaneously.</Mark>
+Sol to Base is the cheapest corridor in this dataset. Arb to Sol — the opposite direction across the same VM boundary — is more expensive and has fewer providers. The variable is not the ecosystem boundary; it is how many solvers are actively positioned on that route at the time of the quote.
 
-Production applications will typically need at least two providers: one intent layer for speed and cost on liquid corridors, one aggregator as fallback for niche or cross-VM routes where intent layer coverage thins out. The success rate column in each per-corridor table is the fastest way to identify where each provider's coverage actually holds.
+<Mark>No provider leads on every corridor simultaneously.</Mark> The per-corridor tables make this concrete: aggregate rankings average across coverage asymmetries that matter for real integrations. A provider with strong EVM-to-EVM coverage may be absent on the cross-VM route you need; a provider with deep HyperCore inventory may trail on Base to Arb.
+
+Production applications typically need at least two providers: one for speed and cost on liquid corridors, one as fallback for niche or cross-VM routes where primary coverage thins. The success rate column in each per-corridor table is the fastest way to identify where each provider's coverage actually holds.
 
 ## Sources
 
