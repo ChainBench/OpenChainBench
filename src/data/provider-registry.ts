@@ -2273,6 +2273,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "NOWNodes is a multi-chain node provider covering Gram (TON), Bitcoin, Ethereum and 50+ other chains. Offers API-key-based access with a free trial tier.",
     twitter: "@NOWNodes_io",
   },
+  tatum: {
+    url: "https://tatum.io",
+    description:
+      "Tatum is a multi-chain RPC gateway supporting TON, Algorand and 30+ blockchains. Provides a public no-key endpoint for basic queries.",
+    twitter: "@TatumIO",
+  },
+  uniblock: {
+    url: "https://uniblock.dev",
+    description:
+      "Uniblock is a multi-chain RPC aggregator providing unified access to TON and other blockchains via a public JSON-RPC endpoint, no API key required.",
+    twitter: "@UniblockDev",
+  },
 };
 
 /**
