@@ -1,0 +1,134 @@
+# OpenChainBench. Bench No 213
+
+slug: xrp-rpc
+number: "213"
+title: Fastest free XRP Ledger RPC, live no-key endpoint latency
+seo_title: "Fastest free XRP Ledger RPC 2026"
+seo_description: "{{best_name}} leads free XRP Ledger RPC at {{best_p50}} (ledger_current p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for ledger_current against every free, no-key public XRP Ledger node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  The XRP Ledger is a decentralized payment network using a federated consensus protocol (RPCA) that closes a new ledger every 3 to 4 seconds with instant, deterministic finality. Free public JSON-RPC endpoints are available without an API key from Ripple, XRPL Labs and PublicNode. Every provider was live-verified with consecutive keyless ledger_current probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to XRP Ledger.
+  We measure the round-trip latency of a single JSON-RPC call
+  (ledger_current) against every no-key public XRP Ledger node that
+  sustains continuous probing: 3 providers at launch, every 60 seconds,
+  from us-east, eu-west and Singapore. The harness classifies every
+  response (ok / http_err / jsonrpc_err / stale / timeout) with a
+  XRPL-scaled staleness gap (75 ledgers, around 5 min). The cross-chain
+  view lives on the parent rpc-capabilities benchmark; this page is the
+  XRP-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"method\":\"ledger_current\",\"params\":[{}]}. Plain HTTP POST. XRPL uses its own JSON-RPC envelope (no jsonrpc:2.0 field); errors are signalled via result.status='error'. Non-cacheable by design."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + result.ledger_current_index present and non-zero), http_err, jsonrpc_err, stale (ledger more than 75 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=xrp. Provider coverage at launch: 3 no-key endpoints (Ripple, XRPL Labs, PublicNode)."
+
+findings:
+  - "{{best_name}} currently leads free XRP Ledger RPC at {{best_p50}} (ledger_current p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free XRP Ledger RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (XRPL ledger_current p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which XRP Ledger nodes work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Ripple's public s1 node, XRPL Labs cluster and PublicNode. Every listed endpoint was live-verified with a ledger_current POST returning a parsable ledger index before inclusion."
+  - q: "Does the fastest XRP RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is XRP Ledger RPC latency measured here, technically?"
+    a: "One identical ledger_current POST every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="xrp"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: ripple
+    name: Ripple
+    tag: Ripple-operated public XRP Ledger mainnet node (s1), no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to Ripple's public s1 node."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ripple", chain="xrp"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ripple", chain="xrp"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ripple", chain="xrp"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ripple", chain="xrp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ripple", chain="xrp"}) / sum(ocb:rpc_call:rate_24h{provider="ripple", chain="xrp"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ripple", chain="xrp"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ripple", chain="xrp"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ripple", chain="xrp", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ripple", chain="xrp", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ripple", chain="xrp", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ripple", chain="xrp", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ripple", chain="xrp", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ripple", chain="xrp", region="sgp"}[1h])
+
+  - slug: xrpl-labs
+    name: XRPL Labs
+    tag: XRPL Labs cluster (xrplcluster.com), community-operated XRPL Foundation nodes, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to the XRPL Labs cluster."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xrpl-labs", chain="xrp"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="xrpl-labs", chain="xrp"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="xrpl-labs", chain="xrp"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="xrpl-labs", chain="xrp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="xrpl-labs", chain="xrp"}) / sum(ocb:rpc_call:rate_24h{provider="xrpl-labs", chain="xrp"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="xrpl-labs", chain="xrp"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="xrpl-labs", chain="xrp"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xrpl-labs", chain="xrp", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xrpl-labs", chain="xrp", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xrpl-labs", chain="xrp", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xrpl-labs", chain="xrp", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xrpl-labs", chain="xrp", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="xrpl-labs", chain="xrp", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to PublicNode's XRP Ledger endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="xrp"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="xrp"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="xrp"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="xrp"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="xrp"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="xrp"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="sgp"}[1h])
