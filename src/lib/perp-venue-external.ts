@@ -540,6 +540,98 @@ async function fetchPolymarketStats(): Promise<PerpVenueExternalStats> {
 }
 
 // ---------------------------------------------------------------------------
+// SynFutures — DeFiLlama dexs + fees
+// ---------------------------------------------------------------------------
+
+async function fetchSynFuturesStats(): Promise<PerpVenueExternalStats> {
+  const [fees, vol] = await Promise.all([
+    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/synfutures"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/synfutures"),
+  ]);
+  const totalFeesUsd = fees?.totalAllTime;
+  const totalVolumeUsd = vol?.totalAllTime;
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+}
+
+// ---------------------------------------------------------------------------
+// KiloEx — DeFiLlama dexs + fees
+// ---------------------------------------------------------------------------
+
+async function fetchKiloExStats(): Promise<PerpVenueExternalStats> {
+  const [fees, vol] = await Promise.all([
+    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/kiloex"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/kiloex"),
+  ]);
+  const totalFeesUsd = fees?.totalAllTime;
+  const totalVolumeUsd = vol?.totalAllTime;
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+}
+
+// ---------------------------------------------------------------------------
+// Orderly — direct API + DeFiLlama
+// ---------------------------------------------------------------------------
+
+type OrderlyVolumeResp = {
+  success: boolean;
+  data: { perp_volume_last_1_day?: number; perp_volume_today?: number };
+};
+
+async function fetchOrderlyStats(): Promise<PerpVenueExternalStats> {
+  const [stats, vol] = await Promise.all([
+    jf<OrderlyVolumeResp>("https://api-evm.orderly.org/v1/public/volume/stats"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/orderly-network"),
+  ]);
+  const extraKpis: { label: string; value: string }[] = [];
+  if (stats?.success && stats.data.perp_volume_last_1_day) {
+    extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(stats.data.perp_volume_last_1_day) });
+  }
+  const totalVolumeUsd = vol?.totalAllTime;
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  return { totalVolumeUsd, dailyVolumeChart, extraKpis };
+}
+
+// ---------------------------------------------------------------------------
+// Backpack — direct tickers API + DeFiLlama
+// ---------------------------------------------------------------------------
+
+type BackpackTicker = { symbol: string; quoteVolume: string };
+
+async function fetchBackpackStats(): Promise<PerpVenueExternalStats> {
+  const [tickers, vol] = await Promise.all([
+    jf<BackpackTicker[]>("https://api.backpack.exchange/api/v1/tickers"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/backpack-exchange"),
+  ]);
+  const extraKpis: { label: string; value: string }[] = [];
+  if (Array.isArray(tickers)) {
+    const vol24h = tickers
+      .filter((t) => t.symbol.endsWith("_PERP"))
+      .reduce((s, t) => s + (parseFloat(t.quoteVolume) || 0), 0);
+    if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
+    const perpCount = tickers.filter((t) => t.symbol.endsWith("_PERP")).length;
+    if (perpCount > 0) extraKpis.push({ label: "Perp markets", value: String(perpCount) });
+  }
+  const totalVolumeUsd = vol?.totalAllTime;
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+  return { totalVolumeUsd, dailyVolumeChart, extraKpis };
+}
+
+// ---------------------------------------------------------------------------
 // Drift — DeFiLlama fees + volume
 // ---------------------------------------------------------------------------
 
@@ -624,6 +716,14 @@ async function fetchExternalRaw(
         return await fetchDriftStats();
       case "edgex":
         return await fetchEdgexStats();
+      case "synfutures":
+        return await fetchSynFuturesStats();
+      case "kiloex":
+        return await fetchKiloExStats();
+      case "orderly":
+        return await fetchOrderlyStats();
+      case "backpack":
+        return await fetchBackpackStats();
       default:
         return {};
     }

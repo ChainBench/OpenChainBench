@@ -1747,6 +1747,30 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Aster is a decentralized perps exchange (ex-ApolloX, backed by YZi Labs) on BNB Chain and other EVM networks, with a Binance-compatible API and 8 hour funding periods.",
     twitter: "@Aster_DEX",
   },
+  synfutures: {
+    url: "https://synfutures.com",
+    description:
+      "SynFutures is an oAMM-based (Oyster AMM) perpetuals DEX on Base and Arbitrum. Traders open positions against a concentrated liquidity pool rather than a matching engine; any ERC-20 can be listed permissionlessly.",
+    twitter: "@SynFuturesDefi",
+  },
+  kiloex: {
+    url: "https://kiloex.io",
+    description:
+      "KiloEx is an oracle-based AMM perpetuals DEX deployed on BSC, Base and opBNB. Traders open leveraged positions against a shared liquidity pool; prices are sourced from on-chain oracles.",
+    twitter: "@KiloEx_perp",
+  },
+  orderly: {
+    url: "https://orderly.network",
+    description:
+      "Orderly Network is a permissionless liquidity layer for on-chain perpetuals. Front-ends (including WOOFi Pro) route orders through a shared CLOB infrastructure deployed across Arbitrum, Optimism, Polygon, Base and other chains.",
+    twitter: "@OrderlyNetwork",
+  },
+  backpack: {
+    url: "https://backpack.exchange",
+    description:
+      "Backpack Exchange is a regulated crypto exchange with a Solana-native perps engine, built by the team behind the Backpack wallet and Mad Lads NFTs. Offers a central limit order book with Solana settlement.",
+    twitter: "@BackpackApp",
+  },
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ─────────────────────
   xyz: {

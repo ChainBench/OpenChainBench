@@ -41,6 +41,10 @@ export const PERP_VENUE_META: Record<
   ostium:      { url: "https://ostium.app",      chainLabel: "Arbitrum" },
   grvt:        { url: "https://grvt.io",         chainLabel: "zkSync" },
   polymarket:  { url: "https://polymarket.com",  chainLabel: "Polygon" },
+  synfutures:  { url: "https://synfutures.com",  chainLabel: "Base, Arbitrum" },
+  kiloex:      { url: "https://kiloex.io",       chainLabel: "BSC, Base, opBNB" },
+  orderly:     { url: "https://orderly.network", chainLabel: "Multi-chain" },
+  backpack:    { url: "https://backpack.exchange", chainLabel: "Solana" },
 };
 
 /**
