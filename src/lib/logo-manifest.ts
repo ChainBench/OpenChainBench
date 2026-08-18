@@ -173,13 +173,13 @@ const RAW: Record<string, string> = {
   "aptos-fullnode": "/logos/aptos.svg",
   nodereal: "/logos/nodereal.svg",
   // ─── XRP providers (bench 213) ───
-  ripple: "/logos/ripple.svg",
-  "xrpl-labs": "/logos/xrpl-labs.svg",
+  ripple: "/logos/xrp.jpg",
+  "xrpl-labs": "/logos/xrp.jpg",
   // ─── Algorand providers (bench 214) ───
-  algonode: "/logos/algonode.svg",
+  algonode: "/logos/algorand.svg",
   nodely: "/logos/nodely.svg",
   // ─── Gram/TON providers (bench 215) ───
-  toncenter: "/logos/toncenter.svg",
+  toncenter: "/logos/ton.svg",
   nownodes: "/logos/nownodes.svg",
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
