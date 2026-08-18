@@ -9,17 +9,19 @@ import (
 	"time"
 )
 
-// KiloExNativeSource queries CoinGecko's public derivatives-exchange endpoint
-// for KiloEx across three chains: BSC, Base and opBNB.
+var _ = time.Second // keep time import for http.Client.Timeout
+
+// KiloExNativeSource queries CoinGecko's public derivatives-exchange list for
+// KiloEx across three chains: BSC, Base and opBNB.
 //
 // KiloEx is an oracle-based AMM perp DEX where traders open positions against
 // a shared liquidity pool (counterparty model). Deployed on multiple chains.
 //
 // CoinGecko exchange IDs: "kiloex-bsc", "kiloex-base", "kiloex-opbnb"
-// Endpoint: GET https://api.coingecko.com/api/v3/derivatives/exchanges/{id}
+// Endpoint: GET https://api.coingecko.com/api/v3/derivatives/exchanges?per_page=250
 //
-// trade_volume_24h_btc is fetched per-chain and summed. BTC/USD from CoinGecko
-// simple/price converts the aggregate to USD:
+// We fetch the bulk list (single request) and sum trade_volume_24h_btc for
+// the three KiloEx chain entries, then multiply by BTC/USD from Hyperliquid:
 //
 //	volume_24h_usd = sum(per_chain_btc) * btc_usd
 type KiloExNativeSource struct {
@@ -34,7 +36,16 @@ func NewKiloExNativeSource() *KiloExNativeSource {
 
 func (s *KiloExNativeSource) Name() string { return srcKiloExNative }
 
-var kiloexChainIDs = []string{"kiloex-bsc", "kiloex-base", "kiloex-opbnb"}
+var kiloexChainIDs = map[string]bool{
+	"kiloex-bsc":   true,
+	"kiloex-base":  true,
+	"kiloex-opbnb": true,
+}
+
+type cgExchangeListItem struct {
+	ID                string  `json:"id"`
+	TradeVolume24hBTC float64 `json:"trade_volume_24h_btc,string"`
+}
 
 func (s *KiloExNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
@@ -47,23 +58,27 @@ func (s *KiloExNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
+	// Bulk request: one call covers all KiloEx chain entries.
+	body, err := s.get("https://api.coingecko.com/api/v3/derivatives/exchanges?per_page=250&page=1")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] bulk err: %v\n", venue, srcKiloExNative, err)
+		return res, nil
+	}
+
+	var exchanges []cgExchangeListItem
+	if err := json.Unmarshal(body, &exchanges); err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] parse err: %v\n", venue, srcKiloExNative, err)
+		return res, nil
+	}
+
 	var totalBTC float64
-	for _, chainID := range kiloexChainIDs {
-		url := "https://api.coingecko.com/api/v3/derivatives/exchanges/" + chainID
-		body, err := s.get(url)
-		if err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, classifyError(err.Error())).Inc()
-			fmt.Printf("[perp-cohort][%s][%s] err chain=%s: %v\n", venue, srcKiloExNative, chainID, err)
-			continue
+	for _, ex := range exchanges {
+		if kiloexChainIDs[ex.ID] {
+			fmt.Printf("[perp-cohort][%s][%s] chain=%s vol=%.2f BTC\n", venue, srcKiloExNative, ex.ID, ex.TradeVolume24hBTC)
+			totalBTC += ex.TradeVolume24hBTC
 		}
-		var resp cgDerivExchangeResp
-		if err := json.Unmarshal(body, &resp); err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, "parse").Inc()
-			continue
-		}
-		fmt.Printf("[perp-cohort][%s][%s] chain=%s vol=%.2f BTC\n", venue, srcKiloExNative, chainID, resp.TradeVolume24hBTC)
-		totalBTC += resp.TradeVolume24hBTC
-		time.Sleep(300 * time.Millisecond) // polite delay between CoinGecko calls
 	}
 
 	if totalBTC > 0 && btcPrice > 0 {
