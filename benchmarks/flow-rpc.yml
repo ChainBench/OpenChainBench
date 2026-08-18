@@ -1,0 +1,112 @@
+# OpenChainBench. Bench No 217
+
+slug: flow-rpc
+number: "217"
+title: Fastest free Flow RPC, live no-key endpoint latency
+seo_title: "Fastest free Flow RPC 2026"
+seo_description: "{{best_name}} leads free Flow RPC at {{best_p50}} (Cadence REST /v1/blocks sealed height p50, 24h). 2 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the Flow Cadence REST endpoint (GET /v1/blocks?height=sealed) against every available public Flow node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Flow is a proof-of-stake L1 blockchain developed by Dapper Labs using a multi-role node architecture (Collector, Consensus, Execution, Verification) and the Cadence smart contract language. The Cadence chain commits roughly one block every 1 to 2 seconds with immediate deterministic finality. Public REST access nodes are operated by the Flow Foundation and accept GET /v1/blocks?height=sealed without an API key. Every provider was live-verified with consecutive sealed-block REST probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Flow.
+  We measure the round-trip latency of a single REST GET to
+  /v1/blocks?height=sealed against every available public Flow node
+  that sustains continuous probing: 2 providers at launch, every
+  60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / stale / timeout) with
+  a Flow-scaled staleness gap (240 blocks, around 5 min). The
+  cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Flow-scoped answer with per-region breakdowns
+  as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: HTTP GET to <base>/v1/blocks?height=sealed with Accept: application/json. Pure REST endpoint, no API key. The response is a JSON array; [0].header.height is parsed as a decimal string."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable height), http_err, stale (block more than 240 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=flow. Provider coverage at launch: 2 endpoints (Flow Foundation REST, Flow access node)."
+
+findings:
+  - "{{best_name}} currently leads Flow RPC at {{best_p50}} (Cadence REST /v1/blocks sealed height p50, 24h) across 2 measured providers."
+
+faq:
+  - q: "What is the fastest free Flow RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Flow sealed block height p50 over the last 24h), measured against 2 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Flow RPC endpoints work without an API key?"
+    a: "2 endpoints sustain continuous keyless probing at launch: the Flow Foundation REST node (rest-mainnet.onflow.org) and the Flow access node REST endpoint (access.mainnet.nodes.onflow.org). Every listed endpoint was live-verified with a GET /v1/blocks?height=sealed returning a parsable height before inclusion."
+  - q: "Does the fastest Flow RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Flow RPC latency measured here, technically?"
+    a: "One REST GET to /v1/blocks?height=sealed every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="flow"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: onflow
+    name: Flow Foundation
+    tag: Flow Foundation official public REST node, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/blocks?height=sealed sent every 60s from 3 regions to rest-mainnet.onflow.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onflow", chain="flow"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onflow", chain="flow"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onflow", chain="flow"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onflow", chain="flow"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="onflow", chain="flow"}) / sum(ocb:rpc_call:rate_24h{provider="onflow", chain="flow"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="onflow", chain="flow"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onflow", chain="flow"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onflow", chain="flow", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onflow", chain="flow", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onflow", chain="flow", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onflow", chain="flow", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onflow", chain="flow", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onflow", chain="flow", region="sgp"}[1h])
+
+  - slug: flow-access
+    name: Flow Access Node
+    tag: Flow Foundation public access node REST API, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/blocks?height=sealed sent every 60s from 3 regions to access.mainnet.nodes.onflow.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flow-access", chain="flow"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="flow-access", chain="flow"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="flow-access", chain="flow"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="flow-access", chain="flow"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="flow-access", chain="flow"}) / sum(ocb:rpc_call:rate_24h{provider="flow-access", chain="flow"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="flow-access", chain="flow"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="flow-access", chain="flow"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flow-access", chain="flow", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="flow-access", chain="flow", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flow-access", chain="flow", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="flow-access", chain="flow", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flow-access", chain="flow", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="flow-access", chain="flow", region="sgp"}[1h])

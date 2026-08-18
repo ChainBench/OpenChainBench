@@ -1123,6 +1123,60 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Polkadot parachain purpose-built for DePIN (Decentralised Physical Infrastructure Networks) with machine identity, machine staking, and role-based access control primitives for IoT and mobility networks.",
   },
+  {
+    slug: "near",
+    label: "NEAR Protocol",
+    category: "L1",
+    nativeSymbol: "NEAR",
+    website: "https://near.org",
+    description:
+      "Sharded proof-of-stake L1 using Nightshade sharding and Doomslug consensus, targeting roughly one block per second with near-instant practical finality and human-readable account names.",
+  },
+  {
+    slug: "flow",
+    label: "Flow",
+    category: "L1",
+    nativeSymbol: "FLOW",
+    website: "https://flow.com",
+    description:
+      "Proof-of-stake L1 developed by Dapper Labs using a multi-role node architecture (Collector, Consensus, Execution, Verification) and the Cadence resource-oriented smart contract language.",
+  },
+  {
+    slug: "hedera",
+    label: "Hedera",
+    category: "L1",
+    nativeSymbol: "HBAR",
+    website: "https://hedera.com",
+    description:
+      "Enterprise-grade public distributed ledger governed by the Hedera Governing Council using the Hashgraph consensus algorithm, targeting high throughput with deterministic finality under 3 seconds.",
+  },
+  {
+    slug: "ckb",
+    label: "Nervos CKB",
+    category: "L1",
+    nativeSymbol: "CKB",
+    website: "https://nervos.org",
+    description:
+      "Layer 1 proof-of-work blockchain using NC-MAX consensus (a selfish-mining-resistant Nakamoto variant) with a cell model for state storage and the RISC-V based CKB-VM for smart contract execution.",
+  },
+  {
+    slug: "multiversx",
+    label: "MultiversX",
+    category: "L1",
+    nativeSymbol: "EGLD",
+    website: "https://multiversx.com",
+    description:
+      "Adaptive state-sharded proof-of-stake L1 using Secure Proof of Stake (SPoS) with a metachain coordinating shard consensus, targeting up to 15,000 TPS per shard with immediate deterministic finality.",
+  },
+  {
+    slug: "neo",
+    label: "NEO N3",
+    category: "L1",
+    nativeSymbol: "NEO",
+    website: "https://neo.org",
+    description:
+      "Delegated Byzantine Fault Tolerant (dBFT) proof-of-stake L1 blockchain with one-block finality, a dual-token model (NEO for governance and GAS for fees), and the NeoVM supporting multiple smart contract languages.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

@@ -1,0 +1,112 @@
+# OpenChainBench. Bench No 219
+
+slug: ckb-rpc
+number: "219"
+title: Fastest free Nervos CKB RPC, live no-key endpoint latency
+seo_title: "Fastest free Nervos CKB RPC 2026"
+seo_description: "{{best_name}} leads free Nervos CKB RPC at {{best_p50}} (get_tip_block_number p50, 24h). 2 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for get_tip_block_number against every available public Nervos CKB node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Nervos CKB (Common Knowledge Base) is a proof-of-work Layer 1 blockchain using the NC-MAX consensus protocol, a variant of Nakamoto consensus with improved selfish-mining resistance. CKB targets roughly one block every 10 seconds with probabilistic finality. Public JSON-RPC endpoints are available without an API key from the Nervos Foundation and CKBapp. Every provider was live-verified with consecutive get_tip_block_number probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Nervos CKB.
+  We measure the round-trip latency of a single JSON-RPC call
+  (get_tip_block_number) against every available public CKB node that
+  sustains continuous probing: 2 providers at launch, every 60 seconds,
+  from us-east, eu-west and Singapore. The harness classifies every
+  response (ok / http_err / jsonrpc_err / stale / timeout) with a
+  CKB-scaled staleness gap (30 blocks, around 5 min at 10 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the CKB-scoped answer with per-region breakdowns as a
+  first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"get_tip_block_number\",\"params\":[]}. Plain HTTP POST. The result field is a hex-encoded block number string (0x prefix)."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable hex block number), http_err, jsonrpc_err, stale (block more than 30 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=ckb. Provider coverage at launch: 2 endpoints (Nervos Foundation, CKBapp)."
+
+findings:
+  - "{{best_name}} currently leads Nervos CKB RPC at {{best_p50}} (get_tip_block_number p50, 24h) across 2 measured providers."
+
+faq:
+  - q: "What is the fastest free Nervos CKB RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (CKB block number p50 over the last 24h), measured against 2 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Nervos CKB RPC endpoints work without an API key?"
+    a: "2 endpoints sustain continuous keyless probing at launch: the Nervos Foundation node (mainnet.ckb.dev/rpc) and CKBapp (mainnet.ckbapp.dev/rpc). Every listed endpoint was live-verified with a get_tip_block_number call returning a parsable hex block number before inclusion."
+  - q: "Does the fastest CKB RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Nervos CKB RPC latency measured here, technically?"
+    a: "One get_tip_block_number JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="ckb"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: ckb-dev
+    name: Nervos Foundation
+    tag: Nervos Foundation official CKB mainnet public RPC, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a get_tip_block_number POST sent every 60s from 3 regions to mainnet.ckb.dev/rpc."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckb-dev", chain="ckb"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ckb-dev", chain="ckb"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ckb-dev", chain="ckb"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ckb-dev", chain="ckb"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ckb-dev", chain="ckb"}) / sum(ocb:rpc_call:rate_24h{provider="ckb-dev", chain="ckb"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ckb-dev", chain="ckb"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ckb-dev", chain="ckb"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckb-dev", chain="ckb", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckb-dev", chain="ckb", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckb-dev", chain="ckb", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckb-dev", chain="ckb", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckb-dev", chain="ckb", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckb-dev", chain="ckb", region="sgp"}[1h])
+
+  - slug: ckbapp
+    name: CKBapp
+    tag: CKBapp community CKB mainnet public RPC, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a get_tip_block_number POST sent every 60s from 3 regions to mainnet.ckbapp.dev/rpc."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckbapp", chain="ckb"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ckbapp", chain="ckb"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ckbapp", chain="ckb"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ckbapp", chain="ckb"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ckbapp", chain="ckb"}) / sum(ocb:rpc_call:rate_24h{provider="ckbapp", chain="ckb"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ckbapp", chain="ckb"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ckbapp", chain="ckb"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckbapp", chain="ckb", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckbapp", chain="ckb", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckbapp", chain="ckb", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckbapp", chain="ckb", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ckbapp", chain="ckb", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ckbapp", chain="ckb", region="sgp"}[1h])

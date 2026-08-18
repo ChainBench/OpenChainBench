@@ -64,6 +64,22 @@ const (
 	// gramStaleSeqnoGap: TON/Gram masterchain seqno advances every ~5 s,
 	// so 60 seqnos ≈ 5 min.
 	gramStaleSeqnoGap uint64 = 60
+	// nearStaleBlockGap: NEAR commits ~1 block/s, so 300 blocks ≈ 5 min.
+	nearStaleBlockGap uint64 = 300
+	// flowStaleBlockGap: Flow Cadence commits one block every ~1.25 s,
+	// so 240 blocks ≈ 5 min.
+	flowStaleBlockGap uint64 = 240
+	// hederaStaleBlockGap: Hedera EVM blocks every ~3 s, so 100 blocks ≈ 5 min.
+	hederaStaleBlockGap uint64 = 100
+	// ckbStaleBlockGap: Nervos CKB commits one block every ~10 s,
+	// so 30 blocks ≈ 5 min.
+	ckbStaleBlockGap uint64 = 30
+	// multiversxStaleNonceGap: MultiversX meta-chain nonce advances every ~6 s,
+	// so 50 nonces ≈ 5 min.
+	multiversxStaleNonceGap uint64 = 50
+	// neoStaleBlockGap: NEO N3 commits one block every ~15 s,
+	// so 20 blocks ≈ 5 min.
+	neoStaleBlockGap uint64 = 20
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -242,6 +258,16 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callAlgorandStatus(probeCtx, p.URL)
 		case "gram":
 			block, result, latency, err = callGramSeqno(probeCtx, p.URL)
+		case "near":
+			block, result, latency, err = callNearBlock(probeCtx, p.URL)
+		case "flow":
+			block, result, latency, err = callFlowBlock(probeCtx, p.URL)
+		case "ckb":
+			block, result, latency, err = callCkbTipBlockNumber(probeCtx, p.URL)
+		case "multiversx":
+			block, result, latency, err = callMultiversxNonce(probeCtx, p.URL)
+		case "neo":
+			block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -271,6 +297,18 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = algorandStaleRoundGap
 			case "gram":
 				gap = gramStaleSeqnoGap
+			case "near":
+				gap = nearStaleBlockGap
+			case "flow":
+				gap = flowStaleBlockGap
+			case "hedera":
+				gap = hederaStaleBlockGap
+			case "ckb":
+				gap = ckbStaleBlockGap
+			case "multiversx":
+				gap = multiversxStaleNonceGap
+			case "neo":
+				gap = neoStaleBlockGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -290,7 +328,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		// hash normalisation across Cosmos chains is validated).
 		switch c.Kind {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
-			"sui", "aptos", "xrpl", "algorand", "gram":
+			"sui", "aptos", "xrpl", "algorand", "gram",
+			"near", "flow", "hedera", "ckb", "multiversx", "neo":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -939,4 +978,276 @@ func callGramSeqno(ctx context.Context, url string) (seqno uint64, result string
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("gram masterchain missing seqno")
 	}
 	return mc.Last.Seqno, "ok", latencyMs, nil
+}
+
+// nearBlockHeader is the shape of result.header in a NEAR `block` JSON-RPC response.
+type nearBlockHeader struct {
+	Height uint64 `json:"height"`
+}
+
+type nearBlockResult struct {
+	Header nearBlockHeader `json:"header"`
+}
+
+// callNearBlock probes a NEAR node via the `block` JSON-RPC method with finality=final.
+// Staleness uses nearStaleBlockGap in probeOne.
+func callNearBlock(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"block","params":{"finality":"final"},"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty near result")
+	}
+	var blk nearBlockResult
+	if err := json.Unmarshal(r.Result, &blk); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	if blk.Header.Height == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("near block missing height")
+	}
+	return blk.Header.Height, "ok", latencyMs, nil
+}
+
+// flowBlockEntry is the shape of one element in the array returned by
+// GET /v1/blocks?height=sealed on the Flow Cadence REST API.
+type flowBlockEntry struct {
+	Header struct {
+		Height string `json:"height"`
+	} `json:"header"`
+}
+
+// callFlowBlock probes a Flow node via the Cadence REST endpoint GET /v1/blocks?height=sealed.
+// The height field is a decimal string. Staleness uses flowStaleBlockGap in probeOne.
+func callFlowBlock(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/v1/blocks?height=sealed"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var blocks []flowBlockEntry
+	if err := json.Unmarshal(raw, &blocks); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if len(blocks) == 0 || blocks[0].Header.Height == "" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("flow blocks response empty or missing height")
+	}
+	n, err := strconv.ParseUint(blocks[0].Header.Height, 10, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric flow height: %s", blocks[0].Header.Height[:min(len(blocks[0].Header.Height), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// callCkbTipBlockNumber probes a Nervos CKB node via get_tip_block_number JSON-RPC.
+// The result is a hex string ("0x..."). Staleness uses ckbStaleBlockGap in probeOne.
+func callCkbTipBlockNumber(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"get_tip_block_number","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty ckb result")
+	}
+	var hexStr string
+	if err := json.Unmarshal(r.Result, &hexStr); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(hexStr, "0x"), 16, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-hex ckb block number: %s", hexStr[:min(len(hexStr), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// multiversxNetworkStatus is the shape of GET /network/status/4294967295 on MultiversX gateway.
+type multiversxNetworkStatus struct {
+	Data struct {
+		Status struct {
+			ErdNonce uint64 `json:"erd_nonce"`
+		} `json:"status"`
+	} `json:"data"`
+	Code string `json:"code"`
+}
+
+// callMultiversxNonce probes a MultiversX node via GET /network/status/4294967295 (metachain).
+// erd_nonce is the metachain block nonce (analogous to block height).
+// Staleness uses multiversxStaleNonceGap in probeOne.
+func callMultiversxNonce(ctx context.Context, url string) (nonce uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/network/status/4294967295"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var st multiversxNetworkStatus
+	if err := json.Unmarshal(raw, &st); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if st.Code != "successful" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("multiversx status code: %s", st.Code)
+	}
+	if st.Data.Status.ErdNonce == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("multiversx missing erd_nonce")
+	}
+	return st.Data.Status.ErdNonce, "ok", latencyMs, nil
+}
+
+// callNeoBlockCount probes a NEO N3 node via getblockcount JSON-RPC.
+// The result is a plain decimal integer. Staleness uses neoStaleBlockGap in probeOne.
+func callNeoBlockCount(ctx context.Context, url string) (count uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty neo result")
+	}
+	var n uint64
+	if err := json.Unmarshal(r.Result, &n); err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric neo block count: %s", string(r.Result)[:min(len(r.Result), 40)])
+	}
+	return n, "ok", latencyMs, nil
 }
