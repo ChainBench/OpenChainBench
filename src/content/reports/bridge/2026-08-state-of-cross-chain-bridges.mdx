@@ -18,7 +18,7 @@ No single provider leads quote speed and fee efficiency simultaneously across al
 
 Quote latency spans from under 200 ms to over 1,500 ms on identical USDC corridors at aggregate. The ranking shifts by corridor and by region. A provider that leads Sol to Base can trail on Base to Arb.
 
-Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The cheapest single corridor recorded in this dataset is Sol to Base at 0.0087% via Near Intents.
+Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The cheapest single corridor recorded in this dataset is Sol to Base, with Near Intents consistently quoting below 0.01%.
 
 Geographic probe region changes results: EU-West returns the tightest latency distributions for most providers in this cohort.
 </Summary>
@@ -71,7 +71,7 @@ Base to Arbitrum is the most contested corridor: a same-ecosystem EVM hop with m
 
 <StatTable bench="bridge-quote-latency" chain="Solana" caption="Quote latency for the Arbitrum to Solana corridor (p50, 24 h). 4 providers active, thinner cross-VM coverage. Lower is better." />
 
-Arbitrum to Solana is the cross-VM route with the thinnest coverage: <Mark>only 4 providers quote this direction</Mark>. Near Intents shows a bimodal latency profile here: solver-cached routes return under 400 ms while uncached routes wait the full 3-second auction window, producing a wide spread between p50 and p99. A low p50 from Near Intents on this corridor should be read alongside its p99.
+Arbitrum to Solana is the cross-VM route with the thinnest coverage: <Mark>only 4 providers quote this direction</Mark>. Several aggregators and Near Intents return unsupported here. The success rate column surfaces who is quoting reliably across the corridor versus occasionally failing.
 
 ### Arb to HyperCore
 
@@ -105,7 +105,7 @@ Provider rankings shift between regions. Providers without an Asian point of pre
 
 Three pricing architectures coexist in this benchmark:
 
-**Direct protocols** (deBridge) return a pre-computed cost using a native-token fee declared upfront in the quote response. Quote speed is fast. Route optionality is absent by design. <Mark>deBridge leads the aggregate quote-latency leaderboard</Mark> in this dataset, a direct protocol, not an intent layer.
+**Direct protocols** (deBridge) return a pre-computed cost using a native-token fee declared upfront in the quote response. Quote speed is fast. Route optionality is absent by design. deBridge consistently ranks in the top 2 at aggregate, competing with relay layers for the fastest quote.
 
 **Aggregators** (LI.FI, Squid, Socket) route through whichever underlying bridge is cheapest or fastest at quote time. Their latency reflects route-search complexity. The value proposition is coverage and route optimization, not speed.
 
@@ -135,7 +135,7 @@ Effective cost diverges sharply by corridor because solver inventory and destina
 
 <StatTable bench="bridge-fee" chain="Base" caption="Effective fee for Sol to Base at $300 USDC (p50, 24 h). Includes all costs. Lower is better." />
 
-Sol to Base is the <Mark>cheapest corridor in this dataset</Mark>. The lowest fee recorded on this route is 0.0087%, the tightest all-in cost in the benchmark. The cross-VM boundary (Solana to EVM) does not translate to higher cost when solver inventory is deep on both sides.
+Sol to Base is the <Mark>cheapest corridor in this dataset</Mark>. The lowest fee recorded on this route is consistently below 0.01%, the tightest all-in cost in the benchmark. The cross-VM boundary (Solana to EVM) does not translate to higher cost when solver inventory is deep on both sides.
 
 ### Base to Arbitrum: Effective Fee
 
