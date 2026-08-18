@@ -2285,6 +2285,85 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Uniblock is a multi-chain RPC aggregator providing unified access to TON and other blockchains via a public JSON-RPC endpoint, no API key required.",
     twitter: "@UniblockDev",
   },
+  // ─── NEAR Protocol providers (bench 216) ─────────────────────────
+  "near-org": {
+    url: "https://near.org",
+    description:
+      "Official NEAR Foundation public mainnet RPC endpoint (rpc.mainnet.near.org). Provides JSON-RPC access to the NEAR Protocol without an API key.",
+    twitter: "@NEARProtocol",
+  },
+  fastnear: {
+    url: "https://fastnear.com",
+    description:
+      "FastNEAR is a high-performance NEAR Protocol RPC service offering a free public tier at free.rpc.fastnear.com, no API key required.",
+    twitter: "@fastnear",
+  },
+  // ─── Flow providers (bench 217) ──────────────────────────────────
+  onflow: {
+    url: "https://flow.com",
+    description:
+      "Flow Foundation official public REST access node (rest-mainnet.onflow.org). Provides the Cadence REST API for block queries without an API key.",
+    twitter: "@flow_blockchain",
+  },
+  "flow-access": {
+    url: "https://flow.com",
+    description:
+      "Flow Foundation public access node (access.mainnet.nodes.onflow.org) exposing the Cadence REST API for sealed block queries, no API key required.",
+    twitter: "@flow_blockchain",
+    parent: "onflow",
+  },
+  // ─── Hedera providers (bench 218) ────────────────────────────────
+  hashio: {
+    url: "https://swirldslabs.com/hashio",
+    description:
+      "Hashio is a free public EVM-compatible JSON-RPC gateway for Hedera Hashgraph, operated by Swirlds Labs. No API key required; supports standard Ethereum JSON-RPC 2.0 methods.",
+    twitter: "@SwirldsLabs",
+  },
+  // ─── CKB providers (bench 219) ───────────────────────────────────
+  "ckb-dev": {
+    url: "https://nervos.org",
+    description:
+      "Nervos Foundation official CKB mainnet public RPC node (mainnet.ckb.dev/rpc). Provides JSON-RPC access to the Nervos CKB Layer 1 without an API key.",
+    twitter: "@NervosNetwork",
+  },
+  ckbapp: {
+    url: "https://ckbapp.dev",
+    description:
+      "CKBapp community-operated Nervos CKB mainnet public RPC node (mainnet.ckbapp.dev/rpc). Provides JSON-RPC access without an API key.",
+  },
+  // ─── MultiversX providers (bench 220) ────────────────────────────
+  "mvx-gateway": {
+    url: "https://multiversx.com",
+    description:
+      "MultiversX Foundation official gateway node (gateway.multiversx.com). Provides public REST API access to MultiversX blockchain data including metachain network status, no API key required.",
+    twitter: "@MultiversX",
+  },
+  "mvx-api": {
+    url: "https://api.multiversx.com",
+    description:
+      "MultiversX Foundation official API service (api.multiversx.com). Exposes REST endpoints including network status for indexer and gateway queries without an API key.",
+    twitter: "@MultiversX",
+    parent: "mvx-gateway",
+  },
+  // ─── NEO N3 providers (bench 221) ────────────────────────────────
+  nspcc: {
+    url: "https://nspcc.ru",
+    description:
+      "NSPCC (Russian National Crypto Standard Committee) operates a public NEO N3 mainnet RPC node at rpc10.n3.nspcc.ru:10331. No API key required.",
+  },
+  ngd: {
+    url: "https://neo.org",
+    description:
+      "Neo Global Development (NGD) operates public NEO N3 mainnet seed nodes (n3seed1.ngd.network:10332). No API key required.",
+    twitter: "@Neo_Blockchain",
+  },
+  ngd2: {
+    url: "https://neo.org",
+    description:
+      "Neo Global Development (NGD) seed node 2 (n3seed2.ngd.network:10332) for NEO N3 mainnet. No API key required.",
+    twitter: "@Neo_Blockchain",
+    parent: "ngd",
+  },
 };
 
 /**

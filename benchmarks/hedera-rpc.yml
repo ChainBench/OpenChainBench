@@ -1,0 +1,112 @@
+# OpenChainBench. Bench No 218
+
+slug: hedera-rpc
+number: "218"
+title: Fastest free Hedera RPC, live no-key endpoint latency
+seo_title: "Fastest free Hedera RPC 2026"
+seo_description: "{{best_name}} leads free Hedera RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). 2 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public Hedera EVM-compatible node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Hedera is a proof-of-stake public distributed ledger using the Hashgraph consensus algorithm (asynchronous Byzantine Fault Tolerant), targeting high throughput and deterministic finality in under 3 seconds. Hedera exposes an EVM-compatible JSON-RPC layer via Hashio, allowing standard eth_getBlockByNumber calls. Public EVM-compatible endpoints are available without an API key from Hashio (operated by the Hedera Foundation) and thirdweb. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Hedera.
+  We measure the round-trip latency of a single eth_getBlockByNumber
+  ("latest", false) call against every available public Hedera EVM
+  node that sustains continuous probing: 2 providers at launch, every
+  60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) with a Hedera-scaled staleness gap (100 blocks, around
+  5 min at 3 s/block). The cross-chain view lives on the parent
+  rpc-capabilities benchmark; this page is the Hedera-scoped answer
+  with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}. Plain HTTP POST. Standard Ethereum JSON-RPC 2.0 — Hedera's Hashio layer is EVM-compatible."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable block number), http_err, jsonrpc_err, stale (block more than 100 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=hedera. Provider coverage at launch: 2 endpoints (Hashio, thirdweb)."
+
+findings:
+  - "{{best_name}} currently leads Hedera RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 2 measured providers."
+
+faq:
+  - q: "What is the fastest free Hedera RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Hedera EVM block height p50 over the last 24h), measured against 2 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Hedera RPC endpoints work without an API key?"
+    a: "2 endpoints sustain continuous keyless probing at launch: Hashio (mainnet.hashio.io/api, operated by the Hedera Foundation) and thirdweb (295.rpc.thirdweb.com). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+  - q: "Does the fastest Hedera RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Hedera RPC latency measured here, technically?"
+    a: "One eth_getBlockByNumber JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="hedera"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: hashio
+    name: Hashio
+    tag: Hedera Foundation Hashio public EVM JSON-RPC endpoint, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to mainnet.hashio.io/api."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hashio", chain="hedera"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="hashio", chain="hedera"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="hashio", chain="hedera"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="hashio", chain="hedera"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="hashio", chain="hedera"}) / sum(ocb:rpc_call:rate_24h{provider="hashio", chain="hedera"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="hashio", chain="hedera"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="hashio", chain="hedera"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hashio", chain="hedera", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hashio", chain="hedera", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hashio", chain="hedera", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hashio", chain="hedera", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hashio", chain="hedera", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hashio", chain="hedera", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: thirdweb
+    tag: thirdweb public RPC for Hedera EVM (chain 295), no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 295.rpc.thirdweb.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hedera"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="hedera"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="hedera"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="hedera"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="hedera"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="hedera"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="hedera"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hedera"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hedera", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hedera", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hedera", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hedera", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="hedera", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="hedera", region="sgp"}[1h])

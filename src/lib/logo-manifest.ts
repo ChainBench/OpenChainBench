@@ -183,6 +183,32 @@ const RAW: Record<string, string> = {
   nownodes: "/logos/nownodes.svg",
   tatum: "/logos/tatum.svg",
   uniblock: "/logos/uniblock.svg",
+  // ─── Wave-2 non-EVM chains (benches 216-221) ───
+  near: "/logos/near.jpg",
+  flow: "/logos/flow.png",
+  ckb: "/logos/ckb.png",
+  multiversx: "/logos/multiversx.png",
+  neo: "/logos/neo.png",
+  // ─── NEAR providers (bench 216) ───
+  "near-org": "/logos/near.jpg",
+  fastnear: "/logos/near.jpg",
+  // lava already registered; drpc already registered
+  // ─── Flow providers (bench 217) ───
+  onflow: "/logos/flow.png",
+  "flow-access": "/logos/flow.png",
+  // ─── Hedera providers (bench 218) ───
+  hashio: "/logos/hedera.svg",
+  // thirdweb already registered
+  // ─── CKB providers (bench 219) ───
+  "ckb-dev": "/logos/ckb.png",
+  ckbapp: "/logos/ckb.png",
+  // ─── MultiversX providers (bench 220) ───
+  "mvx-gateway": "/logos/multiversx.png",
+  "mvx-api": "/logos/multiversx.png",
+  // ─── NEO providers (bench 221) ───
+  nspcc: "/logos/neo.png",
+  ngd: "/logos/neo.png",
+  ngd2: "/logos/neo.png",
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
   chainstack: "/logos/chainstack.svg",
