@@ -5,7 +5,7 @@ slug: "2026-08-state-of-cross-chain-bridges"
 publishedAt: "2026-08-18"
 period: "August 2026"
 summary: "Two live benchmarks across quote latency and effective fees reveal a 10x spread in quote speed between the fastest and slowest providers. Rankings shift by corridor and region. No single provider leads on every measured dimension."
-heroFinding: "The spread between the fastest and slowest quote API in this cohort is nearly 10x at aggregate. Both settle in the same 15 to 60 second window once the transaction is signed."
+heroFinding: "The spread between the fastest and slowest quote API in this cohort reaches nearly 10x within a 24-hour window. Both settle in the same 15 to 60 second window once the transaction is signed."
 author: "OpenChainBench Research"
 readingTime: 13
 canonical: "https://openchainbench.com/reports/bridge/2026-08-state-of-cross-chain-bridges"
@@ -16,7 +16,7 @@ Two live benchmarks across quote APIs and effective fees covering 8 bridge provi
 
 No single provider leads quote speed and fee efficiency simultaneously across all corridors. Rankings shift by direction: Sol to Base and Base to Arb have 6 to 7 competing providers; Arb to Sol and Arb to HyperCore thin to 4.
 
-Quote latency spans from under 200 ms to over 1,500 ms on identical USDC corridors at aggregate. The ranking shifts by corridor and by region. A provider that leads Sol to Base can trail on Base to Arb.
+Quote latency spans from the low hundreds of milliseconds to over 1,500 ms on identical USDC corridors at aggregate. The ranking shifts by corridor and by region. A provider that leads Sol to Base can trail on Base to Arb.
 
 Effective fee is not the same as the advertised fee. Total cost at $300 notional (fees plus slippage plus destination gas) is the figure that actually leaves a user's wallet. The cheapest single corridor recorded in this dataset is Sol to Base, with Near Intents consistently quoting below 0.01%.
 
@@ -47,9 +47,9 @@ Quote latency is how fast the bridge API returns a price. It is measured in mill
 
 <StatTable bench="bridge-quote-latency" caption="Bridge quote API latency (p50, 24 h), cross-corridor aggregate across all 4 USDC routes and 3 regions. Identical notional ($300), probed every 5 minutes. Lower is better." />
 
-<Mark>The fastest provider in this cohort quotes at aggregate under 200 ms. The slowest takes over 1,500 ms on the same corridors.</Mark> That is a nearly 10x spread on the same notional, same corridors, same probe timing.
+<Mark>The fastest providers in this cohort quote at aggregate in the low hundreds of milliseconds. The slowest consistently takes over 1,500 ms on the same corridors.</Mark> The spread between them reaches nearly 10x within a 24-hour window on the same notional, same corridors, same probe timing.
 
-Tail latency deserves its own reading. One provider in this cohort posts a 355 ms p50 at aggregate but a p99 near 5 seconds. That gap means one in a hundred quote requests will sit at the three-second spinner threshold under load, a different risk profile than the p50 alone suggests. Near Intents shows this pattern: its median looks competitive, but the tail reflects the solver auction window firing on uncached routes.
+Tail latency deserves its own reading. One provider in this cohort posts a p50 at aggregate in the 350 to 400 ms range but a p99 near 5 seconds. That gap means one in a hundred quote requests will sit at the three-second spinner threshold under load, a different risk profile than the p50 alone suggests. Near Intents shows this pattern: its median looks competitive, but the tail reflects the solver auction window firing on uncached routes.
 
 ## Per-Corridor Breakdown
 
@@ -71,7 +71,7 @@ Base to Arbitrum is the most contested corridor: a same-ecosystem EVM hop with m
 
 <StatTable bench="bridge-quote-latency" chain="Solana" caption="Quote latency for the Arbitrum to Solana corridor (p50, 24 h). 4 providers active, thinner cross-VM coverage. Lower is better." />
 
-Arbitrum to Solana is the cross-VM route with the thinnest coverage: <Mark>only 4 providers quote this direction</Mark>. Several aggregators and Near Intents return unsupported here. The success rate column surfaces who is quoting reliably across the corridor versus occasionally failing.
+Arbitrum to Solana is the cross-VM route with the thinnest coverage: <Mark>only 4 providers quote this direction</Mark>. Squid, Socket, Across, and Near Intents all return unsupported here. The success rate column surfaces who is quoting reliably across the corridor versus occasionally failing.
 
 ### Arb to HyperCore
 
@@ -105,7 +105,7 @@ Provider rankings shift between regions. Providers without an Asian point of pre
 
 Three pricing architectures coexist in this benchmark:
 
-**Direct protocols** (deBridge) return a pre-computed cost using a native-token fee declared upfront in the quote response. Quote speed is fast. Route optionality is absent by design. deBridge consistently ranks in the top 2 at aggregate, competing with relay layers for the fastest quote.
+**Direct protocols** (deBridge) return a pre-computed cost using a native-token fee declared upfront in the quote response. Quote speed is fast. Route optionality is absent by design. deBridge typically ranks among the fastest at aggregate, alongside relay layers.
 
 **Aggregators** (LI.FI, Squid, Socket) route through whichever underlying bridge is cheapest or fastest at quote time. Their latency reflects route-search complexity. The value proposition is coverage and route optimization, not speed.
 
@@ -141,7 +141,7 @@ Sol to Base is the <Mark>cheapest corridor in this dataset</Mark>. The lowest fe
 
 <StatTable bench="bridge-fee" chain="Arbitrum" caption="Effective fee for Base to Arb at $300 USDC (p50, 24 h). Deepest solver competition, tightest spreads. Lower is better." />
 
-Base to Arbitrum is the liquid EVM corridor where solver competition is strongest. <Mark>The gap between the cheapest and most expensive provider is smallest here</Mark> and narrows further at larger notionals where fixed fees dilute into the percentage.
+Base to Arbitrum is the liquid EVM corridor where solver competition is strongest. <Mark>The competitive cluster here is the tightest in the dataset</Mark>: the middle providers (excluding the fixed-fee outlier) sit within 0.25% of each other, narrowing further at larger notionals.
 
 ### Arb to Solana: Effective Fee
 
