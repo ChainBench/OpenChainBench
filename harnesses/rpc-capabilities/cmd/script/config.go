@@ -1528,22 +1528,27 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_XRP_PUBLICNODE", "https://xrp-rpc.publicnode.com")},
 			},
 		},
-		// Algorand — REST GET /v2/status last-round probe, ~3.5 s per round. 1 verified-free provider.
+		// Algorand — REST GET /v2/status last-round probe, ~3.5 s per round.
 		{
 			Slug: "algorand",
 			Name: "Algorand",
 			Kind: "algorand",
 			Providers: []Provider{
 				{Slug: "algonode", Name: "AlgoNode", URL: envDefault("RPC_URL_ALGORAND_ALGONODE", "https://mainnet-api.algonode.cloud")},
+				{Slug: "nodely", Name: "Nodely", URL: envDefault("RPC_URL_ALGORAND_NODELY", "https://mainnet-api.4160.nodely.dev")},
+				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_ALGORAND_TATUM", "https://algorand-mainnet-algod.gateway.tatum.io")},
 			},
 		},
-		// Gram — TON masterchain, getMasterchainInfo JSON-RPC, ~5 s seqno. 1 verified-free provider.
+		// Gram — TON masterchain, getMasterchainInfo JSON-RPC, ~5 s seqno.
 		{
 			Slug: "gram",
 			Name: "Gram",
 			Kind: "gram",
 			Providers: []Provider{
 				{Slug: "toncenter", Name: "TON Center", URL: envDefault("RPC_URL_GRAM_TONCENTER", "https://toncenter.com/api/v2/jsonRPC")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_GRAM_ONFINALITY", "https://ton.api.onfinality.io/public/jsonRPC")},
+				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_GRAM_TATUM", "https://ton-mainnet.gateway.tatum.io/jsonRPC")},
+				{Slug: "uniblock", Name: "Uniblock", URL: envDefault("RPC_URL_GRAM_UNIBLOCK", "https://api.uniblock.dev/uni/v1/json-rpc?chainId=toncoin")},
 			},
 		},
 	}
