@@ -20,7 +20,7 @@ abstract: |
   Per-chain member of the RPC latency cluster, extended to Starknet.
   We measure the round-trip latency of a single, identical JSON-RPC call
   (starknet_blockNumber) against every no-key public Starknet endpoint
-  that sustains continuous probing — 5 providers at launch,
+  that sustains continuous probing: 5 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) with a Starknet-scaled staleness gap. The cross-chain view
