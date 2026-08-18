@@ -100,7 +100,12 @@ const BRANDS: Record<string, Brand> = {
 
   // ─── Non-EVM L1s (benches 211-214) ───
   aptos: { color: "#00C4FF" },       // aptos cyan (brand kit)
-  algorand: { color: "#00BCD4" },    // algorand teal
+  algorand: { color: "#000000" },    // algorand black (official brand)
+
+  // ─── New RPC providers (benches 214-215) ───
+  tatum: { color: "#4F37FD" },       // tatum purple
+  uniblock: { color: "#1FB6FF" },    // uniblock cyan
+  nodely: { color: "#F9B72B" },      // nodely amber
 
   // ─── Stellar ecosystem providers (bench № 210) ───
   gateway: { color: "#00C2A8" },        // gateway.fm teal
