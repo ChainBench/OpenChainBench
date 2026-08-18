@@ -1593,7 +1593,8 @@ func chains() []Chain {
 				{Slug: "ckbapp", Name: "CKBapp", URL: envDefault("RPC_URL_CKB_CKBAPP", "https://mainnet.ckbapp.dev/rpc")},
 			},
 		},
-		// MultiversX — REST GET /network/status/4294967295 erd_nonce, ~6 s/nonce. 2 keyless providers.
+		// MultiversX — REST GET /network/status/4294967295 erd_nonce, ~6 s/nonce. 3 keyless providers.
+		// api.elrond.com is the legacy Elrond domain maintained as a public alias by the MultiversX team.
 		{
 			Slug: "multiversx",
 			Name: "MultiversX",
@@ -1601,6 +1602,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "mvx-gateway", Name: "MultiversX Gateway", URL: envDefault("RPC_URL_MULTIVERSX_GATEWAY", "https://gateway.multiversx.com")},
 				{Slug: "mvx-api", Name: "MultiversX API", URL: envDefault("RPC_URL_MULTIVERSX_API", "https://api.multiversx.com")},
+				{Slug: "elrond", Name: "Elrond API", URL: envDefault("RPC_URL_MULTIVERSX_ELROND", "https://api.elrond.com")},
 			},
 		},
 		// NEO N3 — getblockcount JSON-RPC (decimal result), ~15 s/block. 3 keyless providers.

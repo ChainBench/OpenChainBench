@@ -4,7 +4,7 @@ slug: multiversx-rpc
 number: "220"
 title: Fastest free MultiversX RPC, live no-key endpoint latency
 seo_title: "Fastest free MultiversX RPC 2026"
-seo_description: "{{best_name}} leads free MultiversX RPC at {{best_p50}} (metachain erd_nonce p50, 24h). 2 providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free MultiversX RPC at {{best_p50}} (metachain erd_nonce p50, 24h). 3 providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for GET /network/status/4294967295 (metachain nonce) against every available public MultiversX node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  MultiversX (formerly Elrond) is a proof-of-stake L1 blockchain using Secure Proof of Stake (SPoS) with adaptive state sharding, supporting up to 15,000 TPS per shard. The metachain coordinates shard consensus and commits a nonce (block height) approximately every 6 seconds with immediate finality. Public gateway endpoints are available without an API key from the MultiversX Foundation. Every provider was live-verified with consecutive metachain status probes at launch.
+  MultiversX (formerly Elrond) is a proof-of-stake L1 blockchain using Secure Proof of Stake (SPoS) with adaptive state sharding, supporting up to 15,000 TPS per shard. The metachain coordinates shard consensus and commits a nonce (block height) approximately every 6 seconds with immediate finality. Public gateway endpoints are available without an API key from the MultiversX Foundation (gateway.multiversx.com and api.multiversx.com) and via the legacy Elrond API domain (api.elrond.com, maintained as an alias). Every provider was live-verified with consecutive metachain status probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to MultiversX.
   We measure the round-trip latency of a single REST GET to
   /network/status/4294967295 (metachain) against every available public
-  MultiversX node that sustains continuous probing: 2 providers at launch,
+  MultiversX node that sustains continuous probing: 3 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / stale / timeout) with a
   MultiversX-scaled staleness gap (50 nonces, around 5 min at 6 s/nonce).
@@ -34,16 +34,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable erd_nonce), http_err, stale (nonce more than 50 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=multiversx. Provider coverage at launch: 2 endpoints (MultiversX Gateway, MultiversX API)."
+  - "Chain scope: every query on this page is pinned to chain=multiversx. Provider coverage at launch: 3 endpoints (MultiversX Gateway, MultiversX API, Elrond API)."
 
 findings:
-  - "{{best_name}} currently leads MultiversX RPC at {{best_p50}} (metachain erd_nonce p50, 24h) across 2 measured providers."
+  - "{{best_name}} currently leads MultiversX RPC at {{best_p50}} (metachain erd_nonce p50, 24h) across 3 measured providers."
 
 faq:
   - q: "What is the fastest free MultiversX RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (MultiversX metachain nonce p50 over the last 24h), measured against 2 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (MultiversX metachain nonce p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which MultiversX RPC endpoints work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing at launch: the MultiversX Gateway (gateway.multiversx.com) and the MultiversX API (api.multiversx.com). Every listed endpoint was live-verified with a GET /network/status/4294967295 returning a parsable erd_nonce before inclusion."
+    a: "3 endpoints sustain continuous keyless probing at launch: the MultiversX Gateway (gateway.multiversx.com), the MultiversX API (api.multiversx.com), and the Elrond legacy API (api.elrond.com, maintained as a public alias by the MultiversX team). Every listed endpoint was live-verified with a GET /network/status/4294967295 returning a parsable erd_nonce before inclusion."
   - q: "Does the fastest MultiversX RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is MultiversX RPC latency measured here, technically?"
@@ -110,3 +110,26 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="mvx-api", chain="multiversx", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="mvx-api", chain="multiversx", region="sgp"}[1h])
+
+  - slug: elrond
+    name: Elrond API
+    tag: MultiversX legacy Elrond domain (api.elrond.com), public REST, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /network/status/4294967295 sent every 60s from 3 regions to api.elrond.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="elrond", chain="multiversx"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="elrond", chain="multiversx"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="elrond", chain="multiversx"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="elrond", chain="multiversx"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="elrond", chain="multiversx"}) / sum(ocb:rpc_call:rate_24h{provider="elrond", chain="multiversx"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="elrond", chain="multiversx"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="elrond", chain="multiversx"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="elrond", chain="multiversx", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="elrond", chain="multiversx", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="elrond", chain="multiversx", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="elrond", chain="multiversx", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="elrond", chain="multiversx", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="elrond", chain="multiversx", region="sgp"}[1h])
