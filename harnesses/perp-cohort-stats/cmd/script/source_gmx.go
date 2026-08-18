@@ -68,12 +68,13 @@ type gmxSquidResp struct {
 	} `json:"errors"`
 }
 
-func (s *GMXNativeSource) fetchChain(chain string, since int64) (float64, error) {
+func (s *GMXNativeSource) fetchChain(chain string) (float64, error) {
 	url := fmt.Sprintf(gmxSquidBase, chain)
-	queryStr := fmt.Sprintf(
-		`{ volumeInfos(where:{period_eq:"1d", timestamp_gte:%d}, limit:1, orderBy:timestamp_DESC) { id volumeUsd timestamp } }`,
-		since,
-	)
+	// Fetch last 2 daily buckets. The current day's bucket resets at midnight UTC
+	// and accumulates volume throughout the day, so it may be much lower than the
+	// previous complete day. Taking max(last2) gives a stable ~24h figure that
+	// doesn't crater to near-zero every midnight.
+	queryStr := `{ volumeInfos(where:{period_eq:"1d"}, limit:2, orderBy:timestamp_DESC) { id volumeUsd timestamp } }`
 	payload, _ := json.Marshal(map[string]string{"query": queryStr})
 	req, _ := http.NewRequest("POST", url, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
@@ -101,21 +102,29 @@ func (s *GMXNativeSource) fetchChain(chain string, since int64) (float64, error)
 		return 0, nil
 	}
 
-	raw := parsed.Data.VolumeInfos[0].VolumeUsd
-	n := new(big.Int)
-	if _, ok := n.SetString(raw, 10); !ok {
-		return 0, fmt.Errorf("parse_bigint: %s", raw)
+	parseBig := func(raw string) float64 {
+		n := new(big.Int)
+		if _, ok := n.SetString(raw, 10); !ok {
+			return 0
+		}
+		f := new(big.Float).SetPrec(128).SetInt(n)
+		f.Quo(f, gmxScale1e30)
+		v, _ := f.Float64()
+		return v
 	}
-	scaled := new(big.Float).SetPrec(128).SetInt(n)
-	scaled.Quo(scaled, gmxScale1e30)
-	vol, _ := scaled.Float64()
-	return vol, nil
+
+	best := parseBig(parsed.Data.VolumeInfos[0].VolumeUsd)
+	for _, item := range parsed.Data.VolumeInfos[1:] {
+		if v := parseBig(item.VolumeUsd); v > best {
+			best = v
+		}
+	}
+	return best, nil
 }
 
 func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
 	venue := "gmx-v2"
-	since := time.Now().Unix() - 86400
 
 	type chainResult struct {
 		chain string
@@ -125,7 +134,7 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 	ch := make(chan chainResult, 2)
 	for _, chain := range []string{"arbitrum", "avalanche"} {
 		go func(c string) {
-			vol, err := s.fetchChain(c, since)
+			vol, err := s.fetchChain(c)
 			ch <- chainResult{c, vol, err}
 		}(chain)
 	}
