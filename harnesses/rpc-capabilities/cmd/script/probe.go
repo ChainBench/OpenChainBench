@@ -42,6 +42,13 @@ const (
 	// chain with a faster block time (e.g. Injective ~0.65 s) can
 	// override without touching the Polkadot reader.
 	cosmosStaleBlockGap uint64 = 40
+	// starknetStaleBlockGap: Starknet blocks are produced irregularly
+	// (roughly every 2-6 minutes), so a gap of 5 blocks is generous
+	// without masking real stale endpoints.
+	starknetStaleBlockGap uint64 = 5
+	// stellarStaleLedgerGap: Stellar closes a ledger every ~5 s, so
+	// 60 ledgers ≈ 5 min gives the same tolerance as EVM at 12 s/block.
+	stellarStaleLedgerGap uint64 = 60
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -206,6 +213,10 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, hash, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
 		case "cosmos":
 			block, hash, result, latency, err = callCosmosStatus(probeCtx, p.URL)
+		case "starknet":
+			block, result, latency, err = callStarknetBlockNumber(probeCtx, p.URL)
+		case "stellar":
+			block, result, latency, err = callStellarLatestLedger(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -221,6 +232,10 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = polkadotStaleBlockGap
 			case "cosmos":
 				gap = cosmosStaleBlockGap
+			case "starknet":
+				gap = starknetStaleBlockGap
+			case "stellar":
+				gap = stellarStaleLedgerGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -239,7 +254,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		// the reliability change surface small — revisit once the
 		// hash normalisation across Cosmos chains is validated).
 		switch c.Kind {
-		case "solana", "polkadot", "cosmos":
+		case "solana", "polkadot", "cosmos", "starknet", "stellar":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -490,4 +505,114 @@ func callCosmosStatus(ctx context.Context, url string) (block uint64, hash strin
 		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric latest_block_height: %q", st.SyncInfo.LatestBlockHeight)
 	}
 	return n, st.SyncInfo.LatestBlockHash, "ok", latencyMs, nil
+}
+
+// callStarknetBlockNumber is the Starknet probe path: starknet_blockNumber
+// with a rotating request id. Returns the current block number as uint64.
+// Staleness uses starknetStaleBlockGap in probeOne.
+func callStarknetBlockNumber(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"starknet_blockNumber","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+	}
+	n, err := strconv.ParseUint(strings.TrimSpace(string(r.Result)), 10, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric block number: %s", string(r.Result)[:min(len(r.Result), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// stellarLedger is the shape of the getLatestLedger result on Stellar Soroban RPC.
+type stellarLedger struct {
+	Sequence uint64 `json:"sequence"`
+}
+
+// callStellarLatestLedger is the Stellar Soroban RPC probe path: getLatestLedger
+// with a rotating request id. Returns the ledger sequence as block number.
+// Staleness uses stellarStaleLedgerGap in probeOne.
+func callStellarLatestLedger(ctx context.Context, url string) (ledger uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"getLatestLedger","params":{},"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+	}
+	var sl stellarLedger
+	if err := json.Unmarshal(r.Result, &sl); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	if sl.Sequence == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("stellar ledger missing sequence")
+	}
+	return sl.Sequence, "ok", latencyMs, nil
 }
