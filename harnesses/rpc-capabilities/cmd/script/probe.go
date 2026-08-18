@@ -49,6 +49,21 @@ const (
 	// stellarStaleLedgerGap: Stellar closes a ledger every ~5 s, so
 	// 60 ledgers ≈ 5 min gives the same tolerance as EVM at 12 s/block.
 	stellarStaleLedgerGap uint64 = 60
+	// suiStaleCheckpointGap: Sui checkpoints are produced every ~3 s,
+	// so 100 checkpoints ≈ 5 min gives the same order of tolerance.
+	suiStaleCheckpointGap uint64 = 100
+	// aptosStaleBlockGap: Aptos produces roughly one block per second,
+	// so 300 blocks ≈ 5 min.
+	aptosStaleBlockGap uint64 = 300
+	// xrplStaleLedgerGap: XRP Ledger closes every ~3-4 s, so 75 ledgers
+	// ≈ 5 min.
+	xrplStaleLedgerGap uint64 = 75
+	// algorandStaleRoundGap: Algorand commits one round every ~3.5 s,
+	// so 90 rounds ≈ 5 min.
+	algorandStaleRoundGap uint64 = 90
+	// gramStaleSeqnoGap: TON/Gram masterchain seqno advances every ~5 s,
+	// so 60 seqnos ≈ 5 min.
+	gramStaleSeqnoGap uint64 = 60
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -217,6 +232,16 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callStarknetBlockNumber(probeCtx, p.URL)
 		case "stellar":
 			block, result, latency, err = callStellarLatestLedger(probeCtx, p.URL)
+		case "sui":
+			block, result, latency, err = callSuiCheckpoint(probeCtx, p.URL)
+		case "aptos":
+			block, result, latency, err = callAptosLedger(probeCtx, p.URL)
+		case "xrpl":
+			block, result, latency, err = callXrplLedger(probeCtx, p.URL)
+		case "algorand":
+			block, result, latency, err = callAlgorandStatus(probeCtx, p.URL)
+		case "gram":
+			block, result, latency, err = callGramSeqno(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -236,6 +261,16 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = starknetStaleBlockGap
 			case "stellar":
 				gap = stellarStaleLedgerGap
+			case "sui":
+				gap = suiStaleCheckpointGap
+			case "aptos":
+				gap = aptosStaleBlockGap
+			case "xrpl":
+				gap = xrplStaleLedgerGap
+			case "algorand":
+				gap = algorandStaleRoundGap
+			case "gram":
+				gap = gramStaleSeqnoGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -254,7 +289,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		// the reliability change surface small — revisit once the
 		// hash normalisation across Cosmos chains is validated).
 		switch c.Kind {
-		case "solana", "polkadot", "cosmos", "starknet", "stellar":
+		case "solana", "polkadot", "cosmos", "starknet", "stellar",
+			"sui", "aptos", "xrpl", "algorand", "gram":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -563,6 +599,53 @@ type stellarLedger struct {
 	Sequence uint64 `json:"sequence"`
 }
 
+// suiCheckpointResult is the shape of sui_getLatestCheckpointSequenceNumber result.
+// The RPC returns the sequence number as a decimal string.
+type suiCheckpointResult struct {
+	Result string `json:"result"`
+	Error  *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// aptosLedgerInfo is the shape of GET /v1/ on an Aptos REST node.
+type aptosLedgerInfo struct {
+	BlockHeight string `json:"block_height"`
+}
+
+// xrplLedgerCurrentResp is the HTTP JSON-RPC response for ledger_current.
+// XRPL does not use jsonrpc:2.0 — error signal is result.status="error".
+type xrplLedgerCurrentResp struct {
+	Result struct {
+		LedgerCurrentIndex uint64 `json:"ledger_current_index"`
+		Status             string `json:"status"`
+		ErrorMessage       string `json:"error_message"`
+	} `json:"result"`
+}
+
+// algorandStatus is the shape of GET /v2/status on an Algorand algod node.
+type algorandStatus struct {
+	LastRound uint64 `json:"last-round"`
+}
+
+// gramApiResp handles both toncenter's {ok,result,...} envelope and plain
+// JSON-RPC 2.0 {result,...} responses from other TON providers.
+type gramApiResp struct {
+	OK     *bool           `json:"ok"`
+	Result json.RawMessage `json:"result"`
+	Error  *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type gramMasterchainInfo struct {
+	Last struct {
+		Seqno uint64 `json:"seqno"`
+	} `json:"last"`
+}
+
 // callStellarLatestLedger is the Stellar Soroban RPC probe path: getLatestLedger
 // with a rotating request id. Returns the ledger sequence as block number.
 // Staleness uses stellarStaleLedgerGap in probeOne.
@@ -615,4 +698,245 @@ func callStellarLatestLedger(ctx context.Context, url string) (ledger uint64, re
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("stellar ledger missing sequence")
 	}
 	return sl.Sequence, "ok", latencyMs, nil
+}
+
+// callSuiCheckpoint probes a Sui full-node using sui_getLatestCheckpointSequenceNumber.
+// The result is a decimal string; staleness uses suiStaleCheckpointGap in probeOne.
+func callSuiCheckpoint(ctx context.Context, url string) (seq uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"sui_getLatestCheckpointSequenceNumber","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r suiCheckpointResult
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	seqStr := strings.Trim(r.Result, `"`)
+	if seqStr == "" || seqStr == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty checkpoint result")
+	}
+	n, err := strconv.ParseUint(seqStr, 10, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric checkpoint: %s", seqStr[:min(len(seqStr), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// callAptosLedger probes an Aptos full-node via the REST ledger info endpoint (GET /v1/).
+// block_height is a decimal string in the response body.
+// Staleness uses aptosStaleBlockGap in probeOne.
+func callAptosLedger(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/")
+	if !strings.HasSuffix(target, "/v1") {
+		target = target + "/v1"
+	}
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var info aptosLedgerInfo
+	if err := json.Unmarshal(raw, &info); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if info.BlockHeight == "" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("aptos ledger missing block_height")
+	}
+	n, err := strconv.ParseUint(info.BlockHeight, 10, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric block_height: %s", info.BlockHeight[:min(len(info.BlockHeight), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// callXrplLedger probes an XRP Ledger node using the ledger_current JSON-RPC method.
+// XRPL uses its own JSON-RPC envelope (no jsonrpc:2.0 field; error lives in result.status).
+// Staleness uses xrplStaleLedgerGap in probeOne.
+func callXrplLedger(ctx context.Context, url string) (idx uint64, result string, latencyMs float64, err error) {
+	body := []byte(`{"method":"ledger_current","params":[{}]}`)
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r xrplLedgerCurrentResp
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Result.Status == "error" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("xrpl error: %s", r.Result.ErrorMessage)
+	}
+	if r.Result.LedgerCurrentIndex == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("xrpl missing ledger_current_index")
+	}
+	return r.Result.LedgerCurrentIndex, "ok", latencyMs, nil
+}
+
+// callAlgorandStatus probes an Algorand algod node via REST GET /v2/status.
+// last-round is the latest committed round (analogous to block height).
+// Staleness uses algorandStaleRoundGap in probeOne.
+func callAlgorandStatus(ctx context.Context, url string) (round uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/v2/status"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var s algorandStatus
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if s.LastRound == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("algorand status missing last-round")
+	}
+	return s.LastRound, "ok", latencyMs, nil
+}
+
+// callGramSeqno probes a TON/Gram node via getMasterchainInfo JSON-RPC.
+// Handles both toncenter's {ok,result,...} envelope and plain JSON-RPC 2.0.
+// Staleness uses gramStaleSeqnoGap in probeOne.
+func callGramSeqno(ctx context.Context, url string) (seqno uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"getMasterchainInfo","params":{},"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var gr gramApiResp
+	if err := json.Unmarshal(raw, &gr); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if gr.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", gr.Error.Code, gr.Error.Message)
+	}
+	if gr.OK != nil && !*gr.OK {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("toncenter ok=false")
+	}
+	if len(gr.Result) == 0 || string(gr.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty gram result")
+	}
+	var mc gramMasterchainInfo
+	if err := json.Unmarshal(gr.Result, &mc); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	if mc.Last.Seqno == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("gram masterchain missing seqno")
+	}
+	return mc.Last.Seqno, "ok", latencyMs, nil
 }

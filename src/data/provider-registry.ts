@@ -2190,6 +2190,82 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Lightsail Network operates Quasar, a multi-endpoint Stellar infrastructure suite offering a public no-key Soroban RPC (rpc.lightsail.network) and a full archive RPC (archive-rpc.lightsail.network) for Stellar mainnet.",
     twitter: "@lightsailnet",
   },
+
+  // ─── Sui providers (bench 211) ───
+  fullnode: {
+    url: "https://sui.io",
+    description:
+      "Official Mysten Labs public Sui fullnode. No API key required; operated by Mysten Labs (the core Sui developer) as the canonical reference endpoint for the Sui mainnet.",
+    twitter: "@SuiNetwork",
+  },
+  blockvision: {
+    url: "https://blockvision.org",
+    description:
+      "BlockVision provides high-throughput node infrastructure and data APIs for Sui and other chains. The public mainnet endpoint requires no API key and supports the full Sui JSON-RPC surface.",
+    twitter: "@BlockVision_io",
+  },
+  suiet: {
+    url: "https://suiet.app",
+    description:
+      "Suiet is an open-source Sui wallet that operates a public Sui mainnet RPC as a community service. No API key required; endpoint is shared with the Suiet wallet's own backend.",
+    twitter: "@suiet_wallet",
+  },
+
+  // ─── Aptos providers (bench 212) ───
+  aptoslabs: {
+    url: "https://aptoslabs.com",
+    description:
+      "Official Aptos Labs public mainnet node at api.mainnet.aptoslabs.com. No API key required; the canonical reference endpoint maintained by the Aptos Foundation and Aptos Labs.",
+    twitter: "@AptosLabs",
+  },
+  nodereal: {
+    url: "https://nodereal.io",
+    description:
+      "NodeReal is an enterprise-grade blockchain node provider supporting Aptos and other chains. Offers a public tier with no API key required and paid tiers for higher throughput.",
+    twitter: "@NodeReal_",
+  },
+
+  // ─── XRP Ledger providers (bench 213) ───
+  ripple: {
+    url: "https://ripple.com",
+    description:
+      "Ripple operates public XRP Ledger mainnet nodes (s1.ripple.com, s2.ripple.com) as a community service. No API key required; s1 is a stock ledger node and s2 retains full history.",
+    twitter: "@Ripple",
+  },
+  "xrpl-labs": {
+    url: "https://xrpl.org",
+    description:
+      "XRPL Labs operates the community cluster at xrplcluster.com, a load-balanced set of XRPL Foundation nodes available to developers without any API key. Supports the full XRPL JSON-RPC API.",
+    twitter: "@XRPLabs",
+  },
+
+  // ─── Algorand providers (bench 214) ───
+  algonode: {
+    url: "https://algonode.io",
+    description:
+      "AlgoNode is a community-operated free Algorand mainnet node (mainnet-api.algonode.cloud). No API key required; provides both algod (API) and indexer endpoints for the Algorand ecosystem.",
+    twitter: "@algonode_io",
+  },
+  nodely: {
+    url: "https://nodely.io",
+    description:
+      "Nodely (formerly AlgoExplorer by Randlabs) is a professional Algorand infrastructure provider offering a free public algod API tier at mainnet-api.4160.nodely.io with no API key required.",
+    twitter: "@nodely_io",
+  },
+
+  // ─── Gram/TON providers (bench 215) ───
+  toncenter: {
+    url: "https://toncenter.com",
+    description:
+      "TON Center provides the official HTTP API v2 for the TON/Gram blockchain, operated by the TON Foundation. Keyless access is available at 1 request per second; higher rates require an API key.",
+    twitter: "@toncenter",
+  },
+  nownodes: {
+    url: "https://nownodes.io",
+    description:
+      "NOWNodes is a multi-chain node provider covering Gram (TON), Bitcoin, Ethereum and 50+ other chains. Offers API-key-based access with a free trial tier.",
+    twitter: "@NOWNodes_io",
+  },
 };
 
 /**
