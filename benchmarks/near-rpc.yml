@@ -1,0 +1,157 @@
+# OpenChainBench. Bench No 216
+
+slug: near-rpc
+number: "216"
+title: Fastest free NEAR RPC, live no-key endpoint latency
+seo_title: "Fastest free NEAR Protocol RPC 2026"
+seo_description: "{{best_name}} leads free NEAR RPC at {{best_p50}} (block/finality:final height p50, 24h). 4 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for block (finality=final) against every available public NEAR Protocol node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  NEAR Protocol is a sharded Proof-of-Stake L1 blockchain using Nightshade sharding and Doomslug consensus, targeting roughly one block per second with near-instant practical finality. Public JSON-RPC endpoints are available without an API key from the NEAR Foundation, FastNEAR, Lava Network and dRPC. Every provider was live-verified with consecutive block/finality:final probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to NEAR Protocol.
+  We measure the round-trip latency of a single JSON-RPC call (block with
+  finality=final) against every available public NEAR node that sustains
+  continuous probing: 4 providers at launch, every 60 seconds, from
+  us-east, eu-west and Singapore. The harness classifies every response
+  (ok / http_err / jsonrpc_err / stale / timeout) with a NEAR-scaled
+  staleness gap (300 blocks, around 5 min). The cross-chain view lives on
+  the parent rpc-capabilities benchmark; this page is the NEAR-scoped
+  answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"block\",\"params\":{\"finality\":\"final\"}}. Plain HTTP POST. The response carries result.header.height as a decimal uint64."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable result.header.height), http_err, jsonrpc_err, stale (block more than 300 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=near. Provider coverage at launch: 4 endpoints (NEAR Foundation, FastNEAR, Lava, dRPC)."
+
+findings:
+  - "{{best_name}} currently leads NEAR RPC at {{best_p50}} (block/finality:final height p50, 24h) across 4 measured providers."
+
+faq:
+  - q: "What is the fastest free NEAR Protocol RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (NEAR block height p50 over the last 24h), measured against 4 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which NEAR RPC endpoints work without an API key?"
+    a: "4 endpoints sustain continuous keyless probing at launch: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com), Lava (near.lava.build) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
+  - q: "Does the fastest NEAR RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is NEAR RPC latency measured here, technically?"
+    a: "One block/finality:final JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="near"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: near-org
+    name: NEAR Foundation
+    tag: Official NEAR Foundation public mainnet RPC, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to rpc.mainnet.near.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="near-org", chain="near"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="near-org", chain="near"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="near-org", chain="near"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="near-org", chain="near"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="near-org", chain="near"}) / sum(ocb:rpc_call:rate_24h{provider="near-org", chain="near"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="near-org", chain="near"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="near-org", chain="near"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="near-org", chain="near", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="near-org", chain="near", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="near-org", chain="near", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="near-org", chain="near", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="near-org", chain="near", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="near-org", chain="near", region="sgp"}[1h])
+
+  - slug: fastnear
+    name: FastNEAR
+    tag: FastNEAR community RPC, free tier, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to free.rpc.fastnear.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fastnear", chain="near"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="fastnear", chain="near"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="fastnear", chain="near"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="fastnear", chain="near"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="fastnear", chain="near"}) / sum(ocb:rpc_call:rate_24h{provider="fastnear", chain="near"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="fastnear", chain="near"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="fastnear", chain="near"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fastnear", chain="near", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fastnear", chain="near", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fastnear", chain="near", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fastnear", chain="near", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fastnear", chain="near", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="fastnear", chain="near", region="sgp"}[1h])
+
+  - slug: lava
+    name: Lava
+    tag: Lava Network decentralised RPC, public NEAR endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to near.lava.build."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="near"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="near"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="near"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="near"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="near"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="near"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: dRPC decentralised multi-chain RPC, public NEAR endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to near.drpc.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="near"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="near"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="near"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="near"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="near"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="near"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="near"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="near"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="near", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="near", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="near", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="near", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="near", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="near", region="sgp"}[1h])

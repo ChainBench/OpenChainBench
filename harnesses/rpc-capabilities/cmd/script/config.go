@@ -1551,6 +1551,69 @@ func chains() []Chain {
 				{Slug: "uniblock", Name: "Uniblock", URL: envDefault("RPC_URL_GRAM_UNIBLOCK", "https://api.uniblock.dev/uni/v1/json-rpc?chainId=toncoin")},
 			},
 		},
+		// NEAR Protocol — JSON-RPC block/finality:final, ~1 block/s. 4 keyless providers.
+		{
+			Slug: "near",
+			Name: "NEAR Protocol",
+			Kind: "near",
+			Providers: []Provider{
+				{Slug: "near-org", Name: "NEAR Foundation", URL: envDefault("RPC_URL_NEAR_NEARORG", "https://rpc.mainnet.near.org")},
+				{Slug: "fastnear", Name: "FastNEAR", URL: envDefault("RPC_URL_NEAR_FASTNEAR", "https://free.rpc.fastnear.com")},
+				{Slug: "lava", Name: "Lava", URL: envDefault("RPC_URL_NEAR_LAVA", "https://near.lava.build")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_NEAR_DRPC", "https://near.drpc.org")},
+			},
+		},
+		// Flow — Cadence REST GET /v1/blocks?height=sealed, ~1.25 s/block. 2 public REST nodes.
+		{
+			Slug: "flow",
+			Name: "Flow",
+			Kind: "flow",
+			Providers: []Provider{
+				{Slug: "onflow", Name: "Flow Foundation", URL: envDefault("RPC_URL_FLOW_ONFLOW", "https://rest-mainnet.onflow.org")},
+				{Slug: "flow-access", Name: "Flow Access Node", URL: envDefault("RPC_URL_FLOW_ACCESS", "https://access.mainnet.nodes.onflow.org")},
+			},
+		},
+		// Hedera — EVM-compatible JSON-RPC (eth_getBlockByNumber), ~3 s/block. 2 keyless providers.
+		{
+			Slug: "hedera",
+			Name: "Hedera",
+			Kind: "hedera",
+			Providers: []Provider{
+				{Slug: "hashio", Name: "Hashio", URL: envDefault("RPC_URL_HEDERA_HASHIO", "https://mainnet.hashio.io/api")},
+				{Slug: "thirdweb", Name: "thirdweb", URL: envDefault("RPC_URL_HEDERA_THIRDWEB", "https://295.rpc.thirdweb.com")},
+			},
+		},
+		// Nervos CKB — get_tip_block_number JSON-RPC (hex result), ~10 s/block. 2 keyless providers.
+		{
+			Slug: "ckb",
+			Name: "Nervos CKB",
+			Kind: "ckb",
+			Providers: []Provider{
+				{Slug: "ckb-dev", Name: "Nervos Foundation", URL: envDefault("RPC_URL_CKB_CKBDEV", "https://mainnet.ckb.dev/rpc")},
+				{Slug: "ckbapp", Name: "CKBapp", URL: envDefault("RPC_URL_CKB_CKBAPP", "https://mainnet.ckbapp.dev/rpc")},
+			},
+		},
+		// MultiversX — REST GET /network/status/4294967295 erd_nonce, ~6 s/nonce. 2 keyless providers.
+		{
+			Slug: "multiversx",
+			Name: "MultiversX",
+			Kind: "multiversx",
+			Providers: []Provider{
+				{Slug: "mvx-gateway", Name: "MultiversX Gateway", URL: envDefault("RPC_URL_MULTIVERSX_GATEWAY", "https://gateway.multiversx.com")},
+				{Slug: "mvx-api", Name: "MultiversX API", URL: envDefault("RPC_URL_MULTIVERSX_API", "https://api.multiversx.com")},
+			},
+		},
+		// NEO N3 — getblockcount JSON-RPC (decimal result), ~15 s/block. 3 keyless providers.
+		{
+			Slug: "neo",
+			Name: "NEO N3",
+			Kind: "neo",
+			Providers: []Provider{
+				{Slug: "nspcc", Name: "NSPCC", URL: envDefault("RPC_URL_NEO_NSPCC", "https://rpc10.n3.nspcc.ru:10331")},
+				{Slug: "ngd", Name: "NGD", URL: envDefault("RPC_URL_NEO_NGD", "https://n3seed1.ngd.network:10332")},
+				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))

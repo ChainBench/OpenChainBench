@@ -107,6 +107,28 @@ const BRANDS: Record<string, Brand> = {
   uniblock: { color: "#1FB6FF" },    // uniblock cyan
   nodely: { color: "#F9B72B" },      // nodely amber
 
+  // ─── Non-EVM L1s wave 2 (benches 216-221) ───
+  near: { color: "#00C27E" },        // near green (official brand)
+  flow: { color: "#00EF8B" },        // flow green (primary brand)
+  hedera: { color: "#222222", dark: true }, // hedera dark (official brand)
+  ckb: { color: "#3CC68A" },         // nervos ckb teal
+  multiversx: { color: "#23F7DD" },  // multiversx teal/cyan
+  neo: { color: "#00AF92" },         // neo teal (brand kit)
+
+  // ─── New providers (benches 216-221) ───
+  fastnear: { color: "#00C27E" },    // fastnear inherits near green
+  hashio: { color: "#222222", dark: true }, // hashio inherits hedera dark
+  "ckb-dev": { color: "#3CC68A" },   // nervos foundation teal
+  ckbapp: { color: "#3CC68A" },      // ckbapp teal
+  "mvx-gateway": { color: "#23F7DD" }, // multiversx teal
+  "mvx-api": { color: "#23F7DD" },   // multiversx teal
+  nspcc: { color: "#1565C0", dark: true }, // nspcc deep blue
+  ngd: { color: "#00AF92" },         // ngd inherits neo teal
+  ngd2: { color: "#00AF92" },        // ngd2 inherits neo teal
+  onflow: { color: "#00EF8B" },      // onflow inherits flow green
+  "flow-access": { color: "#00EF8B" }, // flow access inherits flow green
+  "near-org": { color: "#00C27E" },  // near foundation inherits near green
+
   // ─── Stellar ecosystem providers (bench № 210) ───
   gateway: { color: "#00C2A8" },        // gateway.fm teal
   sorobanrpc: { color: "#7B4FBF" },     // sorobanrpc violet
