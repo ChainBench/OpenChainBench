@@ -2364,6 +2364,144 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@Neo_Blockchain",
     parent: "ngd",
   },
+
+  // ─── Tezos providers (bench 222) ──────────────────────────────
+  ecadinfra: {
+    url: "https://ecadinfra.com",
+    description:
+      "ECADinfra operates a public Tezos mainnet node (mainnet.ecadinfra.com). Provides the Tezos RPC API without an API key.",
+  },
+  tzbeta: {
+    url: "https://tzbeta.net",
+    description:
+      "TzBeta public Tezos mainnet RPC node (rpc.tzbeta.net). Free community-run Tezos RPC endpoint, no API key required.",
+  },
+  tzkt: {
+    url: "https://tzkt.io",
+    description:
+      "TzKT is a Tezos blockchain explorer and API by Baking Bad. Operates a public mainnet RPC node (rpc.tzkt.io/mainnet) in addition to its indexer API.",
+    twitter: "@TzKT_io",
+  },
+
+  // ─── EOS providers (bench 223) ────────────────────────────────
+  greymass: {
+    url: "https://greymass.com",
+    description:
+      "Greymass is a block producer and tooling developer for Antelope-based chains (EOS, WAX). Operates public API nodes for EOS and WAX mainnet, no API key required.",
+    twitter: "@greymass",
+  },
+  eosnation: {
+    url: "https://eosnation.io",
+    description:
+      "EOS Nation is a block producer for EOS. Operates a public EOS mainnet API node (eos.api.eosnation.io), no API key required.",
+    twitter: "@EOS_Nation",
+  },
+  alohaeos: {
+    url: "https://www.alohaeos.com",
+    description:
+      "Aloha EOS is a block producer for EOS. Operates a public EOS mainnet API node (api.main.alohaeos.com), no API key required.",
+    twitter: "@AlohaEOS",
+  },
+
+  // ─── VeChain providers (bench 224) ────────────────────────────
+  "vechain-foundation": {
+    url: "https://vechain.org",
+    description:
+      "VeChain Foundation official public mainnet node (mainnet.vechain.org). Provides the VeChain RESTful API without an API key.",
+    twitter: "@vechainofficial",
+  },
+  "vethor-node": {
+    url: "https://vechain.org",
+    description:
+      "VeChain Foundation public node (vethor-node.vechain.com). An additional official mainnet endpoint exposing the VeChain REST API, no API key required.",
+    twitter: "@vechainofficial",
+    parent: "vechain-foundation",
+  },
+  "vechain-energy": {
+    url: "https://vechain.energy",
+    description:
+      "VeChain.energy community infrastructure for VeChain. Operates a public mainnet node (node-mainnet.vechain.energy) with the VeChain REST API, no key required.",
+    twitter: "@vechain_energy",
+  },
+
+  // ─── Waves providers (bench 225) ──────────────────────────────
+  wavesnodes: {
+    url: "https://wavesnodes.com",
+    description:
+      "Wavesnodes.com community-operated public Waves mainnet node (nodes.wavesnodes.com). Provides the Waves REST API without an API key.",
+  },
+  "wx-network": {
+    url: "https://wx.network",
+    description:
+      "WX Network (formerly Waves Exchange) operates a public Waves mainnet node (nodes.wx.network) exposing the Waves REST API, no API key required.",
+    twitter: "@wxnetworkio",
+  },
+  "waves-exchange": {
+    url: "https://waves.exchange",
+    description:
+      "Waves Exchange public mainnet node (nodes.wavesnodes.com). Community Waves node operated by the exchange, no API key required.",
+    parent: "wx-network",
+  },
+
+  // ─── WAX providers (bench 226) ────────────────────────────────
+  eosusa: {
+    url: "https://eosusa.io",
+    description:
+      "EOSUSA is a block producer operating on multiple Antelope chains. Provides a public WAX mainnet API node (wax.eosusa.io), no API key required.",
+    twitter: "@eosusa_io",
+  },
+  waxsweden: {
+    url: "https://waxsweden.org",
+    description:
+      "WAX Sweden is a WAX guild (block producer). Operates a public WAX mainnet API node (wax.eu.eosamsterdam.net), no API key required.",
+    twitter: "@waxsweden",
+  },
+
+  // ─── Neon EVM providers (bench 227) ───────────────────────────
+  "neon-p2p": {
+    url: "https://p2p.org",
+    description:
+      "P2P.org operates a public Neon EVM mainnet proxy (neon-proxy-mainnet.solana.p2p.org). Provides a standard EVM JSON-RPC interface for Neon EVM, no API key required.",
+    twitter: "@p2pvalidator",
+  },
+  everstake: {
+    url: "https://everstake.one",
+    description:
+      "Everstake is a staking provider that also runs public RPC infrastructure. Operates a public Neon EVM mainnet node (neon-mainnet.everstake.one), no API key required.",
+    twitter: "@everstake_pool",
+  },
+
+  // ─── Merlin Chain providers (bench 228) ───────────────────────
+  "merlin-official": {
+    url: "https://merlinchain.io",
+    description:
+      "Merlin Chain official public EVM RPC node (rpc.merlinchain.io). Provides standard Ethereum JSON-RPC for the Merlin Chain Bitcoin L2, no API key required.",
+    twitter: "@MerlinLayer2",
+  },
+
+  // ─── Viction providers (bench 229) ────────────────────────────
+  "viction-official": {
+    url: "https://viction.xyz",
+    description:
+      "Viction (formerly TomoChain) official public EVM RPC node (rpc.viction.xyz). Provides standard Ethereum JSON-RPC for the Viction L1, no API key required.",
+    twitter: "@BuildOnViction",
+  },
+
+  // ─── ThunderCore providers (bench 230) ────────────────────────
+  "thundercore-official": {
+    url: "https://www.thundercore.com",
+    description:
+      "ThunderCore official public EVM RPC node (mainnet-rpc.thundercore.com). Provides standard Ethereum JSON-RPC for ThunderCore mainnet, no API key required.",
+    twitter: "@ThunderProtocol",
+  },
+
+  // ─── OKTC providers (bench 231) ───────────────────────────────
+  "oktc-official": {
+    url: "https://www.okx.com/oktc",
+    description:
+      "OKX Chain (OKTC) official public EVM RPC node (exchainrpc.okex.org). Provides standard Ethereum JSON-RPC for OKX Token Chain mainnet, no API key required.",
+    twitter: "@OKXOfficial",
+  },
 };
 
 /**

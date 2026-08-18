@@ -1,0 +1,134 @@
+# OpenChainBench. Bench No 230
+
+slug: thundercore-rpc
+number: "230"
+title: Fastest free ThunderCore RPC, live no-key endpoint latency
+seo_title: "Fastest free ThunderCore RPC 2026"
+seo_description: "{{best_name}} leads free ThunderCore RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public ThunderCore node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  ThunderCore is an EVM-compatible Layer 1 blockchain (chain ID 108) designed for high throughput, producing approximately one block per second with fast finality. It runs a modified version of Ethereum with the Thunder consensus protocol and exposes a standard JSON-RPC interface. Public EVM endpoints are available without an API key from ThunderCore Official, Thirdweb and dRPC. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to ThunderCore.
+  We measure the round-trip latency of a single eth_getBlockByNumber
+  ("latest", false) call against every available public ThunderCore
+  node that sustains continuous probing: 3 providers at launch, every
+  60 seconds, from us-east, eu-west and Singapore. The harness classifies
+  every response (ok / http_err / jsonrpc_err / stale / timeout) with
+  a standard EVM staleness gap. The cross-chain view lives on the
+  parent rpc-capabilities benchmark; this page is the ThunderCore-scoped
+  answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}. Plain HTTP POST. Standard Ethereum JSON-RPC 2.0."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable block number), http_err, jsonrpc_err, stale, timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=thundercore. Provider coverage at launch: 3 endpoints (ThunderCore Official, Thirdweb, dRPC)."
+
+findings:
+  - "{{best_name}} currently leads ThunderCore RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free ThunderCore RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (ThunderCore block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which ThunderCore RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: ThunderCore Official (mainnet-rpc.thundercore.com), Thirdweb (108.rpc.thirdweb.com) and dRPC (thundercore.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+  - q: "Does the fastest ThunderCore RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is ThunderCore RPC latency measured here, technically?"
+    a: "One eth_getBlockByNumber JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="thundercore"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: thundercore-official
+    name: ThunderCore Official
+    tag: ThunderCore official public RPC, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to mainnet-rpc.thundercore.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thundercore-official", chain="thundercore"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thundercore-official", chain="thundercore"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thundercore-official", chain="thundercore"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thundercore-official", chain="thundercore"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thundercore-official", chain="thundercore"}) / sum(ocb:rpc_call:rate_24h{provider="thundercore-official", chain="thundercore"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thundercore-official", chain="thundercore"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thundercore-official", chain="thundercore"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thundercore-official", chain="thundercore", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thundercore-official", chain="thundercore", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thundercore-official", chain="thundercore", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thundercore-official", chain="thundercore", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thundercore-official", chain="thundercore", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thundercore-official", chain="thundercore", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public ThunderCore RPC (chain 108), no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 108.rpc.thirdweb.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="thundercore"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="thundercore"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="thundercore"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="thundercore"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="thundercore"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="thundercore"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="thundercore"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="thundercore"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="thundercore", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="thundercore", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="thundercore", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="thundercore", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="thundercore", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="thundercore", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: dRPC decentralised multi-chain RPC, public ThunderCore endpoint, no key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to thundercore.drpc.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="thundercore"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="thundercore"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="thundercore"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="thundercore"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="thundercore"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="thundercore"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="thundercore"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="thundercore"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="thundercore", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="thundercore", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="thundercore", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="thundercore", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="thundercore", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="thundercore", region="sgp"}[1h])
