@@ -1468,6 +1468,32 @@ func chains() []Chain {
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_PEAQ_ONFINALITY", "https://peaq.api.onfinality.io/public")},
 			},
 		},
+		// Starknet — ZK-Rollup on Ethereum, STARK proofs, starknet_blockNumber probe. 5 keyless providers.
+		{
+			Slug: "starknet",
+			Name: "Starknet",
+			Kind: "starknet",
+			Providers: []Provider{
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_STARKNET_DRPC", "https://starknet.drpc.org")},
+				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_STARKNET_LAVA", "https://rpc.starknet.lava.build")},
+				{Slug: "nethermind", Name: "Nethermind", URL: envDefault("RPC_URL_STARKNET_NETHERMIND", "https://free-rpc.nethermind.io/mainnet-juno/")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_STARKNET_ONFINALITY", "https://starknet.api.onfinality.io/public")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_STARKNET_1RPC", "https://public.1rpc.io/starknet")},
+			},
+		},
+		// Stellar — Soroban RPC, getLatestLedger probe, ~5 s ledger close. 5 keyless providers.
+		{
+			Slug: "stellar",
+			Name: "Stellar",
+			Kind: "stellar",
+			Providers: []Provider{
+				{Slug: "gateway", Name: "Gateway.fm", URL: envDefault("RPC_URL_STELLAR_GATEWAY", "https://soroban-rpc.mainnet.stellar.gateway.fm")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_STELLAR_ANKR", "https://rpc.ankr.com/stellar_soroban")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_STELLAR_ONFINALITY", "https://stellar.api.onfinality.io/public")},
+				{Slug: "sorobanrpc", Name: "SorobanRPC.com", URL: envDefault("RPC_URL_STELLAR_SOROBANRPC", "https://mainnet.sorobanrpc.com")},
+				{Slug: "lightsail", Name: "Lightsail Network", URL: envDefault("RPC_URL_STELLAR_LIGHTSAIL", "https://rpc.lightsail.network/")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
