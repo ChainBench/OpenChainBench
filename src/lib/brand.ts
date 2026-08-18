@@ -98,6 +98,10 @@ const BRANDS: Record<string, Brand> = {
   kraken: { color: "#5741D9" },        // kraken purple
   "binance-us": { color: "#F0B90B" },  // binance yellow
 
+  // ─── Non-EVM L1s (benches 211-214) ───
+  aptos: { color: "#00C4FF" },       // aptos cyan (brand kit)
+  algorand: { color: "#00BCD4" },    // algorand teal
+
   // ─── Stellar ecosystem providers (bench № 210) ───
   gateway: { color: "#00C2A8" },        // gateway.fm teal
   sorobanrpc: { color: "#7B4FBF" },     // sorobanrpc violet

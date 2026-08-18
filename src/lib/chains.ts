@@ -94,6 +94,33 @@ export const CHAINS: ChainEntry[] = [
       "Gram (formerly TON / Toncoin). BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit. Native token renamed Toncoin → Gram in June 2026.",
   },
   {
+    slug: "aptos",
+    label: "Aptos",
+    category: "L1",
+    nativeSymbol: "APT",
+    description:
+      "Move-based L1 using Block-STM parallel execution, targeting 100,000+ TPS, roughly one block per second with sub-second deterministic finality.",
+    website: "https://aptosfoundation.org",
+  },
+  {
+    slug: "xrp",
+    label: "XRP Ledger",
+    category: "L1",
+    nativeSymbol: "XRP",
+    description:
+      "Federated consensus (RPCA), 3 to 4 second ledger close, deterministic finality without mining, designed for fast cross-border payments.",
+    website: "https://xrpl.org",
+  },
+  {
+    slug: "algorand",
+    label: "Algorand",
+    category: "L1",
+    nativeSymbol: "ALGO",
+    description:
+      "Pure Proof-of-Stake (BA* Byzantine Agreement), one round every roughly 3.5 seconds, immediate finality with no forks.",
+    website: "https://algorand.co",
+  },
+  {
     slug: "stellar",
     label: "Stellar",
     category: "L1",
