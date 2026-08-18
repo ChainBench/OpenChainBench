@@ -108,6 +108,10 @@ const RAW: Record<string, string> = {
   smarkets: "/logos/smarkets.jpg",
 
   // ─── Perp DEX cohort (perps hub /perps) ───
+  synfutures: "/logos/synfutures.png",
+  kiloex: "/logos/kiloex.png",
+  orderly: "/logos/orderly.webp",
+  backpack: "/logos/backpack.webp",
   drift: "/logos/drift.png",
   vertex: "/logos/vertex.png",
   edgex: "/logos/edgex.jpg",
