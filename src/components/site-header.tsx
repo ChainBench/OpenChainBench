@@ -243,9 +243,9 @@ export function SiteHeader() {
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "relative flex items-center h-full shrink-0 transition-colors whitespace-nowrap text-[11px] font-mono uppercase tracking-wide",
-                    i > 0 ? "ml-5" : "",
-                    active ? "text-ink" : "text-ink-faint hover:text-ink-muted",
+                    "relative flex items-center h-full shrink-0 transition-colors whitespace-nowrap text-[12px] font-medium",
+                    i > 0 ? "ml-6" : "",
+                    active ? "text-ink" : "text-ink-muted hover:text-ink",
                   ].join(" ")}
                 >
                   {item.label}
