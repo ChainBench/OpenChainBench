@@ -100,6 +100,16 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "XLM",
     description:
       "Stellar Consensus Protocol (SCP), roughly 5 s ledger close, deterministic finality on every close.",
+    website: "https://stellar.org",
+  },
+  {
+    slug: "starknet",
+    label: "Starknet",
+    category: "L2",
+    nativeSymbol: "STRK",
+    description:
+      "ZK-Rollup on Ethereum using STARK proofs for validity. Blocks finalize on Ethereum L1. EVM-compatible via Starknet VM.",
+    website: "https://starknet.io",
   },
   {
     slug: "tron",
