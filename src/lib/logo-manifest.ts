@@ -21,6 +21,7 @@ const RAW: Record<string, string> = {
   tron: "/logos/tron.png",
   sui: "/logos/sui.png",
   stellar: "/logos/stellar.png",
+  starknet: "/logos/starknet.svg",
   gram: "/logos/ton.svg",
   cardano: "/logos/cardano.png",
   litecoin: "/logos/litecoin.png",
