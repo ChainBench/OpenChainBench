@@ -2256,7 +2256,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   nodely: {
     url: "https://nodely.io",
     description:
-      "Nodely (formerly AlgoExplorer by Randlabs) is a professional Algorand infrastructure provider offering a free public algod API tier at mainnet-api.4160.nodely.io with no API key required.",
+      "Nodely (formerly AlgoExplorer by Randlabs) is a professional Algorand infrastructure provider offering a free public algod API tier at mainnet-api.4160.nodely.dev with no API key required.",
     twitter: "@nodely_io",
   },
 
