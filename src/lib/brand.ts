@@ -165,6 +165,7 @@ const BRANDS: Record<string, Brand> = {
   "thundercore-official": { color: "#002868", dark: true }, // thundercore dark
   thundertoken:      { color: "#002868", dark: true }, // thundercore dark (thundertoken node)
   smartpy:           { color: "#2C7DF7" }, // smartpy blue (tezos ecosystem)
+  tcinfra:           { color: "#2C7DF7" }, // tcinfra tezos blue
   "oktc-official":   { color: "#101010", dark: true }, // okx dark
 
   // ─── Stellar ecosystem providers (bench № 210) ───
