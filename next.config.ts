@@ -264,7 +264,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/apps/exec",
-        destination: "/benchmarks/trading-app-execution",
+        destination: "/trading-apps",
+        permanent: true,
+      },
+      {
+        source: "/benchmarks/trading-app-execution",
+        destination: "/trading-apps",
         permanent: true,
       },
       {
