@@ -39,6 +39,7 @@ type Venue struct {
 	StopOn429      bool     // Kalshi: documented token bucket, stop at first 429
 	InvalidBody    []string // body substrings that mark a probe_invalid (stale pin)
 	RequestMutator func(*http.Request) // optional: stamps auth/custom headers before send
+	UseProxy       bool     // route all requests for this venue through PROBE_PROXY_URL
 
 	state *venueState // wired at startup
 }
@@ -155,6 +156,7 @@ func venues(cfg Config) []*Venue {
 			PinFunc:   pinPredictIt,
 			RampRates: nil, // rate-limited: no ramp; probing at their published cap already
 			StopOn429: true,
+			UseProxy:  true, // Railway IPs blocked by PredictIt
 		},
 		{
 			Slug: "smarkets",
@@ -169,12 +171,12 @@ func venues(cfg Config) []*Venue {
 					}},
 				{Name: "list", Interval: 30 * time.Second, Timeout: 15 * time.Second,
 					URL: func(Pin) string {
-						// Popular events listing, no event-ID dependency for the list probe
-						return "https://api.smarkets.com/v3/events/?type_domain=politics&sort=popular&per_page=20&state=upcoming"
+						return "https://api.smarkets.com/v3/events/?type_domain=politics&sort=start_datetime%2Cid&per_page=20&state=upcoming"
 					}},
 			},
 			PinFunc:   pinSmarkets,
 			RampRates: []int{10, 25, 50},
+			UseProxy:  true, // Railway IPs blocked by Smarkets
 		},
 		// Metaculus: public forecasting platform, no auth, no order book.
 		// Primary class is price (single question endpoint). Conservative ramp
