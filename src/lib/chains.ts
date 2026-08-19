@@ -1177,6 +1177,96 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Delegated Byzantine Fault Tolerant (dBFT) proof-of-stake L1 blockchain with one-block finality, a dual-token model (NEO for governance and GAS for fees), and the NeoVM supporting multiple smart contract languages.",
   },
+  {
+    slug: "tezos",
+    label: "Tezos",
+    category: "L1",
+    nativeSymbol: "XTZ",
+    website: "https://tezos.com",
+    description:
+      "Self-amending proof-of-stake L1 using Liquid Proof of Stake (LPoS) and the Michelson smart contract language, with on-chain governance allowing protocol upgrades without hard forks. ~30 second block time.",
+  },
+  {
+    slug: "eos",
+    label: "EOS",
+    category: "L1",
+    nativeSymbol: "EOS",
+    website: "https://eosnetwork.com",
+    description:
+      "Delegated proof-of-stake L1 using the Antelope protocol (formerly EOSIO), featuring 21 elected block producers and 0.5-second block times with resource-based fee model (CPU, NET, RAM).",
+  },
+  {
+    slug: "vechain",
+    label: "VeChain",
+    category: "L1",
+    nativeSymbol: "VET",
+    website: "https://vechain.org",
+    description:
+      "Proof-of-authority EVM-compatible L1 with a dual-token model (VET for value transfer, VTHO for gas). Targets enterprise supply-chain and sustainability use cases with 10-second block time.",
+  },
+  {
+    slug: "waves",
+    label: "Waves",
+    category: "L1",
+    nativeSymbol: "WAVES",
+    website: "https://waves.tech",
+    description:
+      "Proof-of-stake L1 with a built-in DEX and leased-POS consensus. Supports Ride smart contracts and WAVES-based token issuance with roughly 60-second block times.",
+  },
+  {
+    slug: "wax",
+    label: "WAX",
+    category: "L1",
+    nativeSymbol: "WAXP",
+    website: "https://www.wax.io",
+    description:
+      "Delegated proof-of-stake L1 using the Antelope (EOSIO) protocol, purpose-built for NFT trading and gaming with 0.5-second block times and no gas fees for users.",
+  },
+  {
+    slug: "neon",
+    label: "Neon EVM",
+    category: "L2",
+    nativeSymbol: "NEON",
+    website: "https://neon.evm.build",
+    description:
+      "EVM runtime on Solana that executes Ethereum-compatible transactions via a proxy layer, inheriting Solana throughput and low fees while exposing a standard Ethereum JSON-RPC interface (chain ID 245022934).",
+  },
+  {
+    slug: "merlin",
+    label: "Merlin Chain",
+    category: "L2",
+    nativeSymbol: "MERL",
+    website: "https://merlinchain.io",
+    description:
+      "Bitcoin Layer 2 using ZK-Rollup technology to inherit Bitcoin security while enabling EVM-compatible smart contracts and DeFi (chain ID 4200). Settled on the Bitcoin mainnet.",
+  },
+  {
+    slug: "viction",
+    label: "Viction",
+    category: "L1",
+    nativeSymbol: "VIC",
+    website: "https://viction.xyz",
+    description:
+      "Proof-of-stake-voting EVM L1 (formerly TomoChain, chain ID 88) with 2-second block times, zero-gas-fee UX via the TomoZ protocol, and on-chain governance through Masternodes.",
+  },
+  {
+    slug: "thundercore",
+    label: "ThunderCore",
+    category: "L1",
+    nativeSymbol: "TT",
+    website: "https://www.thundercore.com",
+    description:
+      "EVM-compatible L1 using the Thunder consensus protocol for high throughput, producing approximately one block per second with fast finality (chain ID 108).",
+  },
+  {
+    slug: "oktc",
+    label: "OKTC",
+    category: "L1",
+    nativeSymbol: "OKT",
+    website: "https://www.okx.com/oktc",
+    description:
+      "EVM-compatible Layer 1 blockchain (chain ID 66) developed by OKX, formerly OKChain. Uses a delegated proof-of-stake consensus targeting high throughput and low fees for DeFi applications.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
