@@ -425,12 +425,9 @@ export default async function TradingAppsHubPage() {
           comparable across the two groups. Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.
-          Fee rates available in the dedicated{" "}
-          <Link href="/benchmarks/memecoin-platforms" className="underline hover:text-ink">
-            fee rates bench
-          </Link>
-          . App store ratings from the Apple iTunes lookup API. All harnesses
-          open source on{" "}
+          Fee rate = on-chain fee revenue ÷ fee-paying volume (Dune tx join);
+          FOMO via DeFiLlama. App store ratings from the Apple iTunes lookup API.
+          All harnesses open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"
