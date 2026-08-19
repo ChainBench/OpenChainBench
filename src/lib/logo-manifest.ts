@@ -200,6 +200,7 @@ const RAW: Record<string, string> = {
   viction: "/logos/viction.png",
   thundercore: "/logos/thundercore.png",
   oktc: "/logos/oktc.png",
+  greymass: "/logos/greymass.png",
   // ─── NEAR providers (bench 216) ───
   "near-org": "/logos/near.jpg",
   fastnear: "/logos/near.jpg",
@@ -719,7 +720,7 @@ const ALIASES: Record<string, string> = {
   "ecadinfra": "tezos",
   "tzbeta": "tezos",
   "tzkt": "tezos",
-  "greymass": "eos",
+  // greymass is on both EOS and WAX — no alias so it shows brand chip on both
   "eosnation": "eos",
   "alohaeos": "eos",
   "vechain-foundation": "vechain",
@@ -731,9 +732,12 @@ const ALIASES: Record<string, string> = {
   "eosusa": "wax",
   "waxsweden": "wax",
   "neon-p2p": "neon",
+  tcinfra: "tezos",
   "merlin-official": "merlin",
   "viction-official": "viction",
+  "viction-rpc2": "viction",
   "thundercore-official": "thundercore",
+  thundertoken: "thundercore",
   "oktc-official": "oktc",
 
 };
