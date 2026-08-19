@@ -200,6 +200,7 @@ const RAW: Record<string, string> = {
   viction: "/logos/viction.png",
   thundercore: "/logos/thundercore.png",
   oktc: "/logos/oktc.png",
+  greymass: "/logos/greymass.png",
   // ─── NEAR providers (bench 216) ───
   "near-org": "/logos/near.jpg",
   fastnear: "/logos/near.jpg",
