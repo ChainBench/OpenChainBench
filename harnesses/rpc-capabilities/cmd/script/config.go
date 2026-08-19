@@ -102,6 +102,19 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLKADOT_PUBLICNODE", "https://polkadot-rpc.publicnode.com")},
 			},
 		},
+		// ─── Hydration (Polkadot parachain, Omnipool DEX) — Substrate
+		// chain_getHeader probe. Resumed 2026-08-19 after all 5 original
+		// providers went dead; verified: rpc.hydradx.cloud (Hydration
+		// official), hydration-rpc.n.dwellir.com (Dwellir).
+		{
+			Slug: "hydration",
+			Name: "Hydration",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "hydration-official", Name: "Hydration", URL: envDefault("RPC_URL_HYDRATION_OFFICIAL", "https://rpc.hydradx.cloud")},
+				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_HYDRATION_DWELLIR", "https://hydration-rpc.n.dwellir.com")},
+			},
+		},
 		// ─── Osmosis (Cosmos SDK, CometBFT / Tendermint) — first
 		// Cosmos chain in the cluster. Probed via Tendermint JSON-RPC
 		// `status` (returns sync_info.latest_block_height +
