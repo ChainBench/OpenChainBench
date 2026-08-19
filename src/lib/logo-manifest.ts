@@ -189,6 +189,17 @@ const RAW: Record<string, string> = {
   ckb: "/logos/ckb.png",
   multiversx: "/logos/multiversx.png",
   neo: "/logos/neo.png",
+  // ─── Wave-3 non-EVM chains (benches 222-231) ───
+  tezos: "/logos/tezos.png",
+  eos: "/logos/eos.png",
+  vechain: "/logos/vechain.png",
+  waves: "/logos/waves.png",
+  wax: "/logos/wax.png",
+  neon: "/logos/neon.png",
+  merlin: "/logos/merlin.png",
+  viction: "/logos/viction.png",
+  thundercore: "/logos/thundercore.png",
+  oktc: "/logos/oktc.png",
   // ─── NEAR providers (bench 216) ───
   "near-org": "/logos/near.jpg",
   fastnear: "/logos/near.jpg",
