@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Merlin Chain is an EVM-compatible Bitcoin Layer 2 network (chain ID 4200) that uses ZK-Rollup technology to inherit Bitcoin security while enabling smart contracts and DeFi. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Merlin Official, dRPC and Thirdweb. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
+  Merlin Chain is an EVM-compatible Bitcoin Layer 2 network (chain ID 4200) that uses ZK-Rollup technology to inherit Bitcoin security while enabling smart contracts and DeFi. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Merlin Official, dRPC and BlockPI. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Merlin Chain.
@@ -33,7 +33,7 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable block number), http_err, jsonrpc_err, stale, timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=merlin. Provider coverage at launch: 3 endpoints (Merlin Official, dRPC, Thirdweb)."
+  - "Chain scope: every query on this page is pinned to chain=merlin. Provider coverage at launch: 3 endpoints (Merlin Official, dRPC, BlockPI)."
 
 findings:
   - "{{best_name}} currently leads Merlin Chain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
@@ -42,7 +42,7 @@ faq:
   - q: "What is the fastest free Merlin Chain RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Merlin Chain block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Merlin Chain RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and Thirdweb (4200.rpc.thirdweb.com). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "3 endpoints sustain continuous keyless probing at launch: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
   - q: "Does the fastest Merlin Chain RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
   - q: "How is Merlin Chain RPC latency measured here, technically?"
@@ -110,25 +110,25 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="merlin", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="merlin", region="sgp"}[1h])
 
-  - slug: thirdweb
-    name: Thirdweb
-    tag: Thirdweb public Merlin Chain RPC (chain 4200), no key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 4200.rpc.thirdweb.com."
+  - slug: blockpi
+    name: BlockPI
+    tag: BlockPI public Merlin Chain RPC, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to merlin.blockpi.network/v1/rpc/public."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="merlin"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="merlin"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="merlin"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="merlin"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="merlin"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="merlin"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="merlin"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="merlin"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockpi", chain="merlin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockpi", chain="merlin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockpi", chain="merlin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockpi", chain="merlin"}) / sum(ocb:rpc_call:rate_24h{provider="blockpi", chain="merlin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockpi", chain="merlin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="merlin", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="merlin", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="merlin", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="merlin", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="merlin", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="merlin", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="sgp"}[1h])

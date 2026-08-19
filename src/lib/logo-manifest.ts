@@ -719,7 +719,7 @@ const ALIASES: Record<string, string> = {
   "ecadinfra": "tezos",
   "tzbeta": "tezos",
   "tzkt": "tezos",
-  "greymass": "eos",
+  // greymass is on both EOS and WAX — no alias so it shows brand chip on both
   "eosnation": "eos",
   "alohaeos": "eos",
   "vechain-foundation": "vechain",
@@ -733,7 +733,9 @@ const ALIASES: Record<string, string> = {
   "neon-p2p": "neon",
   "merlin-official": "merlin",
   "viction-official": "viction",
+  "viction-rpc2": "viction",
   "thundercore-official": "thundercore",
+  thundertoken: "thundercore",
   "oktc-official": "oktc",
 
 };
