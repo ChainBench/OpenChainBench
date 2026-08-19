@@ -204,7 +204,6 @@ const nextConfig: NextConfig = {
       permanent: true,
     }));
     return [
-      { source: "/trading-apps", destination: "/benchmarks", permanent: false },
       { source: "/live", destination: "/", permanent: true },
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },

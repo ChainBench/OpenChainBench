@@ -111,8 +111,8 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="wx-network", chain="waves", region="sgp"}[1h])
 
   - slug: waves-exchange
-    name: WavesExchange
-    tag: WavesExchange public node (nodes.waves.exchange), keyless
+    name: Waves Exchange Node
+    tag: Waves Exchange public node (nodes.waves.exchange), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.waves.exchange."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waves-exchange", chain="waves"})
