@@ -63,7 +63,7 @@ const COLUMNS = [
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
     tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
-    higherBetter: false,
+    higherBetter: true,
   },
   {
     key: "feeRate" as const,
