@@ -7,7 +7,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live benchmarks for Solana trading platforms and Telegram bots — volume, fees, unique swap transactions, and app store ratings.";
+  "Live benchmarks for Solana trading platforms and Telegram bots — volume, swap transactions, average trade size, and app store ratings.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
@@ -27,6 +27,9 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
+// pump.fun is tracked via byLaunchpad (bonding curve, no referral tag system).
+// All other platforms are tracked via byPlatform (referral tags). Volume is
+// not directly comparable across the two groups — tooltip discloses this.
 const PLATFORMS = [
   { slug: "pump-fun", name: "pump.fun" },
   { slug: "gmgn", name: "GMGN" },
@@ -34,24 +37,20 @@ const PLATFORMS = [
   { slug: "fomo", name: "FOMO" },
   { slug: "trojan", name: "Trojan" },
   { slug: "photon", name: "Photon" },
-  { slug: "bloom", name: "Bloom" },
   { slug: "maestro", name: "Maestro" },
 ] as const;
 
-// Some platforms own a launchpad that runs under a different slug.
-// Add the launchpad's volume to the platform's terminal volume so the
-// "24h Volume" column reflects the full ecosystem (e.g. FOMO = terminal + Flap).
-const LAUNCHPAD_COMPANION: Partial<Record<string, string>> = {
-  fomo: "flap",
-};
-
+// Fee rate (memecoin-platforms) removed from the comparison table: the bench
+// uses different data sources per platform (Dune on-chain vs DeFiLlama off-chain
+// for FOMO), and the denominator (Mobula attributed volume) is inconsistent
+// across platforms. Full detail available at /benchmarks/memecoin-platforms.
 const COLUMNS = [
   {
     key: "volume" as const,
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "Terminal routing volume + owned launchpad volume (Mobula attribution)",
+    tip: "Mobula attribution. pump.fun = bonding-curve launchpad volume. All others = terminal routing volume via referral tag. Not directly comparable across the two groups.",
     higherBetter: true,
   },
   {
@@ -59,7 +58,7 @@ const COLUMNS = [
     label: "Swap Tx",
     bench: "solana-unique-traders",
     fmt: fmtCount,
-    tip: "Unique swap transactions in 24h (not unique wallets — active traders submit multiple tx/day)",
+    tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
     higherBetter: true,
   },
   {
@@ -67,15 +66,7 @@ const COLUMNS = [
     label: "Avg Trade",
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
-    tip: "Average swap size in USD",
-    higherBetter: false,
-  },
-  {
-    key: "feeRate" as const,
-    label: "Fee Rate",
-    bench: "memecoin-platforms",
-    fmt: fmtPct,
-    tip: "Observed take rate: on-chain fee revenue ÷ total attributed volume (lower bound — platforms with fee-exempt volume show lower rates)",
+    tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
     higherBetter: false,
   },
   {
@@ -83,7 +74,7 @@ const COLUMNS = [
     label: "App Rating",
     bench: "app-store-ratings",
     fmt: fmtRating,
-    tip: "Apple App Store rating (out of 5)",
+    tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app — they show —.",
     higherBetter: true,
   },
 ] as const;
@@ -113,11 +104,6 @@ function fmtCount(v: number | null): string {
   return v.toFixed(0);
 }
 
-function fmtPct(v: number | null): string {
-  if (v === null) return "—";
-  return `${v.toFixed(2)}%`;
-}
-
 function fmtRating(v: number | null): string {
   if (v === null) return "—";
   return `${v.toFixed(1)} / 5`;
@@ -129,7 +115,7 @@ const GROUPS = [
     items: [
       { slug: "solana-trading-platform-wars", title: "Trading platform volume" },
       { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
-      { slug: "solana-unique-traders", title: "Unique traders" },
+      { slug: "solana-unique-traders", title: "Swap transactions" },
       { slug: "solana-avg-trade-size", title: "Average trade size" },
     ],
   },
@@ -139,9 +125,7 @@ const GROUPS = [
   },
   {
     label: "Fees",
-    items: [
-      { slug: "memecoin-platforms", title: "Platform fee rates" },
-    ],
+    items: [{ slug: "memecoin-platforms", title: "Platform fee rates" }],
   },
   {
     label: "App store",
@@ -150,21 +134,17 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, launchpadBench, tradersBench, tradeSizeBench, feeBench, ratingsBench] =
+  const [volBench, tradersBench, tradeSizeBench, ratingsBench] =
     await Promise.all([
       getBenchmark("solana-trading-platform-wars"),
-      getBenchmark("solana-launchpad-wars"),
       getBenchmark("solana-unique-traders"),
       getBenchmark("solana-avg-trade-size"),
-      getBenchmark("memecoin-platforms"),
       getBenchmark("app-store-ratings"),
     ]);
 
   const volIdx = indexBySlug(volBench?.results);
-  const launchpadIdx = indexBySlug(launchpadBench?.results);
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
-  const feeIdx = indexBySlug(feeBench?.results);
   const ratingIdx = indexBySlug(ratingsBench?.results);
 
   type Row = {
@@ -173,26 +153,17 @@ export default async function TradingAppsHubPage() {
     volume: number | null;
     traders: number | null;
     tradeSize: number | null;
-    feeRate: number | null;
     rating: number | null;
   };
 
-  const matrix: Row[] = PLATFORMS.map((p) => {
-    const termVol = volIdx[p.slug] ?? null;
-    const companionSlug = LAUNCHPAD_COMPANION[p.slug];
-    const lpVol = companionSlug ? (launchpadIdx[companionSlug] ?? null) : null;
-    const volume =
-      termVol !== null || lpVol !== null ? (termVol ?? 0) + (lpVol ?? 0) : null;
-    return {
-      slug: p.slug,
-      name: p.name,
-      volume,
-      traders: tradersIdx[p.slug] ?? null,
-      tradeSize: tradeSizeIdx[p.slug] ?? null,
-      feeRate: feeIdx[p.slug] ?? null,
-      rating: ratingIdx[p.slug] ?? null,
-    };
-  }).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
+  const matrix: Row[] = PLATFORMS.map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    volume: volIdx[p.slug] ?? null,
+    traders: tradersIdx[p.slug] ?? null,
+    tradeSize: tradeSizeIdx[p.slug] ?? null,
+    rating: ratingIdx[p.slug] ?? null,
+  })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
 
   function best(key: ColKey, higherBetter: boolean): number | null {
     const vals = matrix.map((r) => r[key]).filter((v): v is number => v !== null);
@@ -206,10 +177,10 @@ export default async function TradingAppsHubPage() {
   }
 
   const topVolumeRow = matrix.reduce(
-    (best, row) => ((row.volume ?? -1) > (best.volume ?? -1) ? row : best),
+    (b, row) => ((row.volume ?? -1) > (b.volume ?? -1) ? row : b),
     matrix[0],
   );
-  const topRating = ratingsBench?.results.find((r) =>
+  const topRating = ratingsBench?.results.find((r: ProviderResult) =>
     PLATFORMS.some((p) => p.slug === r.slug),
   );
 
@@ -266,8 +237,8 @@ export default async function TradingAppsHubPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           {PLATFORMS.length} platforms measured across {BENCH_SLUGS.length}{" "}
-          independent benchmarks: volume, swap transactions, average trade size, fee
-          rates, and app store ratings. Live data, no marketing claims.
+          independent benchmarks: volume, swap transactions, average trade size,
+          fee rates, and app store ratings. Live data, no marketing claims.
         </p>
       </header>
 
@@ -302,7 +273,7 @@ export default async function TradingAppsHubPage() {
           Platform comparison
         </p>
         <div className="overflow-x-auto rounded-lg border border-ink/10">
-          <table className="w-full text-sm border-collapse min-w-[640px]">
+          <table className="w-full text-sm border-collapse min-w-[560px]">
             <thead>
               <tr className="border-b border-ink/10 bg-ink/3">
                 <th className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap w-[160px]">
@@ -375,7 +346,7 @@ export default async function TradingAppsHubPage() {
         </div>
         <p className="mt-2 text-[11px] text-ink-faint">
           Best value per column highlighted in green. Sorted by 24h volume.
-          Data refreshes every 60 s.
+          Hover column headers for methodology notes. Data refreshes every 60 s.
         </p>
       </section>
 
@@ -393,7 +364,7 @@ export default async function TradingAppsHubPage() {
                 {group.label}
               </p>
               <div className="flex flex-col">
-                {group.items.map((item, i) => (
+                {group.items.map((item: { slug: string; title: string }, i: number) => (
                   <div key={item.slug}>
                     {i > 0 && <div className="border-t border-rule" />}
                     <Link
@@ -436,12 +407,17 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume combines terminal routing volume (Mobula lighthouse byPlatform)
-          with owned launchpad volume where applicable (e.g. FOMO includes Flap).
-          Swap transaction counts are from Dune Analytics on-chain data.
-          Fee rates compare fee-wallet inflows to attributed volume.
-          App store ratings are fetched from the Apple App Store API.
-          All harnesses are open source on{" "}
+          Volume via Mobula lighthouse: pump.fun uses bonding-curve launchpad
+          attribution; terminals use referral-tag attribution — not directly
+          comparable across the two groups. Swap transaction counts from Dune
+          Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
+          Average trade size = volume ÷ trade count, includes bots and MEV.
+          Fee rates available in the dedicated{" "}
+          <Link href="/benchmarks/memecoin-platforms" className="underline hover:text-ink">
+            fee rates bench
+          </Link>
+          . App store ratings from the Apple iTunes lookup API. All harnesses
+          open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"
@@ -450,7 +426,7 @@ export default async function TradingAppsHubPage() {
           >
             GitHub
           </Link>
-          . Data released under{" "}
+          . Data under{" "}
           <Link
             href="https://creativecommons.org/licenses/by/4.0/"
             className="underline"
