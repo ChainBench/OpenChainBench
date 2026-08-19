@@ -40,10 +40,6 @@ const PLATFORMS = [
   { slug: "maestro", name: "Maestro" },
 ] as const;
 
-// Fee rate (memecoin-platforms) removed from the comparison table: the bench
-// uses different data sources per platform (Dune on-chain vs DeFiLlama off-chain
-// for FOMO), and the denominator (Mobula attributed volume) is inconsistent
-// across platforms. Full detail available at /benchmarks/memecoin-platforms.
 const COLUMNS = [
   {
     key: "volume" as const,
@@ -67,6 +63,14 @@ const COLUMNS = [
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
     tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
+    higherBetter: false,
+  },
+  {
+    key: "feeRate" as const,
+    label: "Fee Rate",
+    bench: "memecoin-platforms",
+    fmt: fmtPct,
+    tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
     higherBetter: false,
   },
   {
@@ -104,6 +108,11 @@ function fmtCount(v: number | null): string {
   return v.toFixed(0);
 }
 
+function fmtPct(v: number | null): string {
+  if (v === null) return "—";
+  return `${v.toFixed(2)}%`;
+}
+
 function fmtRating(v: number | null): string {
   if (v === null) return "—";
   return `${v.toFixed(1)} / 5`;
@@ -134,17 +143,19 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, tradersBench, tradeSizeBench, ratingsBench] =
+  const [volBench, tradersBench, tradeSizeBench, feeBench, ratingsBench] =
     await Promise.all([
       getBenchmark("solana-trading-platform-wars"),
       getBenchmark("solana-unique-traders"),
       getBenchmark("solana-avg-trade-size"),
+      getBenchmark("memecoin-platforms"),
       getBenchmark("app-store-ratings"),
     ]);
 
   const volIdx = indexBySlug(volBench?.results);
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
+  const feeIdx = indexBySlug(feeBench?.results);
   const ratingIdx = indexBySlug(ratingsBench?.results);
 
   type Row = {
@@ -153,6 +164,7 @@ export default async function TradingAppsHubPage() {
     volume: number | null;
     traders: number | null;
     tradeSize: number | null;
+    feeRate: number | null;
     rating: number | null;
   };
 
@@ -162,6 +174,7 @@ export default async function TradingAppsHubPage() {
     volume: volIdx[p.slug] ?? null,
     traders: tradersIdx[p.slug] ?? null,
     tradeSize: tradeSizeIdx[p.slug] ?? null,
+    feeRate: feeIdx[p.slug] ?? null,
     rating: ratingIdx[p.slug] ?? null,
   })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
 
