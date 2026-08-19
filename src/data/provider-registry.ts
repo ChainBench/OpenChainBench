@@ -2478,12 +2478,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Merlin Chain official public EVM RPC node (rpc.merlinchain.io). Provides standard Ethereum JSON-RPC for the Merlin Chain Bitcoin L2, no API key required.",
     twitter: "@MerlinLayer2",
   },
+  blockpi: {
+    url: "https://blockpi.io",
+    description:
+      "BlockPI multi-chain RPC provider offering public keyless endpoints across many EVM chains. Merlin Chain public endpoint: merlin.blockpi.network/v1/rpc/public.",
+    twitter: "@RealBlockPI",
+  },
 
   // ─── Viction providers (bench 229) ────────────────────────────
   "viction-official": {
     url: "https://viction.xyz",
     description:
       "Viction (formerly TomoChain) official public EVM RPC node (rpc.viction.xyz). Provides standard Ethereum JSON-RPC for the Viction L1, no API key required.",
+    twitter: "@BuildOnViction",
+  },
+  "viction-rpc2": {
+    url: "https://viction.xyz",
+    description:
+      "Viction secondary public EVM RPC node (rpc2.viction.xyz). Redundant endpoint operated by the Viction foundation, no API key required.",
     twitter: "@BuildOnViction",
   },
 
@@ -2493,6 +2505,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "ThunderCore official public EVM RPC node (mainnet-rpc.thundercore.com). Provides standard Ethereum JSON-RPC for ThunderCore mainnet, no API key required.",
     twitter: "@ThunderProtocol",
+  },
+  thundertoken: {
+    url: "https://www.thundercore.com",
+    description:
+      "ThunderToken public EVM RPC node (mainnet-rpc.thundertoken.net). Alternative keyless endpoint for ThunderCore mainnet operated by the ThunderToken project.",
+    twitter: "@ThunderProtocol",
+  },
+
+  // ─── Tezos providers (bench 222) ────────────────────────────
+  smartpy: {
+    url: "https://smartpy.io",
+    description:
+      "SmartPy public Tezos mainnet RPC node (mainnet.smartpy.io). Open-source Tezos development toolkit; the public node is operated alongside their IDE and testing tools.",
+    twitter: "@SmartPy_io",
   },
 
   // ─── OKTC providers (bench 231) ───────────────────────────────

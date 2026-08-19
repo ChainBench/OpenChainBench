@@ -159,8 +159,12 @@ const BRANDS: Record<string, Brand> = {
   "neon-p2p":        { color: "#9333EA" }, // neon purple
   everstake:         { color: "#00D4AA" }, // everstake teal
   "merlin-official": { color: "#F7A400" }, // merlin amber
+  blockpi:           { color: "#3D5CFF" }, // blockpi blue
   "viction-official":    { color: "#1D61DE" }, // viction blue
+  "viction-rpc2":    { color: "#1D61DE" }, // viction blue (secondary node)
   "thundercore-official": { color: "#002868", dark: true }, // thundercore dark
+  thundertoken:      { color: "#002868", dark: true }, // thundercore dark (thundertoken node)
+  smartpy:           { color: "#2C7DF7" }, // smartpy blue (tezos ecosystem)
   "oktc-official":   { color: "#101010", dark: true }, // okx dark
 
   // ─── Stellar ecosystem providers (bench № 210) ───
