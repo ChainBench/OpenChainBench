@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -59,8 +61,45 @@ func normalizeRailwayRegion(raw string) string {
 	}
 }
 
+// initSelectiveProxy patches http.DefaultTransport so requests to hosts listed
+// in PROBE_PROXY_HOSTS are routed through PROBE_PROXY_URL. All other requests
+// go direct. This lets us unblock providers that ban Railway datacenter IPs
+// without corrupting latency measurements for providers that don't.
+func initSelectiveProxy() {
+	raw := strings.TrimSpace(os.Getenv("PROBE_PROXY_URL"))
+	if raw == "" {
+		return
+	}
+	proxyURL, err := url.Parse(raw)
+	if err != nil {
+		fmt.Printf("[proxy] bad PROBE_PROXY_URL: %v\n", err)
+		return
+	}
+	hostsRaw := strings.Split(os.Getenv("PROBE_PROXY_HOSTS"), ",")
+	hostSet := make(map[string]bool, len(hostsRaw))
+	for _, h := range hostsRaw {
+		if h = strings.TrimSpace(h); h != "" {
+			hostSet[h] = true
+		}
+	}
+	if len(hostSet) == 0 {
+		fmt.Println("[proxy] PROBE_PROXY_URL set but PROBE_PROXY_HOSTS is empty — skipping")
+		return
+	}
+	dt := http.DefaultTransport.(*http.Transport).Clone()
+	dt.Proxy = func(r *http.Request) (*url.URL, error) {
+		if hostSet[r.URL.Hostname()] {
+			return proxyURL, nil
+		}
+		return nil, nil
+	}
+	http.DefaultTransport = dt
+	fmt.Printf("[proxy] selective proxy active for %d host(s): %v\n", len(hostSet), hostsRaw)
+}
+
 func main() {
 	installLogCapture() // capture stdout into /logs ring buffer
+	initSelectiveProxy()
 	fmt.Println("=== RPC Capabilities Harness ===")
 	fmt.Println("OpenChainBench - public RPC latency, reliability, and archive depth.")
 	fmt.Printf("Region: %s (set via $REGION env)\n", currentRegion)

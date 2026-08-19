@@ -96,7 +96,7 @@ func runRamp(ctx context.Context, v *Venue) {
 	}
 	cl := v.Classes[0]
 	url := cl.URL(pin)
-	client := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: 32}}
+	client := &http.Client{Transport: makeTransport(v.UseProxy, func(t *http.Transport) { t.MaxIdleConnsPerHost = 32 })}
 	log.Printf("[ramp][%s] start, baseline p50=%.0fms (n=%d), target %s", v.Slug, baseP50*1000, n, url)
 
 	for _, rate := range v.RampRates {
