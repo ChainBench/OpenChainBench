@@ -1616,7 +1616,7 @@ func chains() []Chain {
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
 			},
 		},
-		// 2026-08-18 wave-8. Tezos L1 — REST GET /chains/main/blocks/head/header, ~30 s/block. 3 keyless providers.
+		// 2026-08-18 wave-8. Tezos L1 — REST GET /chains/main/blocks/head/header, ~30 s/block. 4 keyless providers.
 		{
 			Slug: "tezos",
 			Name: "Tezos",
@@ -1625,6 +1625,7 @@ func chains() []Chain {
 				{Slug: "smartpy", Name: "SmartPy", URL: envDefault("RPC_URL_TEZOS_SMARTPY", "https://mainnet.smartpy.io")},
 				{Slug: "tzbeta", Name: "TezBeta", URL: envDefault("RPC_URL_TEZOS_TZBETA", "https://rpc.tzbeta.net")},
 				{Slug: "tzkt", Name: "TzKT (Baking Bad)", URL: envDefault("RPC_URL_TEZOS_TZKT", "https://rpc.tzkt.io/mainnet")},
+				{Slug: "tcinfra", Name: "TCInfra", URL: envDefault("RPC_URL_TEZOS_TCINFRA", "https://prod.tcinfra.net/rpc/mainnet")},
 			},
 		},
 		// 2026-08-18 wave-8. EOS (Antelope) L1 — REST GET /v1/chain/get_info, ~0.5 s/block. 3 keyless providers.
