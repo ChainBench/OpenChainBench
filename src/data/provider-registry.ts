@@ -2520,6 +2520,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "SmartPy public Tezos mainnet RPC node (mainnet.smartpy.io). Open-source Tezos development toolkit; the public node is operated alongside their IDE and testing tools.",
     twitter: "@SmartPy_io",
   },
+  tcinfra: {
+    url: "https://tcinfra.net",
+    description:
+      "TCInfra RPC node provider for Tezos and Etherlink (prod.tcinfra.net/rpc/mainnet). Provides public keyless Tezos mainnet REST access with no API key required.",
+  },
 
   // ─── OKTC providers (bench 231) ───────────────────────────────
   "oktc-official": {

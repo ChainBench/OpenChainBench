@@ -731,6 +731,7 @@ const ALIASES: Record<string, string> = {
   "eosusa": "wax",
   "waxsweden": "wax",
   "neon-p2p": "neon",
+  tcinfra: "tezos",
   "merlin-official": "merlin",
   "viction-official": "viction",
   "viction-rpc2": "viction",
