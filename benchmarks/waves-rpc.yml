@@ -1,0 +1,134 @@
+# OpenChainBench. Bench No 225
+
+slug: waves-rpc
+number: "225"
+title: Fastest free Waves RPC, live no-key endpoint latency
+seo_title: "Fastest free Waves RPC 2026"
+seo_description: "{{best_name}} leads free Waves RPC at {{best_p50}} (blocks/last height p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for GET /blocks/last against every available public Waves node, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Waves is a proof-of-stake blockchain optimised for decentralised finance and token creation, producing one block approximately every 60 seconds. The chain exposes a REST API at /blocks/last returning the latest committed block height as a plain integer. Public REST endpoints are available without an API key from the Waves Foundation, Waves.Exchange and nodes.waves.exchange. Every provider was live-verified with consecutive block probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Waves.
+  We measure the round-trip latency of a single REST call (GET
+  /blocks/last) against every available public Waves node that sustains
+  continuous probing: 3 providers at launch, every 60 seconds, from
+  us-east, eu-west and Singapore. The harness classifies every response
+  (ok / http_err / jsonrpc_err / stale / timeout) with a Waves-scaled
+  staleness gap (5 blocks, around 5 min at 60 s/block). The cross-chain
+  view lives on the parent rpc-capabilities benchmark; this page is the
+  Waves-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: HTTP GET /blocks/last. Plain REST call. The response carries height as a plain integer."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (HTTP 200 + parsable height integer), http_err, jsonrpc_err, stale (block more than 5 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=waves. Provider coverage at launch: 3 endpoints (Waves Foundation, Waves.Exchange x2)."
+
+findings:
+  - "{{best_name}} currently leads Waves RPC at {{best_p50}} (blocks/last height p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Waves RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Waves block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Waves RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Waves Foundation nodes (nodes.wavesnodes.com), Waves.Exchange (nodes.wx.network) and WavesExchange (nodes.waves.exchange). Every listed endpoint was live-verified with a blocks/last call returning a parsable height before inclusion."
+  - q: "Does the fastest Waves RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Waves RPC latency measured here, technically?"
+    a: "One GET /blocks/last REST call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="waves"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: wavesnodes
+    name: Waves Foundation
+    tag: Waves Foundation official public nodes, keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.wavesnodes.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wavesnodes", chain="waves"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="wavesnodes", chain="waves"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="wavesnodes", chain="waves"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="wavesnodes", chain="waves"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="wavesnodes", chain="waves"}) / sum(ocb:rpc_call:rate_24h{provider="wavesnodes", chain="waves"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="wavesnodes", chain="waves"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="wavesnodes", chain="waves"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wavesnodes", chain="waves", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wavesnodes", chain="waves", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wavesnodes", chain="waves", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wavesnodes", chain="waves", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wavesnodes", chain="waves", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wavesnodes", chain="waves", region="sgp"}[1h])
+
+  - slug: wx-network
+    name: Waves.Exchange
+    tag: Waves.Exchange public node (nodes.wx.network), keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.wx.network."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wx-network", chain="waves"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="wx-network", chain="waves"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="wx-network", chain="waves"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="wx-network", chain="waves"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="wx-network", chain="waves"}) / sum(ocb:rpc_call:rate_24h{provider="wx-network", chain="waves"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="wx-network", chain="waves"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="wx-network", chain="waves"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wx-network", chain="waves", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wx-network", chain="waves", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wx-network", chain="waves", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wx-network", chain="waves", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="wx-network", chain="waves", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="wx-network", chain="waves", region="sgp"}[1h])
+
+  - slug: waves-exchange
+    name: WavesExchange
+    tag: WavesExchange public node (nodes.waves.exchange), keyless
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.waves.exchange."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waves-exchange", chain="waves"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="waves-exchange", chain="waves"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="waves-exchange", chain="waves"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="waves-exchange", chain="waves"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="waves-exchange", chain="waves"}) / sum(ocb:rpc_call:rate_24h{provider="waves-exchange", chain="waves"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="waves-exchange", chain="waves"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="waves-exchange", chain="waves"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waves-exchange", chain="waves", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waves-exchange", chain="waves", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waves-exchange", chain="waves", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waves-exchange", chain="waves", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="waves-exchange", chain="waves", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="waves-exchange", chain="waves", region="sgp"}[1h])

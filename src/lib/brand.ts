@@ -129,6 +129,40 @@ const BRANDS: Record<string, Brand> = {
   "flow-access": { color: "#00EF8B" }, // flow access inherits flow green
   "near-org": { color: "#00C27E" },  // near foundation inherits near green
 
+  // ─── New RPC chains (benches 222-231) ───
+  tezos:      { color: "#2C7DF7" },        // tezos blue (official brand kit)
+  eos:        { color: "#453F61" },        // eos dark purple
+  vechain:    { color: "#2C4CD8" },        // vechain blue
+  waves:      { color: "#0055FF" },        // waves blue
+  wax:        { color: "#F89422" },        // wax amber-orange
+  neon:       { color: "#9333EA" },        // neon evm purple
+  merlin:     { color: "#F7A400" },        // merlin amber (bitcoin l2 vibe)
+  viction:    { color: "#1D61DE" },        // viction blue (ex-tomochain)
+  thundercore: { color: "#002868", dark: true }, // thundercore dark blue
+  oktc:       { color: "#101010", dark: true },  // okx/oktc dark
+
+  // ─── New providers (benches 222-231) ───
+  ecadinfra:         { color: "#2C7DF7" }, // tezos blue
+  tzbeta:            { color: "#2C7DF7" }, // tezos blue
+  tzkt:              { color: "#2C7DF7" }, // tezos blue
+  greymass:          { color: "#453F61" }, // eos purple
+  eosnation:         { color: "#453F61" }, // eos purple
+  alohaeos:          { color: "#453F61" }, // eos purple
+  "vechain-foundation": { color: "#2C4CD8" }, // vechain blue
+  "vethor-node":     { color: "#2C4CD8" }, // vechain blue
+  "vechain-energy":  { color: "#2C4CD8" }, // vechain blue
+  wavesnodes:        { color: "#0055FF" }, // waves blue
+  "wx-network":      { color: "#0055FF" }, // waves blue
+  "waves-exchange":  { color: "#0055FF" }, // waves blue
+  eosusa:            { color: "#F89422" }, // wax orange
+  waxsweden:         { color: "#F89422" }, // wax orange
+  "neon-p2p":        { color: "#9333EA" }, // neon purple
+  everstake:         { color: "#00D4AA" }, // everstake teal
+  "merlin-official": { color: "#F7A400" }, // merlin amber
+  "viction-official":    { color: "#1D61DE" }, // viction blue
+  "thundercore-official": { color: "#002868", dark: true }, // thundercore dark
+  "oktc-official":   { color: "#101010", dark: true }, // okx dark
+
   // ─── Stellar ecosystem providers (bench № 210) ───
   gateway: { color: "#00C2A8" },        // gateway.fm teal
   sorobanrpc: { color: "#7B4FBF" },     // sorobanrpc violet

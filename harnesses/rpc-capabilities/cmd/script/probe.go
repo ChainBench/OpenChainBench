@@ -80,6 +80,18 @@ const (
 	// neoStaleBlockGap: NEO N3 commits one block every ~15 s,
 	// so 20 blocks ≈ 5 min.
 	neoStaleBlockGap uint64 = 20
+	// tezosStaleBlockGap: Tezos commits one block every ~30 s,
+	// so 10 blocks ≈ 5 min.
+	tezosStaleBlockGap uint64 = 10
+	// antelopeStaleBlockGap: Antelope (EOS/WAX) produces one block every
+	// ~0.5 s, so 600 blocks ≈ 5 min.
+	antelopeStaleBlockGap uint64 = 600
+	// wavesStaleBlockGap: Waves closes a block every ~60 s,
+	// so 5 blocks ≈ 5 min.
+	wavesStaleBlockGap uint64 = 5
+	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
+	// so 30 blocks ≈ 5 min.
+	veChainStaleBlockGap uint64 = 30
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -268,6 +280,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callMultiversxNonce(probeCtx, p.URL)
 		case "neo":
 			block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+		case "tezos":
+			block, result, latency, err = callTezosBlock(probeCtx, p.URL)
+		case "antelope":
+			block, result, latency, err = callAntelopeChainInfo(probeCtx, p.URL)
+		case "waves":
+			block, result, latency, err = callWavesBlock(probeCtx, p.URL)
+		case "vechain":
+			block, result, latency, err = callVeChainBlock(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -309,6 +329,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = multiversxStaleNonceGap
 			case "neo":
 				gap = neoStaleBlockGap
+			case "tezos":
+				gap = tezosStaleBlockGap
+			case "antelope":
+				gap = antelopeStaleBlockGap
+			case "waves":
+				gap = wavesStaleBlockGap
+			case "vechain":
+				gap = veChainStaleBlockGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -329,7 +357,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		switch c.Kind {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
-			"near", "flow", "hedera", "ckb", "multiversx", "neo":
+			"near", "flow", "hedera", "ckb", "multiversx", "neo",
+			"tezos", "antelope", "waves", "vechain":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1200,6 +1229,192 @@ func callMultiversxNonce(ctx context.Context, url string) (nonce uint64, result 
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("multiversx missing erd_nonce")
 	}
 	return st.Data.Status.ErdNonce, "ok", latencyMs, nil
+}
+
+// tezosBlockHeader is the shape returned by GET /chains/main/blocks/head/header
+// on a Tezos node. `level` is a plain integer (not a string).
+type tezosBlockHeader struct {
+	Level uint64 `json:"level"`
+}
+
+// callTezosBlock probes a Tezos node via the REST endpoint
+// GET /chains/main/blocks/head/header. The `level` field is the current
+// block level. Staleness uses tezosStaleBlockGap in probeOne.
+func callTezosBlock(ctx context.Context, url string) (level uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/chains/main/blocks/head/header"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var hdr tezosBlockHeader
+	if err := json.Unmarshal(raw, &hdr); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if hdr.Level == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("tezos block header missing level")
+	}
+	return hdr.Level, "ok", latencyMs, nil
+}
+
+// antelopeChainInfo is the shape returned by GET /v1/chain/get_info
+// on an Antelope (EOS, WAX) node. `head_block_num` is a plain integer.
+type antelopeChainInfo struct {
+	HeadBlockNum uint64 `json:"head_block_num"`
+}
+
+// callAntelopeChainInfo probes an Antelope (EOS/WAX) node via
+// GET /v1/chain/get_info. Returns head_block_num as the block height.
+// Staleness uses antelopeStaleBlockGap in probeOne.
+func callAntelopeChainInfo(ctx context.Context, url string) (blockNum uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/v1/chain/get_info"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var info antelopeChainInfo
+	if err := json.Unmarshal(raw, &info); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if info.HeadBlockNum == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("antelope chain info missing head_block_num")
+	}
+	return info.HeadBlockNum, "ok", latencyMs, nil
+}
+
+// wavesBlock is the shape returned by GET /blocks/last on a Waves node.
+// `height` is a plain integer.
+type wavesBlock struct {
+	Height uint64 `json:"height"`
+}
+
+// callWavesBlock probes a Waves node via GET /blocks/last.
+// Returns the block height. Staleness uses wavesStaleBlockGap in probeOne.
+func callWavesBlock(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/blocks/last"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var blk wavesBlock
+	if err := json.Unmarshal(raw, &blk); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if blk.Height == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("waves block missing height")
+	}
+	return blk.Height, "ok", latencyMs, nil
+}
+
+// veChainBlock is the shape returned by GET /blocks/best on a VeChain node.
+// `number` is a plain integer (not hex).
+type veChainBlock struct {
+	Number uint64 `json:"number"`
+}
+
+// callVeChainBlock probes a VeChain node via GET /blocks/best.
+// Returns the block number. Staleness uses veChainStaleBlockGap in probeOne.
+func callVeChainBlock(ctx context.Context, url string) (blockNum uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/blocks/best"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var blk veChainBlock
+	if err := json.Unmarshal(raw, &blk); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if blk.Number == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("vechain block missing number")
+	}
+	return blk.Number, "ok", latencyMs, nil
 }
 
 // callNeoBlockCount probes a NEO N3 node via getblockcount JSON-RPC.
