@@ -27,11 +27,15 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
-// pump.fun is tracked via byLaunchpad (bonding curve, no referral tag system).
-// All other platforms are tracked via byPlatform (referral tags). Volume is
-// not directly comparable across the two groups — tooltip discloses this.
+// pump.fun bonding-curve volume (byLaunchpad) is not comparable to terminal
+// byPlatform volumes — it includes trades routed through GMGN/Axiom/Trojan/bots.
+// Since pump.fun cut fees to 0% in Aug 2026 they no longer embed a referral tag,
+// so UI-only volume cannot be isolated on-chain. Volume shown as — for pump.fun.
+// Terminal (slug: padre) is pump.fun's own trading app (acquired Apr 2025,
+// formerly Padre). It has its own referral tag and is trackable via byPlatform.
 const PLATFORMS = [
   { slug: "pump-fun", name: "pump.fun" },
+  { slug: "padre", name: "Terminal" },
   { slug: "gmgn", name: "GMGN" },
   { slug: "axiom", name: "Axiom" },
   { slug: "fomo", name: "FOMO" },
@@ -46,7 +50,7 @@ const COLUMNS = [
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "Mobula attribution. pump.fun = bonding-curve launchpad volume. All others = terminal routing volume via referral tag. Not directly comparable across the two groups.",
+    tip: "Mobula byPlatform attribution via referral tag. pump.fun bonding-curve volume is excluded (shown as —) — it counts all trades on the bonding-curve program regardless of which UI or bot routed them, making it not comparable. Terminal = pump.fun's own trading app (formerly Padre, acquired Apr 2025), tracked via its own referral tag.",
     higherBetter: true,
   },
   {
@@ -171,7 +175,9 @@ export default async function TradingAppsHubPage() {
   const matrix: Row[] = PLATFORMS.map((p) => ({
     slug: p.slug,
     name: p.name,
-    volume: volIdx[p.slug] ?? null,
+    // pump.fun cut fees to 0% in Aug 2026 so no referral tag exists — bonding-curve
+    // volume is not comparable to terminal byPlatform volumes, show — instead.
+    volume: p.slug === "pump-fun" ? null : (volIdx[p.slug] ?? null),
     traders: tradersIdx[p.slug] ?? null,
     tradeSize: tradeSizeIdx[p.slug] ?? null,
     feeRate: feeIdx[p.slug] ?? null,
@@ -420,9 +426,11 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume via Mobula lighthouse: pump.fun uses bonding-curve launchpad
-          attribution; terminals use referral-tag attribution — not directly
-          comparable across the two groups. Swap transaction counts from Dune
+          Volume via Mobula lighthouse byPlatform (referral-tag attribution).
+          pump.fun volume shown as — since they cut fees to 0% in Aug 2026 and
+          no longer embed a referral tag; bonding-curve totals would mix all UIs
+          and bots and are not comparable. Terminal = pump.fun's own trading app
+          (formerly Padre, acquired Apr 2025), tracked via its own tag. Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.
           Fee rate = on-chain fee revenue ÷ fee-paying volume (Dune tx join);
