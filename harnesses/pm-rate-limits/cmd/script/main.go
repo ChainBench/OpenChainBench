@@ -20,6 +20,7 @@ func main() {
 	log.SetFlags(0)
 	log.Printf("[pm-rate-limits] starting, region=%s ramp_hour=%02d:00 UTC build=%s", currentRegion, rampHour(), buildMarker)
 
+	initProxy()
 	cfg := loadConfig()
 
 	go func() {
@@ -40,7 +41,7 @@ func main() {
 		stateByVenue[v.Slug] = v.state
 		go initialPin(ctx, v, pinClient)
 		go repinLoop(ctx, v, v.state, pinClient)
-		warmClient := &http.Client{Transport: &http.Transport{MaxIdleConnsPerHost: 4, IdleConnTimeout: 90 * time.Second}}
+		warmClient := &http.Client{Transport: makeTransport(v.UseProxy)}
 		for _, cl := range v.Classes {
 			go warmLoop(ctx, v, cl, v.state, warmClient)
 		}

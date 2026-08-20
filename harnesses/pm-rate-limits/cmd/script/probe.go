@@ -283,7 +283,7 @@ func coldLoop(ctx context.Context, v *Venue, st *venueState) {
 		if st.getPin().Market == "" {
 			continue
 		}
-		tr := &http.Transport{DisableKeepAlives: true}
+		tr := makeTransport(v.UseProxy, func(t *http.Transport) { t.DisableKeepAlives = true })
 		client := &http.Client{Transport: tr}
 		res := probeOnce(ctx, client, v, cl, "cold")
 		tr.CloseIdleConnections()
