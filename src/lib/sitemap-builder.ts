@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { MetadataRoute } from "next";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
@@ -209,7 +209,7 @@ async function buildStaticFallback(): Promise<MetadataRoute.Sitemap> {
 
 async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const [benchmarks, alternatives, answers, providerSlugs] = await Promise.all([
-    safeLoad<Benchmark[]>("benchmarks", () => getBenchmarks(), []),
+    safeLoad<Benchmark[]>("benchmarks", () => getBenchmarksSafe(), []),
     safeLoad<Awaited<ReturnType<typeof loadAllAlternatives>>>(
       "alternatives",
       () => loadAllAlternatives(),
