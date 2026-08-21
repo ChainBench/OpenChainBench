@@ -66,7 +66,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoi
 
 prometheus:
   window: 24h
-  freshness_metric: memecoin_platform_health
+  freshness_metric: dune_platform_fee_rate_pct
 
 faq:
   - q: "What is a take rate?"
@@ -87,86 +87,112 @@ faq:
 providers:
   - slug: axiom
     name: Axiom
-    tag: "Solana trading terminal, 0.9% fee"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join). Fees: native SOL inflows to 20 known fee wallets. Fee-paying volume: largest swap in each fee-receiving tx from dex_solana.trades."
+    tag: "Trading terminal, 0.9% fee"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_axiom_daily, cross-chain), latest complete day."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="axiom"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="axiom"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="axiom"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="axiom"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="axiom"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="axiom"}
+      p50: dune_platform_fee_rate_pct{platform="axiom"}
+      p90: dune_platform_fee_rate_pct{platform="axiom"}
+      p99: dune_platform_fee_rate_pct{platform="axiom"}
+      mean: dune_platform_fee_rate_pct{platform="axiom"}
+      success: dune_platform_volume_health{platform="axiom"}
+      sample_size: dune_platform_fees_24h_usd{platform="axiom"}
+      series: dune_platform_fee_rate_pct{platform="axiom"}
 
   - slug: fomo
     name: Fomo
-    tag: "Solana mobile trading app"
-    formula: "24h protocol fee revenue (DeFiLlama Solana) / 24h volume (Mobula lighthouse). Fomo fees include on-chain USDC + off-chain relay fees via DeFiLlama; fee-paying volume not available for Fomo."
+    tag: "Solana trading platform"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_fomo_sol_daily, Solana), latest complete day."
     queries:
-      p50: memecoin_platform_fee_rate_pct{platform="fomo"}
-      p90: memecoin_platform_fee_rate_pct{platform="fomo"}
-      p99: memecoin_platform_fee_rate_pct{platform="fomo"}
-      mean: memecoin_platform_fee_rate_pct{platform="fomo"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="fomo"}
-      series: memecoin_platform_fee_rate_pct{platform="fomo"}
+      p50: dune_platform_fee_rate_pct{platform="fomo"}
+      p90: dune_platform_fee_rate_pct{platform="fomo"}
+      p99: dune_platform_fee_rate_pct{platform="fomo"}
+      mean: dune_platform_fee_rate_pct{platform="fomo"}
+      success: dune_platform_volume_health{platform="fomo"}
+      sample_size: dune_platform_fees_24h_usd{platform="fomo"}
+      series: dune_platform_fee_rate_pct{platform="fomo"}
 
   - slug: pump-fun
     name: pump.fun
-    tag: "Solana meme launchpad + PumpSwap AMM"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join). Captures protocol share (0.95%) on bonding curve and PumpSwap trades; creator and LP shares excluded."
+    tag: "Solana meme launchpad + relay, 0% fee since Aug 2026"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_pumpapp_sol_daily + dataset_pumpfun_relay_daily), latest complete day. fees=0 since fee cut Aug 2026."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="pump-fun"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="pump-fun"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="pump-fun"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="pump-fun"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="pump-fun"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="pump-fun"}
+      p50: dune_platform_fee_rate_pct{platform="pump-fun"}
+      p90: dune_platform_fee_rate_pct{platform="pump-fun"}
+      p99: dune_platform_fee_rate_pct{platform="pump-fun"}
+      mean: dune_platform_fee_rate_pct{platform="pump-fun"}
+      success: dune_platform_volume_health{platform="pump-fun"}
+      sample_size: dune_platform_fees_24h_usd{platform="pump-fun"}
+      series: dune_platform_fee_rate_pct{platform="pump-fun"}
 
   - slug: gmgn
     name: GMGN
-    tag: "Solana AI trading terminal, 1% fee"
-    formula: "24h Solana protocol fee revenue (Dune, 9 wallet addresses) / 24h fee-paying volume (Dune tx join). Total revenue across all chains is ~5x higher per DeFiLlama."
+    tag: "AI trading terminal, ~1% fee, multi-chain"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_gmgn_daily, cross-chain), latest complete day."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="gmgn"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="gmgn"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="gmgn"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="gmgn"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="gmgn"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="gmgn"}
+      p50: dune_platform_fee_rate_pct{platform="gmgn"}
+      p90: dune_platform_fee_rate_pct{platform="gmgn"}
+      p99: dune_platform_fee_rate_pct{platform="gmgn"}
+      mean: dune_platform_fee_rate_pct{platform="gmgn"}
+      success: dune_platform_volume_health{platform="gmgn"}
+      sample_size: dune_platform_fees_24h_usd{platform="gmgn"}
+      series: dune_platform_fee_rate_pct{platform="gmgn"}
 
   - slug: photon
     name: Photon
     tag: "Solana trading terminal, ~1% fee"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join)."
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_photon_daily), latest complete day."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="photon"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="photon"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="photon"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="photon"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="photon"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="photon"}
+      p50: dune_platform_fee_rate_pct{platform="photon"}
+      p90: dune_platform_fee_rate_pct{platform="photon"}
+      p99: dune_platform_fee_rate_pct{platform="photon"}
+      mean: dune_platform_fee_rate_pct{platform="photon"}
+      success: dune_platform_volume_health{platform="photon"}
+      sample_size: dune_platform_fees_24h_usd{platform="photon"}
+      series: dune_platform_fee_rate_pct{platform="photon"}
 
   - slug: trojan
     name: Trojan
     tag: "Solana Telegram bot, ~0.9% fee"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join). Fee is collected in the swap transaction; DeFiLlama Solana match within 6% confirms capture."
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_trojan_daily), latest complete day."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="trojan"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="trojan"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="trojan"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="trojan"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="trojan"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="trojan"}
+      p50: dune_platform_fee_rate_pct{platform="trojan"}
+      p90: dune_platform_fee_rate_pct{platform="trojan"}
+      p99: dune_platform_fee_rate_pct{platform="trojan"}
+      mean: dune_platform_fee_rate_pct{platform="trojan"}
+      success: dune_platform_volume_health{platform="trojan"}
+      sample_size: dune_platform_fees_24h_usd{platform="trojan"}
+      series: dune_platform_fee_rate_pct{platform="trojan"}
+
+  - slug: padre
+    name: Terminal
+    tag: "pump.fun's own trading app (formerly Padre)"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_terminal_daily, cross-chain), latest complete day."
+    queries:
+      p50: dune_platform_fee_rate_pct{platform="padre"}
+      p90: dune_platform_fee_rate_pct{platform="padre"}
+      p99: dune_platform_fee_rate_pct{platform="padre"}
+      mean: dune_platform_fee_rate_pct{platform="padre"}
+      success: dune_platform_volume_health{platform="padre"}
+      sample_size: dune_platform_fees_24h_usd{platform="padre"}
+      series: dune_platform_fee_rate_pct{platform="padre"}
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Multi-chain trading bot"
+    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_basedbot_daily, cross-chain), latest complete day."
+    queries:
+      p50: dune_platform_fee_rate_pct{platform="basedbot"}
+      p90: dune_platform_fee_rate_pct{platform="basedbot"}
+      p99: dune_platform_fee_rate_pct{platform="basedbot"}
+      mean: dune_platform_fee_rate_pct{platform="basedbot"}
+      success: dune_platform_volume_health{platform="basedbot"}
+      sample_size: dune_platform_fees_24h_usd{platform="basedbot"}
+      series: dune_platform_fee_rate_pct{platform="basedbot"}
 
   - slug: maestro
     name: Maestro
     tag: "Solana Telegram bot, ~1% fee"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join)."
+    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join). No community dataset available; sourced from on-chain fee wallet detection."
     queries:
       p50: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
       p90: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
