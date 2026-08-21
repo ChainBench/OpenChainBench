@@ -375,7 +375,7 @@ export default async function AnswerPage({
             <Link className="lnk" href={`/benchmarks/${bench.slug}`}>
               /benchmarks/{bench.slug}
             </Link>
-            , refreshed every minute.
+            .
           </p>
         </section>
       )}

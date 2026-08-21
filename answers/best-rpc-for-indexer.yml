@@ -1,7 +1,7 @@
 slug: best-rpc-for-indexer
 question: "Which RPC is best for indexers and high-throughput read workloads in 2026?"
 short_answer: |
-  {{best_name}} currently leads the free-tier keyed RPC leaderboard at {{best_p50}} p50 latency (24h avg) on eth_getBlockByNumber probes, and pairs it with archive-depth support across a wide chain footprint, measured live by OpenChainBench from three regions.
+  {{best_name}} currently ranks first on the free-tier keyed RPC leaderboard at {{best_p50}} p50 latency (24h avg) on eth_getBlockByNumber probes, and pairs it with archive-depth support across a wide chain footprint, measured live by OpenChainBench from three regions.
 
 benchmark: rpc-capabilities
 
@@ -19,7 +19,7 @@ limitations:
 
 faq:
   - q: "Which RPC provider is best for a subgraph or custom indexer?"
-    a: "{{best_name}} leads the head-latency leaderboard at {{best_p50}} p50 (24h). For indexers the ranking that matters is the intersection of the latency leaderboard and the archive-depth matrix: a provider that wins latency but fails at 5M depth is not indexer-viable. The bench page surfaces both, and the head-to-head leader among indexer-viable providers is the answer."
+    a: "{{best_name}} ranks first on the head-latency leaderboard at {{best_p50}} p50 (24h). For indexers the ranking that matters is the intersection of the latency leaderboard and the archive-depth matrix: a provider that wins latency but fails at 5M depth is not indexer-viable. The bench page surfaces both, and the fastest among indexer-viable providers is the answer."
   - q: "Why does eth_getBlockByNumber matter for indexers when the real workload is eth_getLogs?"
     a: "Because eth_getBlockByNumber measures the head-of-chain read path that every provider must implement, it is the fair cross-vendor probe. Providers that misbehave on head reads reliably misbehave on eth_getLogs at higher magnitude. Providers that keep head reads tight and consistent tend to keep eth_getLogs tight and consistent too. The latency leaderboard is a lower bound on indexer-workload latency, and a provider that fails the lower bound is not worth benchmarking on the harder workload."
   - q: "Which provider supports full archive access without a paid plan?"
@@ -37,5 +37,5 @@ related:
   - which-crypto-price-api-is-the-fastest
 
 seo_title: "Best RPC for indexers 2026 live rankings"
-seo_description: "{{best_name}} leads at {{best_p50}} p50 latency (24h avg) on the OpenChainBench keyed and no-key RPC leaderboards, ranked live from three regions with archive-depth matrix."
+seo_description: "{{best_name}} ranks first at {{best_p50}} p50 latency (24h avg) on the OpenChainBench keyed and no-key RPC leaderboards, ranked live from three regions with archive-depth matrix."
 status: live

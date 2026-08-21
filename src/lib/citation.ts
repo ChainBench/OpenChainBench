@@ -113,7 +113,8 @@ export function headlineSentence(b: Benchmark): string {
   const top = leader(b);
   if (!top) return `${b.title}. Awaiting first run.`;
   const value = fmtUnit(top.value, b.unit);
-  return `${top.name} leads ${b.metric.toLowerCase()} at ${value} ${windowSuffix(b.unit)} on ${b.title}.`;
+  const verb = b.higherIsBetter ? "leads" : "posts the lowest";
+  return `${top.name} ${verb} ${b.metric.toLowerCase()} at ${value} ${windowSuffix(b.unit)} on ${b.title}.`;
 }
 
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */

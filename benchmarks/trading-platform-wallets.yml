@@ -1,7 +1,7 @@
 # OpenChainBench. Bench 208
 
 slug: trading-platform-wallets
-number: "208"
+number: "232"
 title: "Daily active wallets per trading platform: GMGN vs Axiom vs Fomo vs pump.fun, live"
 seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Fomo vs pump.fun"
 seo_description: "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h. GMGN vs Axiom vs Fomo vs Trojan vs BasedBot ranked by real user count, live from Dune community datasets."
