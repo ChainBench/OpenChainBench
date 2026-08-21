@@ -47,7 +47,7 @@ methodology:
 findings:
   - "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h."
   - "GMGN leads terminals by wallet count, driven by its broad AI copy-trading and multi-chain reach."
-  - "pump.fun's wallet count reflects daily launchpad activity — thousands of new wallets snipe each token launch."
+  - "pump.fun's wallet count reflects daily launchpad activity; thousands of new wallets snipe each token launch."
   - "Comparing wallet count to txns per platform reveals the bot ratio: platforms with 50x more txns than wallets have heavy automated activity."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
