@@ -271,7 +271,7 @@ async function fetchHyperliquidStats(): Promise<PerpVenueExternalStats> {
     const vol24h = ctxs.reduce((s, c) => s + (parseFloat(c.dayNtlVlm ?? "0") || 0), 0);
     const totalOI = ctxs.reduce((s, c) => s + (parseFloat(c.openInterest ?? "0") || 0), 0);
     if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-    if (totalOI > 0) extraKpis.push({ label: "Open Interest", value: fmtUsdShort(totalOI) });
+    if (totalOI > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(totalOI) });
     extraKpis.push({ label: "Listed assets", value: String(meta.universe?.length ?? ctxs.length) });
   }
 
@@ -330,7 +330,7 @@ async function fetchDydxStats(): Promise<PerpVenueExternalStats> {
 
   const extraKpis: { label: string; value: string }[] = [];
   if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "Open Interest", value: fmtUsdShort(oi) });
+  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
   if (trades24h > 0)
     extraKpis.push({ label: "Trades 24h", value: fmtCount(trades24h) });
   if (markets)
@@ -457,7 +457,7 @@ async function fetchExtendedStats(): Promise<PerpVenueExternalStats> {
 
   const extraKpis: { label: string; value: string }[] = [];
   if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "Open Interest", value: fmtUsdShort(oi) });
+  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
   if (perp.length > 0)
     extraKpis.push({ label: "Perp markets", value: String(perp.length) });
 
@@ -532,7 +532,7 @@ async function fetchPolymarketStats(): Promise<PerpVenueExternalStats> {
 
   const extraKpis: { label: string; value: string }[] = [];
   if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "Open Interest", value: fmtUsdShort(oi) });
+  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
   if (events.length > 0)
     extraKpis.push({ label: "Active markets", value: String(events.length) });
 

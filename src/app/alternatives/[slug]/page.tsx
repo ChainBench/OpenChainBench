@@ -281,11 +281,11 @@ export default async function AlternativePage({
         </p>
       )}
 
-      {perpBenchRows.length > 0 && (
+      {perpBenchRows.filter((r) => r.value !== null && r.rank !== null).length > 0 && (
         <section className="mt-10">
           <SectionLabel>{alt.target_product} across benchmarks</SectionLabel>
           <div className="mt-4">
-            <PerpVenueBenchCards rows={perpBenchRows} />
+            <PerpVenueBenchCards rows={perpBenchRows.filter((r) => r.value !== null && r.rank !== null)} />
           </div>
         </section>
       )}

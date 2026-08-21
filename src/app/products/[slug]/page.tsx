@@ -110,7 +110,7 @@ export async function generateMetadata({
   const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
-  const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}. Reproducible measurements, open methodology, refreshed every minute.`;
+  const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}.`;
   // Registry descriptions use markdown-flavour backticks for host names
   // and code snippets (rendered as <code> in the product page body).
   // Those leak into meta description and social previews as raw backticks

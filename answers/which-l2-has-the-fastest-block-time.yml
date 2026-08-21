@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which L2 has the fastest block time right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h) across 9 measured L2s. The leaderboard reads a fresh p50 every minute from the Prometheus quantile over the 24 hour window, so the headline is sustained, not a single lucky head. Arbitrum One's Nitro stack runs a 250 ms sequencer interval by default, which is roughly 8x faster than the OP Stack 2 s convention used by Optimism, Base, Blast and Mantle."
+    a: "{{best_name}} currently posts the fastest block time at {{best_p50}} (p50, 24h) across 9 measured L2s. The leaderboard reads a fresh p50 every minute from the Prometheus quantile over the 24 hour window, so the headline is sustained, not a single lucky head. Arbitrum One's Nitro stack runs a 250 ms sequencer interval by default, which is roughly 8x faster than the OP Stack 2 s convention used by Optimism, Base, Blast and Mantle."
   - q: "Why are Base and Optimism block times nearly identical?"
     a: "Both run the OP Stack with the same default sequencer cadence (2 s). Blast and Mantle are also OP Stack forks and cluster at the same number; this is by design because OP Stack is a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain specific design choice. The leaderboard makes the architectural family visible at a glance."
   - q: "Is zkSync Era really slower than Arbitrum?"
@@ -40,5 +40,5 @@ related:
   - which-gas-oracle-is-the-most-accurate
 
 seo_title: "Which Ethereum L2 has the fastest block time in 2026?"
-seo_description: "{{best_name}} leads at {{best_p50}} (p50, 24h) across Arbitrum, Optimism, Base, Blast, Mantle, zkSync, Linea, Scroll and Taiko, measured live via `newHeads` WebSocket by OpenChainBench."
+seo_description: "{{best_name}} posts the fastest block time at {{best_p50}} (p50, 24h) across Arbitrum, Optimism, Base, Blast, Mantle, zkSync, Linea, Scroll and Taiko, measured live via `newHeads` WebSocket by OpenChainBench."
 status: live
