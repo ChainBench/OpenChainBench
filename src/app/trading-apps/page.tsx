@@ -27,7 +27,7 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
-// Volume source: Sacha's (adam_tehc) Dune community datasets (dataset_*_daily).
+// Volume source: Dune community datasets (dataset_*_daily).
 // Each platform is a separate dataset with cross-chain breakdown (blockchain col).
 // pump.fun = pumpapp Solana + relay swaps, shown with proper attribution now.
 // Terminal (slug: padre) = pump.fun's own trading app (formerly Padre, acq Apr 2025).
@@ -50,7 +50,7 @@ const COLUMNS = [
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "Cross-chain 24h volume from Sacha's (adam_tehc) Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
+    tip: "Cross-chain 24h volume from Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
     higherBetter: true,
   },
   {
@@ -424,7 +424,7 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume from Sacha's (adam_tehc) Dune community datasets: cross-chain
+          Volume from Dune community datasets: cross-chain
           totals per platform (Solana + BNB + Base + Robinhood node + HyperEVM
           + Monad). pump.fun = pumpapp frontend + relay swaps only, not all
           bonding-curve activity. Terminal = pump.fun's own app (formerly Padre,
