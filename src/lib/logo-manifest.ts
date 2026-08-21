@@ -49,6 +49,7 @@ const RAW: Record<string, string> = {
   megaeth: "/logos/megaeth.png",
   robinhood: "/logos/robinhood.png",
   onfinality: "/logos/onfinality.png",
+  dwellir: "/logos/dwellir.svg",
   berachain: "/logos/berachain.png",
 
 

@@ -1,6 +1,6 @@
 // dune-platform-volume -- Bench 201 (replaces Mobula lighthouse source)
 //
-// Queries Sacha's community datasets on Dune (dune.adam_tehc_co.dataset_*_daily)
+// Queries Dune community datasets (dataset_*_daily)
 // for cross-chain trading platform volume. Each dataset has columns:
 // day, blockchain, volume_usd, fees_usd, txns, wallets.
 // pump.fun uses dataset_pumpapp_sol_daily (Solana) + dataset_pumpfun_relay_daily (relay).
@@ -29,7 +29,7 @@ const (
 
 func main() {
 	fmt.Println("=== dune-platform-volume harness ===")
-	fmt.Println("OpenChainBench Bench 201 -- Cross-chain trading platform volume via Sacha's Dune datasets.")
+	fmt.Println("OpenChainBench Bench 201 -- Cross-chain trading platform volume via Dune community datasets.")
 
 	apiKey := os.Getenv("DUNE_API_KEY")
 	if apiKey == "" {

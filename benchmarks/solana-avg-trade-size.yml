@@ -54,7 +54,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-
 
 prometheus:
   window: 24h
-  freshness_metric: solana_platform_trades_24h
+  freshness_metric: dune_platform_avg_trade_usd
 
 faq:
   - q: "What does average swap size measure?"
@@ -69,42 +69,42 @@ faq:
 providers:
   - slug: pump-fun
     name: pump.fun
-    tag: "Solana meme launchpad"
-    formula: "Average swap size in USD on pump.fun's bonding curve (solana_platform_volume_24h_usd{platform=pump-fun} / solana_platform_trades_24h{platform=pump-fun}, Mobula lighthouse byLaunchpad, 15 min poll)."
+    tag: "Solana meme launchpad + relay"
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_pumpapp_sol_daily + dataset_pumpfun_relay_daily), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="pump-fun"} / solana_platform_trades_24h{platform="pump-fun"}
-      p90: solana_platform_volume_24h_usd{platform="pump-fun"} / solana_platform_trades_24h{platform="pump-fun"}
-      p99: solana_platform_volume_24h_usd{platform="pump-fun"} / solana_platform_trades_24h{platform="pump-fun"}
-      mean: solana_platform_volume_24h_usd{platform="pump-fun"} / solana_platform_trades_24h{platform="pump-fun"}
-      success: solana_platform_health{platform="pump-fun"}
-      sample_size: solana_platform_trades_24h{platform="pump-fun"}
-      series: solana_platform_volume_24h_usd{platform="pump-fun"} / solana_platform_trades_24h{platform="pump-fun"}
+      p50: dune_platform_avg_trade_usd{platform="pump-fun"}
+      p90: dune_platform_avg_trade_usd{platform="pump-fun"}
+      p99: dune_platform_avg_trade_usd{platform="pump-fun"}
+      mean: dune_platform_avg_trade_usd{platform="pump-fun"}
+      success: dune_platform_volume_health{platform="pump-fun"}
+      sample_size: dune_platform_txns_24h{platform="pump-fun"}
+      series: dune_platform_avg_trade_usd{platform="pump-fun"}
 
   - slug: gmgn
     name: GMGN
-    tag: "AI trading terminal on Solana"
-    formula: "Average swap size in USD routed through GMGN (Mobula lighthouse byPlatform, 15 min poll)."
+    tag: "AI trading terminal, multi-chain"
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_gmgn_daily, cross-chain), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="gmgn"} / solana_platform_trades_24h{platform="gmgn"}
-      p90: solana_platform_volume_24h_usd{platform="gmgn"} / solana_platform_trades_24h{platform="gmgn"}
-      p99: solana_platform_volume_24h_usd{platform="gmgn"} / solana_platform_trades_24h{platform="gmgn"}
-      mean: solana_platform_volume_24h_usd{platform="gmgn"} / solana_platform_trades_24h{platform="gmgn"}
-      success: solana_platform_health{platform="gmgn"}
-      sample_size: solana_platform_trades_24h{platform="gmgn"}
-      series: solana_platform_volume_24h_usd{platform="gmgn"} / solana_platform_trades_24h{platform="gmgn"}
+      p50: dune_platform_avg_trade_usd{platform="gmgn"}
+      p90: dune_platform_avg_trade_usd{platform="gmgn"}
+      p99: dune_platform_avg_trade_usd{platform="gmgn"}
+      mean: dune_platform_avg_trade_usd{platform="gmgn"}
+      success: dune_platform_volume_health{platform="gmgn"}
+      sample_size: dune_platform_txns_24h{platform="gmgn"}
+      series: dune_platform_avg_trade_usd{platform="gmgn"}
 
   - slug: trojan
     name: Trojan
     tag: "Telegram trading bot on Solana"
-    formula: "Average swap size in USD routed through Trojan (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_trojan_daily), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="trojan"} / solana_platform_trades_24h{platform="trojan"}
-      p90: solana_platform_volume_24h_usd{platform="trojan"} / solana_platform_trades_24h{platform="trojan"}
-      p99: solana_platform_volume_24h_usd{platform="trojan"} / solana_platform_trades_24h{platform="trojan"}
-      mean: solana_platform_volume_24h_usd{platform="trojan"} / solana_platform_trades_24h{platform="trojan"}
-      success: solana_platform_health{platform="trojan"}
-      sample_size: solana_platform_trades_24h{platform="trojan"}
-      series: solana_platform_volume_24h_usd{platform="trojan"} / solana_platform_trades_24h{platform="trojan"}
+      p50: dune_platform_avg_trade_usd{platform="trojan"}
+      p90: dune_platform_avg_trade_usd{platform="trojan"}
+      p99: dune_platform_avg_trade_usd{platform="trojan"}
+      mean: dune_platform_avg_trade_usd{platform="trojan"}
+      success: dune_platform_volume_health{platform="trojan"}
+      sample_size: dune_platform_txns_24h{platform="trojan"}
+      series: dune_platform_avg_trade_usd{platform="trojan"}
 
   - slug: maestro
     name: Maestro
@@ -122,54 +122,67 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "Average swap size in USD routed through Fomo (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_fomo_sol_daily, Solana), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="fomo"} / solana_platform_trades_24h{platform="fomo"}
-      p90: solana_platform_volume_24h_usd{platform="fomo"} / solana_platform_trades_24h{platform="fomo"}
-      p99: solana_platform_volume_24h_usd{platform="fomo"} / solana_platform_trades_24h{platform="fomo"}
-      mean: solana_platform_volume_24h_usd{platform="fomo"} / solana_platform_trades_24h{platform="fomo"}
-      success: solana_platform_health{platform="fomo"}
-      sample_size: solana_platform_trades_24h{platform="fomo"}
-      series: solana_platform_volume_24h_usd{platform="fomo"} / solana_platform_trades_24h{platform="fomo"}
+      p50: dune_platform_avg_trade_usd{platform="fomo"}
+      p90: dune_platform_avg_trade_usd{platform="fomo"}
+      p99: dune_platform_avg_trade_usd{platform="fomo"}
+      mean: dune_platform_avg_trade_usd{platform="fomo"}
+      success: dune_platform_volume_health{platform="fomo"}
+      sample_size: dune_platform_txns_24h{platform="fomo"}
+      series: dune_platform_avg_trade_usd{platform="fomo"}
 
   - slug: axiom
     name: Axiom
-    tag: "Web trading terminal on Solana"
-    formula: "Average swap size in USD routed through Axiom (Mobula lighthouse byPlatform, 15 min poll)."
+    tag: "Web trading terminal, multi-chain"
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_axiom_daily, cross-chain), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="axiom"} / solana_platform_trades_24h{platform="axiom"}
-      p90: solana_platform_volume_24h_usd{platform="axiom"} / solana_platform_trades_24h{platform="axiom"}
-      p99: solana_platform_volume_24h_usd{platform="axiom"} / solana_platform_trades_24h{platform="axiom"}
-      mean: solana_platform_volume_24h_usd{platform="axiom"} / solana_platform_trades_24h{platform="axiom"}
-      success: solana_platform_health{platform="axiom"}
-      sample_size: solana_platform_trades_24h{platform="axiom"}
-      series: solana_platform_volume_24h_usd{platform="axiom"} / solana_platform_trades_24h{platform="axiom"}
+      p50: dune_platform_avg_trade_usd{platform="axiom"}
+      p90: dune_platform_avg_trade_usd{platform="axiom"}
+      p99: dune_platform_avg_trade_usd{platform="axiom"}
+      mean: dune_platform_avg_trade_usd{platform="axiom"}
+      success: dune_platform_volume_health{platform="axiom"}
+      sample_size: dune_platform_txns_24h{platform="axiom"}
+      series: dune_platform_avg_trade_usd{platform="axiom"}
 
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
-    formula: "Average swap size in USD routed through Photon (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_photon_daily), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="photon"} / solana_platform_trades_24h{platform="photon"}
-      p90: solana_platform_volume_24h_usd{platform="photon"} / solana_platform_trades_24h{platform="photon"}
-      p99: solana_platform_volume_24h_usd{platform="photon"} / solana_platform_trades_24h{platform="photon"}
-      mean: solana_platform_volume_24h_usd{platform="photon"} / solana_platform_trades_24h{platform="photon"}
-      success: solana_platform_health{platform="photon"}
-      sample_size: solana_platform_trades_24h{platform="photon"}
-      series: solana_platform_volume_24h_usd{platform="photon"} / solana_platform_trades_24h{platform="photon"}
+      p50: dune_platform_avg_trade_usd{platform="photon"}
+      p90: dune_platform_avg_trade_usd{platform="photon"}
+      p99: dune_platform_avg_trade_usd{platform="photon"}
+      mean: dune_platform_avg_trade_usd{platform="photon"}
+      success: dune_platform_volume_health{platform="photon"}
+      sample_size: dune_platform_txns_24h{platform="photon"}
+      series: dune_platform_avg_trade_usd{platform="photon"}
 
   - slug: padre
-    name: Padre
-    tag: "AI Telegram bot on Solana"
-    formula: "Average swap size in USD routed through Padre (Mobula lighthouse byPlatform, 15 min poll)."
+    name: Terminal
+    tag: "pump.fun's own trading app (formerly Padre)"
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_terminal_daily, cross-chain), latest complete day."
     queries:
-      p50: solana_platform_volume_24h_usd{platform="padre"} / solana_platform_trades_24h{platform="padre"}
-      p90: solana_platform_volume_24h_usd{platform="padre"} / solana_platform_trades_24h{platform="padre"}
-      p99: solana_platform_volume_24h_usd{platform="padre"} / solana_platform_trades_24h{platform="padre"}
-      mean: solana_platform_volume_24h_usd{platform="padre"} / solana_platform_trades_24h{platform="padre"}
-      success: solana_platform_health{platform="padre"}
-      sample_size: solana_platform_trades_24h{platform="padre"}
-      series: solana_platform_volume_24h_usd{platform="padre"} / solana_platform_trades_24h{platform="padre"}
+      p50: dune_platform_avg_trade_usd{platform="padre"}
+      p90: dune_platform_avg_trade_usd{platform="padre"}
+      p99: dune_platform_avg_trade_usd{platform="padre"}
+      mean: dune_platform_avg_trade_usd{platform="padre"}
+      success: dune_platform_volume_health{platform="padre"}
+      sample_size: dune_platform_txns_24h{platform="padre"}
+      series: dune_platform_avg_trade_usd{platform="padre"}
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Multi-chain trading bot"
+    formula: "Average swap size in USD (volume_usd / txns) from Dune community datasets (dataset_basedbot_daily, cross-chain), latest complete day."
+    queries:
+      p50: dune_platform_avg_trade_usd{platform="basedbot"}
+      p90: dune_platform_avg_trade_usd{platform="basedbot"}
+      p99: dune_platform_avg_trade_usd{platform="basedbot"}
+      mean: dune_platform_avg_trade_usd{platform="basedbot"}
+      success: dune_platform_volume_health{platform="basedbot"}
+      sample_size: dune_platform_txns_24h{platform="basedbot"}
+      series: dune_platform_avg_trade_usd{platform="basedbot"}
 
   - slug: phantom
     name: Phantom
