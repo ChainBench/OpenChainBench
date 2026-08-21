@@ -23,7 +23,7 @@ per_chain_explainer:
 
 category: RPCs
 status: live
-metric: Gap vs realized (gwei)
+metric: Gap vs realized
 unit: gwei
 higher_is_better: false
 
