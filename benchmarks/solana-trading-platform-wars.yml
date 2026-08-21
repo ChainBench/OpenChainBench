@@ -5,7 +5,7 @@ number: "201"
 title: "Trading platform leaderboard: GMGN vs Axiom vs Fomo vs pump.fun, live 24h volume"
 seo_title: "Trading platform comparison 2026: GMGN, Axiom, Fomo, pump.fun, Trojan, Terminal"
 seo_description: "{{best_name}} leads trading platforms at ${{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Terminal vs BasedBot ranked live from Dune community datasets."
-subtitle: Live 24-hour trading volume per platform and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Sacha's Dune community datasets, refreshed every 4 hours.
+subtitle: Live 24-hour trading volume per platform and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed every 4 hours.
 
 category: Trading
 status: live
@@ -14,7 +14,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume figures are sourced from Sacha's (adam_tehc) Dune community datasets, which aggregate cross-chain trading activity per platform (Solana, BNB Chain, Base, Robinhood node, HyperEVM, Monad, and more). Data is refreshed every 4 hours. pump.fun volume = bonding-curve Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily). Fomo = Solana only (dataset_fomo_sol_daily). All others sum across all blockchains.
+  Volume figures are sourced from Dune community datasets, which aggregate cross-chain trading activity per platform (Solana, BNB Chain, Base, Robinhood node, HyperEVM, Monad, and more). Data is refreshed every 4 hours. pump.fun volume = bonding-curve Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily). Fomo = Solana only (dataset_fomo_sol_daily). All others sum across all blockchains.
 
 seo_intro: |
   Solana's trading frontend market is a contested race between GMGN, Axiom and
@@ -42,11 +42,11 @@ abstract: |
   trading platforms as providers.
 
 methodology:
-  - "Source: Sacha's (adam_tehc) Dune community datasets (dune.adam_tehc_co.dataset_*_daily). Each dataset covers one trading platform across all blockchains it operates on."
+  - "Source: Dune community datasets (dataset_*_daily). Each dataset covers one trading platform across all blockchains it operates on."
   - "Poll cadence: harness queries Dune every 4 hours and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
   - "Volume: sum of volume_usd across all blockchains for the most recent complete day in each platform's dataset. Higher = more total user activity."
   - "pump.fun: dataset_pumpapp_sol_daily (Solana bonding-curve) + dataset_pumpfun_relay_daily filtered to req_class='swap'. pump.fun cut fees to 0% in Aug 2026; volume is for their own frontend only (pumpapp), not all bonding-curve activity."
-  - "fomo: dataset_fomo_sol_daily (Solana only). Includes Fomo's relay cross-chain volume when Sacha incorporates it."
+  - "fomo: dataset_fomo_sol_daily (Solana only)."
   - "BasedBot: multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM, Avalanche)."
 
 findings:
@@ -82,7 +82,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal, multi-chain"
-    formula: "24h cross-chain volume in USD (Solana + BNB + Robinhood node + Base + ETH + more) from dune.adam_tehc_co.dataset_gmgn_daily, latest complete day."
+    formula: "24h cross-chain volume in USD (Solana + BNB + Robinhood node + Base + ETH + more) from Dune community datasets (dataset_gmgn_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="gmgn"}
       p90: dune_platform_volume_24h_usd{platform="gmgn"}
@@ -95,7 +95,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Web trading terminal, multi-chain"
-    formula: "24h cross-chain volume in USD (Solana + Robinhood node + BNB + ETH) from dune.adam_tehc_co.dataset_axiom_daily, latest complete day."
+    formula: "24h cross-chain volume in USD (Solana + Robinhood node + BNB + ETH) from Dune community datasets (dataset_axiom_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="axiom"}
       p90: dune_platform_volume_24h_usd{platform="axiom"}
@@ -108,7 +108,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "24h Solana volume in USD from dune.adam_tehc_co.dataset_fomo_sol_daily, latest complete day."
+    formula: "24h Solana volume in USD from Dune community datasets (dataset_fomo_sol_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="fomo"}
       p90: dune_platform_volume_24h_usd{platform="fomo"}
@@ -121,7 +121,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Multi-chain trading bot"
-    formula: "24h cross-chain volume in USD (Robinhood node + BNB + Base + Solana + ETH + HyperEVM) from dune.adam_tehc_co.dataset_basedbot_daily, latest complete day."
+    formula: "24h cross-chain volume in USD (Robinhood node + BNB + Base + Solana + ETH + HyperEVM) from Dune community datasets (dataset_basedbot_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="basedbot"}
       p90: dune_platform_volume_24h_usd{platform="basedbot"}
@@ -147,7 +147,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "pump.fun's own trading app (formerly Padre, acquired Apr 2025)"
-    formula: "24h cross-chain volume in USD (Solana + Robinhood node + Base + BNB) from dune.adam_tehc_co.dataset_terminal_daily, latest complete day."
+    formula: "24h cross-chain volume in USD (Solana + Robinhood node + Base + BNB) from Dune community datasets (dataset_terminal_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="padre"}
       p90: dune_platform_volume_24h_usd{platform="padre"}
@@ -160,7 +160,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Telegram trading bot on Solana"
-    formula: "24h Solana volume in USD from dune.adam_tehc_co.dataset_trojan_daily, latest complete day."
+    formula: "24h Solana volume in USD from Dune community datasets (dataset_trojan_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="trojan"}
       p90: dune_platform_volume_24h_usd{platform="trojan"}
@@ -173,7 +173,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
-    formula: "24h Solana volume in USD from dune.adam_tehc_co.dataset_photon_daily, latest complete day."
+    formula: "24h Solana volume in USD from Dune community datasets (dataset_photon_daily), latest complete day."
     queries:
       p50: dune_platform_volume_24h_usd{platform="photon"}
       p90: dune_platform_volume_24h_usd{platform="photon"}
