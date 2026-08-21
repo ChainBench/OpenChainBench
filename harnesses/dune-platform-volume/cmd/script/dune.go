@@ -18,25 +18,25 @@ import (
 // All others sum across all blockchains for latest available day.
 const querySQL = `
 WITH latest AS (
-  SELECT 'gmgn' AS platform, SUM(volume_usd) AS volume_usd, SUM(CAST(txns AS BIGINT)) AS txns, SUM(CAST(fees_usd AS DOUBLE)) AS fees_usd
+  SELECT 'gmgn' AS platform, SUM(volume_usd) AS volume_usd, SUM(CAST(txns AS BIGINT)) AS txns, SUM(CAST(fees_usd AS DOUBLE)) AS fees_usd, SUM(CAST(wallets AS BIGINT)) AS wallets
     FROM dune.adam_tehc_co.dataset_gmgn_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_gmgn_daily)
   UNION ALL
-  SELECT 'axiom', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE))
+  SELECT 'axiom', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_axiom_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_axiom_daily)
   UNION ALL
-  SELECT 'trojan', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE))
+  SELECT 'trojan', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_trojan_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_trojan_daily)
   UNION ALL
-  SELECT 'padre', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE))
+  SELECT 'padre', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_terminal_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_terminal_daily)
   UNION ALL
-  SELECT 'photon', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE))
+  SELECT 'photon', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_photon_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_photon_daily)
   UNION ALL
-  SELECT 'basedbot', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE))
+  SELECT 'basedbot', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_basedbot_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_basedbot_daily)
   UNION ALL
-  SELECT 'fomo', volume_usd, CAST(txns AS BIGINT), CAST(fees_usd AS DOUBLE)
+  SELECT 'fomo', volume_usd, CAST(txns AS BIGINT), CAST(fees_usd AS DOUBLE), CAST(wallets AS BIGINT)
     FROM dune.adam_tehc_co.dataset_fomo_sol_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_fomo_sol_daily)
   UNION ALL
   SELECT 'pump-fun',
@@ -44,9 +44,10 @@ WITH latest AS (
     + COALESCE((SELECT SUM(volume_usd) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily) AND req_class='swap'),0),
     COALESCE((SELECT SUM(CAST(txns AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
     + COALESCE((SELECT SUM(CAST(txns AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily) AND req_class='swap'),0),
-    CAST(0 AS DOUBLE)
+    CAST(0 AS DOUBLE),
+    COALESCE((SELECT SUM(CAST(wallets AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
 )
-SELECT platform, volume_usd, txns, fees_usd,
+SELECT platform, volume_usd, txns, fees_usd, wallets,
   CASE WHEN txns > 0 THEN volume_usd / txns ELSE NULL END AS avg_trade_usd,
   CASE WHEN volume_usd > 0 THEN fees_usd / volume_usd * 100 ELSE 0.0 END AS fee_rate_pct
 FROM latest ORDER BY volume_usd DESC
@@ -60,12 +61,13 @@ type duneClient struct {
 }
 
 type duneRow struct {
-	Platform   string  `json:"platform"`
-	VolumeUSD  float64 `json:"volume_usd"`
-	Txns       float64 `json:"txns"`
-	FeesUSD    float64 `json:"fees_usd"`
+	Platform    string  `json:"platform"`
+	VolumeUSD   float64 `json:"volume_usd"`
+	Txns        float64 `json:"txns"`
+	FeesUSD     float64 `json:"fees_usd"`
+	Wallets     float64 `json:"wallets"`
 	AvgTradeUSD float64 `json:"avg_trade_usd"`
-	FeeRatePct float64 `json:"fee_rate_pct"`
+	FeeRatePct  float64 `json:"fee_rate_pct"`
 }
 
 func newDuneClient(apiKey string) *duneClient {
