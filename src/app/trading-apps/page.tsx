@@ -27,17 +27,21 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
-// pump.fun is tracked via byLaunchpad (bonding curve, no referral tag system).
-// All other platforms are tracked via byPlatform (referral tags). Volume is
-// not directly comparable across the two groups — tooltip discloses this.
+// Volume source: Dune community datasets (dataset_*_daily).
+// Each platform is a separate dataset with cross-chain breakdown (blockchain col).
+// pump.fun = pumpapp Solana + relay swaps, shown with proper attribution now.
+// Terminal (slug: padre) = pump.fun's own trading app (formerly Padre, acq Apr 2025).
+// BasedBot is a multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM).
 const PLATFORMS = [
   { slug: "pump-fun", name: "pump.fun" },
+  { slug: "padre", name: "Terminal" },
   { slug: "gmgn", name: "GMGN" },
   { slug: "axiom", name: "Axiom" },
   { slug: "fomo", name: "FOMO" },
   { slug: "trojan", name: "Trojan" },
   { slug: "photon", name: "Photon" },
   { slug: "maestro", name: "Maestro" },
+  { slug: "basedbot", name: "BasedBot" },
 ] as const;
 
 const COLUMNS = [
@@ -46,7 +50,7 @@ const COLUMNS = [
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "Mobula attribution. pump.fun = bonding-curve launchpad volume. All others = terminal routing volume via referral tag. Not directly comparable across the two groups.",
+    tip: "Cross-chain 24h volume from Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
     higherBetter: true,
   },
   {
@@ -420,9 +424,11 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume via Mobula lighthouse: pump.fun uses bonding-curve launchpad
-          attribution; terminals use referral-tag attribution — not directly
-          comparable across the two groups. Swap transaction counts from Dune
+          Volume from Dune community datasets: cross-chain
+          totals per platform (Solana + BNB + Base + Robinhood node + HyperEVM
+          + Monad). pump.fun = pumpapp frontend + relay swaps only, not all
+          bonding-curve activity. Terminal = pump.fun's own app (formerly Padre,
+          acq. Apr 2025). Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.
           Fee rate = on-chain fee revenue ÷ fee-paying volume (Dune tx join);
