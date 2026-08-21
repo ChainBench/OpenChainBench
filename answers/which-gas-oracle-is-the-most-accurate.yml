@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which gas oracle is the most accurate right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} gwei (p99 absolute gap, 24h) on the active chain tab across 3 measured oracles. The leaderboard refreshes every minute against fresh Prometheus samples; per chain leaders can differ from the cross chain headline so the chain tabs at the top of the bench page expose each ranking separately. Read the gap alongside the covered rate column for the full picture, inclusion confidence oracles trade a wider gap for higher coverage."
+    a: "{{best_name}} currently posts the tightest estimate at {{best_p50}} gwei (p99 absolute gap, 24h) on the active chain tab across 3 measured oracles. The leaderboard refreshes every minute against fresh Prometheus samples; per chain leaders can differ from the cross chain headline so the chain tabs at the top of the bench page expose each ranking separately. Read the gap alongside the covered rate column for the full picture, inclusion confidence oracles trade a wider gap for higher coverage."
   - q: "Why rank on p99 instead of p50?"
     a: "At current fee levels the typical minute p50 gaps are fractions of a micro gwei apart across oracles. On a 100k gas transaction a 0.001 gwei error is about a thousandth of a cent, so a p50 ranking orders economically indistinguishable noise. The p99 captures the volatile minutes (mempool spikes, NFT mints, MEV bursts) where predictions actually diverge and a wrong number either overpays or misses the block. The typical p50 and p90 gaps remain visible as secondary columns."
   - q: "How does Etherscan compare to PublicNode feeHistory or Owlracle?"
@@ -30,7 +30,7 @@ faq:
   - q: "Why is Avalanche C-Chain excluded?"
     a: "Avalanche C-Chain's auto tuning fee market drives the priority fee toward zero by design, which collapses the prediction error metric to zero across every oracle and makes the comparison non informative. BNB Chain is excluded for a different reason (it is not EIP-1559, effective fee is gasPrice only). Adding either chain would silently produce flat numbers that pollute the comparison; surfacing zero scores on a leaderboard is misleading."
   - q: "Which oracle should I integrate for my wallet?"
-    a: "Read the p99 gap (does it blow out during spikes?) together with the covered rate (does it err on the side of inclusion or under bid?) for the chain your product runs on. {{best_name}} currently leads the active tab at {{best_p50}} gwei but the right choice depends on whether your UX tolerates over pay (then prefer high covered) or optimises for tail behaviour (then prefer low p99 gap), and whether the oracle's free quota fits your call volume. The bench gives you the live numbers, it cannot tell you which trade off your product wants."
+    a: "Read the p99 gap (does it blow out during spikes?) together with the covered rate (does it err on the side of inclusion or under bid?) for the chain your product runs on. {{best_name}} currently posts the smallest p99 gap on the active tab at {{best_p50}} gwei but the right choice depends on whether your UX tolerates over pay (then prefer high covered) or optimises for tail behaviour (then prefer low p99 gap), and whether the oracle's free quota fits your call volume. The bench gives you the live numbers, it cannot tell you which trade off your product wants."
   - q: "How often is the leaderboard refreshed?"
     a: "Per oracle polling runs continuously (12 s for PublicNode feeHistory, 15 s for Etherscan with the 6 s global gate, 60 s for Owlracle). The page reads a rolling 24 h p50, p90 and p99 every minute. A single misprediction during a gas spike cannot move the headline because the p99 window absorbs it across thousands of blocks."
 
@@ -40,7 +40,7 @@ related:
   - which-evm-aggregator-has-the-fastest-quote
 
 seo_title: "Which Ethereum gas oracle is the most accurate in 2026?"
-seo_description: "{{best_name}} leads at {{best_p50}} gwei (p99 absolute gap, 24h) across PublicNode feeHistory, Owlracle and Etherscan on Ethereum and Polygon, measured per block by OpenChainBench."
+seo_description: "{{best_name}} posts the smallest p99 gap at {{best_p50}} gwei (p99 absolute gap, 24h) across PublicNode feeHistory, Owlracle and Etherscan on Ethereum and Polygon, measured per block by OpenChainBench."
 status: live
 
 expert_take: |
