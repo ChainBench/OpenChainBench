@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which stablecoin is the most stable right now?"
-    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} (median per minute worst deviation, 24h) across {{count}} measured stablecoins on USD quoted venues. The leaderboard refreshes every minute against fresh Prometheus samples; the 24h window smooths a single off market tick so the headline reflects sustained peg stability."
+    a: "{{best_name}} currently holds its peg tightest at {{best_p50}} (median per minute worst deviation, 24h) across {{count}} measured stablecoins on USD quoted venues. The leaderboard refreshes every minute against fresh Prometheus samples; the 24h window smooths a single off market tick so the headline reflects sustained peg stability."
   - q: "What is stablecoin peg deviation in basis points?"
     a: "Peg deviation is the absolute distance between a stablecoin's price and $1.00, expressed in basis points where 1 bp equals 0.01%. A stablecoin at $0.9978 has 22 bps of deviation; at $1.0050 it has 50 bps. Tens of bps is normal noise, hundreds of bps is stress, thousands of bps is a depeg event. The bench records both per minute deviation and the worst 1% tail (p99) over 24h, the integration grade number for any product holding inventory in the stable."
   - q: "How does USDC compare to USDT on stability?"
