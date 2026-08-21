@@ -50,7 +50,14 @@ export async function GET() {
   lines.push("");
   lines.push(`## Benchmarks`);
   lines.push("");
-  for (const b of benches) {
+
+  // Non-RPC benches listed individually — these are the most differentiated signals.
+  // RPC per-chain benches (142 entries) are compressed into a single section below
+  // to avoid truncation before the high-value content.
+  const nonRpc = benches.filter((b) => b.category !== "RPCs");
+  const rpc = benches.filter((b) => b.category === "RPCs");
+
+  for (const b of nonRpc) {
     lines.push(`### ${b.title}`);
     lines.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
     lines.push(`- JSON: ${SITE.url}/api/stat/${b.slug}`);
@@ -58,6 +65,17 @@ export async function GET() {
     lines.push(`- Metric: ${b.metric} (${b.unit})`);
     lines.push(`- Headline: ${groundingTraceLine(b, SITE.url)}`);
     lines.push("");
+  }
+
+  // RPC latency benchmarks — one entry per chain, compressed for LLM consumption.
+  // Full per-chain rankings, p50/p90/p99, provider list and region breakdowns
+  // are available at /rpc (hub) or /api/stat/<slug> for each chain.
+  lines.push(`## RPC latency benchmarks (${rpc.length} chains)`);
+  lines.push("");
+  lines.push(`Live p50/p90/p99 latency for free no-key public RPC endpoints, measured every 60 seconds from US-East, EU-West and Singapore. Hub: ${SITE.url}/rpc — JSON: ${SITE.url}/api/citable`);
+  lines.push("");
+  for (const b of rpc) {
+    lines.push(`- [${b.title}](${SITE.url}/benchmarks/${b.slug}): ${groundingTraceLine(b, SITE.url)}`);
   }
 
   return new Response(lines.join("\n"), {
