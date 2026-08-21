@@ -33,6 +33,11 @@ var (
 		Help: "Observed fee take rate in percent per platform (fees_usd / volume_usd * 100, Dune community datasets).",
 	}, []string{"platform"})
 
+	platformWallets = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "dune_platform_wallets_24h",
+		Help: "Unique active wallets per platform for the latest complete day (Dune community datasets).",
+	}, []string{"platform"})
+
 	platformHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "dune_platform_volume_health",
 		Help: "1 if this platform returned data in the last Dune poll.",
@@ -46,6 +51,7 @@ func init() {
 		platformFeesUSD,
 		platformAvgTrade,
 		platformFeeRate,
+		platformWallets,
 		platformHealth,
 	)
 }
@@ -62,6 +68,9 @@ func publishRows(rows []duneRow) {
 			platformAvgTrade.WithLabelValues(r.Platform).Set(r.AvgTradeUSD)
 		}
 		platformFeeRate.WithLabelValues(r.Platform).Set(r.FeeRatePct)
+		if r.Wallets > 0 {
+			platformWallets.WithLabelValues(r.Platform).Set(r.Wallets)
+		}
 		platformHealth.WithLabelValues(r.Platform).Set(1)
 	}
 }

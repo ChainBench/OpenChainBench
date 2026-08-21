@@ -22,6 +22,7 @@ const BENCH_SLUGS = [
   "solana-dex-volume",
   "solana-unique-traders",
   "solana-avg-trade-size",
+  "trading-platform-wallets",
   "solana-launchpad-wars",
   "memecoin-platforms",
   "app-store-ratings",
@@ -67,6 +68,14 @@ const COLUMNS = [
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
     tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
+    higherBetter: true,
+  },
+  {
+    key: "wallets" as const,
+    label: "Active Wallets",
+    bench: "trading-platform-wallets",
+    fmt: fmtCount,
+    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal. Better signal of real user base than raw tx count.",
     higherBetter: true,
   },
   {
@@ -130,6 +139,7 @@ const GROUPS = [
       { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
       { slug: "solana-unique-traders", title: "Swap transactions" },
       { slug: "solana-avg-trade-size", title: "Average trade size" },
+      { slug: "trading-platform-wallets", title: "Daily active wallets" },
     ],
   },
   {
@@ -147,11 +157,12 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, tradersBench, tradeSizeBench, feeBench, ratingsBench] =
+  const [volBench, tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench] =
     await Promise.all([
       getBenchmark("solana-trading-platform-wars"),
       getBenchmark("solana-unique-traders"),
       getBenchmark("solana-avg-trade-size"),
+      getBenchmark("trading-platform-wallets"),
       getBenchmark("memecoin-platforms"),
       getBenchmark("app-store-ratings"),
     ]);
@@ -159,6 +170,7 @@ export default async function TradingAppsHubPage() {
   const volIdx = indexBySlug(volBench?.results);
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
+  const walletsIdx = indexBySlug(walletsBench?.results);
   const feeIdx = indexBySlug(feeBench?.results);
   const ratingIdx = indexBySlug(ratingsBench?.results);
 
@@ -168,6 +180,7 @@ export default async function TradingAppsHubPage() {
     volume: number | null;
     traders: number | null;
     tradeSize: number | null;
+    wallets: number | null;
     feeRate: number | null;
     rating: number | null;
   };
@@ -178,6 +191,7 @@ export default async function TradingAppsHubPage() {
     volume: volIdx[p.slug] ?? null,
     traders: tradersIdx[p.slug] ?? null,
     tradeSize: tradeSizeIdx[p.slug] ?? null,
+    wallets: walletsIdx[p.slug] ?? null,
     feeRate: feeIdx[p.slug] ?? null,
     rating: ratingIdx[p.slug] ?? null,
   })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
@@ -431,6 +445,7 @@ export default async function TradingAppsHubPage() {
           acq. Apr 2025). Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.
+          Active wallets = unique wallet addresses per platform per day (Dune community datasets); cross-chain for GMGN/Axiom/BasedBot/Terminal.
           Fee rate = on-chain fee revenue ÷ fee-paying volume (Dune tx join);
           FOMO via DeFiLlama. App store ratings from the Apple iTunes lookup API.
           All harnesses open source on{" "}

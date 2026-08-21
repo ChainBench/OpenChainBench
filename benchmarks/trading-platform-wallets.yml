@@ -1,0 +1,172 @@
+# OpenChainBench. Bench 208
+
+slug: trading-platform-wallets
+number: "208"
+title: "Daily active wallets per trading platform: GMGN vs Axiom vs Fomo vs pump.fun, live"
+seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Fomo vs pump.fun"
+seo_description: "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h. GMGN vs Axiom vs Fomo vs Trojan vs BasedBot ranked by real user count, live from Dune community datasets."
+subtitle: Live count of unique wallets that traded through each platform in the last complete day. Sourced from Dune community datasets, refreshed every 4 hours. Reveals real user base vs bot-inflated transaction counts.
+
+category: Trading
+status: live
+metric: Active wallets 24h
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  Wallet counts are unique wallets per platform per day from Dune community datasets (cross-chain). A wallet using two platforms is counted in each; counts are not mutually exclusive. Includes bots, MEV searchers, and multi-wallet traders. pump.fun wallets come from dataset_pumpapp_sol_daily only (not relay); relay wallets would overlap with pumpapp and double-count. Data represents the most recent complete day, refreshed every 4 hours.
+
+seo_intro: |
+  Daily active wallet count is the clearest signal of real platform usage, filtering out
+  the noise from bots that inflate transaction counts. GMGN consistently leads on wallet
+  count among trading terminals, reflecting its broad AI copy-trading user base across
+  multiple chains. Axiom and Fomo compete closely behind. pump.fun naturally dominates
+  in absolute numbers due to its launchpad mechanic attracting thousands of new wallets
+  daily across sniping bots and retail buyers. Trojan and Photon serve smaller but
+  more concentrated user bases with higher average positions. This benchmark tracks
+  unique active wallets per platform live from Dune community datasets, updated every
+  4 hours.
+
+abstract: |
+  The dune-platform-volume harness queries Dune community datasets
+  (dune.adam_tehc_co.dataset_*_daily) every 4 hours. The wallets column in each
+  dataset provides the count of unique wallet addresses that executed at least one
+  swap through the platform on the given day. For multi-chain platforms (GMGN,
+  Axiom, BasedBot, Terminal) the count is summed across all blockchains. For Fomo
+  and Trojan, the count is Solana-only. pump.fun uses dataset_pumpapp_sol_daily
+  wallets only. The metric is exposed as dune_platform_wallets_24h per platform.
+
+methodology:
+  - "Source: Dune community datasets (dataset_*_daily). wallets column = unique wallet addresses per platform per day."
+  - "Poll cadence: harness queries Dune every 4 hours; Prometheus scrapes :2112/metrics every 60 seconds."
+  - "Cross-chain: GMGN, Axiom, BasedBot, Terminal sum wallets across all blockchains. Fomo and Trojan are Solana-only datasets."
+  - "pump.fun: dataset_pumpapp_sol_daily wallets only (pumpapp frontend). Relay dataset wallets not added to avoid double-counting wallets active on both."
+  - "Includes all wallets: bots, MEV searchers, and automated traders are counted. Not a human-only metric."
+  - "Not mutually exclusive: a wallet using GMGN and Axiom on the same day is counted in both platforms."
+
+findings:
+  - "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h."
+  - "GMGN leads terminals by wallet count, driven by its broad AI copy-trading and multi-chain reach."
+  - "pump.fun's wallet count reflects daily launchpad activity — thousands of new wallets snipe each token launch."
+  - "Comparing wallet count to txns per platform reveals the bot ratio: platforms with 50x more txns than wallets have heavy automated activity."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
+
+prometheus:
+  window: 24h
+  freshness_metric: dune_platform_wallets_24h
+
+faq:
+  - q: "What does active wallet count measure?"
+    a: "Active wallets is the number of unique blockchain addresses that executed at least one swap through the platform during the day. It is a proxy for daily active users, though one human can control many wallets and bots count as wallets."
+  - q: "How is this different from swap transaction count (bench 207)?"
+    a: "Swap tx count (dune_platform_txns_24h) counts every individual swap. Active wallets counts unique addresses. A bot executing 500 swaps in one day contributes 500 to tx count but only 1 to wallet count. The ratio txns/wallets is a proxy for trading frequency per user and bot intensity."
+  - q: "Why is pump.fun's wallet count from pumpapp only and not relay?"
+    a: "The relay dataset (dataset_pumpfun_relay_daily) covers cross-chain relay swaps where pump.fun tokens are bought on EVM chains via relay. Wallets on relay likely overlap significantly with pumpapp wallets. Adding them would double-count users active on both. We use pumpapp as the primary dataset for pump.fun wallet counts."
+  - q: "Are wallet counts comparable across platforms?"
+    a: "Approximately. Each dataset counts unique addresses per day per platform independently. Cross-chain platforms (GMGN, Axiom) sum wallets across chains, so the same wallet on Solana and BNB would be counted twice. Single-chain platforms like Fomo and Trojan are Solana-only. The cross-chain sum slightly overstates unique humans for multi-chain platforms."
+
+providers:
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Solana meme launchpad"
+    formula: "Unique wallets on pump.fun's app (dataset_pumpapp_sol_daily), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="pump-fun"}
+      p90: dune_platform_wallets_24h{platform="pump-fun"}
+      p99: dune_platform_wallets_24h{platform="pump-fun"}
+      mean: dune_platform_wallets_24h{platform="pump-fun"}
+      success: dune_platform_volume_health{platform="pump-fun"}
+      sample_size: dune_platform_wallets_24h{platform="pump-fun"}
+      series: dune_platform_wallets_24h{platform="pump-fun"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal, multi-chain"
+    formula: "Unique wallets across all chains (dataset_gmgn_daily, cross-chain sum), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="gmgn"}
+      p90: dune_platform_wallets_24h{platform="gmgn"}
+      p99: dune_platform_wallets_24h{platform="gmgn"}
+      mean: dune_platform_wallets_24h{platform="gmgn"}
+      success: dune_platform_volume_health{platform="gmgn"}
+      sample_size: dune_platform_wallets_24h{platform="gmgn"}
+      series: dune_platform_wallets_24h{platform="gmgn"}
+
+  - slug: axiom
+    name: Axiom
+    tag: "Web trading terminal, multi-chain"
+    formula: "Unique wallets across all chains (dataset_axiom_daily, cross-chain sum), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="axiom"}
+      p90: dune_platform_wallets_24h{platform="axiom"}
+      p99: dune_platform_wallets_24h{platform="axiom"}
+      mean: dune_platform_wallets_24h{platform="axiom"}
+      success: dune_platform_volume_health{platform="axiom"}
+      sample_size: dune_platform_wallets_24h{platform="axiom"}
+      series: dune_platform_wallets_24h{platform="axiom"}
+
+  - slug: fomo
+    name: Fomo
+    tag: "Solana trading platform"
+    formula: "Unique wallets on Solana (dataset_fomo_sol_daily), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="fomo"}
+      p90: dune_platform_wallets_24h{platform="fomo"}
+      p99: dune_platform_wallets_24h{platform="fomo"}
+      mean: dune_platform_wallets_24h{platform="fomo"}
+      success: dune_platform_volume_health{platform="fomo"}
+      sample_size: dune_platform_wallets_24h{platform="fomo"}
+      series: dune_platform_wallets_24h{platform="fomo"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram trading bot on Solana"
+    formula: "Unique wallets on Solana (dataset_trojan_daily), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="trojan"}
+      p90: dune_platform_wallets_24h{platform="trojan"}
+      p99: dune_platform_wallets_24h{platform="trojan"}
+      mean: dune_platform_wallets_24h{platform="trojan"}
+      success: dune_platform_volume_health{platform="trojan"}
+      sample_size: dune_platform_wallets_24h{platform="trojan"}
+      series: dune_platform_wallets_24h{platform="trojan"}
+
+  - slug: photon
+    name: Photon
+    tag: "Solana trading terminal"
+    formula: "Unique wallets on Solana (dataset_photon_daily), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="photon"}
+      p90: dune_platform_wallets_24h{platform="photon"}
+      p99: dune_platform_wallets_24h{platform="photon"}
+      mean: dune_platform_wallets_24h{platform="photon"}
+      success: dune_platform_volume_health{platform="photon"}
+      sample_size: dune_platform_wallets_24h{platform="photon"}
+      series: dune_platform_wallets_24h{platform="photon"}
+
+  - slug: padre
+    name: Terminal
+    tag: "pump.fun's own trading app (formerly Padre)"
+    formula: "Unique wallets across all chains (dataset_terminal_daily, cross-chain sum), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="padre"}
+      p90: dune_platform_wallets_24h{platform="padre"}
+      p99: dune_platform_wallets_24h{platform="padre"}
+      mean: dune_platform_wallets_24h{platform="padre"}
+      success: dune_platform_volume_health{platform="padre"}
+      sample_size: dune_platform_wallets_24h{platform="padre"}
+      series: dune_platform_wallets_24h{platform="padre"}
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Multi-chain trading bot"
+    formula: "Unique wallets across all chains (dataset_basedbot_daily, cross-chain sum), latest complete day."
+    queries:
+      p50: dune_platform_wallets_24h{platform="basedbot"}
+      p90: dune_platform_wallets_24h{platform="basedbot"}
+      p99: dune_platform_wallets_24h{platform="basedbot"}
+      mean: dune_platform_wallets_24h{platform="basedbot"}
+      success: dune_platform_volume_health{platform="basedbot"}
+      sample_size: dune_platform_wallets_24h{platform="basedbot"}
+      series: dune_platform_wallets_24h{platform="basedbot"}
