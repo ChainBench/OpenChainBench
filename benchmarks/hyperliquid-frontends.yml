@@ -8,7 +8,7 @@ seo_description: "Live USD revenue collected by every Hyperliquid frontend via t
 subtitle: How much USD builder fee revenue each Hyperliquid frontend collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live
-metric: Builder fees collected (USD)
+metric: Builder fees collected
 unit: usd
 higher_is_better: true
 
