@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which EVM swap quote API has the lowest latency right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours) on the active tab, across {{count}} measured providers. The leaderboard re-sorts every minute on fresh Prometheus samples, so the answer reflects measured latency on the live basket, not a marketing claim. Per chain leaders can differ from the cross chain aggregate; the chain tabs at the top of the bench page show each ranking separately."
+    a: "{{best_name}} currently returns quotes the fastest at {{best_p50}} (p50 over the last 24 hours) on the active tab, across {{count}} measured providers. The leaderboard re-sorts every minute on fresh Prometheus samples, so the answer reflects measured latency on the live basket, not a marketing claim. Per chain leaders can differ from the cross chain aggregate; the chain tabs at the top of the bench page show each ranking separately."
   - q: "Does this measure quote quality or just speed?"
     a: "Speed only. Latency is wall clock round trip from request to last byte, recorded only on a successful parseable response. Output amount in USD is not scored on this bench because providers measure it differently (Bebop is net of fees on a gasless RFQ, others are gross), and converting all outputs to a comparable USD value introduces an oracle bias the leaderboard does not want to bake into a latency comparison."
   - q: "Why are some providers not on every chain?"

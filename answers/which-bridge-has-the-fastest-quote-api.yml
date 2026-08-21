@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which cross-chain bridge has the lowest API latency right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h) across {{count}} measured bridges, averaged over the 4 USDC routes and 3 notional sizes the harness sweeps. The leaderboard refreshes every 5 minutes against fresh Prometheus samples; the 24h window smooths a single fast cold start so the ranking reflects sustained API performance."
+    a: "{{best_name}} currently returns quotes the fastest at {{best_p50}} (p50, 24h) across {{count}} measured bridges, averaged over the 4 USDC routes and 3 notional sizes the harness sweeps. The leaderboard refreshes every 5 minutes against fresh Prometheus samples; the 24h window smooths a single fast cold start so the ranking reflects sustained API performance."
   - q: "What is the difference between quote latency and bridge fill time?"
     a: "Quote latency is the wall clock time the bridge API takes to return a price. Fill time is the wall clock time the funds take to land on the destination chain after the user signs. They are decoupled: a bridge can quote in 100 ms and take 30 seconds to settle, or quote in 2 seconds and settle in 5 seconds. This benchmark measures the quote half because that is the part a wallet, an aggregator or an embedded swap UI feels first and tunes its UX around."
   - q: "Why does bridge quote latency matter for builders?"

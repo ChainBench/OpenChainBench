@@ -1,7 +1,7 @@
-# OpenChainBench. Bench № 043
+# OpenChainBench. Bench № 233
 
 slug: perp-amm-volume-share
-number: "043"
+number: "233"
 title: Perp AMM volume share, live 24h notional ranked
 seo_title: "Perp DEX AMM volume 24h ranking 2026"
 seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains Network, Ostium, Pacifica, SynFutures and KiloEx. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
