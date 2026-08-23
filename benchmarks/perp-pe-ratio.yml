@@ -1,0 +1,144 @@
+# OpenChainBench. Bench 234
+
+slug: perp-pe-ratio
+number: "234"
+title: "Perp DEX token P/E ratio 2026: Hyperliquid, GMX, dYdX, GNS live"
+seo_title: "Perp DEX token P/E ratio 2026: Hyperliquid vs GMX vs dYdX vs GNS"
+seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, GMX, Gains Network, dYdX, Drift, Ostium. Live from DeFiLlama and CoinGecko, updated hourly."
+subtitle: FDV divided by annualized protocol revenue (30-day trailing average) for the major perp DEX tokens. Lower is cheaper relative to earnings. Updated hourly from DeFiLlama and CoinGecko.
+
+category: Perpetuals
+status: live
+metric: P/E ratio
+unit: x
+lower_is_better: true
+
+disclaimer: |
+  P/E = fully diluted valuation (CoinGecko) divided by annualized protocol revenue (DeFiLlama dailyRevenue, 30-day trailing average x365). Protocol revenue = fees accruing to the treasury or token holders, not total user fees. Tokens without a CoinGecko listing show no P/E. FDV reflects total supply at current price, not circulating supply; tokens with large unvested allocations will show inflated FDV-based P/E. Updated hourly.
+
+seo_intro: |
+  The P/E ratio for perp DEX tokens measures how much the market pays per dollar of annualized
+  protocol revenue. A low P/E means the token is cheap relative to what the protocol earns;
+  a high P/E implies growth expectations or overvaluation. Hyperliquid dominates perp DEX
+  revenue but trades at a significant premium. GMX and Gains Network generate meaningful
+  revenue with far smaller market caps, producing low single-digit or low double-digit P/E
+  ratios. dYdX and Drift have large FDV overhangs from unvested token allocations that
+  distort their P/E. This benchmark tracks P/E live from DeFiLlama (protocol revenue) and
+  CoinGecko (FDV), updated every hour.
+
+abstract: |
+  The perp-token-metrics harness polls DeFiLlama /summary/fees/[slug]?dataType=dailyRevenue
+  every hour, computes the 30-day trailing average of daily protocol revenue, and annualizes
+  it (x365). It simultaneously fetches fully_diluted_valuation from CoinGecko /coins/markets.
+  P/E = FDV / annual_revenue. Metrics are exposed as perp_protocol_pe_ratio,
+  perp_protocol_fdv_usd, perp_protocol_annual_rev_usd, and perp_protocol_rev_24h_usd per
+  protocol label.
+
+methodology:
+  - "Revenue source: DeFiLlama dailyRevenue (protocol revenue accruing to treasury/holders, not total user fees)."
+  - "30-day trailing average: last 30 data points from totalDataChart, filtered for non-zero values."
+  - "Annual revenue: 30d avg x 365."
+  - "FDV source: CoinGecko /coins/markets fully_diluted_valuation (falls back to market_cap if FDV null)."
+  - "P/E = FDV / annual_revenue. Null if FDV or revenue unavailable."
+  - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
+
+findings:
+  - "{{best_name}} has the lowest P/E at {{best_p50}}x; cheapest perp DEX token relative to protocol earnings."
+  - "Hyperliquid generates the most absolute revenue but trades at a large premium to peers."
+  - "GMX and Gains Network are trading near multi-year low valuations with positive protocol cash flow."
+  - "Drift and dYdX carry large unvested token overhangs that inflate their FDV-based P/E."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-token-metrics
+
+prometheus:
+  window: 24h
+  freshness_metric: perp_protocol_health
+
+faq:
+  - q: "What does P/E measure for a perp DEX token?"
+    a: "P/E = fully diluted valuation divided by annualized protocol revenue. It answers: how many years of current earnings does the market price in? Lower P/E = cheaper relative to current revenue. Note that protocol revenue (fees to holders/treasury) differs from total trading fees paid by users."
+  - q: "Why use FDV instead of market cap?"
+    a: "FDV (fully diluted valuation) uses total token supply at current price, including unvested allocations. For tokens like dYdX where only 6% of supply circulates, FDV P/E is much higher than market-cap P/E. FDV is more conservative and reflects the long-run dilution risk."
+  - q: "Why is Ostium excluded from P/E?"
+    a: "Ostium's OST token is not listed on CoinGecko with a price feed, so FDV cannot be computed. Annual revenue is still shown."
+  - q: "How is protocol revenue different from trading fees?"
+    a: "Trading fees are paid by users on each swap. Protocol revenue is the share that flows to the protocol treasury or token holders (buybacks, staking rewards, etc.). DeFiLlama dailyRevenue tracks the protocol share only. For example, Hyperliquid takes a small cut of trading fees as protocol revenue while the majority goes to liquidity providers."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: "HYPE"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      p90: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      p99: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      mean: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      success: perp_protocol_health{protocol="hyperliquid"}
+      sample_size: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      series: perp_protocol_pe_ratio{protocol="hyperliquid"}
+
+  - slug: gmx
+    name: GMX
+    tag: "GMX"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="gmx"}
+      p90: perp_protocol_pe_ratio{protocol="gmx"}
+      p99: perp_protocol_pe_ratio{protocol="gmx"}
+      mean: perp_protocol_pe_ratio{protocol="gmx"}
+      success: perp_protocol_health{protocol="gmx"}
+      sample_size: perp_protocol_pe_ratio{protocol="gmx"}
+      series: perp_protocol_pe_ratio{protocol="gmx"}
+
+  - slug: gains-network
+    name: Gains Network
+    tag: "GNS"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="gains-network"}
+      p90: perp_protocol_pe_ratio{protocol="gains-network"}
+      p99: perp_protocol_pe_ratio{protocol="gains-network"}
+      mean: perp_protocol_pe_ratio{protocol="gains-network"}
+      success: perp_protocol_health{protocol="gains-network"}
+      sample_size: perp_protocol_pe_ratio{protocol="gains-network"}
+      series: perp_protocol_pe_ratio{protocol="gains-network"}
+
+  - slug: dydx
+    name: dYdX
+    tag: "DYDX"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="dydx"}
+      p90: perp_protocol_pe_ratio{protocol="dydx"}
+      p99: perp_protocol_pe_ratio{protocol="dydx"}
+      mean: perp_protocol_pe_ratio{protocol="dydx"}
+      success: perp_protocol_health{protocol="dydx"}
+      sample_size: perp_protocol_pe_ratio{protocol="dydx"}
+      series: perp_protocol_pe_ratio{protocol="dydx"}
+
+  - slug: drift
+    name: Drift Protocol
+    tag: "DRIFT"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="drift"}
+      p90: perp_protocol_pe_ratio{protocol="drift"}
+      p99: perp_protocol_pe_ratio{protocol="drift"}
+      mean: perp_protocol_pe_ratio{protocol="drift"}
+      success: perp_protocol_health{protocol="drift"}
+      sample_size: perp_protocol_pe_ratio{protocol="drift"}
+      series: perp_protocol_pe_ratio{protocol="drift"}
+
+  - slug: ostium
+    name: Ostium
+    tag: "OST"
+    formula: "Annual revenue only (OST not listed on CoinGecko; P/E unavailable)"
+    queries:
+      p50: perp_protocol_annual_rev_usd{protocol="ostium"}
+      p90: perp_protocol_annual_rev_usd{protocol="ostium"}
+      p99: perp_protocol_annual_rev_usd{protocol="ostium"}
+      mean: perp_protocol_annual_rev_usd{protocol="ostium"}
+      success: perp_protocol_health{protocol="ostium"}
+      sample_size: perp_protocol_annual_rev_usd{protocol="ostium"}
+      series: perp_protocol_annual_rev_usd{protocol="ostium"}
