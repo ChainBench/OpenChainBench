@@ -17,10 +17,9 @@ type protocol struct {
 var protocols = []protocol{
 	{slug: "hyperliquid", llamaSlug: "hyperliquid", cgID: "hyperliquid"},
 	{slug: "gmx", llamaSlug: "gmx", cgID: "gmx"},
-	{slug: "gains-network", llamaSlug: "gains-network", cgID: "gains-network"},
+	{slug: "gains", llamaSlug: "gains-network", cgID: "gains-network"},
 	{slug: "dydx", llamaSlug: "dydx", cgID: "dydx"},
 	{slug: "drift", llamaSlug: "drift", cgID: "drift-protocol"},
-	{slug: "ostium", llamaSlug: "ostium", cgID: ""},
 }
 
 func addr() string {

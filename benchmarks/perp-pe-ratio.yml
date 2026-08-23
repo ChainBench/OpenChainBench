@@ -66,8 +66,8 @@ faq:
 
 providers:
   - slug: hyperliquid
-    name: Hyperliquid
-    tag: "HYPE"
+    name: HYPE
+    tag: "Hyperliquid"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="hyperliquid"}
@@ -80,7 +80,7 @@ providers:
 
   - slug: gmx
     name: GMX
-    tag: "GMX"
+    tag: "GMX protocol"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="gmx"}
@@ -91,22 +91,22 @@ providers:
       sample_size: perp_protocol_pe_ratio{protocol="gmx"}
       series: perp_protocol_pe_ratio{protocol="gmx"}
 
-  - slug: gains-network
+  - slug: gains
     name: GNS
     tag: "Gains Network"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
-      p50: perp_protocol_pe_ratio{protocol="gains-network"}
-      p90: perp_protocol_pe_ratio{protocol="gains-network"}
-      p99: perp_protocol_pe_ratio{protocol="gains-network"}
-      mean: perp_protocol_pe_ratio{protocol="gains-network"}
-      success: perp_protocol_health{protocol="gains-network"}
-      sample_size: perp_protocol_pe_ratio{protocol="gains-network"}
-      series: perp_protocol_pe_ratio{protocol="gains-network"}
+      p50: perp_protocol_pe_ratio{protocol="gains"}
+      p90: perp_protocol_pe_ratio{protocol="gains"}
+      p99: perp_protocol_pe_ratio{protocol="gains"}
+      mean: perp_protocol_pe_ratio{protocol="gains"}
+      success: perp_protocol_health{protocol="gains"}
+      sample_size: perp_protocol_pe_ratio{protocol="gains"}
+      series: perp_protocol_pe_ratio{protocol="gains"}
 
   - slug: dydx
-    name: dYdX
-    tag: "DYDX"
+    name: DYDX
+    tag: "dYdX"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="dydx"}
@@ -118,8 +118,8 @@ providers:
       series: perp_protocol_pe_ratio{protocol="dydx"}
 
   - slug: drift
-    name: Drift Protocol
-    tag: "DRIFT"
+    name: DRIFT
+    tag: "Drift Protocol"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="drift"}
@@ -129,16 +129,3 @@ providers:
       success: perp_protocol_health{protocol="drift"}
       sample_size: perp_protocol_pe_ratio{protocol="drift"}
       series: perp_protocol_pe_ratio{protocol="drift"}
-
-  - slug: ostium
-    name: Ostium
-    tag: "OST"
-    formula: "Annual revenue only (OST not listed on CoinGecko; P/E unavailable)"
-    queries:
-      p50: perp_protocol_annual_rev_usd{protocol="ostium"}
-      p90: perp_protocol_annual_rev_usd{protocol="ostium"}
-      p99: perp_protocol_annual_rev_usd{protocol="ostium"}
-      mean: perp_protocol_annual_rev_usd{protocol="ostium"}
-      success: perp_protocol_health{protocol="ostium"}
-      sample_size: perp_protocol_annual_rev_usd{protocol="ostium"}
-      series: perp_protocol_annual_rev_usd{protocol="ostium"}
