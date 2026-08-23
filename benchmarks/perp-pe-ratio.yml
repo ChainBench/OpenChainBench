@@ -92,8 +92,8 @@ providers:
       series: perp_protocol_pe_ratio{protocol="gmx"}
 
   - slug: gains-network
-    name: Gains Network
-    tag: "GNS"
+    name: GNS
+    tag: "Gains Network"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="gains-network"}
