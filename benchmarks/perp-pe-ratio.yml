@@ -7,11 +7,11 @@ seo_title: "Perp DEX token P/E ratio 2026: Hyperliquid vs GMX vs dYdX vs GNS"
 seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, GMX, Gains Network, dYdX, Drift, Ostium. Live from DeFiLlama and CoinGecko, updated hourly."
 subtitle: FDV divided by annualized protocol revenue (30-day trailing average) for the major perp DEX tokens. Lower is cheaper relative to earnings. Updated hourly from DeFiLlama and CoinGecko.
 
-category: Perpetuals
+category: Trading
 status: live
 metric: P/E ratio
 unit: x
-lower_is_better: true
+higher_is_better: false
 
 disclaimer: |
   P/E = fully diluted valuation (CoinGecko) divided by annualized protocol revenue (DeFiLlama dailyRevenue, 30-day trailing average x365). Protocol revenue = fees accruing to the treasury or token holders, not total user fees. Tokens without a CoinGecko listing show no P/E. FDV reflects total supply at current price, not circulating supply; tokens with large unvested allocations will show inflated FDV-based P/E. Updated hourly.
