@@ -64,7 +64,7 @@ const PROTOCOLS: {
     slug: "drift",
     name: "Drift Protocol",
     token: "DRIFT",
-    llamaSlug: "drift-protocol",
+    llamaSlug: "drift",
     cgId: "drift-protocol",
     logo: "/logos/drift-perp.webp",
     chains: ["Solana"],
