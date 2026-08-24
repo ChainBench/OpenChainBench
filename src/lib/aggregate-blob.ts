@@ -25,7 +25,9 @@ import { loadSpecsUncached } from "@/lib/materialize/load";
 import { overlayEditorial, slimBenchmarkForCache } from "@/lib/spec";
 
 const DEFAULT_URL = "https://kv.openchainbench.com/aggregate/latest.json";
-const FETCH_TIMEOUT_MS = 8_000;
+// 20s: blob is 2MB gzipped, served from Paris VPS. Vercel US East adds
+// ~100-200ms latency. 8s was too tight without a CDN in front.
+const FETCH_TIMEOUT_MS = 20_000;
 const MIN_BENCHES = 40;
 
 type AggregateEnvelope = {
@@ -56,6 +58,9 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
       // Bypass Next's fetch memoization; the outer unstable_cache handles
       // cross-request caching, we don't want double-layered TTLs.
       cache: "no-store",
+      // Explicitly request compression so Vercel's Node.js fetch gets the
+      // 2MB gzip payload instead of the 7.5MB raw JSON.
+      headers: { "Accept-Encoding": "gzip, br" },
     });
     if (!res.ok) {
       console.warn(`[aggregate-blob] fetch ${url} → ${res.status}`);

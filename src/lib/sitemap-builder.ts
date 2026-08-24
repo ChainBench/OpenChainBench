@@ -565,7 +565,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("sitemap build timeout")), 25_000),
+      setTimeout(() => reject(new Error("sitemap build timeout")), 45_000),
     );
     return await Promise.race([buildFullSitemap(), timeout]);
   } catch (err) {
