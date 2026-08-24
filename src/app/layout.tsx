@@ -9,6 +9,7 @@ import { buildSearchIndex } from "@/lib/search/buildIndex";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
+import { PHProvider } from "@/components/posthog-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -256,12 +257,14 @@ export default async function RootLayout({
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <SearchProvider items={searchItems}>
-          <SiteHeader />
-          <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
-          <SiteFooter />
-        </SearchProvider>
-        {process.env.VERCEL_ENV === "production" && <Analytics />}
+        <PHProvider>
+          <SearchProvider items={searchItems}>
+            <SiteHeader />
+            <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
+            <SiteFooter />
+          </SearchProvider>
+          {process.env.VERCEL_ENV === "production" && <Analytics />}
+        </PHProvider>
       </body>
     </html>
   );

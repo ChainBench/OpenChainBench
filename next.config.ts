@@ -143,6 +143,21 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // PostHog reverse proxy — routes /ingest/* through the Next.js server
+      // so ad-blockers that block posthog.com directly don't drop events.
+      // api_host in posthog-provider.tsx is set to "/ingest" to match.
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
+  },
   async redirects() {
     // RPC cluster promotion (2026-07): the per-chain RPC leaderboards
     // graduated from variant pages under rpc-capabilities to first-class
