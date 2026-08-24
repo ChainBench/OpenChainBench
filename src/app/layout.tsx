@@ -253,19 +253,19 @@ export default async function RootLayout({
           Do NOT add overflow-x clip here — WebKit treats it as creating a
           containing block for position: fixed descendants and the header
           ends up scrolling with the body. Clip is on html + main + article. */}
-      <PHProvider>
       <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <SearchProvider items={searchItems}>
-          <SiteHeader />
-          <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
-          <SiteFooter />
-        </SearchProvider>
-        {process.env.VERCEL_ENV === "production" && <Analytics />}
+        <PHProvider>
+          <SearchProvider items={searchItems}>
+            <SiteHeader />
+            <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
+            <SiteFooter />
+          </SearchProvider>
+          {process.env.VERCEL_ENV === "production" && <Analytics />}
+        </PHProvider>
       </body>
-      </PHProvider>
     </html>
   );
 }
