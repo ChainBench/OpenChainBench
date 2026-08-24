@@ -9,6 +9,7 @@ import { buildSearchIndex } from "@/lib/search/buildIndex";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
+import { PHProvider } from "@/components/posthog-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -252,6 +253,7 @@ export default async function RootLayout({
           Do NOT add overflow-x clip here — WebKit treats it as creating a
           containing block for position: fixed descendants and the header
           ends up scrolling with the body. Clip is on html + main + article. */}
+      <PHProvider>
       <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
         <a href="#main-content" className="skip-link">
           Skip to main content
@@ -263,6 +265,7 @@ export default async function RootLayout({
         </SearchProvider>
         {process.env.VERCEL_ENV === "production" && <Analytics />}
       </body>
+      </PHProvider>
     </html>
   );
 }
