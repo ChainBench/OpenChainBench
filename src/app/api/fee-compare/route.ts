@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { keccak256 } from "js-sha3";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -297,7 +298,7 @@ async function fetchGmxTrades(wallet: string): Promise<GmxWalletData> {
   const res = await fetch(GMX_SUBSQUID, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { account: wallet.toLowerCase() } }),
+    body: JSON.stringify({ query, variables: { account: toChecksumAddress(wallet) } }),
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) throw new Error(`GMX Subsquid ${res.status}`);
@@ -405,6 +406,17 @@ function buildHlWalletData(
     topCoins,
     recentFills: displayFills,
   };
+}
+
+// EIP-55 checksum — Subsquid stores addresses in checksummed format
+function toChecksumAddress(address: string): string {
+  const lower = address.toLowerCase().replace("0x", "");
+  const hash = keccak256(lower);
+  const result = lower
+    .split("")
+    .map((c, i) => (parseInt(hash[i], 16) >= 8 ? c.toUpperCase() : c))
+    .join("");
+  return "0x" + result;
 }
 
 function walletStats(slug: string, w: AnyWallet): { notional: number; fees: number } | null {
