@@ -21,6 +21,10 @@ const MAX_DISPLAY_FILLS = 50;
 let gainsFeeCache: { coinRoundTrip: Record<string, number>; ts: number } | null = null;
 const GAINS_CACHE_TTL_MS = 60 * 60 * 1000;
 
+// Simple in-process cache so we don't hammer Gains backend on every request
+let gainsFeeCache: { coinRoundTrip: Record<string, number>; ts: number } | null = null;
+const GAINS_CACHE_TTL_MS = 60 * 60 * 1000; // 1h
+
 type HlFill = {
   coin: string;
   px: string;
@@ -161,7 +165,7 @@ export async function GET(req: Request) {
     const fromBlock = Math.max(0, latestBlock - Math.ceil(days * BLOCKS_PER_DAY));
     const gainsLogs = await fetchGainsLogs(wallet, fromBlock, latestBlock);
 
-    // ── HL side ──
+    // ── HL side (100% real data from HL API) ──
     const recentFills = hlFills.filter((f) => f.time >= cutoffMs);
     let hlNotional = 0;
     let hlFees = 0;
