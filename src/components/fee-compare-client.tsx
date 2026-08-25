@@ -107,7 +107,7 @@ function PlatformLogo({ name, size = 28 }: { name: "hl" | "gains"; size?: number
   return (
     <Image
       src={name === "hl" ? "/logos/hyperliquid.png" : "/logos/gains.png"}
-      alt={name === "hl" ? "Hyperliquid" : "Gains.trade"}
+      alt={name === "hl" ? "Hyperliquid" : "Gains"}
       width={size}
       height={size}
       className="rounded-full object-cover shrink-0"
@@ -208,7 +208,7 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
           <div className="flex items-center gap-2.5 mb-4">
             <PlatformLogo name="gains" size={30} />
             <div>
-              <p className="font-semibold text-sm text-ink">Gains.trade</p>
+              <p className="font-semibold text-sm text-ink">Gains</p>
               {hasGains && <p className="text-[11px] text-ink-faint">{gains.events} trades</p>}
             </div>
             {gainsWins && (
@@ -268,7 +268,7 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
           {hasGains && (
             <div className={`flex items-center justify-between gap-4 flex-wrap ${hasHl && comparison.hlNotionalOnGains > 0 ? "pt-2 border-t border-ink/6" : ""}`}>
               <p className="text-xs text-ink-soft">
-                Gains trades at HL taker ({fmtBps(comparison.hlRoundTripRate)} RT)
+                Gains trades at Hyperliquid taker ({fmtBps(comparison.hlRoundTripRate)} RT)
               </p>
               {comparison.gainsSavedVsHl < -1 ? (
                 <p className="font-mono font-semibold text-emerald-400 text-sm">
@@ -432,7 +432,7 @@ function GainsCard({ gains, comparison }: { gains: FeeCompareResult["gains"]; co
     <div className="card-soft rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-ink/8">
         <PlatformLogo name="gains" size={20} />
-        <p className="font-semibold text-sm text-ink">Gains.trade on-chain</p>
+        <p className="font-semibold text-sm text-ink">Gains on-chain</p>
         <span className="ml-auto text-[10px] font-mono text-ink-faint">Arbitrum</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-ink/8">
@@ -469,11 +469,11 @@ function Results({ result }: { result: FeeCompareResult }) {
       {result.hl.recentFills.length > 0 && <HlTradeTable fills={result.hl.recentFills} />}
       {result.gains.events > 0 && <GainsCard gains={result.gains} comparison={result.comparison} />}
       <p className="text-[11px] text-ink-faint px-1 leading-relaxed">
-        HL fees: exact fills from Hyperliquid API. Gains fees: on-chain{" "}
+        Hyperliquid fees: exact fills from Hyperliquid API. Gains fees: on-chain{" "}
         <code className="font-mono text-[10px]">FeesProcessed</code> events from{" "}
         <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Gains simulation uses live
-        rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>. HL simulation
-        uses official taker rate (3.5 bps/side). Funding and borrowing fees excluded.
+        rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>. Hyperliquid
+        simulation uses official taker rate (3.5 bps/side). Funding and borrowing fees excluded.
       </p>
     </div>
   );
