@@ -56,7 +56,7 @@ async function getText(url, timeoutMs = TIMEOUT_MS) {
 // a cold cache never fails the smoke and triggers a rollback of a
 // perfectly healthy deploy (observed 2026-07-10: AbortError at 20s,
 // sitemap healthy 30s later).
-async function getTextWithRetry(url, attempts = 3, timeoutMs = 60000) {
+async function getTextWithRetry(url, attempts = 3, timeoutMs = 90000) {
   let lastErr;
   for (let i = 1; i <= attempts; i++) {
     try {
