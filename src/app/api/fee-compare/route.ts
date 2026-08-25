@@ -8,21 +8,18 @@ const HL_API = "https://api.hyperliquid.xyz/info";
 const ARB_RPC = "https://arb1.arbitrum.io/rpc";
 const GAINS_DIAMOND_ARB = "0xFF162c694eAA571f685030649814282eA457f169";
 const GAINS_VARS_URL = "https://backend-arbitrum.gains.trade/trading-variables";
-// keccak256("FeesProcessed(uint8,address,uint256,uint8,uint256)")
 const FEES_PROCESSED_TOPIC =
   "0x71555a7cc983000fe069574303ed2e47aa16417d297441f6d5e314bd6c58b2fe";
 
-// Fee precision in Gains contracts (1e12)
 const GAINS_FEE_PRECISION = 1e12;
-// HL standard taker fee per side (public schedule, no volume discount)
-const HL_TAKER_PER_SIDE = 0.00035; // 0.035%
+const HL_TAKER_PER_SIDE = 0.00035;
 
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
-const BLOCKS_PER_DAY = 43200; // ~2s blocks on Arbitrum
+const BLOCKS_PER_DAY = 43200;
+const MAX_DISPLAY_FILLS = 50;
 
-// Simple in-process cache so we don't hammer Gains backend on every request
 let gainsFeeCache: { coinRoundTrip: Record<string, number>; ts: number } | null = null;
-const GAINS_CACHE_TTL_MS = 60 * 60 * 1000; // 1h
+const GAINS_CACHE_TTL_MS = 60 * 60 * 1000;
 
 type HlFill = {
   coin: string;
@@ -30,6 +27,10 @@ type HlFill = {
   sz: string;
   fee: string;
   time: number;
+  dir: string;
+  side: string;
+  closedPnl: string;
+  crossed: boolean;
 };
 
 type HlFundingEvent = {
@@ -49,32 +50,25 @@ type GainsTradingVars = {
   fees: Array<{ totalPositionSizeFeeP: string }>;
 };
 
-// Returns a map of coin symbol → round-trip fee rate (0.0007 = 0.07%)
 async function fetchGainsFeeRates(): Promise<Record<string, number>> {
   const now = Date.now();
   if (gainsFeeCache && now - gainsFeeCache.ts < GAINS_CACHE_TTL_MS) {
     return gainsFeeCache.coinRoundTrip;
   }
-
   const res = await fetch(GAINS_VARS_URL, {
     signal: AbortSignal.timeout(8000),
-    // Vercel Data Cache: revalidate once per hour server-side too
     next: { revalidate: 3600 },
   });
   const vars = (await res.json()) as GainsTradingVars;
-  const { pairs, fees } = vars;
-
   const coinRoundTrip: Record<string, number> = {};
-  for (const p of pairs) {
-    const coin = p.from;
-    if (coinRoundTrip[coin]) continue; // keep first occurrence (canonical pair)
+  for (const p of vars.pairs) {
+    if (coinRoundTrip[p.from]) continue;
     const fi = parseInt(p.feeIndex, 10);
-    const feeEntry = fees[fi];
-    if (!feeEntry) continue;
-    const perSide = parseInt(feeEntry.totalPositionSizeFeeP, 10) / GAINS_FEE_PRECISION;
-    coinRoundTrip[coin] = perSide * 2; // open + close
+    const entry = vars.fees[fi];
+    if (!entry) continue;
+    const perSide = parseInt(entry.totalPositionSizeFeeP, 10) / GAINS_FEE_PRECISION;
+    coinRoundTrip[p.from] = perSide * 2;
   }
-
   gainsFeeCache = { coinRoundTrip, ts: now };
   return coinRoundTrip;
 }
@@ -86,10 +80,7 @@ async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     signal: AbortSignal.timeout(15000),
   });
-  const d = (await res.json()) as {
-    result?: unknown;
-    error?: { message: string };
-  };
+  const d = (await res.json()) as { result?: unknown; error?: { message: string } };
   if (d.error) throw new Error(`RPC ${method}: ${d.error.message}`);
   return d.result;
 }
@@ -100,8 +91,7 @@ async function getLatestBlock(): Promise<number> {
 }
 
 async function fetchGainsLogs(wallet: string, fromBlock: number, toBlock: number) {
-  const walletPadded =
-    "0x" + wallet.replace("0x", "").toLowerCase().padStart(64, "0");
+  const walletPadded = "0x" + wallet.replace("0x", "").toLowerCase().padStart(64, "0");
   const logs = (await rpcCall("eth_getLogs", [
     {
       address: GAINS_DIAMOND_ARB,
@@ -111,21 +101,16 @@ async function fetchGainsLogs(wallet: string, fromBlock: number, toBlock: number
     },
   ])) as GainsLog[];
 
-  return logs
-    .map((log) => {
-      const collateralIndex = parseInt(log.topics[1] ?? "0x0", 16);
-      const data = log.data.replace("0x", "");
-      if (data.length < 192) return null;
-      const posSize = BigInt("0x" + data.slice(0, 64));
-      const orderType = parseInt(data.slice(64, 128), 16);
-      const totalFees = BigInt("0x" + data.slice(128, 192));
-      return { collateralIndex, orderType, posSize, totalFees };
-    })
-    .filter(Boolean) as Array<{
-    collateralIndex: number;
-    orderType: number;
-    posSize: bigint;
-    totalFees: bigint;
+  return logs.map((log) => {
+    const collateralIndex = parseInt(log.topics[1] ?? "0x0", 16);
+    const data = log.data.replace("0x", "");
+    if (data.length < 192) return null;
+    const posSize = BigInt("0x" + data.slice(0, 64));
+    const orderType = parseInt(data.slice(64, 128), 16);
+    const totalFees = BigInt("0x" + data.slice(128, 192));
+    return { collateralIndex, orderType, posSize, totalFees };
+  }).filter(Boolean) as Array<{
+    collateralIndex: number; orderType: number; posSize: bigint; totalFees: bigint;
   }>;
 }
 
@@ -157,10 +142,7 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const wallet = url.searchParams.get("wallet")?.trim() ?? "";
-  const days = Math.min(
-    180,
-    Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10)),
-  );
+  const days = Math.min(180, Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10)));
 
   if (!WALLET_RE.test(wallet)) {
     return NextResponse.json({ error: "invalid_wallet" }, { status: 400 });
@@ -169,7 +151,6 @@ export async function GET(req: Request) {
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
   try {
-    // Fetch all sources in parallel: HL fills, HL funding, Arb latest block, Gains fee schedule
     const [hlFills, hlFunding, latestBlock, gainsFeeRates] = await Promise.all([
       fetchHlFills(wallet),
       fetchHlFunding(wallet, cutoffMs),
@@ -180,11 +161,10 @@ export async function GET(req: Request) {
     const fromBlock = Math.max(0, latestBlock - Math.ceil(days * BLOCKS_PER_DAY));
     const gainsLogs = await fetchGainsLogs(wallet, fromBlock, latestBlock);
 
-    // ── HL side (100% real data from HL API) ──
+    // ── HL side ──
     const recentFills = hlFills.filter((f) => f.time >= cutoffMs);
     let hlNotional = 0;
     let hlFees = 0;
-    // Track per-coin notional for Gains simulation (only for coins listed on Gains)
     const coinMap: Record<string, { fills: number; notional: number; fees: number; onGains: boolean }> = {};
 
     for (const f of recentFills) {
@@ -192,56 +172,65 @@ export async function GET(req: Request) {
       const fee = parseFloat(f.fee);
       hlNotional += notional;
       hlFees += fee;
-      if (!coinMap[f.coin]) {
-        coinMap[f.coin] = {
-          fills: 0, notional: 0, fees: 0,
-          onGains: f.coin in gainsFeeRates,
-        };
-      }
+      if (!coinMap[f.coin]) coinMap[f.coin] = { fills: 0, notional: 0, fees: 0, onGains: f.coin in gainsFeeRates };
       coinMap[f.coin].fills++;
       coinMap[f.coin].notional += notional;
       coinMap[f.coin].fees += fee;
     }
 
     const recentFunding = hlFunding.filter((f) => f.time >= cutoffMs);
-    const hlFundingTotal = recentFunding.reduce(
-      (s, f) => s + parseFloat(f.delta?.usdc ?? "0"),
-      0,
-    );
+    const hlFundingTotal = recentFunding.reduce((s, f) => s + parseFloat(f.delta?.usdc ?? "0"), 0);
 
+    // Per-trade display (most recent first, capped)
+    const displayFills = recentFills
+      .slice()
+      .sort((a, b) => b.time - a.time)
+      .slice(0, MAX_DISPLAY_FILLS)
+      .map((f) => {
+        const notional = parseFloat(f.px) * parseFloat(f.sz);
+        const hlFee = parseFloat(f.fee);
+        const gainsRate = gainsFeeRates[f.coin];
+        // Per-side Gains fee for this fill (one leg of the trade)
+        const gainsPerSide = gainsRate !== undefined ? notional * (gainsRate / 2) : null;
+        return {
+          time: f.time,
+          coin: f.coin,
+          dir: f.dir,
+          side: f.side,
+          notional,
+          hlFee,
+          closedPnl: parseFloat(f.closedPnl),
+          isTaker: f.crossed,
+          gainsPerSide,
+        };
+      });
+
+    // Top coins
     const topCoins = Object.entries(coinMap)
       .sort((a, b) => b[1].notional - a[1].notional)
       .slice(0, 5)
       .map(([coin, d]) => ({
-        coin,
-        fills: d.fills,
-        notional: d.notional,
-        fees: d.fees,
-        onGains: d.onGains,
+        coin, ...d,
         gainsRoundTripRate: gainsFeeRates[coin] ?? null,
       }));
 
-    // Gains equivalent for HL trades: use live per-coin rate from Gains API
-    // Only include coins that are actually listed on Gains
+    // Gains equivalent for HL trades (per-coin live rates)
     let gainsEquivForHl = 0;
     let hlNotionalOnGains = 0;
     let hlFeesOnGainsCoins = 0;
     for (const [coin, data] of Object.entries(coinMap)) {
       const gainsRate = gainsFeeRates[coin];
-      if (gainsRate === undefined) continue; // coin not on Gains, skip
+      if (gainsRate === undefined) continue;
       gainsEquivForHl += data.notional * gainsRate;
       hlNotionalOnGains += data.notional;
       hlFeesOnGainsCoins += data.fees;
     }
 
-    // ── Gains side (100% real on-chain data from Arbitrum FeesProcessed events) ──
-    // USDC collateral = index 3, 6 decimals
+    // ── Gains side ──
     const usdcLogs = gainsLogs.filter((l) => l.collateralIndex === 3);
     const gainsFeesUsdc = usdcLogs.reduce((s, l) => s + Number(l.totalFees) / 1e6, 0);
     const gainsSizeUsdc = usdcLogs.reduce((s, l) => s + Number(l.posSize) / 1e6, 0);
 
-    // HL equivalent for Gains trades: use standard HL taker rate (public schedule)
-    // round-trip = open + close = 0.035% × 2 = 0.07%
     const hlRoundTrip = HL_TAKER_PER_SIDE * 2;
     const hlEquivForGains = gainsSizeUsdc * hlRoundTrip;
 
@@ -257,6 +246,7 @@ export async function GET(req: Request) {
         netCostUsd: hlFees - hlFundingTotal,
         avgFeeRateBps: hlNotional > 0 ? (hlFees / hlNotional) * 10000 : 0,
         topCoins,
+        recentFills: displayFills,
       },
       gains: {
         events: usdcLogs.length,
@@ -265,23 +255,17 @@ export async function GET(req: Request) {
         avgFeeRateBps: gainsSizeUsdc > 0 ? (gainsFeesUsdc / gainsSizeUsdc) * 10000 : 0,
       },
       comparison: {
-        // HL → Gains: using live per-coin Gains fee rates (not hardcoded)
         hlNotionalOnGains,
         hlFeesOnGainsCoins,
         gainsEquivForHlNotional: gainsEquivForHl,
         hlSavedVsGains: gainsEquivForHl - hlFeesOnGainsCoins,
-        hlCheaperMultiple:
-          hlFeesOnGainsCoins > 0 ? gainsEquivForHl / hlFeesOnGainsCoins : null,
-        // Gains → HL: using official HL taker rate (0.035% per side, public schedule)
+        hlCheaperMultiple: hlFeesOnGainsCoins > 0 ? gainsEquivForHl / hlFeesOnGainsCoins : null,
         hlRoundTripRate: hlRoundTrip,
         hlEquivForGainsVolume: hlEquivForGains,
         gainsSavedVsHl: gainsFeesUsdc - hlEquivForGains,
       },
-      // Expose the live Gains rates used so the UI can display them transparently
       gainsFeeRates: Object.fromEntries(
-        Object.entries(gainsFeeRates)
-          .filter(([coin]) => coinMap[coin]?.onGains)
-          .map(([coin, rate]) => [coin, rate]),
+        Object.entries(gainsFeeRates).filter(([coin]) => coinMap[coin]?.onGains)
       ),
     });
   } catch (err) {
