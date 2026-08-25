@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { loadAggregateFromBlob } from "@/lib/aggregate-blob";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -18,10 +19,10 @@ const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
 
-// Static rates per venue (per-action, per-side decimals)
+// Static fallback rates per venue (per-action, per-side decimals)
 const STATIC_RATES: Record<string, number> = {
   hyperliquid: HL_TAKER_PER_SIDE,
-  gains: 0, // filled from live API
+  gains: 0,
   lighter: 0.0,
   dydx: 0.0005,
   "gmx-v2": 0.0005,
@@ -31,17 +32,49 @@ const STATIC_RATES: Record<string, number> = {
   edgex: 0.0002,
 };
 
-const RATE_NOTES: Record<string, string> = {
+const STATIC_NOTES: Record<string, string> = {
   hyperliquid: "3.5 bps taker (per action)",
   gains: "Live taker rate (per-coin, per action)",
   lighter: "0 bps (fee-free)",
-  dydx: "5 bps taker (tier-0)",
-  "gmx-v2": "5 bps conservative",
-  paradex: "5 bps taker",
-  extended: "4 bps taker",
-  aster: "3 bps taker",
-  edgex: "2 bps taker",
+  dydx: "5 bps taker (fallback)",
+  "gmx-v2": "5 bps (fallback)",
+  paradex: "5 bps taker (fallback)",
+  extended: "4 bps taker (fallback)",
+  aster: "3 bps taker (fallback)",
+  edgex: "2 bps taker (fallback)",
 };
+
+// perp-fees bench uses "gmx" slug; our venue slug is "gmx-v2"
+const BENCH_TO_VENUE: Record<string, string> = { gmx: "gmx-v2" };
+
+let benchRateCache: { rates: Record<string, number>; ts: number } | null = null;
+const BENCH_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function fetchBenchRates(): Promise<Record<string, number>> {
+  const now = Date.now();
+  if (benchRateCache && now - benchRateCache.ts < BENCH_CACHE_TTL_MS) {
+    return benchRateCache.rates;
+  }
+  try {
+    const benches = await loadAggregateFromBlob();
+    if (!benches) return {};
+    const perpFees = benches.find((b) => b.slug === "perp-fees");
+    if (!perpFees) return {};
+    const rates: Record<string, number> = {};
+    for (const provider of perpFees.results) {
+      const venueSlug = BENCH_TO_VENUE[provider.slug] ?? provider.slug;
+      // Skip venues whose rates come from other live sources
+      if (["hyperliquid", "gains", "lighter"].includes(venueSlug)) continue;
+      if (provider.ms?.p50 != null && provider.ms.p50 > 0) {
+        rates[venueSlug] = provider.ms.p50 / 10000;
+      }
+    }
+    benchRateCache = { rates, ts: now };
+    return rates;
+  } catch {
+    return {};
+  }
+}
 
 const VENUE_NAMES: Record<string, string> = {
   hyperliquid: "Hyperliquid",
@@ -317,16 +350,25 @@ export async function GET(req: Request) {
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
   try {
-    const gainsData = await fetchGainsFeeRates();
+    const [gainsData, benchRates] = await Promise.all([
+      fetchGainsFeeRates(),
+      fetchBenchRates(),
+    ]);
 
-    // Resolve per-action rate for each venue
-    function resolveRate(slug: string): number {
-      if (slug === "gains") return gainsData.avgPerSide;
-      return STATIC_RATES[slug] ?? 0.0005;
+    function resolveRate(slug: string): { rate: number; note: string } {
+      if (slug === "gains") return { rate: gainsData.avgPerSide, note: STATIC_NOTES["gains"] };
+      if (slug === "hyperliquid") return { rate: HL_TAKER_PER_SIDE, note: STATIC_NOTES["hyperliquid"] };
+      if (slug === "lighter") return { rate: 0.0, note: STATIC_NOTES["lighter"] };
+      const benchRate = benchRates[slug];
+      if (benchRate != null) {
+        const bps = (benchRate * 10000).toFixed(1);
+        return { rate: benchRate, note: `${bps} bps taker (live bench)` };
+      }
+      return { rate: STATIC_RATES[slug] ?? 0.0005, note: STATIC_NOTES[slug] ?? "Hardcoded rate" };
     }
 
-    const rateA = resolveRate(venueA);
-    const rateB = resolveRate(venueB);
+    const { rate: rateA, note: noteA } = resolveRate(venueA);
+    const { rate: rateB, note: noteB } = resolveRate(venueB);
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
@@ -358,7 +400,7 @@ export async function GET(req: Request) {
     }
 
     // Build venue results
-    function buildVenueResult(slug: string, rate: number): VenueResult {
+    function buildVenueResult(slug: string, rate: number, note: string): VenueResult {
       let walletData: HlWalletData | GainsWalletData | null = null;
 
       if (fetchWallet && slug === "hyperliquid") {
@@ -383,13 +425,13 @@ export async function GET(req: Request) {
         name: VENUE_NAMES[slug] ?? slug,
         ratePerAction: rate,
         rateBps: rate * 10000,
-        rateNote: RATE_NOTES[slug] ?? "Hardcoded rate",
+        rateNote: note,
         wallet: walletData,
       };
     }
 
-    const venueAResult = buildVenueResult(venueA, rateA);
-    const venueBResult = buildVenueResult(venueB, rateB);
+    const venueAResult = buildVenueResult(venueA, rateA, noteA);
+    const venueBResult = buildVenueResult(venueB, rateB, noteB);
 
     // Build comparison
     const comparison: ComparisonResult = { aToBSim: null, bToASim: null };

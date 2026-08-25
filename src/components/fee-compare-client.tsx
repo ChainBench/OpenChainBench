@@ -34,6 +34,13 @@ const WALLET_VENUES: VenueSlug[] = ["hyperliquid", "gains"];
 const VENUE_LOGOS: Partial<Record<VenueSlug, string>> = {
   hyperliquid: "/logos/hyperliquid.png",
   gains: "/logos/gains.png",
+  lighter: "/logos/lighter.svg",
+  dydx: "/logos/dydx.svg",
+  "gmx-v2": "/logos/gmx.svg",
+  paradex: "/logos/paradex.jpg",
+  extended: "/logos/extended.svg",
+  aster: "/logos/aster.svg",
+  edgex: "/logos/edgex.jpg",
 };
 
 // ──────────────────────────────────────────────────────────────────────
@@ -648,7 +655,7 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
         <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Gains simulation uses live
         per-coin rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>. </>
       )}
-      Other venue rates are hardcoded from official documentation or bench-verified sources.
+      Other venue rates are fetched live from benchmark data, falling back to official documentation when unavailable.
       Funding and borrowing fees are excluded from all comparisons.
     </p>
   );
