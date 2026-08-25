@@ -70,7 +70,7 @@ const fetchPrice = unstable_cache(
     }
   },
   ["chain-kpis-live-v1"],
-  { revalidate: 1.5, tags: ["chain-kpis-live"] },
+  { revalidate: 5, tags: ["chain-kpis-live"] },
 );
 
 export async function GET(
@@ -96,7 +96,7 @@ export async function GET(
     headers: {
       // CDN-level caching mirrors the server-side cache: 1.5 s fresh, 4 s
       // stale-while-revalidate so a few late requesters absorb gracefully.
-      "cache-control": "public, s-maxage=1, stale-while-revalidate=3",
+      "cache-control": "public, s-maxage=5, stale-while-revalidate=10",
     },
   });
 }

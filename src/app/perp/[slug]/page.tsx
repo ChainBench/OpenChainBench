@@ -16,7 +16,7 @@ import { logoPath } from "@/lib/logo-manifest";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 export const maxDuration = 60;
 
 type Params = { slug: string };

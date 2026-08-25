@@ -24,7 +24,7 @@ import { fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { LedgerTable } from "@/components/ledger-table";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 // Same budget as /products/[slug]: on-demand renders span the whole bench
 // catalog and the 60s default killed them mid-flight.
