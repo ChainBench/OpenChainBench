@@ -1469,7 +1469,7 @@ providers:
   - slug: metamask-alt
     name: MetaMask (alt)
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window via MetaMask's secondary on-chain HL builder address (0xea2c…75b3, documented alongside the primary 0xe95a…53aa)."
+    formula: "USD builder fees collected over the rolling 24h window via MetaMask's secondary on-chain Hyperliquid builder address (0xea2c…75b3, documented alongside the primary 0xe95a…53aa)."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
       p90: hl_frontend_volume_usd_24h_v2{builder="metamask-alt"}

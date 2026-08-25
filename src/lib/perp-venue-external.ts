@@ -78,7 +78,7 @@ function fmtCount(v: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Gains.trade — backend-global.gains.trade
+// Gains — backend-global.gains.trade
 // ---------------------------------------------------------------------------
 
 // API returns { stats: [...] } in descending date order; fields are numbers

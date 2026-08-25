@@ -4,7 +4,7 @@ slug: perp-asset-breadth
 number: "124"
 title: "Perp DEX asset breadth: non-crypto markets live, forex + stocks + indices + commodities"
 seo_title: "Perp DEX asset breadth 2026"
-seo_description: "gains.trade leads perp DEX asset breadth with 110+ non-crypto markets live: 18 forex pairs (EUR/USD, GBP/JPY...), 68 stocks (AAPL, TSLA, NVDA...), 14 indices (SPX, NDX...) and 10 commodities (XAU, WTI...). Hyperliquid, GMX, dYdX are crypto-only. Live count updated every 5 minutes from the Mobula perp catalog."
+seo_description: "Gains leads perp DEX asset breadth with 110+ non-crypto markets live: 18 forex pairs (EUR/USD, GBP/JPY...), 68 stocks (AAPL, TSLA, NVDA...), 14 indices (SPX, NDX...) and 10 commodities (XAU, WTI...). Hyperliquid, GMX, dYdX are crypto-only. Live count updated every 5 minutes from the Mobula perp catalog."
 subtitle: "Total number of tradable non-crypto perpetual markets per venue: forex currency pairs, tokenized stocks, indices and commodities. Higher means broader asset coverage beyond BTC/ETH/SOL. Live count updated every 5 minutes."
 category: Trading
 status: live
@@ -23,12 +23,12 @@ seo_intro: |
   stocks like AAPL and NVDA, indices like SPX and NDX, and commodities like
   XAU and WTI crude, across the major onchain perp venues.
 
-  The results are stark. gains.trade lists over 110 non-crypto perpetual
+  The results are stark. Gains lists over 110 non-crypto perpetual
   markets, the widest catalog among EVM perp DEXes. Lighter lists around 40.
   Hyperliquid, GMX, dYdX, Ostium and Vertex have no non-crypto markets or
   only crypto. For a trader who wants to hedge a forex position or get
   leveraged exposure to US equities on-chain without a centralized
-  intermediary, gains.trade is the only EVM venue with meaningful depth
+  intermediary, Gains is the only EVM venue with meaningful depth
   across all four non-crypto asset classes.
 
 abstract: |
@@ -47,8 +47,8 @@ abstract: |
   markets.
 
 methodology:
-  - "Cadence: every 5 minutes. Source: Mobula /api/2/perp/pairs for gains.trade and Lighter; native venue APIs for others."
-  - "gains.trade: Mobula catalog bucketed by assetClass. Counted classes: forex (EUR/USD, GBP/JPY...), stocks (AAPL, TSLA, NVDA, AMZN...), indices (SPX, NDX, DJI...), commodities (XAU, XAG, WTI, NATGAS...). Mainnet only (arbitrum-sepolia excluded)."
+  - "Cadence: every 5 minutes. Source: Mobula /api/2/perp/pairs for Gains and Lighter; native venue APIs for others."
+  - "Gains: Mobula catalog bucketed by assetClass. Counted classes: forex (EUR/USD, GBP/JPY...), stocks (AAPL, TSLA, NVDA, AMZN...), indices (SPX, NDX, DJI...), commodities (XAU, XAG, WTI, NATGAS...). Mainnet only (arbitrum-sepolia excluded)."
   - "Lighter: same Mobula catalog. Lighter lists non-crypto markets but with smaller catalogs per class."
   - "Hyperliquid: native info metaAndAssetCtxs endpoint verified crypto-only. Non-crypto count: 0."
   - "GMX v2: DataStore onchain pairs verified crypto-only (BTC, ETH, ARB, SOL, AVAX, LINK, DOGE, UNI). Non-crypto count: 0."
@@ -58,7 +58,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads non-crypto perp breadth with {{best_p50}} active markets in forex, stocks, indices and commodities combined."
-  - "gains.trade lists the widest non-crypto catalog among EVM perp DEXes: forex pairs (EUR/USD, GBP/JPY...), tokenized stocks (AAPL, TSLA, NVDA...), indices (SPX, NDX, DAX...) and commodities (XAU, WTI...). Total live: {{p50:gains}} markets."
+  - "Gains lists the widest non-crypto catalog among EVM perp DEXes: forex pairs (EUR/USD, GBP/JPY...), tokenized stocks (AAPL, TSLA, NVDA...), indices (SPX, NDX, DAX...) and commodities (XAU, WTI...). Total live: {{p50:gains}} markets."
   - "Lighter lists non-crypto markets across all four classes but with smaller per-class catalogs. Total live: {{p50:lighter}} markets."
   - "Hyperliquid, GMX v2 and dYdX v4 are crypto-only: 0 forex, stocks, indices or commodity markets."
 
@@ -74,8 +74,8 @@ faq:
     a: "Forex: currency pairs like EUR/USD, GBP/JPY. Stocks: tokenized equities like AAPL/USD, TSLA/USD. Indices: index perpetuals like SPX/USD, NDX/USD. Commodities: XAU/USD (gold), XAG/USD (silver), WTI/USD (crude oil), NATGAS/USD. The classification uses Mobula's editorial assetClass tag."
   - q: "Why are degen and new markets excluded?"
     a: "degen markets are high-leverage variants of existing crypto pairs (BTCDEGEN, ETHDEGEN); they do not represent a new asset class. new markets are newly listed pairs pending classification. Both are excluded to give an honest count of genuine non-crypto breadth."
-  - q: "Can I trade US stocks 24/7 on gains.trade?"
-    a: "gains.trade lists synthetic stock perpetuals. Trading availability during off-hours depends on the venue's oracle and liquidity configuration. The market is listed but execution conditions may differ from market-hours trading."
+  - q: "Can I trade US stocks 24/7 on Gains?"
+    a: "Gains lists synthetic stock perpetuals. Trading availability during off-hours depends on the venue's oracle and liquidity configuration. The market is listed but execution conditions may differ from market-hours trading."
   - q: "How often does the market list change?"
     a: "The Mobula catalog is updated when venues list or delist pairs. The bench re-reads every 5 minutes so new listings appear automatically within one polling cycle."
   - q: "Why is Ostium not in the main ranking?"
@@ -83,7 +83,7 @@ faq:
 
 providers:
   - slug: gains
-    name: gains.trade
+    name: Gains
     tag: EVM multi-chain — forex + stocks + indices + commodities — Mobula catalog
     formula: "Count of active Mobula catalog pairs for dex=gains where assetClass in {forex, stocks, indices, commodities}. Mainnet chains only. Live."
     queries:

@@ -1110,7 +1110,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "phantom-perps": {
     url: "https://phantom.app",
     description:
-      "Phantom is the leading multi-chain crypto wallet on Solana, Ethereum, and Bitcoin; its Hyperliquid perps tab routes orders with a registered builder code so users trade HL directly from the wallet UI.",
+      "Phantom is the leading multi-chain crypto wallet on Solana, Ethereum, and Bitcoin; its Hyperliquid perps tab routes orders with a registered builder code so users trade Hyperliquid directly from the wallet UI.",
     twitter: "@phantom",
   },
   axiom: {
@@ -1134,13 +1134,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   defiapp: {
     url: "https://defi.app",
     description:
-      "Defiapp is a cross-chain DeFi front-end that routes Hyperliquid perps orders via a registered builder code, exposing HL alongside spot and bridge flows in one UI.",
+      "Defiapp is a cross-chain DeFi front-end that routes Hyperliquid perps orders via a registered builder code, exposing Hyperliquid alongside spot and bridge flows in one UI.",
     twitter: "@defidotapp",
   },
   metamask: {
     url: "https://metamask.io",
     description:
-      "MetaMask is the largest self-custody EVM wallet; its Hyperliquid integration routes perps orders through a registered builder code so users can trade HL from within the wallet.",
+      "MetaMask is the largest self-custody EVM wallet; its Hyperliquid integration routes perps orders through a registered builder code so users can trade Hyperliquid from within the wallet.",
     twitter: "@MetaMask",
   },
   dexari: {
@@ -1330,7 +1330,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   ccxt: {
     url: "https://ccxt.com",
     description:
-      "CCXT is the open source multi exchange trading library. Its Hyperliquid integration attaches the CCXT builder code to orders by default, making it one of the largest programmatic flow routers on HL.",
+      "CCXT is the open source multi exchange trading library. Its Hyperliquid integration attaches the CCXT builder code to orders by default, making it one of the largest programmatic flow routers on Hyperliquid.",
     twitter: "@ccxt_official",
   },
   splash: {
@@ -1354,7 +1354,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   miracle: {
     url: "https://miracletrade.com",
     description:
-      "Miracle is a mobile native multi venue perps app (Hyperliquid, Extended, Nado) with unified balances and lossback on liquidations, routing HL orders via a registered builder code.",
+      "Miracle is a mobile native multi venue perps app (Hyperliquid, Extended, Nado) with unified balances and lossback on liquidations, routing Hyperliquid orders via a registered builder code.",
     twitter: "@miracletrade",
   },
   xbit: {
@@ -1444,7 +1444,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   hyprearn: {
     url: "https://hyprearn.com",
     description:
-      "HyprEarn is an AI assistant for Hyperliquid perps that generates one click trade setups across HL pairs and HIP 3 markets, executed via a registered builder code.",
+      "HyprEarn is an AI assistant for Hyperliquid perps that generates one click trade setups across Hyperliquid pairs and HIP 3 markets, executed via a registered builder code.",
     twitter: "@HyprEarn",
   },
   "legend-trade": {
@@ -1694,31 +1694,31 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "defi-saver": {
     url: "https://defisaver.com",
     description:
-      "DeFi Saver is a long-running DeFi management dashboard that added a Hyperliquid perps tab routing orders via a registered builder code (HL referral code DFS).",
+      "DeFi Saver is a long-running DeFi management dashboard that added a Hyperliquid perps tab routing orders via a registered builder code (Hyperliquid referral code DFS).",
     twitter: "@DeFiSaver",
   },
   unitywallet: {
     url: "https://unitywallet.com",
     description:
-      "UnityWallet is a self-custodial wallet with an in-app Hyperliquid perps integration that routes orders through a registered builder code (HL referral code UNITYWALLET).",
+      "UnityWallet is a self-custodial wallet with an in-app Hyperliquid perps integration that routes orders through a registered builder code (Hyperliquid referral code UNITYWALLET).",
     twitter: "@unitywallet_",
   },
   invo: {
     url: "https://invoapp.com",
     description:
-      "Invo is a Hyperliquid-powered social trading mobile app supporting 170+ perp pairs with copy-trading and a registered builder code (HL referral code INVO, 25k+ referrals).",
+      "Invo is a Hyperliquid-powered social trading mobile app supporting 170+ perp pairs with copy-trading and a registered builder code (Hyperliquid referral code INVO, 25k+ referrals).",
     twitter: "@invoapp",
   },
   marsgo: {
     url: "https://t.me/marsgo_bot",
     description:
-      "MarsGO is a Telegram mini-app for crypto trading that routes Hyperliquid perp orders through a registered builder code (HL referral code MARSGO).",
+      "MarsGO is a Telegram mini-app for crypto trading that routes Hyperliquid perp orders through a registered builder code (Hyperliquid referral code MARSGO).",
     twitter: "@MarsGOBot",
   },
   "bitget-wallet": {
     url: "https://web3.bitget.com",
     description:
-      "Bitget Wallet is the self-custodial wallet by Bitget; its Hyperliquid perps integration launched Dec 2025 and routes orders through a registered builder code (HL referral code BITGETWALLET, 3.6k+ referrals).",
+      "Bitget Wallet is the self-custodial wallet by Bitget; its Hyperliquid perps integration launched Dec 2025 and routes orders through a registered builder code (Hyperliquid referral code BITGETWALLET, 3.6k+ referrals).",
     twitter: "@BitgetWallet",
   },
 
