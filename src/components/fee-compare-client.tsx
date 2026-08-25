@@ -187,11 +187,12 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
 
   return (
     <div className="card-soft rounded-2xl overflow-hidden">
-      <div className="grid grid-cols-[1fr_auto_1fr]">
+      {/* Mobile: stacked. Desktop: side-by-side */}
+      <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr]">
         {/* Hyperliquid side */}
         <div className={`p-5 sm:p-6 ${hlWins ? "bg-emerald-500/4" : ""}`}>
-          <div className="flex items-center gap-2.5 mb-5">
-            <PlatformLogo name="hl" size={32} />
+          <div className="flex items-center gap-2.5 mb-4">
+            <PlatformLogo name="hl" size={28} />
             <div>
               <p className="font-bold text-sm text-ink">Hyperliquid</p>
               {hasHl && <p className="text-[11px] text-ink-faint mt-0.5">{hl.fills} fills</p>}
@@ -200,21 +201,21 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
           </div>
 
           {hasHl ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <p className={`font-mono text-4xl font-extrabold tracking-tight leading-none ${hlWins ? "text-emerald-500" : "text-ink"}`}>
+                <p className={`font-mono text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${hlWins ? "text-emerald-500" : "text-ink"}`}>
                   {fmtUsd(hl.feesUsd)}
                 </p>
                 <p className="text-xs text-ink-faint mt-1.5">{fmt(hl.avgFeeRateBps, 2)} bps avg rate</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="bg-ink/4 rounded-xl p-3">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-                  <p className="font-mono font-semibold text-ink mt-1">{fmtUsd(hl.notionalUsd)}</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.notionalUsd)}</p>
                 </div>
                 <div className="bg-ink/4 rounded-xl p-3">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
-                  <p className="font-mono font-semibold text-ink mt-1">{fmtUsd(hl.netCostUsd)}</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.netCostUsd)}</p>
                   <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
                 </div>
               </div>
@@ -224,13 +225,13 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
           )}
         </div>
 
-        {/* VS divider */}
-        <div className="flex flex-col items-center justify-center px-3">
-          <div className="w-px flex-1 bg-ink/10" />
-          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 my-2">
+        {/* VS divider — horizontal on mobile, vertical on desktop */}
+        <div className="flex sm:flex-col items-center justify-center sm:px-3 py-3 sm:py-0">
+          <div className="flex-1 sm:flex-none h-px sm:h-auto sm:w-px bg-ink/10 sm:flex-1" />
+          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 mx-3 sm:mx-0 sm:my-2">
             <span className="font-mono text-[11px] font-bold text-ink-faint">VS</span>
           </div>
-          <div className="w-px flex-1 bg-ink/10" />
+          <div className="flex-1 sm:flex-none h-px sm:h-auto sm:w-px bg-ink/10 sm:flex-1" />
         </div>
 
         {/* Gains side */}
@@ -252,9 +253,9 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
           </div>
 
           {gainsDisplay ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <p className={`font-mono text-4xl font-extrabold tracking-tight leading-none ${gainsWins ? "text-emerald-500" : "text-ink"}`}>
+                <p className={`font-mono text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${gainsWins ? "text-emerald-500" : "text-ink"}`}>
                   {fmtUsd(gainsDisplay.fee)}
                 </p>
                 <p className="text-xs text-ink-faint mt-1.5">
@@ -265,21 +266,21 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
               {!gainsDisplay.real && hasHl && (
                 <div className="bg-ink/4 rounded-xl p-3">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same volume on Gains</p>
-                  <p className="font-mono font-semibold text-ink mt-1">{fmtUsd(comparison.hlNotionalOnGains)}</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(comparison.hlNotionalOnGains)}</p>
                   <p className="text-[10px] text-ink-faint/60 mt-0.5">
-                    {comparison.hlNotionalOnGains < hl.notionalUsd ? "coins listed on Gains only" : "all coins"}
+                    {comparison.hlNotionalOnGains < hl.notionalUsd ? "Gains-listed coins only" : "all coins"}
                   </p>
                 </div>
               )}
               {gainsDisplay.real && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="bg-ink/4 rounded-xl p-3">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-                    <p className="font-mono font-semibold text-ink mt-1">{fmtUsd(gains.positionSizeUsdc)}</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(gains.positionSizeUsdc)}</p>
                   </div>
                   <div className="bg-ink/4 rounded-xl p-3">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Events</p>
-                    <p className="font-mono font-semibold text-ink mt-1">{gains.events}</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{gains.events}</p>
                     <p className="text-[10px] text-ink-faint/60 mt-0.5">USDC collateral</p>
                   </div>
                 </div>
@@ -356,8 +357,8 @@ function TopCoinsCard({ topCoins }: { topCoins: TopCoin[] }) {
         {topCoins.map((c) => (
           <div key={c.coin} className="flex items-center gap-3 px-5 py-3 hover:bg-ink/2 transition-colors">
             <span className="font-mono text-sm font-bold text-ink w-12 shrink-0">{c.coin}</span>
-            <span className="text-xs text-ink-faint w-14 shrink-0">{c.fills} fills</span>
-            <div className="flex-1 min-w-0">
+            <span className="text-xs text-ink-faint w-14 shrink-0 hidden sm:block">{c.fills} fills</span>
+            <div className="flex-1 min-w-0 hidden sm:block">
               <div className="h-1 rounded-full bg-ink/8 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-ink/25"
@@ -365,14 +366,14 @@ function TopCoinsCard({ topCoins }: { topCoins: TopCoin[] }) {
                 />
               </div>
             </div>
-            <span className="font-mono text-xs text-ink-soft w-20 text-right shrink-0">{fmtUsd(c.notional)}</span>
+            <span className="font-mono text-xs text-ink-soft text-right shrink-0 flex-1 sm:flex-none sm:w-20">{fmtUsd(c.notional)}</span>
             <span className="font-mono text-xs font-bold text-ink w-16 text-right shrink-0">{fmtUsd(c.fees)}</span>
             {c.gainsRoundTripRate !== null ? (
-              <span className="text-[10px] text-ink-faint w-28 text-right shrink-0 font-mono">
-                Gains {fmtBps(c.gainsRoundTripRate)} RT
+              <span className="text-[10px] text-ink-faint w-20 sm:w-28 text-right shrink-0 font-mono">
+                {fmtBps(c.gainsRoundTripRate)} RT
               </span>
             ) : (
-              <span className="text-[10px] text-ink-faint/30 w-28 text-right shrink-0">not on Gains</span>
+              <span className="text-[10px] text-ink-faint/30 w-20 sm:w-28 text-right shrink-0 hidden sm:block">not on Gains</span>
             )}
           </div>
         ))}
