@@ -18,7 +18,7 @@ seo_intro: |
   Hyperliquid costs the same at $1,000 and $1,000,000 in taker fee alone.
   What changes is the price impact from walking the orderbook. A $1M
   market order eats deeper into the book than a $1k order, so the spread
-  component grows. Venues with no orderbook (oracle-priced: gains.trade,
+  component grows. Venues with no orderbook (oracle-priced: Gains,
   GMX v2) are immune to this effect because there is no book to walk: the
   protocol charges a flat percentage of notional regardless of size. On
   those venues, a $1M trade costs exactly the same number of bps as a $1k
@@ -53,7 +53,7 @@ abstract: |
 methodology:
   - "Cadence: derived in PromQL from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007)."
   - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / ignoring(notional) avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
-  - "Oracle-priced venues (gains.trade, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
+  - "Oracle-priced venues (Gains, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
   - "Orderbook venues (Hyperliquid, dYdX, Lighter, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
   - "Missing $1M tier: when the visible book cannot absorb $1M the harness skips the tier and increments perp_fees_tier_skipped_total rather than extrapolating. The slope PromQL returns no data for that venue, shown as N/A in the leaderboard."
   - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / ignoring(notional) count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
@@ -102,7 +102,7 @@ prometheus:
 faq:
   - q: "What does cost slope of 1.00 mean?"
     a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue. This is only possible for oracle-priced venues where the fee is a flat percentage of notional and there is no orderbook impact term."
-  - q: "Why are gains.trade and GMX always 1.00?"
+  - q: "Why are Gains and GMX always 1.00?"
     a: "Both venues use oracle pricing with no orderbook. Their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. Trading $1M costs the same bps as $1k by construction. This is the core design tradeoff: flat cost at any size, in exchange for using a price oracle rather than a live orderbook."
   - q: "What does N/A in the slope column mean?"
     a: "The venue's visible book could not absorb $1M of notional during the measurement period. The perp-fees harness skips a tier rather than extrapolate when the book depth is insufficient, so the $1M all-in gauge is absent. No slope can be computed. The fill-rate panel shows what fraction of cycles the $1M tier was successfully filled."
@@ -131,7 +131,7 @@ metric_panels:
 
 providers:
   - slug: gains
-    name: gains.trade
+    name: Gains
     tag: "Synthetic perps on Base, oracle-priced, flat cost at any size"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (flat % of notional, no orderbook): ratio always 1.00 by construction."
     queries:

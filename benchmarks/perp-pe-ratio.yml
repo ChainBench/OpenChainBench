@@ -4,7 +4,7 @@ slug: perp-pe-ratio
 number: "234"
 title: "Perp DEX token P/E ratio 2026: Hyperliquid, GMX, dYdX, GNS live"
 seo_title: "Perp DEX token P/E ratio 2026: Hyperliquid vs GMX vs dYdX vs GNS"
-seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, GMX, Gains Network, dYdX, Drift, Ostium. Live from DeFiLlama and CoinGecko, updated hourly."
+seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, GMX, Gains, dYdX, Drift, Ostium. Live from DeFiLlama and CoinGecko, updated hourly."
 subtitle: FDV divided by annualized protocol revenue (30-day trailing average) for the major perp DEX tokens. Lower is cheaper relative to earnings. Updated hourly from DeFiLlama and CoinGecko.
 
 category: Trading
@@ -20,7 +20,7 @@ seo_intro: |
   The P/E ratio for perp DEX tokens measures how much the market pays per dollar of annualized
   protocol revenue. A low P/E means the token is cheap relative to what the protocol earns;
   a high P/E implies growth expectations or overvaluation. Hyperliquid dominates perp DEX
-  revenue but trades at a significant premium. GMX and Gains Network generate meaningful
+  revenue but trades at a significant premium. GMX and Gains generate meaningful
   revenue with far smaller market caps, producing low single-digit or low double-digit P/E
   ratios. dYdX and Drift have large FDV overhangs from unvested token allocations that
   distort their P/E. This benchmark tracks P/E live from DeFiLlama (protocol revenue) and
@@ -45,7 +45,7 @@ methodology:
 findings:
   - "{{best_name}} has the lowest P/E at {{best_p50}}x; cheapest perp DEX token relative to protocol earnings."
   - "Hyperliquid generates the most absolute revenue but trades at a large premium to peers."
-  - "GMX and Gains Network are trading near multi-year low valuations with positive protocol cash flow."
+  - "GMX and Gains are trading near multi-year low valuations with positive protocol cash flow."
   - "Drift and dYdX carry large unvested token overhangs that inflate their FDV-based P/E."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-token-metrics
@@ -93,7 +93,7 @@ providers:
 
   - slug: gains
     name: GNS
-    tag: "Gains Network"
+    tag: "Gains"
     formula: "P/E = CoinGecko FDV / (DeFiLlama 30d avg daily revenue x 365)"
     queries:
       p50: perp_protocol_pe_ratio{protocol="gains"}

@@ -4,7 +4,7 @@ slug: perp-volume-share
 number: "041"
 title: Perp DEX volume share, live 24h notional ranked
 seo_title: "Perp DEX volume 24h ranking 2026"
-seo_description: "Live 24h perp DEX volume in USD notional across 15 major venues: Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex, Polymarket, Orderly and Backpack. Refreshed every 5 minutes."
+seo_description: "Live 24h perp DEX volume in USD notional across 15 major venues: Hyperliquid, GMX V2, Gains, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex, Polymarket, Orderly and Backpack. Refreshed every 5 minutes."
 subtitle: 24h rolling perpetual futures notional volume in USD across 15 major decentralized venues. Higher means more flow. Read live from each venue's public API.
 category: Trading
 status: live
@@ -18,7 +18,7 @@ seo_intro: |
   for where perpetual futures flow actually lives today. We poll each
   venue's public API every 5 minutes, read the venue's own trailing 24
   hour taker notional in USD, and publish a single gauge per venue.
-  The cohort covers 15 venues: Hyperliquid, GMX V2, Gains Network, Aster,
+  The cohort covers 15 venues: Hyperliquid, GMX V2, Gains, Aster,
   Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex,
   Polymarket, Orderly and Backpack. Headline number is the 24h average of the live 24h gauge so
   a single noisy print does not move the ranking. The companion benches
@@ -30,7 +30,7 @@ abstract: |
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   GMX V2 stats API (hourly buckets summed across Arbitrum and Avalanche),
-  Gains Network backend API (Arbitrum and Polygon), Aster fapi 24h ticker
+  Gains backend API (Arbitrum and Polygon), Aster fapi 24h ticker
   per instrument, Lighter public stats endpoint, GRVT public markets,
   Extended API, Pacifica onchain reads, Vertex indexer, dYdX v4 indexer
   perpetualMarkets, Aevo public markets, Paradex markets summary. Each
@@ -41,7 +41,7 @@ methodology:
   - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
   - "Hyperliquid: info dayNtlVlm summed across all assets, published as the trailing 24 hour taker notional in USD."
   - "GMX V2: stats.gmx.io hourly-volume API (groupPeriod=3600) for Arbitrum and Avalanche; last 24 hourly buckets summed for the rolling 24h notional in USD."
-  - "Gains Network: backend-arbitrum and backend-polygon REST APIs, lastDayVolume summed across both chains in USD."
+  - "Gains: backend-arbitrum and backend-polygon REST APIs, lastDayVolume summed across both chains in USD."
   - "Aster: fapi 24h ticker per instrument, quoteVolume summed across all USDT perps."
   - "Lighter: public stats endpoint, 24h volume per market summed across markets in USD."
   - "GRVT: public markets endpoint, 24h volume per instrument summed in USD."
@@ -86,7 +86,7 @@ faq:
   - q: "Why 24h rolling instead of daily snapshots?"
     a: "Every venue in the cohort publishes a live rolling 24 hour window on its own public API, so a rolling comparison sidesteps timezone bucketing and the noise of a single calendar day. The 24h average smooths intraday micro-spikes without hiding regime shifts within the window."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, GMX V2, Gains Network, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex, Polymarket, Orderly and Backpack: 15 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, GMX V2, Gains, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex, Polymarket, Orderly and Backpack: 15 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is this the same as DeFiLlama volume?"
     a: "Methodology is similar in spirit but each venue is queried directly here, not via an aggregator. Numbers should sit close to DeFiLlama on most days, divergences usually mean a downstream feed lagged."
 
@@ -248,9 +248,9 @@ providers:
       series: perp_venue_volume_24h_usd{venue="gmx-v2"}
 
   - slug: gains
-    name: Gains Network
+    name: Gains
     tag: Synthetic leveraged trading on Arbitrum and Polygon
-    formula: "lastDayVolume summed across Arbitrum and Polygon from the Gains Network backend REST API, in USD; headline is the 24h time average."
+    formula: "lastDayVolume summed across Arbitrum and Polygon from the Gains backend REST API, in USD; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gains"}[24h])

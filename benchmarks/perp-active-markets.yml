@@ -4,7 +4,7 @@ slug: perp-active-markets
 number: "116"
 title: Most tradable markets on a perp DEX, live count across 14 venues
 seo_title: "Perp DEX market count 2026"
-seo_description: "Live count of active perpetual futures markets across 14 DEX venues: Aster, gains.trade, edgeX, Extended, Aevo, Lighter, Hyperliquid, GRVT, dYdX, Ostium, Pacifica, Paradex, Vertex, Polymarket. Refreshed every 5 minutes."
+seo_description: "Live count of active perpetual futures markets across 14 DEX venues: Aster, Gains, edgeX, Extended, Aevo, Lighter, Hyperliquid, GRVT, dYdX, Ostium, Pacifica, Paradex, Vertex, Polymarket. Refreshed every 5 minutes."
 subtitle: Live count of active perpetual futures markets per venue, polled every 5 minutes from each venue's public API. Higher means more tradable instruments across crypto, forex, stocks, indices and commodities.
 category: Trading
 status: live
@@ -17,7 +17,7 @@ seo_intro: |
   Market count is the fastest proxy for breadth: a venue with 364 pairs gives
   traders access to crypto, forex (EUR/USD, GBP/USD), tokenized stocks, commodities
   and stock indices alongside BTC and ETH. We poll each venue's public API every
-  5 minutes and publish one gauge per venue. gains.trade lists 364 pairs, the
+  5 minutes and publish one gauge per venue. Gains lists 364 pairs, the
   widest catalog among EVM perp DEXes, vs Hyperliquid at 177 and dYdX at 114.
 
 abstract: |
@@ -27,7 +27,7 @@ abstract: |
   dYdX v4 indexer perpetualMarkets, Paradex markets summary, edgeX native markets,
   Aster fapi exchangeInfo PERPETUAL instruments, Vertex indexer, GRVT markets,
   Extended public markets, Aevo markets, Pacifica Solana program state, Ostium
-  subgraph, Polymarket perps tickers). gains.trade uses the Mobula perp pairs
+  subgraph, Polymarket perps tickers). Gains uses the Mobula perp pairs
   catalog (dex=gains, mainnet chains only, arbitrum-sepolia excluded), the same
   source used by the perp-cohort-stats harness for all active_markets signals.
   Higher is better.
@@ -47,7 +47,7 @@ methodology:
   - "Pacifica: onchain reads on the Solana program state, count of active perp markets."
   - "Ostium: Arbitrum subgraph, count of active pairs. Covers FX and commodities alongside crypto."
   - "Polymarket: public perps tickers endpoint on Polygon, count of listed instruments."
-  - "gains.trade: Mobula perp pairs catalog (GET /api/2/perp/pairs, dex=gains, mainnet only). Covers crypto, forex, stocks, indices and commodities across Arbitrum, Base, Polygon and ApeChain."
+  - "Gains: Mobula perp pairs catalog (GET /api/2/perp/pairs, dex=gains, mainnet only). Covers crypto, forex, stocks, indices and commodities across Arbitrum, Base, Polygon and ApeChain."
   - "Headline: avg_over_time of the live market count gauge over the last 24 hours. Listings change infrequently so the 24h average is effectively the current count."
   - "Failures: a venue that errors keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
@@ -77,12 +77,12 @@ prometheus:
 faq:
   - q: "What does this benchmark measure?"
     a: "The live count of active perpetual futures markets per venue. A market is a tradable instrument with a public price feed. Higher is better: more markets means more choice for traders."
-  - q: "Why does gains.trade use Mobula as a source instead of its native API?"
-    a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory gains.trade exposes on its interface."
+  - q: "Why does Gains use Mobula as a source instead of its native API?"
+    a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory Gains exposes on its interface."
   - q: "Is market count a good proxy for venue breadth?"
     a: "It is the fastest proxy. A venue with 364 markets covering crypto, forex, stocks and commodities gives traders far more choice than one with 177 crypto-only markets. Depth per market is a separate signal; pair this bench with perp-open-interest and perp-fees for the full picture."
-  - q: "Why is Aster first if gains.trade covers more asset classes?"
-    a: "Aster lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). gains.trade lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
+  - q: "Why is Aster first if Gains covers more asset classes?"
+    a: "Aster lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
 
 providers:
   - slug: aster
@@ -99,7 +99,7 @@ providers:
       series: perp_venue_active_markets{venue="aster"}
 
   - slug: gains
-    name: gains.trade
+    name: Gains
     tag: Synthetic perps on Arbitrum, Base, Polygon and ApeChain, multi-asset
     formula: "Count of active mainnet perp pairs from Mobula's catalog (dex=gains, testnet excluded). Covers crypto, forex, stocks, indices and commodities."
     queries:
