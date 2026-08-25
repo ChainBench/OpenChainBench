@@ -46,16 +46,23 @@ function serialize(entries: MetadataRoute.Sitemap): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
 }
 
+// Minimum URL count to consider a sitemap "full". Below this threshold
+// we got a static fallback (blob+SRH both failed) — don't cache that
+// at the edge or crawlers will serve the stub for an hour.
+const FULL_SITEMAP_MIN_URLS = 100;
+
 export async function GET() {
   const entries = await buildSitemap();
+  const isFull = entries.length >= FULL_SITEMAP_MIN_URLS;
   return new Response(serialize(entries), {
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
-      // Edge holds the sitemap for an hour + SWR window so the loader
-      // chain only runs once per hour per region rather than on every
-      // crawler hit. Aligns with the /api/citable header set in
-      // next.config.ts.
-      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      // Only cache at the edge when we have a real sitemap. A fallback
+      // response (blob + SRH both failed, ~20 URLs) must not be cached
+      // for an hour or every crawler hit serves the stub.
+      "Cache-Control": isFull
+        ? "public, s-maxage=3600, stale-while-revalidate=86400"
+        : "public, s-maxage=0, must-revalidate",
     },
   });
 }
