@@ -24,9 +24,14 @@ import type { Benchmark } from "@/types/benchmark";
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { overlayEditorial, slimBenchmarkForCache } from "@/lib/spec";
 
-const DEFAULT_URL = "https://kv.openchainbench.com/aggregate/latest.json";
-// 20s: blob is 2MB gzipped, served from Paris VPS. Vercel US East adds
-// ~100-200ms latency. 8s was too tight without a CDN in front.
+// In production, use the self-hosted Vercel CDN proxy (/api/aggregate)
+// so IAD1 functions pay ~1 ms (edge cache hit) instead of ~4 s crossing
+// the Atlantic to kv.openchainbench.com (Paris VPS, no CDN).
+// In dev/preview, hit the VPS directly — CDN caching doesn't apply.
+const DEFAULT_URL =
+  process.env.VERCEL_ENV === "production"
+    ? "https://openchainbench.com/api/aggregate"
+    : "https://kv.openchainbench.com/aggregate/latest.json";
 const FETCH_TIMEOUT_MS = 20_000;
 const MIN_BENCHES = 40;
 
