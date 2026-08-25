@@ -155,8 +155,18 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
   const hasHl = hl.fills > 0;
   const hasGains = gains.events > 0;
 
-  // Determine what to show on the Gains side
-  // If no real Gains activity, use simulated cost for HL trades
+  // Determine what to show on each side (real activity or simulated estimate)
+  const hlDisplay = hasHl
+    ? { fee: hl.feesUsd, bps: hl.avgFeeRateBps, real: true, label: `${hl.fills} fills` }
+    : hasGains && comparison.hlEquivForGainsVolume > 0
+      ? {
+          fee: comparison.hlEquivForGainsVolume,
+          bps: comparison.hlRoundTripRate * 10000,
+          real: false,
+          label: "simulated",
+        }
+      : null;
+
   const gainsDisplay = hasGains
     ? { fee: gains.feesUsdc, bps: gains.avgFeeRateBps, real: true, label: `${gains.events} trades` }
     : hasHl && comparison.gainsEquivForHlNotional > 0
@@ -170,12 +180,13 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
         }
       : null;
 
-  // Winner logic — compare what was actually paid vs equiv on the other platform
-  const hlFeeComp = comparison.hlFeesOnGainsCoins > 0 ? comparison.hlFeesOnGainsCoins : hl.feesUsd;
+  // Winner logic — use display fee on each side (real or simulated)
+  const hlFeeComp = hlDisplay?.fee ?? 0;
   const gainsFeeComp = gainsDisplay?.fee ?? 0;
-  const diff = Math.abs(hlFeeComp - gainsFeeComp);
-  const hlWins = gainsFeeComp > 0 && hlFeeComp < gainsFeeComp && diff > 0.5;
-  const gainsWins = gainsFeeComp > 0 && gainsFeeComp < hlFeeComp && diff > 0.5;
+  const canCompare = hlFeeComp > 0 && gainsFeeComp > 0;
+  const diff = canCompare ? Math.abs(hlFeeComp - gainsFeeComp) : 0;
+  const hlWins = canCompare && hlFeeComp < gainsFeeComp && diff > 0.5;
+  const gainsWins = canCompare && gainsFeeComp < hlFeeComp && diff > 0.5;
 
   if (!hasHl && !hasGains) {
     return (
@@ -195,30 +206,46 @@ function SummaryVsCard({ result }: { result: FeeCompareResult }) {
             <PlatformLogo name="hl" size={28} />
             <div>
               <p className="font-bold text-sm text-ink">Hyperliquid</p>
-              {hasHl && <p className="text-[11px] text-ink-faint mt-0.5">{hl.fills} fills</p>}
+              {hlDisplay && (
+                <p className="text-[11px] text-ink-faint mt-0.5">
+                  {hlDisplay.label}
+                  {!hlDisplay.real && <span className="ml-1 text-ink-faint/50">· est.</span>}
+                </p>
+              )}
             </div>
             {hlWins && <span className="ml-auto"><CheaperBadge /></span>}
           </div>
 
-          {hasHl ? (
+          {hlDisplay ? (
             <div className="space-y-3">
               <div>
                 <p className={`font-mono text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${hlWins ? "text-emerald-500" : "text-ink"}`}>
-                  {fmtUsd(hl.feesUsd)}
+                  {fmtUsd(hlDisplay.fee)}
                 </p>
-                <p className="text-xs text-ink-faint mt-1.5">{fmt(hl.avgFeeRateBps, 2)} bps avg rate</p>
+                <p className="text-xs text-ink-faint mt-1.5">
+                  {fmt(hlDisplay.bps, 2)} bps avg rate
+                  {!hlDisplay.real && " · taker rate"}
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-ink/4 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.notionalUsd)}</p>
+              {hlDisplay.real && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-ink/4 rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.notionalUsd)}</p>
+                  </div>
+                  <div className="bg-ink/4 rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.netCostUsd)}</p>
+                    <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
+                  </div>
                 </div>
+              )}
+              {!hlDisplay.real && hasGains && (
                 <div className="bg-ink/4 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
-                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.netCostUsd)}</p>
-                  <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same volume on Hyperliquid</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(gains.positionSizeUsdc)}</p>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <p className="text-sm text-ink-faint">No Hyperliquid activity</p>
