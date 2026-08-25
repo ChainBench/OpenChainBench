@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { ArrowRight, Loader2, AlertCircle, TrendingDown, TrendingUp, Minus } from "lucide-react";
 
+type TopCoin = {
+  coin: string;
+  fills: number;
+  notional: number;
+  fees: number;
+  onGains: boolean;
+  gainsRoundTripRate: number | null;
+};
+
 type FeeCompareResult = {
   wallet: string;
   days: number;
@@ -13,7 +22,7 @@ type FeeCompareResult = {
     fundingUsd: number;
     netCostUsd: number;
     avgFeeRateBps: number;
-    topCoins: { coin: string; fills: number; notional: number; fees: number }[];
+    topCoins: TopCoin[];
   };
   gains: {
     events: number;
@@ -22,12 +31,16 @@ type FeeCompareResult = {
     avgFeeRateBps: number;
   };
   comparison: {
+    hlNotionalOnGains: number;
+    hlFeesOnGainsCoins: number;
     gainsEquivForHlNotional: number;
     hlSavedVsGains: number;
     hlCheaperMultiple: number | null;
+    hlRoundTripRate: number;
     hlEquivForGainsVolume: number;
     gainsSavedVsHl: number;
   };
+  gainsFeeRates: Record<string, number>;
 };
 
 function fmt(n: number, decimals = 2) {
@@ -126,16 +139,23 @@ function VerdictCard({ result }: { result: FeeCompareResult }) {
                 {hl.topCoins.map((c) => (
                   <div
                     key={c.coin}
-                    className="flex items-center justify-between text-sm"
+                    className="flex items-center justify-between gap-2 text-sm"
                   >
-                    <span className="font-mono text-ink">{c.coin}</span>
-                    <span className="text-ink-soft">{c.fills} fills</span>
-                    <span className="text-ink-soft font-mono">
+                    <span className="font-mono text-ink w-12 shrink-0">{c.coin}</span>
+                    <span className="text-ink-faint text-xs">{c.fills} fills</span>
+                    <span className="text-ink-soft font-mono flex-1 text-right">
                       {fmtUsd(c.notional)}
                     </span>
-                    <span className="text-ink font-mono font-medium">
+                    <span className="text-ink font-mono font-medium w-16 text-right">
                       {fmtUsd(c.fees)}
                     </span>
+                    {c.gainsRoundTripRate !== null ? (
+                      <span className="text-ink-faint text-[10px] w-24 text-right">
+                        Gains {fmt(c.gainsRoundTripRate * 10000, 2)}bps
+                      </span>
+                    ) : (
+                      <span className="text-ink-faint text-[10px] w-24 text-right">not on Gains</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -149,7 +169,8 @@ function VerdictCard({ result }: { result: FeeCompareResult }) {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <p className="text-sm text-ink-soft">
-                  Same volume ({fmtUsd(hl.notionalUsd)}) at Gains 0.12% round-trip
+                  {fmtUsd(comparison.hlNotionalOnGains)} notional on Gains-listed coins
+                  {" "}(live per-coin fee rates from Gains API)
                 </p>
                 <p className="font-mono text-lg text-ink font-semibold mt-0.5">
                   {fmtUsd(comparison.gainsEquivForHlNotional)} in fees
@@ -229,7 +250,8 @@ function VerdictCard({ result }: { result: FeeCompareResult }) {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <p className="text-sm text-ink-soft">
-                  Same volume ({fmtUsd(gains.positionSizeUsdc)}) at HL ~0.045% round-trip
+                  {fmtUsd(gains.positionSizeUsdc)} position size at HL standard taker{" "}
+                  {fmt((comparison.hlRoundTripRate) * 10000, 2)}bps round-trip
                 </p>
                 <p className="font-mono text-lg text-ink font-semibold mt-0.5">
                   {fmtUsd(comparison.hlEquivForGainsVolume)} in fees
@@ -263,10 +285,12 @@ function VerdictCard({ result }: { result: FeeCompareResult }) {
       )}
 
       <p className="text-xs text-ink-faint px-1">
-        HL fees: actual on-chain data. Gains fees: FeesProcessed events from{" "}
+        HL fees: real data from Hyperliquid fills API. Gains fees: real{" "}
+        <code className="font-mono">FeesProcessed</code> events from{" "}
         <code className="font-mono">0xFF16...7f169</code> on Arbitrum.
-        Simulated costs use 0.12% round-trip for Gains and 0.045% for HL
-        (standard taker). Funding rates not included in simulated costs.
+        Cross-platform estimates use live Gains fee schedule (fetched from
+        backend-arbitrum.gains.trade) and the public HL standard taker rate
+        (0.035% per side). Funding not included in cross-platform estimates.
       </p>
     </div>
   );
