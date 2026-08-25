@@ -90,7 +90,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1", venueType: "onchain" },
   { slug: "lighter",     name: "Lighter",     chain: "Lighter L2",    venueType: "onchain" },
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
-  { slug: "gains",       name: "Gains Network", chain: "Arbitrum",    venueType: "onchain" },
+  { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
   { slug: "vertex",      name: "Vertex",      chain: "Arbitrum",      venueType: "onchain" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet",      venueType: "onchain" },
