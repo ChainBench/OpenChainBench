@@ -439,8 +439,8 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Direction</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">HL fee</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">Gains fee</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">Saved</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Gains fee</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Saved</th>
               <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
             </tr>
           </thead>
@@ -470,11 +470,11 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
                   </td>
 
                   {/* Gains fee — bold green if cheaper */}
-                  <td className={`px-3 py-3 text-right font-mono text-xs font-bold hidden md:table-cell ${gainsCheaper ? "text-emerald-500" : "text-ink-soft"}`}>
+                  <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${gainsCheaper ? "text-emerald-500" : "text-ink-soft"}`}>
                     {gainsFee !== null ? fmtUsd(gainsFee) : <span className="text-ink-faint/30 font-normal">—</span>}
                   </td>
 
-                  <td className="px-3 py-3 text-right font-mono text-xs hidden md:table-cell">
+                  <td className="px-3 py-3 text-right font-mono text-xs hidden sm:table-cell">
                     {saved !== null ? (
                       saved > 0.001 ? (
                         <span className="text-emerald-500 font-semibold">+{fmtUsd(saved)}</span>
