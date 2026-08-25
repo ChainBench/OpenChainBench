@@ -1,5 +1,5 @@
 slug: gains
-target_product: gains.trade
+target_product: Gains
 target_url: https://gains.trade
 description: Oracle-priced perpetuals on Arbitrum, Base, Polygon and ApeChain
 benchmark: perp-fees
