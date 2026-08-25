@@ -767,28 +767,31 @@ export function FeeCompareClient() {
           />
         </div>
 
-        {/* Wallet input — only when at least one venue has wallet support */}
-        {needsWallet && (
-          <div>
-            <label
-              htmlFor="wallet-input"
-              className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
-            >
-              Wallet address
-              <span className="ml-2 normal-case font-normal text-ink-faint/60">optional — for per-trade analysis</span>
-            </label>
-            <input
-              id="wallet-input"
-              type="text"
-              value={wallet}
-              onChange={(e) => setWallet(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
-              placeholder="0x..."
-              spellCheck={false}
-              className="w-full rounded-xl border border-ink/15 bg-paper px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink/40 focus:outline-none transition-colors"
-            />
-          </div>
-        )}
+        {/* Wallet input — always shown; active only when a venue with history is selected */}
+        <div>
+          <label
+            htmlFor="wallet-input"
+            className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
+          >
+            Wallet address
+            <span className="ml-2 normal-case font-normal text-ink-faint/60">
+              {needsWallet ? "optional — for per-trade analysis" : "select Hyperliquid or Gains to enable trade history"}
+            </span>
+          </label>
+          <input
+            id="wallet-input"
+            type="text"
+            value={wallet}
+            onChange={(e) => setWallet(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
+            placeholder="0x..."
+            spellCheck={false}
+            disabled={!needsWallet}
+            className={`w-full rounded-xl border border-ink/15 bg-paper px-3.5 py-2.5 font-mono text-sm placeholder:text-ink-faint focus:border-ink/40 focus:outline-none transition-colors ${
+              needsWallet ? "text-ink" : "text-ink-faint/40 cursor-not-allowed"
+            }`}
+          />
+        </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1">
