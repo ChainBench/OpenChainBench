@@ -4,7 +4,7 @@ slug: perp-protocol-longevity
 number: "119"
 title: "Perp DEX security track record: days without a recorded exploit, live"
 seo_title: "Perp DEX security track record 2026"
-seo_description: "gains.trade leads perp DEX security longevity at {{p50:gains}} days without a recorded exploit. GMX, Hyperliquid, dYdX v4, Lighter, Paradex ranked by days since last incident on rekt.news and public post-mortems."
+seo_description: "Gains leads perp DEX security longevity at {{p50:gains}} days without a recorded exploit. GMX, Hyperliquid, dYdX v4, Lighter, Paradex ranked by days since last incident on rekt.news and public post-mortems."
 subtitle: "Days each perp DEX has operated without a recorded security exploit, counted live from a versioned incident registry sourced from rekt.news and public post-mortems. Higher means a longer clean track record. Oracle-priced venues with immutable smart contracts have a structural advantage: there is no custodial hot wallet and no privileged admin key that can drain the vault."
 category: Trading
 status: live
@@ -24,7 +24,7 @@ seo_intro: |
   post-mortems. This benchmark converts that ledger into a live counter:
   how many days has each venue operated without a recorded security exploit
   that resulted in direct theft or loss of user funds via a protocol
-  vulnerability. gains.trade has been live since December 2021, more than
+  vulnerability. Gains has been live since December 2021, more than
   four years, with no recorded exploit in the tracked sources as of the
   registry date. GMX had an exploit in July 2025 estimated at around 42
   million USD via a reentrancy vulnerability. Hyperliquid, dYdX v4,
@@ -57,7 +57,7 @@ methodology:
   - "Registry: a versioned YAML file embedded in the harness binary at build time. Fields per incident: venue_slug, date (YYYY-MM-DD), amount_usd, type (exploit, oracle-manipulation, admin-key, bridge), source_url."
   - "Counter formula: (Unix timestamp at query time - Unix timestamp of max(launch_date, last_incident_date)) / 86400. Emitted as perp_protocol_days_clean{venue}."
   - "Incident criteria: direct theft or permanent loss of user funds via a documented smart contract vulnerability or privileged key compromise. Oracle manipulation without contract exploit is excluded. Market-structure events (liquidation cascades, large-position forced close) are excluded."
-  - "gains.trade: launched 2021-12-01. No incidents in tracked sources as of registry date 2026-08-02. Clean streak = days since 2021-12-01."
+  - "Gains: launched 2021-12-01. No incidents in tracked sources as of registry date 2026-08-02. Clean streak = days since 2021-12-01."
   - "GMX v2: launched 2023-08-01. Incident 2025-07-09: reentrancy in vault and order-flow logic, estimated loss USD 42 000 000, source coinperps.xyz post-mortem. Clean streak = days since 2025-07-09."
   - "Hyperliquid: launched 2023-11-01. No protocol exploit in tracked sources. Note: the March 2025 JellyJelly forced close was a market-structure event, not a smart contract exploit, and is excluded per criteria. DeFiLlama enrichment filters entries with no confirmed financial loss (amount null or 0) to avoid false positives such as unrelated projects that share a name substring."
   - "dYdX v4: launched on the Cosmos appchain 2023-10-01. No protocol exploit on v4. dYdX v1 and v2 on Ethereum had oracle manipulation events that are excluded here (different contract, different era)."
@@ -83,8 +83,8 @@ prometheus:
 faq:
   - q: "What counts as a recordable incident?"
     a: "Direct theft or permanent loss of user funds via a documented smart contract vulnerability or privileged key compromise. Oracle price manipulation events that do not involve a contract exploit are excluded. Market-structure events such as liquidation cascades triggered by large positions are excluded. The registry source URL for each entry is available in the harness YAML."
-  - q: "Why does gains.trade have such a long clean streak?"
-    a: "gains.trade launched in December 2021 and has not had a recorded exploit in the tracked sources as of the registry date, giving a streak of over four years. The synthetic architecture uses oracle pricing (no custodial AMM vault that can be drained) and immutable smart contracts without privileged admin keys on critical paths, which removes the most common attack surfaces."
+  - q: "Why does Gains have such a long clean streak?"
+    a: "Gains launched in December 2021 and has not had a recorded exploit in the tracked sources as of the registry date, giving a streak of over four years. The synthetic architecture uses oracle pricing (no custodial AMM vault that can be drained) and immutable smart contracts without privileged admin keys on critical paths, which removes the most common attack surfaces."
   - q: "Why is Hyperliquid's JellyJelly event not counted?"
     a: "The March 2025 JellyJelly event was a market-structure incident: a large whale position was force-closed by the validator committee after a liquidation cascade threatened the insurance fund. No smart contract vulnerability was exploited and no user funds were stolen via a protocol bug. The methodology excludes market-structure events to keep the metric focused on smart contract security."
   - q: "Does a long streak prove the protocol is safe?"
@@ -96,7 +96,7 @@ faq:
 
 providers:
   - slug: gains
-    name: gains.trade
+    name: Gains
     tag: "Synthetic perps on Base, launched 2021-12-01, no recorded exploit"
     formula: "Live counter: (current_unix - 2021-12-01T00:00:00Z) / 86400. No incidents in the registry as of 2026-08-02. Counter = days since launch."
     queries:

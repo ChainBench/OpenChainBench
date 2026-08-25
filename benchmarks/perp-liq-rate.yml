@@ -4,7 +4,7 @@ slug: perp-liq-rate
 number: "208"
 title: "Perp DEX liquidation rate: 24h liquidated notional as % of open interest, live"
 seo_title: "Perp DEX liquidation rate 2026"
-seo_description: "{{best_name}} shows the lowest 24h liquidation rate at {{best_p50}}% of open interest. Live comparison of liquidated notional over OI across Hyperliquid, GMX, dYdX, Lighter, gains.trade, Aevo and Paradex on ETH and BTC."
+seo_description: "{{best_name}} shows the lowest 24h liquidation rate at {{best_p50}}% of open interest. Live comparison of liquidated notional over OI across Hyperliquid, GMX, dYdX, Lighter, Gains, Aevo and Paradex on ETH and BTC."
 subtitle: "Liquidated notional over the trailing 24 hours divided by current open interest, in percent. Higher means more positions are being forcibly closed relative to the venue's total exposure. Measured live every 5 minutes on ETH and BTC across 7 perpetual DEX venues."
 category: Trading
 status: live
@@ -31,7 +31,7 @@ seo_intro: |
   fills, giving full coverage rather than the backstop-only subset
   accessible through the HLP vault endpoint. dYdX, Paradex and Aevo use
   their own native REST APIs. Lighter uses Coinalyze hourly liquidation
-  buckets converted to USD at the current mark price. Gains Network on Base
+  buckets converted to USD at the current mark price. Gains on Base
   scans TradeClosed event logs on-chain and keeps only cancelReason=1
   (liquidation). GMX v2 open interest is read from the arbitrum-api
   gmxinfra endpoint, giving real per-asset notional rather than a TVL
@@ -40,7 +40,7 @@ seo_intro: |
 
   Open interest is the total current notional value of all open positions
   at each venue, sourced natively: Hyperliquid metaAndAssetCtxs, Lighter
-  orderBookDetails, dYdX REST, Paradex REST, Aevo REST, Gains Network
+  orderBookDetails, dYdX REST, Paradex REST, Aevo REST, Gains
   trading-variables per pair, GMX arbitrum-api markets/info. All figures
   are in USD and use current mark price rather than entry price where a
   live price is available.
@@ -63,7 +63,7 @@ methodology:
   - "dYdX v4: OI from GET /v4/perpetualMarkets (openInterest base units * oraclePrice). Liquidations from GET /v4/trades/perpetualMarket/{ticker}?limit=100 paginated backwards, keeping type == LIQUIDATED rows; notional = size * price."
   - "GMX v2 (Arbitrum): OI from arbitrum-api.gmxinfra.io/markets/info (openInterestLong + openInterestShort per market, 30-decimal USD, summed across all listed markets for the asset). Liquidation source: unavailable (TheGraph subgraph defunct; Subsquid positionChanges does not expose orderType/isLiquidation). liq_rate and liq_volume are not published for GMX; perp_liq_source_available{venue='gmx'} = 0."
   - "Lighter: OI from GET /api/v1/orderBookDetails?filter=perp (open_interest in base units × mark_price). Liquidations from Coinalyze /v1/liquidation-history (hourly buckets, symbols 0.T=ETH 1.T=BTC, base asset units × current mark_price). Requires COINALYZE_API_KEY."
-  - "gains.trade (Base): OI from GET backend-base.gains.trade/trading-variables, sum of oiLongCollateral + oiShortCollateral for the USDC collateral at the asset's pair index (BTC=0, ETH=1), divided by 1e6. Liquidations from eth_getLogs on the Gains diamond (0x6cd5ac19...) filtering TradeClosed events with cancelReason=1; notional = collateralAmount/1e6 × leverage/1e3."
+  - "Gains (Base): OI from GET backend-base.gains.trade/trading-variables, sum of oiLongCollateral + oiShortCollateral for the USDC collateral at the asset's pair index (BTC=0, ETH=1), divided by 1e6. Liquidations from eth_getLogs on the Gains diamond (0x6cd5ac19...) filtering TradeClosed events with cancelReason=1; notional = collateralAmount/1e6 × leverage/1e3."
   - "Aevo: OI from GET /statistics?asset=BASE&instrument_type=PERPETUAL (open_interest.total contracts * mark_price). Liquidation source: none; Aevo has no public liquidation feed as of 2025-08. liq_rate and liq_volume are not published; perp_liq_source_available{venue='aevo'} = 0."
   - "Paradex: OI from GET /v1/markets/summary?market=X (open_interest base units * mark_price). Liquidations from GET /v1/trades?market=X&start_at=<ms>&end_at=<ms> paginated by cursor, keeping trade_type == LIQUIDATION rows."
   - "Apple-to-apple: OI = current notional USD (collateral × leverage) at all venues. Liquidation events = notional USD of forcibly closed positions. Both sides use the same definition across all venues with available data."
@@ -94,8 +94,8 @@ faq:
     a: "With the OXARCHIVE_API_KEY environment variable set, the bench uses the 0xArchive REST API /v1/hyperliquid/liquidations/{coin} with cursor pagination, which covers all liquidation types including positions closed via market orders (not just backstop vault liquidations). Without the key the bench falls back to userFillsByTime on the HLP liquidator vault address, which captures backstop liquidations only (a minority of volume)."
   - q: "What does the warming up period mean?"
     a: "The first 24 hours after the harness starts, the sliding window is not yet full. The liq_rate during this period underestimates the true 24-hour rate because fewer than 24 hours of liquidation events have been accumulated. The perp_liq_warming_up metric is 1 during this period so the UI can flag the value as provisional."
-  - q: "Why are gains.trade OI values so small compared to other venues?"
-    a: "The Gains Network deployment on Base is a newer, smaller deployment than their Arbitrum and Polygon deployments. The $55K ETH OI and $161K BTC OI reported here reflect actual trading-variables from the Base chain, not the venue's total cross-chain OI. The liq_rate for Gains Base should be interpreted in this context: 0 liquidations on $55K OI is a different regime than 0 liquidations on $1B OI."
+  - q: "Why are Gains OI values so small compared to other venues?"
+    a: "The Gains deployment on Base is a newer, smaller deployment than their Arbitrum and Polygon deployments. The $55K ETH OI and $161K BTC OI reported here reflect actual trading-variables from the Base chain, not the venue's total cross-chain OI. The liq_rate for Gains Base should be interpreted in this context: 0 liquidations on $55K OI is a different regime than 0 liquidations on $1B OI."
   - q: "Is this an apples-to-apples comparison across all venues?"
     a: "Yes for OI and liquidation definition: both sides use notional USD (position size including leverage) at all venues with available data. Hyperliquid, Lighter, dYdX and Paradex use current mark price for OI; Gains uses entry-price notional from the protocol's internal accounting (oiLongCollateral), which may differ from current-price notional if ETH/BTC prices have moved significantly since positions were opened. The main non-comparability is GMX with 0 liquidation data and Aevo/Paradex with typically low liquidation counts. The OI numbers are comparable across all venues."
 
@@ -158,7 +158,7 @@ providers:
       series: perp_liq_rate_24h_pct{venue="lighter"}
 
   - slug: gains
-    name: gains.trade
+    name: Gains
     tag: Synthetic perps on Base, liquidations from TradeClosed on-chain logs
     formula: "TradeClosed logs (cancelReason=1) on Base: notional = collateralAmount/1e6 x leverage/1e3. OI = oiLongCollateral + oiShortCollateral from trading-variables / 1e6. Liq rate = 24h notional / OI."
     queries:

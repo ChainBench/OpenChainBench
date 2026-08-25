@@ -45,7 +45,7 @@ methodology:
   - "Net yield formula: `net_yield_bps = predictedApr.day × uptimeFraction × 10000`. Jailed validators are forced to 0 regardless of published APR."
   - "Commission is a decimal fraction from the API (0.04 = 4%). Displayed in bps (0.04 × 10000 = 400 bps). Lower commission = better for delegators."
   - "Stake USD: `(stake / 1e8) × HYPE oracle price`. HYPE price from `metaAndAssetCtxs` `oraclePx` (fallback: markPx, midPx)."
-  - "Cadence: 5-minute scrape. HL validator stats move on sub-hour timescales (consensus window = day, but jail/unjail is near-instant), so 5-minute polling is sufficient."
+  - "Cadence: 5-minute scrape. Hyperliquid validator stats move on sub-hour timescales (consensus window = day, but jail/unjail is near-instant), so 5-minute polling is sufficient."
   - "The bench includes all 34 validators currently returned by validatorSummaries, including jailed and near-zero-stake nodes, for complete transparency. Jailed nodes land at 0 bps yield."
 
 findings:
