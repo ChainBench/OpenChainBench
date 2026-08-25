@@ -10,29 +10,28 @@ const GAINS_DIAMOND_ARB = "0xFF162c694eAA571f685030649814282eA457f169";
 const GAINS_VARS_URL = "https://backend-arbitrum.gains.trade/trading-variables";
 const FEES_PROCESSED_TOPIC =
   "0x71555a7cc983000fe069574303ed2e47aa16417d297441f6d5e314bd6c58b2fe";
+const GMX_SUBSQUID = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql";
+const DYDX_INDEXER = "https://indexer.dydx.trade";
 
 const GAINS_FEE_PRECISION = 1e12;
 const HL_TAKER_PER_SIDE = 0.00035;
 
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
+const DYDX_ADDRESS_RE = /^dydx1[a-z0-9]{38}$/;
 const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
 
 // Taker-only rates per venue (per-action, per-side, decimal).
-// Sourced from the perp-fees bench YAML methodology — these are the fee
-// charged by the protocol per action, NOT the all-in cost (taker + spread).
-// The bench measures all-in (perp_fees_all_in_bps) which inflates by ~1-3 bps
-// of spread/impact; simulation must use taker-only to match actual fee records.
 const STATIC_RATES: Record<string, number> = {
-  hyperliquid: HL_TAKER_PER_SIDE,          // 3.5 bps — verified from actual fills
-  gains: 0,                                  // filled from live Gains trading-variables API
-  lighter: 0.0,                              // 0 bps — fee-free, confirmed via /orderBookDetails
-  dydx: 0.0005,                              // 5 bps — Cosmos REST tier-0 default
-  "gmx-v2": 0.0006,                          // 6 bps — positionFeeFactorForNegativeImpact (conservative branch)
-  paradex: 0.0002,                           // 2 bps — api-tier from /markets fee config
-  extended: 0.00025,                         // 2.5 bps — documented base (not in public API)
-  aster: 0.0005,                             // 5 bps — documented base taker
-  edgex: 0.00038,                            // 3.8 bps — documented base taker
+  hyperliquid: HL_TAKER_PER_SIDE,
+  gains: 0,
+  lighter: 0.0,
+  dydx: 0.0005,
+  "gmx-v2": 0.0006,
+  paradex: 0.0002,
+  extended: 0.00025,
+  aster: 0.0005,
+  edgex: 0.00038,
 };
 
 const STATIC_NOTES: Record<string, string> = {
@@ -59,8 +58,19 @@ const VENUE_NAMES: Record<string, string> = {
   edgex: "EdgeX",
 };
 
-let gainsFeeCache: { coinRoundTrip: Record<string, number>; perSide: Record<string, number>; avgPerSide: number; ts: number } | null = null;
+const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
+
+let gainsFeeCache: {
+  coinRoundTrip: Record<string, number>;
+  perSide: Record<string, number>;
+  avgPerSide: number;
+  ts: number;
+} | null = null;
 const GAINS_CACHE_TTL_MS = 60 * 60 * 1000;
+
+// ──────────────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────────────
 
 type HlFill = {
   coin: string;
@@ -98,12 +108,7 @@ type HlWalletData = {
   fundingUsd: number;
   netCostUsd: number;
   avgFeeRateBps: number;
-  topCoins: Array<{
-    coin: string;
-    fills: number;
-    notional: number;
-    fees: number;
-  }>;
+  topCoins: Array<{ coin: string; fills: number; notional: number; fees: number }>;
   recentFills: Array<{
     time: number;
     coin: string;
@@ -123,36 +128,60 @@ type GainsWalletData = {
   avgFeeRateBps: number;
 };
 
+type GmxWalletData = {
+  trades: number;
+  feesUsdc: number;
+  notionalUsd: number;
+  avgFeeRateBps: number;
+};
+
+type DydxWalletData = {
+  fills: number;
+  feesUsdc: number;
+  notionalUsd: number;
+  avgFeeRateBps: number;
+};
+
+type AnyWallet = HlWalletData | GainsWalletData | GmxWalletData | DydxWalletData;
+
 type VenueResult = {
   slug: string;
   name: string;
   ratePerAction: number;
   rateBps: number;
   rateNote: string;
-  wallet: HlWalletData | GainsWalletData | null;
+  wallet: AnyWallet | null;
+};
+
+type SimResult = {
+  notionalUsed: number;
+  feesActual: number;
+  equivFees: number;
+  saved: number;
+  multiple: number | null;
 };
 
 type ComparisonResult = {
-  aToBSim: {
-    aNotionalWithBRate: number;
-    aFeesActual: number;
-    bEquivFees: number;
-    saved: number;
-    multiple: number | null;
-  } | null;
-  bToASim: {
-    bNotionalWithARate: number;
-    bFeesActual: number;
-    aEquivFees: number;
-    saved: number;
-    multiple: number | null;
-  } | null;
+  aToBSim: SimResult | null;
+  bToASim: SimResult | null;
 };
 
-async function fetchGainsFeeRates(): Promise<{ coinRoundTrip: Record<string, number>; perSide: Record<string, number>; avgPerSide: number }> {
+// ──────────────────────────────────────────────────────────────────────
+// Fetch helpers
+// ──────────────────────────────────────────────────────────────────────
+
+async function fetchGainsFeeRates(): Promise<{
+  coinRoundTrip: Record<string, number>;
+  perSide: Record<string, number>;
+  avgPerSide: number;
+}> {
   const now = Date.now();
   if (gainsFeeCache && now - gainsFeeCache.ts < GAINS_CACHE_TTL_MS) {
-    return { coinRoundTrip: gainsFeeCache.coinRoundTrip, perSide: gainsFeeCache.perSide, avgPerSide: gainsFeeCache.avgPerSide };
+    return {
+      coinRoundTrip: gainsFeeCache.coinRoundTrip,
+      perSide: gainsFeeCache.perSide,
+      avgPerSide: gainsFeeCache.avgPerSide,
+    };
   }
   const res = await fetch(GAINS_VARS_URL, {
     signal: AbortSignal.timeout(8000),
@@ -171,7 +200,8 @@ async function fetchGainsFeeRates(): Promise<{ coinRoundTrip: Record<string, num
     perSide[p.from] = ps;
   }
   const sides = Object.values(perSide);
-  const avgPerSide = sides.length > 0 ? sides.reduce((a, b) => a + b, 0) / sides.length : 0.0005;
+  const avgPerSide =
+    sides.length > 0 ? sides.reduce((a, b) => a + b, 0) / sides.length : 0.0005;
   gainsFeeCache = { coinRoundTrip, perSide, avgPerSide, ts: now };
   return { coinRoundTrip, perSide, avgPerSide };
 }
@@ -194,7 +224,8 @@ async function getLatestBlock(): Promise<number> {
 }
 
 async function fetchGainsLogs(wallet: string, fromBlock: number, toBlock: number) {
-  const walletPadded = "0x" + wallet.replace("0x", "").toLowerCase().padStart(64, "0");
+  const walletPadded =
+    "0x" + wallet.replace("0x", "").toLowerCase().padStart(64, "0");
   const logs = (await rpcCall("eth_getLogs", [
     {
       address: GAINS_DIAMOND_ARB,
@@ -204,16 +235,21 @@ async function fetchGainsLogs(wallet: string, fromBlock: number, toBlock: number
     },
   ])) as GainsLog[];
 
-  return logs.map((log) => {
-    const collateralIndex = parseInt(log.topics[1] ?? "0x0", 16);
-    const data = log.data.replace("0x", "");
-    if (data.length < 192) return null;
-    const posSize = BigInt("0x" + data.slice(0, 64));
-    const orderType = parseInt(data.slice(64, 128), 16);
-    const totalFees = BigInt("0x" + data.slice(128, 192));
-    return { collateralIndex, orderType, posSize, totalFees };
-  }).filter(Boolean) as Array<{
-    collateralIndex: number; orderType: number; posSize: bigint; totalFees: bigint;
+  return logs
+    .map((log) => {
+      const collateralIndex = parseInt(log.topics[1] ?? "0x0", 16);
+      const data = log.data.replace("0x", "");
+      if (data.length < 192) return null;
+      const posSize = BigInt("0x" + data.slice(0, 64));
+      const orderType = parseInt(data.slice(64, 128), 16);
+      const totalFees = BigInt("0x" + data.slice(128, 192));
+      return { collateralIndex, orderType, posSize, totalFees };
+    })
+    .filter(Boolean) as Array<{
+    collateralIndex: number;
+    orderType: number;
+    posSize: bigint;
+    totalFees: bigint;
   }>;
 }
 
@@ -239,9 +275,90 @@ async function fetchHlFunding(wallet: string, startMs: number): Promise<HlFundin
   return Array.isArray(data) ? (data as HlFundingEvent[]) : [];
 }
 
+async function fetchGmxTrades(wallet: string): Promise<GmxWalletData> {
+  const query = `
+    query GmxTrades($account: String!) {
+      tradeActions(
+        where: {
+          account_eq: $account
+          positionFeeAmount_isNull: false
+          sizeDeltaUsd_gt: "0"
+          orderType_in: [2, 3, 4]
+        }
+        orderBy: timestamp_DESC
+        limit: 200
+      ) {
+        sizeDeltaUsd
+        positionFeeAmount
+        orderType
+      }
+    }
+  `;
+  const res = await fetch(GMX_SUBSQUID, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables: { account: wallet.toLowerCase() } }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`GMX Subsquid ${res.status}`);
+  const body = (await res.json()) as {
+    data?: {
+      tradeActions: Array<{
+        sizeDeltaUsd: string;
+        positionFeeAmount: string;
+        orderType: number;
+      }>;
+    };
+  };
+  const trades = body.data?.tradeActions ?? [];
+
+  let feesUsdc = 0;
+  let notionalUsd = 0;
+  for (const t of trades) {
+    feesUsdc += Number(BigInt(t.positionFeeAmount)) / 1e6;
+    // sizeDeltaUsd has 30 decimals; divide by 1e24 to get 6-decimal USD, then /1e6
+    notionalUsd +=
+      Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+  }
+
+  return {
+    trades: trades.length,
+    feesUsdc,
+    notionalUsd,
+    avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+  };
+}
+
+async function fetchDydxFills(dydxAddress: string): Promise<DydxWalletData> {
+  const res = await fetch(
+    `${DYDX_INDEXER}/v4/fills?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=100`,
+    { signal: AbortSignal.timeout(10000) }
+  );
+  if (!res.ok) throw new Error(`dYdX indexer ${res.status}`);
+  const body = (await res.json()) as {
+    fills?: Array<{ fee: string; price: string; size: string; liquidity?: string }>;
+  };
+  // Keep only taker fills (positive fee)
+  const fills = (body.fills ?? []).filter((f) => parseFloat(f.fee) > 0);
+
+  let feesUsdc = 0;
+  let notionalUsd = 0;
+  for (const f of fills) {
+    feesUsdc += parseFloat(f.fee);
+    notionalUsd += parseFloat(f.price) * parseFloat(f.size);
+  }
+
+  return {
+    fills: fills.length,
+    feesUsdc,
+    notionalUsd,
+    avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+  };
+}
+
 function buildHlWalletData(
   recentFills: HlFill[],
-  hlFundingTotal: number,
+  hlFundingTotal: number
 ): HlWalletData {
   let hlNotional = 0;
   let hlFees = 0;
@@ -290,13 +407,41 @@ function buildHlWalletData(
   };
 }
 
+function walletStats(slug: string, w: AnyWallet): { notional: number; fees: number } | null {
+  if (slug === "hyperliquid") {
+    const x = w as HlWalletData;
+    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.feesUsd } : null;
+  }
+  if (slug === "gains") {
+    const x = w as GainsWalletData;
+    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.feesUsdc } : null;
+  }
+  if (slug === "gmx-v2") {
+    const x = w as GmxWalletData;
+    return x.trades > 0 ? { notional: x.notionalUsd, fees: x.feesUsdc } : null;
+  }
+  if (slug === "dydx") {
+    const x = w as DydxWalletData;
+    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.feesUsdc } : null;
+  }
+  return null;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Route
+// ──────────────────────────────────────────────────────────────────────
+
 export async function GET(req: Request) {
   const rl = rateLimit(clientKey(req, "fee-compare"), 5, 60);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const url = new URL(req.url);
   const wallet = url.searchParams.get("wallet")?.trim() ?? "";
-  const days = Math.min(180, Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10)));
+  const dydxAddress = url.searchParams.get("dydxAddress")?.trim() ?? "";
+  const days = Math.min(
+    180,
+    Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10))
+  );
   const venueA = (url.searchParams.get("venueA") ?? "hyperliquid").toLowerCase();
   const venueB = (url.searchParams.get("venueB") ?? "gains").toLowerCase();
 
@@ -307,16 +452,16 @@ export async function GET(req: Request) {
   if (venueA === venueB) {
     return NextResponse.json({ error: "same_venue" }, { status: 400 });
   }
+  if (dydxAddress && !DYDX_ADDRESS_RE.test(dydxAddress)) {
+    return NextResponse.json({ error: "invalid_dydx_address" }, { status: 400 });
+  }
 
   const walletProvided = WALLET_RE.test(wallet);
-  const needsWallet = (venueA === "hyperliquid" || venueA === "gains" || venueB === "hyperliquid" || venueB === "gains");
-  const fetchWallet = walletProvided && needsWallet;
-
-  if (walletProvided === false && needsWallet === false) {
-    // Neither venue supports wallet data — just return rate cards
-  } else if (walletProvided && !WALLET_RE.test(wallet)) {
-    return NextResponse.json({ error: "invalid_wallet" }, { status: 400 });
-  }
+  const dydxProvided = DYDX_ADDRESS_RE.test(dydxAddress);
+  const needsEvmWallet = EVM_WALLET_VENUES.has(venueA) || EVM_WALLET_VENUES.has(venueB);
+  const needsDydx = venueA === "dydx" || venueB === "dydx";
+  const fetchEvmWallet = walletProvided && needsEvmWallet;
+  const fetchDydxWallet = dydxProvided && needsDydx;
 
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
@@ -324,8 +469,12 @@ export async function GET(req: Request) {
     const gainsData = await fetchGainsFeeRates();
 
     function resolveRate(slug: string): { rate: number; note: string } {
-      if (slug === "gains") return { rate: gainsData.avgPerSide, note: STATIC_NOTES["gains"] };
-      return { rate: STATIC_RATES[slug] ?? 0.0005, note: STATIC_NOTES[slug] ?? "Documented rate" };
+      if (slug === "gains")
+        return { rate: gainsData.avgPerSide, note: STATIC_NOTES["gains"] };
+      return {
+        rate: STATIC_RATES[slug] ?? 0.0005,
+        note: STATIC_NOTES[slug] ?? "Documented rate",
+      };
     }
 
     const { rate: rateA, note: noteA } = resolveRate(venueA);
@@ -333,52 +482,94 @@ export async function GET(req: Request) {
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
-    let gainsLogsData: Array<{ collateralIndex: number; orderType: number; posSize: bigint; totalFees: bigint }> = [];
+    let gainsLogsData: Array<{
+      collateralIndex: number;
+      orderType: number;
+      posSize: bigint;
+      totalFees: bigint;
+    }> = [];
+    let gmxWalletData: GmxWalletData | null = null;
+    let dydxWalletData: DydxWalletData | null = null;
 
-    if (fetchWallet) {
-      const needsHl = venueA === "hyperliquid" || venueB === "hyperliquid";
-      const needsGains = venueA === "gains" || venueB === "gains";
+    const fetches: Promise<void>[] = [];
 
-      const fetches: Promise<void>[] = [];
-
-      if (needsHl) {
+    if (fetchEvmWallet) {
+      if (venueA === "hyperliquid" || venueB === "hyperliquid") {
         fetches.push(
-          fetchHlFills(wallet).then((f) => { hlFillsData = f; }),
-          fetchHlFunding(wallet, cutoffMs).then((f) => { hlFundingData = f; }),
+          fetchHlFills(wallet).then((f) => {
+            hlFillsData = f;
+          }),
+          fetchHlFunding(wallet, cutoffMs).then((f) => {
+            hlFundingData = f;
+          })
         );
       }
-
-      if (needsGains) {
+      if (venueA === "gains" || venueB === "gains") {
         fetches.push(
           getLatestBlock().then(async (latestBlock) => {
-            const fromBlock = Math.max(0, latestBlock - Math.ceil(days * BLOCKS_PER_DAY));
+            const fromBlock = Math.max(
+              0,
+              latestBlock - Math.ceil(days * BLOCKS_PER_DAY)
+            );
             gainsLogsData = await fetchGainsLogs(wallet, fromBlock, latestBlock);
-          }),
+          })
         );
       }
-
-      await Promise.all(fetches);
+      if (venueA === "gmx-v2" || venueB === "gmx-v2") {
+        fetches.push(
+          fetchGmxTrades(wallet)
+            .then((d) => {
+              gmxWalletData = d;
+            })
+            .catch(() => {})
+        );
+      }
     }
 
-    // Build venue results
-    function buildVenueResult(slug: string, rate: number, note: string): VenueResult {
-      let walletData: HlWalletData | GainsWalletData | null = null;
+    if (fetchDydxWallet) {
+      fetches.push(
+        fetchDydxFills(dydxAddress)
+          .then((d) => {
+            dydxWalletData = d;
+          })
+          .catch(() => {})
+      );
+    }
 
-      if (fetchWallet && slug === "hyperliquid") {
+    await Promise.all(fetches);
+
+    function buildVenueResult(slug: string, rate: number, note: string): VenueResult {
+      let walletData: AnyWallet | null = null;
+
+      if (fetchEvmWallet && slug === "hyperliquid") {
         const recentFills = hlFillsData.filter((f) => f.time >= cutoffMs);
         const recentFunding = hlFundingData.filter((f) => f.time >= cutoffMs);
-        const fundingTotal = recentFunding.reduce((s, f) => s + parseFloat(f.delta?.usdc ?? "0"), 0);
+        const fundingTotal = recentFunding.reduce(
+          (s, f) => s + parseFloat(f.delta?.usdc ?? "0"),
+          0
+        );
         walletData = buildHlWalletData(recentFills, fundingTotal);
-      } else if (fetchWallet && slug === "gains") {
+      } else if (fetchEvmWallet && slug === "gains") {
         const usdcLogs = gainsLogsData.filter((l) => l.collateralIndex === 3);
-        const feesUsdc = usdcLogs.reduce((s, l) => s + Number(l.totalFees) / 1e6, 0);
-        const sizeUsdc = usdcLogs.reduce((s, l) => s + Number(l.posSize) / 1e6, 0);
-        walletData = {
+        const feesUsdc = usdcLogs.reduce(
+          (s, l) => s + Number(l.totalFees) / 1e6,
+          0
+        );
+        const sizeUsdc = usdcLogs.reduce(
+          (s, l) => s + Number(l.posSize) / 1e6,
+          0
+        );
+        const gd: GainsWalletData = {
           events: usdcLogs.length,
           feesUsdc,
           positionSizeUsdc: sizeUsdc,
           avgFeeRateBps: sizeUsdc > 0 ? (feesUsdc / sizeUsdc) * 10000 : 0,
-        } satisfies GainsWalletData;
+        };
+        walletData = gd;
+      } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
+        walletData = gmxWalletData;
+      } else if (fetchDydxWallet && slug === "dydx" && dydxWalletData) {
+        walletData = dydxWalletData;
       }
 
       return {
@@ -394,106 +585,78 @@ export async function GET(req: Request) {
     const venueAResult = buildVenueResult(venueA, rateA, noteA);
     const venueBResult = buildVenueResult(venueB, rateB, noteB);
 
-    // Build comparison
     const comparison: ComparisonResult = { aToBSim: null, bToASim: null };
 
-    // aToBSim: use venueA wallet fills to simulate venueB cost
+    // aToBSim: venueA actual fills vs simulated venueB cost
     if (venueAResult.wallet !== null) {
-      if (venueA === "hyperliquid") {
+      if (venueA === "hyperliquid" && venueB === "gains") {
+        // Per-coin Gains rates on HL fills
         const hlW = venueAResult.wallet as HlWalletData;
         if (hlW.fills > 0) {
-          // For Gains as venueB, use per-coin rates where available; else use avgPerSide
-          let bEquiv = 0;
-          let aNotionalUsed = 0;
-          let aFeesActual = 0;
-
-          if (venueB === "gains") {
-            for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
-              const notional = parseFloat(fill.px) * parseFloat(fill.sz);
-              const fee = parseFloat(fill.fee);
-              const coinRate = gainsData.perSide[fill.coin];
-              const effectiveRate = coinRate ?? gainsData.avgPerSide;
-              bEquiv += notional * effectiveRate;
-              aNotionalUsed += notional;
-              aFeesActual += fee;
-            }
-          } else {
-            aNotionalUsed = hlW.notionalUsd;
-            aFeesActual = hlW.feesUsd;
-            bEquiv = hlW.notionalUsd * rateB;
+          let bEquiv = 0, aNotional = 0, aFees = 0;
+          for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
+            const notional = parseFloat(fill.px) * parseFloat(fill.sz);
+            const fee = parseFloat(fill.fee);
+            const coinRate = gainsData.perSide[fill.coin] ?? gainsData.avgPerSide;
+            bEquiv += notional * coinRate;
+            aNotional += notional;
+            aFees += fee;
           }
-
-          const saved = bEquiv - aFeesActual;
           comparison.aToBSim = {
-            aNotionalWithBRate: aNotionalUsed,
-            aFeesActual,
-            bEquivFees: bEquiv,
-            saved,
-            multiple: aFeesActual > 0 ? bEquiv / aFeesActual : null,
+            notionalUsed: aNotional,
+            feesActual: aFees,
+            equivFees: bEquiv,
+            saved: bEquiv - aFees,
+            multiple: aFees > 0 ? bEquiv / aFees : null,
           };
         }
-      } else if (venueA === "gains") {
-        const gainsW = venueAResult.wallet as GainsWalletData;
-        if (gainsW.events > 0) {
-          // Each FeesProcessed event = one action, positionSizeUsdc = notional
-          const bEquiv = gainsW.positionSizeUsdc * rateB;
-          const saved = bEquiv - gainsW.feesUsdc;
+      } else {
+        const stats = walletStats(venueA, venueAResult.wallet);
+        if (stats) {
+          const equivFees = stats.notional * rateB;
           comparison.aToBSim = {
-            aNotionalWithBRate: gainsW.positionSizeUsdc,
-            aFeesActual: gainsW.feesUsdc,
-            bEquivFees: bEquiv,
-            saved,
-            multiple: gainsW.feesUsdc > 0 ? bEquiv / gainsW.feesUsdc : null,
+            notionalUsed: stats.notional,
+            feesActual: stats.fees,
+            equivFees,
+            saved: equivFees - stats.fees,
+            multiple: stats.fees > 0 ? equivFees / stats.fees : null,
           };
         }
       }
     }
 
-    // bToASim: use venueB wallet fills to simulate venueA cost
+    // bToASim: venueB actual fills vs simulated venueA cost
     if (venueBResult.wallet !== null) {
-      if (venueB === "hyperliquid") {
+      if (venueB === "hyperliquid" && venueA === "gains") {
         const hlW = venueBResult.wallet as HlWalletData;
         if (hlW.fills > 0) {
-          let aEquiv = 0;
-          let bNotionalUsed = 0;
-          let bFeesActual = 0;
-
-          if (venueA === "gains") {
-            for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
-              const notional = parseFloat(fill.px) * parseFloat(fill.sz);
-              const fee = parseFloat(fill.fee);
-              const coinRate = gainsData.perSide[fill.coin];
-              const effectiveRate = coinRate ?? gainsData.avgPerSide;
-              aEquiv += notional * effectiveRate;
-              bNotionalUsed += notional;
-              bFeesActual += fee;
-            }
-          } else {
-            bNotionalUsed = hlW.notionalUsd;
-            bFeesActual = hlW.feesUsd;
-            aEquiv = hlW.notionalUsd * rateA;
+          let aEquiv = 0, bNotional = 0, bFees = 0;
+          for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
+            const notional = parseFloat(fill.px) * parseFloat(fill.sz);
+            const fee = parseFloat(fill.fee);
+            const coinRate = gainsData.perSide[fill.coin] ?? gainsData.avgPerSide;
+            aEquiv += notional * coinRate;
+            bNotional += notional;
+            bFees += fee;
           }
-
-          const saved = bFeesActual - aEquiv;
           comparison.bToASim = {
-            bNotionalWithARate: bNotionalUsed,
-            bFeesActual,
-            aEquivFees: aEquiv,
-            saved,
-            multiple: bFeesActual > 0 ? aEquiv / bFeesActual : null,
+            notionalUsed: bNotional,
+            feesActual: bFees,
+            equivFees: aEquiv,
+            saved: bFees - aEquiv,
+            multiple: bFees > 0 ? aEquiv / bFees : null,
           };
         }
-      } else if (venueB === "gains") {
-        const gainsW = venueBResult.wallet as GainsWalletData;
-        if (gainsW.events > 0) {
-          const aEquiv = gainsW.positionSizeUsdc * rateA;
-          const saved = gainsW.feesUsdc - aEquiv;
+      } else {
+        const stats = walletStats(venueB, venueBResult.wallet);
+        if (stats) {
+          const equivFees = stats.notional * rateA;
           comparison.bToASim = {
-            bNotionalWithARate: gainsW.positionSizeUsdc,
-            bFeesActual: gainsW.feesUsdc,
-            aEquivFees: aEquiv,
-            saved,
-            multiple: gainsW.feesUsdc > 0 ? aEquiv / gainsW.feesUsdc : null,
+            notionalUsed: stats.notional,
+            feesActual: stats.fees,
+            equivFees,
+            saved: stats.fees - equivFees,
+            multiple: stats.fees > 0 ? equivFees / stats.fees : null,
           };
         }
       }
@@ -501,6 +664,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       wallet: walletProvided ? wallet.toLowerCase() : null,
+      dydxAddress: dydxProvided ? dydxAddress : null,
       days,
       generatedAt: Date.now(),
       venueA: venueAResult,
