@@ -46,10 +46,12 @@ function serialize(entries: MetadataRoute.Sitemap): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
 }
 
-// Minimum URL count to consider a sitemap "full". Below this threshold
-// we got a static fallback (blob+SRH both failed) — don't cache that
-// at the edge or crawlers will serve the stub for an hour.
-const FULL_SITEMAP_MIN_URLS = 100;
+// Minimum URL count to consider a sitemap "full". The static fallback
+// (buildStaticFallback) emits ~154 URLs (hub pages + chain hubs + answers
+// with no bench/product/compare routes). The full sitemap has 750+.
+// Threshold of 400 sits safely between the two: fallback gets s-maxage=0
+// so the CDN can't lock crawlers onto the stub for an hour.
+const FULL_SITEMAP_MIN_URLS = 400;
 
 export async function GET() {
   const entries = await buildSitemap();
