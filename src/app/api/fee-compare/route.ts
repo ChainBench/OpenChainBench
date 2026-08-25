@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { loadAggregateFromBlob } from "@/lib/aggregate-blob";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -19,62 +18,34 @@ const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
 
-// Static fallback rates per venue (per-action, per-side decimals)
+// Taker-only rates per venue (per-action, per-side, decimal).
+// Sourced from the perp-fees bench YAML methodology — these are the fee
+// charged by the protocol per action, NOT the all-in cost (taker + spread).
+// The bench measures all-in (perp_fees_all_in_bps) which inflates by ~1-3 bps
+// of spread/impact; simulation must use taker-only to match actual fee records.
 const STATIC_RATES: Record<string, number> = {
-  hyperliquid: HL_TAKER_PER_SIDE,
-  gains: 0,
-  lighter: 0.0,
-  dydx: 0.0005,
-  "gmx-v2": 0.0005,
-  paradex: 0.0005,
-  extended: 0.0004,
-  aster: 0.0003,
-  edgex: 0.0002,
+  hyperliquid: HL_TAKER_PER_SIDE,          // 3.5 bps — verified from actual fills
+  gains: 0,                                  // filled from live Gains trading-variables API
+  lighter: 0.0,                              // 0 bps — fee-free, confirmed via /orderBookDetails
+  dydx: 0.0005,                              // 5 bps — Cosmos REST tier-0 default
+  "gmx-v2": 0.0006,                          // 6 bps — positionFeeFactorForNegativeImpact (conservative branch)
+  paradex: 0.0002,                           // 2 bps — api-tier from /markets fee config
+  extended: 0.00025,                         // 2.5 bps — documented base (not in public API)
+  aster: 0.0005,                             // 5 bps — documented base taker
+  edgex: 0.00038,                            // 3.8 bps — documented base taker
 };
 
 const STATIC_NOTES: Record<string, string> = {
   hyperliquid: "3.5 bps taker (per action)",
   gains: "Live taker rate (per-coin, per action)",
   lighter: "0 bps (fee-free)",
-  dydx: "5 bps taker (fallback)",
-  "gmx-v2": "5 bps (fallback)",
-  paradex: "5 bps taker (fallback)",
-  extended: "4 bps taker (fallback)",
-  aster: "3 bps taker (fallback)",
-  edgex: "2 bps taker (fallback)",
+  dydx: "5 bps taker (tier-0, Cosmos REST)",
+  "gmx-v2": "6 bps taker (negative-impact branch)",
+  paradex: "2 bps taker (api-tier)",
+  extended: "2.5 bps taker (documented base)",
+  aster: "5 bps taker (documented base)",
+  edgex: "3.8 bps taker (documented base)",
 };
-
-// perp-fees bench uses "gmx" slug; our venue slug is "gmx-v2"
-const BENCH_TO_VENUE: Record<string, string> = { gmx: "gmx-v2" };
-
-let benchRateCache: { rates: Record<string, number>; ts: number } | null = null;
-const BENCH_CACHE_TTL_MS = 5 * 60 * 1000;
-
-async function fetchBenchRates(): Promise<Record<string, number>> {
-  const now = Date.now();
-  if (benchRateCache && now - benchRateCache.ts < BENCH_CACHE_TTL_MS) {
-    return benchRateCache.rates;
-  }
-  try {
-    const benches = await loadAggregateFromBlob();
-    if (!benches) return {};
-    const perpFees = benches.find((b) => b.slug === "perp-fees");
-    if (!perpFees) return {};
-    const rates: Record<string, number> = {};
-    for (const provider of perpFees.results) {
-      const venueSlug = BENCH_TO_VENUE[provider.slug] ?? provider.slug;
-      // Skip venues whose rates come from other live sources
-      if (["hyperliquid", "gains", "lighter"].includes(venueSlug)) continue;
-      if (provider.ms?.p50 != null && provider.ms.p50 > 0) {
-        rates[venueSlug] = provider.ms.p50 / 10000;
-      }
-    }
-    benchRateCache = { rates, ts: now };
-    return rates;
-  } catch {
-    return {};
-  }
-}
 
 const VENUE_NAMES: Record<string, string> = {
   hyperliquid: "Hyperliquid",
@@ -350,21 +321,11 @@ export async function GET(req: Request) {
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
   try {
-    const [gainsData, benchRates] = await Promise.all([
-      fetchGainsFeeRates(),
-      fetchBenchRates(),
-    ]);
+    const gainsData = await fetchGainsFeeRates();
 
     function resolveRate(slug: string): { rate: number; note: string } {
       if (slug === "gains") return { rate: gainsData.avgPerSide, note: STATIC_NOTES["gains"] };
-      if (slug === "hyperliquid") return { rate: HL_TAKER_PER_SIDE, note: STATIC_NOTES["hyperliquid"] };
-      if (slug === "lighter") return { rate: 0.0, note: STATIC_NOTES["lighter"] };
-      const benchRate = benchRates[slug];
-      if (benchRate != null) {
-        const bps = (benchRate * 10000).toFixed(1);
-        return { rate: benchRate, note: `${bps} bps taker (live bench)` };
-      }
-      return { rate: STATIC_RATES[slug] ?? 0.0005, note: STATIC_NOTES[slug] ?? "Hardcoded rate" };
+      return { rate: STATIC_RATES[slug] ?? 0.0005, note: STATIC_NOTES[slug] ?? "Documented rate" };
     }
 
     const { rate: rateA, note: noteA } = resolveRate(venueA);
