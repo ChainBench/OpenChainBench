@@ -655,7 +655,7 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
         <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Gains simulation uses live
         per-coin rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>. </>
       )}
-      Other venue rates are fetched live from benchmark data, falling back to official documentation when unavailable.
+      Other venue rates are taker-fee-only (no spread), sourced from official documentation or on-chain fee parameters as verified by our bench harness.
       Funding and borrowing fees are excluded from all comparisons.
     </p>
   );
