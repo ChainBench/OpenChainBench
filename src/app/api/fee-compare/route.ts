@@ -215,13 +215,14 @@ export async function GET(req: Request) {
       }));
 
     // Gains equivalent for HL trades (per-coin live rates)
+    // data.notional counts every fill (open + close separately), so use per-side rate
     let gainsEquivForHl = 0;
     let hlNotionalOnGains = 0;
     let hlFeesOnGainsCoins = 0;
     for (const [coin, data] of Object.entries(coinMap)) {
       const gainsRate = gainsFeeRates[coin];
       if (gainsRate === undefined) continue;
-      gainsEquivForHl += data.notional * gainsRate;
+      gainsEquivForHl += data.notional * (gainsRate / 2);
       hlNotionalOnGains += data.notional;
       hlFeesOnGainsCoins += data.fees;
     }
@@ -232,7 +233,8 @@ export async function GET(req: Request) {
     const gainsSizeUsdc = usdcLogs.reduce((s, l) => s + Number(l.posSize) / 1e6, 0);
 
     const hlRoundTrip = HL_TAKER_PER_SIDE * 2;
-    const hlEquivForGains = gainsSizeUsdc * hlRoundTrip;
+    // gainsSizeUsdc sums every FeesProcessed event (open + close separately), so per-side rate
+    const hlEquivForGains = gainsSizeUsdc * HL_TAKER_PER_SIDE;
 
     return NextResponse.json({
       wallet: wallet.toLowerCase(),
