@@ -12,10 +12,42 @@ import {
 } from "lucide-react";
 
 // ──────────────────────────────────────────────────────────────────────
+// Venue list
+// ──────────────────────────────────────────────────────────────────────
+
+const COMPARABLE_VENUES = [
+  { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1" },
+  { slug: "gains",       name: "Gains",       chain: "Arbitrum / Base" },
+  { slug: "lighter",     name: "Lighter",     chain: "Lighter L2" },
+  { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos" },
+  { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum" },
+  { slug: "paradex",     name: "Paradex",     chain: "Starknet" },
+  { slug: "extended",    name: "Extended",    chain: "Starknet" },
+  { slug: "aster",       name: "Aster",       chain: "BNB Chain" },
+  { slug: "edgex",       name: "EdgeX",       chain: "zkSync" },
+] as const;
+
+type VenueSlug = (typeof COMPARABLE_VENUES)[number]["slug"];
+
+const WALLET_VENUES: VenueSlug[] = ["hyperliquid", "gains"];
+
+const VENUE_LOGOS: Partial<Record<VenueSlug, string>> = {
+  hyperliquid: "/logos/hyperliquid.png",
+  gains: "/logos/gains.png",
+  lighter: "/logos/lighter.svg",
+  dydx: "/logos/dydx.svg",
+  "gmx-v2": "/logos/gmx.svg",
+  paradex: "/logos/paradex.jpg",
+  extended: "/logos/extended.svg",
+  aster: "/logos/aster.svg",
+  edgex: "/logos/edgex.jpg",
+};
+
+// ──────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────
 
-type FillRow = {
+type HlFillRow = {
   time: number;
   coin: string;
   dir: string;
@@ -24,48 +56,66 @@ type FillRow = {
   hlFee: number;
   closedPnl: number;
   isTaker: boolean;
-  gainsPerSide: number | null;
 };
 
-type TopCoin = {
+type HlTopCoin = {
   coin: string;
   fills: number;
   notional: number;
   fees: number;
-  onGains: boolean;
-  gainsRoundTripRate: number | null;
+};
+
+type HlWalletData = {
+  fills: number;
+  notionalUsd: number;
+  feesUsd: number;
+  fundingUsd: number;
+  netCostUsd: number;
+  avgFeeRateBps: number;
+  topCoins: HlTopCoin[];
+  recentFills: HlFillRow[];
+};
+
+type GainsWalletData = {
+  events: number;
+  feesUsdc: number;
+  positionSizeUsdc: number;
+  avgFeeRateBps: number;
+};
+
+type VenueResult = {
+  slug: string;
+  name: string;
+  ratePerAction: number;
+  rateBps: number;
+  rateNote: string;
+  wallet: HlWalletData | GainsWalletData | null;
+};
+
+type ComparisonResult = {
+  aToBSim: {
+    aNotionalWithBRate: number;
+    aFeesActual: number;
+    bEquivFees: number;
+    saved: number;
+    multiple: number | null;
+  } | null;
+  bToASim: {
+    bNotionalWithARate: number;
+    bFeesActual: number;
+    aEquivFees: number;
+    saved: number;
+    multiple: number | null;
+  } | null;
 };
 
 type FeeCompareResult = {
-  wallet: string;
+  wallet: string | null;
   days: number;
-  hl: {
-    fills: number;
-    notionalUsd: number;
-    feesUsd: number;
-    fundingUsd: number;
-    netCostUsd: number;
-    avgFeeRateBps: number;
-    topCoins: TopCoin[];
-    recentFills: FillRow[];
-  };
-  gains: {
-    events: number;
-    feesUsdc: number;
-    positionSizeUsdc: number;
-    avgFeeRateBps: number;
-  };
-  comparison: {
-    hlNotionalOnGains: number;
-    hlFeesOnGainsCoins: number;
-    gainsEquivForHlNotional: number;
-    hlSavedVsGains: number;
-    hlCheaperMultiple: number | null;
-    hlRoundTripRate: number;
-    hlEquivForGainsVolume: number;
-    gainsSavedVsHl: number;
-  };
-  gainsFeeRates: Record<string, number>;
+  generatedAt: number;
+  venueA: VenueResult;
+  venueB: VenueResult;
+  comparison: ComparisonResult;
 };
 
 // ──────────────────────────────────────────────────────────────────────
@@ -86,9 +136,6 @@ function fmtUsd(n: number) {
   return sign + "$" + fmt(abs, 2);
 }
 
-function fmtBps(rate: number) {
-  return fmt(rate * 10000, 2) + " bps";
-}
 
 function fmtDate(ms: number) {
   return new Date(ms).toLocaleString("en-US", {
@@ -99,15 +146,36 @@ function fmtDate(ms: number) {
   });
 }
 
+function isHlWallet(w: HlWalletData | GainsWalletData): w is HlWalletData {
+  return "fills" in w;
+}
+
+function isGainsWallet(w: HlWalletData | GainsWalletData): w is GainsWalletData {
+  return "events" in w;
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Atoms
 // ──────────────────────────────────────────────────────────────────────
 
-function PlatformLogo({ name, size = 28 }: { name: "hl" | "gains"; size?: number }) {
+function VenueLogo({ slug, size = 28 }: { slug: string; size?: number }) {
+  const src = VENUE_LOGOS[slug as VenueSlug];
+  if (!src) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-ink/15 flex items-center justify-center shrink-0"
+      >
+        <span className="text-[9px] font-bold text-ink-faint uppercase">
+          {slug.slice(0, 2)}
+        </span>
+      </div>
+    );
+  }
   return (
     <Image
-      src={name === "hl" ? "/logos/hyperliquid.png" : "/logos/gains.png"}
-      alt={name === "hl" ? "Hyperliquid" : "Gains"}
+      src={src}
+      alt={slug}
       width={size}
       height={size}
       className="rounded-full object-cover shrink-0"
@@ -147,245 +215,331 @@ function CheaperBadge() {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// SummaryVsCard — always shows both platforms, simulated if needed
+// VenueDropdown
 // ──────────────────────────────────────────────────────────────────────
 
-function SummaryVsCard({ result }: { result: FeeCompareResult }) {
-  const { hl, gains, comparison } = result;
-  const hasHl = hl.fills > 0;
-  const hasGains = gains.events > 0;
+function VenueDropdown({
+  label,
+  value,
+  exclude,
+  onChange,
+}: {
+  label: string;
+  value: VenueSlug;
+  exclude: VenueSlug;
+  onChange: (v: VenueSlug) => void;
+}) {
+  const venue = COMPARABLE_VENUES.find((v) => v.slug === value)!;
+  return (
+    <div className="flex-1 min-w-0">
+      <label className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+          <VenueLogo slug={value} size={18} />
+        </div>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as VenueSlug)}
+          className="w-full appearance-none rounded-xl border border-ink/15 bg-paper pl-9 pr-8 py-2.5 text-sm font-semibold text-ink focus:border-ink/40 focus:outline-none transition-colors cursor-pointer"
+        >
+          {COMPARABLE_VENUES.filter((v) => v.slug !== exclude).map((v) => (
+            <option key={v.slug} value={v.slug}>
+              {v.name} — {v.chain}
+            </option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint">
+          <ChevronDown size={14} />
+        </div>
+      </div>
+      <p className="mt-1 text-[10px] text-ink-faint font-mono">{venue.chain}</p>
+    </div>
+  );
+}
 
-  // Determine what to show on each side (real activity or simulated estimate)
-  const hlDisplay = hasHl
-    ? { fee: hl.feesUsd, bps: hl.avgFeeRateBps, real: true, label: `${hl.fills} fills` }
-    : hasGains && comparison.hlEquivForGainsVolume > 0
-      ? {
-          fee: comparison.hlEquivForGainsVolume,
-          bps: comparison.hlRoundTripRate * 10000,
-          real: false,
-          label: "simulated",
-        }
-      : null;
+// ──────────────────────────────────────────────────────────────────────
+// RateCard — always shown after venue selection
+// ──────────────────────────────────────────────────────────────────────
 
-  const gainsDisplay = hasGains
-    ? { fee: gains.feesUsdc, bps: gains.avgFeeRateBps, real: true, label: `${gains.events} trades` }
-    : hasHl && comparison.gainsEquivForHlNotional > 0
-      ? {
-          fee: comparison.gainsEquivForHlNotional,
-          bps: comparison.hlNotionalOnGains > 0
-            ? (comparison.gainsEquivForHlNotional / comparison.hlNotionalOnGains) * 10000
-            : 0,
-          real: false,
-          label: "simulated",
-        }
-      : null;
+function RateComparisonCard({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult }) {
+  const aWins = venueA.ratePerAction < venueB.ratePerAction;
+  const bWins = venueB.ratePerAction < venueA.ratePerAction;
+  const diff = Math.abs(venueA.rateBps - venueB.rateBps);
 
-  // Winner logic — use display fee on each side (real or simulated)
-  const hlFeeComp = hlDisplay?.fee ?? 0;
-  const gainsFeeComp = gainsDisplay?.fee ?? 0;
-  const canCompare = hlFeeComp > 0 && gainsFeeComp > 0;
-  const diff = canCompare ? Math.abs(hlFeeComp - gainsFeeComp) : 0;
-  const hlWins = canCompare && hlFeeComp < gainsFeeComp && diff > 0.5;
-  const gainsWins = canCompare && gainsFeeComp < hlFeeComp && diff > 0.5;
+  return (
+    <div className="card-soft rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-ink/8">
+        <p className="font-bold text-sm text-ink">Fee rates</p>
+        <p className="text-xs text-ink-faint mt-0.5">Per-action taker rate comparison</p>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr]">
+        <div className={`p-5 sm:p-6 ${aWins ? "bg-emerald-500/4" : ""}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <VenueLogo slug={venueA.slug} size={20} />
+            <p className="font-bold text-sm text-ink">{venueA.name}</p>
+            {aWins && diff > 0.1 && <span className="ml-auto"><CheaperBadge /></span>}
+          </div>
+          <p className={`font-mono text-3xl font-extrabold leading-none tracking-tight ${aWins ? "text-emerald-500" : "text-ink"}`}>
+            {fmt(venueA.rateBps, 2)}<span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
+          </p>
+          <p className="text-[11px] text-ink-faint mt-2">{venueA.rateNote}</p>
+        </div>
 
-  if (!hasHl && !hasGains) {
+        <div className="flex flex-col items-center justify-center px-3">
+          <div className="w-px flex-1 bg-ink/10" />
+          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 my-2">
+            <span className="font-mono text-[11px] font-bold text-ink-faint">VS</span>
+          </div>
+          <div className="w-px flex-1 bg-ink/10" />
+        </div>
+
+        <div className={`p-5 sm:p-6 ${bWins ? "bg-emerald-500/4" : ""}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <VenueLogo slug={venueB.slug} size={20} />
+            <p className="font-bold text-sm text-ink">{venueB.name}</p>
+            {bWins && diff > 0.1 && <span className="ml-auto"><CheaperBadge /></span>}
+          </div>
+          <p className={`font-mono text-3xl font-extrabold leading-none tracking-tight ${bWins ? "text-emerald-500" : "text-ink"}`}>
+            {fmt(venueB.rateBps, 2)}<span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
+          </p>
+          <p className="text-[11px] text-ink-faint mt-2">{venueB.rateNote}</p>
+        </div>
+      </div>
+      {diff > 0.01 && (
+        <div className="border-t border-ink/8 px-5 py-3">
+          {aWins ? (
+            <p className="text-xs text-ink-soft">
+              <span className="font-semibold text-emerald-500">{venueA.name}</span> is{" "}
+              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper per action
+              {venueB.rateBps > 0 && (
+                <span className="text-ink-faint ml-1">
+                  ({fmt((venueB.ratePerAction - venueA.ratePerAction) / venueB.ratePerAction * 100, 0)}% less)
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-xs text-ink-soft">
+              <span className="font-semibold text-emerald-500">{venueB.name}</span> is{" "}
+              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper per action
+              {venueA.rateBps > 0 && (
+                <span className="text-ink-faint ml-1">
+                  ({fmt((venueA.ratePerAction - venueB.ratePerAction) / venueA.ratePerAction * 100, 0)}% less)
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+      {diff <= 0.01 && (
+        <div className="border-t border-ink/8 px-5 py-3">
+          <p className="text-xs text-ink-faint">Rates are approximately equal</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// WalletSummaryCard
+// ──────────────────────────────────────────────────────────────────────
+
+function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
+  const { venueA, venueB, comparison } = result;
+  const wA = venueA.wallet;
+  const wB = venueB.wallet;
+
+  const aFees = wA ? (isHlWallet(wA) ? wA.feesUsd : isGainsWallet(wA) ? wA.feesUsdc : 0) : null;
+  const bFees = wB ? (isHlWallet(wB) ? wB.feesUsd : isGainsWallet(wB) ? wB.feesUsdc : 0) : null;
+
+  const aLabel = wA ? (isHlWallet(wA) ? `${wA.fills} fills` : isGainsWallet(wA) ? `${wA.events} trades` : "") : null;
+  const bLabel = wB ? (isHlWallet(wB) ? `${wB.fills} fills` : isGainsWallet(wB) ? `${wB.events} trades` : "") : null;
+
+  const aAvgBps = wA ? (isHlWallet(wA) ? wA.avgFeeRateBps : isGainsWallet(wA) ? wA.avgFeeRateBps : 0) : null;
+  const bAvgBps = wB ? (isHlWallet(wB) ? wB.avgFeeRateBps : isGainsWallet(wB) ? wB.avgFeeRateBps : 0) : null;
+
+  const hasAData = wA !== null && (isHlWallet(wA) ? wA.fills > 0 : isGainsWallet(wA) ? wA.events > 0 : false);
+  const hasBData = wB !== null && (isHlWallet(wB) ? wB.fills > 0 : isGainsWallet(wB) ? wB.events > 0 : false);
+
+  if (!hasAData && !hasBData) {
     return (
       <div className="card-soft rounded-2xl p-8 text-center">
-        <p className="text-ink-soft">No trades found in the last {result.days} days on either platform.</p>
+        <p className="text-ink-soft text-sm">No trades found in the last {result.days} days on either platform.</p>
       </div>
     );
   }
 
   return (
     <div className="card-soft rounded-2xl overflow-hidden">
-      {/* Mobile: stacked. Desktop: side-by-side */}
-      <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr]">
-        {/* Hyperliquid side */}
-        <div className={`p-5 sm:p-6 ${hlWins ? "bg-emerald-500/4" : ""}`}>
+      <div className="px-5 py-4 border-b border-ink/8">
+        <p className="font-bold text-sm text-ink">Wallet analysis</p>
+        <p className="text-xs text-ink-faint mt-0.5">Actual fees paid vs simulated cost on the other platform</p>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr]">
+        {/* Venue A side */}
+        <div className="p-5 sm:p-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <PlatformLogo name="hl" size={28} />
+            <VenueLogo slug={venueA.slug} size={24} />
             <div>
-              <p className="font-bold text-sm text-ink">Hyperliquid</p>
-              {hlDisplay && (
-                <p className="text-[11px] text-ink-faint mt-0.5">
-                  {hlDisplay.label}
-                  {!hlDisplay.real && <span className="ml-1 text-ink-faint/50">· est.</span>}
-                </p>
-              )}
+              <p className="font-bold text-sm text-ink">{venueA.name}</p>
+              {aLabel && <p className="text-[11px] text-ink-faint mt-0.5">{aLabel}</p>}
             </div>
-            {hlWins && <span className="ml-auto"><CheaperBadge /></span>}
           </div>
 
-          {hlDisplay ? (
+          {hasAData && aFees !== null ? (
             <div className="space-y-3">
               <div>
-                <p className={`font-mono text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${hlWins ? "text-emerald-500" : "text-ink"}`}>
-                  {fmtUsd(hlDisplay.fee)}
+                <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
+                  {fmtUsd(aFees)}
                 </p>
-                <p className="text-xs text-ink-faint mt-1.5">
-                  {fmt(hlDisplay.bps, 2)} bps avg rate
-                  {!hlDisplay.real && " · taker rate"}
-                </p>
+                {aAvgBps !== null && <p className="text-xs text-ink-faint mt-1.5">{fmt(aAvgBps, 2)} bps avg</p>}
               </div>
-              {hlDisplay.real && (
+              {venueA.slug === "hyperliquid" && isHlWallet(wA!) && (
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-ink/4 rounded-xl p-3">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.notionalUsd)}</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wA.notionalUsd)}</p>
                   </div>
                   <div className="bg-ink/4 rounded-xl p-3">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
-                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(hl.netCostUsd)}</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wA.netCostUsd)}</p>
                     <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
                   </div>
                 </div>
               )}
-              {!hlDisplay.real && hasGains && (
+              {venueA.slug === "gains" && isGainsWallet(wA!) && (
                 <div className="bg-ink/4 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same volume on Hyperliquid</p>
-                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(gains.positionSizeUsdc)}</p>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wA.positionSizeUsdc)}</p>
+                </div>
+              )}
+              {/* Simulated cost on venue B */}
+              {comparison.aToBSim && (
+                <div className="bg-ink/4 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same trades on {venueB.name}</p>
+                  <p className={`font-mono font-bold text-base ${comparison.aToBSim.saved > 0.5 ? "text-emerald-500" : comparison.aToBSim.saved < -0.5 ? "text-red-400" : "text-ink"}`}>
+                    {fmtUsd(comparison.aToBSim.bEquivFees)}
+                  </p>
+                  {comparison.aToBSim.saved > 0.5 && (
+                    <p className="text-[10px] text-emerald-500 font-semibold">
+                      {venueA.name} saved {fmtUsd(comparison.aToBSim.saved)}
+                      {comparison.aToBSim.multiple && comparison.aToBSim.multiple > 1.05 && ` (${fmt(comparison.aToBSim.multiple, 1)}x cheaper)`}
+                    </p>
+                  )}
+                  {comparison.aToBSim.saved < -0.5 && (
+                    <p className="text-[10px] text-red-400 font-semibold">
+                      {venueB.name} would save {fmtUsd(Math.abs(comparison.aToBSim.saved))}
+                    </p>
+                  )}
+                  {Math.abs(comparison.aToBSim.saved) <= 0.5 && (
+                    <p className="text-[10px] text-ink-faint">Roughly equal cost</p>
+                  )}
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-ink-faint">No Hyperliquid activity</p>
+            <p className="text-sm text-ink-faint">No {venueA.name} activity</p>
           )}
         </div>
 
-        {/* VS divider — horizontal on mobile, vertical on desktop */}
-        <div className="flex sm:flex-col items-center justify-center sm:px-3 py-3 sm:py-0">
-          <div className="flex-1 sm:flex-none h-px sm:h-auto sm:w-px bg-ink/10 sm:flex-1" />
-          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 mx-3 sm:mx-0 sm:my-2">
+        <div className="flex flex-col items-center justify-center px-3">
+          <div className="w-px flex-1 bg-ink/10" />
+          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 my-2">
             <span className="font-mono text-[11px] font-bold text-ink-faint">VS</span>
           </div>
-          <div className="flex-1 sm:flex-none h-px sm:h-auto sm:w-px bg-ink/10 sm:flex-1" />
+          <div className="w-px flex-1 bg-ink/10" />
         </div>
 
-        {/* Gains side */}
-        <div className={`p-5 sm:p-6 ${gainsWins ? "bg-emerald-500/4" : ""}`}>
-          <div className="flex items-center gap-2.5 mb-5">
-            <PlatformLogo name="gains" size={32} />
+        {/* Venue B side */}
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <VenueLogo slug={venueB.slug} size={24} />
             <div>
-              <p className="font-bold text-sm text-ink">Gains</p>
-              {gainsDisplay && (
-                <p className="text-[11px] text-ink-faint mt-0.5">
-                  {gainsDisplay.label}
-                  {!gainsDisplay.real && (
-                    <span className="ml-1 text-ink-faint/50">· est.</span>
-                  )}
-                </p>
-              )}
+              <p className="font-bold text-sm text-ink">{venueB.name}</p>
+              {bLabel && <p className="text-[11px] text-ink-faint mt-0.5">{bLabel}</p>}
             </div>
-            {gainsWins && <span className="ml-auto"><CheaperBadge /></span>}
           </div>
 
-          {gainsDisplay ? (
+          {hasBData && bFees !== null ? (
             <div className="space-y-3">
               <div>
-                <p className={`font-mono text-3xl sm:text-4xl font-extrabold tracking-tight leading-none ${gainsWins ? "text-emerald-500" : "text-ink"}`}>
-                  {fmtUsd(gainsDisplay.fee)}
+                <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
+                  {fmtUsd(bFees)}
                 </p>
-                <p className="text-xs text-ink-faint mt-1.5">
-                  {fmt(gainsDisplay.bps, 2)} bps avg rate
-                  {!gainsDisplay.real && " · live schedule"}
-                </p>
+                {bAvgBps !== null && <p className="text-xs text-ink-faint mt-1.5">{fmt(bAvgBps, 2)} bps avg</p>}
               </div>
-              {!gainsDisplay.real && hasHl && (
-                <div className="bg-ink/4 rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same volume on Gains</p>
-                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(comparison.hlNotionalOnGains)}</p>
-                  <p className="text-[10px] text-ink-faint/60 mt-0.5">
-                    {comparison.hlNotionalOnGains < hl.notionalUsd ? "Gains-listed coins only" : "all coins"}
-                  </p>
-                </div>
-              )}
-              {gainsDisplay.real && (
+              {venueB.slug === "hyperliquid" && isHlWallet(wB!) && (
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-ink/4 rounded-xl p-3">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(gains.positionSizeUsdc)}</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wB.notionalUsd)}</p>
                   </div>
                   <div className="bg-ink/4 rounded-xl p-3">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Events</p>
-                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{gains.events}</p>
-                    <p className="text-[10px] text-ink-faint/60 mt-0.5">USDC collateral</p>
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
+                    <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wB.netCostUsd)}</p>
+                    <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
                   </div>
+                </div>
+              )}
+              {venueB.slug === "gains" && isGainsWallet(wB!) && (
+                <div className="bg-ink/4 rounded-xl p-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+                  <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(wB.positionSizeUsdc)}</p>
+                </div>
+              )}
+              {/* Simulated cost on venue A */}
+              {comparison.bToASim && (
+                <div className="bg-ink/4 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Same trades on {venueA.name}</p>
+                  <p className={`font-mono font-bold text-base ${comparison.bToASim.saved > 0.5 ? "text-emerald-500" : comparison.bToASim.saved < -0.5 ? "text-red-400" : "text-ink"}`}>
+                    {fmtUsd(comparison.bToASim.aEquivFees)}
+                  </p>
+                  {comparison.bToASim.saved > 0.5 && (
+                    <p className="text-[10px] text-emerald-500 font-semibold">
+                      {venueB.name} saved {fmtUsd(comparison.bToASim.saved)}
+                      {comparison.bToASim.multiple && comparison.bToASim.multiple < 0.95 && ` (${fmt(1 / comparison.bToASim.multiple, 1)}x cheaper)`}
+                    </p>
+                  )}
+                  {comparison.bToASim.saved < -0.5 && (
+                    <p className="text-[10px] text-red-400 font-semibold">
+                      {venueA.name} would save {fmtUsd(Math.abs(comparison.bToASim.saved))}
+                    </p>
+                  )}
+                  {Math.abs(comparison.bToASim.saved) <= 0.5 && (
+                    <p className="text-[10px] text-ink-faint">Roughly equal cost</p>
+                  )}
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-sm text-ink-faint">No Gains activity</p>
+            <p className="text-sm text-ink-faint">No {venueB.name} activity</p>
           )}
         </div>
-      </div>
-
-      {/* Verdict bar */}
-      <div className="border-t border-ink/8 px-5 sm:px-6 py-4">
-        {hasHl && comparison.hlNotionalOnGains > 0 && (
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-xs text-ink-soft">
-              Same trades at live Gains rates
-              {comparison.hlNotionalOnGains < hl.notionalUsd && " (Gains-listed coins only)"}
-            </p>
-            {comparison.hlSavedVsGains > 0.5 ? (
-              <p className="font-mono font-bold text-emerald-500 text-sm">
-                Hyperliquid saved {fmtUsd(comparison.hlSavedVsGains)}
-                {comparison.hlCheaperMultiple && comparison.hlCheaperMultiple > 1.05 && (
-                  <span className="font-normal text-emerald-500/70 text-xs ml-1.5">
-                    ({fmt(comparison.hlCheaperMultiple, 1)}x cheaper)
-                  </span>
-                )}
-              </p>
-            ) : comparison.hlSavedVsGains < -0.5 ? (
-              <p className="font-mono font-bold text-red-400 text-sm">
-                Gains would save {fmtUsd(Math.abs(comparison.hlSavedVsGains))}
-              </p>
-            ) : (
-              <p className="text-xs text-ink-faint font-medium">Roughly equal cost</p>
-            )}
-          </div>
-        )}
-        {hasGains && (
-          <div className={`flex items-center justify-between gap-4 flex-wrap ${hasHl && comparison.hlNotionalOnGains > 0 ? "mt-3 pt-3 border-t border-ink/6" : ""}`}>
-            <p className="text-xs text-ink-soft">
-              Same Gains volume at Hyperliquid taker ({fmtBps(comparison.hlRoundTripRate)} RT)
-            </p>
-            {comparison.gainsSavedVsHl < -0.5 ? (
-              <p className="font-mono font-bold text-emerald-500 text-sm">
-                Hyperliquid saves {fmtUsd(Math.abs(comparison.gainsSavedVsHl))}
-              </p>
-            ) : comparison.gainsSavedVsHl > 0.5 ? (
-              <p className="font-mono font-bold text-red-400 text-sm">
-                Gains overpaid {fmtUsd(comparison.gainsSavedVsHl)} vs Hyperliquid
-              </p>
-            ) : (
-              <p className="text-xs text-ink-faint font-medium">Roughly equal cost</p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// TopCoinsCard
+// HlTopCoinsCard
 // ──────────────────────────────────────────────────────────────────────
 
-function TopCoinsCard({ topCoins }: { topCoins: TopCoin[] }) {
+function HlTopCoinsCard({ topCoins, venueName }: { topCoins: HlTopCoin[]; venueName: string }) {
   if (topCoins.length === 0) return null;
   return (
     <div className="card-soft rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-ink/8">
-        <PlatformLogo name="hl" size={20} />
-        <p className="font-bold text-sm text-ink">Top markets</p>
+        <VenueLogo slug="hyperliquid" size={20} />
+        <p className="font-bold text-sm text-ink">{venueName} top markets</p>
       </div>
       <div className="divide-y divide-ink/5">
         {topCoins.map((c) => (
           <div key={c.coin} className="flex items-center gap-3 px-5 py-3 hover:bg-ink/2 transition-colors">
             <span className="font-mono text-sm font-bold text-ink w-12 shrink-0">{c.coin}</span>
-            <span className="text-xs text-ink-faint w-14 shrink-0 hidden sm:block">{c.fills} fills</span>
-            <div className="flex-1 min-w-0 hidden sm:block">
+            <span className="text-xs text-ink-faint w-14 shrink-0">{c.fills} fills</span>
+            <div className="flex-1 min-w-0">
               <div className="h-1 rounded-full bg-ink/8 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-ink/25"
@@ -393,15 +547,8 @@ function TopCoinsCard({ topCoins }: { topCoins: TopCoin[] }) {
                 />
               </div>
             </div>
-            <span className="font-mono text-xs text-ink-soft text-right shrink-0 flex-1 sm:flex-none sm:w-20">{fmtUsd(c.notional)}</span>
+            <span className="font-mono text-xs text-ink-soft w-20 text-right shrink-0">{fmtUsd(c.notional)}</span>
             <span className="font-mono text-xs font-bold text-ink w-16 text-right shrink-0">{fmtUsd(c.fees)}</span>
-            {c.gainsRoundTripRate !== null ? (
-              <span className="text-[10px] text-ink-faint w-20 sm:w-28 text-right shrink-0 font-mono">
-                {fmtBps(c.gainsRoundTripRate)} RT
-              </span>
-            ) : (
-              <span className="text-[10px] text-ink-faint/30 w-20 sm:w-28 text-right shrink-0 hidden sm:block">not on Gains</span>
-            )}
           </div>
         ))}
       </div>
@@ -410,10 +557,10 @@ function TopCoinsCard({ topCoins }: { topCoins: TopCoin[] }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// HlTradeTable — bold the cheaper fee per row
+// HlTradeTable
 // ──────────────────────────────────────────────────────────────────────
 
-function HlTradeTable({ fills }: { fills: FillRow[] }) {
+function HlTradeTable({ fills, venueName }: { fills: HlFillRow[]; venueName: string }) {
   const [showAll, setShowAll] = useState(false);
   const PREVIEW = 10;
   const rows = showAll ? fills : fills.slice(0, PREVIEW);
@@ -424,8 +571,8 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
     <div className="card-soft rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-ink/8">
         <div className="flex items-center gap-2.5">
-          <PlatformLogo name="hl" size={20} />
-          <p className="font-bold text-sm text-ink">Trade history</p>
+          <VenueLogo slug="hyperliquid" size={20} />
+          <p className="font-bold text-sm text-ink">{venueName} trade history</p>
         </div>
         <p className="text-xs text-ink-faint">{fills.length} fills</p>
       </div>
@@ -438,20 +585,13 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Market</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Direction</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">HL fee</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Gains fee</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Saved</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Fee paid</th>
               <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((f, i) => {
-              const gainsFee = f.gainsPerSide;
-              const saved = gainsFee !== null ? gainsFee - f.hlFee : null;
-              const hlCheaper = gainsFee !== null && f.hlFee < gainsFee && Math.abs(f.hlFee - gainsFee) > 0.001;
-              const gainsCheaper = gainsFee !== null && gainsFee < f.hlFee && Math.abs(f.hlFee - gainsFee) > 0.001;
               const isOpen = f.closedPnl === 0 && !f.dir.toLowerCase().includes("close");
-
               return (
                 <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
                   <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">{fmtDate(f.time)}</td>
@@ -463,29 +603,9 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
                   </td>
                   <td className="px-3 py-3 hidden sm:table-cell"><DirBadge dir={f.dir} /></td>
                   <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(f.notional)}</td>
-
-                  {/* HL fee — bold green if cheaper */}
-                  <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${hlCheaper ? "text-emerald-500" : "text-ink"}`}>
+                  <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">
                     {fmtUsd(f.hlFee)}
                   </td>
-
-                  {/* Gains fee — bold green if cheaper */}
-                  <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${gainsCheaper ? "text-emerald-500" : "text-ink-soft"}`}>
-                    {gainsFee !== null ? fmtUsd(gainsFee) : <span className="text-ink-faint/30 font-normal">—</span>}
-                  </td>
-
-                  <td className="px-3 py-3 text-right font-mono text-xs hidden sm:table-cell">
-                    {saved !== null ? (
-                      saved > 0.001 ? (
-                        <span className="text-emerald-500 font-semibold">+{fmtUsd(saved)}</span>
-                      ) : saved < -0.001 ? (
-                        <span className="text-red-400 font-semibold">{fmtUsd(saved)}</span>
-                      ) : (
-                        <span className="text-ink-faint/40">≈ 0</span>
-                      )
-                    ) : <span className="text-ink-faint/30">—</span>}
-                  </td>
-
                   <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
                     {isOpen ? (
                       <span className="text-[10px] text-ink-faint/40">open</span>
@@ -518,38 +638,26 @@ function HlTradeTable({ fills }: { fills: FillRow[] }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// GainsCard
+// Footnote
 // ──────────────────────────────────────────────────────────────────────
 
-function GainsCard({ gains, comparison }: { gains: FeeCompareResult["gains"]; comparison: FeeCompareResult["comparison"] }) {
-  const hlSaves = comparison.gainsSavedVsHl < -0.5;
+function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult }) {
+  const hasHl = venueA.slug === "hyperliquid" || venueB.slug === "hyperliquid";
+  const hasGains = venueA.slug === "gains" || venueB.slug === "gains";
+
   return (
-    <div className="card-soft rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-ink/8">
-        <PlatformLogo name="gains" size={20} />
-        <p className="font-bold text-sm text-ink">Gains on-chain</p>
-        <span className="ml-auto text-[10px] font-mono text-ink-faint">Arbitrum</span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-ink/8">
-        {[
-          { label: "Fees paid", value: fmtUsd(gains.feesUsdc), sub: fmt(gains.avgFeeRateBps, 2) + " bps avg" },
-          { label: "Volume", value: fmtUsd(gains.positionSizeUsdc), sub: `${gains.events} events` },
-          { label: "Hyperliquid equiv", value: fmtUsd(comparison.hlEquivForGainsVolume), sub: fmtBps(comparison.hlRoundTripRate) + " taker RT", winner: hlSaves },
-          {
-            label: hlSaves ? "Hyperliquid saves" : "Gains saves",
-            value: Math.abs(comparison.gainsSavedVsHl) > 0.5 ? fmtUsd(Math.abs(comparison.gainsSavedVsHl)) : "≈ $0",
-            accent: true,
-            winner: false,
-          },
-        ].map((s) => (
-          <div key={s.label} className={`bg-paper p-4 ${s.winner ? "bg-emerald-500/4" : ""}`}>
-            <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint">{s.label}</p>
-            <p className={`font-mono text-xl font-bold mt-1 ${s.accent ? (hlSaves ? "text-emerald-500" : "text-red-400") : "text-ink"}`}>{s.value}</p>
-            {s.sub && <p className="font-sans text-xs text-ink-muted mt-0.5">{s.sub}</p>}
-          </div>
-        ))}
-      </div>
-    </div>
+    <p className="text-[11px] text-ink-faint px-1 leading-relaxed">
+      {hasHl && (
+        <>Hyperliquid fees: exact fills from Hyperliquid API (taker = 3.5 bps/side). </>
+      )}
+      {hasGains && (
+        <>Gains fees: on-chain <code className="font-mono text-[10px]">FeesProcessed</code> events from{" "}
+        <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Gains simulation uses live
+        per-coin rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>. </>
+      )}
+      Other venue rates are taker-fee-only (no spread), sourced from official documentation or on-chain fee parameters as verified by our bench harness.
+      Funding and borrowing fees are excluded from all comparisons.
+    </p>
   );
 }
 
@@ -558,19 +666,23 @@ function GainsCard({ gains, comparison }: { gains: FeeCompareResult["gains"]; co
 // ──────────────────────────────────────────────────────────────────────
 
 function Results({ result }: { result: FeeCompareResult }) {
+  const { venueA, venueB } = result;
+  const hasWalletData =
+    (venueA.wallet !== null && (isHlWallet(venueA.wallet) ? venueA.wallet.fills > 0 : isGainsWallet(venueA.wallet) ? venueA.wallet.events > 0 : false)) ||
+    (venueB.wallet !== null && (isHlWallet(venueB.wallet) ? venueB.wallet.fills > 0 : isGainsWallet(venueB.wallet) ? venueB.wallet.events > 0 : false));
+
+  const hlVenueA = venueA.slug === "hyperliquid" && venueA.wallet && isHlWallet(venueA.wallet) ? venueA.wallet : null;
+  const hlVenueB = venueB.slug === "hyperliquid" && venueB.wallet && isHlWallet(venueB.wallet) ? venueB.wallet : null;
+
   return (
     <div className="space-y-4">
-      <SummaryVsCard result={result} />
-      {result.hl.topCoins.length > 0 && <TopCoinsCard topCoins={result.hl.topCoins} />}
-      {result.hl.recentFills.length > 0 && <HlTradeTable fills={result.hl.recentFills} />}
-      {result.gains.events > 0 && <GainsCard gains={result.gains} comparison={result.comparison} />}
-      <p className="text-[11px] text-ink-faint px-1 leading-relaxed">
-        Hyperliquid fees: exact fills from Hyperliquid API. Gains fees: on-chain{" "}
-        <code className="font-mono text-[10px]">FeesProcessed</code> events from{" "}
-        <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Simulated Gains costs use
-        live rates from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>.
-        Hyperliquid simulation uses official taker rate (3.5 bps/side). Funding and borrowing fees excluded.
-      </p>
+      <RateComparisonCard venueA={venueA} venueB={venueB} />
+      {hasWalletData && <WalletSummaryCard result={result} />}
+      {hlVenueA && hlVenueA.topCoins.length > 0 && <HlTopCoinsCard topCoins={hlVenueA.topCoins} venueName={venueA.name} />}
+      {hlVenueA && hlVenueA.recentFills.length > 0 && <HlTradeTable fills={hlVenueA.recentFills} venueName={venueA.name} />}
+      {hlVenueB && hlVenueB.topCoins.length > 0 && <HlTopCoinsCard topCoins={hlVenueB.topCoins} venueName={venueB.name} />}
+      {hlVenueB && hlVenueB.recentFills.length > 0 && <HlTradeTable fills={hlVenueB.recentFills} venueName={venueB.name} />}
+      <Footnote venueA={venueA} venueB={venueB} />
     </div>
   );
 }
@@ -580,26 +692,51 @@ function Results({ result }: { result: FeeCompareResult }) {
 // ──────────────────────────────────────────────────────────────────────
 
 export function FeeCompareClient() {
+  const [venueA, setVenueA] = useState<VenueSlug>("hyperliquid");
+  const [venueB, setVenueB] = useState<VenueSlug>("gains");
   const [wallet, setWallet] = useState("");
   const [days, setDays] = useState(90);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FeeCompareResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const needsWallet = WALLET_VENUES.includes(venueA) || WALLET_VENUES.includes(venueB);
+
+  function handleVenueAChange(v: VenueSlug) {
+    setVenueA(v);
+    if (v === venueB) setVenueB(venueA);
+    setResult(null);
+  }
+
+  function handleVenueBChange(v: VenueSlug) {
+    setVenueB(v);
+    if (v === venueA) setVenueA(venueB);
+    setResult(null);
+  }
+
   async function analyze() {
     const trimmed = wallet.trim();
-    if (!/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
+    if (needsWallet && trimmed && !/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
       setError("Enter a valid Ethereum address (0x...)");
       return;
     }
+
     setLoading(true);
     setError(null);
     setResult(null);
+
     try {
-      const res = await fetch(`/api/fee-compare?wallet=${encodeURIComponent(trimmed)}&days=${days}`);
+      const params = new URLSearchParams({ venueA, venueB, days: String(days) });
+      if (trimmed) params.set("wallet", trimmed);
+
+      const res = await fetch(`/api/fee-compare?${params}`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({})) as { error?: string };
-        setError(res.status === 429 ? "Rate limited — wait a moment and try again." : (d.error ?? "Something went wrong."));
+        setError(
+          res.status === 429
+            ? "Rate limited — wait a moment and try again."
+            : (d.error ?? "Something went wrong.")
+        );
         return;
       }
       setResult(await res.json() as FeeCompareResult);
@@ -613,24 +750,46 @@ export function FeeCompareClient() {
   return (
     <div className="space-y-6">
       <div className="card-soft rounded-2xl p-5 space-y-4">
-        <div>
-          <label
-            htmlFor="wallet-input"
-            className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
-          >
-            Wallet address
-          </label>
-          <input
-            id="wallet-input"
-            type="text"
-            value={wallet}
-            onChange={(e) => setWallet(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
-            placeholder="0x..."
-            spellCheck={false}
-            className="w-full rounded-xl border border-ink/15 bg-paper px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink/40 focus:outline-none transition-colors"
+        {/* Venue selectors */}
+        <div className="flex items-end gap-3">
+          <VenueDropdown
+            label="Venue A"
+            value={venueA}
+            exclude={venueB}
+            onChange={handleVenueAChange}
+          />
+          <div className="pb-6 shrink-0 text-ink-faint font-mono text-xs font-bold">VS</div>
+          <VenueDropdown
+            label="Venue B"
+            value={venueB}
+            exclude={venueA}
+            onChange={handleVenueBChange}
           />
         </div>
+
+        {/* Wallet input — only when at least one venue has wallet support */}
+        {needsWallet && (
+          <div>
+            <label
+              htmlFor="wallet-input"
+              className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
+            >
+              Wallet address
+              <span className="ml-2 normal-case font-normal text-ink-faint/60">optional — for per-trade analysis</span>
+            </label>
+            <input
+              id="wallet-input"
+              type="text"
+              value={wallet}
+              onChange={(e) => setWallet(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
+              placeholder="0x..."
+              spellCheck={false}
+              className="w-full rounded-xl border border-ink/15 bg-paper px-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink/40 focus:outline-none transition-colors"
+            />
+          </div>
+        )}
+
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1">
             <span className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mr-1">Period</span>
@@ -654,7 +813,7 @@ export function FeeCompareClient() {
             className="ml-auto flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-paper disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-            {loading ? "Analyzing..." : "Analyze wallet"}
+            {loading ? "Analyzing..." : "Compare"}
           </button>
         </div>
       </div>
