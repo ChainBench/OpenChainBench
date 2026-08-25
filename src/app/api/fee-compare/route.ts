@@ -18,7 +18,44 @@ const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
 
-let gainsFeeCache: { coinRoundTrip: Record<string, number>; ts: number } | null = null;
+// Static rates per venue (per-action, per-side decimals)
+const STATIC_RATES: Record<string, number> = {
+  hyperliquid: HL_TAKER_PER_SIDE,
+  gains: 0, // filled from live API
+  lighter: 0.0,
+  dydx: 0.0005,
+  "gmx-v2": 0.0005,
+  paradex: 0.0005,
+  extended: 0.0004,
+  aster: 0.0003,
+  edgex: 0.0002,
+};
+
+const RATE_NOTES: Record<string, string> = {
+  hyperliquid: "3.5 bps taker (per action)",
+  gains: "Live taker rate (per-coin, per action)",
+  lighter: "0 bps (fee-free)",
+  dydx: "5 bps taker (tier-0)",
+  "gmx-v2": "5 bps conservative",
+  paradex: "5 bps taker",
+  extended: "4 bps taker",
+  aster: "3 bps taker",
+  edgex: "2 bps taker",
+};
+
+const VENUE_NAMES: Record<string, string> = {
+  hyperliquid: "Hyperliquid",
+  gains: "Gains",
+  lighter: "Lighter",
+  dydx: "dYdX v4",
+  "gmx-v2": "GMX v2",
+  paradex: "Paradex",
+  extended: "Extended",
+  aster: "Aster",
+  edgex: "EdgeX",
+};
+
+let gainsFeeCache: { coinRoundTrip: Record<string, number>; perSide: Record<string, number>; avgPerSide: number; ts: number } | null = null;
 const GAINS_CACHE_TTL_MS = 60 * 60 * 1000;
 
 type HlFill = {
@@ -50,10 +87,68 @@ type GainsTradingVars = {
   fees: Array<{ totalPositionSizeFeeP: string }>;
 };
 
-async function fetchGainsFeeRates(): Promise<Record<string, number>> {
+type HlWalletData = {
+  fills: number;
+  notionalUsd: number;
+  feesUsd: number;
+  fundingUsd: number;
+  netCostUsd: number;
+  avgFeeRateBps: number;
+  topCoins: Array<{
+    coin: string;
+    fills: number;
+    notional: number;
+    fees: number;
+  }>;
+  recentFills: Array<{
+    time: number;
+    coin: string;
+    dir: string;
+    side: string;
+    notional: number;
+    hlFee: number;
+    closedPnl: number;
+    isTaker: boolean;
+  }>;
+};
+
+type GainsWalletData = {
+  events: number;
+  feesUsdc: number;
+  positionSizeUsdc: number;
+  avgFeeRateBps: number;
+};
+
+type VenueResult = {
+  slug: string;
+  name: string;
+  ratePerAction: number;
+  rateBps: number;
+  rateNote: string;
+  wallet: HlWalletData | GainsWalletData | null;
+};
+
+type ComparisonResult = {
+  aToBSim: {
+    aNotionalWithBRate: number;
+    aFeesActual: number;
+    bEquivFees: number;
+    saved: number;
+    multiple: number | null;
+  } | null;
+  bToASim: {
+    bNotionalWithARate: number;
+    bFeesActual: number;
+    aEquivFees: number;
+    saved: number;
+    multiple: number | null;
+  } | null;
+};
+
+async function fetchGainsFeeRates(): Promise<{ coinRoundTrip: Record<string, number>; perSide: Record<string, number>; avgPerSide: number }> {
   const now = Date.now();
   if (gainsFeeCache && now - gainsFeeCache.ts < GAINS_CACHE_TTL_MS) {
-    return gainsFeeCache.coinRoundTrip;
+    return { coinRoundTrip: gainsFeeCache.coinRoundTrip, perSide: gainsFeeCache.perSide, avgPerSide: gainsFeeCache.avgPerSide };
   }
   const res = await fetch(GAINS_VARS_URL, {
     signal: AbortSignal.timeout(8000),
@@ -61,16 +156,20 @@ async function fetchGainsFeeRates(): Promise<Record<string, number>> {
   });
   const vars = (await res.json()) as GainsTradingVars;
   const coinRoundTrip: Record<string, number> = {};
+  const perSide: Record<string, number> = {};
   for (const p of vars.pairs) {
     if (coinRoundTrip[p.from]) continue;
     const fi = parseInt(p.feeIndex, 10);
     const entry = vars.fees[fi];
     if (!entry) continue;
-    const perSide = parseInt(entry.totalPositionSizeFeeP, 10) / GAINS_FEE_PRECISION;
-    coinRoundTrip[p.from] = perSide * 2;
+    const ps = parseInt(entry.totalPositionSizeFeeP, 10) / GAINS_FEE_PRECISION;
+    coinRoundTrip[p.from] = ps * 2;
+    perSide[p.from] = ps;
   }
-  gainsFeeCache = { coinRoundTrip, ts: now };
-  return coinRoundTrip;
+  const sides = Object.values(perSide);
+  const avgPerSide = sides.length > 0 ? sides.reduce((a, b) => a + b, 0) / sides.length : 0.0005;
+  gainsFeeCache = { coinRoundTrip, perSide, avgPerSide, ts: now };
+  return { coinRoundTrip, perSide, avgPerSide };
 }
 
 async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
@@ -136,6 +235,57 @@ async function fetchHlFunding(wallet: string, startMs: number): Promise<HlFundin
   return Array.isArray(data) ? (data as HlFundingEvent[]) : [];
 }
 
+function buildHlWalletData(
+  recentFills: HlFill[],
+  hlFundingTotal: number,
+): HlWalletData {
+  let hlNotional = 0;
+  let hlFees = 0;
+  const coinMap: Record<string, { fills: number; notional: number; fees: number }> = {};
+
+  for (const f of recentFills) {
+    const notional = parseFloat(f.px) * parseFloat(f.sz);
+    const fee = parseFloat(f.fee);
+    hlNotional += notional;
+    hlFees += fee;
+    if (!coinMap[f.coin]) coinMap[f.coin] = { fills: 0, notional: 0, fees: 0 };
+    coinMap[f.coin].fills++;
+    coinMap[f.coin].notional += notional;
+    coinMap[f.coin].fees += fee;
+  }
+
+  const topCoins = Object.entries(coinMap)
+    .sort((a, b) => b[1].notional - a[1].notional)
+    .slice(0, 5)
+    .map(([coin, d]) => ({ coin, ...d }));
+
+  const displayFills = recentFills
+    .slice()
+    .sort((a, b) => b.time - a.time)
+    .slice(0, MAX_DISPLAY_FILLS)
+    .map((f) => ({
+      time: f.time,
+      coin: f.coin,
+      dir: f.dir,
+      side: f.side,
+      notional: parseFloat(f.px) * parseFloat(f.sz),
+      hlFee: parseFloat(f.fee),
+      closedPnl: parseFloat(f.closedPnl),
+      isTaker: f.crossed,
+    }));
+
+  return {
+    fills: recentFills.length,
+    notionalUsd: hlNotional,
+    feesUsd: hlFees,
+    fundingUsd: hlFundingTotal,
+    netCostUsd: hlFees - hlFundingTotal,
+    avgFeeRateBps: hlNotional > 0 ? (hlFees / hlNotional) * 10000 : 0,
+    topCoins,
+    recentFills: displayFills,
+  };
+}
+
 export async function GET(req: Request) {
   const rl = rateLimit(clientKey(req, "fee-compare"), 5, 60);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
@@ -143,132 +293,216 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const wallet = url.searchParams.get("wallet")?.trim() ?? "";
   const days = Math.min(180, Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10)));
+  const venueA = (url.searchParams.get("venueA") ?? "hyperliquid").toLowerCase();
+  const venueB = (url.searchParams.get("venueB") ?? "gains").toLowerCase();
 
-  if (!WALLET_RE.test(wallet)) {
+  const validSlugs = Object.keys(STATIC_RATES);
+  if (!validSlugs.includes(venueA) || !validSlugs.includes(venueB)) {
+    return NextResponse.json({ error: "invalid_venue" }, { status: 400 });
+  }
+  if (venueA === venueB) {
+    return NextResponse.json({ error: "same_venue" }, { status: 400 });
+  }
+
+  const walletProvided = WALLET_RE.test(wallet);
+  const needsWallet = (venueA === "hyperliquid" || venueA === "gains" || venueB === "hyperliquid" || venueB === "gains");
+  const fetchWallet = walletProvided && needsWallet;
+
+  if (walletProvided === false && needsWallet === false) {
+    // Neither venue supports wallet data — just return rate cards
+  } else if (walletProvided && !WALLET_RE.test(wallet)) {
     return NextResponse.json({ error: "invalid_wallet" }, { status: 400 });
   }
 
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
   try {
-    const [hlFills, hlFunding, latestBlock, gainsFeeRates] = await Promise.all([
-      fetchHlFills(wallet),
-      fetchHlFunding(wallet, cutoffMs),
-      getLatestBlock(),
-      fetchGainsFeeRates(),
-    ]);
+    const gainsData = await fetchGainsFeeRates();
 
-    const fromBlock = Math.max(0, latestBlock - Math.ceil(days * BLOCKS_PER_DAY));
-    const gainsLogs = await fetchGainsLogs(wallet, fromBlock, latestBlock);
-
-    // ── HL side (100% real data from HL API) ──
-    const recentFills = hlFills.filter((f) => f.time >= cutoffMs);
-    let hlNotional = 0;
-    let hlFees = 0;
-    const coinMap: Record<string, { fills: number; notional: number; fees: number; onGains: boolean }> = {};
-
-    for (const f of recentFills) {
-      const notional = parseFloat(f.px) * parseFloat(f.sz);
-      const fee = parseFloat(f.fee);
-      hlNotional += notional;
-      hlFees += fee;
-      if (!coinMap[f.coin]) coinMap[f.coin] = { fills: 0, notional: 0, fees: 0, onGains: f.coin in gainsFeeRates };
-      coinMap[f.coin].fills++;
-      coinMap[f.coin].notional += notional;
-      coinMap[f.coin].fees += fee;
+    // Resolve per-action rate for each venue
+    function resolveRate(slug: string): number {
+      if (slug === "gains") return gainsData.avgPerSide;
+      return STATIC_RATES[slug] ?? 0.0005;
     }
 
-    const recentFunding = hlFunding.filter((f) => f.time >= cutoffMs);
-    const hlFundingTotal = recentFunding.reduce((s, f) => s + parseFloat(f.delta?.usdc ?? "0"), 0);
+    const rateA = resolveRate(venueA);
+    const rateB = resolveRate(venueB);
 
-    // Per-trade display (most recent first, capped)
-    const displayFills = recentFills
-      .slice()
-      .sort((a, b) => b.time - a.time)
-      .slice(0, MAX_DISPLAY_FILLS)
-      .map((f) => {
-        const notional = parseFloat(f.px) * parseFloat(f.sz);
-        const hlFee = parseFloat(f.fee);
-        const gainsRate = gainsFeeRates[f.coin];
-        // Per-side Gains fee for this fill (one leg of the trade)
-        const gainsPerSide = gainsRate !== undefined ? notional * (gainsRate / 2) : null;
-        return {
-          time: f.time,
-          coin: f.coin,
-          dir: f.dir,
-          side: f.side,
-          notional,
-          hlFee,
-          closedPnl: parseFloat(f.closedPnl),
-          isTaker: f.crossed,
-          gainsPerSide,
-        };
-      });
+    let hlFillsData: HlFill[] = [];
+    let hlFundingData: HlFundingEvent[] = [];
+    let gainsLogsData: Array<{ collateralIndex: number; orderType: number; posSize: bigint; totalFees: bigint }> = [];
 
-    // Top coins
-    const topCoins = Object.entries(coinMap)
-      .sort((a, b) => b[1].notional - a[1].notional)
-      .slice(0, 5)
-      .map(([coin, d]) => ({
-        coin, ...d,
-        gainsRoundTripRate: gainsFeeRates[coin] ?? null,
-      }));
+    if (fetchWallet) {
+      const needsHl = venueA === "hyperliquid" || venueB === "hyperliquid";
+      const needsGains = venueA === "gains" || venueB === "gains";
 
-    // Gains equivalent for HL trades (per-coin live rates)
-    // data.notional counts every fill (open + close separately), so use per-side rate
-    let gainsEquivForHl = 0;
-    let hlNotionalOnGains = 0;
-    let hlFeesOnGainsCoins = 0;
-    for (const [coin, data] of Object.entries(coinMap)) {
-      const gainsRate = gainsFeeRates[coin];
-      if (gainsRate === undefined) continue;
-      gainsEquivForHl += data.notional * (gainsRate / 2);
-      hlNotionalOnGains += data.notional;
-      hlFeesOnGainsCoins += data.fees;
+      const fetches: Promise<void>[] = [];
+
+      if (needsHl) {
+        fetches.push(
+          fetchHlFills(wallet).then((f) => { hlFillsData = f; }),
+          fetchHlFunding(wallet, cutoffMs).then((f) => { hlFundingData = f; }),
+        );
+      }
+
+      if (needsGains) {
+        fetches.push(
+          getLatestBlock().then(async (latestBlock) => {
+            const fromBlock = Math.max(0, latestBlock - Math.ceil(days * BLOCKS_PER_DAY));
+            gainsLogsData = await fetchGainsLogs(wallet, fromBlock, latestBlock);
+          }),
+        );
+      }
+
+      await Promise.all(fetches);
     }
 
-    // ── Gains side ──
-    const usdcLogs = gainsLogs.filter((l) => l.collateralIndex === 3);
-    const gainsFeesUsdc = usdcLogs.reduce((s, l) => s + Number(l.totalFees) / 1e6, 0);
-    const gainsSizeUsdc = usdcLogs.reduce((s, l) => s + Number(l.posSize) / 1e6, 0);
+    // Build venue results
+    function buildVenueResult(slug: string, rate: number): VenueResult {
+      let walletData: HlWalletData | GainsWalletData | null = null;
 
-    const hlRoundTrip = HL_TAKER_PER_SIDE * 2;
-    // gainsSizeUsdc sums every FeesProcessed event (open + close separately), so per-side rate
-    const hlEquivForGains = gainsSizeUsdc * HL_TAKER_PER_SIDE;
+      if (fetchWallet && slug === "hyperliquid") {
+        const recentFills = hlFillsData.filter((f) => f.time >= cutoffMs);
+        const recentFunding = hlFundingData.filter((f) => f.time >= cutoffMs);
+        const fundingTotal = recentFunding.reduce((s, f) => s + parseFloat(f.delta?.usdc ?? "0"), 0);
+        walletData = buildHlWalletData(recentFills, fundingTotal);
+      } else if (fetchWallet && slug === "gains") {
+        const usdcLogs = gainsLogsData.filter((l) => l.collateralIndex === 3);
+        const feesUsdc = usdcLogs.reduce((s, l) => s + Number(l.totalFees) / 1e6, 0);
+        const sizeUsdc = usdcLogs.reduce((s, l) => s + Number(l.posSize) / 1e6, 0);
+        walletData = {
+          events: usdcLogs.length,
+          feesUsdc,
+          positionSizeUsdc: sizeUsdc,
+          avgFeeRateBps: sizeUsdc > 0 ? (feesUsdc / sizeUsdc) * 10000 : 0,
+        } satisfies GainsWalletData;
+      }
+
+      return {
+        slug,
+        name: VENUE_NAMES[slug] ?? slug,
+        ratePerAction: rate,
+        rateBps: rate * 10000,
+        rateNote: RATE_NOTES[slug] ?? "Hardcoded rate",
+        wallet: walletData,
+      };
+    }
+
+    const venueAResult = buildVenueResult(venueA, rateA);
+    const venueBResult = buildVenueResult(venueB, rateB);
+
+    // Build comparison
+    const comparison: ComparisonResult = { aToBSim: null, bToASim: null };
+
+    // aToBSim: use venueA wallet fills to simulate venueB cost
+    if (venueAResult.wallet !== null) {
+      if (venueA === "hyperliquid") {
+        const hlW = venueAResult.wallet as HlWalletData;
+        if (hlW.fills > 0) {
+          // For Gains as venueB, use per-coin rates where available; else use avgPerSide
+          let bEquiv = 0;
+          let aNotionalUsed = 0;
+          let aFeesActual = 0;
+
+          if (venueB === "gains") {
+            for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
+              const notional = parseFloat(fill.px) * parseFloat(fill.sz);
+              const fee = parseFloat(fill.fee);
+              const coinRate = gainsData.perSide[fill.coin];
+              const effectiveRate = coinRate ?? gainsData.avgPerSide;
+              bEquiv += notional * effectiveRate;
+              aNotionalUsed += notional;
+              aFeesActual += fee;
+            }
+          } else {
+            aNotionalUsed = hlW.notionalUsd;
+            aFeesActual = hlW.feesUsd;
+            bEquiv = hlW.notionalUsd * rateB;
+          }
+
+          const saved = bEquiv - aFeesActual;
+          comparison.aToBSim = {
+            aNotionalWithBRate: aNotionalUsed,
+            aFeesActual,
+            bEquivFees: bEquiv,
+            saved,
+            multiple: aFeesActual > 0 ? bEquiv / aFeesActual : null,
+          };
+        }
+      } else if (venueA === "gains") {
+        const gainsW = venueAResult.wallet as GainsWalletData;
+        if (gainsW.events > 0) {
+          // Each FeesProcessed event = one action, positionSizeUsdc = notional
+          const bEquiv = gainsW.positionSizeUsdc * rateB;
+          const saved = bEquiv - gainsW.feesUsdc;
+          comparison.aToBSim = {
+            aNotionalWithBRate: gainsW.positionSizeUsdc,
+            aFeesActual: gainsW.feesUsdc,
+            bEquivFees: bEquiv,
+            saved,
+            multiple: gainsW.feesUsdc > 0 ? bEquiv / gainsW.feesUsdc : null,
+          };
+        }
+      }
+    }
+
+    // bToASim: use venueB wallet fills to simulate venueA cost
+    if (venueBResult.wallet !== null) {
+      if (venueB === "hyperliquid") {
+        const hlW = venueBResult.wallet as HlWalletData;
+        if (hlW.fills > 0) {
+          let aEquiv = 0;
+          let bNotionalUsed = 0;
+          let bFeesActual = 0;
+
+          if (venueA === "gains") {
+            for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
+              const notional = parseFloat(fill.px) * parseFloat(fill.sz);
+              const fee = parseFloat(fill.fee);
+              const coinRate = gainsData.perSide[fill.coin];
+              const effectiveRate = coinRate ?? gainsData.avgPerSide;
+              aEquiv += notional * effectiveRate;
+              bNotionalUsed += notional;
+              bFeesActual += fee;
+            }
+          } else {
+            bNotionalUsed = hlW.notionalUsd;
+            bFeesActual = hlW.feesUsd;
+            aEquiv = hlW.notionalUsd * rateA;
+          }
+
+          const saved = bFeesActual - aEquiv;
+          comparison.bToASim = {
+            bNotionalWithARate: bNotionalUsed,
+            bFeesActual,
+            aEquivFees: aEquiv,
+            saved,
+            multiple: bFeesActual > 0 ? aEquiv / bFeesActual : null,
+          };
+        }
+      } else if (venueB === "gains") {
+        const gainsW = venueBResult.wallet as GainsWalletData;
+        if (gainsW.events > 0) {
+          const aEquiv = gainsW.positionSizeUsdc * rateA;
+          const saved = gainsW.feesUsdc - aEquiv;
+          comparison.bToASim = {
+            bNotionalWithARate: gainsW.positionSizeUsdc,
+            bFeesActual: gainsW.feesUsdc,
+            aEquivFees: aEquiv,
+            saved,
+            multiple: gainsW.feesUsdc > 0 ? aEquiv / gainsW.feesUsdc : null,
+          };
+        }
+      }
+    }
 
     return NextResponse.json({
-      wallet: wallet.toLowerCase(),
+      wallet: walletProvided ? wallet.toLowerCase() : null,
       days,
       generatedAt: Date.now(),
-      hl: {
-        fills: recentFills.length,
-        notionalUsd: hlNotional,
-        feesUsd: hlFees,
-        fundingUsd: hlFundingTotal,
-        netCostUsd: hlFees - hlFundingTotal,
-        avgFeeRateBps: hlNotional > 0 ? (hlFees / hlNotional) * 10000 : 0,
-        topCoins,
-        recentFills: displayFills,
-      },
-      gains: {
-        events: usdcLogs.length,
-        feesUsdc: gainsFeesUsdc,
-        positionSizeUsdc: gainsSizeUsdc,
-        avgFeeRateBps: gainsSizeUsdc > 0 ? (gainsFeesUsdc / gainsSizeUsdc) * 10000 : 0,
-      },
-      comparison: {
-        hlNotionalOnGains,
-        hlFeesOnGainsCoins,
-        gainsEquivForHlNotional: gainsEquivForHl,
-        hlSavedVsGains: gainsEquivForHl - hlFeesOnGainsCoins,
-        hlCheaperMultiple: hlFeesOnGainsCoins > 0 ? gainsEquivForHl / hlFeesOnGainsCoins : null,
-        hlRoundTripRate: hlRoundTrip,
-        hlEquivForGainsVolume: hlEquivForGains,
-        gainsSavedVsHl: gainsFeesUsdc - hlEquivForGains,
-      },
-      gainsFeeRates: Object.fromEntries(
-        Object.entries(gainsFeeRates).filter(([coin]) => coinMap[coin]?.onGains)
-      ),
+      venueA: venueAResult,
+      venueB: venueBResult,
+      comparison,
     });
   } catch (err) {
     console.error("[fee-compare]", err);

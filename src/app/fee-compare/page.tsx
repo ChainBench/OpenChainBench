@@ -4,9 +4,9 @@ import { FeeCompareClient } from "@/components/fee-compare-client";
 
 export const metadata: Metadata = pageMetadata({
   path: "/fee-compare",
-  title: "Hyperliquid vs Gains fee comparison — analyze any wallet",
+  title: "Perp DEX fee comparison — any venue",
   description:
-    "Paste any wallet address and see exactly what was paid in fees on Hyperliquid or Gains, and what it would have cost on the other platform. Live on-chain data, no API key.",
+    "Compare taker fees between any two perp DEXs. Paste a wallet to see what was actually paid on Hyperliquid or Gains and what it would have cost elsewhere. Live on-chain data, no API key.",
 });
 
 export default function FeeComparePage() {
@@ -16,15 +16,15 @@ export default function FeeComparePage() {
         Fee comparison
       </p>
       <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
-        Hyperliquid vs Gains
+        Compare perp DEX fees
       </h1>
       <p className="mt-4 max-w-2xl text-base text-ink-soft leading-snug">
-        Paste a wallet address. We fetch actual fees paid on Hyperliquid
-        (fills API) and Gains (on-chain FeesProcessed events, Arbitrum)
-        then show what the same trades would have cost on the other platform.
+        Select any two venues to compare taker rates. When comparing Hyperliquid or Gains,
+        paste a wallet address to see real fees from your trade history and what those same
+        trades would have cost on the other platform.
       </p>
       <p className="mt-2 text-sm text-ink-faint">
-        No API key required. Data is fetched live from public endpoints.
+        No API key required. Rates fetched live from public endpoints.
       </p>
 
       <div className="mt-8">
