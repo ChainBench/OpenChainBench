@@ -16,36 +16,45 @@ const UPSTREAM = "https://kv.openchainbench.com/aggregate/latest.json";
 const UPSTREAM_TIMEOUT_MS = 25_000;
 
 export async function GET() {
-  let upstream: Response;
-  try {
-    upstream = await fetch(UPSTREAM, {
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      headers: { "Accept-Encoding": "gzip, br" },
-      cache: "no-store",
+  // Retry once: some Vercel function instances can't reach the Paris VPS
+  // (connection refused / reset). A second attempt uses a different
+  // outbound connection and typically succeeds. Without retry, a single
+  // bad instance poisons the 60s unstable_cache window for loadAggregateFromBlob,
+  // forcing all benchmark loads onto the slow Redis fan-out path.
+  let lastErr: string = "unknown";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let upstream: Response;
+    try {
+      upstream = await fetch(UPSTREAM, {
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        headers: { "Accept-Encoding": "gzip, br" },
+        cache: "no-store",
+      });
+    } catch (err) {
+      lastErr = String(err);
+      continue;
+    }
+
+    if (!upstream.ok) {
+      lastErr = `status ${upstream.status}`;
+      continue;
+    }
+
+    const body = await upstream.arrayBuffer();
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        // Vercel CDN caches 60 s + 5 min SWR — aligns with the materialize
+        // worker's publish cadence (~60 s). The sitemap and homepage get a
+        // warm edge hit after the first request.
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
     });
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "upstream fetch failed", detail: String(err) }),
-      { status: 502, headers: { "Content-Type": "application/json" } },
-    );
   }
 
-  if (!upstream.ok) {
-    return new Response(
-      JSON.stringify({ error: "upstream error", status: upstream.status }),
-      { status: 502, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  const body = await upstream.arrayBuffer();
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      // Vercel CDN caches 60 s + 5 min SWR — aligns with the materialize
-      // worker's publish cadence (~60 s). The sitemap and homepage get a
-      // warm edge hit after the first request.
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-    },
-  });
+  return new Response(
+    JSON.stringify({ error: "upstream fetch failed", detail: lastErr }),
+    { status: 502, headers: { "Content-Type": "application/json" } },
+  );
 }

@@ -14,9 +14,11 @@
  * That fan-out was the root cause of the "Awaiting samples" bursts
  * whenever SRH's connection pool went sideways.
  *
- * Failure model: any error (fetch throw, 4xx/5xx, malformed JSON,
- * schema mismatch, empty envelope) returns `null` so the caller can
- * fall through to the legacy Redis path. Never throws.
+ * Failure model: network errors (fetch throw, 4xx/5xx) are re-thrown so
+ * unstable_cache does not cache the failure and lets the next caller retry
+ * against a fresh Vercel function instance. Data errors (malformed JSON,
+ * schema mismatch, quorum check) return null so the caller can fall through
+ * to the legacy Redis path.
  */
 
 import { unstable_cache } from "next/cache";
@@ -24,12 +26,13 @@ import type { Benchmark } from "@/types/benchmark";
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { overlayEditorial, slimBenchmarkForCache } from "@/lib/spec";
 
-// In production, use the self-hosted Vercel CDN proxy (/api/aggregate)
-// so IAD1 functions pay ~1 ms (edge cache hit) instead of ~4 s crossing
-// the Atlantic to kv.openchainbench.com (Paris VPS, no CDN).
-// In dev/preview, hit the VPS directly — CDN caching doesn't apply.
+// On any Vercel deployment (production or preview), use the self-hosted
+// CDN proxy (/api/aggregate on openchainbench.com) so Vercel functions
+// pay ~1 ms (edge cache hit) instead of ~12 s fetching the 7.5 MB blob
+// directly from the Paris VPS across the Atlantic. The direct VPS path
+// is only used for local dev where the CDN proxy may not be reachable.
 const DEFAULT_URL =
-  process.env.VERCEL_ENV === "production"
+  process.env.VERCEL_ENV
     ? "https://openchainbench.com/api/aggregate"
     : "https://kv.openchainbench.com/aggregate/latest.json";
 const FETCH_TIMEOUT_MS = 20_000;
@@ -57,6 +60,13 @@ function isEnvelope(x: unknown): x is AggregateEnvelope {
 async function fetchAndProject(): Promise<Benchmark[] | null> {
   const url = process.env.AGGREGATE_BLOB_URL || DEFAULT_URL;
   let raw: unknown;
+  // Throw (not return null) on network errors so unstable_cache does not
+  // cache the failure for the full revalidate window. A cached null poisons
+  // every loadAllBenchmarksSafe() call for 60 s, forcing them all onto the
+  // slow Redis fan-out path until the window expires. Throwing causes
+  // unstable_cache to skip caching and lets the next caller retry, which
+  // will typically hit a different Vercel function instance that can reach
+  // the upstream without issues.
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -68,15 +78,14 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
       headers: { "Accept-Encoding": "gzip, br" },
     });
     if (!res.ok) {
-      console.warn(`[aggregate-blob] fetch ${url} → ${res.status}`);
-      return null;
+      throw new Error(`[aggregate-blob] fetch ${url} → ${res.status}`);
     }
     raw = await res.json();
   } catch (err) {
-    console.warn(
-      `[aggregate-blob] fetch failed: ${err instanceof Error ? err.message : err}`,
-    );
-    return null;
+    // Re-throw so unstable_cache does not cache this failure.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[aggregate-blob] fetch failed: ${msg}`);
+    throw err;
   }
   if (!isEnvelope(raw) || raw.v !== 1) {
     console.warn("[aggregate-blob] envelope schema mismatch");
