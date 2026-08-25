@@ -24,12 +24,13 @@ import type { Benchmark } from "@/types/benchmark";
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { overlayEditorial, slimBenchmarkForCache } from "@/lib/spec";
 
-// In production, use the self-hosted Vercel CDN proxy (/api/aggregate)
-// so IAD1 functions pay ~1 ms (edge cache hit) instead of ~4 s crossing
-// the Atlantic to kv.openchainbench.com (Paris VPS, no CDN).
-// In dev/preview, hit the VPS directly — CDN caching doesn't apply.
+// On any Vercel deployment (production or preview), use the self-hosted
+// CDN proxy (/api/aggregate on openchainbench.com) so Vercel functions
+// pay ~1 ms (edge cache hit) instead of ~12 s fetching the 7.5 MB blob
+// directly from the Paris VPS across the Atlantic. The direct VPS path
+// is only used for local dev where the CDN proxy may not be reachable.
 const DEFAULT_URL =
-  process.env.VERCEL_ENV === "production"
+  process.env.VERCEL_ENV
     ? "https://openchainbench.com/api/aggregate"
     : "https://kv.openchainbench.com/aggregate/latest.json";
 const FETCH_TIMEOUT_MS = 20_000;
