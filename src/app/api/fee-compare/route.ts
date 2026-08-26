@@ -531,7 +531,7 @@ function walletStats(slug: string, w: AnyWallet): { notional: number; fees: numb
   }
   if (slug === "gains") {
     const x = w as GainsWalletData;
-    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.feesUsdc } : null;
+    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.netCostUsdc } : null;
   }
   if (slug === "gmx-v2") {
     const x = w as GmxWalletData;
@@ -790,13 +790,13 @@ export async function GET(req: Request) {
             notionalUsed: bNotional,
             feesActual: bNetCost,
             equivFees: aEquiv,
-            saved: bNetCost - aEquiv,
+            saved: aEquiv - bNetCost,
             multiple: bNetCost > 0 ? aEquiv / bNetCost : null,
             fundingUsd: bFunding,
           };
           if (bNotional > 0) {
             venueBResult.effectiveRateBps = (bNetCost / bNotional) * 10000;
-            venueBResult.effectiveRateNote = `${((bFees / bNotional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueBResult.effectiveRateNote = `${((bNetCost / bNotional) * 10000).toFixed(2)} bps net (fees + funding)`;
             venueAResult.effectiveRateBps = (aEquiv / bNotional) * 10000;
             venueAResult.effectiveRateNote = `${((aEquiv / bNotional) * 10000).toFixed(2)} bps effective (your coins)`;
           }
@@ -809,7 +809,7 @@ export async function GET(req: Request) {
             notionalUsed: stats.notional,
             feesActual: stats.fees,
             equivFees,
-            saved: stats.fees - equivFees,
+            saved: equivFees - stats.fees,
             multiple: stats.fees > 0 ? equivFees / stats.fees : null,
           };
           if (stats.notional > 0) {
