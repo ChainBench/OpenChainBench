@@ -3,7 +3,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { keccak256 } from "js-sha3";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 50;
 
 const HL_API = "https://api.hyperliquid.xyz/info";
 const GAINS_VARS_URL = "https://backend-arbitrum.gains.trade/trading-variables";
@@ -499,23 +499,7 @@ async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<Dy
     page++;
   }
 
-  // fetch funding from perpetualPositions (netFunding = settled + unsettled)
-  let fundingUsd = 0;
-  try {
-    const pfRes = await fetch(
-      `${DYDX_INDEXER}/v4/perpetualPositions?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=100`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (pfRes.ok) {
-      const pfBody = (await pfRes.json()) as {
-        positions?: Array<{ netFunding?: string; closedAt?: string | null }>;
-      };
-      for (const p of pfBody.positions ?? []) {
-        fundingUsd += parseFloat(p.netFunding ?? "0");
-      }
-    }
-  } catch { /* funding is optional */ }
-
+  // Only count taker fills — maker fees are rebates and distort the comparison
   const takers = allFills.filter((f) => (f.liquidity ?? "").toUpperCase() !== "MAKER");
   let feesUsdc = 0;
   let notionalUsd = 0;
@@ -523,13 +507,12 @@ async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<Dy
     feesUsdc += parseFloat(f.fee);
     notionalUsd += parseFloat(f.price) * parseFloat(f.size);
   }
-  const netCostUsdc = feesUsdc - fundingUsd;
 
   return {
-    fills: allFills.length,
+    fills: takers.length,
     feesUsdc,
-    fundingUsd,
-    netCostUsdc,
+    fundingUsd: 0,
+    netCostUsdc: feesUsdc,
     notionalUsd,
     avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
   };
@@ -540,7 +523,7 @@ async function fetchGainsTrades(wallet: string, cutoffMs: number): Promise<Gains
   const all: GainsApiTrade[] = [];
   let cursor: number | undefined;
   let pages = 0;
-  const MAX_PAGES = 10;
+  const MAX_PAGES = 6;
 
   do {
     const params = new URLSearchParams({ chainId: "42161", limit: "100", startDate });
