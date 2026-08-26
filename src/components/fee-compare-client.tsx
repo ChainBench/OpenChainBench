@@ -55,6 +55,7 @@ type HlFillRow = {
   side: string;
   notional: number;
   hlFee: number;
+  equivFee?: number;
   closedPnl: number;
   isTaker: boolean;
 };
@@ -673,13 +674,18 @@ function HlTopCoinsCard({
 function HlTradeTable({
   fills,
   venueName,
+  venueSlug,
+  otherVenueName,
 }: {
   fills: HlFillRow[];
   venueName: string;
+  venueSlug: string;
+  otherVenueName?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
   const PREVIEW = 10;
   const rows = showAll ? fills : fills.slice(0, PREVIEW);
+  const hasEquiv = !!otherVenueName && fills.some((f) => f.equivFee !== undefined);
 
   if (fills.length === 0) return null;
 
@@ -687,8 +693,10 @@ function HlTradeTable({
     <div className="card-soft rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-ink/8">
         <div className="flex items-center gap-2.5">
-          <VenueLogo slug="hyperliquid" size={20} />
-          <p className="font-bold text-sm text-ink">{venueName} trade history</p>
+          <VenueLogo slug={venueSlug} size={20} />
+          <p className="font-bold text-sm text-ink">
+            {hasEquiv ? `${venueName} vs ${otherVenueName} — per trade` : `${venueName} trade history`}
+          </p>
         </div>
         <p className="text-xs text-ink-faint">{fills.length} fills</p>
       </div>
@@ -709,16 +717,29 @@ function HlTradeTable({
                 Notional
               </th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">
-                Fee paid
+                {venueName} fee
               </th>
-              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">
-                PnL
-              </th>
+              {hasEquiv && (
+                <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">
+                  {otherVenueName} fee
+                </th>
+              )}
+              {hasEquiv && (
+                <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">
+                  Diff
+                </th>
+              )}
+              {!hasEquiv && (
+                <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">
+                  PnL
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((f, i) => {
               const isOpen = f.closedPnl === 0 && !f.dir.toLowerCase().includes("close");
+              const diff = hasEquiv && f.equivFee !== undefined ? f.equivFee - f.hlFee : undefined;
               return (
                 <tr
                   key={i}
@@ -742,21 +763,37 @@ function HlTradeTable({
                   <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">
                     {fmtUsd(f.hlFee)}
                   </td>
-                  <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
-                    {isOpen ? (
-                      <span className="text-[10px] text-ink-faint/40">open</span>
-                    ) : f.closedPnl > 0 ? (
-                      <span className="text-emerald-500 font-semibold">
-                        +{fmtUsd(f.closedPnl)}
-                      </span>
-                    ) : f.closedPnl < 0 ? (
-                      <span className="text-red-400 font-semibold">
-                        {fmtUsd(f.closedPnl)}
-                      </span>
-                    ) : (
-                      <span className="text-ink-faint/30">$0</span>
-                    )}
-                  </td>
+                  {hasEquiv && f.equivFee !== undefined && (
+                    <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${
+                      f.equivFee < f.hlFee ? "text-emerald-500" : f.equivFee > f.hlFee ? "text-red-400" : "text-ink-faint"
+                    }`}>
+                      {fmtUsd(f.equivFee)}
+                    </td>
+                  )}
+                  {hasEquiv && diff !== undefined && (
+                    <td className={`px-5 py-3 text-right font-mono text-xs font-semibold hidden sm:table-cell ${
+                      diff > 0.001 ? "text-emerald-500" : diff < -0.001 ? "text-red-400" : "text-ink-faint"
+                    }`}>
+                      {diff > 0.001 ? `+${fmtUsd(diff)}` : diff < -0.001 ? fmtUsd(diff) : "—"}
+                    </td>
+                  )}
+                  {!hasEquiv && (
+                    <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
+                      {isOpen ? (
+                        <span className="text-[10px] text-ink-faint/40">open</span>
+                      ) : f.closedPnl > 0 ? (
+                        <span className="text-emerald-500 font-semibold">
+                          +{fmtUsd(f.closedPnl)}
+                        </span>
+                      ) : f.closedPnl < 0 ? (
+                        <span className="text-red-400 font-semibold">
+                          {fmtUsd(f.closedPnl)}
+                        </span>
+                      ) : (
+                        <span className="text-ink-faint/30">$0</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -856,13 +893,23 @@ function Results({ result }: { result: FeeCompareResult }) {
         <HlTopCoinsCard topCoins={hlVenueA.topCoins} venueName={venueA.name} />
       )}
       {hlVenueA && hlVenueA.recentFills.length > 0 && (
-        <HlTradeTable fills={hlVenueA.recentFills} venueName={venueA.name} />
+        <HlTradeTable
+          fills={hlVenueA.recentFills}
+          venueName={venueA.name}
+          venueSlug={venueA.slug}
+          otherVenueName={venueB.name}
+        />
       )}
       {hlVenueB && hlVenueB.topCoins.length > 0 && (
         <HlTopCoinsCard topCoins={hlVenueB.topCoins} venueName={venueB.name} />
       )}
       {hlVenueB && hlVenueB.recentFills.length > 0 && (
-        <HlTradeTable fills={hlVenueB.recentFills} venueName={venueB.name} />
+        <HlTradeTable
+          fills={hlVenueB.recentFills}
+          venueName={venueB.name}
+          venueSlug={venueB.slug}
+          otherVenueName={venueA.name}
+        />
       )}
       <Footnote venueA={venueA} venueB={venueB} />
     </div>

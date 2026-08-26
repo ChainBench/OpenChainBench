@@ -117,6 +117,7 @@ type HlWalletData = {
     side: string;
     notional: number;
     hlFee: number;
+    equivFee?: number;
     closedPnl: number;
     isTaker: boolean;
   }>;
@@ -563,6 +564,16 @@ export async function GET(req: Request) {
           0
         );
         walletData = buildHlWalletData(recentFills, fundingTotal);
+        // Annotate each fill with the equivalent fee on the other venue
+        const otherSlug = slug === venueA ? venueB : venueA;
+        const otherRate = slug === venueA ? rateB : rateA;
+        const hlW = walletData as HlWalletData;
+        hlW.recentFills = hlW.recentFills.map((fill) => ({
+          ...fill,
+          equivFee: otherSlug === "gains"
+            ? fill.notional * (gainsData.perSide[fill.coin] ?? gainsData.avgPerSide)
+            : fill.notional * otherRate,
+        }));
       } else if (fetchEvmWallet && slug === "gains") {
         const usdcLogs = gainsLogsData.filter((l) => l.collateralIndex === 3);
         const feesUsdc = usdcLogs.reduce(
