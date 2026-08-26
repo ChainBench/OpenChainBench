@@ -168,6 +168,9 @@ const BRANDS: Record<string, Brand> = {
   tcinfra:           { color: "#2C7DF7" }, // tcinfra tezos blue
   "oktc-official":   { color: "#101010", dark: true }, // okx dark
 
+  // ─── Dogecoin providers (bench 235) ───
+  blockcypher: { color: "#1565C0", dark: true }, // blockcypher deep blue
+
   // ─── Stellar ecosystem providers (bench № 210) ───
   gateway: { color: "#00C2A8" },        // gateway.fm teal
   sorobanrpc: { color: "#7B4FBF" },     // sorobanrpc violet
