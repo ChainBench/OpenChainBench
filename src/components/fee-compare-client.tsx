@@ -95,13 +95,27 @@ type GainsWalletData = {
 type GmxWalletData = {
   trades: number;
   feesUsdc: number;
+  borrowingFeesUsdc: number;
+  fundingFeesUsdc: number;
+  netCostUsdc: number;
   notionalUsd: number;
   avgFeeRateBps: number;
+  recentTrades: Array<{
+    timestamp: number;
+    sizeDeltaUsd: number;
+    isLong: boolean;
+    tradingFee: number;
+    borrowingFee: number;
+    fundingFee: number;
+    pnlUsd: number;
+  }>;
 };
 
 type DydxWalletData = {
   fills: number;
   feesUsdc: number;
+  fundingUsd: number;
+  netCostUsdc: number;
   notionalUsd: number;
   avgFeeRateBps: number;
 };
@@ -151,7 +165,9 @@ type FeeCompareResult = {
 function walletFees(slug: string, w: AnyWallet): number {
   if (slug === "hyperliquid") return (w as HlWalletData).netCostUsd;
   if (slug === "gains") return (w as GainsWalletData).netCostUsdc;
-  return (w as GmxWalletData | DydxWalletData).feesUsdc;
+  if (slug === "gmx-v2") return (w as GmxWalletData).netCostUsdc;
+  if (slug === "dydx") return (w as DydxWalletData).netCostUsdc;
+  return 0;
 }
 
 function walletVolume(slug: string, w: AnyWallet): number {
@@ -694,7 +710,84 @@ function WalletSide({
           </div>
         );
       })()}
-      {venue.slug !== "hyperliquid" && venue.slug !== "gains" && (
+      {venue.slug === "gmx-v2" && (() => {
+        const gW = w as GmxWalletData;
+        const hasBorrowing = gW.borrowingFeesUsdc > 0.5;
+        const hasFunding = Math.abs(gW.fundingFeesUsdc) > 0.5;
+        return (
+          <div className="bg-ink/4 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
+            </div>
+            <div className="border-t border-ink/8 pt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Trading fees</p>
+                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(gW.feesUsdc)}</p>
+              </div>
+              {hasBorrowing && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Borrowing fees</p>
+                  <p className="font-mono text-xs font-semibold text-red-400">−{fmtUsd(gW.borrowingFeesUsdc)}</p>
+                </div>
+              )}
+              {hasFunding && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Funding {gW.fundingFeesUsdc > 0 ? "paid" : "received"}</p>
+                  <p className={`font-mono text-xs font-semibold ${gW.fundingFeesUsdc > 0 ? "text-red-400" : "text-emerald-500"}`}>
+                    {gW.fundingFeesUsdc > 0 ? `−${fmtUsd(gW.fundingFeesUsdc)}` : `+${fmtUsd(Math.abs(gW.fundingFeesUsdc))}`}
+                  </p>
+                </div>
+              )}
+              {(hasBorrowing || hasFunding) && (
+                <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                  <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
+                  <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                    {fmtUsd(gW.netCostUsdc)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {venue.slug === "dydx" && (() => {
+        const dW = w as DydxWalletData;
+        const hasFunding = Math.abs(dW.fundingUsd) > 0.5;
+        return (
+          <div className="bg-ink/4 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
+            </div>
+            <div className="border-t border-ink/8 pt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Trading fees</p>
+                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(dW.feesUsdc)}</p>
+              </div>
+              {hasFunding && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Funding {dW.fundingUsd > 0 ? "received" : "paid"}</p>
+                  <p className={`font-mono text-xs font-semibold ${dW.fundingUsd > 0 ? "text-emerald-500" : "text-red-400"}`}>
+                    {dW.fundingUsd > 0 ? `+${fmtUsd(dW.fundingUsd)}` : `−${fmtUsd(Math.abs(dW.fundingUsd))}`}
+                  </p>
+                </div>
+              )}
+              {hasFunding && (
+                <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                  <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
+                  <p className={`font-mono text-xs font-bold ${dW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                    {fmtUsd(dW.netCostUsdc)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {venue.slug !== "hyperliquid" && venue.slug !== "gains" && venue.slug !== "gmx-v2" && venue.slug !== "dydx" && (
         <div className="bg-ink/4 rounded-xl p-3">
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
           <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(volume)}</p>
@@ -1060,6 +1153,83 @@ function GainsTradeTable({
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// GmxTradeTable
+// ──────────────────────────────────────────────────────────────────────
+
+function GmxTradeTable({
+  trades,
+  venueName,
+}: {
+  trades: GmxWalletData["recentTrades"];
+  venueName: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const PREVIEW = 10;
+  const rows = showAll ? trades : trades.slice(0, PREVIEW);
+
+  if (trades.length === 0) return null;
+
+  return (
+    <div className="card-soft rounded-2xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/8">
+        <div className="flex items-center gap-2.5">
+          <VenueLogo slug="gmx-v2" size={20} />
+          <p className="font-bold text-sm text-ink">{venueName} trade history</p>
+        </div>
+        <p className="text-xs text-ink-faint">{trades.length} trades</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink/8 text-left bg-ink/2">
+              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Date</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Direction</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Fee</th>
+              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => (
+              <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
+                <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
+                  {new Date(t.timestamp * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </td>
+                <td className="px-3 py-3 hidden sm:table-cell">
+                  <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ${t.isLong ? "bg-emerald-500/12 text-emerald-500" : "bg-red-400/12 text-red-400"}`}>
+                    {t.isLong ? "Long" : "Short"}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(t.sizeDeltaUsd)}</td>
+                <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">{fmtUsd(t.tradingFee)}</td>
+                <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
+                  {t.pnlUsd > 0.01 ? (
+                    <span className="text-emerald-500 font-semibold">+{fmtUsd(t.pnlUsd)}</span>
+                  ) : t.pnlUsd < -0.01 ? (
+                    <span className="text-red-400 font-semibold">{fmtUsd(t.pnlUsd)}</span>
+                  ) : (
+                    <span className="text-ink-faint/30">$0</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {trades.length > PREVIEW && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-ink/8 py-3.5 text-xs text-ink-faint hover:text-ink transition-colors font-medium"
+        >
+          {showAll ? <><ChevronUp size={13} />Show less</> : <><ChevronDown size={13} />Show all {trades.length} trades</>}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Footnote
 // ──────────────────────────────────────────────────────────────────────
 
@@ -1082,13 +1252,13 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
       )}
       {hasGmx && (
         <>
-          GMX v2: fills and rate from Subsquid indexer (
-          <code className="font-mono text-[10px]">positionFeeAmount / 1e6</code>). Rate = live avg of recent 50 trades.{" "}
+          GMX v2: Subsquid indexer with date filter and cursor pagination. Includes trading, borrowing, and funding fees.{" "}
         </>
       )}
       {hasDydx && (
         <>
-          dYdX v4: public indexer fills. Rate = 5 bps tier-0 (protocol-governed). Address must be{" "}
+          dYdX v4: public indexer with full pagination and date filter. Funding from{" "}
+          <code className="font-mono text-[10px]">perpetualPositions.netFunding</code>. Address must be{" "}
           <code className="font-mono text-[10px]">dydx1...</code> Cosmos format.{" "}
         </>
       )}
@@ -1118,6 +1288,8 @@ function Results({ result }: { result: FeeCompareResult }) {
       : null;
   const gainsVenueA = venueA.slug === "gains" && venueA.wallet ? (venueA.wallet as GainsWalletData) : null;
   const gainsVenueB = venueB.slug === "gains" && venueB.wallet ? (venueB.wallet as GainsWalletData) : null;
+  const gmxVenueA = venueA.slug === "gmx-v2" && venueA.wallet ? (venueA.wallet as GmxWalletData) : null;
+  const gmxVenueB = venueB.slug === "gmx-v2" && venueB.wallet ? (venueB.wallet as GmxWalletData) : null;
 
   return (
     <div className="space-y-4">
@@ -1150,6 +1322,12 @@ function Results({ result }: { result: FeeCompareResult }) {
       )}
       {gainsVenueB && gainsVenueB.recentTrades.length > 0 && (
         <GainsTradeTable trades={gainsVenueB.recentTrades} venueName={venueB.name} />
+      )}
+      {gmxVenueA && gmxVenueA.recentTrades.length > 0 && (
+        <GmxTradeTable trades={gmxVenueA.recentTrades} venueName={venueA.name} />
+      )}
+      {gmxVenueB && gmxVenueB.recentTrades.length > 0 && (
+        <GmxTradeTable trades={gmxVenueB.recentTrades} venueName={venueB.name} />
       )}
       <Footnote venueA={venueA} venueB={venueB} />
     </div>
