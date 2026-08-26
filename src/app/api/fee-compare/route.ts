@@ -241,9 +241,19 @@ async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
 async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
   const cached = rateCache["gmx-v2"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  // Filter to USDC-collateral only: other tokens have different decimals,
+  // making positionFeeAmount/1e6 astronomically wrong.
   const query = `{
     tradeActions(
-      where: { positionFeeAmount_isNull: false sizeDeltaUsd_gt: "0" orderType_in: [2, 3, 4] }
+      where: {
+        positionFeeAmount_isNull: false
+        sizeDeltaUsd_gt: "0"
+        orderType_in: [2, 3, 4]
+        initialCollateralTokenAddress_in: [
+          "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+          "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+        ]
+      }
       orderBy: timestamp_DESC
       limit: 50
     ) { sizeDeltaUsd positionFeeAmount }
@@ -373,6 +383,10 @@ async function fetchGmxTrades(wallet: string): Promise<GmxWalletData> {
           positionFeeAmount_isNull: false
           sizeDeltaUsd_gt: "0"
           orderType_in: [2, 3, 4]
+          initialCollateralTokenAddress_in: [
+            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+          ]
         }
         orderBy: timestamp_DESC
         limit: 200
