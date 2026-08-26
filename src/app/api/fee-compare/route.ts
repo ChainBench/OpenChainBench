@@ -450,6 +450,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const wallet = url.searchParams.get("wallet")?.trim() ?? "";
   const dydxAddress = url.searchParams.get("dydxAddress")?.trim() ?? "";
+  const rawNotional = parseFloat(url.searchParams.get("notional") ?? "0");
+  const simNotional = isFinite(rawNotional) && rawNotional > 0 ? Math.min(rawNotional, 1e9) : 0;
   const days = Math.min(
     180,
     Math.max(7, parseInt(url.searchParams.get("days") ?? "90", 10))
@@ -674,6 +676,14 @@ export async function GET(req: Request) {
       }
     }
 
+    const simulated = simNotional > 0 ? {
+      notional: simNotional,
+      aFees: simNotional * rateA,
+      bFees: simNotional * rateB,
+      saved: Math.abs(simNotional * rateA - simNotional * rateB),
+      cheaperSlug: rateA < rateB ? venueA : rateB < rateA ? venueB : null,
+    } : null;
+
     return NextResponse.json({
       wallet: walletProvided ? wallet.toLowerCase() : null,
       dydxAddress: dydxProvided ? dydxAddress : null,
@@ -682,6 +692,7 @@ export async function GET(req: Request) {
       venueA: venueAResult,
       venueB: venueBResult,
       comparison,
+      simulated,
     });
   } catch (err) {
     console.error("[fee-compare]", err);
