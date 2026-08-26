@@ -327,6 +327,7 @@ const RAW: Record<string, string> = {
   // (pairs alias to chain/asset logos in the ALIASES block below)
   chainlink: "/logos/chainlink.svg",
   dogecoin: "/logos/dogecoin.png",
+  blockcypher: "/logos/blockcypher.svg",
 
   // ─── Data / API providers (alternatives + products pages) ───
   alchemy: "/logos/alchemy.svg",
