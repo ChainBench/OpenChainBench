@@ -523,10 +523,7 @@ function WalletSide({
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <VenueLogo slug={venue.slug} size={24} />
-            <div>
-              <p className="font-bold text-sm text-ink">{venue.name}</p>
-              <p className="text-[11px] text-ink-faint mt-0.5">No activity found</p>
-            </div>
+            <p className="font-bold text-sm text-ink">{venue.name}</p>
           </div>
           <div className="bg-ink/4 rounded-xl p-3 space-y-1">
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">
