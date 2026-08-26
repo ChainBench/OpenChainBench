@@ -44,9 +44,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   // worker publish.
   revalidateTag("benchmarks", "default");
   revalidateTag("data-api-cohort", "default");
-  // Invalidate HL cohort caches (builder stats, history blob, leaderboard)
-  // so new builders added to Prometheus (e.g. fomo) surface on the next
-  // request without waiting for the 1h unstable_cache TTL to expire.
   revalidateTag("hl-cohort", "default");
   revalidateTag("hl-history", "default");
   return NextResponse.json({ revalidated: true, tags: ["bench-aggregate", "benchmarks", "data-api-cohort", "hl-cohort", "hl-history"] });
