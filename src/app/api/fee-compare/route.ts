@@ -228,10 +228,10 @@ async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
     signal: AbortSignal.timeout(8000),
   });
   const data = (await res.json()) as {
-    data?: { contractList?: Array<{ defaultTakerFeeRate?: number }> };
+    data?: { contractList?: Array<{ defaultTakerFeeRate?: string | number }> };
   };
   const contracts = data.data?.contractList ?? [];
-  const rates = contracts.map((c) => c.defaultTakerFeeRate ?? 0).filter((r) => r > 0);
+  const rates = contracts.map((c) => parseFloat(String(c.defaultTakerFeeRate ?? "0"))).filter((r) => r > 0);
   const rate = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0.00038;
   const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
   rateCache["edgex"] = entry;
