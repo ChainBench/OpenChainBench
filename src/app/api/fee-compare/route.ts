@@ -135,13 +135,27 @@ type GainsWalletData = {
 type GmxWalletData = {
   trades: number;
   feesUsdc: number;
+  borrowingFeesUsdc: number;
+  fundingFeesUsdc: number;
+  netCostUsdc: number;
   notionalUsd: number;
   avgFeeRateBps: number;
+  recentTrades: Array<{
+    timestamp: number;
+    sizeDeltaUsd: number;
+    isLong: boolean;
+    tradingFee: number;
+    borrowingFee: number;
+    fundingFee: number;
+    pnlUsd: number;
+  }>;
 };
 
 type DydxWalletData = {
   fills: number;
   feesUsdc: number;
+  fundingUsd: number;
+  netCostUsdc: number;
   notionalUsd: number;
   avgFeeRateBps: number;
 };
@@ -352,86 +366,170 @@ async function fetchHlFunding(wallet: string, startMs: number): Promise<HlFundin
   return Array.isArray(data) ? (data as HlFundingEvent[]) : [];
 }
 
-async function fetchGmxTrades(wallet: string): Promise<GmxWalletData> {
-  const query = `
-    query GmxTrades($account: String!) {
-      tradeActions(
-        where: {
-          account_eq: $account
-          positionFeeAmount_isNull: false
-          sizeDeltaUsd_gt: "0"
-          orderType_in: [2, 3, 4]
-          initialCollateralTokenAddress_in: [
-            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-            "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
-          ]
+async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWalletData> {
+  const fromTimestamp = Math.floor(cutoffMs / 1000);
+  const allTrades: Array<{
+    timestamp: number; sizeDeltaUsd: string; isLong: boolean;
+    positionFeeAmount: string; borrowingFeeAmount: string | null;
+    fundingFeeAmount: string | null; pnlUsd: string | null;
+  }> = [];
+  let cursor: string | null = null;
+  let pages = 0;
+
+  const USDC_ADDRS = [
+    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+  ];
+
+  do {
+    const query = `
+      query($account: String!, $from: Int!, $after: String) {
+        tradeActionsConnection(
+          where: {
+            account_eq: $account
+            timestamp_gte: $from
+            eventName_in: ["OrderExecuted"]
+            initialCollateralTokenAddress_in: ${JSON.stringify(USDC_ADDRS)}
+            sizeDeltaUsd_gt: "0"
+          }
+          first: 200
+          after: $after
+          orderBy: timestamp_DESC
+        ) {
+          edges {
+            node {
+              timestamp
+              sizeDeltaUsd
+              isLong
+              positionFeeAmount
+              borrowingFeeAmount
+              fundingFeeAmount
+              pnlUsd
+            }
+          }
+          pageInfo { hasNextPage endCursor }
         }
-        orderBy: timestamp_DESC
-        limit: 200
-      ) {
-        sizeDeltaUsd
-        positionFeeAmount
-        orderType
       }
-    }
-  `;
-  const res = await fetch(GMX_SUBSQUID, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { account: toChecksumAddress(wallet) } }),
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`GMX Subsquid ${res.status}`);
-  const body = (await res.json()) as {
-    data?: {
-      tradeActions: Array<{
-        sizeDeltaUsd: string;
-        positionFeeAmount: string;
-        orderType: number;
-      }>;
+    `;
+    const res = await fetch(GMX_SUBSQUID, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { account: toChecksumAddress(wallet), from: fromTimestamp, after: cursor } }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) break;
+    const body = (await res.json()) as {
+      data?: {
+        tradeActionsConnection?: {
+          edges: Array<{ node: typeof allTrades[0] }>;
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        };
+      };
     };
-  };
-  const trades = body.data?.tradeActions ?? [];
+    const conn = body.data?.tradeActionsConnection;
+    if (!conn) break;
+    allTrades.push(...conn.edges.map((e) => e.node));
+    cursor = conn.pageInfo.hasNextPage ? conn.pageInfo.endCursor : null;
+    pages++;
+  } while (cursor && pages < 10);
 
   let feesUsdc = 0;
+  let borrowingFeesUsdc = 0;
+  let fundingFeesUsdc = 0;
   let notionalUsd = 0;
-  for (const t of trades) {
-    feesUsdc += Number(BigInt(t.positionFeeAmount)) / 1e6;
-    // sizeDeltaUsd has 30 decimals; divide by 1e24 to get 6-decimal USD, then /1e6
-    notionalUsd +=
-      Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+  const recentTrades: GmxWalletData["recentTrades"] = [];
+
+  for (const t of allTrades) {
+    const tradingFee = Number(BigInt(t.positionFeeAmount ?? "0")) / 1e6;
+    const borrowingFee = Number(BigInt(t.borrowingFeeAmount ?? "0")) / 1e6;
+    // fundingFeeAmount can be negative (received); keep sign
+    const fundingFeeRaw = t.fundingFeeAmount ? BigInt(t.fundingFeeAmount) : BigInt(0);
+    const fundingFee = Number(fundingFeeRaw) / 1e6;
+    const notional = Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    const pnlUsd = t.pnlUsd ? Number(BigInt(t.pnlUsd) / BigInt("1000000000000000000000000")) / 1e6 : 0;
+
+    feesUsdc += tradingFee;
+    borrowingFeesUsdc += borrowingFee;
+    fundingFeesUsdc += fundingFee;
+    notionalUsd += notional;
+
+    if (recentTrades.length < 50) {
+      recentTrades.push({ timestamp: t.timestamp, sizeDeltaUsd: notional, isLong: t.isLong, tradingFee, borrowingFee, fundingFee, pnlUsd });
+    }
   }
 
+  const netCostUsdc = feesUsdc + borrowingFeesUsdc + fundingFeesUsdc;
+
   return {
-    trades: trades.length,
+    trades: allTrades.length,
     feesUsdc,
+    borrowingFeesUsdc,
+    fundingFeesUsdc,
+    netCostUsdc,
     notionalUsd,
     avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+    recentTrades,
   };
 }
 
-async function fetchDydxFills(dydxAddress: string): Promise<DydxWalletData> {
-  const res = await fetch(
-    `${DYDX_INDEXER}/v4/fills?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=100`,
-    { signal: AbortSignal.timeout(10000) }
-  );
-  if (!res.ok) throw new Error(`dYdX indexer ${res.status}`);
-  const body = (await res.json()) as {
-    fills?: Array<{ fee: string; price: string; size: string; liquidity?: string }>;
-  };
-  // Keep only taker fills (positive fee)
-  const fills = (body.fills ?? []).filter((f) => parseFloat(f.fee) > 0);
+async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<DydxWalletData> {
+  const allFills: Array<{ fee: string; price: string; size: string; liquidity?: string; createdAt: string }> = [];
+  let page = 1;
+  const limit = 100;
 
+  outer: while (page <= 20) {
+    const res = await fetch(
+      `${DYDX_INDEXER}/v4/fills?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=${limit}&page=${page}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!res.ok) break;
+    const body = (await res.json()) as {
+      fills?: Array<{ fee: string; price: string; size: string; liquidity?: string; createdAt: string }>;
+      totalResults?: number;
+    };
+    const pageFills = body.fills ?? [];
+    if (pageFills.length === 0) break;
+
+    for (const f of pageFills) {
+      if (new Date(f.createdAt).getTime() < cutoffMs) break outer;
+      allFills.push(f);
+    }
+
+    if (pageFills.length < limit) break;
+    page++;
+  }
+
+  // fetch funding from perpetualPositions (netFunding = settled + unsettled)
+  let fundingUsd = 0;
+  try {
+    const pfRes = await fetch(
+      `${DYDX_INDEXER}/v4/perpetualPositions?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=100`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (pfRes.ok) {
+      const pfBody = (await pfRes.json()) as {
+        positions?: Array<{ netFunding?: string; closedAt?: string | null }>;
+      };
+      for (const p of pfBody.positions ?? []) {
+        fundingUsd += parseFloat(p.netFunding ?? "0");
+      }
+    }
+  } catch { /* funding is optional */ }
+
+  const takers = allFills.filter((f) => (f.liquidity ?? "").toUpperCase() !== "MAKER");
   let feesUsdc = 0;
   let notionalUsd = 0;
-  for (const f of fills) {
+  for (const f of takers) {
     feesUsdc += parseFloat(f.fee);
     notionalUsd += parseFloat(f.price) * parseFloat(f.size);
   }
+  const netCostUsdc = feesUsdc - fundingUsd;
 
   return {
-    fills: fills.length,
+    fills: allFills.length,
     feesUsdc,
+    fundingUsd,
+    netCostUsdc,
     notionalUsd,
     avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
   };
@@ -535,11 +633,11 @@ function walletStats(slug: string, w: AnyWallet): { notional: number; fees: numb
   }
   if (slug === "gmx-v2") {
     const x = w as GmxWalletData;
-    return x.trades > 0 ? { notional: x.notionalUsd, fees: x.feesUsdc } : null;
+    return x.trades > 0 ? { notional: x.notionalUsd, fees: x.netCostUsdc } : null;
   }
   if (slug === "dydx") {
     const x = w as DydxWalletData;
-    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.feesUsdc } : null;
+    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.netCostUsdc } : null;
   }
   return null;
 }
@@ -620,7 +718,7 @@ export async function GET(req: Request) {
       }
       if (venueA === "gmx-v2" || venueB === "gmx-v2") {
         fetches.push(
-          fetchGmxTrades(wallet)
+          fetchGmxTrades(wallet, cutoffMs)
             .then((d) => {
               gmxWalletData = d;
             })
@@ -631,7 +729,7 @@ export async function GET(req: Request) {
 
     if (fetchDydxWallet) {
       fetches.push(
-        fetchDydxFills(dydxAddress)
+        fetchDydxFills(dydxAddress, cutoffMs)
           .then((d) => {
             dydxWalletData = d;
           })
