@@ -35,7 +35,11 @@ const DEFAULT_URL =
   process.env.VERCEL_ENV
     ? "https://openchainbench.com/api/aggregate"
     : "https://kv.openchainbench.com/aggregate/latest.json";
-const FETCH_TIMEOUT_MS = 20_000;
+// Needs to be > the Paris VPS response time (measured 18 s compressed,
+// 37-49 s uncompressed). Set to 65 s so cold-cache ISR misses on
+// /api/aggregate have enough headroom to complete before we give up and
+// fall through to the Redis fan-out path.
+const FETCH_TIMEOUT_MS = 65_000;
 const MIN_BENCHES = 40;
 
 type AggregateEnvelope = {
