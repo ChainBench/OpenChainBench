@@ -6,11 +6,8 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const HL_API = "https://api.hyperliquid.xyz/info";
-const ARB_RPC = "https://arb1.arbitrum.io/rpc";
-const GAINS_DIAMOND_ARB = "0xFF162c694eAA571f685030649814282eA457f169";
 const GAINS_VARS_URL = "https://backend-arbitrum.gains.trade/trading-variables";
-const FEES_PROCESSED_TOPIC =
-  "0x71555a7cc983000fe069574303ed2e47aa16417d297441f6d5e314bd6c58b2fe";
+const GAINS_HISTORY_API = "https://backend-global.gains.trade";
 const GMX_SUBSQUID = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql";
 const DYDX_INDEXER = "https://indexer.dydx.trade";
 
@@ -19,7 +16,6 @@ const HL_TAKER_FALLBACK = 0.00035;
 
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const DYDX_ADDRESS_RE = /^dydx1[a-z0-9]{38}$/;
-const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
 const RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -70,11 +66,24 @@ type HlFundingEvent = {
   delta: { usdc: string };
 };
 
-type GainsLog = {
-  topics: string[];
-  data: string;
-  blockNumber: string;
-  transactionHash: string;
+type GainsApiTrade = {
+  id: number;
+  date: string;
+  pair: string;
+  action: string;
+  price: number;
+  size: number;
+  leverage: number;
+  pnl_net: number;
+  collateralIndex: number;
+  meta?: {
+    tradeFeesData?: { realizedTradingFeesCollateral?: number };
+    uiRealizedPnlData?: {
+      realizedTradingFeesCollateral?: number;
+      realizedFundingFeesCollateral?: number;
+      realizedNewBorrowingFeesCollateral?: number;
+    };
+  };
 };
 
 type GainsTradingVars = {
@@ -106,8 +115,21 @@ type HlWalletData = {
 type GainsWalletData = {
   events: number;
   feesUsdc: number;
+  fundingFeesUsdc: number;
+  borrowingFeesUsdc: number;
+  netCostUsdc: number;
   positionSizeUsdc: number;
   avgFeeRateBps: number;
+  recentTrades: Array<{
+    date: string;
+    pair: string;
+    action: string;
+    notional: number;
+    tradingFee: number;
+    fundingFee: number;
+    borrowingFee: number;
+    pnl_net: number;
+  }>;
 };
 
 type GmxWalletData = {
@@ -308,53 +330,6 @@ async function resolveRate(slug: string): Promise<{ rate: number; note: string; 
   return { rate: 0.0005, note: "Documented rate", rateIsLive: false };
 }
 
-async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
-  const res = await fetch(ARB_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    signal: AbortSignal.timeout(15000),
-  });
-  const d = (await res.json()) as { result?: unknown; error?: { message: string } };
-  if (d.error) throw new Error(`RPC ${method}: ${d.error.message}`);
-  return d.result;
-}
-
-async function getLatestBlock(): Promise<number> {
-  const hex = (await rpcCall("eth_blockNumber", [])) as string;
-  return parseInt(hex, 16);
-}
-
-async function fetchGainsLogs(wallet: string, fromBlock: number, toBlock: number) {
-  const walletPadded =
-    "0x" + wallet.replace("0x", "").toLowerCase().padStart(64, "0");
-  const logs = (await rpcCall("eth_getLogs", [
-    {
-      address: GAINS_DIAMOND_ARB,
-      topics: [FEES_PROCESSED_TOPIC, null, walletPadded],
-      fromBlock: "0x" + fromBlock.toString(16),
-      toBlock: "0x" + toBlock.toString(16),
-    },
-  ])) as GainsLog[];
-
-  return logs
-    .map((log) => {
-      const collateralIndex = parseInt(log.topics[1] ?? "0x0", 16);
-      const data = log.data.replace("0x", "");
-      if (data.length < 192) return null;
-      const posSize = BigInt("0x" + data.slice(0, 64));
-      const orderType = parseInt(data.slice(64, 128), 16);
-      const totalFees = BigInt("0x" + data.slice(128, 192));
-      return { collateralIndex, orderType, posSize, totalFees };
-    })
-    .filter(Boolean) as Array<{
-    collateralIndex: number;
-    orderType: number;
-    posSize: bigint;
-    totalFees: bigint;
-  }>;
-}
-
 async function fetchHlFills(wallet: string): Promise<HlFill[]> {
   const res = await fetch(HL_API, {
     method: "POST",
@@ -460,6 +435,31 @@ async function fetchDydxFills(dydxAddress: string): Promise<DydxWalletData> {
     notionalUsd,
     avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
   };
+}
+
+async function fetchGainsTrades(wallet: string, cutoffMs: number): Promise<GainsApiTrade[]> {
+  const startDate = new Date(cutoffMs).toISOString();
+  const all: GainsApiTrade[] = [];
+  let cursor: number | undefined;
+  let pages = 0;
+  const MAX_PAGES = 10;
+
+  do {
+    const params = new URLSearchParams({ chainId: "42161", limit: "100", startDate });
+    if (cursor !== undefined) params.set("cursor", String(cursor));
+
+    const res = await fetch(
+      `${GAINS_HISTORY_API}/api/personal-trading-history/${wallet}?${params}`,
+      { signal: AbortSignal.timeout(12000) }
+    );
+    if (!res.ok) break;
+    const body = (await res.json()) as { data: GainsApiTrade[]; pagination: { hasMore: boolean; nextCursor?: number } };
+    all.push(...body.data);
+    cursor = body.pagination.hasMore ? body.pagination.nextCursor : undefined;
+    pages++;
+  } while (cursor !== undefined && pages < MAX_PAGES);
+
+  return all;
 }
 
 function buildHlWalletData(
@@ -596,12 +596,7 @@ export async function GET(req: Request) {
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
-    let gainsLogsData: Array<{
-      collateralIndex: number;
-      orderType: number;
-      posSize: bigint;
-      totalFees: bigint;
-    }> = [];
+    let gainsTradesData: GainsApiTrade[] = [];
     let gmxWalletData: GmxWalletData | null = null;
     let dydxWalletData: DydxWalletData | null = null;
 
@@ -620,13 +615,7 @@ export async function GET(req: Request) {
       }
       if (venueA === "gains" || venueB === "gains") {
         fetches.push(
-          getLatestBlock().then(async (latestBlock) => {
-            const fromBlock = Math.max(
-              0,
-              latestBlock - Math.ceil(days * BLOCKS_PER_DAY)
-            );
-            gainsLogsData = await fetchGainsLogs(wallet, fromBlock, latestBlock);
-          })
+          fetchGainsTrades(wallet, cutoffMs).then((d) => { gainsTradesData = d; }).catch(() => {})
         );
       }
       if (venueA === "gmx-v2" || venueB === "gmx-v2") {
@@ -674,22 +663,39 @@ export async function GET(req: Request) {
             : fill.notional * otherRate,
         }));
       } else if (fetchEvmWallet && slug === "gains") {
-        const usdcLogs = gainsLogsData.filter((l) => l.collateralIndex === 3);
-        const feesUsdc = usdcLogs.reduce(
-          (s, l) => s + Number(l.totalFees) / 1e6,
-          0
-        );
-        const sizeUsdc = usdcLogs.reduce(
-          (s, l) => s + Number(l.posSize) / 1e6,
-          0
-        );
-        const gd: GainsWalletData = {
-          events: usdcLogs.length,
+        const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
+        const usdcTrades = gainsTradesData.filter((t) => t.collateralIndex === 3);
+        let feesUsdc = 0;
+        let fundingFeesUsdc = 0;
+        let borrowingFeesUsdc = 0;
+        let notionalUsd = 0;
+        const recentTrades: GainsWalletData["recentTrades"] = [];
+
+        for (const t of usdcTrades) {
+          const tradingFee = t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? 0;
+          const isClose = CLOSE_ACTIONS.has(t.action);
+          const fundingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedFundingFeesCollateral ?? 0) : 0;
+          const borrowingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedNewBorrowingFeesCollateral ?? 0) : 0;
+          feesUsdc += tradingFee;
+          fundingFeesUsdc += fundingFee;
+          borrowingFeesUsdc += borrowingFee;
+          notionalUsd += t.size * t.leverage;
+          if (recentTrades.length < 50) {
+            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: t.size * t.leverage, tradingFee, fundingFee, borrowingFee, pnl_net: t.pnl_net });
+          }
+        }
+
+        const netCostUsdc = feesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
+        walletData = {
+          events: usdcTrades.length,
           feesUsdc,
-          positionSizeUsdc: sizeUsdc,
-          avgFeeRateBps: sizeUsdc > 0 ? (feesUsdc / sizeUsdc) * 10000 : 0,
-        };
-        walletData = gd;
+          fundingFeesUsdc,
+          borrowingFeesUsdc,
+          netCostUsdc,
+          positionSizeUsdc: notionalUsd,
+          avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+          recentTrades,
+        } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
         walletData = gmxWalletData;
       } else if (fetchDydxWallet && slug === "dydx" && dydxWalletData) {
