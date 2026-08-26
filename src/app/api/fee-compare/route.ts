@@ -474,18 +474,26 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
 
 async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<DydxWalletData> {
   const allFills: Array<{ fee: string; price: string; size: string; liquidity?: string; createdAt: string }> = [];
-  let page = 1;
+  // Use createdBeforeOrAt cursor pagination — newest first, no page= param
+  // page=N returns oldest-first and breaks the cutoff early-exit logic
+  let cursor: string | null = null;
   const limit = 100;
 
-  outer: while (page <= 20) {
+  outer: for (let i = 0; i < 20; i++) {
+    const params = new URLSearchParams({
+      address: dydxAddress,
+      subaccountNumber: "0",
+      limit: String(limit),
+    });
+    if (cursor) params.set("createdBeforeOrAt", cursor);
+
     const res = await fetch(
-      `${DYDX_INDEXER}/v4/fills?address=${encodeURIComponent(dydxAddress)}&subaccountNumber=0&limit=${limit}&page=${page}`,
+      `${DYDX_INDEXER}/v4/fills?${params}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) break;
     const body = (await res.json()) as {
       fills?: Array<{ fee: string; price: string; size: string; liquidity?: string; createdAt: string }>;
-      totalResults?: number;
     };
     const pageFills = body.fills ?? [];
     if (pageFills.length === 0) break;
@@ -496,7 +504,8 @@ async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<Dy
     }
 
     if (pageFills.length < limit) break;
-    page++;
+    // Advance cursor to the oldest fill on this page
+    cursor = pageFills[pageFills.length - 1].createdAt;
   }
 
   // Only count taker fills — maker fees are rebates and distort the comparison
