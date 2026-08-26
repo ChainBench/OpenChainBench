@@ -323,16 +323,20 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
-        if (CHAIN_BY_SLUG.has(slug)) return null;
-        if (await isHlBuilderSlug(slug)) return null;
-        // Perp venue slugs (except polymarket) 308 to /perp/<slug>.
-        if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
-        // Providers removed from all benches: stale Redis data can keep them
-        // in getProviders() while the page 410s. Explicit exclusion here
-        // prevents the smoke-gate rollback until the cache flushes.
-        if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
-        const p = await getProvider(slug);
-        return p ? slug : null;
+        try {
+          if (CHAIN_BY_SLUG.has(slug)) return null;
+          if (await isHlBuilderSlug(slug)) return null;
+          // Perp venue slugs (except polymarket) 308 to /perp/<slug>.
+          if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
+          // Providers removed from all benches: stale Redis data can keep them
+          // in getProviders() while the page 410s. Explicit exclusion here
+          // prevents the smoke-gate rollback until the cache flushes.
+          if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
+          const p = await getProvider(slug);
+          return p ? slug : null;
+        } catch {
+          return null;
+        }
       }),
     )
   ).filter((s): s is string => s !== null);
@@ -356,11 +360,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const HEX_BUILDER_SLUG = /^0x[a-f0-9]+$/;
   const hlBuilderSlugs = (
     await Promise.all(
-      providerSlugs.map(async (slug) =>
-        !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderWithHistory(slug))
-          ? slug
-          : null,
-      ),
+      providerSlugs.map(async (slug) => {
+        try {
+          return !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderWithHistory(slug))
+            ? slug
+            : null;
+        } catch {
+          return null;
+        }
+      }),
     )
   ).filter((s): s is string => s !== null);
   const hlBuilderRoutes: MetadataRoute.Sitemap = hlBuilderSlugs.map(
@@ -479,8 +487,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   };
 
   for (const pair of COMPARE_PAIRS) {
-    const p = await getProvider(pair.providerA);
-    const q = await getProvider(pair.providerB);
+    let p: Awaited<ReturnType<typeof getProvider>>, q: typeof p;
+    try {
+      p = await getProvider(pair.providerA);
+      q = await getProvider(pair.providerB);
+    } catch {
+      continue;
+    }
     if (!p || !q) continue;
     emittedPairSlugs.add(pair.slug);
     priorityByPairSlug.set(pair.slug, 0.7);
@@ -570,7 +583,14 @@ export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("sitemap build timeout")), 20_000),
     );
-    return await Promise.race([buildFullSitemap(), timeout]);
+    // Attach a no-op .catch() to prevent unhandled-rejection crashes if
+    // buildFullSitemap() rejects AFTER the race has already settled (via
+    // timeout). Without this, the orphaned promise's rejection propagates
+    // to Node's unhandledRejection handler and Vercel returns 500 even
+    // though we already sent a 200 static fallback.
+    const full = buildFullSitemap();
+    full.catch(() => {});
+    return await Promise.race([full, timeout]);
   } catch (err) {
     console.warn(
       "[sitemap] full build threw or timed out, returning static fallback:",
