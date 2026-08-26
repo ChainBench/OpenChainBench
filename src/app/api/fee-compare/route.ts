@@ -489,7 +489,7 @@ async function fetchDydxFills(dydxAddress: string, cutoffMs: number): Promise<Dy
 
     const res = await fetch(
       `${DYDX_INDEXER}/v4/fills?${params}`,
-      { signal: AbortSignal.timeout(10000) }
+      { signal: AbortSignal.timeout(10000), cache: "no-store" }
     );
     if (!res.ok) break;
     const body = (await res.json()) as {
