@@ -18,12 +18,9 @@ import {
 const COMPARABLE_VENUES = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1" },
   { slug: "gains",       name: "Gains",       chain: "Arbitrum / Base" },
-  { slug: "lighter",     name: "Lighter",     chain: "Lighter L2" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos" },
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet" },
-  { slug: "extended",    name: "Extended",    chain: "Starknet" },
-  { slug: "aster",       name: "Aster",       chain: "BNB Chain" },
   { slug: "edgex",       name: "EdgeX",       chain: "zkSync" },
 ] as const;
 
@@ -35,12 +32,9 @@ const EVM_WALLET_VENUES: VenueSlug[] = ["hyperliquid", "gains", "gmx-v2"];
 const VENUE_LOGOS: Partial<Record<VenueSlug, string>> = {
   hyperliquid: "/logos/hyperliquid.png",
   gains:       "/logos/gains.png",
-  lighter:     "/logos/lighter.svg",
   dydx:        "/logos/dydx.svg",
   "gmx-v2":    "/logos/gmx.svg",
   paradex:     "/logos/paradex.jpg",
-  extended:    "/logos/extended.svg",
-  aster:       "/logos/aster.svg",
   edgex:       "/logos/edgex.jpg",
 };
 
@@ -834,33 +828,27 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
   return (
     <p className="text-[11px] text-ink-faint px-1 leading-relaxed">
       {hasHl && (
-        <>Hyperliquid fees: exact fills from Hyperliquid API (taker = 3.5 bps/side). </>
+        <>Hyperliquid: taker rate fetched live from HL fee schedule API. Fills via HL info endpoint. </>
       )}
       {hasGains && (
         <>
-          Gains fees: on-chain{" "}
-          <code className="font-mono text-[10px]">FeesProcessed</code> events from{" "}
-          <code className="font-mono text-[10px]">0xFF16...7f169</code> (Arbitrum). Gains
-          simulation uses live per-coin rates from{" "}
-          <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>.{" "}
+          Gains: on-chain <code className="font-mono text-[10px]">FeesProcessed</code> events (Arbitrum).
+          Rates fetched live per-coin from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>.{" "}
         </>
       )}
       {hasGmx && (
         <>
-          GMX v2 fees: from Subsquid indexer (
-          <code className="font-mono text-[10px]">positionFeeAmount / 1e6</code> USDC).
-          Last 200 trades.{" "}
+          GMX v2: fills and rate from Subsquid indexer (
+          <code className="font-mono text-[10px]">positionFeeAmount / 1e6</code>). Rate = live avg of recent 50 trades.{" "}
         </>
       )}
       {hasDydx && (
         <>
-          dYdX v4 fees: public indexer, last 100 taker fills. Address must be{" "}
+          dYdX v4: public indexer fills. Rate = 5 bps tier-0 (protocol-governed). Address must be{" "}
           <code className="font-mono text-[10px]">dydx1...</code> Cosmos format.{" "}
         </>
       )}
-      Other venue rates are taker-fee-only (no spread), sourced from official documentation
-      or on-chain fee parameters as verified by our bench harness. Funding and borrowing
-      fees are excluded from all comparisons.
+      Paradex and EdgeX rates fetched live from their public APIs. Funding excluded from all comparisons.
     </p>
   );
 }
