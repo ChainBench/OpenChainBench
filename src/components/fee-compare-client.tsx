@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -594,32 +594,48 @@ function WalletSide({
       </div>
 
       {/* Venue-specific extra stats */}
-      {venue.slug === "hyperliquid" && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-ink/4 rounded-xl p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
-            <p className="font-mono font-semibold text-ink mt-1 text-sm">
-              {fmtUsd(volume)}
-            </p>
+      {venue.slug === "hyperliquid" && (() => {
+        const hlW = w as HlWalletData;
+        const hasFunding = Math.abs(hlW.fundingUsd) > 0.5;
+        return (
+          <div className="bg-ink/4 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
+            </div>
+            <div className="border-t border-ink/8 pt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Trading fees</p>
+                <p className="font-mono text-xs font-semibold text-ink">
+                  {hlW.feesUsd < -0.01
+                    ? <span className="text-emerald-500">+{fmtUsd(Math.abs(hlW.feesUsd))}</span>
+                    : fmtUsd(hlW.feesUsd)}
+                </p>
+              </div>
+              {hasFunding && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">
+                    Funding {hlW.fundingUsd > 0 ? "received" : "paid"}
+                  </p>
+                  <p className={`font-mono text-xs font-semibold ${hlW.fundingUsd > 0 ? "text-emerald-500" : "text-red-400"}`}>
+                    {hlW.fundingUsd > 0
+                      ? `+${fmtUsd(hlW.fundingUsd)}`
+                      : `−${fmtUsd(Math.abs(hlW.fundingUsd))}`}
+                  </p>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
+                <p className={`font-mono text-xs font-bold ${hlW.netCostUsd < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                  {hlW.netCostUsd < -0.01
+                    ? `+${fmtUsd(Math.abs(hlW.netCostUsd))}`
+                    : fmtUsd(hlW.netCostUsd)}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="bg-ink/4 rounded-xl p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Net cost</p>
-            <p className="font-mono font-semibold text-ink mt-1 text-sm">
-              {fmtUsd((w as HlWalletData).netCostUsd)}
-            </p>
-            {Math.abs((w as HlWalletData).fundingUsd) > 0.5 ? (
-              <p className="text-[10px] text-ink-faint/60 mt-0.5">
-                fees {fmtUsd(fees)}{" "}
-                {(w as HlWalletData).fundingUsd > 0
-                  ? `+ ${fmtUsd((w as HlWalletData).fundingUsd)} rcvd`
-                  : `– ${fmtUsd(Math.abs((w as HlWalletData).fundingUsd))} paid`}
-              </p>
-            ) : (
-              <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
       {venue.slug !== "hyperliquid" && (
         <div className="bg-ink/4 rounded-xl p-3">
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
@@ -978,15 +994,36 @@ function Results({ result }: { result: FeeCompareResult }) {
 // FeeCompareClient
 // ──────────────────────────────────────────────────────────────────────
 
-export function FeeCompareClient() {
-  const [venueA, setVenueA] = useState<VenueSlug>("hyperliquid");
-  const [venueB, setVenueB] = useState<VenueSlug>("gains");
-  const [wallet, setWallet] = useState("");
+type InitialProps = {
+  initialVenueA?: VenueSlug;
+  initialVenueB?: VenueSlug;
+  initialWallet?: string;
+  initialDays?: number;
+};
+
+export function FeeCompareClient({
+  initialVenueA = "hyperliquid",
+  initialVenueB = "gains",
+  initialWallet = "",
+  initialDays = 90,
+}: InitialProps = {}) {
+  const [venueA, setVenueA] = useState<VenueSlug>(initialVenueA);
+  const [venueB, setVenueB] = useState<VenueSlug>(initialVenueB);
+  const [wallet, setWallet] = useState(initialWallet);
   const [dydxAddress, setDydxAddress] = useState("");
-  const [days, setDays] = useState(90);
+  const [days, setDays] = useState(initialDays);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FeeCompareResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const didAutoSubmit = useRef(false);
+
+  useEffect(() => {
+    if (!didAutoSubmit.current && initialWallet) {
+      didAutoSubmit.current = true;
+      analyze(initialVenueA, initialVenueB, initialWallet, initialDays);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const needsEvmWallet =
     EVM_WALLET_VENUES.includes(venueA) || EVM_WALLET_VENUES.includes(venueB);
@@ -1004,15 +1041,17 @@ export function FeeCompareClient() {
     setResult(null);
   }
 
-  async function analyze() {
-    const trimmed = wallet.trim();
+  async function analyze(overrideVenueA?: VenueSlug, overrideVenueB?: VenueSlug, overrideWallet?: string, overrideDays?: number) {
+    const va = overrideVenueA ?? venueA;
+    const vb = overrideVenueB ?? venueB;
+    const trimmed = (overrideWallet ?? wallet).trim();
     const dydxTrimmed = dydxAddress.trim();
 
-    if (needsEvmWallet && trimmed && !/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
+    if ((EVM_WALLET_VENUES.includes(va) || EVM_WALLET_VENUES.includes(vb)) && trimmed && !/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
       setError("Enter a valid Ethereum address (0x...)");
       return;
     }
-    if (needsDydxAddr && dydxTrimmed && !/^dydx1[a-z0-9]{38}$/.test(dydxTrimmed)) {
+    if ((va === "dydx" || vb === "dydx") && dydxTrimmed && !/^dydx1[a-z0-9]{38}$/.test(dydxTrimmed)) {
       setError("Enter a valid dYdX address (dydx1...)");
       return;
     }
@@ -1022,7 +1061,7 @@ export function FeeCompareClient() {
     setResult(null);
 
     try {
-      const params = new URLSearchParams({ venueA, venueB, days: String(days) });
+      const params = new URLSearchParams({ venueA: va, venueB: vb, days: String(overrideDays ?? days) });
       if (trimmed) params.set("wallet", trimmed);
       if (dydxTrimmed) params.set("dydxAddress", dydxTrimmed);
 
@@ -1036,7 +1075,12 @@ export function FeeCompareClient() {
         );
         return;
       }
-      setResult((await res.json()) as FeeCompareResult);
+      const data = (await res.json()) as FeeCompareResult;
+      setResult(data);
+      if (trimmed) {
+        const newPath = `/fee-compare/${va}/${vb}/${trimmed}`;
+        window.history.pushState({}, "", newPath);
+      }
     } catch {
       setError("Network error — check your connection.");
     } finally {
@@ -1139,7 +1183,7 @@ export function FeeCompareClient() {
           </div>
           <button
             type="button"
-            onClick={analyze}
+            onClick={() => analyze()}
             disabled={loading}
             className="ml-auto flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-paper disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
