@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
+export const preferredRegion = ["cdg1", "fra1", "ams1"];
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
