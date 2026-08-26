@@ -577,11 +577,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    // 20 s: tight enough to reply well within the smoke-test's 90 s window
-    // even if the static fallback itself takes a few seconds. The Vercel
-    // maxDuration on the route is 60 s; this leaves 40 s of headroom.
+    // 55 s: the Vercel maxDuration on the route is 60 s. With /api/aggregate
+    // ISR-cached (revalidate=60 on that route) warm requests return in <1 ms
+    // and the full sitemap completes in ~10 s. Cold-start requests (first hit
+    // after deployment) may take 18-49 s for the aggregate; 55 s gives enough
+    // headroom while leaving 5 s for buildStaticFallback() before Vercel kills
+    // the function.
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("sitemap build timeout")), 20_000),
+      setTimeout(() => reject(new Error("sitemap build timeout")), 55_000),
     );
     // Attach a no-op .catch() to prevent unhandled-rejection crashes if
     // buildFullSitemap() rejects AFTER the race has already settled (via
