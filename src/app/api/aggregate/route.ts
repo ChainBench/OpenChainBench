@@ -11,9 +11,17 @@
 // of kv.openchainbench.com to get near-zero latency from any Vercel
 // function in the same region.
 export const runtime = "nodejs";
+// ISR: generate once, serve from Vercel Data Cache for 60 s, regenerate
+// in background. Keeps s-maxage in the response (Next.js strips it when
+// the route uses cache:"no-store" fetches internally, which makes the
+// route dynamic and prevents CDN caching — removing that flag fixes it).
+export const revalidate = 60;
 
 const UPSTREAM = "https://kv.openchainbench.com/aggregate/latest.json";
-const UPSTREAM_TIMEOUT_MS = 25_000;
+// Paris VPS → IAD1 with 7.3 MB payload: measured 37-49 s uncompressed.
+// With Accept-Encoding:gzip Caddy compresses to ~2.3 MB in ~18 s. Set
+// the timeout to 70 s so cold-cache first requests always complete.
+const UPSTREAM_TIMEOUT_MS = 70_000;
 
 export async function GET() {
   // Retry once: some Vercel function instances can't reach the Paris VPS
@@ -28,7 +36,10 @@ export async function GET() {
       upstream = await fetch(UPSTREAM, {
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
         headers: { "Accept-Encoding": "gzip, br" },
-        cache: "no-store",
+        // No cache:"no-store" here: that flag opts the route into
+        // dynamic mode and causes Next.js to strip s-maxage from our
+        // response headers, breaking Vercel CDN caching. The ISR
+        // revalidate=60 above handles freshness instead.
       });
     } catch (err) {
       lastErr = String(err);
