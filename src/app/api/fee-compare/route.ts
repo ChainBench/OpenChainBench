@@ -527,7 +527,7 @@ function toChecksumAddress(address: string): string {
 function walletStats(slug: string, w: AnyWallet): { notional: number; fees: number } | null {
   if (slug === "hyperliquid") {
     const x = w as HlWalletData;
-    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.feesUsd } : null;
+    return x.fills > 0 ? { notional: x.notionalUsd, fees: x.netCostUsd } : null;
   }
   if (slug === "gains") {
     const x = w as GainsWalletData;
@@ -727,17 +727,19 @@ export async function GET(req: Request) {
             aNotional += notional;
             aFees += fee;
           }
+          const aFunding = hlW.fundingUsd;
+          const aNetCost = aFees - aFunding;
           comparison.aToBSim = {
             notionalUsed: aNotional,
-            feesActual: aFees,
+            feesActual: aNetCost,
             equivFees: bEquiv,
-            saved: bEquiv - aFees,
-            multiple: aFees > 0 ? bEquiv / aFees : null,
-            fundingUsd: (venueAResult.wallet as HlWalletData).fundingUsd,
+            saved: bEquiv - aNetCost,
+            multiple: aNetCost > 0 ? bEquiv / aNetCost : null,
+            fundingUsd: aFunding,
           };
           if (aNotional > 0) {
-            venueAResult.effectiveRateBps = (aFees / aNotional) * 10000;
-            venueAResult.effectiveRateNote = `${((aFees / aNotional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueAResult.effectiveRateBps = (aNetCost / aNotional) * 10000;
+            venueAResult.effectiveRateNote = `${((aNetCost / aNotional) * 10000).toFixed(2)} bps net (fees + funding)`;
             venueBResult.effectiveRateBps = (bEquiv / aNotional) * 10000;
             venueBResult.effectiveRateNote = `${((bEquiv / aNotional) * 10000).toFixed(2)} bps effective (your coins)`;
           }
@@ -776,16 +778,18 @@ export async function GET(req: Request) {
             bNotional += notional;
             bFees += fee;
           }
+          const bFunding = hlW.fundingUsd;
+          const bNetCost = bFees - bFunding;
           comparison.bToASim = {
             notionalUsed: bNotional,
-            feesActual: bFees,
+            feesActual: bNetCost,
             equivFees: aEquiv,
-            saved: bFees - aEquiv,
-            multiple: bFees > 0 ? aEquiv / bFees : null,
-            fundingUsd: (venueBResult.wallet as HlWalletData).fundingUsd,
+            saved: bNetCost - aEquiv,
+            multiple: bNetCost > 0 ? aEquiv / bNetCost : null,
+            fundingUsd: bFunding,
           };
           if (bNotional > 0) {
-            venueBResult.effectiveRateBps = (bFees / bNotional) * 10000;
+            venueBResult.effectiveRateBps = (bNetCost / bNotional) * 10000;
             venueBResult.effectiveRateNote = `${((bFees / bNotional) * 10000).toFixed(2)} bps actual (your fills)`;
             venueAResult.effectiveRateBps = (aEquiv / bNotional) * 10000;
             venueAResult.effectiveRateNote = `${((aEquiv / bNotional) * 10000).toFixed(2)} bps effective (your coins)`;
