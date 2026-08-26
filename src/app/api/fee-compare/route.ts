@@ -4,6 +4,8 @@ import { keccak256 } from "js-sha3";
 
 export const runtime = "nodejs";
 export const maxDuration = 50;
+// dYdX indexer geoblocks US IPs — force function to run in EU
+export const preferredRegion = ["cdg1", "fra1", "ams1"];
 
 const HL_API = "https://api.hyperliquid.xyz/info";
 const GAINS_VARS_URL = "https://backend-arbitrum.gains.trade/trading-variables";
