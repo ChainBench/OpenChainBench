@@ -122,14 +122,6 @@ type ComparisonResult = {
   bToASim: SimResult | null;
 };
 
-type SimulatedResult = {
-  notional: number;
-  aFees: number;
-  bFees: number;
-  saved: number;
-  cheaperSlug: string | null;
-};
-
 type FeeCompareResult = {
   wallet: string | null;
   dydxAddress: string | null;
@@ -138,7 +130,6 @@ type FeeCompareResult = {
   venueA: VenueResult;
   venueB: VenueResult;
   comparison: ComparisonResult;
-  simulated: SimulatedResult | null;
 };
 
 // ──────────────────────────────────────────────────────────────────────
@@ -476,16 +467,51 @@ function WalletSide({
   venue,
   otherVenue,
   sim,
+  crossSim,
 }: {
   venue: VenueResult;
   otherVenue: VenueResult;
   sim: SimResult | null;
+  crossSim?: SimResult | null;
 }) {
   const w = venue.wallet;
-  if (!w) return <p className="text-sm text-ink-faint">No {venue.name} activity</p>;
+  const hasActivity = w !== null && walletHasActivity(venue.slug, w);
 
-  const hasActivity = walletHasActivity(venue.slug, w);
   if (!hasActivity) {
+    if (crossSim) {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <VenueLogo slug={venue.slug} size={24} />
+            <div>
+              <p className="font-bold text-sm text-ink">{venue.name}</p>
+              <p className="text-[11px] text-ink-faint mt-0.5">No activity found</p>
+            </div>
+          </div>
+          <div className="bg-ink/4 rounded-xl p-3 space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+              {otherVenue.name} trades would cost here
+            </p>
+            <p className="font-mono font-bold text-base text-ink">
+              {fmtUsd(crossSim.equivFees)}
+            </p>
+            {crossSim.saved > 0.5 && (
+              <p className="text-[10px] text-red-400 font-semibold">
+                {venue.name} would cost {fmtUsd(Math.abs(crossSim.saved))} more
+              </p>
+            )}
+            {crossSim.saved < -0.5 && (
+              <p className="text-[10px] text-emerald-500 font-semibold">
+                {venue.name} saves {fmtUsd(Math.abs(crossSim.saved))}
+              </p>
+            )}
+            <p className="text-[11px] text-ink-faint/60">
+              Projection based on {otherVenue.name} history
+            </p>
+          </div>
+        </div>
+      );
+    }
     return <p className="text-sm text-ink-faint">No {venue.name} activity</p>;
   }
 
@@ -569,7 +595,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr]">
         <div className="p-5 sm:p-6">
-          <WalletSide venue={venueA} otherVenue={venueB} sim={comparison.aToBSim} />
+          <WalletSide venue={venueA} otherVenue={venueB} sim={comparison.aToBSim} crossSim={comparison.bToASim} />
         </div>
         <div className="flex flex-col items-center justify-center px-3">
           <div className="w-px flex-1 bg-ink/10" />
@@ -579,7 +605,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
           <div className="w-px flex-1 bg-ink/10" />
         </div>
         <div className="p-5 sm:p-6">
-          <WalletSide venue={venueB} otherVenue={venueA} sim={comparison.bToASim} />
+          <WalletSide venue={venueB} otherVenue={venueA} sim={comparison.bToASim} crossSim={comparison.aToBSim} />
         </div>
       </div>
     </div>
@@ -803,85 +829,6 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// SimulationCard
-// ──────────────────────────────────────────────────────────────────────
-
-function SimulationCard({
-  sim,
-  venueA,
-  venueB,
-}: {
-  sim: SimulatedResult;
-  venueA: VenueResult;
-  venueB: VenueResult;
-}) {
-  const aWins = sim.aFees < sim.bFees;
-  const bWins = sim.bFees < sim.aFees;
-  const cheaper = aWins ? venueA : bWins ? venueB : null;
-  const pricier = aWins ? venueB : bWins ? venueA : null;
-
-  return (
-    <div className="card-soft rounded-2xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-ink/8">
-        <p className="font-bold text-sm text-ink">Fee simulation</p>
-        <p className="text-xs text-ink-faint mt-0.5">
-          {fmtUsd(sim.notional)} notional — what you would pay on each venue
-        </p>
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto_1fr]">
-        <div className={`p-5 sm:p-6 ${aWins ? "bg-emerald-500/4" : ""}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <VenueLogo slug={venueA.slug} size={20} />
-            <p className="font-bold text-sm text-ink">{venueA.name}</p>
-            {aWins && sim.saved > 0.01 && <span className="ml-auto"><CheaperBadge /></span>}
-          </div>
-          <p className={`font-mono text-3xl font-extrabold leading-none tracking-tight ${aWins ? "text-emerald-500" : "text-ink"}`}>
-            {fmtUsd(sim.aFees)}
-          </p>
-          <p className="text-[11px] text-ink-faint mt-2">{fmt(venueA.rateBps, 2)} bps taker</p>
-        </div>
-
-        <div className="flex flex-col items-center justify-center px-3">
-          <div className="w-px flex-1 bg-ink/10" />
-          <div className="rounded-full border border-ink/15 bg-paper px-2.5 py-1 my-2">
-            <span className="font-mono text-[11px] font-bold text-ink-faint">VS</span>
-          </div>
-          <div className="w-px flex-1 bg-ink/10" />
-        </div>
-
-        <div className={`p-5 sm:p-6 ${bWins ? "bg-emerald-500/4" : ""}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <VenueLogo slug={venueB.slug} size={20} />
-            <p className="font-bold text-sm text-ink">{venueB.name}</p>
-            {bWins && sim.saved > 0.01 && <span className="ml-auto"><CheaperBadge /></span>}
-          </div>
-          <p className={`font-mono text-3xl font-extrabold leading-none tracking-tight ${bWins ? "text-emerald-500" : "text-ink"}`}>
-            {fmtUsd(sim.bFees)}
-          </p>
-          <p className="text-[11px] text-ink-faint mt-2">{fmt(venueB.rateBps, 2)} bps taker</p>
-        </div>
-      </div>
-
-      {sim.saved > 0.01 && cheaper && pricier && (
-        <div className="border-t border-ink/8 px-5 py-3">
-          <p className="text-xs text-ink-soft">
-            <span className="font-semibold text-emerald-500">{cheaper.name}</span> saves{" "}
-            <span className="font-mono font-bold text-emerald-500">{fmtUsd(sim.saved)}</span>{" "}
-            on {fmtUsd(sim.notional)} notional vs {pricier.name}
-          </p>
-        </div>
-      )}
-      {sim.saved <= 0.01 && (
-        <div className="border-t border-ink/8 px-5 py-3">
-          <p className="text-xs text-ink-faint">Fees are approximately equal at this volume</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────
 // Results
 // ──────────────────────────────────────────────────────────────────────
 
@@ -904,9 +851,6 @@ function Results({ result }: { result: FeeCompareResult }) {
   return (
     <div className="space-y-4">
       <RateComparisonCard venueA={venueA} venueB={venueB} />
-      {result.simulated && (
-        <SimulationCard sim={result.simulated} venueA={venueA} venueB={venueB} />
-      )}
       {hasWalletData && <WalletSummaryCard result={result} />}
       {hlVenueA && hlVenueA.topCoins.length > 0 && (
         <HlTopCoinsCard topCoins={hlVenueA.topCoins} venueName={venueA.name} />
@@ -934,7 +878,6 @@ export function FeeCompareClient() {
   const [venueB, setVenueB] = useState<VenueSlug>("gains");
   const [wallet, setWallet] = useState("");
   const [dydxAddress, setDydxAddress] = useState("");
-  const [notionalInput, setNotionalInput] = useState("");
   const [days, setDays] = useState(90);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FeeCompareResult | null>(null);
@@ -977,8 +920,6 @@ export function FeeCompareClient() {
       const params = new URLSearchParams({ venueA, venueB, days: String(days) });
       if (trimmed) params.set("wallet", trimmed);
       if (dydxTrimmed) params.set("dydxAddress", dydxTrimmed);
-      const notionalVal = parseFloat(notionalInput.replace(/[^0-9.]/g, ""));
-      if (notionalVal > 0) params.set("notional", String(notionalVal));
 
       const res = await fetch(`/api/fee-compare?${params}`);
       if (!res.ok) {
@@ -1070,32 +1011,6 @@ export function FeeCompareClient() {
             />
           </div>
         )}
-
-        {/* Notional simulation — always available, no wallet needed */}
-        <div>
-          <label
-            htmlFor="notional-input"
-            className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
-          >
-            Simulate by volume
-            <span className="ml-2 normal-case font-normal text-ink-faint/60">
-              optional — enter a notional amount to see fee cost without a wallet
-            </span>
-          </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-mono text-sm text-ink-faint">$</span>
-            <input
-              id="notional-input"
-              type="text"
-              inputMode="numeric"
-              value={notionalInput}
-              onChange={(e) => setNotionalInput(e.target.value.replace(/[^0-9.,]/g, ""))}
-              onKeyDown={(e) => e.key === "Enter" && !loading && analyze()}
-              placeholder="100000"
-              className="w-full rounded-xl border border-ink/15 bg-paper pl-7 pr-3.5 py-2.5 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink/40 focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1">
