@@ -1257,8 +1257,7 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
       )}
       {hasDydx && (
         <>
-          dYdX v4: public indexer with full pagination and date filter. Funding from{" "}
-          <code className="font-mono text-[10px]">perpetualPositions.netFunding</code>. Address must be{" "}
+          dYdX v4: public indexer with full pagination and date filter. Taker fills only. Funding excluded (not date-scopable from public API). Address must be{" "}
           <code className="font-mono text-[10px]">dydx1...</code> Cosmos format.{" "}
         </>
       )}
