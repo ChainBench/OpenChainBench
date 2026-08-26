@@ -2526,6 +2526,14 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TCInfra RPC node provider for Tezos and Etherlink (prod.tcinfra.net/rpc/mainnet). Provides public keyless Tezos mainnet REST access with no API key required.",
   },
 
+  // ─── Dogecoin providers (bench 235) ──────────────────────────
+  blockcypher: {
+    url: "https://blockcypher.com",
+    description:
+      "BlockCypher is a blockchain API platform supporting Bitcoin, Litecoin, Dogecoin and Ethereum. Provides a public REST API for chain info, transactions and addresses, no API key required for basic queries.",
+    twitter: "@BlockCypher",
+  },
+
   // ─── OKTC providers (bench 231) ───────────────────────────────
   "oktc-official": {
     url: "https://www.okx.com/oktc",
