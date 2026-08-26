@@ -132,6 +132,7 @@ type VenueResult = {
   ratePerAction: number;
   rateBps: number;
   rateNote: string;
+  rateIsLive: boolean;
   wallet: AnyWallet | null;
 };
 
@@ -269,17 +270,29 @@ async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
   return entry;
 }
 
-async function resolveRate(slug: string): Promise<{ rate: number; note: string }> {
+async function resolveRate(slug: string): Promise<{ rate: number; note: string; rateIsLive: boolean }> {
   if (slug === "gains") {
     const d = await fetchGainsFeeRates();
-    return { rate: d.avgPerSide, note: "Live per-coin taker rate (avg across pairs)" };
+    return { rate: d.avgPerSide, note: "Live per-coin taker rate (avg across pairs)", rateIsLive: true };
   }
-  if (slug === "hyperliquid") return fetchHlRate().catch(() => ({ rate: HL_TAKER_FALLBACK, note: "3.50 bps taker (HL base tier)" }));
-  if (slug === "paradex") return fetchParadexRate().catch(() => ({ rate: 0.0002, note: "2.00 bps taker (Paradex api-tier)" }));
-  if (slug === "edgex") return fetchEdgeXRate().catch(() => ({ rate: 0.00038, note: "3.80 bps taker (EdgeX)" }));
-  if (slug === "gmx-v2") return fetchGmxLiveRate().catch(() => ({ rate: 0.0005, note: "5.00 bps taker (GMX v2 fallback)" }));
-  if (slug === "dydx") return { rate: 0.0005, note: "5.00 bps taker (tier-0, protocol-governed)" };
-  return { rate: 0.0005, note: "Documented rate" };
+  if (slug === "hyperliquid") {
+    const r = await fetchHlRate().catch(() => ({ rate: HL_TAKER_FALLBACK, note: "3.50 bps taker (HL base tier)" }));
+    return { ...r, rateIsLive: true };
+  }
+  if (slug === "paradex") {
+    const r = await fetchParadexRate().catch(() => ({ rate: 0.0002, note: "2.00 bps taker (Paradex api-tier)" }));
+    return { ...r, rateIsLive: true };
+  }
+  if (slug === "edgex") {
+    const r = await fetchEdgeXRate().catch(() => ({ rate: 0.00038, note: "3.80 bps taker (EdgeX)" }));
+    return { ...r, rateIsLive: true };
+  }
+  if (slug === "gmx-v2") {
+    const r = await fetchGmxLiveRate().catch(() => ({ rate: 0.0005, note: "5.00 bps taker (GMX v2 fallback)" }));
+    return { ...r, rateIsLive: true };
+  }
+  if (slug === "dydx") return { rate: 0.0005, note: "5.00 bps taker (tier-0, protocol-governed)", rateIsLive: false };
+  return { rate: 0.0005, note: "Documented rate", rateIsLive: false };
 }
 
 async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
@@ -555,8 +568,8 @@ export async function GET(req: Request) {
 
   try {
     const [
-      { rate: rateA, note: noteA },
-      { rate: rateB, note: noteB },
+      { rate: rateA, note: noteA, rateIsLive: rateIsLiveA },
+      { rate: rateB, note: noteB, rateIsLive: rateIsLiveB },
       gainsData,
     ] = await Promise.all([
       resolveRate(venueA),
@@ -622,7 +635,7 @@ export async function GET(req: Request) {
 
     await Promise.all(fetches);
 
-    function buildVenueResult(slug: string, rate: number, note: string): VenueResult {
+    function buildVenueResult(slug: string, rate: number, note: string, rateIsLive: boolean): VenueResult {
       let walletData: AnyWallet | null = null;
 
       if (fetchEvmWallet && slug === "hyperliquid") {
@@ -672,12 +685,13 @@ export async function GET(req: Request) {
         ratePerAction: rate,
         rateBps: rate * 10000,
         rateNote: note,
+        rateIsLive,
         wallet: walletData,
       };
     }
 
-    const venueAResult = buildVenueResult(venueA, rateA, noteA);
-    const venueBResult = buildVenueResult(venueB, rateB, noteB);
+    const venueAResult = buildVenueResult(venueA, rateA, noteA, rateIsLiveA);
+    const venueBResult = buildVenueResult(venueB, rateB, noteB, rateIsLiveB);
 
     const comparison: ComparisonResult = { aToBSim: null, bToASim: null };
 
