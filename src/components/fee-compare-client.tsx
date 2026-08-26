@@ -476,16 +476,51 @@ function WalletSide({
   venue,
   otherVenue,
   sim,
+  crossSim,
 }: {
   venue: VenueResult;
   otherVenue: VenueResult;
   sim: SimResult | null;
+  crossSim?: SimResult | null;
 }) {
   const w = venue.wallet;
-  if (!w) return <p className="text-sm text-ink-faint">No {venue.name} activity</p>;
+  const hasActivity = w !== null && walletHasActivity(venue.slug, w);
 
-  const hasActivity = walletHasActivity(venue.slug, w);
   if (!hasActivity) {
+    if (crossSim) {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <VenueLogo slug={venue.slug} size={24} />
+            <div>
+              <p className="font-bold text-sm text-ink">{venue.name}</p>
+              <p className="text-[11px] text-ink-faint mt-0.5">No activity found</p>
+            </div>
+          </div>
+          <div className="bg-ink/4 rounded-xl p-3 space-y-1">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+              {otherVenue.name} trades would cost here
+            </p>
+            <p className="font-mono font-bold text-base text-ink">
+              {fmtUsd(crossSim.equivFees)}
+            </p>
+            {crossSim.saved > 0.5 && (
+              <p className="text-[10px] text-red-400 font-semibold">
+                {venue.name} would cost {fmtUsd(Math.abs(crossSim.saved))} more
+              </p>
+            )}
+            {crossSim.saved < -0.5 && (
+              <p className="text-[10px] text-emerald-500 font-semibold">
+                {venue.name} saves {fmtUsd(Math.abs(crossSim.saved))}
+              </p>
+            )}
+            <p className="text-[11px] text-ink-faint/60">
+              Projection based on {otherVenue.name} history
+            </p>
+          </div>
+        </div>
+      );
+    }
     return <p className="text-sm text-ink-faint">No {venue.name} activity</p>;
   }
 
@@ -569,7 +604,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr]">
         <div className="p-5 sm:p-6">
-          <WalletSide venue={venueA} otherVenue={venueB} sim={comparison.aToBSim} />
+          <WalletSide venue={venueA} otherVenue={venueB} sim={comparison.aToBSim} crossSim={comparison.bToASim} />
         </div>
         <div className="flex flex-col items-center justify-center px-3">
           <div className="w-px flex-1 bg-ink/10" />
@@ -579,7 +614,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
           <div className="w-px flex-1 bg-ink/10" />
         </div>
         <div className="p-5 sm:p-6">
-          <WalletSide venue={venueB} otherVenue={venueA} sim={comparison.bToASim} />
+          <WalletSide venue={venueB} otherVenue={venueA} sim={comparison.bToASim} crossSim={comparison.aToBSim} />
         </div>
       </div>
     </div>
