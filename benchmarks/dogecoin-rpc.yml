@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Dogecoin is a proof-of-work UTXO blockchain forked from Litecoin (itself a Bitcoin fork) and launched in December 2013. It targets one block every 60 seconds using the Scrypt hashing algorithm and has no hard supply cap. Dogecoin exposes a Bitcoin-compatible JSON-RPC interface — most node implementations accept `getblockcount` as a standard method. Public endpoints are available without an API key from Tatum, dRPC and BlockCypher. BlockCypher exposes a REST API instead of JSON-RPC, returning the current chain height via a GET request to its blockchain info endpoint. Every provider was live-verified with consecutive block-height probes at launch.
+  Dogecoin is a proof-of-work UTXO blockchain forked from Litecoin (itself a Bitcoin fork) and launched in December 2013. It targets one block every 60 seconds using the Scrypt hashing algorithm and has no hard supply cap. Dogecoin exposes a Bitcoin-compatible JSON-RPC interface; most node implementations accept `getblockcount` as a standard method. Public endpoints are available without an API key from Tatum, dRPC and BlockCypher. BlockCypher exposes a REST API instead of JSON-RPC, returning the current chain height via a GET request to its blockchain info endpoint. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Dogecoin.
