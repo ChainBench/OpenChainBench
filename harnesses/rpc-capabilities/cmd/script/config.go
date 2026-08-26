@@ -1629,6 +1629,17 @@ func chains() []Chain {
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
 			},
 		},
+		// 2026-08-23 wave-9. Dogecoin — getblockcount JSON-RPC (Tatum, dRPC) + BlockCypher REST GET. ~60 s/block.
+		{
+			Slug: "dogecoin",
+			Name: "Dogecoin",
+			Kind: "dogecoin",
+			Providers: []Provider{
+				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_DOGECOIN_TATUM", "https://dogecoin-mainnet.gateway.tatum.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_DOGECOIN_DRPC", "https://dogecoin.drpc.org")},
+				{Slug: "blockcypher", Name: "BlockCypher", URL: envDefault("RPC_URL_DOGECOIN_BLOCKCYPHER", "https://api.blockcypher.com/v1/doge/main")},
+			},
+		},
 		// 2026-08-18 wave-8. Tezos L1 — REST GET /chains/main/blocks/head/header, ~30 s/block. 4 keyless providers.
 		{
 			Slug: "tezos",
