@@ -490,11 +490,9 @@ function SimBox({
       )}
       {sim.fundingUsd !== undefined && Math.abs(sim.fundingUsd) > 0.5 && (
         <p className="text-[10px] text-ink-faint mt-1">
-          +{" "}
           {sim.fundingUsd > 0
-            ? `${fmtUsd(sim.fundingUsd)} funding received`
-            : `${fmtUsd(Math.abs(sim.fundingUsd))} funding paid`}{" "}
-          on {thisName}
+            ? `+ ${fmtUsd(sim.fundingUsd)} funding received on ${thisName}`
+            : `− ${fmtUsd(Math.abs(sim.fundingUsd))} funding paid on ${thisName}`}
         </p>
       )}
     </div>
@@ -589,10 +587,9 @@ function WalletSide({
           </p>
         )}
         <p className="text-xs text-ink-faint mt-1.5">
-          {fmt(Math.abs(avgBps), 2)} bps avg
-          {venue.slug === "hyperliquid" && (w as HlWalletData).fundingUsd !== 0 && (
-            <span className="ml-1 text-ink-faint/60">· net of funding</span>
-          )}
+          {venue.effectiveRateBps !== undefined
+            ? `${fmt(venue.effectiveRateBps, 2)} bps net`
+            : `${fmt(Math.abs(avgBps), 2)} bps avg`}
         </p>
       </div>
 
