@@ -15,51 +15,29 @@ const GMX_SUBSQUID = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/g
 const DYDX_INDEXER = "https://indexer.dydx.trade";
 
 const GAINS_FEE_PRECISION = 1e12;
-const HL_TAKER_PER_SIDE = 0.00035;
+const HL_TAKER_FALLBACK = 0.00035;
 
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const DYDX_ADDRESS_RE = /^dydx1[a-z0-9]{38}$/;
 const BLOCKS_PER_DAY = 43200;
 const MAX_DISPLAY_FILLS = 50;
-
-// Taker-only rates per venue (per-action, per-side, decimal).
-const STATIC_RATES: Record<string, number> = {
-  hyperliquid: HL_TAKER_PER_SIDE,
-  gains: 0,
-  lighter: 0.0,
-  dydx: 0.0005,
-  "gmx-v2": 0.0005,
-  paradex: 0.0002,
-  extended: 0.00025,
-  aster: 0.0005,
-  edgex: 0.00038,
-};
-
-const STATIC_NOTES: Record<string, string> = {
-  hyperliquid: "3.5 bps taker (per action)",
-  gains: "Live taker rate (per-coin, per action)",
-  lighter: "0 bps (fee-free)",
-  dydx: "5 bps taker (tier-0, Cosmos REST)",
-  "gmx-v2": "5 bps position fee (before price impact)",
-  paradex: "2 bps taker (api-tier)",
-  extended: "2.5 bps taker (documented base)",
-  aster: "5 bps taker (documented base)",
-  edgex: "3.8 bps taker (documented base)",
-};
+const RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const VENUE_NAMES: Record<string, string> = {
   hyperliquid: "Hyperliquid",
   gains: "Gains",
-  lighter: "Lighter",
   dydx: "dYdX v4",
   "gmx-v2": "GMX v2",
   paradex: "Paradex",
-  extended: "Extended",
-  aster: "Aster",
   edgex: "EdgeX",
 };
 
+const VALID_SLUGS = new Set(Object.keys(VENUE_NAMES));
 const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
+
+// ──────────────────────────────────────────────────────────────────────
+// Rate caches
+// ──────────────────────────────────────────────────────────────────────
 
 let gainsFeeCache: {
   coinRoundTrip: Record<string, number>;
@@ -67,7 +45,9 @@ let gainsFeeCache: {
   avgPerSide: number;
   ts: number;
 } | null = null;
-const GAINS_CACHE_TTL_MS = 60 * 60 * 1000;
+
+type RateCacheEntry = { rate: number; note: string; ts: number };
+const rateCache: Partial<Record<string, RateCacheEntry>> = {};
 
 // ──────────────────────────────────────────────────────────────────────
 // Types
@@ -178,7 +158,7 @@ async function fetchGainsFeeRates(): Promise<{
   avgPerSide: number;
 }> {
   const now = Date.now();
-  if (gainsFeeCache && now - gainsFeeCache.ts < GAINS_CACHE_TTL_MS) {
+  if (gainsFeeCache && now - gainsFeeCache.ts < RATE_CACHE_TTL_MS) {
     return {
       coinRoundTrip: gainsFeeCache.coinRoundTrip,
       perSide: gainsFeeCache.perSide,
@@ -206,6 +186,100 @@ async function fetchGainsFeeRates(): Promise<{
     sides.length > 0 ? sides.reduce((a, b) => a + b, 0) / sides.length : 0.0005;
   gainsFeeCache = { coinRoundTrip, perSide, avgPerSide, ts: now };
   return { coinRoundTrip, perSide, avgPerSide };
+}
+
+async function fetchHlRate(): Promise<{ rate: number; note: string }> {
+  const cached = rateCache["hyperliquid"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch(HL_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "userFees", user: "0x0000000000000000000000000000000000000000" }),
+    signal: AbortSignal.timeout(8000),
+  });
+  const data = (await res.json()) as { userCrossRate?: string };
+  const rate = parseFloat(data.userCrossRate ?? String(HL_TAKER_FALLBACK));
+  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from HL fee schedule)`, ts: Date.now() };
+  rateCache["hyperliquid"] = entry;
+  return entry;
+}
+
+async function fetchParadexRate(): Promise<{ rate: number; note: string }> {
+  const cached = rateCache["paradex"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch("https://api.prod.paradex.trade/v1/markets?market=BTC-USD-PERP", {
+    signal: AbortSignal.timeout(8000),
+  });
+  const data = (await res.json()) as {
+    results?: Array<{ fee_config?: { api_fee?: { taker_fee?: { fee?: string } } } }>;
+  };
+  const rawRate = data.results?.[0]?.fee_config?.api_fee?.taker_fee?.fee ?? "0.0002";
+  const rate = parseFloat(rawRate);
+  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from Paradex)`, ts: Date.now() };
+  rateCache["paradex"] = entry;
+  return entry;
+}
+
+async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
+  const cached = rateCache["edgex"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch("https://edgex-prod-v2.edgex.exchange/api/v2/public/meta/getMetaData", {
+    signal: AbortSignal.timeout(8000),
+  });
+  const data = (await res.json()) as {
+    data?: { contractList?: Array<{ defaultTakerFeeRate?: number }> };
+  };
+  const contracts = data.data?.contractList ?? [];
+  const rates = contracts.map((c) => c.defaultTakerFeeRate ?? 0).filter((r) => r > 0);
+  const rate = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0.00038;
+  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
+  rateCache["edgex"] = entry;
+  return entry;
+}
+
+async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
+  const cached = rateCache["gmx-v2"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const query = `{
+    tradeActions(
+      where: { positionFeeAmount_isNull: false sizeDeltaUsd_gt: "0" orderType_in: [2, 3, 4] }
+      orderBy: timestamp_DESC
+      limit: 50
+    ) { sizeDeltaUsd positionFeeAmount }
+  }`;
+  const res = await fetch(GMX_SUBSQUID, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const body = (await res.json()) as {
+    data?: { tradeActions: Array<{ sizeDeltaUsd: string; positionFeeAmount: string }> };
+  };
+  const trades = body.data?.tradeActions ?? [];
+  let totalFees = 0;
+  let totalNotional = 0;
+  for (const t of trades) {
+    totalFees += Number(BigInt(t.positionFeeAmount)) / 1e6;
+    totalNotional += Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+  }
+  const rate = totalNotional > 0 ? totalFees / totalNotional : 0.0005;
+  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps (live avg from recent GMX v2 trades)`, ts: Date.now() };
+  rateCache["gmx-v2"] = entry;
+  return entry;
+}
+
+async function resolveRate(slug: string): Promise<{ rate: number; note: string }> {
+  if (slug === "gains") {
+    const d = await fetchGainsFeeRates();
+    return { rate: d.avgPerSide, note: "Live per-coin taker rate (avg across pairs)" };
+  }
+  if (slug === "hyperliquid") return fetchHlRate().catch(() => ({ rate: HL_TAKER_FALLBACK, note: "3.50 bps taker (HL base tier)" }));
+  if (slug === "paradex") return fetchParadexRate().catch(() => ({ rate: 0.0002, note: "2.00 bps taker (Paradex api-tier)" }));
+  if (slug === "edgex") return fetchEdgeXRate().catch(() => ({ rate: 0.00038, note: "3.80 bps taker (EdgeX)" }));
+  if (slug === "gmx-v2") return fetchGmxLiveRate().catch(() => ({ rate: 0.0005, note: "5.00 bps taker (GMX v2 fallback)" }));
+  if (slug === "dydx") return { rate: 0.0005, note: "5.00 bps taker (tier-0, protocol-governed)" };
+  return { rate: 0.0005, note: "Documented rate" };
 }
 
 async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
@@ -460,8 +534,7 @@ export async function GET(req: Request) {
   const venueA = (url.searchParams.get("venueA") ?? "hyperliquid").toLowerCase();
   const venueB = (url.searchParams.get("venueB") ?? "gains").toLowerCase();
 
-  const validSlugs = Object.keys(STATIC_RATES);
-  if (!validSlugs.includes(venueA) || !validSlugs.includes(venueB)) {
+  if (!VALID_SLUGS.has(venueA) || !VALID_SLUGS.has(venueB)) {
     return NextResponse.json({ error: "invalid_venue" }, { status: 400 });
   }
   if (venueA === venueB) {
@@ -481,19 +554,15 @@ export async function GET(req: Request) {
   const cutoffMs = Date.now() - days * 86400 * 1000;
 
   try {
-    const gainsData = await fetchGainsFeeRates();
-
-    function resolveRate(slug: string): { rate: number; note: string } {
-      if (slug === "gains")
-        return { rate: gainsData.avgPerSide, note: STATIC_NOTES["gains"] };
-      return {
-        rate: STATIC_RATES[slug] ?? 0.0005,
-        note: STATIC_NOTES[slug] ?? "Documented rate",
-      };
-    }
-
-    const { rate: rateA, note: noteA } = resolveRate(venueA);
-    const { rate: rateB, note: noteB } = resolveRate(venueB);
+    const [
+      { rate: rateA, note: noteA },
+      { rate: rateB, note: noteB },
+      gainsData,
+    ] = await Promise.all([
+      resolveRate(venueA),
+      resolveRate(venueB),
+      fetchGainsFeeRates(),
+    ]);
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
