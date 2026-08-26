@@ -103,6 +103,8 @@ type VenueResult = {
   rateNote: string;
   rateIsLive: boolean;
   wallet: AnyWallet | null;
+  effectiveRateBps?: number;
+  effectiveRateNote?: string;
 };
 
 type SimResult = {
@@ -111,6 +113,7 @@ type SimResult = {
   equivFees: number;
   saved: number;
   multiple: number | null;
+  fundingUsd?: number;
 };
 
 type ComparisonResult = {
@@ -321,15 +324,22 @@ function RateComparisonCard({
   venueA: VenueResult;
   venueB: VenueResult;
 }) {
-  const aWins = venueA.ratePerAction < venueB.ratePerAction;
-  const bWins = venueB.ratePerAction < venueA.ratePerAction;
-  const diff = Math.abs(venueA.rateBps - venueB.rateBps);
+  const aBps = venueA.effectiveRateBps ?? venueA.rateBps;
+  const bBps = venueB.effectiveRateBps ?? venueB.rateBps;
+  const aRate = venueA.effectiveRateBps !== undefined ? venueA.effectiveRateBps / 10000 : venueA.ratePerAction;
+  const bRate = venueB.effectiveRateBps !== undefined ? venueB.effectiveRateBps / 10000 : venueB.ratePerAction;
+  const aWins = aRate < bRate;
+  const bWins = bRate < aRate;
+  const diff = Math.abs(aBps - bBps);
+  const usingEffective = venueA.effectiveRateBps !== undefined || venueB.effectiveRateBps !== undefined;
 
   return (
     <div className="card-soft rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-ink/8">
         <p className="font-bold text-sm text-ink">Fee rates</p>
-        <p className="text-xs text-ink-faint mt-0.5">Per-action taker rate comparison</p>
+        <p className="text-xs text-ink-faint mt-0.5">
+          {usingEffective ? "Effective rate based on your fills" : "Per-action taker rate comparison"}
+        </p>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr]">
         <div className={`p-5 sm:p-6 ${aWins ? "bg-emerald-500/4" : ""}`}>
@@ -343,13 +353,16 @@ function RateComparisonCard({
               aWins ? "text-emerald-500" : "text-ink"
             }`}
           >
-            {fmt(venueA.rateBps, 2)}
+            {fmt(aBps, 2)}
             <span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
           </p>
           <div className="flex items-center gap-1.5 mt-2">
             {venueA.rateIsLive ? <LiveBadge /> : <ProtocolBadge />}
             <p className="text-[11px] text-ink-faint">{venueA.rateNote}</p>
           </div>
+          {venueA.effectiveRateNote && (
+            <p className="text-[10px] text-ink-faint/70 mt-0.5 italic">{venueA.effectiveRateNote}</p>
+          )}
         </div>
 
         <div className="flex flex-col items-center justify-center px-3">
@@ -371,13 +384,16 @@ function RateComparisonCard({
               bWins ? "text-emerald-500" : "text-ink"
             }`}
           >
-            {fmt(venueB.rateBps, 2)}
+            {fmt(bBps, 2)}
             <span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
           </p>
           <div className="flex items-center gap-1.5 mt-2">
             {venueB.rateIsLive ? <LiveBadge /> : <ProtocolBadge />}
             <p className="text-[11px] text-ink-faint">{venueB.rateNote}</p>
           </div>
+          {venueB.effectiveRateNote && (
+            <p className="text-[10px] text-ink-faint/70 mt-0.5 italic">{venueB.effectiveRateNote}</p>
+          )}
         </div>
       </div>
       {diff > 0.01 ? (
@@ -385,15 +401,13 @@ function RateComparisonCard({
           {aWins ? (
             <p className="text-xs text-ink-soft">
               <span className="font-semibold text-emerald-500">{venueA.name}</span> is{" "}
-              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper per
-              action
-              {venueB.rateBps > 0 && (
+              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper
+              {usingEffective ? " (for your coins)" : " per action"}
+              {bBps > 0 && (
                 <span className="text-ink-faint ml-1">
                   (
                   {fmt(
-                    ((venueB.ratePerAction - venueA.ratePerAction) /
-                      venueB.ratePerAction) *
-                      100,
+                    ((bRate - aRate) / bRate) * 100,
                     0
                   )}
                   % less)
@@ -403,15 +417,13 @@ function RateComparisonCard({
           ) : (
             <p className="text-xs text-ink-soft">
               <span className="font-semibold text-emerald-500">{venueB.name}</span> is{" "}
-              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper per
-              action
-              {venueA.rateBps > 0 && (
+              <span className="font-mono font-bold">{fmt(diff, 2)} bps</span> cheaper
+              {usingEffective ? " (for your coins)" : " per action"}
+              {aBps > 0 && (
                 <span className="text-ink-faint ml-1">
                   (
                   {fmt(
-                    ((venueA.ratePerAction - venueB.ratePerAction) /
-                      venueA.ratePerAction) *
-                      100,
+                    ((aRate - bRate) / aRate) * 100,
                     0
                   )}
                   % less)
@@ -475,6 +487,15 @@ function SimBox({
       )}
       {Math.abs(sim.saved) <= 0.5 && (
         <p className="text-[10px] text-ink-faint">Roughly equal cost</p>
+      )}
+      {sim.fundingUsd !== undefined && Math.abs(sim.fundingUsd) > 0.5 && (
+        <p className="text-[10px] text-ink-faint mt-1">
+          +{" "}
+          {sim.fundingUsd > 0
+            ? `${fmtUsd(sim.fundingUsd)} funding received`
+            : `${fmtUsd(Math.abs(sim.fundingUsd))} funding paid`}{" "}
+          on {thisName}
+        </p>
       )}
     </div>
   );
@@ -584,7 +605,16 @@ function WalletSide({
             <p className="font-mono font-semibold text-ink mt-1 text-sm">
               {fmtUsd((w as HlWalletData).netCostUsd)}
             </p>
-            <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
+            {Math.abs((w as HlWalletData).fundingUsd) > 0.5 ? (
+              <p className="text-[10px] text-ink-faint/60 mt-0.5">
+                fees {fmtUsd(fees)}{" "}
+                {(w as HlWalletData).fundingUsd > 0
+                  ? `+ ${fmtUsd((w as HlWalletData).fundingUsd)} rcvd`
+                  : `– ${fmtUsd(Math.abs((w as HlWalletData).fundingUsd))} paid`}
+              </p>
+            ) : (
+              <p className="text-[10px] text-ink-faint/60 mt-0.5">after funding</p>
+            )}
           </div>
         </div>
       )}

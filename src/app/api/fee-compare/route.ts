@@ -134,6 +134,8 @@ type VenueResult = {
   rateNote: string;
   rateIsLive: boolean;
   wallet: AnyWallet | null;
+  effectiveRateBps?: number;
+  effectiveRateNote?: string;
 };
 
 type SimResult = {
@@ -142,6 +144,7 @@ type SimResult = {
   equivFees: number;
   saved: number;
   multiple: number | null;
+  fundingUsd?: number;
 };
 
 type ComparisonResult = {
@@ -730,7 +733,14 @@ export async function GET(req: Request) {
             equivFees: bEquiv,
             saved: bEquiv - aFees,
             multiple: aFees > 0 ? bEquiv / aFees : null,
+            fundingUsd: (venueAResult.wallet as HlWalletData).fundingUsd,
           };
+          if (aNotional > 0) {
+            venueAResult.effectiveRateBps = (aFees / aNotional) * 10000;
+            venueAResult.effectiveRateNote = `${((aFees / aNotional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueBResult.effectiveRateBps = (bEquiv / aNotional) * 10000;
+            venueBResult.effectiveRateNote = `${((bEquiv / aNotional) * 10000).toFixed(2)} bps effective (your coins)`;
+          }
         }
       } else {
         const stats = walletStats(venueA, venueAResult.wallet);
@@ -743,6 +753,11 @@ export async function GET(req: Request) {
             saved: equivFees - stats.fees,
             multiple: stats.fees > 0 ? equivFees / stats.fees : null,
           };
+          if (stats.notional > 0) {
+            venueAResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
+            venueAResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueBResult.effectiveRateBps = rateB * 10000;
+          }
         }
       }
     }
@@ -767,7 +782,14 @@ export async function GET(req: Request) {
             equivFees: aEquiv,
             saved: bFees - aEquiv,
             multiple: bFees > 0 ? aEquiv / bFees : null,
+            fundingUsd: (venueBResult.wallet as HlWalletData).fundingUsd,
           };
+          if (bNotional > 0) {
+            venueBResult.effectiveRateBps = (bFees / bNotional) * 10000;
+            venueBResult.effectiveRateNote = `${((bFees / bNotional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueAResult.effectiveRateBps = (aEquiv / bNotional) * 10000;
+            venueAResult.effectiveRateNote = `${((aEquiv / bNotional) * 10000).toFixed(2)} bps effective (your coins)`;
+          }
         }
       } else {
         const stats = walletStats(venueB, venueBResult.wallet);
@@ -780,6 +802,11 @@ export async function GET(req: Request) {
             saved: stats.fees - equivFees,
             multiple: stats.fees > 0 ? equivFees / stats.fees : null,
           };
+          if (stats.notional > 0) {
+            venueBResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
+            venueBResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
+            venueAResult.effectiveRateBps = rateA * 10000;
+          }
         }
       }
     }
