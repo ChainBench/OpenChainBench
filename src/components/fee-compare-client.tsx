@@ -460,8 +460,10 @@ function SimBox({
       </p>
       {sim.saved > 0.5 && (
         <p className="text-[10px] text-emerald-500 font-semibold">
-          {thisName} saved {fmtUsd(sim.saved)}
-          {sim.multiple && sim.multiple > 1.05
+          {thisName} total advantage: {fmtUsd(sim.saved)}
+          {sim.feesActual < -0.01
+            ? ` (${fmtUsd(sim.equivFees)} equiv + ${fmtUsd(Math.abs(sim.feesActual))} earned)`
+            : sim.multiple && sim.multiple > 1.05
             ? ` (${fmt(sim.multiple, 1)}x cheaper)`
             : ""}
         </p>
@@ -516,7 +518,10 @@ function WalletSide({
             </p>
             {crossSim.saved > 0.5 && (
               <p className="text-[10px] text-red-400 font-semibold">
-                {venue.name} would cost {fmtUsd(Math.abs(crossSim.saved))} more
+                {otherVenue.name} total advantage: {fmtUsd(crossSim.saved)}
+                {crossSim.feesActual < -0.01
+                  ? ` (earned ${fmtUsd(Math.abs(crossSim.feesActual))} in rebates)`
+                  : ""}
               </p>
             )}
             {crossSim.saved < -0.5 && (
@@ -550,10 +555,19 @@ function WalletSide({
       </div>
 
       <div>
-        <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
-          {fmtUsd(fees)}
-        </p>
-        <p className="text-xs text-ink-faint mt-1.5">{fmt(avgBps, 2)} bps avg</p>
+        {fees < -0.01 ? (
+          <>
+            <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-emerald-500">
+              +{fmtUsd(Math.abs(fees))}
+            </p>
+            <p className="text-xs text-emerald-500/70 mt-1">maker rebates earned</p>
+          </>
+        ) : (
+          <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
+            {fmtUsd(fees)}
+          </p>
+        )}
+        <p className="text-xs text-ink-faint mt-1.5">{fmt(Math.abs(avgBps), 2)} bps avg</p>
       </div>
 
       {/* Venue-specific extra stats */}
