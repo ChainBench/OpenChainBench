@@ -89,6 +89,9 @@ const (
 	// wavesStaleBlockGap: Waves closes a block every ~60 s,
 	// so 5 blocks ≈ 5 min.
 	wavesStaleBlockGap uint64 = 5
+	// dogecoinStaleBlockGap: Dogecoin produces one block every ~60 s,
+	// so 5 blocks ≈ 5 min gives the same reliability tolerance as EVM.
+	dogecoinStaleBlockGap uint64 = 5
 	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
 	// so 30 blocks ≈ 5 min.
 	veChainStaleBlockGap uint64 = 30
@@ -280,6 +283,12 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callMultiversxNonce(probeCtx, p.URL)
 		case "neo":
 			block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+		case "dogecoin":
+			if strings.Contains(p.URL, "blockcypher.com") {
+				block, result, latency, err = callBlockCypherDoge(probeCtx, p.URL)
+			} else {
+				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+			}
 		case "tezos":
 			block, result, latency, err = callTezosBlock(probeCtx, p.URL)
 		case "antelope":
@@ -329,6 +338,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = multiversxStaleNonceGap
 			case "neo":
 				gap = neoStaleBlockGap
+			case "dogecoin":
+				gap = dogecoinStaleBlockGap
 			case "tezos":
 				gap = tezosStaleBlockGap
 			case "antelope":
@@ -358,7 +369,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
 			"near", "flow", "hedera", "ckb", "multiversx", "neo",
-			"tezos", "antelope", "waves", "vechain":
+			"tezos", "antelope", "waves", "vechain", "dogecoin":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1465,4 +1476,40 @@ func callNeoBlockCount(ctx context.Context, url string) (count uint64, result st
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric neo block count: %s", string(r.Result)[:min(len(r.Result), 40)])
 	}
 	return n, "ok", latencyMs, nil
+}
+
+// callBlockCypherDoge probes the BlockCypher REST API for Dogecoin mainnet.
+// GET https://api.blockcypher.com/v1/doge/main — reads the `height` field.
+func callBlockCypherDoge(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Height uint64 `json:"height"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Height == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("blockcypher doge: height=0")
+	}
+	return body.Height, "ok", latencyMs, nil
 }
