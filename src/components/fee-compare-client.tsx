@@ -75,8 +75,21 @@ type HlWalletData = {
 type GainsWalletData = {
   events: number;
   feesUsdc: number;
+  fundingFeesUsdc: number;
+  borrowingFeesUsdc: number;
+  netCostUsdc: number;
   positionSizeUsdc: number;
   avgFeeRateBps: number;
+  recentTrades: Array<{
+    date: string;
+    pair: string;
+    action: string;
+    notional: number;
+    tradingFee: number;
+    fundingFee: number;
+    borrowingFee: number;
+    pnl_net: number;
+  }>;
 };
 
 type GmxWalletData = {
@@ -137,7 +150,8 @@ type FeeCompareResult = {
 
 function walletFees(slug: string, w: AnyWallet): number {
   if (slug === "hyperliquid") return (w as HlWalletData).netCostUsd;
-  return (w as GainsWalletData | GmxWalletData | DydxWalletData).feesUsdc;
+  if (slug === "gains") return (w as GainsWalletData).netCostUsdc;
+  return (w as GmxWalletData | DydxWalletData).feesUsdc;
 }
 
 function walletVolume(slug: string, w: AnyWallet): number {
@@ -633,7 +647,54 @@ function WalletSide({
           </div>
         );
       })()}
-      {venue.slug !== "hyperliquid" && (
+      {venue.slug === "gains" && (() => {
+        const gW = w as GainsWalletData;
+        const hasFunding = Math.abs(gW.fundingFeesUsdc) > 0.5;
+        const hasBorrowing = gW.borrowingFeesUsdc > 0.5;
+        return (
+          <div className="bg-ink/4 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
+            </div>
+            <div className="border-t border-ink/8 pt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Trading fees</p>
+                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(gW.feesUsdc)}</p>
+              </div>
+              {hasFunding && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">
+                    Funding {gW.fundingFeesUsdc > 0 ? "paid" : "received"}
+                  </p>
+                  <p className={`font-mono text-xs font-semibold ${gW.fundingFeesUsdc > 0 ? "text-red-400" : "text-emerald-500"}`}>
+                    {gW.fundingFeesUsdc > 0
+                      ? `−${fmtUsd(gW.fundingFeesUsdc)}`
+                      : `+${fmtUsd(Math.abs(gW.fundingFeesUsdc))}`}
+                  </p>
+                </div>
+              )}
+              {hasBorrowing && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Borrowing fees</p>
+                  <p className="font-mono text-xs font-semibold text-red-400">
+                    −{fmtUsd(gW.borrowingFeesUsdc)}
+                  </p>
+                </div>
+              )}
+              {(hasFunding || hasBorrowing) && (
+                <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                  <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
+                  <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                    {fmtUsd(gW.netCostUsdc)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+      {venue.slug !== "hyperliquid" && venue.slug !== "gains" && (
         <div className="bg-ink/4 rounded-xl p-3">
           <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
           <p className="font-mono font-semibold text-ink mt-1 text-sm">{fmtUsd(volume)}</p>
@@ -899,6 +960,106 @@ function HlTradeTable({
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// GainsTradeTable
+// ──────────────────────────────────────────────────────────────────────
+
+function GainsTradeTable({
+  trades,
+  venueName,
+}: {
+  trades: GainsWalletData["recentTrades"];
+  venueName: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const PREVIEW = 10;
+  const rows = showAll ? trades : trades.slice(0, PREVIEW);
+
+  if (trades.length === 0) return null;
+
+  function actionLabel(action: string) {
+    return action
+      .replace("Trade", "")
+      .replace("Market", "")
+      .replace("Opened", "Open ")
+      .replace("Closed", "Close ")
+      .trim();
+  }
+
+  return (
+    <div className="card-soft rounded-2xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-ink/8">
+        <div className="flex items-center gap-2.5">
+          <VenueLogo slug="gains" size={20} />
+          <p className="font-bold text-sm text-ink">{venueName} trade history</p>
+        </div>
+        <p className="text-xs text-ink-faint">{trades.length} actions</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink/8 text-left bg-ink/2">
+              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Date</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Market</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Action</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Fee</th>
+              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => (
+              <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
+                <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
+                  {new Date(t.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </td>
+                <td className="px-3 py-3 font-mono text-xs font-bold text-ink">{t.pair.replace("/USD", "")}</td>
+                <td className="px-3 py-3 hidden sm:table-cell">
+                  <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ${
+                    t.action.includes("Opened") ? "bg-emerald-500/12 text-emerald-500"
+                    : t.action.includes("Closed") ? "bg-ink/8 text-ink-faint"
+                    : "bg-amber-400/10 text-amber-500"
+                  }`}>
+                    {actionLabel(t.action)}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(t.notional)}</td>
+                <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">{fmtUsd(t.tradingFee)}</td>
+                <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
+                  {t.action.includes("Closed") ? (
+                    t.pnl_net > 0.01 ? (
+                      <span className="text-emerald-500 font-semibold">+{fmtUsd(t.pnl_net)}</span>
+                    ) : t.pnl_net < -0.01 ? (
+                      <span className="text-red-400 font-semibold">{fmtUsd(t.pnl_net)}</span>
+                    ) : (
+                      <span className="text-ink-faint/30">$0</span>
+                    )
+                  ) : (
+                    <span className="text-[10px] text-ink-faint/40">open</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {trades.length > PREVIEW && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-ink/8 py-3.5 text-xs text-ink-faint hover:text-ink transition-colors font-medium"
+        >
+          {showAll ? (
+            <><ChevronUp size={13} />Show less</>
+          ) : (
+            <><ChevronDown size={13} />Show all {trades.length} actions</>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Footnote
 // ──────────────────────────────────────────────────────────────────────
 
@@ -915,7 +1076,7 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
       )}
       {hasGains && (
         <>
-          Gains: on-chain <code className="font-mono text-[10px]">FeesProcessed</code> events (Arbitrum).
+          Gains: trade history from <code className="font-mono text-[10px]">backend-global.gains.trade</code> REST API (Arbitrum).
           Rates fetched live per-coin from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>.{" "}
         </>
       )}
@@ -955,6 +1116,8 @@ function Results({ result }: { result: FeeCompareResult }) {
     venueB.slug === "hyperliquid" && venueB.wallet
       ? (venueB.wallet as HlWalletData)
       : null;
+  const gainsVenueA = venueA.slug === "gains" && venueA.wallet ? (venueA.wallet as GainsWalletData) : null;
+  const gainsVenueB = venueB.slug === "gains" && venueB.wallet ? (venueB.wallet as GainsWalletData) : null;
 
   return (
     <div className="space-y-4">
@@ -981,6 +1144,12 @@ function Results({ result }: { result: FeeCompareResult }) {
           venueSlug={venueB.slug}
           otherVenueName={venueA.name}
         />
+      )}
+      {gainsVenueA && gainsVenueA.recentTrades.length > 0 && (
+        <GainsTradeTable trades={gainsVenueA.recentTrades} venueName={venueA.name} />
+      )}
+      {gainsVenueB && gainsVenueB.recentTrades.length > 0 && (
+        <GainsTradeTable trades={gainsVenueB.recentTrades} venueName={venueB.name} />
       )}
       <Footnote venueA={venueA} venueB={venueB} />
     </div>
