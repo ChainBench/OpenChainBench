@@ -70,7 +70,7 @@ metric_panels:
   - id: reviews
     label: Review count
     label_key: app
-    metric: app_store_reviews_total
+    metric: last_over_time(app_store_reviews_total{}[31m])
     unit: count
     higher_is_better: true
     description: "Total number of user ratings submitted on the US App Store. More reviews = more statistically reliable average. Robinhood leads with 4.8M+ ratings, Coinbase follows at 1.8M+."
