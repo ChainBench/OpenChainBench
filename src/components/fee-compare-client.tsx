@@ -101,6 +101,7 @@ type VenueResult = {
   ratePerAction: number;
   rateBps: number;
   rateNote: string;
+  rateIsLive: boolean;
   wallet: AnyWallet | null;
 };
 
@@ -247,6 +248,23 @@ function CheaperBadge() {
   );
 }
 
+function LiveBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-500">
+      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      Live
+    </span>
+  );
+}
+
+function ProtocolBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-ink/8 border border-ink/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-ink-faint">
+      Protocol
+    </span>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // VenueDropdown
 // ──────────────────────────────────────────────────────────────────────
@@ -328,7 +346,10 @@ function RateComparisonCard({
             {fmt(venueA.rateBps, 2)}
             <span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
           </p>
-          <p className="text-[11px] text-ink-faint mt-2">{venueA.rateNote}</p>
+          <div className="flex items-center gap-1.5 mt-2">
+            {venueA.rateIsLive ? <LiveBadge /> : <ProtocolBadge />}
+            <p className="text-[11px] text-ink-faint">{venueA.rateNote}</p>
+          </div>
         </div>
 
         <div className="flex flex-col items-center justify-center px-3">
@@ -353,7 +374,10 @@ function RateComparisonCard({
             {fmt(venueB.rateBps, 2)}
             <span className="text-lg font-semibold text-ink-faint ml-1">bps</span>
           </p>
-          <p className="text-[11px] text-ink-faint mt-2">{venueB.rateNote}</p>
+          <div className="flex items-center gap-1.5 mt-2">
+            {venueB.rateIsLive ? <LiveBadge /> : <ProtocolBadge />}
+            <p className="text-[11px] text-ink-faint">{venueB.rateNote}</p>
+          </div>
         </div>
       </div>
       {diff > 0.01 ? (
