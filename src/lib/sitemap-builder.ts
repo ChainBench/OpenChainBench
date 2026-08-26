@@ -564,8 +564,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
+    // 20 s: tight enough to reply well within the smoke-test's 90 s window
+    // even if the static fallback itself takes a few seconds. The Vercel
+    // maxDuration on the route is 60 s; this leaves 40 s of headroom.
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("sitemap build timeout")), 45_000),
+      setTimeout(() => reject(new Error("sitemap build timeout")), 20_000),
     );
     return await Promise.race([buildFullSitemap(), timeout]);
   } catch (err) {
