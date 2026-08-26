@@ -136,7 +136,7 @@ type FeeCompareResult = {
 // ──────────────────────────────────────────────────────────────────────
 
 function walletFees(slug: string, w: AnyWallet): number {
-  if (slug === "hyperliquid") return (w as HlWalletData).feesUsd;
+  if (slug === "hyperliquid") return (w as HlWalletData).netCostUsd;
   return (w as GainsWalletData | GmxWalletData | DydxWalletData).feesUsdc;
 }
 
@@ -588,7 +588,12 @@ function WalletSide({
             {fmtUsd(fees)}
           </p>
         )}
-        <p className="text-xs text-ink-faint mt-1.5">{fmt(Math.abs(avgBps), 2)} bps avg</p>
+        <p className="text-xs text-ink-faint mt-1.5">
+          {fmt(Math.abs(avgBps), 2)} bps avg
+          {venue.slug === "hyperliquid" && (w as HlWalletData).fundingUsd !== 0 && (
+            <span className="ml-1 text-ink-faint/60">· net of funding</span>
+          )}
+        </p>
       </div>
 
       {/* Venue-specific extra stats */}
