@@ -12,7 +12,7 @@ import {
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 /**
  * Single Markdown document containing the current state of every

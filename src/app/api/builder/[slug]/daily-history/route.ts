@@ -30,7 +30,7 @@ import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { getArchiveBuilderBySlug } from "@/lib/hl-archive-store";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string };
 
