@@ -1,0 +1,142 @@
+# OpenChainBench. Bench No 236
+
+slug: zcash-rpc
+number: "236"
+title: Fastest free Zcash RPC, live no-key endpoint latency
+seo_title: "Fastest free Zcash RPC 2026"
+seo_description: "{{best_name}} leads free Zcash RPC at {{best_p50}} (getblockcount p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for getblockcount against every available public Zcash endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Zcash is a proof-of-work privacy blockchain launched in October 2016; it uses the Equihash algorithm and produces one block every 75 seconds. Zcash exposes a Bitcoin-compatible JSON-RPC interface; the canonical height method is getblockcount. Public endpoints are available without an API key from Tatum (two gateways: one backed by the legacy zcashd node and one backed by the new Zebra node) and Blockchair (REST GET). zcashd reached end of life in July 2026; Zebra is now the reference Zcash full-node implementation maintained by the Zcash Foundation. Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Zcash.
+  We measure the round-trip latency of a block-height query against
+  every available public Zcash endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Tatum is probed via JSON-RPC POST (getblockcount) on two
+  gateways: a zcashd backend and a Zebra backend behind the same provider.
+  Blockchair is probed via REST GET of its zcash stats endpoint.
+  The harness classifies every response (ok; http_err; jsonrpc_err; stale; timeout)
+  with a Zcash-scaled staleness gap (4 blocks, around 5 min at 75 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Zcash-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload (Tatum zcashd, Tatum Zebra): {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"getblockcount\",\"params\":[]}. Plain HTTP POST. The result is a decimal integer (block count = current height + 1)."
+  - "Payload (Blockchair): GET https://api.blockchair.com/zcash/stats. Returns a JSON object with a data.best_block_height field containing the current block height."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 4 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=zcash. Provider coverage at launch: 3 endpoints (Tatum zcashd, Tatum Zebra, Blockchair)."
+
+findings:
+  - "{{best_name}} currently leads Zcash RPC at {{best_p50}} (getblockcount p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Zcash RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Zcash block count p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Zcash RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Tatum zcashd (zcash-mainnet.gateway.tatum.io; JSON-RPC), Tatum Zebra (zcash-mainnet-zebrad.gateway.tatum.io; JSON-RPC) and Blockchair (api.blockchair.com/zcash/stats; REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+  - q: "What is the difference between Tatum zcashd and Tatum Zebra?"
+    a: "Both are Tatum gateways for Zcash mainnet. zcashd is the original C++ Zcash node that reached end of life in July 2026, while Zebra is the new Rust full-node implementation maintained by the Zcash Foundation. Tatum runs both backends and exposes them on separate gateway URLs. Comparing their latency shows whether the node implementation itself affects response time."
+  - q: "Does the fastest Zcash RPC change by region?"
+    a: "Often. Tatum infrastructure is distributed and latency varies by origin region; Blockchair has fixed infrastructure so rankings shift with geographic origin. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Zcash RPC latency measured here, technically?"
+    a: "One block-height probe every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Tatum endpoints use JSON-RPC POST (getblockcount); Blockchair uses REST GET of its zcash stats endpoint. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+  - q: "Why does Blockchair use a different API method than the Tatum providers?"
+    a: "Blockchair exposes a proprietary REST API rather than a Bitcoin-compatible JSON-RPC interface. Instead of getblockcount, we send a GET request to its zcash stats endpoint, which returns a JSON object with a data.best_block_height field. The measurement logic is identical: client-side round-trip in milliseconds, classified as ok when a parsable block height is returned."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="zcash"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: tatum
+    name: Tatum
+    tag: Tatum public Zcash RPC gateway (zcashd backend), no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to zcash-mainnet.gateway.tatum.io."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="zcash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tatum", chain="zcash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tatum", chain="zcash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tatum", chain="zcash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tatum", chain="zcash"}) / sum(ocb:rpc_call:rate_24h{provider="tatum", chain="zcash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tatum", chain="zcash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="zcash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="zcash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="zcash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="zcash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="zcash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="zcash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="zcash", region="sgp"}[1h])
+
+  - slug: tatum-zebra
+    name: Tatum (Zebra)
+    tag: Tatum public Zcash RPC gateway (Zebra node backend), no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to zcash-mainnet-zebrad.gateway.tatum.io."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum-zebra", chain="zcash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tatum-zebra", chain="zcash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tatum-zebra", chain="zcash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tatum-zebra", chain="zcash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tatum-zebra", chain="zcash"}) / sum(ocb:rpc_call:rate_24h{provider="tatum-zebra", chain="zcash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tatum-zebra", chain="zcash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tatum-zebra", chain="zcash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum-zebra", chain="zcash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum-zebra", chain="zcash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum-zebra", chain="zcash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum-zebra", chain="zcash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum-zebra", chain="zcash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum-zebra", chain="zcash", region="sgp"}[1h])
+
+  - slug: blockchair
+    name: Blockchair
+    tag: Blockchair public Zcash REST API, no API key required for basic queries
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockchair.com/zcash/stats."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="zcash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockchair", chain="zcash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockchair", chain="zcash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockchair", chain="zcash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockchair", chain="zcash"}) / sum(ocb:rpc_call:rate_24h{provider="blockchair", chain="zcash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockchair", chain="zcash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="zcash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="zcash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="zcash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="zcash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="zcash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="zcash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="zcash", region="sgp"}[1h])
