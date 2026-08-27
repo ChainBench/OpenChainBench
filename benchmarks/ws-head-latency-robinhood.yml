@@ -1,0 +1,150 @@
+# OpenChainBench. Bench № 244
+
+slug: ws-head-latency-robinhood
+number: "244"
+title: "Fastest Robinhood Chain WebSocket newHeads push: Chainstack vs Alchemy vs QuickNode"
+seo_title: "Fastest Robinhood Chain WebSocket RPC newHeads push 2026"
+seo_description: "{{best_name}} pushes Robinhood Chain newHeads first. Live WebSocket block-push lag for Chainstack, Alchemy, and QuickNode keyed endpoints on Robinhood Chain (chain ID 4663)."
+subtitle: Per-block WebSocket push lag in milliseconds versus the earliest provider to deliver the same Robinhood Chain head, measured from 3 regions.
+
+category: RPCs
+status: live
+metric: Block push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 with ~100ms
+  block times, producing roughly 600 blocks per minute. At that cadence,
+  a slow WebSocket feed compounds into hundreds of missed blocks per hour
+  for liquidation keepers, market makers, and latency-sensitive DeFi
+  integrations. This bench races Chainstack, Alchemy, and QuickNode on
+  their keyed Robinhood Chain WebSocket endpoints from 3 regions,
+  scoring each block as a push race: the first provider to deliver the
+  newHeads frame defines T0, every other provider's lag is measured
+  against it over the same network path. Chainstack launched the first
+  dedicated Global Node on Robinhood Chain; the live data shows whether
+  that infrastructure head-start translates into a sustained WS push
+  advantage. {{best_name}} currently leads at {{best_p50}} (p50, 24h).
+
+abstract: |
+  We race Chainstack, Alchemy, and QuickNode on eth_subscribe newHeads
+  over persistent WebSocket connections to their keyed Robinhood Chain
+  endpoints. Three regions probe independently (us-east, eu-west, sgp).
+  Per block, the earliest arrival among providers sets T0; each
+  provider's sample is its own arrival minus T0 in milliseconds. A
+  cohort closes 5 seconds after the first arrival; a live provider that
+  misses the window is scored as a gap rather than as a large latency
+  sample. The relative measurement removes the common network path to
+  each region so the ordering is fair across vantage points.
+
+methodology:
+  - "Providers: Chainstack Global Node (keyed, dedicated Robinhood Chain endpoint), Alchemy (keyed, standard multi-chain key), QuickNode (keyed, shared endpoint fleet). All keys in Railway env, not in the repo."
+  - "Chain: Robinhood Chain (chain ID 4663), an Arbitrum Orbit L2 with ~100ms block times. The eth_subscribe newHeads subscription works identically to Ethereum; the harness uses the same EVM connection logic."
+  - "Race scoring: the first provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after first arrival; late providers score a gap, not a lag sample."
+  - "Relative measurement: a single vantage point cannot separate network path from provider pipeline time, so the per-block delta over the same path is used. The fastest provider reads near zero by construction; read win rate and trailers' distributions, not the leader's absolute number."
+  - "Connection discipline: one persistent WebSocket per (provider, region), client ping every 30s, read deadline 60s, 90s head watchdog to force reconnect on silent subscriptions. Reconnects use exponential backoff 2s to 60s."
+  - "Coverage score: ws_head_blocks_seen_total per provider divided by the cohort maximum over 24h, clamped to 1. A provider that pushes fast but skips blocks loses on coverage rather than hiding in the latency percentiles."
+
+findings:
+  - "{{best_name}} leads the Robinhood Chain cohort at {{best_p50}} (p50, 24h). Robinhood Chain produces ~600 blocks/min; the per-block winner defines zero by construction, so read win rate and trailing distributions alongside the headline number."
+  - "{{name:chainstack}} records {{p50:chainstack}} (p50). Chainstack launched the first dedicated Global Node on Robinhood Chain before other providers, which may translate into a structural push pipeline advantage."
+  - "{{name:alchemy}} records {{p50:alchemy}} (p50), using its standard multi-chain key that also covers Ethereum, Arbitrum, and other EVM chains."
+  - "{{name:quicknode}} records {{p50:quicknode}} (p50) via its shared endpoint fleet for Robinhood Chain."
+
+faq:
+  - q: "Which provider pushes Robinhood Chain newHeads fastest?"
+    a: "Per live data above: {{best_name}} at {{best_p50}} (p50, 24h). Robinhood Chain runs at ~100ms block times, so WS push lag compounds quickly. Check win rate and p99 alongside the median to assess tail reliability."
+  - q: "What is Robinhood Chain?"
+    a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading, launched in March 2026. It runs at ~100ms block times with a gas fee subsidy through September 2026 and supports standard EVM tooling including eth_subscribe newHeads."
+  - q: "Why is the fastest provider near zero?"
+    a: "By construction: the per-block winner sets T0 and wins accumulate near-zero samples. The informative numbers are win rate, trailers' medians and p99s, and the coverage score (blocks seen vs cohort max). A provider with a tight p50 but frequent misses or a high p99 is unreliable for production integrations."
+  - q: "Does Robinhood Chain's 100ms block time affect measurement?"
+    a: "Yes. At 600 blocks/min the harness has 10x more scoring events per hour than Ethereum. The 5-second cohort settle window is the same, but with sub-200ms blocks the settle window covers the full tail reliably. Higher event volume means faster statistical convergence on win rate and percentiles."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head-latency
+
+expected_n: 50000
+
+prometheus:
+  window: 24h
+  freshness_metric: ws_head_blocks_seen_total
+
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (rate(ws_head_lag_milliseconds_bucket{chain="robinhood"}[24h])))
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: chainstack
+    name: Chainstack
+    tag: Global Node, keyed Robinhood Chain WS endpoint, plan disclosed
+    formula: "Median ms behind the earliest provider to push each Robinhood Chain newHeads frame, persistent keyed WebSocket from 3 regions, histogram_quantile over 24h."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="chainstack", chain="robinhood"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="chainstack", chain="robinhood"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="chainstack", chain="robinhood"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="robinhood"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="chainstack", chain="robinhood"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="chainstack", chain="robinhood", region="sgp"}[1h])))
+
+  - slug: alchemy
+    name: Alchemy
+    tag: 30M CU/mo free, keyed Robinhood Chain WS endpoint
+    formula: "Median ms behind the earliest provider to push each Robinhood Chain newHeads frame, persistent keyed WebSocket from 3 regions, histogram_quantile over 24h."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="alchemy", chain="robinhood"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="alchemy", chain="robinhood"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="alchemy", chain="robinhood"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="robinhood"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="alchemy", chain="robinhood"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="alchemy", chain="robinhood", region="sgp"}[1h])))
+
+  - slug: quicknode
+    name: QuickNode
+    tag: Shared endpoint fleet, keyed Robinhood Chain WS endpoint, plan disclosed
+    formula: "Median ms behind the earliest provider to push each Robinhood Chain newHeads frame, persistent keyed WebSocket from 3 regions, histogram_quantile over 24h."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="quicknode", chain="robinhood"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="quicknode", chain="robinhood"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="quicknode", chain="robinhood"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="robinhood"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="quicknode", chain="robinhood"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="quicknode", chain="robinhood", region="sgp"}[1h])))
