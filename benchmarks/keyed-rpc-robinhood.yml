@@ -15,16 +15,12 @@ higher_is_better: false
 seo_intro: |
   Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 designed for
   tokenized equity trading, launched in March 2026 with a gas subsidy
-  running through September 2026. It is the first chain where Chainstack
-  launched a Global Node before Alchemy, giving it an early infrastructure
-  advantage on a financially-sensitive chain with low tolerance for RPC
-  latency.
-  This bench probes Chainstack, Alchemy, and QuickNode on their keyed
-  Robinhood Chain endpoints every 60 seconds from three global probe
-  regions: US-East (Virginia), EU-West (Netherlands), and Singapore.
-  Chainstack leads all three regions, consistent with its globally
-  distributed Global Node infrastructure. This is the only independently-run
-  public latency benchmark for Robinhood Chain.
+  running through September 2026. Three major providers now offer keyed
+  endpoints: Chainstack (Global Node), Alchemy, and QuickNode.
+  This bench probes all three every 60 seconds from US-East (Virginia),
+  EU-West (Netherlands), and Singapore. Alchemy leads the global average
+  and wins from EU-West and Singapore. Chainstack leads from US-East.
+  This is the only independently-run public latency benchmark for Robinhood Chain.
 
 abstract: |
   We measure the round-trip latency of eth_getBlockByNumber against the
@@ -42,19 +38,19 @@ methodology:
   - "Cohort: Chainstack, Alchemy, and QuickNode. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
 
 findings:
-  - "{{name:chainstack}} leads at {{p50:chainstack}} (p50, 24h) across all three probe regions. Its Global Node distributes latency-optimized infrastructure globally, consistently beating Alchemy and QuickNode from Virginia, EU, and Singapore."
-  - "{{name:alchemy}} records {{p50:alchemy}} averaged across all probe regions via its edge infrastructure."
+  - "{{name:alchemy}} leads the global average at {{p50:alchemy}} (p50, 24h) and wins from EU-West and Singapore, where its edge infrastructure consistently delivers single-digit millisecond latency."
+  - "{{name:chainstack}} leads from US-East at {{p50:chainstack}} averaged across all regions via its Global Node infrastructure."
   - "{{name:quicknode}} delivers {{p50:quicknode}} via its shared-endpoint fleet."
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
-    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h, averaged across US-East, EU-West, and Singapore). Chainstack's Global Node wins all three probe regions. It is the lowest-latency keyed provider for Robinhood Chain in this benchmark."
+    a: "Per the live data above: {{name:alchemy}} at {{p50:alchemy}} p50 (24h, averaged across US-East, EU-West, and Singapore). Alchemy leads the global average and wins from EU-West and Singapore. Chainstack leads from US-East."
   - q: "What is Robinhood Chain?"
     a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched in March 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
     a: "Robinhood Chain is a new chain. OpenChainBench added it within days of Chainstack, Alchemy, and QuickNode support going live, making this the first and so far only independent latency measurement. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
-  - q: "Does Chainstack win from every region?"
-    a: "Yes. Chainstack's Global Node leads from US-East (Virginia), EU-West (Netherlands), and Singapore. Its globally distributed infrastructure gives it an edge regardless of where the application is deployed."
+  - q: "Does the fastest provider vary by region?"
+    a: "Yes. Alchemy leads from EU-West (Netherlands) and Singapore. Chainstack's Global Node leads from US-East (Virginia). Choose based on where your application is deployed."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
 
