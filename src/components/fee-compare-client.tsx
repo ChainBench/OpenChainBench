@@ -141,6 +141,13 @@ type SimResult = {
   saved: number;
   multiple: number | null;
   fundingUsd?: number;
+  projectedCarry?: {
+    takerFees: number;
+    borrowFees: number;
+    fundingFees: number;
+    borrowProjected: boolean;
+    fundingProjected: boolean;
+  };
 };
 
 type ComparisonResult = {
@@ -549,6 +556,15 @@ function WalletSide({
 
   if (!hasActivity) {
     if (crossSim) {
+      const carry = crossSim.projectedCarry;
+      const takerFees = carry ? carry.takerFees : crossSim.equivFees;
+      const hasCarry = carry && (carry.borrowFees > 0.01 || carry.fundingFees > 0.01);
+      const netLabel = hasCarry
+        ? "incl. est. carry"
+        : carry
+          ? (carry.borrowProjected || carry.fundingProjected ? "incl. est. carry" : "taker only")
+          : "taker only";
+
       return (
         <div className="space-y-3">
           <div className="flex items-center gap-2.5 mb-1">
@@ -563,7 +579,9 @@ function WalletSide({
             <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
               {fmtUsd(crossSim.equivFees)}
             </p>
-            <p className="text-xs text-ink-faint mt-1.5">taker fees (carry not projected)</p>
+            <p className="text-xs text-ink-faint mt-1.5">
+              {hasCarry ? "est. all-in cost" : "taker fees only"}
+            </p>
           </div>
 
           <div className="bg-ink/4 rounded-xl p-3 space-y-2">
@@ -574,16 +592,42 @@ function WalletSide({
             <div className="border-t border-ink/8 pt-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] text-ink-faint">Projected taker fees</p>
-                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(crossSim.equivFees)}</p>
+                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(takerFees)}</p>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] text-ink-faint">Carry (funding, borrowing)</p>
-                <p className="text-[11px] text-ink-faint/50 italic">not projected</p>
-              </div>
+              {carry && carry.borrowFees > 0.01 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Est. borrowing fees</p>
+                  <p className="font-mono text-xs font-semibold text-red-400">+{fmtUsd(carry.borrowFees)}</p>
+                </div>
+              )}
+              {carry && carry.borrowProjected === false && carry.fundingFees < 0.01 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Borrowing fees</p>
+                  <p className="text-[11px] text-ink-faint/50 italic">not applicable</p>
+                </div>
+              )}
+              {carry && carry.fundingFees > 0.01 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Est. funding (projected)</p>
+                  <p className="font-mono text-xs font-semibold text-red-400">+{fmtUsd(carry.fundingFees)}</p>
+                </div>
+              )}
+              {carry && !carry.fundingProjected && carry.borrowFees > 0.01 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Funding</p>
+                  <p className="text-[11px] text-ink-faint/50 italic">not projected</p>
+                </div>
+              )}
+              {!carry && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Carry (funding, borrow)</p>
+                  <p className="text-[11px] text-ink-faint/50 italic">not projected</p>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
                 <p className="text-[11px] font-semibold text-ink-soft">
                   Net cost{" "}
-                  <span className="font-normal text-[9px] text-ink-faint">taker only</span>
+                  <span className="font-normal text-[9px] text-ink-faint">{netLabel}</span>
                 </p>
                 <p className="font-mono text-xs font-bold text-ink">{fmtUsd(crossSim.equivFees)}</p>
               </div>
