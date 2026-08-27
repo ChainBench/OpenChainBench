@@ -168,6 +168,11 @@ const BRANDS: Record<string, Brand> = {
   tcinfra:           { color: "#2C7DF7" }, // tcinfra tezos blue
   "oktc-official":   { color: "#101010", dark: true }, // okx dark
 
+  // ─── Zcash chain + providers (bench 236) ───
+  zcash:        { color: "#F4B728" },             // zcash official gold
+  blockchair:   { color: "#1C2951", dark: true }, // blockchair dark navy
+  "tatum-zebra": { color: "#4F37FD" },            // inherits tatum purple
+
   // ─── Dogecoin providers (bench 235) ───
   blockcypher: { color: "#1565C0", dark: true }, // blockcypher deep blue
 
