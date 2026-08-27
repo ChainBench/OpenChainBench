@@ -95,6 +95,9 @@ const (
 	// zcashStaleBlockGap: Zcash produces one block every ~75 s,
 	// so 4 blocks ≈ 5 min.
 	zcashStaleBlockGap uint64 = 4
+	// bitcoinCashStaleBlockGap: BCH targets one block every ~600 s,
+	// so 2 blocks ≈ 20 min gives tolerance for normal variance.
+	bitcoinCashStaleBlockGap uint64 = 2
 	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
 	// so 30 blocks ≈ 5 min.
 	veChainStaleBlockGap uint64 = 30
@@ -298,6 +301,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			} else {
 				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
 			}
+		case "bitcoin-cash":
+			if strings.Contains(p.URL, "blockchair.com") {
+				block, result, latency, err = callBlockchairBCH(probeCtx, p.URL)
+			} else if strings.Contains(p.URL, "bitcore.io") {
+				block, result, latency, err = callBitcoreTip(probeCtx, p.URL)
+			} else {
+				block, result, latency, err = callBCHNodeInfo(probeCtx, p.URL)
+			}
 		case "tezos":
 			block, result, latency, err = callTezosBlock(probeCtx, p.URL)
 		case "antelope":
@@ -351,6 +362,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = zcashStaleBlockGap
 			case "dogecoin":
 				gap = dogecoinStaleBlockGap
+			case "bitcoin-cash":
+				gap = bitcoinCashStaleBlockGap
 			case "tezos":
 				gap = tezosStaleBlockGap
 			case "antelope":
@@ -380,7 +393,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
 			"near", "flow", "hedera", "ckb", "multiversx", "neo",
-			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash":
+			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash", "bitcoin-cash":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1487,6 +1500,116 @@ func callNeoBlockCount(ctx context.Context, url string) (count uint64, result st
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric neo block count: %s", string(r.Result)[:min(len(r.Result), 40)])
 	}
 	return n, "ok", latencyMs, nil
+}
+
+// callBlockchairBCH probes the Blockchair REST API for Bitcoin Cash mainnet.
+// GET https://api.blockchair.com/bitcoin-cash/stats — reads data.best_block_height.
+func callBlockchairBCH(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Data struct {
+			BestBlockHeight uint64 `json:"best_block_height"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Data.BestBlockHeight == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("blockchair bch: best_block_height=0")
+	}
+	return body.Data.BestBlockHeight, "ok", latencyMs, nil
+}
+
+// callBitcoreTip probes the Bitcore REST API block/tip endpoint.
+// GET https://api.bitcore.io/api/BCH/mainnet/block/tip — reads the `height` field.
+func callBitcoreTip(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Height uint64 `json:"height"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Height == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("bitcore tip: height=0")
+	}
+	return body.Height, "ok", latencyMs, nil
+}
+
+// callBCHNodeInfo probes the BCHN REST API getBlockchainInfo endpoint.
+// GET https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo — reads `blocks`.
+func callBCHNodeInfo(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Blocks uint64 `json:"blocks"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Blocks == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("bch node: blocks=0")
+	}
+	return body.Blocks, "ok", latencyMs, nil
 }
 
 // callBlockchairZec probes the Blockchair REST API for Zcash mainnet.

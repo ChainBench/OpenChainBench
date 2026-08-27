@@ -1,0 +1,146 @@
+# OpenChainBench. Bench No 245
+
+slug: bitcoin-cash-rpc
+number: "245"
+title: Fastest free Bitcoin Cash RPC, live no-key endpoint latency
+seo_title: "Fastest free Bitcoin Cash RPC 2026"
+seo_description: "{{best_name}} leads free Bitcoin Cash RPC at {{best_p50}} (block height p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for block-height queries against every available public Bitcoin Cash endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Bitcoin Cash is a proof-of-work UTXO blockchain forked from Bitcoin in August 2017; it targets one block every 600 seconds using the SHA-256 algorithm. Unlike Bitcoin proper, Bitcoin Cash does not expose a standard JSON-RPC port without authentication on any public endpoint. Public block-height data is available without an API key from Blockchair (REST GET of its BCH stats endpoint), Bitcore by Bitpay (REST GET of its block/tip endpoint), and BiggestFan's public BCHN node (REST GET of its getBlockchainInfo endpoint). Each provider uses its own REST API shape, so the harness dispatches to a dedicated probe function per provider URL. Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Bitcoin Cash.
+  We measure the round-trip latency of a block-height query against
+  every available public Bitcoin Cash endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Blockchair is probed via REST GET of its BCH stats endpoint
+  (api.blockchair.com/bitcoin-cash/stats, data.best_block_height).
+  Bitcore is probed via REST GET of its block/tip endpoint
+  (api.bitcore.io/api/BCH/mainnet/block/tip, height field).
+  BiggestFan is probed via REST GET of the BCHN node getBlockchainInfo endpoint
+  (rest1.biggestfan.net/v2/blockchain/getBlockchainInfo, blocks field).
+  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
+  with a Bitcoin-Cash-scaled staleness gap (2 blocks, around 20 min at 600 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Bitcoin Cash-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload (Blockchair): GET https://api.blockchair.com/bitcoin-cash/stats. Returns a JSON object; the current block height is read from data.best_block_height."
+  - "Payload (Bitcore): GET https://api.bitcore.io/api/BCH/mainnet/block/tip. Returns a JSON object with a height field containing the current block height."
+  - "Payload (BiggestFan): GET https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo. Returns a Bitcoin-RPC-compatible JSON object; block height is read from the blocks field."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 2 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=bitcoin-cash. Provider coverage at launch: 3 endpoints (Blockchair, Bitcore, BiggestFan)."
+
+findings:
+  - "{{best_name}} currently leads Bitcoin Cash RPC at {{best_p50}} (block height p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Bitcoin Cash RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (BCH block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Bitcoin Cash RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Blockchair (api.blockchair.com/bitcoin-cash/stats, REST GET), Bitcore by Bitpay (api.bitcore.io/api/BCH/mainnet/block/tip, REST GET) and BiggestFan BCHN node (rest1.biggestfan.net/v2/blockchain/getBlockchainInfo, REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+  - q: "Why do Bitcoin Cash providers use REST APIs instead of JSON-RPC?"
+    a: "Bitcoin Cash nodes do support Bitcoin-compatible JSON-RPC, but no public provider exposes that interface without authentication on a keyless endpoint. Blockchair and Bitcore expose proprietary REST APIs; BiggestFan runs a BCHN full node and wraps its output in a REST endpoint. All three return a parsable block height in their response, which is what the harness reads."
+  - q: "Does the fastest Bitcoin Cash RPC change by region?"
+    a: "Often. Blockchair and Bitcore have fixed infrastructure, so their latency rankings can shift significantly depending on your geographic origin. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Bitcoin Cash RPC latency measured here, technically?"
+    a: "One block-height probe every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Each provider uses a REST GET; the harness reads the block height from a different JSON field per provider (data.best_block_height for Blockchair, height for Bitcore, blocks for BiggestFan). Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+  - q: "What is Bitcoin Cash staleness measured as on this benchmark?"
+    a: "A response is classified as stale when the returned block height is more than 2 blocks behind the cross-provider maximum. At BCH's 600-second target block time, 2 blocks corresponds to about 20 minutes, providing reasonable tolerance for normal block-time variance without masking genuine sync lag."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="bitcoin-cash"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: blockchair
+    name: Blockchair
+    tag: Blockchair public Bitcoin Cash REST API, no API key required for basic queries
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockchair.com/bitcoin-cash/stats."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="bitcoin-cash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockchair", chain="bitcoin-cash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockchair", chain="bitcoin-cash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockchair", chain="bitcoin-cash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockchair", chain="bitcoin-cash"}) / sum(ocb:rpc_call:rate_24h{provider="blockchair", chain="bitcoin-cash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockchair", chain="bitcoin-cash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="bitcoin-cash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="bitcoin-cash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="bitcoin-cash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="bitcoin-cash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="bitcoin-cash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockchair", chain="bitcoin-cash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockchair", chain="bitcoin-cash", region="sgp"}[1h])
+
+  - slug: bitcore
+    name: Bitcore (Bitpay)
+    tag: Bitcore by Bitpay public Bitcoin Cash REST API, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.bitcore.io/api/BCH/mainnet/block/tip."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bitcore", chain="bitcoin-cash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="bitcore", chain="bitcoin-cash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="bitcore", chain="bitcoin-cash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="bitcore", chain="bitcoin-cash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="bitcore", chain="bitcoin-cash"}) / sum(ocb:rpc_call:rate_24h{provider="bitcore", chain="bitcoin-cash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="bitcore", chain="bitcoin-cash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="bitcore", chain="bitcoin-cash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bitcore", chain="bitcoin-cash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bitcore", chain="bitcoin-cash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bitcore", chain="bitcoin-cash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bitcore", chain="bitcoin-cash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bitcore", chain="bitcoin-cash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bitcore", chain="bitcoin-cash", region="sgp"}[1h])
+
+  - slug: biggestfan
+    name: BiggestFan Node
+    tag: BiggestFan public BCHN full node REST API, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to rest1.biggestfan.net/v2/blockchain/getBlockchainInfo."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="biggestfan", chain="bitcoin-cash"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="biggestfan", chain="bitcoin-cash"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="biggestfan", chain="bitcoin-cash"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="biggestfan", chain="bitcoin-cash"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="biggestfan", chain="bitcoin-cash"}) / sum(ocb:rpc_call:rate_24h{provider="biggestfan", chain="bitcoin-cash"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="biggestfan", chain="bitcoin-cash"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="biggestfan", chain="bitcoin-cash"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="biggestfan", chain="bitcoin-cash", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="biggestfan", chain="bitcoin-cash", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="biggestfan", chain="bitcoin-cash", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="biggestfan", chain="bitcoin-cash", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="biggestfan", chain="bitcoin-cash", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="biggestfan", chain="bitcoin-cash", region="sgp"}[1h])
