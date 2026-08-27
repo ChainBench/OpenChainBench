@@ -37,11 +37,12 @@ const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
 // Rate caches
 // ──────────────────────────────────────────────────────────────────────
 
-// Gains borrow: ~0.04% per day fallback when API doesn't expose per-pair data
+// Gains v6 borrowingRatePerSecondP and lastFundingRatePerSecondP use 1e18 precision
+const GAINS_CARRY_PRECISION = 1e18;
+// Fallback when API doesn't expose per-pair data (~0.04%/day expressed per-second)
 const GAINS_BORROW_DEFAULT_PER_SEC = 0.0004 / 86400;
-// Arbitrum ~4 blocks/sec — used for block-based borrow rate conversion
-const ARB_BLOCKS_PER_SEC = 4;
-const GAINS_BORROW_PRECISION = 1e10;
+// USDC collateral index on Arbitrum (same as collateralIndex filter in fetchGainsTrades)
+const GAINS_USDC_COLLATERAL_IDX = 3;
 
 let gainsFeeCache: {
   coinRoundTrip: Record<string, number>;
@@ -49,6 +50,7 @@ let gainsFeeCache: {
   avgPerSide: number;
   borrowPerSecPerCoin: Record<string, number>;
   avgBorrowPerSec: number;
+  fundingPerSecPerCoin: Record<string, number>;
   ts: number;
 } | null = null;
 
@@ -100,10 +102,22 @@ type GainsApiTrade = {
 type GainsTradingVars = {
   pairs: Array<{ from: string; feeIndex: string; groupIndex?: string }>;
   fees: Array<{ totalPositionSizeFeeP: string; borrowingFeePerBlockP?: string }>;
+  // Legacy top-level structure (v5)
   borrowingFees?: {
     groups?: Array<{ currentPerBlockP?: string; borrowingFeePerBlockP?: string }>;
     pairs?: Array<{ feeIndex?: string; groupIndex?: string }>;
   };
+  // Per-collateral structure (v6+): indexed by collateralIndex
+  collaterals?: Array<{
+    borrowingFees?: {
+      v2?: {
+        pairParams?: Array<{ borrowingRatePerSecondP?: string }>;
+      };
+    };
+    fundingFees?: {
+      pairData?: Array<{ lastFundingRatePerSecondP?: string }>;
+    };
+  } | null>;
 };
 
 type HlWalletData = {
@@ -228,6 +242,7 @@ async function fetchGainsFeeRates(): Promise<{
   avgPerSide: number;
   borrowPerSecPerCoin: Record<string, number>;
   avgBorrowPerSec: number;
+  fundingPerSecPerCoin: Record<string, number>;
 }> {
   const now = Date.now();
   if (gainsFeeCache && now - gainsFeeCache.ts < RATE_CACHE_TTL_MS) {
@@ -241,55 +256,61 @@ async function fetchGainsFeeRates(): Promise<{
   const coinRoundTrip: Record<string, number> = {};
   const perSide: Record<string, number> = {};
   const borrowPerSecPerCoin: Record<string, number> = {};
+  const fundingPerSecPerCoin: Record<string, number> = {};
 
-  // Try to extract per-group borrow rates from the response
-  const groupBorrowRates: number[] = [];
-  if (vars.borrowingFees?.groups) {
-    for (const g of vars.borrowingFees.groups) {
-      const raw = g.currentPerBlockP ?? g.borrowingFeePerBlockP;
-      if (raw) {
-        const perBlock = parseFloat(raw) / GAINS_BORROW_PRECISION;
-        groupBorrowRates.push(perBlock * ARB_BLOCKS_PER_SEC);
-      }
-    }
-  }
-  // Also try fee-level borrow rates
-  const feeBorrowRates: (number | null)[] = vars.fees.map(f => {
-    if (!f.borrowingFeePerBlockP) return null;
-    const perBlock = parseFloat(f.borrowingFeePerBlockP) / GAINS_BORROW_PRECISION;
-    return perBlock * ARB_BLOCKS_PER_SEC;
-  });
+  // Gains v6: per-collateral carry data indexed by collateralIndex
+  // collateralIndex 3 = USDC on Arbitrum (same filter used in fetchGainsTrades)
+  const usdcCollateral = vars.collaterals?.[GAINS_USDC_COLLATERAL_IDX];
 
-  for (const p of vars.pairs) {
+  // Per-pair borrow rates (v2 system, rates per-second at precision 1e18)
+  const v2BorrowParams = usdcCollateral?.borrowingFees?.v2?.pairParams ?? [];
+  // Per-pair funding rates (per-second at precision 1e18)
+  const fundingPairData = usdcCollateral?.fundingFees?.pairData ?? [];
+
+  for (let i = 0; i < vars.pairs.length; i++) {
+    const p = vars.pairs[i];
     if (coinRoundTrip[p.from]) continue;
+
     const fi = parseInt(p.feeIndex, 10);
     const entry = vars.fees[fi];
     if (!entry) continue;
+
+    // Taker fee rate
     const ps = parseInt(entry.totalPositionSizeFeeP, 10) / GAINS_FEE_PRECISION;
     coinRoundTrip[p.from] = ps * 2;
     perSide[p.from] = ps;
 
-    // Assign borrow rate per second for this coin
-    const gi = p.groupIndex !== undefined ? parseInt(p.groupIndex, 10) : -1;
-    const groupRate = gi >= 0 && groupBorrowRates[gi] != null ? groupBorrowRates[gi] : null;
-    const feeRate = feeBorrowRates[fi];
-    const rate = groupRate ?? feeRate ?? null;
-    if (rate !== null) {
-      borrowPerSecPerCoin[p.from] = rate;
+    // Borrow rate per second (v2 takes precedence over legacy)
+    const v2Borrow = v2BorrowParams[i]?.borrowingRatePerSecondP;
+    if (v2Borrow) {
+      borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_CARRY_PRECISION;
+    }
+
+    // Funding rate per second (absolute value — longs and shorts may face same magnitude)
+    const fundingRate = fundingPairData[i]?.lastFundingRatePerSecondP;
+    if (fundingRate) {
+      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_CARRY_PRECISION;
     }
   }
 
   const sides = Object.values(perSide);
   const avgPerSide = sides.length > 0 ? sides.reduce((a, b) => a + b, 0) / sides.length : 0.0005;
 
-  // Average borrow rate; fallback to default if API didn't expose it
   const borrowRates = Object.values(borrowPerSecPerCoin);
   const avgBorrowPerSec =
     borrowRates.length > 0
       ? borrowRates.reduce((a, b) => a + b, 0) / borrowRates.length
       : GAINS_BORROW_DEFAULT_PER_SEC;
 
-  gainsFeeCache = { coinRoundTrip, perSide, avgPerSide, borrowPerSecPerCoin, avgBorrowPerSec, ts: now };
+  gainsFeeCache = {
+    coinRoundTrip,
+    perSide,
+    avgPerSide,
+    borrowPerSecPerCoin,
+    avgBorrowPerSec,
+    fundingPerSecPerCoin,
+    ts: now,
+  };
   return gainsFeeCache;
 }
 
@@ -804,7 +825,7 @@ function computeHlFunding(
 }
 
 // Estimate Gains borrowing fees for a set of position slices.
-// Uses per-second borrow rate (fraction) × notional × duration.
+// Uses per-second borrow rate (fraction, 1e18 precision already converted) × notional × duration.
 function estimateGainsBorrowFees(
   positions: PositionSlice[],
   borrowPerSecPerCoin: Record<string, number>,
@@ -813,6 +834,23 @@ function estimateGainsBorrowFees(
   let total = 0;
   for (const pos of positions) {
     const rate = borrowPerSecPerCoin[pos.coin] ?? avgBorrowPerSec;
+    const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
+    total += pos.notionalUsd * rate * durationSec;
+  }
+  return total;
+}
+
+// Estimate Gains funding fees for a set of position slices.
+// Uses the current (last known) per-second funding rate as a proxy for the period.
+// Rate is absolute (direction already irrelevant for cost estimation).
+function estimateGainsFundingFees(
+  positions: PositionSlice[],
+  fundingPerSecPerCoin: Record<string, number>
+): number {
+  let total = 0;
+  for (const pos of positions) {
+    const rate = fundingPerSecPerCoin[pos.coin];
+    if (!rate) continue;
     const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
     total += pos.notionalUsd * rate * durationSec;
   }
@@ -1059,10 +1097,11 @@ export async function GET(req: Request) {
           const aFunding = hlW.fundingUsd;
           const aNetCost = aFees - aFunding;
 
-          // Estimate Gains borrow fees by reconstructing HL positions
+          // Estimate Gains carry (borrow + funding) by reconstructing HL positions
           const hlPositions = reconstructHlPositions(hlFillsData, cutoffMs);
           const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
-          const bEquiv = takerEquiv + gainsBorrow;
+          const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
+          const bEquiv = takerEquiv + gainsBorrow + gainsFunding;
 
           comparison.aToBSim = {
             notionalUsed: aNotional,
@@ -1074,9 +1113,9 @@ export async function GET(req: Request) {
             projectedCarry: {
               takerFees: takerEquiv,
               borrowFees: gainsBorrow,
-              fundingFees: 0,
+              fundingFees: gainsFunding,
               borrowProjected: gainsBorrow > 0.01,
-              fundingProjected: false,
+              fundingProjected: gainsFunding > 0.01,
             },
           };
           if (aNotional > 0) {
@@ -1107,6 +1146,25 @@ export async function GET(req: Request) {
               fundingFees: hlFunding,
               borrowProjected: false,
               fundingProjected: hlFunding > 0.01,
+            };
+          }
+
+          // HL→GMX: add projected GMX carry using implied rates from the wallet's GMX history
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          const gmxForA = gmxWalletData as GmxWalletData | null;
+          if (venueA === "hyperliquid" && venueB === "gmx-v2" && gmxForA !== null && gmxForA.notionalUsd > 0) {
+            const takerFees = equivFees;
+            const gmxBorrowRate = gmxForA.borrowingFeesUsdc / gmxForA.notionalUsd;
+            const gmxFundingRate = Math.max(0, gmxForA.fundingFeesUsdc) / gmxForA.notionalUsd;
+            const gmxBorrowProj = stats.notional * gmxBorrowRate;
+            const gmxFundingProj = stats.notional * gmxFundingRate;
+            equivFees += gmxBorrowProj + gmxFundingProj;
+            projectedCarry = {
+              takerFees,
+              borrowFees: gmxBorrowProj,
+              fundingFees: gmxFundingProj,
+              borrowProjected: gmxBorrowProj > 0.01,
+              fundingProjected: gmxFundingProj > 0.01,
             };
           }
 
@@ -1147,7 +1205,8 @@ export async function GET(req: Request) {
 
           const hlPositions = reconstructHlPositions(hlFillsData, cutoffMs);
           const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
-          const aEquiv = takerEquiv + gainsBorrow;
+          const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
+          const aEquiv = takerEquiv + gainsBorrow + gainsFunding;
 
           comparison.bToASim = {
             notionalUsed: bNotional,
@@ -1159,9 +1218,9 @@ export async function GET(req: Request) {
             projectedCarry: {
               takerFees: takerEquiv,
               borrowFees: gainsBorrow,
-              fundingFees: 0,
+              fundingFees: gainsFunding,
               borrowProjected: gainsBorrow > 0.01,
-              fundingProjected: false,
+              fundingProjected: gainsFunding > 0.01,
             },
           };
           if (bNotional > 0) {
@@ -1192,6 +1251,25 @@ export async function GET(req: Request) {
               fundingFees: hlFunding,
               borrowProjected: false,
               fundingProjected: hlFunding > 0.01,
+            };
+          }
+
+          // HL→GMX: add projected GMX carry using implied rates from the wallet's GMX history
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          const gmxForB = gmxWalletData as GmxWalletData | null;
+          if (venueB === "hyperliquid" && venueA === "gmx-v2" && gmxForB !== null && gmxForB.notionalUsd > 0) {
+            const takerFees = equivFees;
+            const gmxBorrowRate = gmxForB.borrowingFeesUsdc / gmxForB.notionalUsd;
+            const gmxFundingRate = Math.max(0, gmxForB.fundingFeesUsdc) / gmxForB.notionalUsd;
+            const gmxBorrowProj = stats.notional * gmxBorrowRate;
+            const gmxFundingProj = stats.notional * gmxFundingRate;
+            equivFees += gmxBorrowProj + gmxFundingProj;
+            projectedCarry = {
+              takerFees,
+              borrowFees: gmxBorrowProj,
+              fundingFees: gmxFundingProj,
+              borrowProjected: gmxBorrowProj > 0.01,
+              fundingProjected: gmxFundingProj > 0.01,
             };
           }
 
