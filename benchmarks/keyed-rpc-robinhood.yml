@@ -67,36 +67,36 @@ providers:
     tag: Global Node, keyed Robinhood Chain endpoint, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on Chainstack's keyed Robinhood Chain Global Node."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"}[1h]))
 
   - slug: quicknode
     name: QuickNode
     tag: Shared endpoint fleet, keyed Robinhood Chain endpoint, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on QuickNode's keyed Robinhood Chain endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"}[1h]))
 
   - slug: alchemy
     name: Alchemy
     tag: 30M CU/mo free, keyed Robinhood Chain endpoint
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on Alchemy's keyed Robinhood Chain endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"}[1h]))
