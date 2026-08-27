@@ -8,7 +8,7 @@ import { LiveDashboard } from "@/components/live/dashboard";
 import { buildGlobalDatasetJsonLd } from "@/lib/dataset-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 const DESCRIPTION =
   "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy. Open methodology, updated continuously.";
