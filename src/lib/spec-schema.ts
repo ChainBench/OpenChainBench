@@ -69,7 +69,7 @@ const slug = z
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
 
-const region = z.enum(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
+const region = z.enum(["us-east", "us-west", "eu-west", "ap-southeast", "sgp", "global"]);
 
 const queries = z
   .object({
