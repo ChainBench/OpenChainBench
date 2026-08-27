@@ -325,7 +325,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v53: overlayEditorial now prunes providers absent from spec.providers.
   // Bump to flush v52 cached entries that still carry stale Flashbots row.
   // v54: add 6 new chain benches 216-221 (NEAR, Flow, Hedera, CKB, MultiversX, NEO).
-  ["bench-unfiltered-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
+  ["bench-unfiltered-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -634,7 +635,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
   // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
-  ["bench-filters-v21", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v22", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
