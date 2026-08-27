@@ -1,0 +1,142 @@
+# OpenChainBench. Bench No 246
+
+slug: litecoin-rpc
+number: "246"
+title: Fastest free Litecoin RPC, live no-key endpoint latency
+seo_title: "Fastest free Litecoin RPC 2026"
+seo_description: "{{best_name}} leads free Litecoin RPC at {{best_p50}} (getblockcount p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for block-height queries against every available public Litecoin endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Litecoin is a proof-of-work UTXO blockchain forked from Bitcoin in October 2011; it targets one block every 150 seconds using the Scrypt hashing algorithm. Litecoin exposes a Bitcoin-compatible JSON-RPC interface; the canonical height method is getblockcount. Public endpoints are available without an API key from Tatum (JSON-RPC gateway), BlockCypher (REST GET of its blockchain info endpoint) and LitecoinSpace (Esplora REST GET returning a plain block-height integer). Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Litecoin.
+  We measure the round-trip latency of a block-height query against
+  every available public Litecoin endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Tatum is probed via JSON-RPC POST (getblockcount).
+  BlockCypher is probed via REST GET of its blockchain info endpoint
+  (height field). LitecoinSpace is probed via Esplora REST GET returning
+  a plain block-height integer.
+  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
+  with a Litecoin-scaled staleness gap (4 blocks, around 10 min at 150 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Litecoin-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload (Tatum): {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"getblockcount\",\"params\":[]}. Plain HTTP POST. The result is a decimal integer."
+  - "Payload (BlockCypher): GET https://api.blockcypher.com/v1/ltc/main. Returns a JSON object with a height field containing the current block height."
+  - "Payload (LitecoinSpace): GET https://litecoinspace.org/api/blocks/tip/height. Returns the block height as a plain ASCII integer with no JSON wrapping."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 4 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=litecoin. Provider coverage at launch: 3 endpoints (Tatum, BlockCypher, LitecoinSpace)."
+
+findings:
+  - "{{best_name}} currently leads Litecoin RPC at {{best_p50}} (getblockcount p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Litecoin RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Litecoin block count p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Litecoin RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Tatum (litecoin-mainnet.gateway.tatum.io, JSON-RPC), BlockCypher (api.blockcypher.com/v1/ltc/main, REST GET) and LitecoinSpace (litecoinspace.org/api/blocks/tip/height, Esplora REST). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+  - q: "Does the fastest Litecoin RPC change by region?"
+    a: "Often. Tatum and BlockCypher have fixed infrastructure so their latency rankings shift with geographic origin. The region tabs at the top of the page re-scope every number to a single origin."
+  - q: "How is Litecoin RPC latency measured here, technically?"
+    a: "One block-height probe every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Tatum uses JSON-RPC POST (getblockcount); BlockCypher uses REST GET (height field); LitecoinSpace uses Esplora REST GET returning a plain integer."
+  - q: "Why does LitecoinSpace return a plain integer instead of JSON?"
+    a: "LitecoinSpace is built on the Esplora block explorer API, which exposes the current tip height at /api/blocks/tip/height as a raw ASCII integer with no JSON envelope. This is the same format used by mempool.space for Bitcoin. The harness reads the body directly and parses it as a uint64."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="litecoin"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: tatum
+    name: Tatum
+    tag: Tatum public Litecoin RPC gateway, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to litecoin-mainnet.gateway.tatum.io."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="litecoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tatum", chain="litecoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tatum", chain="litecoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tatum", chain="litecoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tatum", chain="litecoin"}) / sum(ocb:rpc_call:rate_24h{provider="tatum", chain="litecoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tatum", chain="litecoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="litecoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="litecoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="litecoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="litecoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="litecoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tatum", chain="litecoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tatum", chain="litecoin", region="sgp"}[1h])
+
+  - slug: blockcypher
+    name: BlockCypher
+    tag: BlockCypher public Litecoin REST API, no API key required for basic queries
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockcypher.com/v1/ltc/main."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockcypher", chain="litecoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockcypher", chain="litecoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockcypher", chain="litecoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockcypher", chain="litecoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockcypher", chain="litecoin"}) / sum(ocb:rpc_call:rate_24h{provider="blockcypher", chain="litecoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockcypher", chain="litecoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockcypher", chain="litecoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockcypher", chain="litecoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockcypher", chain="litecoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockcypher", chain="litecoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockcypher", chain="litecoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockcypher", chain="litecoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockcypher", chain="litecoin", region="sgp"}[1h])
+
+  - slug: litecoinspace
+    name: LitecoinSpace
+    tag: LitecoinSpace Esplora public API, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to litecoinspace.org/api/blocks/tip/height."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="litecoinspace", chain="litecoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="litecoinspace", chain="litecoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="litecoinspace", chain="litecoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="litecoinspace", chain="litecoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="litecoinspace", chain="litecoin"}) / sum(ocb:rpc_call:rate_24h{provider="litecoinspace", chain="litecoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="litecoinspace", chain="litecoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="litecoinspace", chain="litecoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="litecoinspace", chain="litecoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="litecoinspace", chain="litecoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="litecoinspace", chain="litecoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="litecoinspace", chain="litecoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="litecoinspace", chain="litecoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="litecoinspace", chain="litecoin", region="sgp"}[1h])
