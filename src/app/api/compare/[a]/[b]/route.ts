@@ -8,7 +8,7 @@ import { SLUG_RE } from "@/lib/slug";
 import { SITE } from "@/data/site";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 /**
  * Head-to-head comparison of two providers as a single citable payload.

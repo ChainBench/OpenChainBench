@@ -141,7 +141,7 @@ const getSeriesMapCached = unstable_cache(
 );
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 /**
  * Per-bench, per-provider time series. Mirrors /api/stat in shape and
