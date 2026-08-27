@@ -208,8 +208,9 @@ scrape_configs:
     honor_labels: true
     static_configs:
       - targets:
-        - 'rpc-keyed-us.railway.internal:2112'       # us-east
-        - 'rpc-keyed-us-west.railway.internal:2112'  # us-west
+        - 'rpc-keyed-us.railway.internal:2112'   # us-east
+        - 'rpc-keyed-eu.railway.internal:2112'   # eu-west
+        - 'rpc-keyed-sgp.railway.internal:2112'  # sgp
         labels:
           benchmark: rpc-keyed-latency
     metrics_path: /metrics
