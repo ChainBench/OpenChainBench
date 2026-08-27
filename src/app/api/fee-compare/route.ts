@@ -396,10 +396,10 @@ async function fetchParadexCarryRates(): Promise<{
   };
   const fundingPerSecPerCoin: Record<string, number> = {};
   for (const mkt of data.results ?? []) {
-    if (!mkt.symbol.includes("-USD")) continue;
+    if (!mkt.symbol.endsWith("-PERP")) continue;
     // "BTC-USD-PERP" → "BTC"
-    const coin = mkt.symbol.replace(/-USD.*/, "");
-    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8"));
+    const coin = mkt.symbol.replace(/-USD-PERP$/, "").replace(/-PERP$/, "");
+    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
     const rate = parseFloat(mkt.interest_rate ?? "0") / (periodHours * 3600);
     if (rate > 0) fundingPerSecPerCoin[coin] = rate;
   }
