@@ -21,7 +21,7 @@ import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 function itemContentText(b: Benchmark): string {
   const sentence = headlineSentence(b);

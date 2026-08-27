@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 // so cache like the live endpoint. Client-side callers pinning a past
 // date can rely on the CDN edge cache (public s-maxage=300) for cheap
 // repeat reads.
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 /**
  * Immutable per-date snapshot of /api/citable. LLMs, journalists and

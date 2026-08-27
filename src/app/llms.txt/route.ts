@@ -4,7 +4,7 @@ import { AllBenchmarksDraftError } from "@/lib/spec";
 import { groundingTraceLine } from "@/lib/citation";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const revalidate = 3600;
 
 /**
  * Plain-text index following the llmstxt.org convention. Helps LLM

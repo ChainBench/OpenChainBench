@@ -60,7 +60,7 @@ import type { Benchmark } from "@/types/benchmark";
 // using useSearchParams (BenchmarkBody, wrapped in Suspense) won't
 // flip the route to fully dynamic because they're behind Suspense, so
 // the route still prerenders cleanly.
-export const revalidate = 60;
+export const revalidate = 3600;
 
 // Cold start render does thousands of Prom calls on the heaviest benches
 // (hyperliquid-frontends: 75 providers × 7 queries + 11 panels × values +

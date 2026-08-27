@@ -22,7 +22,7 @@ import { SITE } from "@/data/site";
  * "rank N/A" badge.
  */
 
-export const revalidate = 600;
+export const revalidate = 3600;
 
 const DESCRIPTION =
   "Every OpenChainBench ranking badge. Search, preview the SVG, copy Markdown, HTML, URL or JSON for your README or docs. CC-BY-4.0.";

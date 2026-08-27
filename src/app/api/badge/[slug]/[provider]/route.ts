@@ -33,7 +33,7 @@ import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string; provider: string };
 

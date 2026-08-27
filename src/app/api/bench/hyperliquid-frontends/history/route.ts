@@ -32,7 +32,7 @@ import {
 } from "@/types/hl-archive";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const BENCH_SLUG = "hyperliquid-frontends";
 
