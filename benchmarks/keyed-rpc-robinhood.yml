@@ -4,8 +4,8 @@ slug: keyed-rpc-robinhood
 number: "243"
 title: "Fastest Robinhood Chain RPC with API key: Chainstack vs Alchemy vs QuickNode"
 seo_title: "Fastest Robinhood Chain RPC API key 2026: Chainstack vs Alchemy vs QuickNode latency"
-seo_description: "Live Robinhood Chain RPC latency: Chainstack, Alchemy, and QuickNode keyed endpoints probed every 60s from US-East, EU-West, and Singapore. First public benchmark for this Arbitrum Orbit L2."
-subtitle: eth_getBlockByNumber latency against keyed Robinhood Chain endpoints (Chainstack, Alchemy, QuickNode), probed every 60 seconds from US-East, EU-West, and Singapore.
+seo_description: "Live Robinhood Chain RPC latency: Chainstack, Alchemy, and QuickNode keyed endpoints probed every 60s from US-East. First public benchmark for this Arbitrum Orbit L2."
+subtitle: eth_getBlockByNumber latency against keyed Robinhood Chain endpoints (Chainstack, Alchemy, QuickNode), probed every 60 seconds from US-East.
 category: RPCs
 status: live
 metric: RPC latency
@@ -15,42 +15,45 @@ higher_is_better: false
 seo_intro: |
   Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 designed for
   tokenized equity trading, launched in March 2026 with a gas subsidy
-  running through September 2026. Three major providers now offer keyed
-  endpoints: Chainstack (Global Node), Alchemy, and QuickNode.
-  This bench probes all three every 60 seconds from US-East (Virginia),
-  EU-West (Netherlands), and Singapore. Alchemy leads the global average
-  and wins from EU-West and Singapore. Chainstack leads from US-East.
-  This is the only independently-run public latency benchmark for Robinhood Chain.
+  running through September 2026. It is the first chain where Chainstack
+  launched a Global Node before Alchemy, giving it an early infrastructure
+  advantage on a financially-sensitive chain with low tolerance for RPC
+  latency.
+  This bench probes Chainstack, Alchemy, and QuickNode on their keyed
+  Robinhood Chain endpoints every 60 seconds from US-East (Virginia).
+  Chainstack leads, consistent with its Global Node infrastructure launched
+  first on this chain. This is the only independently-run public latency
+  benchmark for Robinhood Chain.
 
 abstract: |
   We measure the round-trip latency of eth_getBlockByNumber against the
   keyed endpoints of Chainstack, Alchemy, and QuickNode on Robinhood Chain.
   The probe uses a rotating JSON-RPC id to defeat edge caches, fires every
-  60 seconds from three global regions, and classifies each response as ok,
+  60 seconds from US-East (Virginia), and classifies each response as ok,
   http_err, jsonrpc_err, stale, or timeout. Only ok responses contribute to
   the latency distribution.
 
 methodology:
-  - "Cadence: every 60 seconds per provider from each of 3 probe regions (us-east/Virginia, eu-west/Netherlands, sgp/Singapore). Robinhood Chain runs on the Arbitrum Orbit stack with ~100ms block times; the 60s probe cadence captures 600 blocks per hour per region."
+  - "Cadence: every 60 seconds per provider from US-East (Virginia). Robinhood Chain runs on the Arbitrum Orbit stack with ~100ms block times; the 60s probe cadence captures 600 blocks per hour."
   - "Payload: eth_getBlockByNumber('latest', false) with a rotating JSON-RPC id. Non-cacheable by design: the rotating id defeats body-keyed edge caches and forces the provider to serve a real Robinhood Chain tip."
   - "Authentication: Chainstack Global Node key (node-scoped, dedicated to Robinhood Chain; key in Railway env, not in repo). Alchemy uses its standard multi-chain key. QuickNode uses its shared-endpoint key for Robinhood Chain. All keys in Railway env, not in repo."
   - "Call-result classification: ok (HTTP 200 with usable block number), http_err, jsonrpc_err (HTTP 200 with error body), stale (block more than 20 behind the cross-provider tip), timeout. Latency is recorded only for ok responses."
   - "Cohort: Chainstack, Alchemy, and QuickNode. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
 
 findings:
-  - "{{name:alchemy}} leads the global average at {{p50:alchemy}} (p50, 24h) and wins from EU-West and Singapore, where its edge infrastructure consistently delivers single-digit millisecond latency."
-  - "{{name:chainstack}} leads from US-East at {{p50:chainstack}} averaged across all regions via its Global Node infrastructure."
+  - "{{name:chainstack}} leads at {{p50:chainstack}} (p50, 24h) from US-East. Its Global Node, launched first on Robinhood Chain, delivers the lowest round-trip latency in this benchmark."
+  - "{{name:alchemy}} records {{p50:alchemy}} from US-East via its edge infrastructure."
   - "{{name:quicknode}} delivers {{p50:quicknode}} via its shared-endpoint fleet."
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
-    a: "Per the live data above: {{name:alchemy}} at {{p50:alchemy}} p50 (24h, averaged across US-East, EU-West, and Singapore). Alchemy leads the global average and wins from EU-West and Singapore. Chainstack leads from US-East."
+    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h, from US-East). It is the lowest-latency keyed provider for Robinhood Chain in this benchmark."
   - q: "What is Robinhood Chain?"
     a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched in March 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
     a: "Robinhood Chain is a new chain. OpenChainBench added it within days of Chainstack, Alchemy, and QuickNode support going live, making this the first and so far only independent latency measurement. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
-  - q: "Does the fastest provider vary by region?"
-    a: "Yes. Alchemy leads from EU-West (Netherlands) and Singapore. Chainstack's Global Node leads from US-East (Virginia). Choose based on where your application is deployed."
+  - q: "Why only US-East?"
+    a: "The probe runs from US-East (Virginia) where the Railway infrastructure is located. Additional probe regions may be added as the chain matures and more regional endpoints become available."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
 
@@ -58,19 +61,11 @@ prometheus:
   window: 24h
   freshness_metric: rpc_latency_milliseconds
 
-rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="robinhood",tier="keyed"})
-
-dimensions:
-  region:
-    - { value: us-east,    label: US-East }
-    - { value: eu-west,    label: EU-West }
-    - { value: sgp,        label: Singapore }
-
 providers:
   - slug: chainstack
     name: Chainstack
     tag: Global Node, keyed Robinhood Chain endpoint, plan disclosed
-    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East, EU-West, and Singapore on Chainstack's keyed Robinhood Chain Global Node."
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on Chainstack's keyed Robinhood Chain Global Node."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="robinhood",tier="keyed"})
@@ -79,21 +74,11 @@ providers:
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="robinhood",tier="keyed"})
       sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="robinhood",tier="keyed"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region="us-east"}[1h]))
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed",region="eu-west"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
-        - region: sgp
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed",region="sgp"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region="sgp"}[1h]))
 
   - slug: quicknode
     name: QuickNode
     tag: Shared endpoint fleet, keyed Robinhood Chain endpoint, plan disclosed
-    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East, EU-West, and Singapore on QuickNode's keyed Robinhood Chain endpoint."
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on QuickNode's keyed Robinhood Chain endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="robinhood",tier="keyed"})
@@ -102,21 +87,11 @@ providers:
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="robinhood",tier="keyed"})
       sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="robinhood",tier="keyed"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region="us-east"}[1h]))
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed",region="eu-west"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
-        - region: sgp
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="robinhood",tier="keyed",region="sgp"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="robinhood",tier="keyed",region="sgp"}[1h]))
 
   - slug: alchemy
     name: Alchemy
     tag: 30M CU/mo free, keyed Robinhood Chain endpoint
-    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East, EU-West, and Singapore on Alchemy's keyed Robinhood Chain endpoint."
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 60s from US-East on Alchemy's keyed Robinhood Chain endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="robinhood",tier="keyed"})
@@ -125,13 +100,3 @@ providers:
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="robinhood",tier="keyed"})
       sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="robinhood",tier="keyed"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region="us-east"}[1h]))
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed",region="eu-west"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
-        - region: sgp
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="robinhood",tier="keyed",region="sgp"})
-          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="robinhood",tier="keyed",region="sgp"}[1h]))
