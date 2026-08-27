@@ -98,6 +98,9 @@ const (
 	// bitcoinCashStaleBlockGap: BCH targets one block every ~600 s,
 	// so 2 blocks ≈ 20 min gives tolerance for normal variance.
 	bitcoinCashStaleBlockGap uint64 = 2
+	// litecoinStaleBlockGap: Litecoin targets one block every ~150 s,
+	// so 4 blocks ≈ 10 min.
+	litecoinStaleBlockGap uint64 = 4
 	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
 	// so 30 blocks ≈ 5 min.
 	veChainStaleBlockGap uint64 = 30
@@ -309,6 +312,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			} else {
 				block, result, latency, err = callBCHNodeInfo(probeCtx, p.URL)
 			}
+		case "litecoin":
+			if strings.Contains(p.URL, "blockcypher.com") {
+				block, result, latency, err = callBlockCypherLTC(probeCtx, p.URL)
+			} else if strings.Contains(p.URL, "litecoinspace.org") {
+				block, result, latency, err = callLitecoinSpaceAPI(probeCtx, p.URL)
+			} else {
+				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+			}
 		case "tezos":
 			block, result, latency, err = callTezosBlock(probeCtx, p.URL)
 		case "antelope":
@@ -364,6 +375,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = dogecoinStaleBlockGap
 			case "bitcoin-cash":
 				gap = bitcoinCashStaleBlockGap
+			case "litecoin":
+				gap = litecoinStaleBlockGap
 			case "tezos":
 				gap = tezosStaleBlockGap
 			case "antelope":
@@ -393,7 +406,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
 			"near", "flow", "hedera", "ckb", "multiversx", "neo",
-			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash", "bitcoin-cash":
+			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash", "bitcoin-cash", "litecoin":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1684,4 +1697,78 @@ func callBlockCypherDoge(ctx context.Context, url string) (height uint64, result
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("blockcypher doge: height=0")
 	}
 	return body.Height, "ok", latencyMs, nil
+}
+
+// callBlockCypherLTC probes the BlockCypher REST API for Litecoin mainnet.
+// GET https://api.blockcypher.com/v1/ltc/main — reads the `height` field.
+func callBlockCypherLTC(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Height uint64 `json:"height"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Height == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("blockcypher ltc: height=0")
+	}
+	return body.Height, "ok", latencyMs, nil
+}
+
+// callLitecoinSpaceAPI probes the LitecoinSpace Esplora API.
+// GET https://litecoinspace.org/api/blocks/tip/height — returns a plain ASCII integer.
+func callLitecoinSpaceAPI(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var h uint64
+	if _, err := fmt.Sscanf(strings.TrimSpace(string(body)), "%d", &h); err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("litecoinspace: non-integer body: %s", string(body))
+	}
+	if h == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("litecoinspace: height=0")
+	}
+	return h, "ok", latencyMs, nil
 }
