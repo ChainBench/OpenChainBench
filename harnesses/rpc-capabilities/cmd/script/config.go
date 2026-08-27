@@ -1640,6 +1640,17 @@ func chains() []Chain {
 				{Slug: "blockchair", Name: "Blockchair", URL: envDefault("RPC_URL_ZCASH_BLOCKCHAIR", "https://api.blockchair.com/zcash/stats")},
 			},
 		},
+		// 2026-08-27 wave-10. Bitcoin Cash — Blockchair REST + Bitcore REST + BCHN node REST. ~600 s/block.
+		{
+			Slug: "bitcoin-cash",
+			Name: "Bitcoin Cash",
+			Kind: "bitcoin-cash",
+			Providers: []Provider{
+				{Slug: "blockchair", Name: "Blockchair", URL: envDefault("RPC_URL_BCH_BLOCKCHAIR", "https://api.blockchair.com/bitcoin-cash/stats")},
+				{Slug: "bitcore", Name: "Bitcore (Bitpay)", URL: envDefault("RPC_URL_BCH_BITCORE", "https://api.bitcore.io/api/BCH/mainnet/block/tip")},
+				{Slug: "biggestfan", Name: "BiggestFan Node", URL: envDefault("RPC_URL_BCH_BIGGESTFAN", "https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo")},
+			},
+		},
 		// 2026-08-23 wave-9. Dogecoin — getblockcount JSON-RPC (Tatum, dRPC) + BlockCypher REST GET. ~60 s/block.
 		{
 			Slug: "dogecoin",

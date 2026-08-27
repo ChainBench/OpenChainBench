@@ -2526,6 +2526,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TCInfra RPC node provider for Tezos and Etherlink (prod.tcinfra.net/rpc/mainnet). Provides public keyless Tezos mainnet REST access with no API key required.",
   },
 
+  // ─── Bitcoin Cash providers (bench 244) ──────────────────────
+  bitcore: {
+    url: "https://bitcore.io",
+    description:
+      "Bitcore is an open-source platform by Bitpay for building Bitcoin and Bitcoin Cash applications. Its public REST API exposes chain info, blocks and transactions for BCH mainnet without an API key.",
+    twitter: "@BitPay",
+  },
+  biggestfan: {
+    url: "https://rest1.biggestfan.net",
+    description:
+      "BiggestFan is a community-run public BCHN full node providing a keyless REST API for Bitcoin Cash mainnet. It exposes chain info via a getBlockchainInfo endpoint compatible with the standard Bitcoin RPC response shape.",
+  },
+
   // ─── Zcash providers (bench 236) ─────────────────────────────
   blockchair: {
     url: "https://blockchair.com",
