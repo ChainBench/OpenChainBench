@@ -15,7 +15,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const BENCH_SLUGS = [
   "solana-trading-platform-wars",

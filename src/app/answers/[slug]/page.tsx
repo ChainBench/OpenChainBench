@@ -26,7 +26,7 @@ import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 export const maxDuration = 300;
 
 type Params = { slug: string };

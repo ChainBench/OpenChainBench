@@ -45,7 +45,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export default async function PredictionMarketsHubPage() {
   const cohort = await fetchPmCohort();
