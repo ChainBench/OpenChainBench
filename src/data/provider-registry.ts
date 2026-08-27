@@ -2562,6 +2562,21 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "OKX Chain (OKTC) official public EVM RPC node (exchainrpc.okex.org). Provides standard Ethereum JSON-RPC for OKX Token Chain mainnet, no API key required.",
     twitter: "@OKXOfficial",
   },
+
+  // ─── Litecoin providers (bench 246) ──────────────────────────
+  litecoinspace: {
+    url: "https://litecoinspace.org",
+    description:
+      "LitecoinSpace is a Litecoin block explorer built on the Esplora API. Exposes the current tip height at /api/blocks/tip/height as a plain integer, no API key required.",
+  },
+
+  // ─── Interlay providers (bench 249) ──────────────────────────
+  "interlay-official": {
+    url: "https://api.interlay.io/parachain",
+    description:
+      "Interlay official public Substrate RPC node (api.interlay.io/parachain). Provides a keyless Substrate JSON-RPC interface for the Interlay parachain on Polkadot.",
+    twitter: "@InterlayHQ",
+  },
 };
 
 /**
