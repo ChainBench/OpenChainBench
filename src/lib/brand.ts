@@ -46,6 +46,7 @@ const BRANDS: Record<string, Brand> = {
 
   // ─── Region pseudo-brands (used by the dimension tabs alongside chains) ───
   "us-east": { color: "#C7833A" },
+  "us-west": { color: "#C7603A" },
   "eu-west": { color: "#3A7BC7" },
   "ap-southeast": { color: "#3F8F66" },
   // `sgp` is the raw Railway region label emitted by the harnesses; the bench
@@ -195,7 +196,7 @@ const BRANDS: Record<string, Brand> = {
 
 };
 
-const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
+const REGION_VALUES = new Set(["us-east", "us-west", "eu-west", "ap-southeast", "sgp", "global"]);
 
 /** Is this slug a region value? Region tabs render with a unified globe
  *  glyph instead of a per-entity logo, so callers can branch on this. */
