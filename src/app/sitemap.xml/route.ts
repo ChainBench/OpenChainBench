@@ -15,11 +15,15 @@ import { buildSitemap } from "@/lib/sitemap-builder";
 // serialized to XML here and shipped with a real edge cache header.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Hard platform ceiling so Vercel never holds the connection open longer
-// than this when the SRH/Redis fan-out runs over budget. The internal
-// buildSitemap() timeout is 20 s; this gives 40 s of headroom and still
-// replies well within the smoke-test's 90 s limit.
-export const maxDuration = 60;
+// 300 s: the aggregate blob is 4.25 MB — larger than Next.js Data Cache's
+// 2 MB limit, so unstable_cache can never store it and every request must
+// re-fetch from the network. The /api/aggregate ISR proxy responds in
+// 18-65 s on a cold cache. With maxDuration=60 the process received
+// SIGKILL before the fetch resolved, discarding the buffered response and
+// returning 500. 300 s gives the full build time to complete on cold
+// starts; the internal JS timeout (240 s) fires first and falls back to
+// the static sitemap if the full build hangs.
+export const maxDuration = 300;
 
 function escapeXml(s: string): string {
   return s

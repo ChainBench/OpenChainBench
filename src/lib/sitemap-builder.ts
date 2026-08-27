@@ -577,11 +577,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    // 20 s: tight enough to reply well within the smoke-test's 90 s window
-    // even if the static fallback itself takes a few seconds. The Vercel
-    // maxDuration on the route is 60 s; this leaves 40 s of headroom.
+    // 240 s: maxDuration on the route is 300 s. The aggregate blob (4.25 MB)
+    // exceeds Next.js Data Cache's 2 MB cap, so every sitemap request
+    // re-fetches from /api/aggregate whose FETCH_TIMEOUT_MS is 65 s. A 240 s
+    // budget covers cold aggregate + HL-builder Prometheus sweeps with 60 s of
+    // headroom for buildStaticFallback() before the 300 s SIGKILL ceiling.
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("sitemap build timeout")), 20_000),
+      setTimeout(() => reject(new Error("sitemap build timeout")), 240_000),
     );
     // Attach a no-op .catch() to prevent unhandled-rejection crashes if
     // buildFullSitemap() rejects AFTER the race has already settled (via
