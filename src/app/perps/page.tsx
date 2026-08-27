@@ -32,7 +32,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function PerpsHubPage() {
   // Fetch cohort + per-asset matrix in parallel so the by-asset tab is

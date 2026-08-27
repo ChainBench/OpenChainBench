@@ -30,6 +30,9 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { CHAIN_BY_SLUG } from "@/lib/chains";
+import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
+import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import {
   draftPlaceholderForSpec,
   filterSig,
@@ -48,6 +51,7 @@ export type PublishResult = {
   perBenchBytes?: number;
   revalidated?: boolean;
   error?: string;
+  benches?: import("@/types/benchmark").Benchmark[];
 };
 
 export type VariantsPublishResult = {
@@ -198,7 +202,89 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
     perBenchOk,
     perBenchBytes,
     revalidated,
+    benches,
   };
+}
+
+export type SitemapSlimResult = {
+  ok: boolean;
+  bytes?: number;
+  error?: string;
+};
+
+export async function publishSitemapSlim(
+  benches: import("@/types/benchmark").Benchmark[],
+  hlBuilderSlugs: string[],
+): Promise<SitemapSlimResult> {
+  const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
+  if (!outputDir) return { ok: false, error: "AGGREGATE_OUTPUT_PATH not set" };
+
+  const hlBuilderSlugSet = new Set(hlBuilderSlugs);
+  const providerSlugSet = new Set<string>();
+  for (const bench of benches) {
+    if (bench.status !== "live") continue;
+    for (const r of bench.results ?? []) {
+      const slug = r.slug;
+      if (!slug) continue;
+      if (CHAIN_BY_SLUG.has(slug)) continue;
+      if (hlBuilderSlugSet.has(slug)) continue;
+      if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") continue;
+      if (REMOVED_PRODUCT_SLUGS.has(slug)) continue;
+      providerSlugSet.add(slug);
+    }
+  }
+
+  const slimBenches = benches
+    .filter((b) => {
+      if (b.status !== "live" || b.editorialStatus !== "live") return false;
+      // Mirror bench page noindex gate: RPC benches with <3 providers are
+      // thin-content and render noindex. Emitting them fails the smoke gate.
+      if (b.category === "RPCs" && (b.results?.length ?? 0) < 3) return false;
+      return true;
+    })
+    .map((b) => {
+      const resultSlugs = new Set((b.results ?? []).map((r: { slug: string }) => r.slug));
+      const chainDimSet = new Set(
+        ((b.dimensions?.chain ?? []) as Array<{ value: string }>)
+          .map((d) => d.value)
+          .filter((v) => v !== "all"),
+      );
+      return {
+        slug: b.slug,
+        lastRunAt: b.lastRunAt ?? null,
+        category: b.category ?? "",
+        // Validate perChainSlugs against live results + chain dimensions.
+        // Slugs in perChainExplainer that have no bench data produce 404
+        // per-chain pages and fail the smoke gate.
+        perChainSlugs: (b.perChainExplainer ?? [])
+          .map((pce: { slug: string }) => pce.slug)
+          .filter((s: string) => resultSlugs.has(s) || chainDimSet.has(s)),
+        chainDimensions: [...chainDimSet],
+      };
+    });
+
+  const payload = {
+    v: 1,
+    builtAt: Date.now(),
+    benches: slimBenches,
+    providerSlugs: [...providerSlugSet],
+    hlBuilderSlugs,
+  };
+
+  const body = JSON.stringify(payload);
+  const bytes = Buffer.byteLength(body);
+  const filePath = path.join(outputDir, "sitemap.json");
+
+  try {
+    await mkdir(outputDir, { recursive: true });
+    await atomicWrite(filePath, body);
+  } catch (err) {
+    return {
+      ok: false,
+      error: `sitemap slim write failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  return { ok: true, bytes };
 }
 
 /**

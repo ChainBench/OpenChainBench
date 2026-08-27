@@ -39,7 +39,7 @@ import {
  * production that constraint disappears so the larger window only
  * traded freshness for nothing.
  */
-export const revalidate = 60;
+export const revalidate = 3600;
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair

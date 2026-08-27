@@ -58,7 +58,7 @@ import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
-import { publishAggregate, publishVariants } from "./publish-aggregate";
+import { publishAggregate, publishVariants, publishSitemapSlim } from "./publish-aggregate";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -362,6 +362,7 @@ async function sweep(iteration: number): Promise<void> {
   // fanning out ~150 concurrent Redis GETs per homepage render. See
   // worker/publish-aggregate.ts for the full rationale. No-op when
   // AGGREGATE_OUTPUT_PATH is unset (staged rollout).
+  let publishedBenches: Benchmark[] = [];
   if (process.env.AGGREGATE_OUTPUT_PATH) {
     const pubStart = Date.now();
     const result = await publishAggregate(specs);
@@ -370,6 +371,7 @@ async function sweep(iteration: number): Promise<void> {
       console.log(
         `[worker] aggregate published in ${elapsedSec}s (${result.bytes} bytes, ${result.liveCount}/${result.total} live, revalidated=${result.revalidated})`,
       );
+      publishedBenches = result.benches ?? [];
     } else {
       console.warn(
         `[worker] aggregate publish failed in ${elapsedSec}s: ${result.error}`,
@@ -440,6 +442,15 @@ async function sweep(iteration: number): Promise<void> {
     console.log(
       `[worker] cohort done in ${((Date.now() - cohortStart) / 1000).toFixed(1)}s (${okCount}/${cohortJobs.length} ok)${failures.length ? `: ${failures.join("; ")}` : ""}`,
     );
+
+    if (process.env.AGGREGATE_OUTPUT_PATH && publishedBenches.length > 0) {
+      const slimResult = await publishSitemapSlim(publishedBenches, hlBuilders);
+      if (slimResult.ok) {
+        console.log(`[worker] sitemap slim published (${slimResult.bytes} bytes)`);
+      } else {
+        console.warn(`[worker] sitemap slim failed: ${slimResult.error}`);
+      }
+    }
   }
 
   // Keep the bench pages warm on every cycle: ISR revalidate is 60s, so

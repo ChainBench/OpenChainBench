@@ -330,6 +330,9 @@ const RAW: Record<string, string> = {
   blockcypher: "/logos/blockcypher.svg",
   zcash: "/logos/zcash.svg",
   "tatum-zebra": "/logos/tatum.svg",
+  "bitcoin-cash": "/logos/bitcoin-cash.svg",
+  bitcore: "/logos/bitcore.svg",
+  biggestfan: "/logos/biggestfan.svg",
 
   // ─── Data / API providers (alternatives + products pages) ───
   alchemy: "/logos/alchemy.svg",

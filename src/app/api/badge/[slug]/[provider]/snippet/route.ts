@@ -27,7 +27,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
 import { SITE } from "@/data/site";
 
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string; provider: string };
 
