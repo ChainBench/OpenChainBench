@@ -28,8 +28,8 @@ seo_intro: |
   Singapore, staying far inside every provider's free quota. Chains
   covered. Ethereum (5 providers), Base + Arbitrum + BNB + Polygon
   (Alchemy, Infura, Ankr, Chainstack), Optimism (Alchemy, Infura,
-  Chainstack, QuickNode), Robinhood Chain (Chainstack, Alchemy — Arbitrum
-  Orbit L2, chain ID 4663, ~100ms blocks), Solana (Alchemy, Helius,
+  Chainstack, QuickNode), Robinhood Chain (Chainstack, Alchemy; Arbitrum
+  Orbit L2, chain 4663), Solana (Alchemy, Helius,
   Chainstack). Current leaders per the live data on this page.
   The companion question, which RPC works with no signup at all, is
   answered by the [rpc-capabilities](/benchmarks/rpc-capabilities)
@@ -56,7 +56,7 @@ methodology:
   - "Authentication: each provider's standard free-tier key, obtained via normal signup, no credit card, no sales contact. Keys live in env vars on the probe services and never in the repo. Endpoint shapes: key-in-path (Alchemy `/v2/<key>`, Infura `/v3/<key>`, Chainstack, Ankr) or query param (Helius `?api-key=`)."
   - "Quota guard: each region gets 1/3 of a provider's audited monthly free quota; probing pauses at 90% of that budget until calendar-month rollover (`rpc_keyed_quota_used_ratio`, `rpc_call_total{result=\"quota_paused\"}`). Budgets target ≤2/3 of the real quota, so the bench can never exhaust a key."
   - "Call-result classification: `ok` (HTTP 200 + usable result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks / 300 slots behind the cross-provider tip), `timeout`. Latency is recorded only for `ok` responses."
-  - "Cohort: Alchemy (7 EVM + Solana), Infura / MetaMask Developer (6 EVM), Ankr (5 EVM; Optimism pending chain enablement on the key), Chainstack (7 EVM incl. Robinhood + Solana via Global Nodes, see plan disclosure below), Helius (Solana only), QuickNode (BNB + Optimism, see plan disclosure below). Robinhood Chain (Arbitrum Orbit L2, chain ID 4663) is covered by Chainstack and Alchemy only; QuickNode support exists per their docs but a keyed endpoint is pending. Free-tier scope differences are disclosed, not hidden: a provider missing from a chain tab means its free tier does not cover that chain (or caps the node count), which is itself a finding."
+  - "Cohort: Alchemy (7 EVM + Solana), Infura / MetaMask Developer (6 EVM), Ankr (5 EVM; Optimism pending chain enablement on the key), Chainstack (7 EVM + Solana via Global Nodes, see plan disclosure below), Helius (Solana only), QuickNode (BNB + Optimism, see plan disclosure below). Free-tier scope differences are disclosed, not hidden: a provider missing from a chain tab means its free tier does not cover that chain (or caps the node count), which is itself a finding."
   - "Excluded by design: Tenderly (Node RPC excluded from the free plan), GetBlock (50k CU/day cannot sustain even one chain at probe cadence), Moralis (free plan capped at 2 node endpoints), Blast API (shut down Oct 2025). Each exclusion is quota math or plan scope, never editorial."
   - "Plan disclosure: Alchemy, QuickNode and Chainstack are measured through standard shared endpoints of paid accounts. Alchemy and QuickNode route free and paid keys to the same shared fleets; Chainstack Global Nodes are the identical anycast product the free plan provides. The paid difference is quota and node count (free Chainstack caps at one node), not the serving infrastructure, so the latency read is representative of both plans."
   - "Fair-play note: free tiers do not necessarily run on the provider's paid-tier infrastructure (e.g. dRPC routes free traffic to a separate provider pool; several providers serve free keys from shared clusters). This page measures exactly what a free signup gets, read it as the free-tier experience, not the provider's ceiling."
