@@ -48,6 +48,7 @@ export type PublishResult = {
   perBenchBytes?: number;
   revalidated?: boolean;
   error?: string;
+  benches?: import("@/types/benchmark").Benchmark[];
 };
 
 export type VariantsPublishResult = {
@@ -198,7 +199,65 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
     perBenchOk,
     perBenchBytes,
     revalidated,
+    benches,
   };
+}
+
+export type SitemapSlimResult = {
+  ok: boolean;
+  bytes?: number;
+  error?: string;
+};
+
+export async function publishSitemapSlim(
+  benches: import("@/types/benchmark").Benchmark[],
+  hlBuilderSlugs: string[],
+): Promise<SitemapSlimResult> {
+  const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
+  if (!outputDir) return { ok: false, error: "AGGREGATE_OUTPUT_PATH not set" };
+
+  const providerSlugSet = new Set<string>();
+  for (const bench of benches) {
+    if (bench.status !== "live") continue;
+    for (const r of bench.results ?? []) {
+      if (r.slug) providerSlugSet.add(r.slug);
+    }
+  }
+
+  const slimBenches = benches
+    .filter((b) => b.status === "live" && b.editorialStatus === "live")
+    .map((b) => ({
+      slug: b.slug,
+      lastRunAt: b.lastRunAt ?? null,
+      category: b.category ?? "",
+      perChainSlugs: (b.perChainExplainer ?? []).map((pce: { slug: string }) => pce.slug),
+      chainDimensions: ((b.dimensions?.chain ?? []) as Array<{ value: string }>)
+        .map((d) => d.value)
+        .filter((v) => v !== "all"),
+    }));
+
+  const payload = {
+    v: 1,
+    builtAt: Date.now(),
+    benches: slimBenches,
+    providerSlugs: [...providerSlugSet],
+    hlBuilderSlugs,
+  };
+
+  const body = JSON.stringify(payload);
+  const bytes = Buffer.byteLength(body);
+  const filePath = path.join(outputDir, "sitemap.json");
+
+  try {
+    await mkdir(outputDir, { recursive: true });
+    await atomicWrite(filePath, body);
+  } catch (err) {
+    return {
+      ok: false,
+      error: `sitemap slim write failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  return { ok: true, bytes };
 }
 
 /**
