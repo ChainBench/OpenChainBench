@@ -469,7 +469,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     fundingFeesUsdc,
     netCostUsdc,
     notionalUsd,
-    avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+    avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
     recentTrades,
   };
 }
@@ -785,7 +785,7 @@ export async function GET(req: Request) {
           borrowingFeesUsdc,
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
-          avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
+          avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
           recentTrades,
         } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
