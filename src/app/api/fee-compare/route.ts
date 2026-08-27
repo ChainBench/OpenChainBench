@@ -16,6 +16,21 @@ const DYDX_INDEXER = "https://indexer.dydx.trade";
 const GAINS_FEE_PRECISION = 1e12;
 const HL_TAKER_FALLBACK = 0.00035;
 
+// GMX v2 on Arbitrum
+const ARB_RPC = "https://arb1.arbitrum.io/rpc";
+const GMX_DATASTORE = "0xFD70de6b91282D8588DEF3023E68e548b6898A2b";
+const GMX_MARKETS: Record<string, string> = {
+  "0x47c031236e19d024b42f8AE6780E44A573170703": "BTC",
+  "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336": "ETH",
+  "0x09400D9DB990D5ed3f35D7be61DfAEB900Af03C9": "SOL",
+  "0xC25cEf6061Cf5dE5eb761b50E4743c1F5D7E5407": "ARB",
+  "0x7f1fa204bb700853D36994DA19F830b6Ad18d232": "LINK",
+  "0x6853EA96FF216fAb11D2d930CE3C508556A4bdc4": "DOGE",
+  "0xD9535bB5f58A1a75032416F2dFe7880C30575a41": "XRP",
+};
+// GMX typical utilization assumption for base borrowing factor
+const GMX_AVG_UTILIZATION = 0.4;
+
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const DYDX_ADDRESS_RE = /^dydx1[a-z0-9]{38}$/;
 const MAX_DISPLAY_FILLS = 50;
@@ -171,6 +186,18 @@ type GainsWalletData = {
   }>;
 };
 
+type RawGmxTrade = {
+  timestamp: number;
+  sizeDeltaUsd: string;
+  isLong: boolean;
+  positionFeeAmount: string;
+  borrowingFeeAmount: string | null;
+  fundingFeeAmount: string | null;
+  pnlUsd: string | null;
+  orderType: number;
+  indexToken: { symbol: string } | null;
+};
+
 type GmxWalletData = {
   trades: number;
   feesUsdc: number;
@@ -187,7 +214,10 @@ type GmxWalletData = {
     borrowingFee: number;
     fundingFee: number;
     pnlUsd: number;
+    indexToken?: string;
+    orderType?: number;
   }>;
+  rawTrades?: RawGmxTrade[];
 };
 
 type DydxWalletData = {
@@ -356,10 +386,7 @@ async function fetchParadexRate(): Promise<{ rate: number; note: string }> {
   return entry;
 }
 
-async function fetchDydxCarryRates(): Promise<{
-  fundingPerSecPerCoin: Record<string, number>;
-  borrowPerSecPerCoin: Record<string, number>;
-}> {
+async function fetchDydxCarryRates(): Promise<CarryRates> {
   const cached = carryRateCache["dydx"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   const res = await fetch(`${DYDX_INDEXER}/v4/perpetualMarkets`, {
@@ -381,10 +408,7 @@ async function fetchDydxCarryRates(): Promise<{
   return result;
 }
 
-async function fetchParadexCarryRates(): Promise<{
-  fundingPerSecPerCoin: Record<string, number>;
-  borrowPerSecPerCoin: Record<string, number>;
-}> {
+async function fetchParadexCarryRates(): Promise<CarryRates> {
   const cached = carryRateCache["paradex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   const res = await fetch("https://api.prod.paradex.trade/v1/markets", {
@@ -423,6 +447,125 @@ async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
   const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
   rateCache["edgex"] = entry;
   return entry;
+}
+
+// ── GMX v2 carry rates ─────────────────────────────────────────────────
+
+// Compute keccak256("BORROWING_FACTOR") constant (abi.encode of string)
+function gmxBorrowingFactorBaseKey(): string {
+  // abi.encode(string "BORROWING_FACTOR"):
+  // [0..31]  = offset = 0x20 (32)
+  // [32..63] = length = 0x10 (16)
+  // [64..95] = "BORROWING_FACTOR" padded to 32 bytes
+  const enc = new Uint8Array(96);
+  enc[31] = 0x20;
+  enc[63] = 0x10;
+  const content = Buffer.from("BORROWING_FACTOR", "utf8");
+  enc.set(content, 64);
+  return "0x" + keccak256(Array.from(enc));
+}
+
+function computeBorrowingFactorKey(marketAddr: string, isLong: boolean): string {
+  const baseKey = gmxBorrowingFactorBaseKey();
+  // abi.encode(bytes32, address, bool) = 96 bytes
+  const enc = new Uint8Array(96);
+  // bytes32 at [0..31]
+  const factorBytes = Buffer.from(baseKey.replace("0x", ""), "hex");
+  enc.set(factorBytes, 0);
+  // address padded to 32: 12 leading zero bytes + 20 addr bytes at [32..63]
+  const addrBytes = Buffer.from(marketAddr.replace("0x", "").toLowerCase(), "hex");
+  enc.set(addrBytes, 44);
+  // bool padded to 32: [95] = 0 or 1
+  enc[95] = isLong ? 1 : 0;
+  return "0x" + keccak256(Array.from(enc));
+}
+
+async function ethCallGetUint(contract: string, storageKey: string): Promise<bigint> {
+  // getUint(bytes32): selector = first 4 bytes of keccak256("getUint(bytes32)")
+  const selectorHash = keccak256(Array.from(Buffer.from("getUint(bytes32)", "utf8")));
+  const selector = selectorHash.slice(0, 8); // 4 bytes = 8 hex chars
+  const keyHex = storageKey.replace("0x", "").padStart(64, "0");
+  const calldata = "0x" + selector + keyHex;
+
+  const res = await fetch(ARB_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_call",
+      params: [{ to: contract, data: calldata }, "latest"],
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+  const body = (await res.json()) as { result?: string; error?: unknown };
+  if (!body.result || body.result === "0x") return BigInt(0);
+  return BigInt(body.result);
+}
+
+const GMX_CARRY_FALLBACK: CarryRates = {
+  borrowPerSecPerCoin: {
+    BTC: 1.4e-8,
+    ETH: 1.7e-8,
+    SOL: 2.8e-8,
+    ARB: 2.0e-8,
+    LINK: 2.0e-8,
+    DOGE: 1.4e-8,
+    XRP: 1.4e-8,
+  },
+  fundingPerSecPerCoin: {},
+  ts: 0,
+};
+
+async function fetchGmxCarryRates(): Promise<CarryRates> {
+  const cached = carryRateCache["gmx-v2"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) {
+    return { borrowPerSecPerCoin: cached.borrowPerSecPerCoin, fundingPerSecPerCoin: cached.fundingPerSecPerCoin, ts: cached.ts };
+  }
+
+  try {
+    const borrowPerSecPerCoin: Record<string, number> = {};
+
+    // Fetch borrowing factor for each market (longs only — shorts are similar magnitude)
+    const marketEntries = Object.entries(GMX_MARKETS);
+    const results = await Promise.allSettled(
+      marketEntries.map(async ([market, coin]) => {
+        const key = computeBorrowingFactorKey(market, true);
+        const raw = await ethCallGetUint(GMX_DATASTORE, key);
+        // borrowingFactor is in 1e30 precision; apply average utilization
+        const perSec = (Number(raw) / 1e30) * GMX_AVG_UTILIZATION;
+        return { coin, perSec };
+      })
+    );
+
+    let successCount = 0;
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.perSec > 0) {
+        borrowPerSecPerCoin[r.value.coin] = r.value.perSec;
+        successCount++;
+      }
+    }
+
+    // If fewer than half the markets returned data, use fallback
+    if (successCount < marketEntries.length / 2) {
+      const fallback = { ...GMX_CARRY_FALLBACK, ts: Date.now() };
+      carryRateCache["gmx-v2"] = fallback;
+      return GMX_CARRY_FALLBACK;
+    }
+
+    // Fill missing coins from fallback
+    for (const [coin, rate] of Object.entries(GMX_CARRY_FALLBACK.borrowPerSecPerCoin)) {
+      if (!borrowPerSecPerCoin[coin]) borrowPerSecPerCoin[coin] = rate;
+    }
+
+    const result: CarryRates = { borrowPerSecPerCoin, fundingPerSecPerCoin: {}, ts: Date.now() };
+    carryRateCache["gmx-v2"] = { ...result, ts: Date.now() };
+    return result;
+  } catch {
+    const fallback = { ...GMX_CARRY_FALLBACK, ts: Date.now() };
+    carryRateCache["gmx-v2"] = fallback;
+    return GMX_CARRY_FALLBACK;
+  }
 }
 
 async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
@@ -520,11 +663,7 @@ async function fetchHlFunding(wallet: string, startMs: number): Promise<HlFundin
 
 async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWalletData> {
   const fromTimestamp = Math.floor(cutoffMs / 1000);
-  const allTrades: Array<{
-    timestamp: number; sizeDeltaUsd: string; isLong: boolean;
-    positionFeeAmount: string; borrowingFeeAmount: string | null;
-    fundingFeeAmount: string | null; pnlUsd: string | null;
-  }> = [];
+  const allTrades: RawGmxTrade[] = [];
   let cursor: string | null = null;
   let pages = 0;
 
@@ -553,6 +692,8 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
               timestamp
               sizeDeltaUsd
               isLong
+              orderType
+              indexToken { symbol }
               positionFeeAmount
               borrowingFeeAmount
               fundingFeeAmount
@@ -573,7 +714,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     const body = (await res.json()) as {
       data?: {
         tradeActionsConnection?: {
-          edges: Array<{ node: typeof allTrades[0] }>;
+          edges: Array<{ node: RawGmxTrade }>;
           pageInfo: { hasNextPage: boolean; endCursor: string | null };
         };
       };
@@ -609,7 +750,17 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     notionalUsd += notional;
 
     if (recentTrades.length < 50) {
-      recentTrades.push({ timestamp: t.timestamp, sizeDeltaUsd: notional, isLong: t.isLong, tradingFee, borrowingFee, fundingFee, pnlUsd });
+      recentTrades.push({
+        timestamp: t.timestamp,
+        sizeDeltaUsd: notional,
+        isLong: t.isLong,
+        tradingFee,
+        borrowingFee,
+        fundingFee,
+        pnlUsd,
+        indexToken: t.indexToken?.symbol,
+        orderType: t.orderType,
+      });
     }
   }
 
@@ -624,6 +775,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     notionalUsd,
     avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
     recentTrades,
+    rawTrades: allTrades,
   };
 }
 
@@ -847,6 +999,86 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
   return slices;
 }
 
+// orderType: 2=MarketIncrease, 3=LimitIncrease, 4=MarketDecrease, 5=LimitDecrease, 6=StopLoss, 7=Liquidation
+const GMX_INCREASE_TYPES = new Set([2, 3]);
+const GMX_DECREASE_TYPES = new Set([4, 5, 6, 7]);
+
+function reconstructGmxPositions(rawTrades: RawGmxTrade[], cutoffMs: number): PositionSlice[] {
+  const cutoffSec = cutoffMs / 1000;
+  // Sort ascending by timestamp
+  const sorted = rawTrades
+    .filter((t) => t.timestamp >= cutoffSec)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  // State: key = coin:L or coin:S → current running notional and open time
+  const state = new Map<string, { notionalUsd: number; openMs: number }>();
+  const slices: PositionSlice[] = [];
+
+  for (const t of sorted) {
+    const coin = t.indexToken?.symbol ?? "UNKNOWN";
+    const isLong = t.isLong;
+    const key = `${coin}:${isLong ? "L" : "S"}`;
+    const notionalDelta =
+      Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    const tradeMs = t.timestamp * 1000;
+
+    if (GMX_INCREASE_TYPES.has(t.orderType)) {
+      const existing = state.get(key);
+      if (existing) {
+        existing.notionalUsd += notionalDelta;
+      } else {
+        state.set(key, { notionalUsd: notionalDelta, openMs: tradeMs });
+      }
+    } else if (GMX_DECREASE_TYPES.has(t.orderType)) {
+      const existing = state.get(key);
+      if (existing && existing.notionalUsd > 0) {
+        const closedNotional = Math.min(notionalDelta, existing.notionalUsd);
+        slices.push({
+          coin,
+          notionalUsd: closedNotional,
+          openMs: Math.max(existing.openMs, cutoffMs),
+          closeMs: tradeMs,
+          isLong,
+        });
+        existing.notionalUsd -= closedNotional;
+        if (existing.notionalUsd < 0.01) state.delete(key);
+      }
+    }
+  }
+
+  // Still-open positions closed at now
+  const now = Date.now();
+  for (const [key, pos] of state) {
+    if (pos.notionalUsd > 0.01) {
+      const [coin, side] = key.split(":");
+      slices.push({
+        coin,
+        notionalUsd: pos.notionalUsd,
+        openMs: Math.max(pos.openMs, cutoffMs),
+        closeMs: now,
+        isLong: side === "L",
+      });
+    }
+  }
+
+  return slices;
+}
+
+// Estimate GMX borrow fees for a set of position slices.
+function estimateGmxBorrowFees(
+  positions: PositionSlice[],
+  borrowPerSecPerCoin: Record<string, number>
+): number {
+  const fallbackRate = borrowPerSecPerCoin["BTC"] ?? 1.4e-8;
+  let total = 0;
+  for (const pos of positions) {
+    const rate = borrowPerSecPerCoin[pos.coin] ?? fallbackRate;
+    const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
+    total += pos.notionalUsd * rate * durationSec;
+  }
+  return total;
+}
+
 // Fetch HL 8h funding rate history for a set of coins over a period.
 // Returns map of coin → array of { time, rate (as fraction) }.
 async function fetchHlFundingHistory(
@@ -1023,13 +1255,23 @@ export async function GET(req: Request) {
       gainsData,
       dydxCarryData,
       paradexCarryData,
+      gmxCarryData,
     ] = await Promise.all([
       resolveRate(venueA),
       resolveRate(venueB),
       fetchGainsFeeRates(),
-      fetchDydxCarryRates().catch(() => ({ fundingPerSecPerCoin: {} as Record<string, number>, borrowPerSecPerCoin: {} as Record<string, number> })),
-      fetchParadexCarryRates().catch(() => ({ fundingPerSecPerCoin: {} as Record<string, number>, borrowPerSecPerCoin: {} as Record<string, number> })),
+      fetchDydxCarryRates().catch(() => ({ fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {}, ts: 0 } as CarryRates)),
+      fetchParadexCarryRates().catch(() => ({ fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {}, ts: 0 } as CarryRates)),
+      fetchGmxCarryRates().catch(() => GMX_CARRY_FALLBACK),
     ]);
+
+    function getVenueCarryRates(slug: string): CarryRates {
+      if (slug === "gains") return { borrowPerSecPerCoin: gainsData.borrowPerSecPerCoin, fundingPerSecPerCoin: gainsData.fundingPerSecPerCoin, ts: 0 };
+      if (slug === "dydx") return dydxCarryData;
+      if (slug === "paradex") return paradexCarryData;
+      if (slug === "gmx-v2") return gmxCarryData;
+      return { borrowPerSecPerCoin: {}, fundingPerSecPerCoin: {}, ts: 0 };
+    }
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
@@ -1180,13 +1422,6 @@ export async function GET(req: Request) {
       };
     }
 
-    function getVenueCarryRates(slug: string): { fundingPerSecPerCoin: Record<string, number>; borrowPerSecPerCoin: Record<string, number> } {
-      if (slug === "gains") return gainsData;
-      if (slug === "dydx") return dydxCarryData;
-      if (slug === "paradex") return paradexCarryData;
-      return { fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {} };
-    }
-
     const venueAResult = buildVenueResult(venueA, rateA, noteA, rateIsLiveA);
     const venueBResult = buildVenueResult(venueB, rateB, noteB, rateIsLiveB);
 
@@ -1253,6 +1488,9 @@ export async function GET(req: Request) {
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          } else if (venueA === "gmx-v2" && gmxWalletData) {
+            const gmxD = gmxWalletData as GmxWalletData;
+            if (gmxD.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
           }
 
           // Gains→HL: use actual HL funding history (more accurate than rate snapshot)
@@ -1382,6 +1620,9 @@ export async function GET(req: Request) {
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          } else if (venueB === "gmx-v2" && gmxWalletData) {
+            const gmxD = gmxWalletData as GmxWalletData;
+            if (gmxD.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
           }
 
           // Gains→HL (venueB=gains, venueA=HL)

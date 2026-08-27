@@ -577,6 +577,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
+    // 75 s: smoke-test per-attempt timeout is 90 s (getTextWithRetry in
+    // scripts/sitemap-smoke.mjs). The JS deadline must fire with enough
+    // time left for buildStaticFallback() to return before that 90 s
+    // window closes. FETCH_TIMEOUT_MS on /api/aggregate is 65 s, so the
+    // worst-case aggregate-only path is ~65 s; 75 s gives 10 s of buffer
+    // before the full build falls back. maxDuration on the route is 300 s,
+    // so the process exits cleanly (~76 s) long before the platform SIGKILL.
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("sitemap build timeout")), 75_000),
     );
