@@ -45,13 +45,13 @@ methodology:
   - "Cohort: Chainstack, Alchemy, and QuickNode. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
 
 findings:
-  - "{{name:chainstack}} leads at {{p50:chainstack}} (p50, 24h). In pre-launch internal tests (50 samples, single region), it recorded 72ms vs Alchemy at 86ms and the official public RPC at 170ms. Chainstack was the first provider to launch a dedicated Global Node on Robinhood Chain."
-  - "{{name:quicknode}} delivers {{p50:quicknode}}, leveraging its shared-endpoint fleet across Arbitrum Orbit chains."
-  - "{{name:alchemy}} follows at {{p50:alchemy}}, a solid option for teams already using Alchemy across other chains. The same multi-chain key covers Robinhood Chain with no additional account required."
+  - "{{name:alchemy}} leads at {{p50:alchemy}} (p50, 24h) averaged across all 3 regions. It edges out Chainstack in eu-west and Singapore while sitting within 2ms of Chainstack in us-east."
+  - "{{name:chainstack}} wins us-east at {{p50:chainstack}} in that region, reflecting its US-based Global Node placement. Pre-launch internal tests (50 samples, single region) had Chainstack at 72ms vs Alchemy at 86ms; live multi-region data flips the aggregate ranking while preserving Chainstack's us-east advantage."
+  - "{{name:quicknode}} delivers {{p50:quicknode}} across all regions via its shared-endpoint fleet."
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
-    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} (p50 over 24h). In internal pre-launch tests Chainstack recorded 72ms vs Alchemy at 86ms. QuickNode also supports Robinhood Chain via its shared-endpoint fleet. If you already use Alchemy for Ethereum or Arbitrum, adding Robinhood Chain requires no new account."
+    a: "Per the live data above: {{name:alchemy}} at {{p50:alchemy}} (p50 over 24h, averaged across us-east, eu-west, and Singapore). {{name:chainstack}} wins the us-east region specifically at {{p50:chainstack}}, likely due to its US-based node placement. If you deploy primarily in the US, Chainstack competes for the lead; for a global footprint, Alchemy's edge infrastructure gives it the aggregate win."
   - q: "What is Robinhood Chain?"
     a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched in March 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
