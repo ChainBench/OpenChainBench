@@ -59,6 +59,13 @@ let gainsFeeCache: {
 type RateCacheEntry = { rate: number; note: string; ts: number };
 const rateCache: Partial<Record<string, RateCacheEntry>> = {};
 
+type CarryRates = {
+  fundingPerSecPerCoin: Record<string, number>;
+  borrowPerSecPerCoin: Record<string, number>;
+  ts: number;
+};
+const carryRateCache: Partial<Record<string, CarryRates>> = {};
+
 // ──────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────
@@ -347,6 +354,58 @@ async function fetchParadexRate(): Promise<{ rate: number; note: string }> {
   const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from Paradex)`, ts: Date.now() };
   rateCache["paradex"] = entry;
   return entry;
+}
+
+async function fetchDydxCarryRates(): Promise<{
+  fundingPerSecPerCoin: Record<string, number>;
+  borrowPerSecPerCoin: Record<string, number>;
+}> {
+  const cached = carryRateCache["dydx"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch(`${DYDX_INDEXER}/v4/perpetualMarkets`, {
+    signal: AbortSignal.timeout(8000),
+    next: { revalidate: 3600 },
+  });
+  const data = (await res.json()) as {
+    markets: Record<string, { nextFundingRate?: string }>;
+  };
+  const fundingPerSecPerCoin: Record<string, number> = {};
+  for (const [market, info] of Object.entries(data.markets ?? {})) {
+    // "BTC-USD" → "BTC", "ETH-USD-PERP" → "ETH"
+    const coin = market.replace(/-USD.*/, "");
+    const rate = Math.abs(parseFloat(info.nextFundingRate ?? "0")) / 3600; // per hour → per sec
+    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+  }
+  const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
+  carryRateCache["dydx"] = result;
+  return result;
+}
+
+async function fetchParadexCarryRates(): Promise<{
+  fundingPerSecPerCoin: Record<string, number>;
+  borrowPerSecPerCoin: Record<string, number>;
+}> {
+  const cached = carryRateCache["paradex"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch("https://api.prod.paradex.trade/v1/markets", {
+    signal: AbortSignal.timeout(8000),
+    next: { revalidate: 3600 },
+  });
+  const data = (await res.json()) as {
+    results: Array<{ symbol: string; interest_rate?: string; funding_period_hours?: number | string }>;
+  };
+  const fundingPerSecPerCoin: Record<string, number> = {};
+  for (const mkt of data.results ?? []) {
+    if (!mkt.symbol.includes("-USD")) continue;
+    // "BTC-USD-PERP" → "BTC"
+    const coin = mkt.symbol.replace(/-USD.*/, "");
+    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8"));
+    const rate = parseFloat(mkt.interest_rate ?? "0") / (periodHours * 3600);
+    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+  }
+  const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
+  carryRateCache["paradex"] = result;
+  return result;
 }
 
 async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
@@ -867,6 +926,20 @@ function estimateGainsFundingFees(
   return total;
 }
 
+function estimateCarryFees(
+  positions: PositionSlice[],
+  rates: { fundingPerSecPerCoin: Record<string, number>; borrowPerSecPerCoin: Record<string, number> }
+): { borrowFees: number; fundingFees: number } {
+  let borrowFees = 0;
+  let fundingFees = 0;
+  for (const pos of positions) {
+    const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
+    borrowFees += pos.notionalUsd * (rates.borrowPerSecPerCoin[pos.coin] ?? 0) * durationSec;
+    fundingFees += pos.notionalUsd * (rates.fundingPerSecPerCoin[pos.coin] ?? 0) * durationSec;
+  }
+  return { borrowFees, fundingFees };
+}
+
 // EIP-55 checksum — Subsquid stores addresses in checksummed format
 function toChecksumAddress(address: string): string {
   const lower = address.toLowerCase().replace("0x", "");
@@ -942,10 +1015,14 @@ export async function GET(req: Request) {
       { rate: rateA, note: noteA, rateIsLive: rateIsLiveA },
       { rate: rateB, note: noteB, rateIsLive: rateIsLiveB },
       gainsData,
+      dydxCarryData,
+      paradexCarryData,
     ] = await Promise.all([
       resolveRate(venueA),
       resolveRate(venueB),
       fetchGainsFeeRates(),
+      fetchDydxCarryRates().catch(() => ({ fundingPerSecPerCoin: {} as Record<string, number>, borrowPerSecPerCoin: {} as Record<string, number> })),
+      fetchParadexCarryRates().catch(() => ({ fundingPerSecPerCoin: {} as Record<string, number>, borrowPerSecPerCoin: {} as Record<string, number> })),
     ]);
 
     let hlFillsData: HlFill[] = [];
@@ -1097,6 +1174,13 @@ export async function GET(req: Request) {
       };
     }
 
+    function getVenueCarryRates(slug: string): { fundingPerSecPerCoin: Record<string, number>; borrowPerSecPerCoin: Record<string, number> } {
+      if (slug === "gains") return gainsData;
+      if (slug === "dydx") return dydxCarryData;
+      if (slug === "paradex") return paradexCarryData;
+      return { fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {} };
+    }
+
     const venueAResult = buildVenueResult(venueA, rateA, noteA, rateIsLiveA);
     const venueBResult = buildVenueResult(venueB, rateB, noteB, rateIsLiveB);
 
@@ -1154,12 +1238,19 @@ export async function GET(req: Request) {
           let equivFees = stats.notional * rateB;
           let projectedCarry: SimResult["projectedCarry"];
 
-          // Gains→HL: add projected HL funding
-          if (venueA === "gains" && venueB === "hyperliquid" && gainsTradesData.length > 0) {
-            const positions = reconstructGainsPositions(
+          // Reconstruct positions from venueA for carry projection
+          let positions: PositionSlice[] = [];
+          if (venueA === "hyperliquid" && hlFillsData.length > 0) {
+            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+          } else if (venueA === "gains" && gainsTradesData.length > 0) {
+            positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          }
+
+          // Gains→HL: use actual HL funding history (more accurate than rate snapshot)
+          if (venueA === "gains" && venueB === "hyperliquid" && positions.length > 0) {
             const hlFunding = computeHlFunding(positions, hlFundingHistoryByCoins);
             const takerFees = equivFees;
             equivFees += hlFunding;
@@ -1172,7 +1263,7 @@ export async function GET(req: Request) {
             };
           }
 
-          // HL→GMX: add projected GMX carry using implied rates from the wallet's GMX history
+          // HL→GMX: use wallet's own GMX history as carry proxy
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           const gmxForA = gmxWalletData as GmxWalletData | null;
           if (venueA === "hyperliquid" && venueB === "gmx-v2" && gmxForA !== null && gmxForA.notionalUsd > 0) {
@@ -1189,6 +1280,23 @@ export async function GET(req: Request) {
               borrowProjected: gmxBorrowProj > 0.01,
               fundingProjected: gmxFundingProj > 0.01,
             };
+          }
+
+          // Generic carry: dYdX, Paradex, and any future venue with rate data
+          if (!projectedCarry && positions.length > 0) {
+            const bCarry = getVenueCarryRates(venueB);
+            const { borrowFees, fundingFees } = estimateCarryFees(positions, bCarry);
+            if (borrowFees > 0.001 || fundingFees > 0.001) {
+              const takerFees = equivFees;
+              equivFees += borrowFees + fundingFees;
+              projectedCarry = {
+                takerFees,
+                borrowFees,
+                fundingFees,
+                borrowProjected: borrowFees > 0.01,
+                fundingProjected: fundingFees > 0.01,
+              };
+            }
           }
 
           comparison.aToBSim = {
@@ -1259,12 +1367,19 @@ export async function GET(req: Request) {
           let equivFees = stats.notional * rateA;
           let projectedCarry: SimResult["projectedCarry"];
 
-          // Gains→HL: add projected HL funding
-          if (venueB === "gains" && venueA === "hyperliquid" && gainsTradesData.length > 0) {
-            const positions = reconstructGainsPositions(
+          // Reconstruct positions from venueB
+          let positions: PositionSlice[] = [];
+          if (venueB === "hyperliquid" && hlFillsData.length > 0) {
+            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+          } else if (venueB === "gains" && gainsTradesData.length > 0) {
+            positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          }
+
+          // Gains→HL (venueB=gains, venueA=HL)
+          if (venueB === "gains" && venueA === "hyperliquid" && positions.length > 0) {
             const hlFunding = computeHlFunding(positions, hlFundingHistoryByCoins);
             const takerFees = equivFees;
             equivFees += hlFunding;
@@ -1277,7 +1392,7 @@ export async function GET(req: Request) {
             };
           }
 
-          // HL→GMX: add projected GMX carry using implied rates from the wallet's GMX history
+          // HL→GMX (venueB=HL, venueA=GMX)
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           const gmxForB = gmxWalletData as GmxWalletData | null;
           if (venueB === "hyperliquid" && venueA === "gmx-v2" && gmxForB !== null && gmxForB.notionalUsd > 0) {
@@ -1294,6 +1409,23 @@ export async function GET(req: Request) {
               borrowProjected: gmxBorrowProj > 0.01,
               fundingProjected: gmxFundingProj > 0.01,
             };
+          }
+
+          // Generic carry projection
+          if (!projectedCarry && positions.length > 0) {
+            const aCarry = getVenueCarryRates(venueA);
+            const { borrowFees, fundingFees } = estimateCarryFees(positions, aCarry);
+            if (borrowFees > 0.001 || fundingFees > 0.001) {
+              const takerFees = equivFees;
+              equivFees += borrowFees + fundingFees;
+              projectedCarry = {
+                takerFees,
+                borrowFees,
+                fundingFees,
+                borrowProjected: borrowFees > 0.01,
+                fundingProjected: fundingFees > 0.01,
+              };
+            }
           }
 
           comparison.bToASim = {
