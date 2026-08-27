@@ -41,8 +41,9 @@ const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
 const GAINS_CARRY_PRECISION = 1e18;
 // Fallback when API doesn't expose per-pair data (~0.04%/day expressed per-second)
 const GAINS_BORROW_DEFAULT_PER_SEC = 0.0004 / 86400;
-// USDC collateral index on Arbitrum (same as collateralIndex filter in fetchGainsTrades)
-const GAINS_USDC_COLLATERAL_IDX = 3;
+// USDC is array[2] in vars.collaterals (0-indexed); its collateralIndex field = 3 (1-indexed).
+// The collateralIndex===3 filter in fetchGainsTrades refers to the field value, not the array position.
+const GAINS_USDC_COLLATERAL_IDX = 2;
 
 let gainsFeeCache: {
   coinRoundTrip: Record<string, number>;
