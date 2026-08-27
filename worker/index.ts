@@ -444,7 +444,16 @@ async function sweep(iteration: number): Promise<void> {
     );
 
     if (process.env.AGGREGATE_OUTPUT_PATH && publishedBenches.length > 0) {
-      const slimResult = await publishSitemapSlim(publishedBenches, hlBuilders);
+      // Augment hlBuilders (Prom cohort, active builders only) with every
+      // slug from the hyperliquid-frontends spec so builders without recent
+      // Prom data aren't emitted as /products/<slug> (which 308-redirects
+      // to /hyperliquid/<slug> and fails the smoke gate with non-200).
+      const hlFrontendSpec = specs.find((s) => s.slug === "hyperliquid-frontends");
+      const hlFrontendSpecSlugs = (hlFrontendSpec?.providers ?? []).map(
+        (p: { slug: string }) => p.slug,
+      );
+      const allHlSlugs = [...new Set([...hlBuilders, ...hlFrontendSpecSlugs])];
+      const slimResult = await publishSitemapSlim(publishedBenches, allHlSlugs);
       if (slimResult.ok) {
         console.log(`[worker] sitemap slim published (${slimResult.bytes} bytes)`);
       } else {

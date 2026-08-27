@@ -32,7 +32,7 @@ import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
-import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
+import { REMOVED_BENCH_SLUGS, REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import {
   draftPlaceholderForSpec,
   filterSig,
@@ -237,6 +237,10 @@ export async function publishSitemapSlim(
   const slimBenches = benches
     .filter((b) => {
       if (b.status !== "live" || b.editorialStatus !== "live") return false;
+      // Bench slugs in REMOVED_BENCH_SLUGS have stale Redis data but return
+      // 410 on prod via middleware. Emitting them in the sitemap would cause
+      // the smoke gate to see 410s (→ non-200) and fail the deploy.
+      if (REMOVED_BENCH_SLUGS.has(b.slug)) return false;
       // Mirror bench page noindex gate: RPC benches with <3 providers are
       // thin-content and render noindex. Emitting them fails the smoke gate.
       if (b.category === "RPCs" && (b.results?.length ?? 0) < 3) return false;
