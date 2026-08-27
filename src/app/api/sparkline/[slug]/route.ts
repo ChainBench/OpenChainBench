@@ -6,7 +6,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 /**
  * Standalone SVG sparkline for one bench, keyed to the current leader's

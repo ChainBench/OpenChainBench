@@ -1,5 +1,5 @@
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const revalidate = 3600;
 
 const UPSTREAM = "https://kv.openchainbench.com/aggregate/sitemap.json";
 const UPSTREAM_TIMEOUT_MS = 15_000;

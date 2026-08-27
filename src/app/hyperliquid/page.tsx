@@ -36,7 +36,7 @@ export const metadata: import("next").Metadata = pageMetadata({
     "Live revenue, volume and users for every Hyperliquid frontend and HIP-3 deployer. Server-side data straight from a local hl node tailing every fill on mainnet.",
 });
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function HyperliquidHubPage() {
   const [frontends, hip3, history] = await Promise.all([

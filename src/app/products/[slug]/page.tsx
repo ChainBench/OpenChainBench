@@ -37,7 +37,7 @@ import { VenueKpiToggle } from "@/components/venue-kpi-toggle";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 import { RpcProviderChainsSection } from "@/components/rpc-provider-chains-section";
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 // On-demand first render loads every bench (provider profile spans the
 // whole catalog). 60s default killed cold renders and ISR regenerations
