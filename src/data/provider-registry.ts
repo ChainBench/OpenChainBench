@@ -2526,6 +2526,14 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TCInfra RPC node provider for Tezos and Etherlink (prod.tcinfra.net/rpc/mainnet). Provides public keyless Tezos mainnet REST access with no API key required.",
   },
 
+  // ─── Zcash providers (bench 236) ─────────────────────────────
+  blockchair: {
+    url: "https://blockchair.com",
+    description:
+      "Blockchair is a multi-chain blockchain explorer and REST API supporting Bitcoin, Ethereum, Zcash and 40+ other chains. Provides public keyless access to chain stats, blocks and transactions.",
+    twitter: "@Blockchair",
+  },
+
   // ─── Dogecoin providers (bench 235) ──────────────────────────
   blockcypher: {
     url: "https://blockcypher.com",

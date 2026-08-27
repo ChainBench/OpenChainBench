@@ -92,6 +92,9 @@ const (
 	// dogecoinStaleBlockGap: Dogecoin produces one block every ~60 s,
 	// so 5 blocks ≈ 5 min gives the same reliability tolerance as EVM.
 	dogecoinStaleBlockGap uint64 = 5
+	// zcashStaleBlockGap: Zcash produces one block every ~75 s,
+	// so 4 blocks ≈ 5 min.
+	zcashStaleBlockGap uint64 = 4
 	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
 	// so 30 blocks ≈ 5 min.
 	veChainStaleBlockGap uint64 = 30
@@ -283,6 +286,12 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callMultiversxNonce(probeCtx, p.URL)
 		case "neo":
 			block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+		case "zcash":
+			if strings.Contains(p.URL, "blockchair.com") {
+				block, result, latency, err = callBlockchairZec(probeCtx, p.URL)
+			} else {
+				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
+			}
 		case "dogecoin":
 			if strings.Contains(p.URL, "blockcypher.com") {
 				block, result, latency, err = callBlockCypherDoge(probeCtx, p.URL)
@@ -338,6 +347,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = multiversxStaleNonceGap
 			case "neo":
 				gap = neoStaleBlockGap
+			case "zcash":
+				gap = zcashStaleBlockGap
 			case "dogecoin":
 				gap = dogecoinStaleBlockGap
 			case "tezos":
@@ -369,7 +380,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
 			"near", "flow", "hedera", "ckb", "multiversx", "neo",
-			"tezos", "antelope", "waves", "vechain", "dogecoin":
+			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1476,6 +1487,44 @@ func callNeoBlockCount(ctx context.Context, url string) (count uint64, result st
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric neo block count: %s", string(r.Result)[:min(len(r.Result), 40)])
 	}
 	return n, "ok", latencyMs, nil
+}
+
+// callBlockchairZec probes the Blockchair REST API for Zcash mainnet.
+// GET https://api.blockchair.com/zcash/stats — reads data.best_block_height.
+func callBlockchairZec(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Data struct {
+			BestBlockHeight uint64 `json:"best_block_height"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if body.Data.BestBlockHeight == 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("blockchair zec: best_block_height=0")
+	}
+	return body.Data.BestBlockHeight, "ok", latencyMs, nil
 }
 
 // callBlockCypherDoge probes the BlockCypher REST API for Dogecoin mainnet.
