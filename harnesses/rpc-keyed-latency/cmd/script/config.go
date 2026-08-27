@@ -37,7 +37,7 @@ func intervalMultFor(provider string) int {
 	}
 	return 1
 }
-var chainsEVM = []string{"ethereum", "base", "arbitrum", "optimism", "bnb", "polygon"}
+var chainsEVM = []string{"ethereum", "base", "arbitrum", "optimism", "bnb", "polygon", "robinhood"}
 
 func endpoints() []Endpoint {
 	var out []Endpoint
