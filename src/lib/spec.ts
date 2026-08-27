@@ -327,7 +327,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v54: add 6 new chain benches 216-221 (NEAR, Flow, Hedera, CKB, MultiversX, NEO).
   // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
-  ["bench-unfiltered-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v57: drop rpc-keyed-latency bench.
+  ["bench-unfiltered-v57", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -637,7 +638,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
-  ["bench-filters-v23", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
+  ["bench-filters-v24", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
