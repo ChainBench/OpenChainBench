@@ -328,7 +328,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
   // v57: drop rpc-keyed-latency bench.
-  ["bench-unfiltered-v61", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v62", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -639,7 +639,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
-  ["bench-filters-v28", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
