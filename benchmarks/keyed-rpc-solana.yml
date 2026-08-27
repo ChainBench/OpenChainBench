@@ -1,0 +1,140 @@
+# OpenChainBench. Bench № 242
+
+slug: keyed-rpc-solana
+number: "242"
+title: "Fastest Solana RPC with API key: Alchemy, Helius, Chainstack"
+seo_title: "Fastest Solana RPC API key 2026: Alchemy vs Helius vs Chainstack latency"
+seo_description: "Live Solana RPC latency: Alchemy, Helius, and Chainstack keyed endpoints measured every 60s from 3 regions. Best Solana API key compared."
+subtitle: getSlot (processed commitment) latency against keyed Solana endpoints (Alchemy, Helius, Chainstack), probed every 60 seconds from 3 regions.
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Solana runs a distinct RPC API with different call semantics and
+  a more demanding commitment model than EVM chains. This bench probes
+  Alchemy, Helius, and Chainstack on their keyed Solana endpoints every
+  60 seconds from us-east, eu-west, and Singapore, using getSlot at
+  processed commitment as the anti-cache probe.
+  Alchemy leads at 6ms across all regions. Helius, the Solana-native
+  provider, delivers 13-15ms with the tightest region-to-region spread.
+  Chainstack sits at 18-21ms. No EVM-centric provider currently matches
+  the Solana-native options in this cohort.
+  For EVM chains with the same keyed providers, see the
+  [rpc-keyed-latency](/benchmarks/rpc-keyed-latency) overview.
+
+abstract: |
+  We measure the round-trip latency of a single getSlot call at
+  processed commitment against the keyed free tier of Alchemy, Helius,
+  and Chainstack on Solana. The probe uses a rotating JSON-RPC id to
+  defeat edge caches, fires every 60 seconds from 3 regions, and
+  classifies each response as ok, http_err, jsonrpc_err, stale, or
+  timeout. Stale is defined as more than 300 slots behind the
+  cross-provider tip. Only ok responses contribute to the distribution.
+
+methodology:
+  - "Cadence: every 60 seconds per provider from each of 3 probe regions (us-east, eu-west, sgp), inside each provider's free monthly quota. Headline p50/p90/p99 aggregate across regions via Prometheus avg(quantile_over_time(...))."
+  - "Payload: getSlot at processed commitment with a rotating JSON-RPC id. Processed commitment is the shallowest Solana confirmation level; probing it measures pure RPC responsiveness without finality overhead. The rotating id defeats body-keyed edge caches."
+  - "Authentication: each provider's standard free-tier key, no credit card required. Keys live in env vars on probe services and never in the repo. Endpoint shapes: key-in-path (Alchemy /v2/<key>, Chainstack), query param (Helius ?api-key=)."
+  - "Call-result classification: ok (HTTP 200 with usable slot number), http_err, jsonrpc_err (HTTP 200 with error body), stale (slot more than 300 behind the cross-provider tip), timeout. Latency is recorded only for ok responses."
+  - "Cohort: Alchemy (multi-chain provider with Solana support), Helius (Solana-native, 1M credits/mo free), Chainstack (Global Node, plan disclosed). Infura does not offer Solana; Ankr and QuickNode have no confirmed keyed Solana data in the current probe."
+
+findings:
+  - "{{name:alchemy}} leads at {{p50:alchemy}} (p50, 24h), consistent across us-east, eu-west, and Singapore."
+  - "{{name:helius}}, the Solana-native provider, delivers {{p50:helius}} with the tightest cross-region spread in the cohort; the gap to Alchemy is small in practice."
+  - "{{name:chainstack}} sits at {{p50:chainstack}}, a reasonable option for teams that already use Chainstack Global Nodes for EVM chains and want to add Solana on the same account."
+
+faq:
+  - q: "Which Solana RPC provider is fastest with a free API key?"
+    a: "Per the live data above: {{name:alchemy}} at {{p50:alchemy}} (p50 over 24h). Helius is close at {{p50:helius}} and is the Solana-native specialist option. For teams only targeting Solana, Helius's Solana-optimized infrastructure and validator-level integration make it a strong choice regardless of the millisecond difference."
+  - q: "What is processed commitment and why probe it?"
+    a: "Processed is Solana's lightest confirmation level: a transaction or slot is considered processed as soon as one leader processes it, with no vote confirmation. Probing getSlot at processed commitment measures raw RPC responsiveness without finality overhead. For apps that need confirmed or finalized commitments, the round-trip to those levels adds the validator voting latency on top."
+  - q: "Is Helius faster than Alchemy on Solana?"
+    a: "In the current 24h window, {{name:alchemy}} leads at {{p50:alchemy}} vs Helius at {{p50:helius}}. Both are within single-digit milliseconds of each other. Helius offers Solana-specific features (webhook transactions, compressed NFT APIs, priority fee estimates) that may matter beyond raw getSlot latency."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="solana",tier="keyed"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: alchemy
+    name: Alchemy
+    tag: 30M CU/mo free, keyed Solana endpoint
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot at processed commitment probed every 60s from 3 regions on Alchemy's keyed Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: helius
+    name: Helius
+    tag: Solana-native, 1M credits/mo free
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot at processed commitment probed every 60s from 3 regions on Helius's free-tier Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="helius",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="helius",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="helius",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="helius",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="helius",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="helius",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tag: Global Node, keyed Solana endpoint, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot at processed commitment probed every 60s from 3 regions on Chainstack's keyed Solana Global Node."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="sgp"}[1h]))

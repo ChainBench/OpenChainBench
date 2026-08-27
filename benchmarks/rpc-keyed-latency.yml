@@ -95,7 +95,6 @@ dimensions:
     - { value: ethereum,  label: Ethereum }
     - { value: base,      label: Base }
     - { value: arbitrum,  label: Arbitrum }
-    - { value: optimism,  label: Optimism }
     - { value: bnb,       label: BNB Chain }
     - { value: polygon,   label: Polygon }
     - { value: robinhood, label: Robinhood }
