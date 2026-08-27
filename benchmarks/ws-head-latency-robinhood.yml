@@ -51,13 +51,13 @@ methodology:
   - "Vantage points: us-east, eu-west, Singapore (3 regions). Multi-region deployment provides geographic diversity across Robinhood Chain's validator topology."
 
 findings:
-  - "{{name:chainstack}} leads at {{p50:chainstack}} (p50, 24h). Chainstack was the first provider to launch a dedicated Global Node on Robinhood Chain, giving it an early infrastructure advantage on this latency-sensitive chain."
-  - "{{name:alchemy}} follows at {{p50:alchemy}} across us-east, eu-west, and Singapore. Alchemy's multi-chain key covers Robinhood Chain with no additional account required."
-  - "{{name:quicknode}} delivers {{p50:quicknode}} via its shared-endpoint fleet. QuickNode's shared infrastructure across Arbitrum Orbit chains may give it routing advantages on Robinhood's sequencer path."
+  - "{{name:quicknode}} leads at {{p50:quicknode}} (p50, 24h) — near-zero lag across all 3 regions, meaning QuickNode's push pipeline wins or ties the race for nearly every Robinhood Chain block. Its shared-endpoint fleet spans Arbitrum Orbit chains and likely shares sequencer proximity with Robinhood's validator path."
+  - "{{name:alchemy}} follows at {{p50:alchemy}} with consistent lag across us-east, eu-west, and Singapore. A solid option for teams already using Alchemy across other chains; the same multi-chain key covers Robinhood Chain with no additional account."
+  - "{{name:chainstack}} delivers {{p50:chainstack}} (p50, 24h). Despite being the first provider to launch a dedicated Robinhood Chain Global Node, its push pipeline trails QuickNode and Alchemy in the WebSocket race — a different competitive picture than HTTP latency, where Chainstack wins us-east."
 
 faq:
   - q: "Which Robinhood Chain WebSocket provider is fastest for newHeads?"
-    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} (p50, 24h, averaged across 3 regions). Chainstack was first to market with a dedicated Robinhood Chain Global Node. If you already use Alchemy for Ethereum or Arbitrum, adding Robinhood Chain requires no new account."
+    a: "Per the live data above: {{name:quicknode}} at {{p50:quicknode}} (p50, 24h, averaged across 3 regions). QuickNode's near-zero lag indicates it wins or ties the push race for nearly every block. {{name:alchemy}} follows at {{p50:alchemy}}. Note that HTTP latency (eth_getBlockByNumber) tells a different story — see the [keyed-rpc-robinhood](/benchmarks/keyed-rpc-robinhood) bench."
   - q: "Why does Robinhood Chain have no keyless WebSocket endpoint?"
     a: "Robinhood Chain is a new Arbitrum Orbit L2 with a small set of supported infrastructure providers. At the time this bench launched, all three providers (Chainstack, Alchemy, QuickNode) require an API key for WebSocket access. This bench will add keyless providers as they become available."
   - q: "How does Robinhood Chain's 100ms block time affect these measurements?"
