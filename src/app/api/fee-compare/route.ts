@@ -37,8 +37,9 @@ const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
 // Rate caches
 // ──────────────────────────────────────────────────────────────────────
 
-// Gains v6 borrowingRatePerSecondP and lastFundingRatePerSecondP use 1e18 precision
-const GAINS_CARRY_PRECISION = 1e18;
+// Gains v6 borrowingRatePerSecondP uses 1e18; lastFundingRatePerSecondP uses 1e21
+const GAINS_BORROW_PRECISION = 1e18;
+const GAINS_FUNDING_PRECISION = 1e21;
 // Fallback when API doesn't expose per-pair data (~0.04%/day expressed per-second)
 const GAINS_BORROW_DEFAULT_PER_SEC = 0.0004 / 86400;
 // USDC is array[2] in vars.collaterals (0-indexed); its collateralIndex field = 3 (1-indexed).
@@ -285,13 +286,13 @@ async function fetchGainsFeeRates(): Promise<{
     // Borrow rate per second (v2 takes precedence over legacy)
     const v2Borrow = v2BorrowParams[i]?.borrowingRatePerSecondP;
     if (v2Borrow) {
-      borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_CARRY_PRECISION;
+      borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_BORROW_PRECISION;
     }
 
     // Funding rate per second (absolute value — longs and shorts may face same magnitude)
     const fundingRate = fundingPairData[i]?.lastFundingRatePerSecondP;
     if (fundingRate) {
-      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_CARRY_PRECISION;
+      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_FUNDING_PRECISION;
     }
   }
 
