@@ -17,7 +17,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 type Params = { slug: string };
 

@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 type EnrichedChain = ChainEntry & { benchCount: number };
 

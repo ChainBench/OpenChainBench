@@ -28,7 +28,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function RpcHubPage() {
   const [snapshot, specs] = await Promise.all([fetchRpcHub(), getSpecs()]);

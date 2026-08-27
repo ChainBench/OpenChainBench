@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // 60 s revalidate so even a cold edge cache only needs one round-trip
 // per minute per region. The cron rewrites the underlying KV blob on the
 // same cadence; stale-while-revalidate keeps every other request hot.
-export const revalidate = 60;
+export const revalidate = 300;
 
 /**
  * Slim payload feeding the header search dialog's "Live leaders" +

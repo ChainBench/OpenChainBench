@@ -7,7 +7,7 @@ import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const revalidate = 300;
 
 /** Short 503 with a Retry-After hint, served when the aggregator has
  *  no live snapshot to surface (Prom blackout + cold KV). Beats serving
