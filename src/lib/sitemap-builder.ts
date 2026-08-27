@@ -5,6 +5,7 @@ import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
@@ -270,15 +271,22 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Provider routes. The worker pre-filters providerSlugs to exclude chain
   // slugs, HL builder slugs, perp venue slugs, and removed slugs. Apply the
-  // same O(1) set checks here as a safety net — no async getProvider() call
-  // needed (the 505-call fan-out was OOM-crashing the Vercel function).
-  const validatedSlugs = providerSlugs.filter((slug) => {
-    if (CHAIN_BY_SLUG.has(slug)) return false;
-    if (hlBuilderSlugSet.has(slug)) return false;
-    if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return false;
-    if (REMOVED_PRODUCT_SLUGS.has(slug)) return false;
-    return true;
-  });
+  // same checks here as a safety net. isHlBuilderSlug reads the spec (not
+  // Prom) so it's safe async — no OOM risk (unlike the old getProvider fan-out).
+  // It also catches dormant HL frontends missing from the Prom cohort that
+  // the worker couldn't filter without the spec provider list.
+  const validatedSlugs = (
+    await Promise.all(
+      providerSlugs.map(async (slug) => {
+        if (CHAIN_BY_SLUG.has(slug)) return null;
+        if (hlBuilderSlugSet.has(slug)) return null;
+        if (await isHlBuilderSlug(slug)) return null;
+        if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
+        if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
+        return slug;
+      }),
+    )
+  ).filter((s): s is string => s !== null);
 
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
@@ -357,11 +365,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Category hub pages. Filter to categories that have live benches.
-  const liveCategoryLabels = new Set(blobBenches.map((b) => b.category));
+  // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
+  // prod) don't keep their category hub alive in the sitemap.
+  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug));
+  const liveCategoryLabels = new Set(activeBlobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))
     .map((c) => {
-      const catBenches = blobBenches.filter((b) => b.category === c.label);
+      const catBenches = activeBlobBenches.filter((b) => b.category === c.label);
       const last = catBenches.reduce<Date>((acc, b) => {
         if (!b.lastRunAt) return acc;
         const t = new Date(b.lastRunAt);
