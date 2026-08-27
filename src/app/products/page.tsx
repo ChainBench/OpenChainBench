@@ -10,7 +10,7 @@ export const metadata: import("next").Metadata = pageMetadata({
     "Every product tracked by OpenChainBench, grouped by performance. Click a name for its full benchmark record.",
 });
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function ProvidersIndex() {
   const providers = await getProviders();
