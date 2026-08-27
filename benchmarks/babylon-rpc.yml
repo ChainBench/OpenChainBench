@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Babylon is a Cosmos SDK proof-of-stake blockchain that enables Bitcoin staking — BTC holders can stake their coins to provide economic security to Babylon and other PoS chains without moving their Bitcoin off the Bitcoin network. Babylon uses the CometBFT consensus engine and exposes a standard Tendermint RPC interface. Public endpoints are available without an API key from PublicNode, Polkachu, and LavenderFive. Every provider was live-verified with consecutive block-height probes at launch.
+  Babylon is a Cosmos SDK proof-of-stake blockchain that enables Bitcoin staking; BTC holders can stake their coins to provide economic security to Babylon and other PoS chains without moving their Bitcoin off the Bitcoin network. Babylon uses the CometBFT consensus engine and exposes a standard Tendermint RPC interface. Public endpoints are available without an API key from PublicNode, Polkachu, and LavenderFive. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Babylon.
