@@ -399,8 +399,12 @@ async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
   let totalFees = 0;
   let totalNotional = 0;
   for (const t of trades) {
-    totalFees += Number(BigInt(t.positionFeeAmount)) / 1e6;
-    totalNotional += Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    const fee = Number(BigInt(t.positionFeeAmount)) / 1e6;
+    const notional = Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    // Skip corrupted subsquid rows (fee > 1% of notional is impossible at GMX)
+    if (notional <= 0 || fee / notional > 0.01) continue;
+    totalFees += fee;
+    totalNotional += notional;
   }
   const rate = totalNotional > 0 ? totalFees / totalNotional : 0.0005;
   const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps (live avg from recent GMX v2 trades)`, ts: Date.now() };
@@ -536,6 +540,9 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     const fundingFee = Number(fundingFeeRaw) / 1e6;
     const notional = Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
     const pnlUsd = t.pnlUsd ? Number(BigInt(t.pnlUsd) / BigInt("1000000000000000000000000")) / 1e6 : 0;
+
+    // Skip corrupted subsquid rows (>1% fee rate is impossible at GMX)
+    if (notional <= 0 || tradingFee / notional > 0.01) continue;
 
     feesUsdc += tradingFee;
     borrowingFeesUsdc += borrowingFee;
