@@ -37,7 +37,7 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 //                  with per-region leaders called out when they differ -
 //                  a provider that wins on 6 of 10 chains in one region
 //                  must never be presented as the global winner.
-export const revalidate = 300;
+export const revalidate = 3600;
 
 // Dimension pages fan out to (chain x region) variant fetches; a cold
 // render can take a while when the unstable_cache is empty.

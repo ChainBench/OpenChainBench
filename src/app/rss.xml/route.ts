@@ -34,7 +34,7 @@ import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const FEED_TITLE = "OpenChainBench benchmark releases";
 const FEED_DESCRIPTION =

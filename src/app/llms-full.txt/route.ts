@@ -1,7 +1,7 @@
 import { GET as buildLlmContext } from "@/app/api/llm-context/route";
 
 export const runtime = "nodejs";
-export const revalidate = 300;
+export const revalidate = 3600;
 
 /**
  * llms-full.txt — expanded sibling of /llms.txt per the llmstxt.org
