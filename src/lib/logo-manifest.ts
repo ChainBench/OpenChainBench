@@ -328,6 +328,8 @@ const RAW: Record<string, string> = {
   chainlink: "/logos/chainlink.svg",
   dogecoin: "/logos/dogecoin.png",
   blockcypher: "/logos/blockcypher.svg",
+  zcash: "/logos/zcash.svg",
+  "tatum-zebra": "/logos/tatum.svg",
 
   // ─── Data / API providers (alternatives + products pages) ───
   alchemy: "/logos/alchemy.svg",

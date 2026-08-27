@@ -1629,6 +1629,17 @@ func chains() []Chain {
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
 			},
 		},
+		// 2026-08-27 wave-10. Zcash — getblockcount JSON-RPC (Tatum zcashd + Tatum Zebra) + Blockchair REST GET. ~75 s/block.
+		{
+			Slug: "zcash",
+			Name: "Zcash",
+			Kind: "zcash",
+			Providers: []Provider{
+				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_ZCASH_TATUM", "https://zcash-mainnet.gateway.tatum.io")},
+				{Slug: "tatum-zebra", Name: "Tatum (Zebra)", URL: envDefault("RPC_URL_ZCASH_TATUM_ZEBRA", "https://zcash-mainnet-zebrad.gateway.tatum.io")},
+				{Slug: "blockchair", Name: "Blockchair", URL: envDefault("RPC_URL_ZCASH_BLOCKCHAIR", "https://api.blockchair.com/zcash/stats")},
+			},
+		},
 		// 2026-08-23 wave-9. Dogecoin — getblockcount JSON-RPC (Tatum, dRPC) + BlockCypher REST GET. ~60 s/block.
 		{
 			Slug: "dogecoin",
