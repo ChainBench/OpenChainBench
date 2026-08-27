@@ -37,12 +37,14 @@ const EVM_WALLET_VENUES = new Set(["hyperliquid", "gains", "gmx-v2"]);
 // Rate caches
 // ──────────────────────────────────────────────────────────────────────
 
-// Gains v6 borrowingRatePerSecondP and lastFundingRatePerSecondP use 1e18 precision
-const GAINS_CARRY_PRECISION = 1e18;
+// Gains v6 borrowingRatePerSecondP uses 1e18; lastFundingRatePerSecondP uses 1e21
+const GAINS_BORROW_PRECISION = 1e18;
+const GAINS_FUNDING_PRECISION = 1e21;
 // Fallback when API doesn't expose per-pair data (~0.04%/day expressed per-second)
 const GAINS_BORROW_DEFAULT_PER_SEC = 0.0004 / 86400;
-// USDC collateral index on Arbitrum (same as collateralIndex filter in fetchGainsTrades)
-const GAINS_USDC_COLLATERAL_IDX = 3;
+// USDC is array[2] in vars.collaterals (0-indexed); its collateralIndex field = 3 (1-indexed).
+// The collateralIndex===3 filter in fetchGainsTrades refers to the field value, not the array position.
+const GAINS_USDC_COLLATERAL_IDX = 2;
 
 let gainsFeeCache: {
   coinRoundTrip: Record<string, number>;
@@ -145,6 +147,7 @@ type GainsWalletData = {
   events: number;
   feesUsdc: number;
   fundingFeesUsdc: number;
+  fundingEstimated: boolean;
   borrowingFeesUsdc: number;
   netCostUsdc: number;
   positionSizeUsdc: number;
@@ -283,13 +286,13 @@ async function fetchGainsFeeRates(): Promise<{
     // Borrow rate per second (v2 takes precedence over legacy)
     const v2Borrow = v2BorrowParams[i]?.borrowingRatePerSecondP;
     if (v2Borrow) {
-      borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_CARRY_PRECISION;
+      borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_BORROW_PRECISION;
     }
 
     // Funding rate per second (absolute value — longs and shorts may face same magnitude)
     const fundingRate = fundingPairData[i]?.lastFundingRatePerSecondP;
     if (fundingRate) {
-      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_CARRY_PRECISION;
+      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_FUNDING_PRECISION;
     }
   }
 
@@ -396,8 +399,12 @@ async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
   let totalFees = 0;
   let totalNotional = 0;
   for (const t of trades) {
-    totalFees += Number(BigInt(t.positionFeeAmount)) / 1e6;
-    totalNotional += Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    const fee = Number(BigInt(t.positionFeeAmount)) / 1e6;
+    const notional = Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
+    // Skip corrupted subsquid rows (fee > 1% of notional is impossible at GMX)
+    if (notional <= 0 || fee / notional > 0.01) continue;
+    totalFees += fee;
+    totalNotional += notional;
   }
   const rate = totalNotional > 0 ? totalFees / totalNotional : 0.0005;
   const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps (live avg from recent GMX v2 trades)`, ts: Date.now() };
@@ -533,6 +540,9 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
     const fundingFee = Number(fundingFeeRaw) / 1e6;
     const notional = Number(BigInt(t.sizeDeltaUsd) / BigInt("1000000000000000000000000")) / 1e6;
     const pnlUsd = t.pnlUsd ? Number(BigInt(t.pnlUsd) / BigInt("1000000000000000000000000")) / 1e6 : 0;
+
+    // Skip corrupted subsquid rows (>1% fee rate is impossible at GMX)
+    if (notional <= 0 || tradingFee / notional > 0.01) continue;
 
     feesUsdc += tradingFee;
     borrowingFeesUsdc += borrowingFee;
@@ -1046,11 +1056,24 @@ export async function GET(req: Request) {
           }
         }
 
+        // When the API doesn't return per-trade funding (meta absent or zero), fall back to
+        // the same per-second rate estimation used in the crossSim projection.
+        let fundingEstimated = false;
+        if (fundingFeesUsdc >= 0 && fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
+          const gainsPositions = reconstructGainsPositions(usdcTrades, cutoffMs);
+          const est = estimateGainsFundingFees(gainsPositions, gainsData.fundingPerSecPerCoin);
+          if (est > 0.01) {
+            fundingFeesUsdc = est;
+            fundingEstimated = true;
+          }
+        }
+
         const netCostUsdc = feesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
         walletData = {
           events: usdcTrades.length,
           feesUsdc,
           fundingFeesUsdc,
+          fundingEstimated,
           borrowingFeesUsdc,
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
