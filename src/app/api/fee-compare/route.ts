@@ -1052,7 +1052,7 @@ export async function GET(req: Request) {
         // When the API doesn't return per-trade funding (meta absent or zero), fall back to
         // the same per-second rate estimation used in the crossSim projection.
         let fundingEstimated = false;
-        if (fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
+        if (fundingFeesUsdc >= 0 && fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
           const gainsPositions = reconstructGainsPositions(usdcTrades, cutoffMs);
           const est = estimateGainsFundingFees(gainsPositions, gainsData.fundingPerSecPerCoin);
           if (est > 0.01) {
