@@ -765,7 +765,8 @@ function buildHlWalletData(
 function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlice[] {
   const state = new Map<string, { sz: number; openTs: number; openPx: number; isLong: boolean }>();
   const slices: PositionSlice[] = [];
-  const sorted = fills.filter((f) => f.time >= cutoffMs).sort((a, b) => a.time - b.time);
+  // Process ALL fills chronologically so positions opened before cutoffMs are visible
+  const sorted = fills.slice().sort((a, b) => a.time - b.time);
 
   for (const f of sorted) {
     const sz = parseFloat(f.sz);
@@ -783,7 +784,12 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
       const pos = state.get(key);
       if (pos && pos.sz > 0) {
         const closeSz = Math.min(sz, pos.sz);
-        slices.push({ coin: f.coin, notionalUsd: closeSz * pos.openPx, openMs: pos.openTs, closeMs: f.time, isLong });
+        // Cap slice start to cutoffMs so carry is only for the measurement window
+        const sliceOpen = Math.max(pos.openTs, cutoffMs);
+        const sliceClose = f.time;
+        if (sliceClose > cutoffMs) {
+          slices.push({ coin: f.coin, notionalUsd: closeSz * pos.openPx, openMs: sliceOpen, closeMs: sliceClose, isLong });
+        }
         pos.sz -= closeSz;
         if (pos.sz < 0.00001) state.delete(key);
         else state.set(key, pos);
@@ -791,7 +797,7 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
     }
   }
 
-  // Still-open positions — close at now
+  // Still-open positions — close at now, cap open to cutoffMs
   const now = Date.now();
   for (const [key, pos] of state) {
     if (pos.sz > 0.00001) {
@@ -801,7 +807,7 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
         slices.push({
           coin,
           notionalUsd: pos.sz * parseFloat(lastFill.px),
-          openMs: pos.openTs,
+          openMs: Math.max(pos.openTs, cutoffMs),
           closeMs: now,
           isLong: pos.isLong,
         });
