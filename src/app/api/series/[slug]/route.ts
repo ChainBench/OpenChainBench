@@ -141,7 +141,7 @@ const getSeriesMapCached = unstable_cache(
 );
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const revalidate = 300;
 
 /**
  * Per-bench, per-provider time series. Mirrors /api/stat in shape and

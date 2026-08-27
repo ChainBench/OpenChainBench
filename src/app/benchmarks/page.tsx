@@ -3,7 +3,7 @@ import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 const DESCRIPTION =
   "Comprehensive registry of open, reproducible benchmarks running across major protocols, bridges and indexers.";

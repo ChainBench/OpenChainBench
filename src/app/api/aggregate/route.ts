@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 // in background. Keeps s-maxage in the response (Next.js strips it when
 // the route uses cache:"no-store" fetches internally, which makes the
 // route dynamic and prevents CDN caching — removing that flag fixes it).
-export const revalidate = 60;
+export const revalidate = 300;
 
 const UPSTREAM = "https://kv.openchainbench.com/aggregate/latest.json";
 // Paris VPS → IAD1 with 7.3 MB payload: measured 37-49 s uncompressed.
