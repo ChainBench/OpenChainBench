@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Interlay is a Polkadot parachain that brings trustless Bitcoin to DeFi — it issues iBTC, a fully Bitcoin-backed asset, by locking BTC in a decentralized vault system without wrapping or custodians. Interlay uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. Public endpoints are available without an API key from OnFinality, Dwellir, and the Interlay official node. Every provider was live-verified with consecutive block-height probes at launch.
+  Interlay is a Polkadot parachain that brings trustless Bitcoin to DeFi; it issues iBTC, a fully Bitcoin-backed asset, by locking BTC in a decentralized vault system without wrapping or custodians. Interlay uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. Public endpoints are available without an API key from OnFinality, Dwellir, and the Interlay official node. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Interlay.
