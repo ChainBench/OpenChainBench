@@ -1629,6 +1629,50 @@ func chains() []Chain {
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
 			},
 		},
+		// 2026-08-27 wave-10. Litecoin — Tatum JSON-RPC (getblockcount) + BlockCypher REST + LitecoinSpace Esplora REST. ~150 s/block.
+		{
+			Slug: "litecoin",
+			Name: "Litecoin",
+			Kind: "litecoin",
+			Providers: []Provider{
+				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_LTC_TATUM", "https://litecoin-mainnet.gateway.tatum.io")},
+				{Slug: "blockcypher", Name: "BlockCypher", URL: envDefault("RPC_URL_LTC_BLOCKCYPHER", "https://api.blockcypher.com/v1/ltc/main")},
+				{Slug: "litecoinspace", Name: "LitecoinSpace", URL: envDefault("RPC_URL_LTC_LITECOINSPACE", "https://litecoinspace.org/api/blocks/tip/height")},
+			},
+		},
+		// 2026-08-27 wave-10. Babylon — Cosmos SDK, Tendermint /status. PublicNode + Polkachu + LavenderFive.
+		{
+			Slug: "babylon",
+			Name: "Babylon",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BABYLON_PUBLICNODE", "https://babylon-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_BABYLON_POLKACHU", "https://babylon-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_BABYLON_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/babylon")},
+			},
+		},
+		// 2026-08-27 wave-10. Acala — Polkadot parachain, chain_getHeader. OnFinality + Dwellir + PublicNode.
+		{
+			Slug: "acala",
+			Name: "Acala",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_ACALA_ONFINALITY", "https://acala.api.onfinality.io/public")},
+				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_ACALA_DWELLIR", "https://acala-rpc.n.dwellir.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ACALA_PUBLICNODE", "https://acala-rpc.publicnode.com")},
+			},
+		},
+		// 2026-08-27 wave-10. Interlay — Polkadot parachain, chain_getHeader. OnFinality + Dwellir + Interlay official.
+		{
+			Slug: "interlay",
+			Name: "Interlay",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_INTERLAY_ONFINALITY", "https://interlay-parachain.api.onfinality.io/public")},
+				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_INTERLAY_DWELLIR", "https://interlay-rpc.n.dwellir.com")},
+				{Slug: "interlay-official", Name: "Interlay", URL: envDefault("RPC_URL_INTERLAY_OFFICIAL", "https://api.interlay.io/parachain")},
+			},
+		},
 		// 2026-08-27 wave-10. Zcash — getblockcount JSON-RPC (Tatum zcashd + Tatum Zebra) + Blockchair REST GET. ~75 s/block.
 		{
 			Slug: "zcash",
