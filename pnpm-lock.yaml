@@ -35,6 +35,9 @@ importers:
       ioredis:
         specifier: ^5.11.1
         version: 5.11.1
+      js-sha3:
+        specifier: ^0.13.0
+        version: 0.13.0
       js-yaml:
         specifier: ^4.3.0
         version: 4.3.0
@@ -2293,6 +2296,9 @@ packages:
 
   jose@6.2.4:
     resolution: {integrity: sha512-N8acGzVsQy6M/fjFcxtysNc4Q379TcM5dM/qKkNtsHFji88yANnXTr7BLeP75iPnFwBfQzM/jg2BZ9+HZrHCZA==}
+
+  js-sha3@0.13.0:
+    resolution: {integrity: sha512-v2qy9Guw8XMOYFauObtG1kXLfut7AcSRgBP2rq4R14gVFAO2fW5kjcHcPWkA2IUDbY0cGGZypDMUuP/kkbvNGw==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -5701,6 +5707,8 @@ snapshots:
   jiti@2.7.0: {}
 
   jose@6.2.4: {}
+
+  js-sha3@0.13.0: {}
 
   js-tokens@4.0.0: {}
 
