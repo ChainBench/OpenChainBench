@@ -107,10 +107,14 @@ jobs:
       # the next step auto-rolls back the prod alias to the previous good
       # deploy. This catches the class of bug that bled SEO on 2026-06-25
       # (bench page 404 + noindex while still in the sitemap).
+      #
+      # Sitemap fetched from deployment URL (bypasses s-maxage=3600 CDN
+      # cache on /sitemap.xml which was causing false rollbacks). Pages
+      # checked against prod domain so preview-URL noindex doesn't fail.
       - name: Sitemap indexability smoke
         id: smoke
         continue-on-error: true
-        run: node scripts/sitemap-smoke.mjs https://openchainbench.com
+        run: node scripts/sitemap-smoke.mjs ${{ steps.deploy.outputs.url }} https://openchainbench.com
 
       - name: Auto-rollback on smoke failure
         if: steps.smoke.outcome == 'failure'

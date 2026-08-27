@@ -26,9 +26,16 @@
 
 const base = process.argv[2];
 if (!base) {
-  console.error("Usage: node scripts/sitemap-smoke.mjs <base-url>");
+  console.error("Usage: node scripts/sitemap-smoke.mjs <base-url> [check-host]");
   process.exit(2);
 }
+
+// Optional second arg: host to check individual page URLs against.
+// Useful when <base-url> is a Vercel preview URL (which emits noindex on
+// every page by design) but the sitemap itself should be fetched fresh
+// from that deployment to bypass CDN caching on the prod domain.
+// If omitted, page URLs are rewritten to use the same host as <base-url>.
+const checkHost = process.argv[3] ? new URL(process.argv[3]).origin : null;
 
 const CONCURRENCY = Number(process.env.SMOKE_CONCURRENCY ?? 8);
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 20000);
@@ -87,10 +94,13 @@ if (locs.length === 0) {
   process.exit(1);
 }
 
-// Rewrite each URL's host to match the target base, so a smoke test
-// against a Vercel preview URL still exercises the right deployment
-// rather than hitting prod.
-const targetHost = new URL(base).origin;
+// Rewrite each URL's host: use checkHost if provided (prod domain for
+// page checks when sitemap was fetched from a preview URL), otherwise
+// fall back to the same host as base.
+const targetHost = checkHost ?? new URL(base).origin;
+if (checkHost) {
+  console.log(`[smoke] checking pages against ${targetHost} (sitemap from deploy URL)`);
+}
 const urls = locs.map((u) => {
   try {
     const parsed = new URL(u);
