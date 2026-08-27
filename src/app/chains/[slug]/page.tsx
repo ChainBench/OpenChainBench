@@ -29,7 +29,7 @@ import { capDescription } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 export const maxDuration = 60;
 
 type Params = { slug: string };

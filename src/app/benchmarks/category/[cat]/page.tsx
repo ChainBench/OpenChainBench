@@ -21,7 +21,7 @@ import { CATEGORIES, CATEGORY_BY_SLUG } from "@/lib/categories";
  * added bench surfaces here on the same cadence.
  */
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 type Params = { cat: string };
 
