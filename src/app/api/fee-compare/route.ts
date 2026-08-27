@@ -723,6 +723,28 @@ async function resolveRate(slug: string): Promise<{ rate: number; note: string; 
   return { rate: 0.0005, note: "Documented rate", rateIsLive: false };
 }
 
+type HlOpenPos = {
+  coin: string;
+  szi: string;
+  entryPx: string;
+  positionValue: string;
+};
+
+async function fetchHlOpenPositions(wallet: string): Promise<HlOpenPos[]> {
+  const res = await fetch(HL_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "clearinghouseState", user: wallet }),
+    signal: AbortSignal.timeout(8000),
+  });
+  const data = (await res.json()) as {
+    assetPositions?: Array<{ position: HlOpenPos }>;
+  };
+  return (data.assetPositions ?? [])
+    .map((p) => p.position)
+    .filter((p) => Math.abs(parseFloat(p.szi)) > 0.000001);
+}
+
 async function fetchHlFills(wallet: string): Promise<HlFill[]> {
   const res = await fetch(HL_API, {
     method: "POST",
@@ -1054,6 +1076,35 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
   return slices;
 }
 
+// Inject currently-open HL positions not captured by the 2000-fill API cap.
+// For each open position not already in slices (keyed by coin:side), add a slice
+// from cutoffMs to now using the current positionValue as notional.
+function augmentWithHlOpenPositions(
+  slices: PositionSlice[],
+  openPositions: HlOpenPos[],
+  cutoffMs: number
+): PositionSlice[] {
+  const now = Date.now();
+  // Coins already tracked as still-open in the fill reconstruction
+  const tracked = new Set<string>();
+  for (const s of slices) {
+    if (s.closeMs >= now - 5 * 60 * 1000) {
+      tracked.add(`${s.coin}:${s.isLong ? "L" : "S"}`);
+    }
+  }
+  for (const pos of openPositions) {
+    const sz = parseFloat(pos.szi);
+    if (!sz) continue;
+    const isLong = sz > 0;
+    const key = `${pos.coin}:${isLong ? "L" : "S"}`;
+    if (tracked.has(key)) continue;
+    const notionalUsd = Math.abs(parseFloat(pos.positionValue));
+    if (notionalUsd < 1) continue;
+    slices.push({ coin: pos.coin, notionalUsd, openMs: cutoffMs, closeMs: now, isLong });
+  }
+  return slices;
+}
+
 function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): PositionSlice[] {
   const OPEN_ACTIONS = new Set(["MarketOpened", "LimitOrderExecuted"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
@@ -1359,6 +1410,7 @@ export async function GET(req: Request) {
 
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
+    let hlOpenPositions: HlOpenPos[] = [];
     let gainsTradesData: GainsApiTrade[] = [];
     let gmxWalletData: GmxWalletData | null = null;
     let dydxWalletData: DydxWalletData | null = null;
@@ -1373,7 +1425,13 @@ export async function GET(req: Request) {
           }),
           fetchHlFunding(wallet, cutoffMs).then((f) => {
             hlFundingData = f;
-          })
+          }),
+          // clearinghouseState gives currently-open positions whose fill may be outside
+          // the 2000-fill API cap — without this, long-held positions are invisible to
+          // the carry projection even though they generate real HL funding payments.
+          fetchHlOpenPositions(wallet).then((p) => {
+            hlOpenPositions = p;
+          }).catch(() => {})
         );
       }
       if (venueA === "gains" || venueB === "gains") {
@@ -1529,8 +1587,15 @@ export async function GET(req: Request) {
           const aFunding = hlW.fundingUsd;
           const aNetCost = aFees - aFunding;
 
-          // Estimate Gains carry (borrow + funding) by reconstructing HL positions
-          const hlPositions = reconstructHlPositions(hlFillsData, cutoffMs);
+          // Estimate Gains carry (borrow + funding) by reconstructing HL positions.
+          // augmentWithHlOpenPositions fills in positions whose open fill is older than the
+          // 2000-fill API cap — they still generate real HL funding but are invisible to
+          // fill-only reconstruction.
+          const hlPositions = augmentWithHlOpenPositions(
+            reconstructHlPositions(hlFillsData, cutoffMs),
+            hlOpenPositions,
+            cutoffMs
+          );
           const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
           const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
           const bEquiv = takerEquiv + gainsBorrow + gainsFunding;
@@ -1566,7 +1631,11 @@ export async function GET(req: Request) {
           // Reconstruct positions from venueA for carry projection
           let positions: PositionSlice[] = [];
           if (venueA === "hyperliquid" && hlFillsData.length > 0) {
-            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+            positions = augmentWithHlOpenPositions(
+              reconstructHlPositions(hlFillsData, cutoffMs),
+              hlOpenPositions,
+              cutoffMs
+            );
           } else if (venueA === "gains" && gainsTradesData.length > 0) {
             positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
@@ -1662,7 +1731,11 @@ export async function GET(req: Request) {
           const bFunding = hlW.fundingUsd;
           const bNetCost = bFees - bFunding;
 
-          const hlPositions = reconstructHlPositions(hlFillsData, cutoffMs);
+          const hlPositions = augmentWithHlOpenPositions(
+            reconstructHlPositions(hlFillsData, cutoffMs),
+            hlOpenPositions,
+            cutoffMs
+          );
           const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
           const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
           const aEquiv = takerEquiv + gainsBorrow + gainsFunding;
@@ -1698,7 +1771,11 @@ export async function GET(req: Request) {
           // Reconstruct positions from venueB
           let positions: PositionSlice[] = [];
           if (venueB === "hyperliquid" && hlFillsData.length > 0) {
-            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+            positions = augmentWithHlOpenPositions(
+              reconstructHlPositions(hlFillsData, cutoffMs),
+              hlOpenPositions,
+              cutoffMs
+            );
           } else if (venueB === "gains" && gainsTradesData.length > 0) {
             positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
