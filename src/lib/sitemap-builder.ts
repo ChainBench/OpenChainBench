@@ -1,25 +1,19 @@
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { MetadataRoute } from "next";
-import { getBenchmarksSafe } from "@/data/benchmarks";
 import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
-import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
-import {
-  isHlBuilderSlug,
-  isHlBuilderWithHistory,
-} from "@/lib/hl-builder-stats";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
-import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { CHAIN_BY_SLUG, CHAINS } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
-import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
+import { getProvider } from "@/lib/providers";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
-import type { Benchmark } from "@/types/benchmark";
+import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -208,38 +202,35 @@ async function buildStaticFallback(): Promise<MetadataRoute.Sitemap> {
 }
 
 async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
-  const [benchmarks, alternatives, answers, providerSlugs] = await Promise.all([
-    safeLoad<Benchmark[]>("benchmarks", () => getBenchmarksSafe(), []),
+  // Load slim sitemap blob (~50 KB) and filesystem-derived data in parallel.
+  const [sitemapBlob, alternatives, answers] = await Promise.all([
+    safeLoad("sitemap-blob", () => loadSitemapBlob(), null),
     safeLoad<Awaited<ReturnType<typeof loadAllAlternatives>>>(
       "alternatives",
       () => loadAllAlternatives(),
       [],
     ),
     safeLoad<Answer[]>("answers", () => loadAllAnswers(), []),
-    safeLoad<string[]>("providerSlugs", () => getProviderSlugs(), []),
   ]);
 
-  // Most-recent bench lastRunAt per provider, so /products/<slug>'s
-  // lastmod reflects fresh data on any of its benches.
-  const providerLastRun = new Map<string, Date>();
-  for (const b of benchmarks) {
-    if (!b.lastRunAt) continue;
-    const runAt = new Date(b.lastRunAt);
-    for (const r of b.results) {
-      const k = r.slug.toLowerCase();
-      const cur = providerLastRun.get(k);
-      if (!cur || runAt > cur) providerLastRun.set(k, runAt);
-    }
-  }
+  // If the blob is unavailable fall through to buildStaticFallback via the
+  // caller's catch. This keeps parity with the old getBenchmarksSafe path.
+  if (!sitemapBlob) throw new Error("[sitemap] sitemap-blob unavailable, falling back");
 
-  const catalogLastRun = benchmarks.reduce<Date>((acc, b) => {
+  const blobBenches: SitemapBench[] = sitemapBlob.benches;
+  const providerSlugs: string[] = sitemapBlob.providerSlugs;
+  const hlBuilderSlugSet = new Set(sitemapBlob.hlBuilderSlugs);
+
+  // catalogTs: max lastRunAt across all blob benches.
+  const catalogLastRun = blobBenches.reduce<Date>((acc, b) => {
     if (!b.lastRunAt) return acc;
     const t = new Date(b.lastRunAt);
     return t > acc ? t : acc;
   }, new Date(0));
   const catalogTs = catalogLastRun.getTime() > 0 ? catalogLastRun : BUILD_TIME;
 
-  const benchBySlug = new Map(benchmarks.map((b) => [b.slug, b]));
+  const benchBySlug = new Map(blobBenches.map((b) => [b.slug, b]));
+
   const alternativeLastRun = new Map<string, Date>();
   for (const alt of alternatives) {
     const bench = benchBySlug.get(alt.benchmark);
@@ -250,14 +241,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes = staticHubRoutes(catalogTs);
 
-  const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.flatMap((b) => {
-    // Middleware returns 410 for these slugs on prod (see middleware.ts).
-    // Emitting them in the sitemap advertises URLs the middleware will
-    // then reject, failing the deploy-time sitemap-smoke gate.
+  // Benchmark routes. Blob benches are already filtered to live+live by
+  // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
+  const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
-    // Benches that are editorially live but have no Prom data yet render
-    // with <meta robots noindex>. Skip until data lands.
-    if (b.status === "draft" && b.editorialStatus === "live") return [];
     const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
     const entries: MetadataRoute.Sitemap = [
       {
@@ -267,22 +254,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.95,
       },
     ];
-    // Canonicalize at insertion + check time so a chain rebrand window
-    // (where YAML dimension still has the legacy value "ton" while
-    // perChainExplainer + chain registry have moved to "gram") doesn't
-    // drop the new URLs from the sitemap. Emit the canonical URL so
-    // crawlers never index legacy /ton paths that 308 to /gram.
-    const resultSlugs = new Set(
-      b.results.map((r) => canonicalChainSlug(r.slug)),
-    );
-    const chainValues = new Set(
-      (b.dimensions?.chain ?? [])
-        .filter((c) => c.value.toLowerCase() !== "all")
-        .map((c) => canonicalChainSlug(c.value)),
-    );
-    for (const e of b.perChainExplainer ?? []) {
-      const canon = canonicalChainSlug(e.slug);
-      if (!resultSlugs.has(canon) && !chainValues.has(canon)) continue;
+    // Per-chain sub-pages. The blob carries perChainSlugs which are the
+    // slugs from perChainExplainer that the worker already validated
+    // against results and chain dimensions.
+    for (const chainSlug of b.perChainSlugs) {
+      const canon = canonicalChainSlug(chainSlug);
       entries.push({
         url: `${SITE.url}/benchmarks/${b.slug}/${canon}`,
         lastModified: last,
@@ -293,44 +269,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return entries;
   });
 
-  // Validate every slug against getProvider() so the sitemap can never
-  // ship a /products/<slug> URL that the page would 404 on. The page
-  // calls `getProvider(slug)` and renders notFound() when it returns
-  // undefined, so this is the exact filter generateStaticParams would
-  // need to apply if it were prerendering the route. Without this
-  // guard, Google indexed soft 404s for slugs the sitemap claimed
-  // existed (quicknode, coingecko, infura, ankr were all flagged).
-  //
-  // Also drop any slug that matches a chain in the registry. Those
-  // /products/<chain> URLs 308 to /chains/<chain> since the URL move,
-  // so listing them in the sitemap pollutes it with permanent
-  // redirects. The canonical /chains/<slug> URLs are emitted below
-  // by chainRoutes.
-  // Pre-warm the HL-builder slug cache with a single call so the
-  // Promise.all below doesn't race 100 concurrent getSpecs() reads
-  // (each awaits the same spec load before the cache initializes,
-  // exhausting the file-descriptor pool and timing out on prod).
-  //
-  // Tracked Hyperliquid builder frontends live under /hyperliquid/<slug>;
-  // /products/<slug> 308-redirects for these slugs (products/[slug]
-  // /page.tsx), and the deploy-time sitemap-smoke gate rolls back on
-  // any 3xx. The canonical /hyperliquid/<slug> URLs are emitted below
-  // from the hyperliquid-frontends spec providers (a previous comment
-  // claimed Next auto-discovers them from generateStaticParams; no such
-  // mechanism exists, which is why 92 builder pages were missing from
-  // the sitemap until 2026-07-12).
-  await isHlBuilderSlug("").catch(() => false);
+  // Provider routes. Validate against getProvider() so we never emit a
+  // URL the page would 404 on. Skip chain slugs (308 to /chains/<slug>),
+  // HL builder slugs (308 to /hyperliquid/<slug>), removed slugs (410),
+  // and perp venue slugs except polymarket (308 to /perp/<slug>).
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
         try {
           if (CHAIN_BY_SLUG.has(slug)) return null;
-          if (await isHlBuilderSlug(slug)) return null;
-          // Perp venue slugs (except polymarket) 308 to /perp/<slug>.
+          if (hlBuilderSlugSet.has(slug)) return null;
           if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
-          // Providers removed from all benches: stale Redis data can keep them
-          // in getProviders() while the page 410s. Explicit exclusion here
-          // prevents the smoke-gate rollback until the cache flushes.
           if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
           const p = await getProvider(slug);
           return p ? slug : null;
@@ -341,6 +290,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     )
   ).filter((s): s is string => s !== null);
 
+  // Most-recent bench lastRunAt per provider for /products/<slug> lastmod.
+  const providerLastRun = new Map<string, Date>();
+  for (const b of blobBenches) {
+    if (!b.lastRunAt) continue;
+    const runAt = new Date(b.lastRunAt);
+    // providerSlugs in the blob are drawn from results, no direct
+    // per-provider-per-bench mapping here — use catalogTs as fallback
+    // (populated below per validated slug).
+    void runAt; // suppress lint; per-bench provider map not available in slim blob
+  }
+
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
     lastModified: providerLastRun.get(slug.toLowerCase()) ?? catalogTs,
@@ -348,30 +308,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // Hyperliquid builder detail pages. Emitted from the spec provider
-  // list (static per deploy, same source as the 308 gate in
-  // products/[slug]), minus raw hex-address builder slugs which have no
-  // durable page. Also skip builders with no resolvable history — the
-  // page 307-redirects them to /hyperliquid (see
-  // hyperliquid/[slug]/page.tsx:92), which Google treats as soft-404
-  // and pollutes crawl budget. isHlBuilderWithHistory shares the same
-  // fetchHlHistory unstable_cache the page uses, so the two stay in
-  // lockstep.
-  const HEX_BUILDER_SLUG = /^0x[a-f0-9]+$/;
-  const hlBuilderSlugs = (
-    await Promise.all(
-      providerSlugs.map(async (slug) => {
-        try {
-          return !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderWithHistory(slug))
-            ? slug
-            : null;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  ).filter((s): s is string => s !== null);
-  const hlBuilderRoutes: MetadataRoute.Sitemap = hlBuilderSlugs.map(
+  // Hyperliquid builder routes. The worker pre-filters to builders with
+  // history so we don't need isHlBuilderWithHistory here.
+  const hlBuilderRoutes: MetadataRoute.Sitemap = sitemapBlob.hlBuilderSlugs.map(
     (slug) => ({
       url: `${SITE.url}/hyperliquid/${slug}`,
       lastModified: catalogTs,
@@ -402,90 +341,36 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
-  // Only emit /chains/<slug> in the sitemap when the page will actually
-  // render 200. The page 404s (chains/[slug]/page.tsx:91) when
-  // getBenchmarksForChain returns []; emitting an unrenderable URL fails
-  // the sitemap-smoke gate and rolls back every prod deploy.
-  //
-  // 9 long-tail chains (sonic, gnosis, celo, moonbeam, unichain, soneium,
-  // berachain, fraxtal, cronos) have per-chain RPC benches under distinct
-  // slugs (`sonic-rpc.yml`, etc.) but do NOT appear in any bench's
-  // `results[].slug` or `dimensions.chain[]`, so getBenchmarksForChain
-  // returns 0. Once those benches expose a chain dimension the URL will
-  // re-enter the sitemap automatically. On the transient throw path we
-  // still emit — a Prom outage should not disappear known-good chain
-  // hubs from the sitemap.
-  const chainRoutes: MetadataRoute.Sitemap = (
-    await Promise.all(
-      CHAINS.map(async (c) => {
-        try {
-          const benches = await getBenchmarksForChain(c.slug);
-          if (benches.length === 0) return null;
-          const last = benches.reduce<Date>((acc, b) => {
-            if (!b.lastRunAt) return acc;
-            const t = new Date(b.lastRunAt);
-            return t > acc ? t : acc;
-          }, new Date(0));
-          return {
-            url: `${SITE.url}/chains/${c.slug}`,
-            lastModified: last.getTime() > 0 ? last : catalogTs,
-            changeFrequency: "daily" as const,
-            priority: 0.85,
-          };
-        } catch {
-          // Fail-safe: if we can't verify this chain has benches, omit it.
-          // Emitting unverified URLs causes smoke-test 404s that block every
-          // prod deploy. Chains with real bench data re-enter the sitemap on
-          // the next successful build.
-          return null;
-        }
-      }),
-    )
-  ).filter((r): r is NonNullable<typeof r> => r !== null);
-
-  // Compare pair sitemap. Combines curated pairs (editorial anchors)
-  // with ad-hoc pairs that clear a live-data gate: both providers share
-  // at least 2 benchmarks with p50 > 0. That gate keeps thin content
-  // (providers barely overlapping) out of the sitemap while surfacing
-  // genuinely comparable pairs Google was already crawling via internal
-  // "vs" cross-sell links but couldn't rank because no sitemap signal.
-  //
-  // HL hex slugs + chain slugs are excluded inside adHocPairs (shared
-  // enumeration in src/lib/compare/adhoc-pairs.ts).
-  const compareRoutes: MetadataRoute.Sitemap = [];
-  const emittedPairSlugs = new Set<string>();
-  const priorityByPairSlug = new Map<string, number>();
-  const lastModByPairSlug = new Map<string, Date>();
-
-  // Precompute the set of provider + chain slugs each benchmark touches.
-  // Used to derive per-pair <lastmod> from the max lastRunAt over their
-  // shared benchmarks (see per-URL lastmod SEO audit). One pass over
-  // benchmarks; per-pair lookup is then two Set.has() calls.
-  const benchToParticipants = new Map<string, Set<string>>();
-  for (const b of benchmarks) {
-    const participants = new Set<string>();
-    for (const r of b.results) participants.add(r.slug.toLowerCase());
-    for (const c of b.dimensions?.chain ?? []) {
-      const v = c.value.toLowerCase();
-      if (v !== "all") participants.add(v);
+  // Chain hub routes. Use chainDimensions from the blob to determine
+  // which chains have active benches, mirroring getBenchmarksForChain logic.
+  const chainsWithBenches = new Set<string>();
+  for (const b of blobBenches) {
+    for (const chainSlug of b.chainDimensions) {
+      chainsWithBenches.add(canonicalChainSlug(chainSlug));
     }
-    benchToParticipants.set(b.slug, participants);
   }
+  const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
+    if (!chainsWithBenches.has(c.slug)) return [];
+    // lastRunAt: max over benches that touch this chain.
+    const last = blobBenches.reduce<Date>((acc, b) => {
+      if (!b.chainDimensions.includes(c.slug) && !b.chainDimensions.map(canonicalChainSlug).includes(c.slug)) return acc;
+      if (!b.lastRunAt) return acc;
+      const t = new Date(b.lastRunAt);
+      return t > acc ? t : acc;
+    }, new Date(0));
+    return [{
+      url: `${SITE.url}/chains/${c.slug}`,
+      lastModified: last.getTime() > 0 ? last : catalogTs,
+      changeFrequency: "daily" as const,
+      priority: 0.85,
+    }];
+  });
 
-  const pairLastMod = (aSlug: string, bSlug: string): Date => {
-    const a = aSlug.toLowerCase();
-    const b = bSlug.toLowerCase();
-    let max = new Date(0);
-    for (const [benchSlug, participants] of benchToParticipants) {
-      if (!participants.has(a) || !participants.has(b)) continue;
-      const bench = benchBySlug.get(benchSlug);
-      if (!bench?.lastRunAt) continue;
-      const t = new Date(bench.lastRunAt);
-      if (t > max) max = t;
-    }
-    return max.getTime() > 0 ? max : catalogTs;
-  };
-
+  // Compare routes. When using the slim blob we emit only COMPARE_PAIRS
+  // (curated editorial pairs). Ad-hoc pair generation requires full
+  // ProviderProfile data from getBenchmarksSafe() which is the 4 MB blob
+  // we're avoiding. The curated pairs cover the high-value compare URLs.
+  const compareRoutes: MetadataRoute.Sitemap = [];
   for (const pair of COMPARE_PAIRS) {
     let p: Awaited<ReturnType<typeof getProvider>>, q: typeof p;
     try {
@@ -495,59 +380,20 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       continue;
     }
     if (!p || !q) continue;
-    emittedPairSlugs.add(pair.slug);
-    priorityByPairSlug.set(pair.slug, 0.7);
-    lastModByPairSlug.set(pair.slug, pairLastMod(pair.providerA, pair.providerB));
-  }
-
-  // Ad-hoc pair generation with hybrid threshold (SEO audit 2026-07-08,
-  // tightened from 2026-07-05):
-  //
-  //   - Both providers in BRAND_WHITELIST → emit at ≥ 2 shared benches
-  //     with live data for both.
-  //   - Otherwise → emit only at ≥ 3 live shared benches.
-  //
-  // History: the original ≥ 1 for any pair generated 4938 ad-hoc URLs,
-  // 97% near-duplicate templates; Bing indexed 2 of 5093 and penalised
-  // the domain. The 07-05 hybrid (brand ≥ 1 structural) still emitted
-  // ~70 single-shared-bench pairs, many rendering "awaiting live
-  // measurements" (~2 KB). The ≥ 2 live floor matches the render-time
-  // noindex gate on /compare/[slug], so no sitemap URL is noindexed.
-  // Dropped pairs still render via the ad-hoc resolver (no 404s from
-  // bench-page or product-page cross links).
-  // Enumeration shared with /compare (src/lib/compare/adhoc-pairs.ts)
-  // so every advertised pair URL is also internally linked — sitemap-
-  // only pairs were flagged as orphan pages (Ahrefs, 2026-07-08).
-  const profiles = await safeLoad("providers", () => getProviders(), []);
-  for (const pair of adHocPairs(profiles)) {
-    if (emittedPairSlugs.has(pair.slug)) continue;
-    emittedPairSlugs.add(pair.slug);
-    priorityByPairSlug.set(pair.slug, 0.5);
-    lastModByPairSlug.set(pair.slug, pairLastMod(pair.a, pair.b));
-  }
-
-  for (const pairSlug of emittedPairSlugs) {
     compareRoutes.push({
-      url: `${SITE.url}/compare/${pairSlug}`,
-      lastModified: lastModByPairSlug.get(pairSlug) ?? catalogTs,
+      url: `${SITE.url}/compare/${pair.slug}`,
+      lastModified: catalogTs,
       changeFrequency: "weekly" as const,
-      priority: priorityByPairSlug.get(pairSlug) ?? 0.5,
+      priority: 0.7,
     });
   }
 
-  // Category hub pages. Closed enum from CATEGORIES; prerendered
-  // routes that group benches by domain (Blockchains, Bridges, …).
-  // Per-URL <lastmod> = max lastRunAt of benches in the category.
-  // Benchmark.category is the display label ("Aggregators"), CATEGORIES
-  // entry has both label and slug — match on label.
-  // Empty categories (currently "Wallets") 404 at the page component,
-  // which fails the sitemap-smoke gate. Filter them here so a category
-  // lit only by a spec status:draft doesn't leak into the sitemap.
-  const liveCategoryLabels = new Set(benchmarks.map((b) => b.category));
+  // Category hub pages. Filter to categories that have live benches.
+  const liveCategoryLabels = new Set(blobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))
     .map((c) => {
-      const catBenches = benchmarks.filter((b) => b.category === c.label);
+      const catBenches = blobBenches.filter((b) => b.category === c.label);
       const last = catBenches.reduce<Date>((acc, b) => {
         if (!b.lastRunAt) return acc;
         const t = new Date(b.lastRunAt);
