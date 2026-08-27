@@ -551,34 +551,56 @@ function WalletSide({
     if (crossSim) {
       return (
         <div className="space-y-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 mb-1">
             <VenueLogo slug={venue.slug} size={24} />
-            <p className="font-bold text-sm text-ink">{venue.name}</p>
+            <div>
+              <p className="font-bold text-sm text-ink">{venue.name}</p>
+              <p className="text-[11px] text-ink-faint mt-0.5">Projected from {otherVenue.name} history</p>
+            </div>
           </div>
-          <div className="bg-ink/4 rounded-xl p-3 space-y-1">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">
-              {otherVenue.name} trades would cost here
-            </p>
-            <p className="font-mono font-bold text-base text-ink">
+
+          <div>
+            <p className="font-mono text-3xl font-extrabold tracking-tight leading-none text-ink">
               {fmtUsd(crossSim.equivFees)}
             </p>
-            {crossSim.saved > 0.5 && (
-              <p className="text-[10px] text-red-400 font-semibold">
-                {otherVenue.name} total advantage: {fmtUsd(crossSim.saved)}
-                {crossSim.feesActual < -0.01
-                  ? ` (earned ${fmtUsd(Math.abs(crossSim.feesActual))} in rebates)`
-                  : ""}
-              </p>
-            )}
-            {crossSim.saved < -0.5 && (
-              <p className="text-[10px] text-emerald-500 font-semibold">
-                {venue.name} saves {fmtUsd(Math.abs(crossSim.saved))}
-              </p>
-            )}
-            <p className="text-[11px] text-ink-faint/60">
-              Projection based on {otherVenue.name} history
-            </p>
+            <p className="text-xs text-ink-faint mt-1.5">taker fees (carry not projected)</p>
           </div>
+
+          <div className="bg-ink/4 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(crossSim.notionalUsed)}</p>
+            </div>
+            <div className="border-t border-ink/8 pt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Projected taker fees</p>
+                <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(crossSim.equivFees)}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-ink-faint">Carry (funding, borrowing)</p>
+                <p className="text-[11px] text-ink-faint/50 italic">not projected</p>
+              </div>
+              <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                <p className="text-[11px] font-semibold text-ink-soft">
+                  Net cost{" "}
+                  <span className="font-normal text-[9px] text-ink-faint">taker only</span>
+                </p>
+                <p className="font-mono text-xs font-bold text-ink">{fmtUsd(crossSim.equivFees)}</p>
+              </div>
+            </div>
+          </div>
+
+          {crossSim.saved > 0.5 && (
+            <p className="text-[11px] text-red-400 font-semibold">
+              {otherVenue.name} total advantage: {fmtUsd(crossSim.saved)}
+              {crossSim.feesActual < -0.01 ? ` (incl. ${fmtUsd(Math.abs(crossSim.feesActual))} rebates earned)` : ""}
+            </p>
+          )}
+          {crossSim.saved < -0.5 && (
+            <p className="text-[11px] text-emerald-500 font-semibold">
+              {venue.name} would save {fmtUsd(Math.abs(crossSim.saved))}
+            </p>
+          )}
         </div>
       );
     }
