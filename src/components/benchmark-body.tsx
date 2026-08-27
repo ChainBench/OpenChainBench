@@ -134,6 +134,7 @@ function chartOnlyRegions(b: Benchmark): string[] {
 
 const REGION_DISPLAY: Record<string, string> = {
   "us-east": "US-East",
+  "us-west": "US-West",
   "eu-west": "EU-West",
   "ap-southeast": "AP-Southeast",
   global: "Global",
