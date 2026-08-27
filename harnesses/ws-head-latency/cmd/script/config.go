@@ -64,6 +64,10 @@ func endpoints() []Endpoint {
 		{"WS_URL_CHAINSTACK_SOLANA", "chainstack", "solana", "solana"},
 		{"WS_URL_HELIUS_SOLANA", "helius", "solana", "solana"},
 		{"WS_URL_QUICKNODE_SOLANA", "quicknode", "solana", "solana"},
+		// Robinhood Chain keyed (Arbitrum Orbit L2, EVM-compatible newHeads)
+		{"WS_URL_CHAINSTACK_ROBINHOOD", "chainstack", "robinhood", "evm"},
+		{"WS_URL_ALCHEMY_ROBINHOOD", "alchemy", "robinhood", "evm"},
+		{"WS_URL_QUICKNODE_ROBINHOOD", "quicknode", "robinhood", "evm"},
 	} {
 		if url := strings.TrimSpace(os.Getenv(opt.env)); url != "" {
 			eps = append(eps, Endpoint{Provider: opt.provider, Chain: opt.chain, Kind: opt.kind, URL: url})
