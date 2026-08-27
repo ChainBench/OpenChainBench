@@ -64,7 +64,7 @@ export const metadata: Metadata = pageMetadata({
     "Connect Claude Desktop, Cursor, ChatGPT or any MCP-capable agent to OpenChainBench live crypto-infra benchmarks.",
 });
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export default async function McpPage() {
   const benches = (await getBenchmarksSafe()).filter((b) => b.editorialStatus === "live");

@@ -16,7 +16,7 @@ import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string };
 

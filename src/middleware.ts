@@ -147,11 +147,6 @@ export const config = {
     "/api/llm-context",
     "/api/freshness",
     "/api/openapi.json",
-    // Wildcard `/((?!_next|.*\..*).*)` covers every HTML route so the
-    // case-normalisation redirect fires on any URL, not just the
-    // enumerated bench/answer/compare/product paths. Excludes _next
-    // internals and any file with an extension (assets, RSS, sitemap).
-    "/((?!_next|api|.*\\..*).*)",
     "/benchmarks/:slug*",
     "/answers/:slug*",
     "/compare/:slug*",

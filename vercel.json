@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/api/cron/health-check",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/indexnow",

@@ -18,7 +18,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 
 export const runtime = "nodejs";
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string };
 
