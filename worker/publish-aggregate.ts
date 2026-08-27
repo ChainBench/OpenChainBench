@@ -30,6 +30,9 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { CHAIN_BY_SLUG } from "@/lib/chains";
+import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
+import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import {
   draftPlaceholderForSpec,
   filterSig,
@@ -216,11 +219,18 @@ export async function publishSitemapSlim(
   const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
   if (!outputDir) return { ok: false, error: "AGGREGATE_OUTPUT_PATH not set" };
 
+  const hlBuilderSlugSet = new Set(hlBuilderSlugs);
   const providerSlugSet = new Set<string>();
   for (const bench of benches) {
     if (bench.status !== "live") continue;
     for (const r of bench.results ?? []) {
-      if (r.slug) providerSlugSet.add(r.slug);
+      const slug = r.slug;
+      if (!slug) continue;
+      if (CHAIN_BY_SLUG.has(slug)) continue;
+      if (hlBuilderSlugSet.has(slug)) continue;
+      if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") continue;
+      if (REMOVED_PRODUCT_SLUGS.has(slug)) continue;
+      providerSlugSet.add(slug);
     }
   }
 
