@@ -157,5 +157,10 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   // the provider in getProviders() output while the page 404s; 410 guard
   // + sitemap exclusion stop the smoke-gate rollback until Redis flushes.
   "goldrush",
+  // zerion and routescan appear in stale Redis results from retired benches
+  // (indexing-freshness for zerion, explorer-chain-coverage for routescan)
+  // but have no /products/<slug> page. 410 guard prevents smoke-gate failures.
+  "zerion",
+  "routescan",
 ]);
 
