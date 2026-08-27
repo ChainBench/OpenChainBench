@@ -235,16 +235,33 @@ export async function publishSitemapSlim(
   }
 
   const slimBenches = benches
-    .filter((b) => b.status === "live" && b.editorialStatus === "live")
-    .map((b) => ({
-      slug: b.slug,
-      lastRunAt: b.lastRunAt ?? null,
-      category: b.category ?? "",
-      perChainSlugs: (b.perChainExplainer ?? []).map((pce: { slug: string }) => pce.slug),
-      chainDimensions: ((b.dimensions?.chain ?? []) as Array<{ value: string }>)
-        .map((d) => d.value)
-        .filter((v) => v !== "all"),
-    }));
+    .filter((b) => {
+      if (b.status !== "live" || b.editorialStatus !== "live") return false;
+      // Mirror bench page noindex gate: RPC benches with <3 providers are
+      // thin-content and render noindex. Emitting them fails the smoke gate.
+      if (b.category === "RPCs" && (b.results?.length ?? 0) < 3) return false;
+      return true;
+    })
+    .map((b) => {
+      const resultSlugs = new Set((b.results ?? []).map((r: { slug: string }) => r.slug));
+      const chainDimSet = new Set(
+        ((b.dimensions?.chain ?? []) as Array<{ value: string }>)
+          .map((d) => d.value)
+          .filter((v) => v !== "all"),
+      );
+      return {
+        slug: b.slug,
+        lastRunAt: b.lastRunAt ?? null,
+        category: b.category ?? "",
+        // Validate perChainSlugs against live results + chain dimensions.
+        // Slugs in perChainExplainer that have no bench data produce 404
+        // per-chain pages and fail the smoke gate.
+        perChainSlugs: (b.perChainExplainer ?? [])
+          .map((pce: { slug: string }) => pce.slug)
+          .filter((s: string) => resultSlugs.has(s) || chainDimSet.has(s)),
+        chainDimensions: [...chainDimSet],
+      };
+    });
 
   const payload = {
     v: 1,
