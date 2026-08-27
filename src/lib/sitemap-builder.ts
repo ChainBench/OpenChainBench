@@ -10,7 +10,6 @@ import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
-import { getProvider } from "@/lib/providers";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
@@ -269,41 +268,21 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return entries;
   });
 
-  // Provider routes. Validate against getProvider() so we never emit a
-  // URL the page would 404 on. Skip chain slugs (308 to /chains/<slug>),
-  // HL builder slugs (308 to /hyperliquid/<slug>), removed slugs (410),
-  // and perp venue slugs except polymarket (308 to /perp/<slug>).
-  const validatedSlugs = (
-    await Promise.all(
-      providerSlugs.map(async (slug) => {
-        try {
-          if (CHAIN_BY_SLUG.has(slug)) return null;
-          if (hlBuilderSlugSet.has(slug)) return null;
-          if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
-          if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
-          const p = await getProvider(slug);
-          return p ? slug : null;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  ).filter((s): s is string => s !== null);
-
-  // Most-recent bench lastRunAt per provider for /products/<slug> lastmod.
-  const providerLastRun = new Map<string, Date>();
-  for (const b of blobBenches) {
-    if (!b.lastRunAt) continue;
-    const runAt = new Date(b.lastRunAt);
-    // providerSlugs in the blob are drawn from results, no direct
-    // per-provider-per-bench mapping here — use catalogTs as fallback
-    // (populated below per validated slug).
-    void runAt; // suppress lint; per-bench provider map not available in slim blob
-  }
+  // Provider routes. The worker pre-filters providerSlugs to exclude chain
+  // slugs, HL builder slugs, perp venue slugs, and removed slugs. Apply the
+  // same O(1) set checks here as a safety net — no async getProvider() call
+  // needed (the 505-call fan-out was OOM-crashing the Vercel function).
+  const validatedSlugs = providerSlugs.filter((slug) => {
+    if (CHAIN_BY_SLUG.has(slug)) return false;
+    if (hlBuilderSlugSet.has(slug)) return false;
+    if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return false;
+    if (REMOVED_PRODUCT_SLUGS.has(slug)) return false;
+    return true;
+  });
 
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
-    lastModified: providerLastRun.get(slug.toLowerCase()) ?? catalogTs,
+    lastModified: catalogTs,
     changeFrequency: "daily",
     priority: 0.85,
   }));
@@ -370,23 +349,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // (curated editorial pairs). Ad-hoc pair generation requires full
   // ProviderProfile data from getBenchmarksSafe() which is the 4 MB blob
   // we're avoiding. The curated pairs cover the high-value compare URLs.
-  const compareRoutes: MetadataRoute.Sitemap = [];
-  for (const pair of COMPARE_PAIRS) {
-    let p: Awaited<ReturnType<typeof getProvider>>, q: typeof p;
-    try {
-      p = await getProvider(pair.providerA);
-      q = await getProvider(pair.providerB);
-    } catch {
-      continue;
-    }
-    if (!p || !q) continue;
-    compareRoutes.push({
-      url: `${SITE.url}/compare/${pair.slug}`,
-      lastModified: catalogTs,
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    });
-  }
+  const compareRoutes: MetadataRoute.Sitemap = COMPARE_PAIRS.map((pair) => ({
+    url: `${SITE.url}/compare/${pair.slug}`,
+    lastModified: catalogTs,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
 
   // Category hub pages. Filter to categories that have live benches.
   const liveCategoryLabels = new Set(blobBenches.map((b) => b.category));
