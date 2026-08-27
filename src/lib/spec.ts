@@ -326,7 +326,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // Bump to flush v52 cached entries that still carry stale Flashbots row.
   // v54: add 6 new chain benches 216-221 (NEAR, Flow, Hedera, CKB, MultiversX, NEO).
   // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
-  ["bench-unfiltered-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
+  ["bench-unfiltered-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -635,7 +636,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
   // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
-  ["bench-filters-v22", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
+  ["bench-filters-v23", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
