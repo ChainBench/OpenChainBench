@@ -74,8 +74,12 @@ let gainsFeeCache: {
 type RateCacheEntry = { rate: number; note: string; ts: number };
 const rateCache: Partial<Record<string, RateCacheEntry>> = {};
 
-type CarryRates = { borrowPerSecPerCoin: Record<string, number>; fundingPerSecPerCoin: Record<string, number> };
-const carryRateCache: Partial<Record<string, CarryRates & { ts: number }>> = {};
+type CarryRates = {
+  fundingPerSecPerCoin: Record<string, number>;
+  borrowPerSecPerCoin: Record<string, number>;
+  ts: number;
+};
+const carryRateCache: Partial<Record<string, CarryRates>> = {};
 
 // ──────────────────────────────────────────────────────────────────────
 // Types
@@ -382,6 +386,52 @@ async function fetchParadexRate(): Promise<{ rate: number; note: string }> {
   return entry;
 }
 
+async function fetchDydxCarryRates(): Promise<CarryRates> {
+  const cached = carryRateCache["dydx"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch(`${DYDX_INDEXER}/v4/perpetualMarkets`, {
+    signal: AbortSignal.timeout(8000),
+    next: { revalidate: 3600 },
+  });
+  const data = (await res.json()) as {
+    markets: Record<string, { nextFundingRate?: string }>;
+  };
+  const fundingPerSecPerCoin: Record<string, number> = {};
+  for (const [market, info] of Object.entries(data.markets ?? {})) {
+    // "BTC-USD" → "BTC", "ETH-USD-PERP" → "ETH"
+    const coin = market.replace(/-USD.*/, "");
+    const rate = Math.abs(parseFloat(info.nextFundingRate ?? "0")) / 3600; // per hour → per sec
+    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+  }
+  const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
+  carryRateCache["dydx"] = result;
+  return result;
+}
+
+async function fetchParadexCarryRates(): Promise<CarryRates> {
+  const cached = carryRateCache["paradex"];
+  if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
+  const res = await fetch("https://api.prod.paradex.trade/v1/markets", {
+    signal: AbortSignal.timeout(8000),
+    next: { revalidate: 3600 },
+  });
+  const data = (await res.json()) as {
+    results: Array<{ symbol: string; interest_rate?: string; funding_period_hours?: number | string }>;
+  };
+  const fundingPerSecPerCoin: Record<string, number> = {};
+  for (const mkt of data.results ?? []) {
+    if (!mkt.symbol.endsWith("-PERP")) continue;
+    // "BTC-USD-PERP" → "BTC"
+    const coin = mkt.symbol.replace(/-USD-PERP$/, "").replace(/-PERP$/, "");
+    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
+    const rate = parseFloat(mkt.interest_rate ?? "0") / (periodHours * 3600);
+    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+  }
+  const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
+  carryRateCache["paradex"] = result;
+  return result;
+}
+
 async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
   const cached = rateCache["edgex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
@@ -464,12 +514,13 @@ const GMX_CARRY_FALLBACK: CarryRates = {
     XRP: 1.4e-8,
   },
   fundingPerSecPerCoin: {},
+  ts: 0,
 };
 
 async function fetchGmxCarryRates(): Promise<CarryRates> {
   const cached = carryRateCache["gmx-v2"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) {
-    return { borrowPerSecPerCoin: cached.borrowPerSecPerCoin, fundingPerSecPerCoin: cached.fundingPerSecPerCoin };
+    return { borrowPerSecPerCoin: cached.borrowPerSecPerCoin, fundingPerSecPerCoin: cached.fundingPerSecPerCoin, ts: cached.ts };
   }
 
   try {
@@ -507,7 +558,7 @@ async function fetchGmxCarryRates(): Promise<CarryRates> {
       if (!borrowPerSecPerCoin[coin]) borrowPerSecPerCoin[coin] = rate;
     }
 
-    const result: CarryRates = { borrowPerSecPerCoin, fundingPerSecPerCoin: {} };
+    const result: CarryRates = { borrowPerSecPerCoin, fundingPerSecPerCoin: {}, ts: Date.now() };
     carryRateCache["gmx-v2"] = { ...result, ts: Date.now() };
     return result;
   } catch {
@@ -866,7 +917,8 @@ function buildHlWalletData(
 function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlice[] {
   const state = new Map<string, { sz: number; openTs: number; openPx: number; isLong: boolean }>();
   const slices: PositionSlice[] = [];
-  const sorted = fills.filter((f) => f.time >= cutoffMs).sort((a, b) => a.time - b.time);
+  // Process ALL fills chronologically so positions opened before cutoffMs are visible
+  const sorted = fills.slice().sort((a, b) => a.time - b.time);
 
   for (const f of sorted) {
     const sz = parseFloat(f.sz);
@@ -884,7 +936,12 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
       const pos = state.get(key);
       if (pos && pos.sz > 0) {
         const closeSz = Math.min(sz, pos.sz);
-        slices.push({ coin: f.coin, notionalUsd: closeSz * pos.openPx, openMs: pos.openTs, closeMs: f.time, isLong });
+        // Cap slice start to cutoffMs so carry is only for the measurement window
+        const sliceOpen = Math.max(pos.openTs, cutoffMs);
+        const sliceClose = f.time;
+        if (sliceClose > cutoffMs) {
+          slices.push({ coin: f.coin, notionalUsd: closeSz * pos.openPx, openMs: sliceOpen, closeMs: sliceClose, isLong });
+        }
         pos.sz -= closeSz;
         if (pos.sz < 0.00001) state.delete(key);
         else state.set(key, pos);
@@ -892,7 +949,7 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
     }
   }
 
-  // Still-open positions — close at now
+  // Still-open positions — close at now, cap open to cutoffMs
   const now = Date.now();
   for (const [key, pos] of state) {
     if (pos.sz > 0.00001) {
@@ -902,7 +959,7 @@ function reconstructHlPositions(fills: HlFill[], cutoffMs: number): PositionSlic
         slices.push({
           coin,
           notionalUsd: pos.sz * parseFloat(lastFill.px),
-          openMs: pos.openTs,
+          openMs: Math.max(pos.openTs, cutoffMs),
           closeMs: now,
           isLong: pos.isLong,
         });
@@ -1107,6 +1164,20 @@ function estimateGainsFundingFees(
   return total;
 }
 
+function estimateCarryFees(
+  positions: PositionSlice[],
+  rates: { fundingPerSecPerCoin: Record<string, number>; borrowPerSecPerCoin: Record<string, number> }
+): { borrowFees: number; fundingFees: number } {
+  let borrowFees = 0;
+  let fundingFees = 0;
+  for (const pos of positions) {
+    const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
+    borrowFees += pos.notionalUsd * (rates.borrowPerSecPerCoin[pos.coin] ?? 0) * durationSec;
+    fundingFees += pos.notionalUsd * (rates.fundingPerSecPerCoin[pos.coin] ?? 0) * durationSec;
+  }
+  return { borrowFees, fundingFees };
+}
+
 // EIP-55 checksum — Subsquid stores addresses in checksummed format
 function toChecksumAddress(address: string): string {
   const lower = address.toLowerCase().replace("0x", "");
@@ -1189,19 +1260,17 @@ export async function GET(req: Request) {
       resolveRate(venueA),
       resolveRate(venueB),
       fetchGainsFeeRates(),
-      // dYdX: no live carry API — return empty maps
-      Promise.resolve<CarryRates>({ borrowPerSecPerCoin: {}, fundingPerSecPerCoin: {} }),
-      // Paradex: no live carry API — return empty maps
-      Promise.resolve<CarryRates>({ borrowPerSecPerCoin: {}, fundingPerSecPerCoin: {} }),
+      fetchDydxCarryRates().catch(() => ({ fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {}, ts: 0 } as CarryRates)),
+      fetchParadexCarryRates().catch(() => ({ fundingPerSecPerCoin: {}, borrowPerSecPerCoin: {}, ts: 0 } as CarryRates)),
       fetchGmxCarryRates().catch(() => GMX_CARRY_FALLBACK),
     ]);
 
     function getVenueCarryRates(slug: string): CarryRates {
-      if (slug === "gains") return { borrowPerSecPerCoin: gainsData.borrowPerSecPerCoin, fundingPerSecPerCoin: gainsData.fundingPerSecPerCoin };
+      if (slug === "gains") return { borrowPerSecPerCoin: gainsData.borrowPerSecPerCoin, fundingPerSecPerCoin: gainsData.fundingPerSecPerCoin, ts: 0 };
       if (slug === "dydx") return dydxCarryData;
       if (slug === "paradex") return paradexCarryData;
       if (slug === "gmx-v2") return gmxCarryData;
-      return { borrowPerSecPerCoin: {}, fundingPerSecPerCoin: {} };
+      return { borrowPerSecPerCoin: {}, fundingPerSecPerCoin: {}, ts: 0 };
     }
 
     let hlFillsData: HlFill[] = [];
@@ -1410,12 +1479,22 @@ export async function GET(req: Request) {
           let equivFees = stats.notional * rateB;
           let projectedCarry: SimResult["projectedCarry"];
 
-          // Gains→HL: add projected HL funding
-          if (venueA === "gains" && venueB === "hyperliquid" && gainsTradesData.length > 0) {
-            const positions = reconstructGainsPositions(
+          // Reconstruct positions from venueA for carry projection
+          let positions: PositionSlice[] = [];
+          if (venueA === "hyperliquid" && hlFillsData.length > 0) {
+            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+          } else if (venueA === "gains" && gainsTradesData.length > 0) {
+            positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          } else if (venueA === "gmx-v2" && gmxWalletData) {
+            const gmxD = gmxWalletData as GmxWalletData;
+            if (gmxD.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
+          }
+
+          // Gains→HL: use actual HL funding history (more accurate than rate snapshot)
+          if (venueA === "gains" && venueB === "hyperliquid" && positions.length > 0) {
             const hlFunding = computeHlFunding(positions, hlFundingHistoryByCoins);
             const takerFees = equivFees;
             equivFees += hlFunding;
@@ -1428,45 +1507,39 @@ export async function GET(req: Request) {
             };
           }
 
-          // Generic carry projection for venueB (when venueA has position history)
-          // Covers: HL→GMX, GMX→anything, gains→GMX, etc.
-          if (projectedCarry === undefined) {
+          // HL→GMX: use wallet's own GMX history as carry proxy
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          const gmxForA = gmxWalletData as GmxWalletData | null;
+          if (venueA === "hyperliquid" && venueB === "gmx-v2" && gmxForA !== null && gmxForA.notionalUsd > 0) {
+            const takerFees = equivFees;
+            const gmxBorrowRate = gmxForA.borrowingFeesUsdc / gmxForA.notionalUsd;
+            const gmxFundingRate = Math.max(0, gmxForA.fundingFeesUsdc) / gmxForA.notionalUsd;
+            const gmxBorrowProj = stats.notional * gmxBorrowRate;
+            const gmxFundingProj = stats.notional * gmxFundingRate;
+            equivFees += gmxBorrowProj + gmxFundingProj;
+            projectedCarry = {
+              takerFees,
+              borrowFees: gmxBorrowProj,
+              fundingFees: gmxFundingProj,
+              borrowProjected: gmxBorrowProj > 0.01,
+              fundingProjected: gmxFundingProj > 0.01,
+            };
+          }
+
+          // Generic carry: dYdX, Paradex, and any future venue with rate data
+          if (!projectedCarry && positions.length > 0) {
             const bCarry = getVenueCarryRates(venueB);
-            const hasBorrowRates = Object.keys(bCarry.borrowPerSecPerCoin).length > 0;
-            const hasFundingRates = Object.keys(bCarry.fundingPerSecPerCoin).length > 0;
-
-            if (hasBorrowRates || hasFundingRates) {
-              // Reconstruct positions for venueA
-              let positions: PositionSlice[] = [];
-              if (venueA === "hyperliquid") {
-                positions = reconstructHlPositions(hlFillsData, cutoffMs);
-              } else if (venueA === "gains") {
-                positions = reconstructGainsPositions(
-                  gainsTradesData.filter((t) => t.collateralIndex === 3),
-                  cutoffMs
-                );
-              } else if (venueA === "gmx-v2") {
-                const gmxD = gmxWalletData as GmxWalletData | null;
-                if (gmxD?.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
-              }
-
-              if (positions.length > 0) {
-                const takerFees = equivFees;
-                const borrowFees = hasBorrowRates
-                  ? estimateGmxBorrowFees(positions, bCarry.borrowPerSecPerCoin)
-                  : 0;
-                const fundingFees = hasFundingRates
-                  ? estimateGainsFundingFees(positions, bCarry.fundingPerSecPerCoin)
-                  : 0;
-                equivFees += borrowFees + fundingFees;
-                projectedCarry = {
-                  takerFees,
-                  borrowFees,
-                  fundingFees,
-                  borrowProjected: borrowFees > 0.01,
-                  fundingProjected: fundingFees > 0.01,
-                };
-              }
+            const { borrowFees, fundingFees } = estimateCarryFees(positions, bCarry);
+            if (borrowFees > 0.001 || fundingFees > 0.001) {
+              const takerFees = equivFees;
+              equivFees += borrowFees + fundingFees;
+              projectedCarry = {
+                takerFees,
+                borrowFees,
+                fundingFees,
+                borrowProjected: borrowFees > 0.01,
+                fundingProjected: fundingFees > 0.01,
+              };
             }
           }
 
@@ -1538,12 +1611,22 @@ export async function GET(req: Request) {
           let equivFees = stats.notional * rateA;
           let projectedCarry: SimResult["projectedCarry"];
 
-          // Gains→HL: add projected HL funding
-          if (venueB === "gains" && venueA === "hyperliquid" && gainsTradesData.length > 0) {
-            const positions = reconstructGainsPositions(
+          // Reconstruct positions from venueB
+          let positions: PositionSlice[] = [];
+          if (venueB === "hyperliquid" && hlFillsData.length > 0) {
+            positions = reconstructHlPositions(hlFillsData, cutoffMs);
+          } else if (venueB === "gains" && gainsTradesData.length > 0) {
+            positions = reconstructGainsPositions(
               gainsTradesData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
+          } else if (venueB === "gmx-v2" && gmxWalletData) {
+            const gmxD = gmxWalletData as GmxWalletData;
+            if (gmxD.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
+          }
+
+          // Gains→HL (venueB=gains, venueA=HL)
+          if (venueB === "gains" && venueA === "hyperliquid" && positions.length > 0) {
             const hlFunding = computeHlFunding(positions, hlFundingHistoryByCoins);
             const takerFees = equivFees;
             equivFees += hlFunding;
@@ -1556,44 +1639,39 @@ export async function GET(req: Request) {
             };
           }
 
-          // Generic carry projection for venueA (when venueB has position history)
-          // Covers: GMX→HL, GMX→gains, HL→GMX mirror, etc.
-          if (projectedCarry === undefined) {
+          // HL→GMX (venueB=HL, venueA=GMX)
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          const gmxForB = gmxWalletData as GmxWalletData | null;
+          if (venueB === "hyperliquid" && venueA === "gmx-v2" && gmxForB !== null && gmxForB.notionalUsd > 0) {
+            const takerFees = equivFees;
+            const gmxBorrowRate = gmxForB.borrowingFeesUsdc / gmxForB.notionalUsd;
+            const gmxFundingRate = Math.max(0, gmxForB.fundingFeesUsdc) / gmxForB.notionalUsd;
+            const gmxBorrowProj = stats.notional * gmxBorrowRate;
+            const gmxFundingProj = stats.notional * gmxFundingRate;
+            equivFees += gmxBorrowProj + gmxFundingProj;
+            projectedCarry = {
+              takerFees,
+              borrowFees: gmxBorrowProj,
+              fundingFees: gmxFundingProj,
+              borrowProjected: gmxBorrowProj > 0.01,
+              fundingProjected: gmxFundingProj > 0.01,
+            };
+          }
+
+          // Generic carry projection
+          if (!projectedCarry && positions.length > 0) {
             const aCarry = getVenueCarryRates(venueA);
-            const hasBorrowRates = Object.keys(aCarry.borrowPerSecPerCoin).length > 0;
-            const hasFundingRates = Object.keys(aCarry.fundingPerSecPerCoin).length > 0;
-
-            if (hasBorrowRates || hasFundingRates) {
-              let positions: PositionSlice[] = [];
-              if (venueB === "hyperliquid") {
-                positions = reconstructHlPositions(hlFillsData, cutoffMs);
-              } else if (venueB === "gains") {
-                positions = reconstructGainsPositions(
-                  gainsTradesData.filter((t) => t.collateralIndex === 3),
-                  cutoffMs
-                );
-              } else if (venueB === "gmx-v2") {
-                const gmxD = gmxWalletData as GmxWalletData | null;
-                if (gmxD?.rawTrades) positions = reconstructGmxPositions(gmxD.rawTrades, cutoffMs);
-              }
-
-              if (positions.length > 0) {
-                const takerFees = equivFees;
-                const borrowFees = hasBorrowRates
-                  ? estimateGmxBorrowFees(positions, aCarry.borrowPerSecPerCoin)
-                  : 0;
-                const fundingFees = hasFundingRates
-                  ? estimateGainsFundingFees(positions, aCarry.fundingPerSecPerCoin)
-                  : 0;
-                equivFees += borrowFees + fundingFees;
-                projectedCarry = {
-                  takerFees,
-                  borrowFees,
-                  fundingFees,
-                  borrowProjected: borrowFees > 0.01,
-                  fundingProjected: fundingFees > 0.01,
-                };
-              }
+            const { borrowFees, fundingFees } = estimateCarryFees(positions, aCarry);
+            if (borrowFees > 0.001 || fundingFees > 0.001) {
+              const takerFees = equivFees;
+              equivFees += borrowFees + fundingFees;
+              projectedCarry = {
+                takerFees,
+                borrowFees,
+                fundingFees,
+                borrowProjected: borrowFees > 0.01,
+                fundingProjected: fundingFees > 0.01,
+              };
             }
           }
 
