@@ -44,17 +44,15 @@ methodology:
   - "Cohort: Chainstack, Alchemy, and QuickNode. Infura and Ankr do not currently list Robinhood Chain in their supported networks. Probe regions are US-only because Robinhood Chain serves a US equity trading audience."
 
 findings:
-  - "{{name:chainstack}} leads US-East at {{p50:chainstack}} (p50, 24h). Its Global Node is anchored in Virginia, placing it close to the Robinhood sequencer for East Coast deployments."
-  - "{{name:alchemy}} leads US-West at {{p50:alchemy}} via its edge infrastructure. Chainstack does not currently respond from Oregon, making Alchemy the clear pick for West Coast applications."
-  - "{{name:quicknode}} delivers {{p50:quicknode}} across both US regions via its shared-endpoint fleet."
+  - "{{name:chainstack}} leads at {{p50:chainstack}} (p50, 24h) across both US regions. Its Global Node routes to infrastructure close to the Robinhood sequencer in Virginia, giving it an edge in US-East at under 10ms and a competitive result from US-West."
+  - "{{name:alchemy}} records {{p50:alchemy}} across both US probe regions via its edge infrastructure."
+  - "{{name:quicknode}} delivers {{p50:quicknode}} via its shared-endpoint fleet."
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
-    a: "It depends on your probe region. From US-East (Virginia): {{name:chainstack}} at {{p50:chainstack}} p50. From US-West (Oregon): {{name:alchemy}} at {{p50:alchemy}} p50, because Chainstack does not currently respond from Oregon. For East Coast deployments, Chainstack wins. For West Coast, Alchemy is the pick."
+    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h, averaged across US-East and US-West). Chainstack's Global Node consistently leads both US probe regions. For US-deployed trading applications on Robinhood Chain, Chainstack is the lowest-latency keyed provider in this benchmark."
   - q: "What is Robinhood Chain?"
     a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched in March 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
-  - q: "Why is Chainstack missing from US-West?"
-    a: "Chainstack's Robinhood Chain Global Node appears to be anchored in a US-East datacenter (Virginia). Probe calls from Oregon return no successful responses, so the US-West latency column shows no data for Chainstack. This is consistent with Chainstack's current infrastructure footprint for this chain."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
     a: "Robinhood Chain is a new chain. OpenChainBench added it within days of Chainstack, Alchemy, and QuickNode support going live, making this the first and so far only independent latency measurement. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
   - q: "Why do you only probe from US regions?"
