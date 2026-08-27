@@ -76,6 +76,7 @@ type GainsWalletData = {
   events: number;
   feesUsdc: number;
   fundingFeesUsdc: number;
+  fundingEstimated: boolean;
   borrowingFeesUsdc: number;
   netCostUsdc: number;
   positionSizeUsdc: number;
@@ -748,6 +749,9 @@ function WalletSide({
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-ink-faint">
                     Funding {gW.fundingFeesUsdc > 0 ? "paid" : "received"}
+                    {gW.fundingEstimated && (
+                      <span className="ml-1 text-[9px] text-ink-faint/50 italic">est.</span>
+                    )}
                   </p>
                   <p className={`font-mono text-xs font-semibold ${gW.fundingFeesUsdc > 0 ? "text-red-400" : "text-emerald-500"}`}>
                     {gW.fundingFeesUsdc > 0
