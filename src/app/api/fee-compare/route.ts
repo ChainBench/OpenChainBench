@@ -599,7 +599,7 @@ function buildHlWalletData(
     feesUsd: hlFees,
     fundingUsd: hlFundingTotal,
     netCostUsd: hlFees - hlFundingTotal,
-    avgFeeRateBps: hlNotional > 0 ? (hlFees / hlNotional) * 10000 : 0,
+    avgFeeRateBps: hlNotional > 0 ? ((hlFees - hlFundingTotal) / hlNotional) * 10000 : 0,
     topCoins,
     recentFills: displayFills,
   };
