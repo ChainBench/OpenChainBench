@@ -698,14 +698,17 @@ function WalletSide({
                   </p>
                 </div>
               )}
-              {(hasFunding || hasBorrowing) && (
-                <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
-                  <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
-                  <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
-                    {fmtUsd(gW.netCostUsdc)}
-                  </p>
-                </div>
-              )}
+              <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                <p className="text-[11px] font-semibold text-ink-soft">
+                  Net cost{" "}
+                  <span className="font-normal text-[9px] text-ink-faint">
+                    {hasFunding || hasBorrowing ? "incl. carry" : "trading only"}
+                  </span>
+                </p>
+                <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                  {fmtUsd(gW.netCostUsdc)}
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -739,14 +742,17 @@ function WalletSide({
                   </p>
                 </div>
               )}
-              {(hasBorrowing || hasFunding) && (
-                <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
-                  <p className="text-[11px] font-semibold text-ink-soft">Net cost</p>
-                  <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
-                    {fmtUsd(gW.netCostUsdc)}
-                  </p>
-                </div>
-              )}
+              <div className="flex items-center justify-between border-t border-ink/8 pt-1.5">
+                <p className="text-[11px] font-semibold text-ink-soft">
+                  Net cost{" "}
+                  <span className="font-normal text-[9px] text-ink-faint">
+                    {hasBorrowing || hasFunding ? "incl. carry" : "trading only"}
+                  </span>
+                </p>
+                <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
+                  {fmtUsd(gW.netCostUsdc)}
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -822,7 +828,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
       <div className="px-5 py-4 border-b border-ink/8">
         <p className="font-bold text-sm text-ink">Wallet analysis</p>
         <p className="text-xs text-ink-faint mt-0.5">
-          Actual fees paid vs simulated cost on the other platform
+          Net cost including carry (funding + borrowing) vs taker-rate projection on the other venue
         </p>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr]">
@@ -1095,12 +1101,16 @@ function GainsTradeTable({
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Market</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Action</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Fee</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Net cost</th>
               <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((t, i) => (
+            {rows.map((t, i) => {
+              const carry = t.fundingFee + t.borrowingFee;
+              const netCost = t.tradingFee + carry;
+              const hasCarry = Math.abs(t.fundingFee) > 0.001 || t.borrowingFee > 0.001;
+              return (
               <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
                 <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
                   {new Date(t.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -1116,7 +1126,18 @@ function GainsTradeTable({
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(t.notional)}</td>
-                <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">{fmtUsd(t.tradingFee)}</td>
+                <td className="px-3 py-3 text-right">
+                  <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
+                  {hasCarry && (
+                    <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
+                      {fmtUsd(t.tradingFee)} fee
+                      {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
+                      {Math.abs(t.fundingFee) > 0.001
+                        ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
+                        : ""}
+                    </p>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
                   {t.action.includes("Closed") ? (
                     t.pnl_net > 0.01 ? (
@@ -1131,7 +1152,8 @@ function GainsTradeTable({
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1185,12 +1207,16 @@ function GmxTradeTable({
               <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Date</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Direction</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Fee</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Net cost</th>
               <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((t, i) => (
+            {rows.map((t, i) => {
+              const carry = t.borrowingFee + t.fundingFee;
+              const netCost = t.tradingFee + carry;
+              const hasCarry = t.borrowingFee > 0.001 || Math.abs(t.fundingFee) > 0.001;
+              return (
               <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
                 <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
                   {new Date(t.timestamp * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -1201,7 +1227,18 @@ function GmxTradeTable({
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(t.sizeDeltaUsd)}</td>
-                <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">{fmtUsd(t.tradingFee)}</td>
+                <td className="px-3 py-3 text-right">
+                  <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
+                  {hasCarry && (
+                    <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
+                      {fmtUsd(t.tradingFee)} fee
+                      {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
+                      {Math.abs(t.fundingFee) > 0.001
+                        ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
+                        : ""}
+                    </p>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
                   {t.pnlUsd > 0.01 ? (
                     <span className="text-emerald-500 font-semibold">+{fmtUsd(t.pnlUsd)}</span>
@@ -1212,7 +1249,8 @@ function GmxTradeTable({
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1242,26 +1280,27 @@ function Footnote({ venueA, venueB }: { venueA: VenueResult; venueB: VenueResult
   return (
     <p className="text-[11px] text-ink-faint px-1 leading-relaxed">
       {hasHl && (
-        <>Hyperliquid: taker rate fetched live from HL fee schedule API. Fills via HL info endpoint. </>
+        <>Hyperliquid: net cost includes taker fees and funding payments over the selected period. Fills via HL info endpoint. </>
       )}
       {hasGains && (
         <>
-          Gains: trade history from <code className="font-mono text-[10px]">backend-global.gains.trade</code> REST API (Arbitrum).
-          Rates fetched live per-coin from <code className="font-mono text-[10px]">backend-arbitrum.gains.trade</code>.{" "}
+          Gains: net cost includes trading fees, funding, and borrowing over the period. History from{" "}
+          <code className="font-mono text-[10px]">backend-global.gains.trade</code> REST API (Arbitrum).{" "}
         </>
       )}
       {hasGmx && (
         <>
-          GMX v2: Subsquid indexer with date filter and cursor pagination. Includes trading, borrowing, and funding fees.{" "}
+          GMX v2: net cost includes trading fees, borrowing fees, and funding fees. Data via Subsquid indexer.{" "}
         </>
       )}
       {hasDydx && (
         <>
-          dYdX v4: public indexer with full pagination and date filter. Taker fills only. Funding excluded (not date-scopable from public API). Address must be{" "}
+          dYdX v4: taker fills only. Funding not available from the public indexer. Address must be{" "}
           <code className="font-mono text-[10px]">dydx1...</code> Cosmos format.{" "}
         </>
       )}
-      Paradex and EdgeX rates fetched live from their public APIs. Funding excluded from all comparisons.
+      Paradex and EdgeX: taker rate comparison only, no wallet lookup.{" "}
+      Simulated cost on the comparison venue uses the venue taker rate applied to your notional — carry costs (funding, borrowing) on the target venue are not projected as they depend on position duration and market conditions.
     </p>
   );
 }
