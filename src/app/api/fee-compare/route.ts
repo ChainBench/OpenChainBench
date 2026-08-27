@@ -18,7 +18,7 @@ const HL_TAKER_FALLBACK = 0.00035;
 
 // GMX v2 on Arbitrum
 const ARB_RPC = "https://arb1.arbitrum.io/rpc";
-const GMX_DATASTORE = "0xFD70de6b91282D8588DEF3023E68e548b6898A2b";
+const GMX_DATASTORE = "0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8";
 const GMX_MARKETS: Record<string, string> = {
   "0x47c031236e19d024b42f8AE6780E44A573170703": "BTC",
   "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336": "ETH",
@@ -30,6 +30,19 @@ const GMX_MARKETS: Record<string, string> = {
 };
 // GMX typical utilization assumption for base borrowing factor
 const GMX_AVG_UTILIZATION = 0.4;
+
+const USDC_ARB = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
+// Primary long collateral per GMX v2 market on Arbitrum.
+// Real markets use the native token; synthetic markets use WETH.
+const GMX_MARKET_LONG_TOKEN: Record<string, string> = {
+  "0x47c031236e19d024b42f8AE6780E44A573170703": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", // BTC → WBTC
+  "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // ETH → WETH
+  "0x09400D9DB990D5ed3f35D7be61DfAEB900Af03C9": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // SOL → WETH (synthetic)
+  "0xC25cEf6061Cf5dE5eb761b50E4743c1F5D7E5407": "0x912CE59144191C1204E64559FE8253a0e49E6548", // ARB → ARB
+  "0x7f1fa204bb700853D36994DA19F830b6Ad18d232": "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", // LINK → LINK
+  "0x6853EA96FF216fAb11D2d930CE3C508556A4bdc4": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // DOGE → WETH (synthetic)
+  "0xD9535bB5f58A1a75032416F2dFe7880C30575a41": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // XRP → WETH (synthetic)
+};
 
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const DYDX_ADDRESS_RE = /^dydx1[a-z0-9]{38}$/;
@@ -480,6 +493,37 @@ function computeBorrowingFactorKey(marketAddr: string, isLong: boolean): string 
   return "0x" + keccak256(Array.from(enc));
 }
 
+// keccak256(abi.encode(string)) — shared by all GMX DataStore key bases
+function gmxStringBase(str: string): string {
+  const enc = new Uint8Array(96);
+  enc[31] = 0x20; // offset = 32
+  enc[63] = str.length;
+  Buffer.from(str, "utf8").copy(Buffer.from(enc.buffer), 64);
+  return keccak256(Array.from(enc));
+}
+
+// keccak256(abi.encode(FUNDING_FACTOR, market))
+function computeFundingFactorKey(marketAddr: string): string {
+  const base = gmxStringBase("FUNDING_FACTOR");
+  // abi.encode(bytes32, address) = 64 bytes
+  const enc = new Uint8Array(64);
+  Buffer.from(base, "hex").copy(Buffer.from(enc.buffer), 0);
+  Buffer.from(marketAddr.replace("0x", "").toLowerCase(), "hex").copy(Buffer.from(enc.buffer), 44);
+  return "0x" + keccak256(Array.from(enc));
+}
+
+// keccak256(abi.encode(OPEN_INTEREST, market, collateralToken, isLong))
+function computeOpenInterestKey(marketAddr: string, collateralToken: string, isLong: boolean): string {
+  const base = gmxStringBase("OPEN_INTEREST");
+  // abi.encode(bytes32, address, address, bool) = 128 bytes
+  const enc = new Uint8Array(128);
+  Buffer.from(base, "hex").copy(Buffer.from(enc.buffer), 0);
+  Buffer.from(marketAddr.replace("0x", "").toLowerCase(), "hex").copy(Buffer.from(enc.buffer), 44);
+  Buffer.from(collateralToken.replace("0x", "").toLowerCase(), "hex").copy(Buffer.from(enc.buffer), 76);
+  enc[127] = isLong ? 1 : 0;
+  return "0x" + keccak256(Array.from(enc));
+}
+
 async function ethCallGetUint(contract: string, storageKey: string): Promise<bigint> {
   // getUint(bytes32): selector = first 4 bytes of keccak256("getUint(bytes32)")
   const selectorHash = keccak256(Array.from(Buffer.from("getUint(bytes32)", "utf8")));
@@ -558,7 +602,47 @@ async function fetchGmxCarryRates(): Promise<CarryRates> {
       if (!borrowPerSecPerCoin[coin]) borrowPerSecPerCoin[coin] = rate;
     }
 
-    const result: CarryRates = { borrowPerSecPerCoin, fundingPerSecPerCoin: {}, ts: Date.now() };
+    // Funding rates: 3 DataStore reads per market (fundingFactor + longsOI + shortsOI)
+    const fundingPerSecPerCoin: Record<string, number> = {};
+    const fundingReads = await Promise.allSettled(
+      Object.entries(GMX_MARKETS).map(async ([marketAddr, coin]) => {
+        const longToken = GMX_MARKET_LONG_TOKEN[marketAddr];
+        if (!longToken) return null;
+
+        const [fundingFactorRaw, longsOILong, longsOIShort, shortsOIShort, shortsOILong] = await Promise.all([
+          ethCallGetUint(GMX_DATASTORE, computeFundingFactorKey(marketAddr)),
+          // OI is tracked per collateral token; sum both to get total side OI
+          ethCallGetUint(GMX_DATASTORE, computeOpenInterestKey(marketAddr, longToken, true)),
+          ethCallGetUint(GMX_DATASTORE, computeOpenInterestKey(marketAddr, USDC_ARB, true)),
+          ethCallGetUint(GMX_DATASTORE, computeOpenInterestKey(marketAddr, USDC_ARB, false)),
+          ethCallGetUint(GMX_DATASTORE, computeOpenInterestKey(marketAddr, longToken, false)),
+        ]);
+
+        const longsOI = longsOILong + longsOIShort;
+        const shortsOI = shortsOIShort + shortsOILong;
+        const totalOI = longsOI + shortsOI;
+
+        if (totalOI === BigInt(0) || fundingFactorRaw === BigInt(0)) return { coin, rate: 0 };
+
+        const imbalance = longsOI > shortsOI ? longsOI - shortsOI : shortsOI - longsOI;
+        // rate = fundingFactor × (imbalance / totalOI) / 1e30
+        const rateScaled = fundingFactorRaw * imbalance / totalOI;
+        const rate = Number(rateScaled) / 1e30;
+
+        return { coin, rate };
+      })
+    );
+
+    for (const r of fundingReads) {
+      if (r.status !== "fulfilled" || !r.value) continue;
+      const { coin, rate } = r.value;
+      // Sanity check: GMX funding should be between 1e-12 and 1e-6 /sec
+      if (rate > 1e-12 && rate < 1e-6) {
+        fundingPerSecPerCoin[coin] = rate;
+      }
+    }
+
+    const result: CarryRates = { borrowPerSecPerCoin, fundingPerSecPerCoin, ts: Date.now() };
     carryRateCache["gmx-v2"] = { ...result, ts: Date.now() };
     return result;
   } catch {
