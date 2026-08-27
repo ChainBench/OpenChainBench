@@ -146,6 +146,7 @@ type GainsWalletData = {
   events: number;
   feesUsdc: number;
   fundingFeesUsdc: number;
+  fundingEstimated: boolean;
   borrowingFeesUsdc: number;
   netCostUsdc: number;
   positionSizeUsdc: number;
@@ -1047,11 +1048,24 @@ export async function GET(req: Request) {
           }
         }
 
+        // When the API doesn't return per-trade funding (meta absent or zero), fall back to
+        // the same per-second rate estimation used in the crossSim projection.
+        let fundingEstimated = false;
+        if (fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
+          const gainsPositions = reconstructGainsPositions(usdcTrades, cutoffMs);
+          const est = estimateGainsFundingFees(gainsPositions, gainsData.fundingPerSecPerCoin);
+          if (est > 0.01) {
+            fundingFeesUsdc = est;
+            fundingEstimated = true;
+          }
+        }
+
         const netCostUsdc = feesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
         walletData = {
           events: usdcTrades.length,
           feesUsdc,
           fundingFeesUsdc,
+          fundingEstimated,
           borrowingFeesUsdc,
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
