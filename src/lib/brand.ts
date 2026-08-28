@@ -169,6 +169,13 @@ const BRANDS: Record<string, Brand> = {
   tcinfra:           { color: "#2C7DF7" }, // tcinfra tezos blue
   "oktc-official":   { color: "#101010", dark: true }, // okx dark
 
+  // ─── Polkadot parachain RPC chains (benches 248-249) ───
+  acala:    { color: "#E40C5B" },             // acala red/pink (official brand)
+  interlay: { color: "#1A3BDB" },             // interlay blue (official brand)
+
+  // ─── Cosmos SDK chains (bench 247) ───
+  babylon:  { color: "#F8811A" },             // babylon orange (official brand)
+
   // ─── Bitcoin Cash chain + providers (bench 244) ───
   "bitcoin-cash": { color: "#0AC18E" },           // bch official green
   bitcore:      { color: "#1A1D21", dark: true }, // bitpay dark
