@@ -178,6 +178,7 @@ const BRANDS: Record<string, Brand> = {
   chihuahua: { color: "#E05F2A" },             // chihuahua orange-red (official brand)
   sentinel:  { color: "#00C2FF" },             // sentinel cyan (official brand)
   fetchhub:  { color: "#3B2D8E" },             // fetch.ai deep purple (official brand)
+  "cosmos-directory": { color: "#1B1B2F", dark: true }, // cosmos directory dark navy
 
   // ─── Bitcoin Cash chain + providers (bench 244) ───
   "bitcoin-cash": { color: "#0AC18E" },           // bch official green
