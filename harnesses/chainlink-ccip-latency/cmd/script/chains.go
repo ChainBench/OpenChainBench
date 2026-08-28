@@ -12,6 +12,32 @@ package main
 // makes the mapping legible and the audit trail obvious when CCIP
 // adds a new chain we didn't anticipate.
 //
+// ccipTrackedChains is the set of OCB canonical slugs we record metrics for.
+// Only messages where BOTH source AND destination are in this set are
+// observed, capping cardinality at len²×buckets.
+// Derived from the bench YAML provider slugs.
+var ccipTrackedChains = map[string]bool{
+	"ethereum":   true,
+	"bnb":        true,
+	"polygon":    true,
+	"avalanche":  true,
+	"arbitrum":   true,
+	"base":       true,
+	"robinhood":  true,
+	"berachain":  true,
+	"celo":       true,
+	"ink":        true,
+	"linea":      true,
+	"mantle":     true,
+	"monad":      true,
+	"moonbeam":   true,
+	"optimism":   true,
+	"scroll":     true,
+	"solana":     true,
+	"unichain":   true,
+	"world-chain": true,
+}
+
 // Only mainnet entries are mapped; testnet rows are dropped in main.go
 // via the `environment != "mainnet"` guard so we never emit test-chain
 // latency.
