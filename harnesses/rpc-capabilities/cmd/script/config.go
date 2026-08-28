@@ -1651,25 +1651,23 @@ func chains() []Chain {
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_BABYLON_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/babylon")},
 			},
 		},
-		// 2026-08-27 wave-10. Acala — Polkadot parachain, chain_getHeader. OnFinality + Dwellir + PublicNode.
+		// 2026-08-27 wave-10. Acala — Polkadot parachain, chain_getHeader. Dwellir + Acala official nodes.
 		{
 			Slug: "acala",
 			Name: "Acala",
 			Kind: "polkadot",
 			Providers: []Provider{
-				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_ACALA_ONFINALITY", "https://acala.api.onfinality.io/public")},
 				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_ACALA_DWELLIR", "https://acala-rpc.n.dwellir.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ACALA_PUBLICNODE", "https://acala-rpc.publicnode.com")},
+				{Slug: "acala-rpc0", Name: "Acala (RPC-0)", URL: envDefault("RPC_URL_ACALA_RPC0", "https://acala-rpc-0.aca-api.network")},
+				{Slug: "acala-rpc2", Name: "Acala (RPC-2)", URL: envDefault("RPC_URL_ACALA_RPC2", "https://acala-rpc-2.aca-api.network")},
 			},
 		},
-		// 2026-08-27 wave-10. Interlay — Polkadot parachain, chain_getHeader. OnFinality + Dwellir + Interlay official.
+		// 2026-08-27 wave-10. Interlay — Polkadot parachain, chain_getHeader. Only official node has live HTTP RPC.
 		{
 			Slug: "interlay",
 			Name: "Interlay",
 			Kind: "polkadot",
 			Providers: []Provider{
-				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_INTERLAY_ONFINALITY", "https://interlay-parachain.api.onfinality.io/public")},
-				{Slug: "dwellir", Name: "Dwellir", URL: envDefault("RPC_URL_INTERLAY_DWELLIR", "https://interlay-rpc.n.dwellir.com")},
 				{Slug: "interlay-official", Name: "Interlay", URL: envDefault("RPC_URL_INTERLAY_OFFICIAL", "https://api.interlay.io/parachain")},
 			},
 		},
