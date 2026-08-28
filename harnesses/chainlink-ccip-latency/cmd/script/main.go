@@ -189,6 +189,10 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 			seen.add(m.MessageID)
 			continue
 		}
+		if !ccipTrackedChains[srcSlug] || !ccipTrackedChains[dstSlug] {
+			seen.add(m.MessageID)
+			continue
+		}
 		ccipLatencyMs.WithLabelValues(srcSlug, dstSlug).Observe(deltaMs)
 		ccipSeenTotal.WithLabelValues(srcSlug, dstSlug).Inc()
 		seen.add(m.MessageID)
