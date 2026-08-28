@@ -173,8 +173,11 @@ const BRANDS: Record<string, Brand> = {
   acala:    { color: "#E40C5B" },             // acala red/pink (official brand)
   interlay: { color: "#1A3BDB" },             // interlay blue (official brand)
 
-  // ─── Cosmos SDK chains (bench 247) ───
-  babylon:  { color: "#F8811A" },             // babylon orange (official brand)
+  // ─── Cosmos SDK chains (benches 247, 250-252) ───
+  babylon:   { color: "#F8811A" },             // babylon orange (official brand)
+  chihuahua: { color: "#E05F2A" },             // chihuahua orange-red (official brand)
+  sentinel:  { color: "#00C2FF" },             // sentinel cyan (official brand)
+  fetchhub:  { color: "#3B2D8E" },             // fetch.ai deep purple (official brand)
 
   // ─── Bitcoin Cash chain + providers (bench 244) ───
   "bitcoin-cash": { color: "#0AC18E" },           // bch official green
