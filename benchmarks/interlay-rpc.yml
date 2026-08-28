@@ -4,7 +4,7 @@ slug: interlay-rpc
 number: "249"
 title: Fastest free Interlay RPC, live no-key endpoint latency
 seo_title: "Fastest free Interlay RPC 2026"
-seo_description: "{{best_name}} leads free Interlay RPC at {{best_p50}} (block height p50, 24h). 3 providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Interlay RPC at {{best_p50}} (block height p50, 24h). 1 provider measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for Substrate chain_getHeader queries against every available public Interlay endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Interlay is a Polkadot parachain that brings trustless Bitcoin to DeFi; it issues iBTC, a fully Bitcoin-backed asset, by locking BTC in a decentralized vault system without wrapping or custodians. Interlay uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. Public endpoints are available without an API key from OnFinality, Dwellir, and the Interlay official node. Every provider was live-verified with consecutive block-height probes at launch.
+  Interlay is a Polkadot parachain that brings trustless Bitcoin to DeFi; it issues iBTC, a fully Bitcoin-backed asset, by locking BTC in a decentralized vault system without wrapping or custodians. Interlay uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. The Interlay official node (api.interlay.io/parachain) is the only consistently available keyless public endpoint. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Interlay.
   We measure the round-trip latency of a Substrate chain_getHeader query against
   every available public Interlay endpoint that sustains continuous probing:
-  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  1 provider at launch, every 60 seconds, from us-east, eu-west and
   Singapore. Each provider is probed via a JSON-RPC POST (chain_getHeader)
   from which the block number is extracted.
   The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
@@ -35,20 +35,20 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 40 behind the cross-provider tip), timeout."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage at launch: 3 endpoints (OnFinality, Dwellir, Interlay official)."
+  - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage at launch: 1 endpoint (Interlay official api.interlay.io/parachain)."
 
 findings:
-  - "{{best_name}} currently leads Interlay RPC at {{best_p50}} (chain_getHeader p50, 24h) across 3 measured providers."
+  - "{{best_name}} is the measured Interlay RPC at {{best_p50}} (chain_getHeader p50, 24h) from 1 monitored provider."
 
 faq:
   - q: "What is the fastest free Interlay RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Interlay block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "The Interlay official node (api.interlay.io/parachain) is the primary keyless public endpoint, probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard updates continuously against fresh Prometheus samples."
   - q: "Which Interlay RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: OnFinality (interlay-parachain.api.onfinality.io/public), Dwellir (interlay-rpc.n.dwellir.com) and the Interlay official node (api.interlay.io/parachain). Every listed endpoint was live-verified before inclusion."
+    a: "The Interlay official node at api.interlay.io/parachain sustains continuous keyless probing. Other providers (OnFinality, Dwellir) were tested but returned connection errors; only the official node was live-verified before inclusion."
   - q: "What is Interlay and why does its RPC latency matter?"
     a: "Interlay issues iBTC, a 1:1 Bitcoin-backed asset on Polkadot secured by decentralized vaults. Developers integrating iBTC, building vault monitoring tools, or querying collateral positions need reliable low-latency RPC access. Knowing which public endpoint is fastest from your region matters for application responsiveness."
   - q: "Does the fastest Interlay RPC change by region?"
-    a: "Often. OnFinality has a global CDN, Dwellir is Europe-focused, and the Interlay official node has fixed infrastructure. Rankings shift by geographic origin. The region tabs re-scope every number to a single origin."
+    a: "With a single measured provider, per-region breakdowns reflect the geographic latency between each probe region and the Interlay official node infrastructure. The region tabs re-scope every number to a single origin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -66,52 +66,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: onfinality
-    name: OnFinality
-    tag: OnFinality public Interlay RPC, no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to interlay-parachain.api.onfinality.io/public."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="interlay"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="interlay"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="interlay"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="interlay"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="interlay"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="interlay"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="interlay"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="interlay"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="interlay", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="interlay", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="interlay", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="interlay", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="interlay", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="interlay", region="sgp"}[1h])
-
-  - slug: dwellir
-    name: Dwellir
-    tag: Dwellir public Interlay RPC, no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to interlay-rpc.n.dwellir.com."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir", chain="interlay"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="dwellir", chain="interlay"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir", chain="interlay"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir", chain="interlay"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir", chain="interlay"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir", chain="interlay"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir", chain="interlay"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir", chain="interlay"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir", chain="interlay", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="dwellir", chain="interlay", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir", chain="interlay", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="dwellir", chain="interlay", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir", chain="interlay", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="dwellir", chain="interlay", region="sgp"}[1h])
-
   - slug: interlay-official
     name: Interlay
     tag: Interlay official public RPC node, no API key required
