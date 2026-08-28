@@ -2591,6 +2591,34 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Acala official public RPC node 2 (acala-rpc-2.aca-api.network). Keyless Substrate JSON-RPC interface for the Acala DeFi parachain on Polkadot.",
     twitter: "@AcalaNetwork",
   },
+
+  // ─── Chihuahua providers (bench 250) ─────────────────────────────────
+  "chihuahua-official": {
+    url: "https://rpc.chihuahua.wtf",
+    description:
+      "Chihuahua official public Tendermint RPC node. Keyless endpoint for the Chihuahua Cosmos SDK chain.",
+    twitter: "@ChihuahuaChain",
+  },
+  validatus: {
+    url: "https://validatus.com",
+    description:
+      "Validatus public Cosmos RPC infrastructure. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+  },
+
+  // ─── Cosmos Directory (shared across benches 251-252) ────────────────
+  "cosmos-directory": {
+    url: "https://cosmos.directory",
+    description:
+      "Cosmos Directory public RPC proxy. Aggregates Tendermint RPC endpoints across the Cosmos ecosystem, no API key required.",
+  },
+
+  // ─── Fetch.ai providers (bench 252) ──────────────────────────────────
+  "fetchai-official": {
+    url: "https://rpc-fetchhub.fetch.ai",
+    description:
+      "Fetch.ai official public Tendermint RPC node for the FetchHub-4 mainnet. Keyless endpoint maintained by the Fetch.ai / ASI Alliance team.",
+    twitter: "@Fetch_ai",
+  },
 };
 
 /**

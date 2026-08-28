@@ -328,6 +328,9 @@ const RAW: Record<string, string> = {
   acala: "/logos/acala.svg",
   interlay: "/logos/interlay.svg",
   litecoinspace: "/logos/litecoinspace.svg",
+  chihuahua: "/logos/chihuahua.svg",
+  sentinel: "/logos/sentinel.svg",
+  fetchhub: "/logos/fetchai.svg",
 
   // ─── Oracle deviation (bench 025) — additional brand logos ───
   // (pairs alias to chain/asset logos in the ALIASES block below)
@@ -735,6 +738,10 @@ const ALIASES: Record<string, string> = {
   // Acala official node aliases → acala chain logo
   "acala-rpc0": "acala",
   "acala-rpc2": "acala",
+
+  // Chihuahua + Fetch.ai official node aliases → chain logo
+  "chihuahua-official": "chihuahua",
+  "fetchai-official": "fetchhub",
 
   // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
   "ecadinfra": "tezos",
