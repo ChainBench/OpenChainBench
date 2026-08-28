@@ -1530,8 +1530,8 @@ export function FeeCompareClient({
       const data = (await res.json()) as FeeCompareResult;
       setResult(data);
       if (trimmed) {
-        const newPath = `/fee-compare/${va}/${vb}/${trimmed}`;
-        window.history.pushState({}, "", newPath);
+        const qs = new URLSearchParams({ venueA: va, venueB: vb, wallet: trimmed, days: String(overrideDays ?? days) });
+        window.history.pushState({}, "", `/fee-compare?${qs}`);
       }
     } catch {
       setError("Network error — check your connection.");
