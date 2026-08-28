@@ -180,7 +180,8 @@ type HlWalletData = {
 
 type GainsWalletData = {
   events: number;
-  feesUsdc: number;
+  feesUsdc: number;       // pure taker fee only (uiRealizedPnlData)
+  vaultFeesUsdc: number;  // OI imbalance vault surcharge (tradeFeesData - uiRealizedPnlData)
   fundingFeesUsdc: number;
   fundingEstimated: boolean;
   borrowingFeesUsdc: number;
@@ -192,9 +193,11 @@ type GainsWalletData = {
     pair: string;
     action: string;
     notional: number;
-    tradingFee: number;
+    tradingFee: number;  // taker fee only
+    vaultFee: number;    // OI vault surcharge
     fundingFee: number;
     borrowingFee: number;
+    equivFee?: number;   // equivalent fee on the other venue
     pnl_net: number;
   }>;
 };
@@ -339,10 +342,10 @@ async function fetchGainsFeeRates(): Promise<{
       borrowPerSecPerCoin[p.from] = parseFloat(v2Borrow) / GAINS_BORROW_PRECISION;
     }
 
-    // Funding rate per second (absolute value — longs and shorts may face same magnitude)
+    // Signed funding rate: positive = longs pay shorts, negative = shorts pay longs
     const fundingRate = fundingPairData[i]?.lastFundingRatePerSecondP;
     if (fundingRate) {
-      fundingPerSecPerCoin[p.from] = Math.abs(parseFloat(fundingRate)) / GAINS_FUNDING_PRECISION;
+      fundingPerSecPerCoin[p.from] = parseFloat(fundingRate) / GAINS_FUNDING_PRECISION;
     }
   }
 
@@ -413,8 +416,9 @@ async function fetchDydxCarryRates(): Promise<CarryRates> {
   for (const [market, info] of Object.entries(data.markets ?? {})) {
     // "BTC-USD" → "BTC", "ETH-USD-PERP" → "ETH"
     const coin = market.replace(/-USD.*/, "");
-    const rate = Math.abs(parseFloat(info.nextFundingRate ?? "0")) / 3600; // per hour → per sec
-    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+    // Signed: positive = longs pay shorts, negative = shorts pay longs
+    const rate = parseFloat(info.nextFundingRate ?? "0") / 3600;
+    if (rate !== 0) fundingPerSecPerCoin[coin] = rate;
   }
   const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
   carryRateCache["dydx"] = result;
@@ -1258,9 +1262,10 @@ function computeHlFunding(
     const rates = (history.get(pos.coin) ?? []).filter(
       (r) => r.time >= pos.openMs && r.time <= pos.closeMs
     );
-    // Each HL funding entry = one 8h interval. Rate is a fraction applied to notional.
+    // Each HL funding entry = one 8h interval. Rate > 0 = longs pay; < 0 = shorts pay.
     for (const r of rates) {
-      total += pos.notionalUsd * Math.abs(r.rate);
+      const cost = pos.isLong ? r.rate : -r.rate;
+      total += pos.notionalUsd * Math.max(0, cost);
     }
   }
   return total;
@@ -1294,7 +1299,9 @@ function estimateGainsFundingFees(
     const rate = fundingPerSecPerCoin[pos.coin];
     if (!rate) continue;
     const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
-    total += pos.notionalUsd * rate * durationSec;
+    // positive rate = longs pay; negative rate = shorts pay
+    const effectiveRate = pos.isLong ? Math.max(0, rate) : Math.max(0, -rate);
+    total += pos.notionalUsd * effectiveRate * durationSec;
   }
   return total;
 }
@@ -1308,7 +1315,10 @@ function estimateCarryFees(
   for (const pos of positions) {
     const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
     borrowFees += pos.notionalUsd * (rates.borrowPerSecPerCoin[pos.coin] ?? 0) * durationSec;
-    fundingFees += pos.notionalUsd * (rates.fundingPerSecPerCoin[pos.coin] ?? 0) * durationSec;
+    const fundingRate = rates.fundingPerSecPerCoin[pos.coin] ?? 0;
+    // positive rate = longs pay; negative rate = shorts pay
+    const fundingCost = pos.isLong ? Math.max(0, fundingRate) : Math.max(0, -fundingRate);
+    fundingFees += pos.notionalUsd * fundingCost * durationSec;
   }
   return { borrowFees, fundingFees };
 }
@@ -1503,23 +1513,35 @@ export async function GET(req: Request) {
       } else if (fetchEvmWallet && slug === "gains") {
         const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
         const usdcTrades = gainsTradesData.filter((t) => t.collateralIndex === 3);
+        const otherSlug = slug === venueA ? venueB : venueA;
+        const otherRate = slug === venueA ? rateB : rateA;
         let feesUsdc = 0;
+        let vaultFeesUsdc = 0;
         let fundingFeesUsdc = 0;
         let borrowingFeesUsdc = 0;
         let notionalUsd = 0;
         const recentTrades: GainsWalletData["recentTrades"] = [];
 
         for (const t of usdcTrades) {
-          const tradingFee = t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? 0;
+          // uiRealizedPnlData = pure taker fee; tradeFeesData = taker + OI vault surcharge
+          const takerFee = t.meta?.uiRealizedPnlData?.realizedTradingFeesCollateral
+            ?? t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? 0;
+          const totalTradingFee = t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? takerFee;
+          const vaultFee = Math.max(0, totalTradingFee - takerFee);
           const isClose = CLOSE_ACTIONS.has(t.action);
           const fundingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedFundingFeesCollateral ?? 0) : 0;
           const borrowingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedNewBorrowingFeesCollateral ?? 0) : 0;
-          feesUsdc += tradingFee;
+          feesUsdc += takerFee;
+          vaultFeesUsdc += vaultFee;
           fundingFeesUsdc += fundingFee;
           borrowingFeesUsdc += borrowingFee;
-          notionalUsd += t.size * t.leverage;
+          const tradeNotional = t.size * t.leverage;
+          notionalUsd += tradeNotional;
           if (recentTrades.length < 50) {
-            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: t.size * t.leverage, tradingFee, fundingFee, borrowingFee, pnl_net: t.pnl_net });
+            const equivFee = otherSlug === "hyperliquid"
+              ? tradeNotional * (gainsData.perSide[t.pair.split("/")[0]] ?? otherRate)
+              : tradeNotional * otherRate;
+            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, vaultFee, fundingFee, borrowingFee, equivFee, pnl_net: t.pnl_net });
           }
         }
 
@@ -1535,16 +1557,17 @@ export async function GET(req: Request) {
           }
         }
 
-        const netCostUsdc = feesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
+        const netCostUsdc = feesUsdc + vaultFeesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
         walletData = {
           events: usdcTrades.length,
           feesUsdc,
+          vaultFeesUsdc,
           fundingFeesUsdc,
           fundingEstimated,
           borrowingFeesUsdc,
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
-          avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
+          avgFeeRateBps: notionalUsd > 0 ? (feesUsdc / notionalUsd) * 10000 : 0,
           recentTrades,
         } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
