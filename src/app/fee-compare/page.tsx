@@ -9,7 +9,23 @@ export const metadata: Metadata = pageMetadata({
     "Compare taker fees between any two perp DEXs. Paste a wallet to see what was actually paid on Hyperliquid or Gains and what it would have cost elsewhere. Live on-chain data, no API key.",
 });
 
-export default function FeeComparePage() {
+const VALID_VENUES = new Set(["hyperliquid", "gains", "dydx", "gmx-v2", "paradex", "edgex"]);
+
+export default async function FeeComparePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
+
+  const rawA = params.venueA ?? "hyperliquid";
+  const rawB = params.venueB ?? "gains";
+  const initialVenueA = VALID_VENUES.has(rawA) ? rawA : "hyperliquid";
+  const initialVenueB = VALID_VENUES.has(rawB) && rawB !== initialVenueA ? rawB : "gains";
+  const initialWallet = /^0x[0-9a-fA-F]{40}$/.test(params.wallet ?? "") ? params.wallet! : "";
+  const rawDays = parseInt(params.days ?? "90", 10);
+  const initialDays = isFinite(rawDays) ? Math.min(180, Math.max(7, rawDays)) : 90;
+
   return (
     <article className="mx-auto max-w-[720px] px-4 sm:px-6 py-10 sm:py-14">
       <p className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink-faint mb-3">
@@ -28,7 +44,12 @@ export default function FeeComparePage() {
       </p>
 
       <div className="mt-8">
-        <FeeCompareClient />
+        <FeeCompareClient
+          initialVenueA={initialVenueA as "hyperliquid"}
+          initialVenueB={initialVenueB as "gains"}
+          initialWallet={initialWallet}
+          initialDays={initialDays}
+        />
       </div>
     </article>
   );
