@@ -323,6 +323,12 @@ const RAW: Record<string, string> = {
   // ─── Buyback audit (bench 018) ───
   sky: "/logos/sky.svg",
 
+  // ─── New RPC chains (benches 246-249) ───
+  babylon: "/logos/babylon.svg",
+  acala: "/logos/acala.svg",
+  interlay: "/logos/interlay.svg",
+  litecoinspace: "/logos/litecoinspace.svg",
+
   // ─── Oracle deviation (bench 025) — additional brand logos ───
   // (pairs alias to chain/asset logos in the ALIASES block below)
   chainlink: "/logos/chainlink.svg",
@@ -722,6 +728,13 @@ const ALIASES: Record<string, string> = {
   "warden-official": "warden",
   "orai-official": "oraichain",
   "peaq-official": "peaq",
+
+  // Interlay official node alias → interlay chain logo
+  "interlay-official": "interlay",
+
+  // Acala official node aliases → acala chain logo
+  "acala-rpc0": "acala",
+  "acala-rpc2": "acala",
 
   // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
   "ecadinfra": "tezos",
