@@ -2577,6 +2577,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Interlay official public Substrate RPC node (api.interlay.io/parachain). Provides a keyless Substrate JSON-RPC interface for the Interlay parachain on Polkadot.",
     twitter: "@InterlayHQ",
   },
+
+  // ─── Acala providers (bench 248) ──────────────────────────
+  "acala-rpc0": {
+    url: "https://acala-rpc-0.aca-api.network",
+    description:
+      "Acala official public RPC node 0 (acala-rpc-0.aca-api.network). Keyless Substrate JSON-RPC interface for the Acala DeFi parachain on Polkadot.",
+    twitter: "@AcalaNetwork",
+  },
+  "acala-rpc2": {
+    url: "https://acala-rpc-2.aca-api.network",
+    description:
+      "Acala official public RPC node 2 (acala-rpc-2.aca-api.network). Keyless Substrate JSON-RPC interface for the Acala DeFi parachain on Polkadot.",
+    twitter: "@AcalaNetwork",
+  },
 };
 
 /**
