@@ -732,6 +732,10 @@ const ALIASES: Record<string, string> = {
   // Interlay official node alias → interlay chain logo
   "interlay-official": "interlay",
 
+  // Acala official node aliases → acala chain logo
+  "acala-rpc0": "acala",
+  "acala-rpc2": "acala",
+
   // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
   "ecadinfra": "tezos",
   "tzbeta": "tezos",
