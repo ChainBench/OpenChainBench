@@ -1671,6 +1671,39 @@ func chains() []Chain {
 				{Slug: "interlay-official", Name: "Interlay", URL: envDefault("RPC_URL_INTERLAY_OFFICIAL", "https://api.interlay.io/parachain")},
 			},
 		},
+		// 2026-08-28 wave-11. Chihuahua — Cosmos SDK, Tendermint /status. Official node + Polkachu + Validatus.
+		{
+			Slug: "chihuahua",
+			Name: "Chihuahua",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "chihuahua-official", Name: "Chihuahua", URL: envDefault("RPC_URL_CHIHUAHUA_OFFICIAL", "https://rpc.chihuahua.wtf")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_CHIHUAHUA_POLKACHU", "https://chihuahua-rpc.polkachu.com")},
+				{Slug: "validatus", Name: "Validatus", URL: envDefault("RPC_URL_CHIHUAHUA_VALIDATUS", "https://rpc.chihuahua.validatus.com")},
+			},
+		},
+		// 2026-08-28 wave-11. Sentinel — Cosmos SDK, Tendermint /status. Polkachu + PublicNode + Cosmos Directory.
+		{
+			Slug: "sentinel",
+			Name: "Sentinel",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_SENTINEL_POLKACHU", "https://sentinel-rpc.polkachu.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SENTINEL_PUBLICNODE", "https://sentinel-rpc.publicnode.com")},
+				{Slug: "cosmos-directory", Name: "Cosmos Directory", URL: envDefault("RPC_URL_SENTINEL_COSMOSDIRECTORY", "https://rpc.cosmos.directory/sentinel")},
+			},
+		},
+		// 2026-08-28 wave-11. Fetch.ai (FetchHub-4) — Cosmos SDK, Tendermint /status. Official + PublicNode + Cosmos Directory.
+		{
+			Slug: "fetchhub",
+			Name: "Fetch.ai",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "fetchai-official", Name: "Fetch.ai", URL: envDefault("RPC_URL_FETCHHUB_OFFICIAL", "https://rpc-fetchhub.fetch.ai")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_FETCHHUB_PUBLICNODE", "https://fetch-rpc.publicnode.com")},
+				{Slug: "cosmos-directory", Name: "Cosmos Directory", URL: envDefault("RPC_URL_FETCHHUB_COSMOSDIRECTORY", "https://rpc.cosmos.directory/fetchhub")},
+			},
+		},
 		// 2026-08-27 wave-10. Zcash — getblockcount JSON-RPC (Tatum zcashd + Tatum Zebra) + Blockchair REST GET. ~75 s/block.
 		{
 			Slug: "zcash",
