@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Acala is the DeFi hub of the Polkadot ecosystem, a Polkadot parachain providing decentralized stablecoin (aUSD), liquid staking (LDOT), and an EVM-compatible execution environment. Acala uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. Public endpoints are available without an API key from OnFinality, Dwellir, and PublicNode. Every provider was live-verified with consecutive block-height probes at launch.
+  Acala is the DeFi hub of the Polkadot ecosystem, a Polkadot parachain providing decentralized stablecoin (aUSD), liquid staking (LDOT), and an EVM-compatible execution environment. Acala uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. Public endpoints are available without an API key from Dwellir and the Acala official RPC cluster (aca-api.network). Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Acala.
@@ -35,7 +35,7 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 40 behind the cross-provider tip), timeout."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=acala. Provider coverage at launch: 3 endpoints (OnFinality, Dwellir, PublicNode)."
+  - "Chain scope: every query on this page is pinned to chain=acala. Provider coverage at launch: 3 endpoints (Dwellir, Acala RPC-0, Acala RPC-2)."
 
 findings:
   - "{{best_name}} currently leads Acala RPC at {{best_p50}} (chain_getHeader p50, 24h) across 3 measured providers."
@@ -44,11 +44,11 @@ faq:
   - q: "What is the fastest free Acala RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Acala block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Acala RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: OnFinality (acala.api.onfinality.io/public), Dwellir (acala-rpc.n.dwellir.com) and PublicNode (acala-rpc.publicnode.com). Every listed endpoint was live-verified before inclusion."
+    a: "3 endpoints sustain continuous keyless probing at launch: Dwellir (acala-rpc.n.dwellir.com), Acala RPC-0 (acala-rpc-0.aca-api.network) and Acala RPC-2 (acala-rpc-2.aca-api.network). Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Acala RPC change by region?"
-    a: "Often. OnFinality has a global CDN, Dwellir is Europe-focused, and PublicNode has dedicated nodes per region. Rankings shift significantly depending on your geographic origin. The region tabs re-scope every number to a single origin."
+    a: "Often. Dwellir is Europe-focused while the Acala official nodes have fixed infrastructure. Rankings shift depending on your geographic origin. The region tabs re-scope every number to a single origin."
   - q: "How does Acala RPC latency compare to other Polkadot parachains?"
-    a: "All Polkadot parachains use the same Substrate JSON-RPC probe (chain_getHeader) and the same 3 keyless providers (OnFinality, Dwellir, PublicNode), making latency directly comparable. The parent rpc-capabilities benchmark shows the cross-chain view."
+    a: "All Polkadot parachains use the same Substrate JSON-RPC probe (chain_getHeader), making latency directly comparable across the per-chain RPC cluster. The parent rpc-capabilities benchmark shows the cross-chain view."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -66,29 +66,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: onfinality
-    name: OnFinality
-    tag: OnFinality public Acala RPC, no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala.api.onfinality.io/public."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="acala"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="acala"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="acala"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="acala"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="acala"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="acala"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="acala"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="acala"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="acala", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="acala", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="acala", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="acala", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="acala", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="acala", region="sgp"}[1h])
-
   - slug: dwellir
     name: Dwellir
     tag: Dwellir public Acala RPC, no API key required
@@ -112,25 +89,48 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir", chain="acala", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="dwellir", chain="acala", region="sgp"}[1h])
 
-  - slug: publicnode
-    name: PublicNode
-    tag: PublicNode public Acala RPC, no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc.publicnode.com."
+  - slug: acala-rpc0
+    name: Acala (RPC-0)
+    tag: Acala official public RPC node 0 (aca-api.network), no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc-0.aca-api.network."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="acala"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="acala"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="acala"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="acala"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="acala"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="acala"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="acala"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="acala"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc0", chain="acala"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="acala-rpc0", chain="acala"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="acala-rpc0", chain="acala"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="acala-rpc0", chain="acala"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="acala-rpc0", chain="acala"}) / sum(ocb:rpc_call:rate_24h{provider="acala-rpc0", chain="acala"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="acala-rpc0", chain="acala"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="acala-rpc0", chain="acala"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="acala", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="acala", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc0", chain="acala", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc0", chain="acala", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="acala", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="acala", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc0", chain="acala", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc0", chain="acala", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="acala", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="acala", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc0", chain="acala", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc0", chain="acala", region="sgp"}[1h])
+
+  - slug: acala-rpc2
+    name: Acala (RPC-2)
+    tag: Acala official public RPC node 2 (aca-api.network), no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc-2.aca-api.network."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc2", chain="acala"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="acala-rpc2", chain="acala"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="acala-rpc2", chain="acala"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="acala-rpc2", chain="acala"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="acala-rpc2", chain="acala"}) / sum(ocb:rpc_call:rate_24h{provider="acala-rpc2", chain="acala"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="acala-rpc2", chain="acala"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="acala-rpc2", chain="acala"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc2", chain="acala", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc2", chain="acala", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc2", chain="acala", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc2", chain="acala", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="acala-rpc2", chain="acala", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="acala-rpc2", chain="acala", region="sgp"}[1h])
