@@ -2600,7 +2600,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@ChihuahuaChain",
   },
   validatus: {
-    url: "https://validatus.com",
+    url: "https://github.com/validatus",
     description:
       "Validatus public Cosmos RPC infrastructure. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
   },
