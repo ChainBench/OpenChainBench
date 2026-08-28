@@ -180,7 +180,8 @@ type HlWalletData = {
 
 type GainsWalletData = {
   events: number;
-  feesUsdc: number;
+  feesUsdc: number;       // taker fee only (uiRealizedPnlData)
+  vaultFeesUsdc: number;  // OI imbalance vault fee (tradeFeesData - uiRealizedPnlData)
   fundingFeesUsdc: number;
   fundingEstimated: boolean;
   borrowingFeesUsdc: number;
@@ -192,9 +193,11 @@ type GainsWalletData = {
     pair: string;
     action: string;
     notional: number;
-    tradingFee: number;
+    tradingFee: number;  // taker fee only
+    vaultFee: number;    // OI vault fee
     fundingFee: number;
     borrowingFee: number;
+    equivFee?: number;   // equivalent taker fee on the other venue
     pnl_net: number;
   }>;
 };
@@ -1503,23 +1506,36 @@ export async function GET(req: Request) {
       } else if (fetchEvmWallet && slug === "gains") {
         const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
         const usdcTrades = gainsTradesData.filter((t) => t.collateralIndex === 3);
+        const otherSlug = slug === venueA ? venueB : venueA;
+        const otherRate = slug === venueA ? rateB : rateA;
         let feesUsdc = 0;
+        let vaultFeesUsdc = 0;
         let fundingFeesUsdc = 0;
         let borrowingFeesUsdc = 0;
         let notionalUsd = 0;
         const recentTrades: GainsWalletData["recentTrades"] = [];
 
         for (const t of usdcTrades) {
-          const tradingFee = t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? 0;
+          // uiRealizedPnlData = pure taker fee; tradeFeesData = taker + OI vault fee
+          const takerFee = t.meta?.uiRealizedPnlData?.realizedTradingFeesCollateral
+            ?? t.meta?.tradeFeesData?.realizedTradingFeesCollateral
+            ?? 0;
+          const totalTradingFee = t.meta?.tradeFeesData?.realizedTradingFeesCollateral ?? takerFee;
+          const vaultFee = Math.max(0, totalTradingFee - takerFee);
           const isClose = CLOSE_ACTIONS.has(t.action);
           const fundingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedFundingFeesCollateral ?? 0) : 0;
           const borrowingFee = isClose ? (t.meta?.uiRealizedPnlData?.realizedNewBorrowingFeesCollateral ?? 0) : 0;
-          feesUsdc += tradingFee;
+          const tradeNotional = t.size * t.leverage;
+          feesUsdc += takerFee;
+          vaultFeesUsdc += vaultFee;
           fundingFeesUsdc += fundingFee;
           borrowingFeesUsdc += borrowingFee;
-          notionalUsd += t.size * t.leverage;
+          notionalUsd += tradeNotional;
           if (recentTrades.length < 50) {
-            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: t.size * t.leverage, tradingFee, fundingFee, borrowingFee, pnl_net: t.pnl_net });
+            const equivFee = otherSlug === "hyperliquid"
+              ? tradeNotional * (gainsData.perSide[t.pair.split("/")[0]] ?? otherRate)
+              : tradeNotional * otherRate;
+            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, vaultFee, fundingFee, borrowingFee, equivFee, pnl_net: t.pnl_net });
           }
         }
 
@@ -1535,10 +1551,11 @@ export async function GET(req: Request) {
           }
         }
 
-        const netCostUsdc = feesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
+        const netCostUsdc = feesUsdc + vaultFeesUsdc + fundingFeesUsdc + borrowingFeesUsdc;
         walletData = {
           events: usdcTrades.length,
           feesUsdc,
+          vaultFeesUsdc,
           fundingFeesUsdc,
           fundingEstimated,
           borrowingFeesUsdc,
