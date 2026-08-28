@@ -14,16 +14,13 @@ higher_is_better: false
 
 seo_intro: |
   Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 designed for
-  tokenized equity trading, launched in March 2026 with a gas subsidy
-  running through September 2026. It is the first chain where Chainstack
-  launched a Global Node before Alchemy, giving it an early infrastructure
-  advantage on a financially-sensitive chain with low tolerance for RPC
-  latency.
+  tokenized equity trading, launched on mainnet in July 2026 with a gas
+  subsidy running through September 2026. It is a financially-sensitive
+  chain with low tolerance for RPC latency.
   This bench probes Chainstack, Alchemy, and QuickNode on their keyed
   Robinhood Chain endpoints every 60 seconds from US-East (Virginia).
-  Chainstack leads, consistent with its Global Node infrastructure launched
-  first on this chain. This is the only independently-run public latency
-  benchmark for Robinhood Chain.
+  Chainstack leads from US-East. This is the only independently-run public
+  latency benchmark for Robinhood Chain.
 
 abstract: |
   We measure the round-trip latency of eth_getBlockByNumber against the
@@ -49,7 +46,7 @@ faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
     a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h, from US-East). It is the lowest-latency keyed provider for Robinhood Chain in this benchmark."
   - q: "What is Robinhood Chain?"
-    a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched in March 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
+    a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched on mainnet in July 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
     a: "Robinhood Chain is a new chain. OpenChainBench added it within days of Chainstack, Alchemy, and QuickNode support going live, making this the first and so far only independent latency measurement. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
   - q: "Why only US-East?"
