@@ -26,6 +26,37 @@ import type { Benchmark } from "@/types/benchmark";
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { overlayEditorial, slimBenchmarkForCache } from "@/lib/spec";
 
+// Aggressive slim for the aggregate blob. Hub pages (homepage, categories,
+// chains, products) only need card data — they never render editorial text
+// or metric panels. Stripping these fields drops the serialized aggregate
+// from ~4.3 MB to well under the 2 MB unstable_cache ceiling.
+//
+// Fields stripped beyond slimBenchmarkForCache (which already removes
+// 7d/30d series):
+//   - extras.seriesByRegion24h   (only used on bench detail pages)
+//   - metricPanels               (only used on bench detail pages)
+//   - seoIntro, faq, disclaimer  (editorial, bench detail only)
+//   - perChainExplainer          (bench detail + worker's sitemap.json handles sitemap)
+//   - findings, methodology      (bench detail only; required fields → [])
+//   - abstract                   (bench detail only; required field → "")
+function slimForBlobAggregate(b: Benchmark): Benchmark {
+  const base = slimBenchmarkForCache(b);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { seriesByRegion24h: _sbr, ...slimExtras } = base.extras;
+  return {
+    ...base,
+    extras: slimExtras,
+    metricPanels: undefined,
+    seoIntro: undefined,
+    faq: undefined,
+    perChainExplainer: undefined,
+    disclaimer: undefined,
+    findings: [],
+    methodology: [],
+    abstract: "",
+  };
+}
+
 // On any Vercel deployment (production or preview), use the self-hosted
 // CDN proxy (/api/aggregate on openchainbench.com) so Vercel functions
 // pay ~1 ms (edge cache hit) instead of ~12 s fetching the 7.5 MB blob
@@ -113,7 +144,7 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
   for (const bench of raw.benches) {
     const spec = specBySlug.get(bench.slug);
     if (!spec) continue; // Bench in blob no longer has a spec — skip.
-    projected.push(slimBenchmarkForCache(overlayEditorial(bench, spec)));
+    projected.push(slimForBlobAggregate(overlayEditorial(bench, spec)));
   }
   return projected.sort((a, b) =>
     (a.number ?? "").localeCompare(b.number ?? ""),
@@ -130,6 +161,6 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
  */
 export const loadAggregateFromBlob = unstable_cache(
   fetchAndProject,
-  ["aggregate-blob-v2"],
+  ["aggregate-blob-v3"],
   { revalidate: 60, tags: ["bench-aggregate", "benchmarks"] },
 );
