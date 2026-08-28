@@ -1,0 +1,136 @@
+# OpenChainBench. Bench No 251
+
+slug: sentinel-rpc
+number: "251"
+title: Fastest free Sentinel DVPN RPC, live no-key endpoint latency
+seo_title: "Fastest free Sentinel DVPN RPC 2026"
+seo_description: "{{best_name}} leads free Sentinel DVPN RPC at {{best_p50}} (block height p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Sentinel DVPN endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Sentinel is a decentralized VPN (dVPN) protocol built on the Cosmos SDK, operating on the sentinelhub-2 mainnet. It enables users to share bandwidth and access privacy-preserving connectivity through DVPN token incentives. Sentinel uses the standard Cosmos Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are available from Polkachu, PublicNode, and Cosmos Directory. Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Sentinel DVPN.
+  We measure the round-trip latency of a Tendermint /status query against
+  every available public Sentinel endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Each provider is probed via a GET /status request
+  from which the block number is extracted.
+  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
+  with a Cosmos-scaled staleness gap (20 blocks, around 120 s at 6 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Sentinel-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: GET /status. The result.sync_info.latest_block_height field (string-encoded integer) is extracted as the current block height."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 20 behind the cross-provider tip), timeout."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=sentinel. Provider coverage at launch: 3 endpoints (Polkachu, PublicNode, Cosmos Directory)."
+
+findings:
+  - "{{best_name}} leads free Sentinel DVPN RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Sentinel DVPN RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Sentinel block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Sentinel DVPN RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Polkachu (sentinel-rpc.polkachu.com), PublicNode (sentinel-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/sentinel). Every listed endpoint was live-verified before inclusion."
+  - q: "What is Sentinel and why does its RPC latency matter?"
+    a: "Sentinel is a decentralized VPN network where node operators earn DVPN tokens for sharing bandwidth. Developers building dVPN clients, node management tools, or on-chain governance integrations require reliable low-latency RPC access to query bandwidth sessions, staking state, and transaction history."
+  - q: "Does the fastest Sentinel RPC change by region?"
+    a: "Often. Polkachu runs globally distributed infrastructure while PublicNode concentrates nodes near major internet exchange points. The region tabs re-scope every number to a single probe origin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="sentinel"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: polkachu
+    name: Polkachu
+    tag: Polkachu public Sentinel DVPN RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to sentinel-rpc.polkachu.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="sentinel"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="sentinel"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="sentinel"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="sentinel"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="sentinel"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="sentinel"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="sentinel"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="sentinel"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="sentinel", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="sentinel", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="sentinel", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="sentinel", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="sentinel", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="sentinel", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: PublicNode public Sentinel DVPN RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to sentinel-rpc.publicnode.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sentinel"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="sentinel"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="sentinel"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="sentinel"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="sentinel"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="sentinel"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="sentinel"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sentinel"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sentinel", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sentinel", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sentinel", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sentinel", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="sentinel", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="sentinel", region="sgp"}[1h])
+
+  - slug: cosmos-directory
+    name: Cosmos Directory
+    tag: Cosmos Directory public Sentinel DVPN RPC proxy, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.cosmos.directory/sentinel."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cosmos-directory", chain="sentinel"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="cosmos-directory", chain="sentinel"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="cosmos-directory", chain="sentinel"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="cosmos-directory", chain="sentinel"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="cosmos-directory", chain="sentinel"}) / sum(ocb:rpc_call:rate_24h{provider="cosmos-directory", chain="sentinel"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="cosmos-directory", chain="sentinel"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="cosmos-directory", chain="sentinel"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cosmos-directory", chain="sentinel", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cosmos-directory", chain="sentinel", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cosmos-directory", chain="sentinel", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cosmos-directory", chain="sentinel", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cosmos-directory", chain="sentinel", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cosmos-directory", chain="sentinel", region="sgp"}[1h])
