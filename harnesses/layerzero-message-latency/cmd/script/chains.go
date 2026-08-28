@@ -10,6 +10,35 @@ package main
 //   - LayerZero exposes a bunch of exotic chains (orderly, flare, ape,
 //     robinhood, hyperliquid) that map to our slugs where they exist.
 //
+// lzTrackedChains is the set of OCB canonical slugs we record metrics for.
+// Only messages where BOTH source AND destination are in this set are
+// observed. This caps cardinality at len²×buckets instead of the full
+// N×N cross-product of all chains LayerZero supports.
+// Derived from the bench YAML provider slugs — add here when adding a
+// new chain to the bench.
+var lzTrackedChains = map[string]bool{
+	"ethereum":  true,
+	"solana":    true,
+	"bnb":       true,
+	"arbitrum":  true,
+	"base":      true,
+	"optimism":  true,
+	"polygon":   true,
+	"avalanche": true,
+	"robinhood": true,
+	"monad":     true,
+	"berachain": true,
+	"celo":      true,
+	"injective": true,
+	"ink":       true,
+	"linea":     true,
+	"mantle":    true,
+	"moonbeam":  true,
+	"scroll":    true,
+	"sui":       true,
+	"unichain":  true,
+}
+
 // Unknown names fall through to a synthetic `chain-<lowered>` slug in
 // main.go so we never drop data silently.
 var lzChainSlug = map[string]string{

@@ -206,6 +206,10 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 				continue
 			}
 			dstSlug := chainSlug(m.Pathway.Receiver.Chain)
+			if !lzTrackedChains[srcSlug] || !lzTrackedChains[dstSlug] {
+				seen.add(m.GUID)
+				continue
+			}
 			lzLatencyMs.WithLabelValues(srcSlug, dstSlug).Observe(deltaMs)
 			lzSeenTotal.WithLabelValues(srcSlug, dstSlug).Inc()
 			seen.add(m.GUID)
