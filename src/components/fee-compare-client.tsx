@@ -75,6 +75,7 @@ type HlWalletData = {
 type GainsWalletData = {
   events: number;
   feesUsdc: number;
+  vaultFeesUsdc: number;
   fundingFeesUsdc: number;
   fundingEstimated: boolean;
   borrowingFeesUsdc: number;
@@ -87,8 +88,10 @@ type GainsWalletData = {
     action: string;
     notional: number;
     tradingFee: number;
+    vaultFee: number;
     fundingFee: number;
     borrowingFee: number;
+    equivFee?: number;
     pnl_net: number;
   }>;
 };
@@ -732,6 +735,7 @@ function WalletSide({
       })()}
       {venue.slug === "gains" && (() => {
         const gW = w as GainsWalletData;
+        const hasVault = (gW.vaultFeesUsdc ?? 0) > 0.5;
         const hasFunding = Math.abs(gW.fundingFeesUsdc) > 0.5;
         const hasBorrowing = gW.borrowingFeesUsdc > 0.5;
         return (
@@ -742,9 +746,18 @@ function WalletSide({
             </div>
             <div className="border-t border-ink/8 pt-2 space-y-1.5">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] text-ink-faint">Trading fees</p>
+                <p className="text-[11px] text-ink-faint">Taker fees</p>
                 <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(gW.feesUsdc)}</p>
               </div>
+              {hasVault && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">
+                    OI vault fee
+                    <span className="ml-1 text-[9px] text-ink-faint/50">(OI imbalance surcharge)</span>
+                  </p>
+                  <p className="font-mono text-xs font-semibold text-amber-500">+{fmtUsd(gW.vaultFeesUsdc)}</p>
+                </div>
+              )}
               {hasFunding && (
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-ink-faint">
@@ -772,7 +785,7 @@ function WalletSide({
                 <p className="text-[11px] font-semibold text-ink-soft">
                   Net cost{" "}
                   <span className="font-normal text-[9px] text-ink-faint">
-                    {hasFunding || hasBorrowing ? "incl. carry" : "trading only"}
+                    {hasVault || hasFunding || hasBorrowing ? "all fees" : "taker only"}
                   </span>
                 </p>
                 <p className={`font-mono text-xs font-bold ${gW.netCostUsdc < -0.01 ? "text-emerald-500" : "text-ink"}`}>
@@ -1135,13 +1148,16 @@ function HlTradeTable({
 function GainsTradeTable({
   trades,
   venueName,
+  otherVenueName,
 }: {
   trades: GainsWalletData["recentTrades"];
   venueName: string;
+  otherVenueName?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
   const PREVIEW = 10;
   const rows = showAll ? trades : trades.slice(0, PREVIEW);
+  const hasEquiv = !!otherVenueName && trades.some((t) => t.equivFee !== undefined);
 
   if (trades.length === 0) return null;
 
@@ -1159,7 +1175,9 @@ function GainsTradeTable({
       <div className="flex items-center justify-between px-5 py-4 border-b border-ink/8">
         <div className="flex items-center gap-2.5">
           <VenueLogo slug="gains" size={20} />
-          <p className="font-bold text-sm text-ink">{venueName} trade history</p>
+          <p className="font-bold text-sm text-ink">
+            {hasEquiv ? `${venueName} vs ${otherVenueName} — per trade` : `${venueName} trade history`}
+          </p>
         </div>
         <p className="text-xs text-ink-faint">{trades.length} actions</p>
       </div>
@@ -1171,15 +1189,20 @@ function GainsTradeTable({
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium">Market</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium hidden sm:table-cell">Action</th>
               <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden sm:table-cell">Notional</th>
-              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">Net cost</th>
-              <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
+              <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">{venueName} fee</th>
+              {hasEquiv && (
+                <th className="px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right">{otherVenueName} fee</th>
+              )}
+              {!hasEquiv && (
+                <th className="px-5 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right hidden md:table-cell">PnL</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((t, i) => {
-              const carry = t.fundingFee + t.borrowingFee;
-              const netCost = t.tradingFee + carry;
-              const hasCarry = Math.abs(t.fundingFee) > 0.001 || t.borrowingFee > 0.001;
+              const hasVault = (t.vaultFee ?? 0) > 0.001;
+              const netCost = t.tradingFee + (t.vaultFee ?? 0) + t.fundingFee + t.borrowingFee;
+              const diff = hasEquiv && t.equivFee !== undefined ? t.equivFee - netCost : undefined;
               return (
               <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
                 <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
@@ -1198,29 +1221,40 @@ function GainsTradeTable({
                 <td className="px-3 py-3 text-right font-mono text-xs text-ink-soft hidden sm:table-cell">{fmtUsd(t.notional)}</td>
                 <td className="px-3 py-3 text-right">
                   <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
-                  {hasCarry && (
+                  {hasVault && (
                     <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
-                      {fmtUsd(t.tradingFee)} fee
-                      {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
-                      {Math.abs(t.fundingFee) > 0.001
-                        ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
-                        : ""}
+                      {fmtUsd(t.tradingFee)} taker
+                      {` +${fmtUsd(t.vaultFee)} vault`}
                     </p>
                   )}
                 </td>
-                <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
-                  {t.action.includes("Closed") ? (
-                    t.pnl_net > 0.01 ? (
-                      <span className="text-emerald-500 font-semibold">+{fmtUsd(t.pnl_net)}</span>
-                    ) : t.pnl_net < -0.01 ? (
-                      <span className="text-red-400 font-semibold">{fmtUsd(t.pnl_net)}</span>
+                {hasEquiv && t.equivFee !== undefined && (
+                  <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${
+                    t.equivFee < netCost ? "text-emerald-500" : t.equivFee > netCost ? "text-red-400" : "text-ink-faint"
+                  }`}>
+                    {fmtUsd(t.equivFee)}
+                    {diff !== undefined && Math.abs(diff) > 0.001 && (
+                      <p className={`text-[9px] font-normal mt-0.5 ${diff > 0 ? "text-emerald-500" : "text-red-400"}`}>
+                        {diff > 0 ? `+${fmtUsd(diff)}` : fmtUsd(diff)}
+                      </p>
+                    )}
+                  </td>
+                )}
+                {!hasEquiv && (
+                  <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
+                    {t.action.includes("Closed") ? (
+                      t.pnl_net > 0.01 ? (
+                        <span className="text-emerald-500 font-semibold">+{fmtUsd(t.pnl_net)}</span>
+                      ) : t.pnl_net < -0.01 ? (
+                        <span className="text-red-400 font-semibold">{fmtUsd(t.pnl_net)}</span>
+                      ) : (
+                        <span className="text-ink-faint/30">$0</span>
+                      )
                     ) : (
-                      <span className="text-ink-faint/30">$0</span>
-                    )
-                  ) : (
-                    <span className="text-[10px] text-ink-faint/40">open</span>
-                  )}
-                </td>
+                      <span className="text-[10px] text-ink-faint/40">open</span>
+                    )}
+                  </td>
+                )}
               </tr>
               );
             })}
@@ -1426,10 +1460,10 @@ function Results({ result }: { result: FeeCompareResult }) {
         />
       )}
       {gainsVenueA && gainsVenueA.recentTrades.length > 0 && (
-        <GainsTradeTable trades={gainsVenueA.recentTrades} venueName={venueA.name} />
+        <GainsTradeTable trades={gainsVenueA.recentTrades} venueName={venueA.name} otherVenueName={venueB.name} />
       )}
       {gainsVenueB && gainsVenueB.recentTrades.length > 0 && (
-        <GainsTradeTable trades={gainsVenueB.recentTrades} venueName={venueB.name} />
+        <GainsTradeTable trades={gainsVenueB.recentTrades} venueName={venueB.name} otherVenueName={venueA.name} />
       )}
       {gmxVenueA && gmxVenueA.recentTrades.length > 0 && (
         <GmxTradeTable trades={gmxVenueA.recentTrades} venueName={venueA.name} />
