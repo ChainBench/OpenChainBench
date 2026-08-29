@@ -2619,6 +2619,26 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Fetch.ai official public Tendermint RPC node for the FetchHub-4 mainnet. Keyless endpoint maintained by the Fetch.ai / ASI Alliance team.",
     twitter: "@Fetch_ai",
   },
+
+  // ─── Union providers (bench 253) ─────────────────────────────────────
+  "nodes-guru": {
+    url: "https://nodes.guru",
+    description:
+      "Nodes.Guru community validator and public RPC operator. Runs keyless Tendermint RPC endpoints for multiple Cosmos SDK chains including Union.",
+    twitter: "@nodes_guru",
+  },
+  stakeandrelax: {
+    url: "https://stakeandrelax.net",
+    description:
+      "Stake And Relax community validator providing public keyless Tendermint RPC for Cosmos SDK chains including Union.",
+    twitter: "@StakeAndRelax",
+  },
+  highstakes: {
+    url: "https://highstakes.ch",
+    description:
+      "High Stakes Swiss validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains including Union.",
+    twitter: "@HighStakesCH",
+  },
 };
 
 /**
