@@ -2643,6 +2643,35 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
 
+  // ─── Band Protocol providers (bench 256) ────────────────────────────
+  "band-official": {
+    url: "https://www.bandprotocol.com",
+    description:
+      "Band Protocol official public Tendermint RPC node for the laozi-mainnet. Keyless endpoint maintained by the Band Protocol team.",
+    twitter: "@BandProtocol",
+  },
+  stakewolle: {
+    url: "https://stakewolle.com",
+    description:
+      "Stakewolle community validator and public RPC provider. Runs keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@stakewolle",
+  },
+
+  // ─── cheqd providers (bench 257) ─────────────────────────────────────
+  "cheqd-official": {
+    url: "https://cheqd.io",
+    description:
+      "cheqd official public Tendermint RPC node for cheqd-mainnet-1. Keyless endpoint maintained by the cheqd Network team.",
+    twitter: "@cheqd_io",
+  },
+  nodestake: {
+    url: "https://nodestake.org",
+    description:
+      "NodeStake community validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@NodeStake",
+  },
+
+
   // ─── Union providers (bench 253) ─────────────────────────────────────
   "nodes-guru": {
     url: "https://nodes.guru",
