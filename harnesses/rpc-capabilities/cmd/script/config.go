@@ -1693,6 +1693,17 @@ func chains() []Chain {
 				{Slug: "cosmos-directory", Name: "Cosmos Directory", URL: envDefault("RPC_URL_SENTINEL_COSMOSDIRECTORY", "https://rpc.cosmos.directory/sentinel")},
 			},
 		},
+		// 2026-08-29 wave-12. Union — Cosmos SDK (union-1), Tendermint /status. Nodes.Guru + Stake And Relax + High Stakes.
+		{
+			Slug: "union",
+			Name: "Union",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "nodes-guru", Name: "Nodes.Guru", URL: envDefault("RPC_URL_UNION_NODESGURU", "https://rpc-1.union.nodes.guru")},
+				{Slug: "stakeandrelax", Name: "Stake And Relax", URL: envDefault("RPC_URL_UNION_STAKEANDRELAX", "https://union-rpc.stakeandrelax.net")},
+				{Slug: "highstakes", Name: "High Stakes", URL: envDefault("RPC_URL_UNION_HIGHSTAKES", "https://union-rpc.highstakes.ch")},
+			},
+		},
 		// 2026-08-28 wave-11. Fetch.ai (FetchHub-4) — Cosmos SDK, Tendermint /status. Official + PublicNode + Cosmos Directory.
 		{
 			Slug: "fetchhub",

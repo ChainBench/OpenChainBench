@@ -331,6 +331,7 @@ const RAW: Record<string, string> = {
   chihuahua: "/logos/chihuahua.svg",
   sentinel: "/logos/sentinel.svg",
   fetchhub: "/logos/fetchai.svg",
+  union: "/logos/union.svg",
   "cosmos-directory": "/logos/cosmos-directory.svg",
 
   // ─── Oracle deviation (bench 025) — additional brand logos ───
