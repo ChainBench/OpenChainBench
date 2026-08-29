@@ -173,8 +173,10 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 		totalMs := float64(m.TimeSpent.Total) * 1000
 		if totalMs > 0 && totalMs <= maxLatencyMs {
 			dst := canonicalizeAxelarChain(m.Call.ReturnValues.DestinationChain)
-			axelarE2ELatencyMs.WithLabelValues(src, dst).Observe(totalMs)
-			axelarSeenTotal.WithLabelValues(src, dst).Inc()
+			if axelarTrackedChains[src] && axelarTrackedChains[dst] {
+				axelarE2ELatencyMs.WithLabelValues(src, dst).Observe(totalMs)
+				axelarSeenTotal.WithLabelValues(src, dst).Inc()
+			}
 		}
 
 		seen.add(m.ID)

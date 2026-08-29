@@ -14,6 +14,27 @@ import "strings"
 //   - Cosmos chains (osmosis, injective, sei, celestia, kava) are
 //     Axelar-exclusive coverage vs Wormhole/LayerZero/CCIP/Hyperlane
 //
+// axelarTrackedChains is the set of OCB canonical slugs we record metrics for.
+// Only messages where BOTH source AND destination are in this set are
+// observed, capping cardinality at len²×buckets.
+// Derived from the bench YAML provider slugs.
+var axelarTrackedChains = map[string]bool{
+	"ethereum":  true,
+	"polygon":   true,
+	"base":      true,
+	"moonbeam":  true,
+	"osmosis":   true,
+	"arbitrum":  true,
+	"avalanche": true,
+	"bnb":       true,
+	"celo":      true,
+	"injective": true,
+	"linea":     true,
+	"mantle":    true,
+	"optimism":  true,
+	"scroll":    true,
+}
+
 // Unknown names fall through to `chain-<lowered>` so we never drop data.
 var axelarChainSlug = map[string]string{
 	// EVM L1s
