@@ -332,6 +332,12 @@ const RAW: Record<string, string> = {
   sentinel: "/logos/sentinel.svg",
   fetchhub: "/logos/fetchai.svg",
   union: "/logos/union.svg",
+  shentu: "/logos/shentu.svg",
+  mantrachain: "/logos/mantrachain.svg",
+  "nodes-guru": "/logos/nodes-guru.svg",
+  stakeandrelax: "/logos/stakeandrelax.svg",
+  highstakes: "/logos/highstakes.svg",
+  itrocket: "/logos/itrocket.svg",
   "cosmos-directory": "/logos/cosmos-directory.svg",
 
   // ─── Oracle deviation (bench 025) — additional brand logos ───
@@ -744,6 +750,8 @@ const ALIASES: Record<string, string> = {
   // Chihuahua + Fetch.ai official node aliases → chain logo
   "chihuahua-official": "chihuahua",
   "fetchai-official": "fetchhub",
+  "shentu-official": "shentu",
+  "mantrachain-official": "mantrachain",
 
   // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
   "ecadinfra": "tezos",
