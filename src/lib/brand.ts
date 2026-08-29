@@ -178,7 +178,10 @@ const BRANDS: Record<string, Brand> = {
   chihuahua: { color: "#E05F2A" },             // chihuahua orange-red (official brand)
   sentinel:  { color: "#00C2FF" },             // sentinel cyan (official brand)
   fetchhub:  { color: "#3B2D8E" },             // fetch.ai deep purple (official brand)
-  union:     { color: "#6366F1" },             // union indigo (brand kit)
+  union:          { color: "#6366F1" },        // union indigo (brand kit)
+  "nodes-guru":   { color: "#F59E0B" },        // nodes.guru amber
+  stakeandrelax:  { color: "#10B981" },        // stake and relax emerald
+  highstakes:     { color: "#3B82F6" },        // high stakes blue
   "cosmos-directory": { color: "#1B1B2F", dark: true }, // cosmos directory dark navy
 
   // ─── Bitcoin Cash chain + providers (bench 244) ───
