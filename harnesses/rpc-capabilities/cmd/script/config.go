@@ -1693,6 +1693,28 @@ func chains() []Chain {
 				{Slug: "cosmos-directory", Name: "Cosmos Directory", URL: envDefault("RPC_URL_SENTINEL_COSMOSDIRECTORY", "https://rpc.cosmos.directory/sentinel")},
 			},
 		},
+		// 2026-08-29 wave-12. Shentu — Cosmos SDK (shentu-2.2), Tendermint /status. Shentu official + Polkachu + High Stakes.
+		{
+			Slug: "shentu",
+			Name: "Shentu",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "shentu-official", Name: "Shentu", URL: envDefault("RPC_URL_SHENTU_OFFICIAL", "https://rpc.shentu.org:443")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_SHENTU_POLKACHU", "https://shentu-rpc.polkachu.com:443")},
+				{Slug: "highstakes", Name: "High Stakes", URL: envDefault("RPC_URL_SHENTU_HIGHSTAKES", "https://shentu-rpc.highstakes.ch")},
+			},
+		},
+		// 2026-08-29 wave-12. MANTRA Chain — Cosmos SDK (mantra-1), Tendermint /status. Official + ITRocket + Polkachu.
+		{
+			Slug: "mantrachain",
+			Name: "MANTRA Chain",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "mantrachain-official", Name: "MANTRA", URL: envDefault("RPC_URL_MANTRA_OFFICIAL", "https://rpc.mantrachain.io")},
+				{Slug: "itrocket", Name: "ITRocket", URL: envDefault("RPC_URL_MANTRA_ITROCKET", "https://mantra-mainnet-rpc.itrocket.net:443")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_MANTRA_POLKACHU", "https://mantra-rpc.polkachu.com:443")},
+			},
+		},
 		// 2026-08-29 wave-12. Union — Cosmos SDK (union-1), Tendermint /status. Nodes.Guru + Stake And Relax + High Stakes.
 		{
 			Slug: "union",
