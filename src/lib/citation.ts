@@ -302,9 +302,12 @@ export function isInsufficient(b: InsufficientCheckInput): boolean {
   // benches as insufficient on /api/citable while /api/stat returned
   // live values for the same slug. The liveResults length and p50
   // finiteness checks below already catch the genuine empty case.
+  // Use isFinite rather than > 0 so deviation benches (where a negative
+  // p50 is valid data, e.g. rwa-yield-accuracy reporting -6 bps) are not
+  // mis-classified as insufficient.
   const live = b.results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
+    (r) => r.availability !== "unavailable" && Number.isFinite(r.ms.p50) && r.ms.p50 !== 0,
   );
   if (live.length === 0) return true;
-  return live.every((r) => !Number.isFinite(r.ms.p50) || r.ms.p50 <= 0);
+  return live.every((r) => !Number.isFinite(r.ms.p50));
 }
