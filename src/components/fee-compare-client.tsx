@@ -741,24 +741,29 @@ function WalletSide({
         return (
           <div className="bg-ink/4 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Total position value</p>
               <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
             </div>
+            <p className="text-[10px] text-ink-faint/60 leading-snug">
+              Sum of (collateral × leverage) across all trades in the period.
+            </p>
             <div className="border-t border-ink/8 pt-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] text-ink-faint">Taker fees</p>
                 <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(gW.feesUsdc)}</p>
               </div>
               {hasVault && (
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-ink-faint">
-                    OI vault fee{" "}
-                    <span className="text-[9px] text-ink-faint/50 italic">OI imbalance surcharge</span>
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-ink-faint">Vault fee</p>
+                    <p className="font-mono text-xs font-semibold text-amber-500">
+                      +{fmtUsd(gW.vaultFeesUsdc)}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-ink-faint/60 leading-snug">
+                    Gains charges an extra fee to LPs when your trade increases the long/short imbalance. Hyperliquid does not have this — it uses funding rates instead.
                   </p>
-                  <p className="font-mono text-xs font-semibold text-amber-500">
-                    +{fmtUsd(gW.vaultFeesUsdc)}
-                  </p>
-                </div>
+                </>
               )}
               {hasFunding && (
                 <div className="flex items-center justify-between">
