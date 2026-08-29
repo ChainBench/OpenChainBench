@@ -1,0 +1,35 @@
+id: 257
+slug: cheqd-rpc
+title: "cheqd RPC"
+chain: cheqd
+description: "Latency and availability benchmark for cheqd public RPC endpoints"
+category: rpc
+kind: cosmos
+
+providers:
+  - slug: cheqd-official
+    name: "cheqd"
+    url: "https://rpc.cheqd.net"
+  - slug: publicnode
+    name: "PublicNode"
+    url: "https://cheqd-rpc.publicnode.com:443"
+  - slug: nodestake
+    name: "NodeStake"
+    url: "https://rpc.cheqd.nodestake.org"
+
+seo_intro: |
+  cheqd is a purpose-built Cosmos SDK blockchain for decentralized identity, enabling self-sovereign identity (SSI) and verifiable credentials at scale. The cheqd-mainnet-1 network anchors DIDs and credential schemas used by enterprises, governments, and developers building trust infrastructure.
+
+  This benchmark continuously measures RPC latency, availability and block-height freshness across public cheqd Tendermint endpoints from three geographic regions. Use it to select the most reliable endpoint for identity resolution, node operation, or application integration.
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "Each probe issues a GET /status request with anti-cache headers to retrieve the latest block height. We record round-trip latency (p50/p90/p99), HTTP availability, and whether the returned block height is current. Probes run every 30 seconds from US East, EU West, and AP Southeast."
+  - q: "Which endpoints are included?"
+    a: "The benchmark covers the official cheqd endpoint (rpc.cheqd.net), PublicNode, and NodeStake. All three are keyless public endpoints requiring no API key."
+  - q: "Why does cheqd RPC performance matter?"
+    a: "DID resolution, verifiable credential anchoring, and CHEQ token transfers all depend on RPC availability. Applications using the cheqd DID method resolve identifiers via RPC, making latency directly visible to end users."
+  - q: "How does RPC latency affect DID resolution?"
+    a: "The Universal Resolver and cheqd-specific resolvers query RPC endpoints to fetch DID documents. Slow or unavailable endpoints increase credential verification times and can break SSI flows in production."
+  - q: "Can I contribute an endpoint?"
+    a: "Yes. Open an issue or PR at github.com/ChainBench/OpenChainBench with the endpoint URL and operator name. We verify liveness and independence before adding."

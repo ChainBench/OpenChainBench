@@ -1,0 +1,35 @@
+id: 256
+slug: bandchain-rpc
+title: "Band Protocol RPC"
+chain: bandchain
+description: "Latency and availability benchmark for Band Protocol public RPC endpoints"
+category: rpc
+kind: cosmos
+
+providers:
+  - slug: band-official
+    name: "Band Protocol"
+    url: "http://rpc.laozi1.bandchain.org:80"
+  - slug: highstakes
+    name: "High Stakes"
+    url: "https://bandprotocol-rpc.highstakes.ch"
+  - slug: stakewolle
+    name: "Stakewolle"
+    url: "https://public.stakewolle.com/cosmos/bandchain/rpc"
+
+seo_intro: |
+  Band Protocol is a cross-chain oracle network built on Cosmos SDK that aggregates and connects real-world data and APIs to smart contracts. The laozi-mainnet hosts its decentralized data oracle infrastructure, enabling DeFi protocols across multiple blockchains to access tamper-proof price feeds.
+
+  This benchmark continuously measures RPC latency, availability and block-height freshness across public Band Protocol Tendermint endpoints from three geographic regions. Use it to select the fastest endpoint for your integration or validator setup.
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "Each probe issues a GET /status request with anti-cache headers to retrieve the latest block height. We record round-trip latency (p50/p90/p99), HTTP availability, and whether the returned block height is current. Probes run every 30 seconds from US East, EU West, and AP Southeast."
+  - q: "Which endpoints are included?"
+    a: "The benchmark covers the Band Protocol official endpoint (rpc.laozi1.bandchain.org), High Stakes, and Stakewolle. All three are keyless public endpoints requiring no authentication."
+  - q: "Why does Band Protocol RPC performance matter?"
+    a: "Band Protocol validators and oracle scripts depend on reliable RPC access to submit data requests and retrieve oracle results. DeFi protocols integrating Band price feeds need low-latency RPC for real-time data consumption."
+  - q: "How are oracle scripts affected by RPC latency?"
+    a: "Yoda (the oracle daemon) and Bothan (data proxy) both rely on RPC to monitor pending data requests and submit responses within the request window. High latency or downtime directly reduces oracle reliability and can cause missed rewards."
+  - q: "Can I contribute an endpoint?"
+    a: "Yes. Open an issue or PR at github.com/ChainBench/OpenChainBench with the endpoint URL and operator name. We verify liveness and independence before adding."
