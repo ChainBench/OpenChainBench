@@ -1,0 +1,138 @@
+# OpenChainBench. Bench No 254
+
+slug: shentu-rpc
+number: "254"
+title: Fastest free Shentu RPC, live no-key endpoint latency
+seo_title: "Fastest free Shentu RPC 2026"
+seo_description: "{{best_name}} leads free Shentu RPC at {{best_p50}} (block height p50, 24h). 3 providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Shentu (shentu-2.2) endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Shentu is a Cosmos SDK blockchain (chain ID shentu-2.2) focused on blockchain security. It provides a decentralized security oracle, on-chain bug bounty platform (CertiK Shield), and formal verification tools for smart contracts. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by the Shentu official team, Polkachu, and High Stakes. Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Shentu (shentu-2.2).
+  We measure the round-trip latency of a Tendermint /status query against
+  every available public Shentu endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Each provider is probed via a GET /status request
+  from which the block number is extracted.
+  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
+  with a Cosmos-scaled staleness gap (20 blocks, around 120 s at 6 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Shentu-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: GET /status. The result.sync_info.latest_block_height field (string-encoded integer) is extracted as the current block height."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 20 behind the cross-provider tip), timeout."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=shentu. Provider coverage at launch: 3 endpoints (Shentu official, Polkachu, High Stakes)."
+
+findings:
+  - "{{best_name}} leads free Shentu RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Shentu RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Shentu block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Shentu RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Shentu official (rpc.shentu.org), Polkachu (shentu-rpc.polkachu.com), and High Stakes (shentu-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
+  - q: "What is Shentu and why does its RPC latency matter?"
+    a: "Shentu is a Cosmos SDK blockchain built by CertiK, focused on blockchain security infrastructure. It powers the CertiK Shield decentralized reimbursement platform and a security oracle that scores smart contracts on-chain. Developers integrating with CertiK Shield, querying security scores, or building on the Shentu ecosystem need reliable low-latency RPC access."
+  - q: "Does the fastest Shentu RPC change by region?"
+    a: "Yes. The official Shentu node and community validators are hosted in different regions. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your user base."
+  - q: "What is the CTK token on Shentu?"
+    a: "CTK (CertiK) is the native staking and governance token of the Shentu chain (denominated as uctk on-chain). It is used to stake in the CertiK Shield protection pool, pay for security oracle queries, and participate in on-chain governance."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="shentu"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: shentu-official
+    name: Shentu
+    tag: Shentu official public RPC node, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.shentu.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="shentu-official", chain="shentu"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="shentu-official", chain="shentu"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="shentu-official", chain="shentu"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="shentu-official", chain="shentu"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="shentu-official", chain="shentu"}) / sum(ocb:rpc_call:rate_24h{provider="shentu-official", chain="shentu"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="shentu-official", chain="shentu"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="shentu-official", chain="shentu"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="shentu-official", chain="shentu", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="shentu-official", chain="shentu", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="shentu-official", chain="shentu", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="shentu-official", chain="shentu", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="shentu-official", chain="shentu", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="shentu-official", chain="shentu", region="sgp"}[1h])
+
+  - slug: polkachu
+    name: Polkachu
+    tag: Polkachu public Shentu RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to shentu-rpc.polkachu.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="shentu"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="shentu"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="shentu"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="shentu"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="shentu"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="shentu"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="shentu"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="shentu"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="shentu", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="shentu", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="shentu", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="shentu", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="shentu", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="shentu", region="sgp"}[1h])
+
+  - slug: highstakes
+    name: High Stakes
+    tag: High Stakes public Shentu RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to shentu-rpc.highstakes.ch."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="shentu"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="highstakes", chain="shentu"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="highstakes", chain="shentu"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="highstakes", chain="shentu"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="highstakes", chain="shentu"}) / sum(ocb:rpc_call:rate_24h{provider="highstakes", chain="shentu"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="highstakes", chain="shentu"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="shentu"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="shentu", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="shentu", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="shentu", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="shentu", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="shentu", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="shentu", region="sgp"}[1h])
