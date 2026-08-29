@@ -741,7 +741,7 @@ function WalletSide({
         return (
           <div className="bg-ink/4 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Position size</p>
               <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
             </div>
             <div className="border-t border-ink/8 pt-2 space-y-1.5">
@@ -751,9 +751,9 @@ function WalletSide({
               </div>
               {hasVault && (
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-ink-faint">
-                    OI vault fee{" "}
-                    <span className="text-[9px] text-ink-faint/50 italic">OI imbalance surcharge</span>
+                  <p className="text-[11px] text-ink-faint" title="Extra fee paid to GNS vault LPs when your trade increases the long/short imbalance. Gains-specific — Hyperliquid uses funding rates instead.">
+                    Vault fee{" "}
+                    <span className="text-[9px] text-ink-faint/50 italic">LP spread surcharge ↗</span>
                   </p>
                   <p className="font-mono text-xs font-semibold text-amber-500">
                     +{fmtUsd(gW.vaultFeesUsdc)}
@@ -1220,7 +1220,7 @@ function GainsTradeTable({
                   <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
                   <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
                     {fmtUsd(t.tradingFee)} taker
-                    {hasVault ? ` +${fmtUsd(t.vaultFee)} vault` : ""}
+                    {hasVault ? ` +${fmtUsd(t.vaultFee)} vault LP` : ""}
                     {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
                     {Math.abs(t.fundingFee) > 0.001
                       ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
