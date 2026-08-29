@@ -1110,7 +1110,10 @@ function augmentWithHlOpenPositions(
 }
 
 function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): PositionSlice[] {
-  const OPEN_ACTIONS = new Set(["MarketOpened", "LimitOrderExecuted"]);
+  // v5 names: MarketOpened, LimitOrderExecuted — v6 names: TradeOpenedMarket, TradeOpenedLimit
+  const OPEN_ACTIONS = new Set(["MarketOpened", "LimitOrderExecuted", "TradeOpenedMarket", "TradeOpenedLimit"]);
+  // TradePosSizeIncrease updates the position size; use latest size as notional
+  const INCREASE_ACTIONS = new Set(["TradePosSizeIncrease"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
 
   const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade }>();
@@ -1118,6 +1121,9 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
     if (!byId.has(t.id)) byId.set(t.id, {});
     const e = byId.get(t.id)!;
     if (OPEN_ACTIONS.has(t.action)) e.open = t;
+    else if (INCREASE_ACTIONS.has(t.action) && e.open) {
+      e.open = { ...e.open, size: t.size, leverage: t.leverage };
+    }
     else if (CLOSE_ACTIONS.has(t.action)) e.close = t;
   }
 
