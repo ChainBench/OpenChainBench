@@ -1121,16 +1121,19 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
     else if (CLOSE_ACTIONS.has(t.action)) e.close = t;
   }
 
+  const now = Date.now();
   const slices: PositionSlice[] = [];
   for (const { open, close } of byId.values()) {
-    if (!open || !close) continue;
+    if (!open) continue;
     const openMs = new Date(open.date).getTime();
     if (openMs < cutoffMs) continue;
+    // Still-open positions use now as close time (same as reconstructHlPositions)
+    const closeMs = close ? new Date(close.date).getTime() : now;
     slices.push({
       coin: open.pair.split("/")[0],
       notionalUsd: open.size * open.leverage,
       openMs,
-      closeMs: new Date(close.date).getTime(),
+      closeMs,
       isLong: open.buy !== false,
     });
   }
