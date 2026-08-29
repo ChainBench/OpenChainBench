@@ -2591,6 +2591,105 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Acala official public RPC node 2 (acala-rpc-2.aca-api.network). Keyless Substrate JSON-RPC interface for the Acala DeFi parachain on Polkadot.",
     twitter: "@AcalaNetwork",
   },
+
+  // ─── Chihuahua providers (bench 250) ─────────────────────────────────
+  "chihuahua-official": {
+    url: "https://rpc.chihuahua.wtf",
+    description:
+      "Chihuahua official public Tendermint RPC node. Keyless endpoint for the Chihuahua Cosmos SDK chain.",
+    twitter: "@ChihuahuaChain",
+  },
+  validatus: {
+    url: "https://github.com/validatus",
+    description:
+      "Validatus public Cosmos RPC infrastructure. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+  },
+
+  // ─── Cosmos Directory (shared across benches 251-252) ────────────────
+  "cosmos-directory": {
+    url: "https://cosmos.directory",
+    description:
+      "Cosmos Directory public RPC proxy. Aggregates Tendermint RPC endpoints across the Cosmos ecosystem, no API key required.",
+  },
+
+  // ─── Fetch.ai providers (bench 252) ──────────────────────────────────
+  "fetchai-official": {
+    url: "https://rpc-fetchhub.fetch.ai",
+    description:
+      "Fetch.ai official public Tendermint RPC node for the FetchHub-4 mainnet. Keyless endpoint maintained by the Fetch.ai / ASI Alliance team.",
+    twitter: "@Fetch_ai",
+  },
+
+  // ─── Shentu providers (bench 254) ────────────────────────────────────
+  "shentu-official": {
+    url: "https://www.shentu.technology",
+    description:
+      "Shentu Chain official public Tendermint RPC node for the shentu-2.2 mainnet. Keyless endpoint maintained by the CertiK / Shentu Foundation team.",
+    twitter: "@ShentuChain",
+  },
+
+  // ─── MANTRA Chain providers (bench 255) ──────────────────────────────
+  "mantrachain-official": {
+    url: "https://www.mantrachain.io",
+    description:
+      "MANTRA Chain official public Tendermint RPC node for the mantra-1 mainnet. Keyless endpoint for real-world asset tokenization on Cosmos.",
+    twitter: "@MANTRA_Chain",
+  },
+  itrocket: {
+    url: "https://itrocket.net",
+    description:
+      "ITRocket community validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@ITRocketTeam",
+  },
+
+
+  // ─── Band Protocol providers (bench 256) ────────────────────────────
+  "band-official": {
+    url: "https://www.bandprotocol.com",
+    description:
+      "Band Protocol official public Tendermint RPC node for the laozi-mainnet. Keyless endpoint maintained by the Band Protocol team.",
+    twitter: "@BandProtocol",
+  },
+  stakewolle: {
+    url: "https://stakewolle.com",
+    description:
+      "Stakewolle community validator and public RPC provider. Runs keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@stakewolle",
+  },
+
+  // ─── cheqd providers (bench 257) ─────────────────────────────────────
+  "cheqd-official": {
+    url: "https://cheqd.io",
+    description:
+      "cheqd official public Tendermint RPC node for cheqd-mainnet-1. Keyless endpoint maintained by the cheqd Network team.",
+    twitter: "@cheqd_io",
+  },
+  nodestake: {
+    url: "https://nodestake.org",
+    description:
+      "NodeStake community validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@NodeStake",
+  },
+
+  // ─── Union providers (bench 253) ─────────────────────────────────────
+  "nodes-guru": {
+    url: "https://nodes.guru",
+    description:
+      "Nodes.Guru community validator and public RPC operator. Runs keyless Tendermint RPC endpoints for multiple Cosmos SDK chains including Union.",
+    twitter: "@nodes_guru",
+  },
+  stakeandrelax: {
+    url: "https://stakeandrelax.net",
+    description:
+      "Stake And Relax community validator providing public keyless Tendermint RPC for Cosmos SDK chains including Union.",
+    twitter: "@StakeAndRelax",
+  },
+  highstakes: {
+    url: "https://highstakes.ch",
+    description:
+      "High Stakes Swiss validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains including Union.",
+    twitter: "@HighStakesCH",
+  },
 };
 
 /**
