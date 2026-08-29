@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Union is a trust-minimised, zero-knowledge cross-chain protocol built on a custom Cosmos SDK chain (chain ID union-1). It enables secure interoperability between Cosmos, EVM, and other ecosystems via ZK proof-based consensus verification — no external validators or multisigs required. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by Nodes.Guru, Stake And Relax, and High Stakes. Every provider was live-verified with consecutive block-height probes at launch.
+  Union is a trust-minimised, zero-knowledge cross-chain protocol built on a custom Cosmos SDK chain (chain ID union-1). It enables secure interoperability between Cosmos, EVM, and other ecosystems via ZK proof-based consensus verification, with no external validators or multisigs required. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by Nodes.Guru, Stake And Relax, and High Stakes. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Union (union-1).
@@ -50,7 +50,7 @@ faq:
   - q: "Does the fastest Union RPC change by region?"
     a: "Often. Community validators like Nodes.Guru and High Stakes host in different datacentres. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your user base."
   - q: "What makes Union different from other cross-chain protocols?"
-    a: "Union replaces trusted validator sets and multisigs with ZK consensus proofs, making cross-chain message passing verifiable on-chain. This means no external trust assumptions — the security of the bridge reduces to the security of the underlying chains and ZK proof system."
+    a: "Union replaces trusted validator sets and multisigs with ZK consensus proofs, making cross-chain message passing verifiable on-chain. This means no external trust assumptions: the security of the bridge reduces to the security of the underlying chains and ZK proof system."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
