@@ -75,7 +75,6 @@ type HlWalletData = {
 type GainsWalletData = {
   events: number;
   feesUsdc: number;
-  vaultFeesUsdc: number;
   fundingFeesUsdc: number;
   fundingEstimated: boolean;
   borrowingFeesUsdc: number;
@@ -88,7 +87,6 @@ type GainsWalletData = {
     action: string;
     notional: number;
     tradingFee: number;
-    vaultFee: number;
     fundingFee: number;
     borrowingFee: number;
     equivFee?: number;
@@ -735,7 +733,6 @@ function WalletSide({
       })()}
       {venue.slug === "gains" && (() => {
         const gW = w as GainsWalletData;
-        const hasVault = (gW.vaultFeesUsdc ?? 0) > 0.5;
         const hasFunding = Math.abs(gW.fundingFeesUsdc) > 0.5;
         const hasBorrowing = gW.borrowingFeesUsdc > 0.5;
         return (
@@ -752,19 +749,6 @@ function WalletSide({
                 <p className="text-[11px] text-ink-faint">Taker fees</p>
                 <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(gW.feesUsdc)}</p>
               </div>
-              {hasVault && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] text-ink-faint">Vault fee</p>
-                    <p className="font-mono text-xs font-semibold text-amber-500">
-                      +{fmtUsd(gW.vaultFeesUsdc)}
-                    </p>
-                  </div>
-                  <p className="text-[10px] text-ink-faint/60 leading-snug">
-                    Gains charges an extra fee to LPs when your trade increases the long/short imbalance. Hyperliquid does not have this — it uses funding rates instead.
-                  </p>
-                </>
-              )}
               {hasFunding && (
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-ink-faint">
@@ -1202,8 +1186,7 @@ function GainsTradeTable({
           </thead>
           <tbody>
             {rows.map((t, i) => {
-              const hasVault = (t.vaultFee ?? 0) > 0.001;
-              const netCost = t.tradingFee + (t.vaultFee ?? 0) + t.fundingFee + t.borrowingFee;
+              const netCost = t.tradingFee + t.fundingFee + t.borrowingFee;
               const diff = hasEquiv && t.equivFee !== undefined ? t.equivFee - netCost : undefined;
               return (
               <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
@@ -1225,7 +1208,6 @@ function GainsTradeTable({
                   <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
                   <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
                     {fmtUsd(t.tradingFee)} taker
-                    {hasVault ? ` +${fmtUsd(t.vaultFee)} vault LP` : ""}
                     {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
                     {Math.abs(t.fundingFee) > 0.001
                       ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
