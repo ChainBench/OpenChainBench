@@ -956,7 +956,7 @@ function HlTopCoinsCard({
             key={c.coin}
             className="flex items-center gap-3 px-5 py-3 hover:bg-ink/2 transition-colors"
           >
-            <span className="font-mono text-sm font-bold text-ink w-12 shrink-0">
+            <span className="font-mono text-sm font-bold text-ink w-20 shrink-0 truncate">
               {c.coin}
             </span>
             <span className="text-xs text-ink-faint w-14 shrink-0">{c.fills} fills</span>
