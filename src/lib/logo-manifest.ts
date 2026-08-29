@@ -339,6 +339,10 @@ const RAW: Record<string, string> = {
   highstakes: "/logos/highstakes.svg",
   itrocket: "/logos/itrocket.svg",
   "cosmos-directory": "/logos/cosmos-directory.svg",
+  bandchain: "/logos/bandchain.svg",
+  cheqd: "/logos/cheqd.svg",
+  stakewolle: "/logos/stakewolle.svg",
+  nodestake: "/logos/nodestake.svg",
 
   // ─── Oracle deviation (bench 025) — additional brand logos ───
   // (pairs alias to chain/asset logos in the ALIASES block below)
@@ -752,6 +756,8 @@ const ALIASES: Record<string, string> = {
   "fetchai-official": "fetchhub",
   "shentu-official": "shentu",
   "mantrachain-official": "mantrachain",
+  "band-official": "bandchain",
+  "cheqd-official": "cheqd",
 
   // Non-EVM wave-3 (benches 222-231) — provider-official aliases to chain slug
   "ecadinfra": "tezos",

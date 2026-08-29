@@ -1715,6 +1715,28 @@ func chains() []Chain {
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_MANTRA_POLKACHU", "https://mantra-rpc.polkachu.com:443")},
 			},
 		},
+		// 2026-08-29 wave-13. Band Protocol — Cosmos SDK (laozi-mainnet), Tendermint /status. Official + High Stakes + Stakewolle.
+		{
+			Slug: "bandchain",
+			Name: "Band Protocol",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "band-official", Name: "Band Protocol", URL: envDefault("RPC_URL_BAND_OFFICIAL", "http://rpc.laozi1.bandchain.org:80")},
+				{Slug: "highstakes", Name: "High Stakes", URL: envDefault("RPC_URL_BAND_HIGHSTAKES", "https://bandprotocol-rpc.highstakes.ch")},
+				{Slug: "stakewolle", Name: "Stakewolle", URL: envDefault("RPC_URL_BAND_STAKEWOLLE", "https://public.stakewolle.com/cosmos/bandchain/rpc")},
+			},
+		},
+		// 2026-08-29 wave-13. cheqd — Cosmos SDK (cheqd-mainnet-1), Tendermint /status. Official + PublicNode + NodeStake.
+		{
+			Slug: "cheqd",
+			Name: "cheqd",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "cheqd-official", Name: "cheqd", URL: envDefault("RPC_URL_CHEQD_OFFICIAL", "https://rpc.cheqd.net")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CHEQD_PUBLICNODE", "https://cheqd-rpc.publicnode.com:443")},
+				{Slug: "nodestake", Name: "NodeStake", URL: envDefault("RPC_URL_CHEQD_NODESTAKE", "https://rpc.cheqd.nodestake.org")},
+			},
+		},
 		// 2026-08-29 wave-12. Union — Cosmos SDK (union-1), Tendermint /status. Nodes.Guru + Stake And Relax + High Stakes.
 		{
 			Slug: "union",
