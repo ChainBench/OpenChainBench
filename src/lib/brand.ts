@@ -187,6 +187,14 @@ const BRANDS: Record<string, Brand> = {
   itrocket:       { color: "#E53E3E" },        // itrocket red
   "cosmos-directory": { color: "#1B1B2F", dark: true }, // cosmos directory dark navy
 
+  // ─── Band Protocol + cheqd (benches 256-257) ───
+  bandchain:   { color: "#516AFF" },          // band protocol indigo (official brand)
+  cheqd:       { color: "#00B59C" },          // cheqd teal (official brand)
+  "band-official": { color: "#516AFF" },      // band official inherits band indigo
+  "cheqd-official": { color: "#00B59C" },     // cheqd official inherits cheqd teal
+  stakewolle:  { color: "#F97316" },          // stakewolle orange
+  nodestake:   { color: "#8B5CF6" },          // nodestake violet
+
   // ─── Bitcoin Cash chain + providers (bench 244) ───
   "bitcoin-cash": { color: "#0AC18E" },           // bch official green
   bitcore:      { color: "#1A1D21", dark: true }, // bitpay dark
