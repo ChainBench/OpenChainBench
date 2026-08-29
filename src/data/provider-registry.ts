@@ -2620,6 +2620,28 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@Fetch_ai",
   },
 
+  // ─── Shentu providers (bench 254) ────────────────────────────────────
+  "shentu-official": {
+    url: "https://www.shentu.technology",
+    description:
+      "Shentu Chain official public Tendermint RPC node for the shentu-2.2 mainnet. Keyless endpoint maintained by the CertiK / Shentu Foundation team.",
+    twitter: "@ShentuChain",
+  },
+
+  // ─── MANTRA Chain providers (bench 255) ──────────────────────────────
+  "mantrachain-official": {
+    url: "https://www.mantrachain.io",
+    description:
+      "MANTRA Chain official public Tendermint RPC node for the mantra-1 mainnet. Keyless endpoint for real-world asset tokenization on Cosmos.",
+    twitter: "@MANTRA_Chain",
+  },
+  itrocket: {
+    url: "https://itrocket.net",
+    description:
+      "ITRocket community validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains.",
+    twitter: "@ITRocketTeam",
+  },
+
   // ─── Union providers (bench 253) ─────────────────────────────────────
   "nodes-guru": {
     url: "https://nodes.guru",
