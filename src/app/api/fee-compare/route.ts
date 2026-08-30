@@ -1117,14 +1117,17 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
   const INCREASE_ACTIONS = new Set(["TradePosSizeIncrease"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
 
+  // Sort oldest-first so increases run after the open event and correctly update notional
+  const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade; lastIncrease?: GainsApiTrade }>();
-  for (const t of trades) {
+  for (const t of sorted) {
     if (!byId.has(t.id)) byId.set(t.id, {});
     const e = byId.get(t.id)!;
     if (OPEN_ACTIONS.has(t.action)) e.open = t;
     else if (INCREASE_ACTIONS.has(t.action)) {
       if (e.open) e.open = { ...e.open, size: t.size, leverage: t.leverage };
-      // Track increases for positions opened before the window (no open event in data)
+      // Track the earliest increase for positions opened before the window (no open event in data)
       else if (!e.lastIncrease || new Date(t.date).getTime() < new Date(e.lastIncrease.date).getTime()) {
         e.lastIncrease = t;
       }
@@ -1592,11 +1595,11 @@ export async function GET(req: Request) {
           }
           if (recentTrades.length < 50) {
             // Don't show equivFee for Gains-exclusive coins — the coin doesn't exist on HL
+            // equivFee = what the other venue would charge for this same notional.
+            // HL has a uniform taker rate (no per-coin lookup); Gains has per-coin rates.
             const equivFee = hlComparable === false
               ? undefined
-              : otherSlug === "hyperliquid"
-                ? tradeNotional * (gainsData.perSide[coin] ?? otherRate)
-                : tradeNotional * otherRate;
+              : tradeNotional * otherRate;
             recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, hlComparable, pnl_net: t.pnl_net });
           }
         }
