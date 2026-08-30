@@ -1588,9 +1588,12 @@ export async function GET(req: Request) {
             gainsExclusiveFeesUsdc += takerFee + fundingFee + borrowingFee;
           }
           if (recentTrades.length < 50) {
-            const equivFee = otherSlug === "hyperliquid"
-              ? tradeNotional * (gainsData.perSide[coin] ?? otherRate)
-              : tradeNotional * otherRate;
+            // Don't show equivFee for Gains-exclusive coins — the coin doesn't exist on HL
+            const equivFee = hlComparable === false
+              ? undefined
+              : otherSlug === "hyperliquid"
+                ? tradeNotional * (gainsData.perSide[coin] ?? otherRate)
+                : tradeNotional * otherRate;
             recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, hlComparable, pnl_net: t.pnl_net });
           }
         }
