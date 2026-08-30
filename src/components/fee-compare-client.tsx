@@ -81,6 +81,7 @@ type GainsWalletData = {
   netCostUsdc: number;
   positionSizeUsdc: number;
   avgFeeRateBps: number;
+  gainsExclusiveFeesUsdc?: number;
   recentTrades: Array<{
     date: string;
     pair: string;
@@ -90,6 +91,7 @@ type GainsWalletData = {
     fundingFee: number;
     borrowingFee: number;
     equivFee?: number;
+    hlComparable?: boolean;
     pnl_net: number;
   }>;
 };
@@ -780,6 +782,11 @@ function WalletSide({
                   {fmtUsd(gW.netCostUsdc)}
                 </p>
               </div>
+              {(gW.gainsExclusiveFeesUsdc ?? 0) > 0.01 && (
+                <p className="text-[10px] text-ink-faint/50 leading-snug pt-0.5">
+                  Incl. {fmtUsd(gW.gainsExclusiveFeesUsdc!)} on pairs not listed on {otherVenue.name} — excluded from comparison.
+                </p>
+              )}
             </div>
           </div>
         );
@@ -1146,6 +1153,7 @@ function GainsTradeTable({
   const PREVIEW = 10;
   const rows = showAll ? trades : trades.slice(0, PREVIEW);
   const hasEquiv = !!otherVenueName && trades.some((t) => t.equivFee !== undefined);
+  const hasComparability = trades.some((t) => t.hlComparable !== undefined);
 
   if (trades.length === 0) return null;
 
@@ -1188,12 +1196,18 @@ function GainsTradeTable({
             {rows.map((t, i) => {
               const netCost = t.tradingFee + t.fundingFee + t.borrowingFee;
               const diff = hasEquiv && t.equivFee !== undefined ? t.equivFee - netCost : undefined;
+              const isExclusive = hasComparability && t.hlComparable === false;
               return (
-              <tr key={i} className="border-b border-ink/5 last:border-0 hover:bg-ink/2 transition-colors">
+              <tr key={i} className={`border-b border-ink/5 last:border-0 transition-colors ${isExclusive ? "opacity-40" : "hover:bg-ink/2"}`}>
                 <td className="px-5 py-3 font-mono text-xs text-ink-faint whitespace-nowrap">
                   {new Date(t.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </td>
-                <td className="px-3 py-3 font-mono text-xs font-bold text-ink">{t.pair.replace("/USD", "")}</td>
+                <td className="px-3 py-3 font-mono text-xs font-bold text-ink">
+                  {t.pair.replace("/USD", "")}
+                  {isExclusive && (
+                    <span className="ml-1.5 text-[9px] font-normal text-ink-faint/60 uppercase tracking-wide">Gains only</span>
+                  )}
+                </td>
                 <td className="px-3 py-3 hidden sm:table-cell">
                   <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ${
                     t.action.includes("Opened") ? "bg-emerald-500/12 text-emerald-500"
