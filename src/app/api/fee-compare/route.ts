@@ -188,6 +188,7 @@ type GainsWalletData = {
   netCostUsdc: number;
   positionSizeUsdc: number;
   avgFeeRateBps: number;
+  gainsExclusiveFeesUsdc?: number; // fees on coins not available on the other venue
   recentTrades: Array<{
     date: string;
     pair: string;
@@ -196,7 +197,8 @@ type GainsWalletData = {
     tradingFee: number;
     fundingFee: number;
     borrowingFee: number;
-    equivFee?: number;   // equivalent fee on the other venue
+    equivFee?: number;
+    hlComparable?: boolean; // false = coin not listed on HL
     pnl_net: number;
   }>;
 };
@@ -1352,14 +1354,16 @@ function toChecksumAddress(address: string): string {
   return "0x" + result;
 }
 
-function walletStats(slug: string, w: AnyWallet): { notional: number; fees: number } | null {
+function walletStats(slug: string, w: AnyWallet, otherSlug?: string): { notional: number; fees: number } | null {
   if (slug === "hyperliquid") {
     const x = w as HlWalletData;
     return x.fills > 0 ? { notional: x.notionalUsd, fees: x.netCostUsd } : null;
   }
   if (slug === "gains") {
     const x = w as GainsWalletData;
-    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.netCostUsdc } : null;
+    // When comparing against HL, exclude fees on coins not available on HL
+    const exclusiveFees = otherSlug === "hyperliquid" ? (x.gainsExclusiveFeesUsdc ?? 0) : 0;
+    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.netCostUsdc - exclusiveFees } : null;
   }
   if (slug === "gmx-v2") {
     const x = w as GmxWalletData;
@@ -1439,6 +1443,7 @@ export async function GET(req: Request) {
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
     let hlOpenPositions: HlOpenPos[] = [];
+    let hlAvailableCoins = new Set<string>();
     let gainsTradesData: GainsApiTrade[] = [];
     let gmxWalletData: GmxWalletData | null = null;
     let dydxWalletData: DydxWalletData | null = null;
@@ -1466,6 +1471,21 @@ export async function GET(req: Request) {
         fetches.push(
           fetchGainsTrades(wallet, cutoffMs).then((d) => { gainsTradesData = d; }).catch(() => {})
         );
+        if (venueA === "hyperliquid" || venueB === "hyperliquid") {
+          fetches.push(
+            fetch(HL_API, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type: "meta" }),
+              signal: AbortSignal.timeout(5000),
+            })
+              .then((r) => r.json())
+              .then((d: { universe: Array<{ name: string }> }) => {
+                hlAvailableCoins = new Set(d.universe.map((c) => c.name));
+              })
+              .catch(() => {})
+          );
+        }
       }
       if (venueA === "gmx-v2" || venueB === "gmx-v2") {
         fetches.push(
@@ -1546,6 +1566,8 @@ export async function GET(req: Request) {
         let fundingFeesUsdc = 0;
         let borrowingFeesUsdc = 0;
         let notionalUsd = 0;
+        let gainsExclusiveFeesUsdc = 0;
+        const checkHlComparable = otherSlug === "hyperliquid" && hlAvailableCoins.size > 0;
         const recentTrades: GainsWalletData["recentTrades"] = [];
 
         for (const t of usdcTrades) {
@@ -1561,11 +1583,19 @@ export async function GET(req: Request) {
           borrowingFeesUsdc += borrowingFee;
           const tradeNotional = t.size * t.leverage;
           notionalUsd += tradeNotional;
+          const coin = t.pair.split("/")[0];
+          const hlComparable = checkHlComparable ? hlAvailableCoins.has(coin) : undefined;
+          if (hlComparable === false) {
+            gainsExclusiveFeesUsdc += takerFee + fundingFee + borrowingFee;
+          }
           if (recentTrades.length < 50) {
-            const equivFee = otherSlug === "hyperliquid"
-              ? tradeNotional * (gainsData.perSide[t.pair.split("/")[0]] ?? otherRate)
-              : tradeNotional * otherRate;
-            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, pnl_net: t.pnl_net });
+            // Don't show equivFee for Gains-exclusive coins — the coin doesn't exist on HL
+            const equivFee = hlComparable === false
+              ? undefined
+              : otherSlug === "hyperliquid"
+                ? tradeNotional * (gainsData.perSide[coin] ?? otherRate)
+                : tradeNotional * otherRate;
+            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, hlComparable, pnl_net: t.pnl_net });
           }
         }
 
@@ -1591,6 +1621,7 @@ export async function GET(req: Request) {
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
           avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
+          gainsExclusiveFeesUsdc: checkHlComparable ? gainsExclusiveFeesUsdc : undefined,
           recentTrades,
         } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
@@ -1669,7 +1700,7 @@ export async function GET(req: Request) {
           }
         }
       } else {
-        const stats = walletStats(venueA, venueAResult.wallet);
+        const stats = walletStats(venueA, venueAResult.wallet, venueB);
         if (stats) {
           let equivFees = stats.notional * rateB;
           let projectedCarry: SimResult["projectedCarry"];
@@ -1809,7 +1840,7 @@ export async function GET(req: Request) {
           }
         }
       } else {
-        const stats = walletStats(venueB, venueBResult.wallet);
+        const stats = walletStats(venueB, venueBResult.wallet, venueA);
         if (stats) {
           let equivFees = stats.notional * rateA;
           let projectedCarry: SimResult["projectedCarry"];
