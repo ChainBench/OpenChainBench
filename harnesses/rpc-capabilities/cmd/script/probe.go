@@ -104,6 +104,9 @@ const (
 	// veChainStaleBlockGap: VeChain produces one block every ~10 s,
 	// so 30 blocks ≈ 5 min.
 	veChainStaleBlockGap uint64 = 30
+	// iconStaleBlockGap: ICON produces one block every ~2 s,
+	// so 150 blocks ≈ 5 min.
+	iconStaleBlockGap uint64 = 150
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -328,6 +331,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callWavesBlock(probeCtx, p.URL)
 		case "vechain":
 			block, result, latency, err = callVeChainBlock(probeCtx, p.URL)
+		case "icon":
+			block, result, latency, err = callICONBlock(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -385,6 +390,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = wavesStaleBlockGap
 			case "vechain":
 				gap = veChainStaleBlockGap
+			case "icon":
+				gap = iconStaleBlockGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -406,7 +413,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana", "polkadot", "cosmos", "starknet", "stellar",
 			"sui", "aptos", "xrpl", "algorand", "gram",
 			"near", "flow", "hedera", "ckb", "multiversx", "neo",
-			"tezos", "antelope", "waves", "vechain", "dogecoin", "zcash", "bitcoin-cash", "litecoin":
+			"tezos", "antelope", "waves", "vechain", "icon", "dogecoin", "zcash", "bitcoin-cash", "litecoin":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -1463,6 +1470,56 @@ func callVeChainBlock(ctx context.Context, url string) (blockNum uint64, result 
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("vechain block missing number")
 	}
 	return blk.Number, "ok", latencyMs, nil
+}
+
+type iconLastBlock struct {
+	Result struct {
+		Height int64 `json:"height"`
+	} `json:"result"`
+}
+
+// callICONBlock probes an ICON node via POST /api/v3 icx_getLastBlock.
+// Returns the block height. Staleness uses iconStaleBlockGap in probeOne.
+func callICONBlock(ctx context.Context, url string) (height uint64, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/api/v3"
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"icx_getLastBlock","id":%d,"params":{}}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", target, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var blk iconLastBlock
+	if err := json.Unmarshal(raw, &blk); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if blk.Result.Height <= 0 {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("icon block missing height")
+	}
+	return uint64(blk.Result.Height), "ok", latencyMs, nil
 }
 
 // callNeoBlockCount probes a NEO N3 node via getblockcount JSON-RPC.
