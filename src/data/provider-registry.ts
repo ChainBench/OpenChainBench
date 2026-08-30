@@ -2690,7 +2690,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "iconblockchain.xyz community-operated public ICON RPC node. Keyless icx_getLastBlock endpoint.",
   },
-
   // ─── Union providers (bench 253) ─────────────────────────────────────
   "nodes-guru": {
     url: "https://nodes.guru",

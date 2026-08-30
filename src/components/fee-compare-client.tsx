@@ -1208,7 +1208,6 @@ function GainsTradeTable({
                   <p className="font-mono text-xs font-bold text-ink">{fmtUsd(netCost)}</p>
                   <p className="text-[10px] text-ink-faint/70 mt-0.5 whitespace-nowrap">
                     {fmtUsd(t.tradingFee)} taker
-
                     {t.borrowingFee > 0.001 ? ` +${fmtUsd(t.borrowingFee)} borrow` : ""}
                     {Math.abs(t.fundingFee) > 0.001
                       ? ` ${t.fundingFee > 0 ? "+" : "−"}${fmtUsd(Math.abs(t.fundingFee))} fund`
