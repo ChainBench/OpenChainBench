@@ -2672,6 +2672,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
 
+  // ─── ICON providers (bench 258) ──────────────────────────────────────
+  "icon-solidwallet": {
+    url: "https://www.icondev.io",
+    description:
+      "ICON Foundation official public RPC node at ctz.solidwallet.io. Keyless icx_getLastBlock endpoint maintained by the ICON Foundation.",
+    twitter: "@helloiconworld",
+  },
+  "icon-community": {
+    url: "https://icon.community",
+    description:
+      "ICON Community public RPC at api.icon.community. Keyless icx_getLastBlock endpoint run by the ICON community.",
+    twitter: "@helloiconworld",
+  },
+  iconblockchain: {
+    url: "https://iconblockchain.xyz",
+    description:
+      "iconblockchain.xyz community-operated public ICON RPC node. Keyless icx_getLastBlock endpoint.",
+  },
   // ─── Union providers (bench 253) ─────────────────────────────────────
   "nodes-guru": {
     url: "https://nodes.guru",
