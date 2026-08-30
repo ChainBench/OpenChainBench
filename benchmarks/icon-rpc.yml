@@ -1,0 +1,35 @@
+id: 258
+slug: icon-rpc
+title: "Fastest free ICON RPC, live no-key endpoint latency"
+chain: icon
+description: "Latency and availability benchmark for ICON public RPC endpoints"
+category: rpc
+kind: icon
+
+providers:
+  - slug: icon-solidwallet
+    name: "ICON Foundation"
+    url: "https://ctz.solidwallet.io"
+  - slug: icon-community
+    name: "ICON Community"
+    url: "https://api.icon.community"
+  - slug: iconblockchain
+    name: "iconblockchain.xyz"
+    url: "https://api.iconblockchain.xyz"
+
+seo_intro: |
+  ICON is a South Korean L1 blockchain focused on interoperability and enterprise adoption, using a Delegated Proof of Contribution (DPoC) consensus with ~2-second block finality. ICON nodes expose a JSON-RPC 2.0 API: POST /api/v3 with method icx_getLastBlock returns the latest block height. Free public endpoints are available keyless from the ICON Foundation (ctz.solidwallet.io), ICON Community (api.icon.community), and iconblockchain.xyz.
+
+  This benchmark continuously measures RPC latency, availability and block-height freshness across these public ICON endpoints from three geographic regions. Every provider was live-verified with consecutive keyless icx_getLastBlock probes at launch.
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "Each probe issues a POST /api/v3 icx_getLastBlock request to retrieve the latest block height. We record round-trip latency (p50/p90/p99), HTTP availability, and whether the returned block height is current. Probes run every 60 seconds from US East, EU West, and AP Southeast."
+  - q: "Which endpoints are included?"
+    a: "The benchmark covers the ICON Foundation endpoint (ctz.solidwallet.io), ICON Community (api.icon.community), and iconblockchain.xyz. All three are keyless public endpoints requiring no API key."
+  - q: "Why does ICON RPC performance matter?"
+    a: "ICON powers ICX transfers, BTP cross-chain messages, and DApps across the ICON ecosystem. Low-latency RPC access is critical for wallets, DEX aggregators integrating ICON, and validators monitoring chain health."
+  - q: "How does ICON's ~2-second block time affect staleness detection?"
+    a: "With blocks every ~2 seconds, a gap of 150 blocks represents roughly 5 minutes of drift — the same threshold we use to classify other fast-finality chains as stale. A provider returning a block more than 150 behind the cross-provider tip is marked stale."
+  - q: "Can I contribute an endpoint?"
+    a: "Yes. Open an issue or PR at github.com/ChainBench/OpenChainBench with the endpoint URL and operator name. We verify liveness and independence before adding."
