@@ -1115,33 +1115,40 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
   const INCREASE_ACTIONS = new Set(["TradePosSizeIncrease"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
 
-  const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade }>();
+  const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade; lastIncrease?: GainsApiTrade }>();
   for (const t of trades) {
     if (!byId.has(t.id)) byId.set(t.id, {});
     const e = byId.get(t.id)!;
     if (OPEN_ACTIONS.has(t.action)) e.open = t;
-    else if (INCREASE_ACTIONS.has(t.action) && e.open) {
-      e.open = { ...e.open, size: t.size, leverage: t.leverage };
+    else if (INCREASE_ACTIONS.has(t.action)) {
+      if (e.open) e.open = { ...e.open, size: t.size, leverage: t.leverage };
+      // Track increases for positions opened before the window (no open event in data)
+      else if (!e.lastIncrease || new Date(t.date).getTime() < new Date(e.lastIncrease.date).getTime()) {
+        e.lastIncrease = t;
+      }
     }
     else if (CLOSE_ACTIONS.has(t.action)) e.close = t;
   }
 
   const now = Date.now();
   const slices: PositionSlice[] = [];
-  for (const { open, close } of byId.values()) {
-    if (!open) continue;
-    const rawOpenMs = new Date(open.date).getTime();
+  for (const { open, close, lastIncrease } of byId.values()) {
+    // Use open event if available; fall back to earliest increase in the window
+    // for positions opened before the fetch window (open event not in data).
+    const anchor = open ?? lastIncrease;
+    if (!anchor) continue;
+    const rawOpenMs = new Date(anchor.date).getTime();
     const closeMs = close ? new Date(close.date).getTime() : now;
     // Skip positions that closed before the analysis window
     if (closeMs < cutoffMs) continue;
-    // Cap openMs to the window start so long-running positions aren't skipped
+    // Cap openMs to the window start so long-running positions aren't missed
     const openMs = Math.max(rawOpenMs, cutoffMs);
     slices.push({
-      coin: open.pair.split("/")[0],
-      notionalUsd: open.size * open.leverage,
+      coin: anchor.pair.split("/")[0],
+      notionalUsd: anchor.size * anchor.leverage,
       openMs,
       closeMs,
-      isLong: open.buy !== false,
+      isLong: anchor.buy !== false,
     });
   }
 
