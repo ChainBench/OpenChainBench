@@ -1837,6 +1837,17 @@ func chains() []Chain {
 				{Slug: "waves-exchange", Name: "Waves Exchange Node", URL: envDefault("RPC_URL_WAVES_EXCHANGE", "https://nodes.waves.exchange")},
 			},
 		},
+		// 2026-08-29 wave-13. ICON blockchain — JSON-RPC icx_getLastBlock /api/v3, ~2 s/block. 3 keyless providers.
+		{
+			Slug: "icon",
+			Name: "ICON",
+			Kind: "icon",
+			Providers: []Provider{
+				{Slug: "icon-solidwallet", Name: "ICON Foundation", URL: envDefault("RPC_URL_ICON_SOLIDWALLET", "https://ctz.solidwallet.io")},
+				{Slug: "icon-community", Name: "ICON Community", URL: envDefault("RPC_URL_ICON_COMMUNITY", "https://api.icon.community")},
+				{Slug: "iconblockchain", Name: "iconblockchain.xyz", URL: envDefault("RPC_URL_ICON_ICONBLOCKCHAIN", "https://api.iconblockchain.xyz")},
+			},
+		},
 		// 2026-08-18 wave-8. WAX gaming blockchain (Antelope) — REST GET /v1/chain/get_info, ~0.5 s/block. 3 keyless providers.
 		{
 			Slug: "wax",

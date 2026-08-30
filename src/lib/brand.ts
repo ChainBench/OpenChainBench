@@ -195,6 +195,12 @@ const BRANDS: Record<string, Brand> = {
   stakewolle:  { color: "#F97316" },          // stakewolle orange
   nodestake:   { color: "#8B5CF6" },          // nodestake violet
 
+  // ─── ICON (bench 258) ───
+  icon:               { color: "#00B8CC" },   // ICON teal (official brand)
+  "icon-solidwallet": { color: "#00B8CC" },   // ICON Foundation inherits brand teal
+  "icon-community":   { color: "#1A9CBB" },   // ICON Community slightly darker teal
+  iconblockchain:     { color: "#0D7A9E" },   // iconblockchain.xyz dark cyan
+
   // ─── Bitcoin Cash chain + providers (bench 244) ───
   "bitcoin-cash": { color: "#0AC18E" },           // bch official green
   bitcore:      { color: "#1A1D21", dark: true }, // bitpay dark
