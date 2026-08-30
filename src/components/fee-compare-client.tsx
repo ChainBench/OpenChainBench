@@ -82,6 +82,7 @@ type GainsWalletData = {
   positionSizeUsdc: number;
   avgFeeRateBps: number;
   gainsExclusiveFeesUsdc?: number;
+  comparableNotionalUsdc?: number;
   recentTrades: Array<{
     date: string;
     pair: string;

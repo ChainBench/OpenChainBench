@@ -189,6 +189,7 @@ type GainsWalletData = {
   positionSizeUsdc: number;
   avgFeeRateBps: number;
   gainsExclusiveFeesUsdc?: number; // fees on coins not available on the other venue
+  comparableNotionalUsdc?: number; // notional of HL-comparable trades only
   recentTrades: Array<{
     date: string;
     pair: string;
@@ -1111,50 +1112,80 @@ function augmentWithHlOpenPositions(
 }
 
 function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): PositionSlice[] {
-  // v5 names: MarketOpened, LimitOrderExecuted — v6 names: TradeOpenedMarket, TradeOpenedLimit
   const OPEN_ACTIONS = new Set(["MarketOpened", "LimitOrderExecuted", "TradeOpenedMarket", "TradeOpenedLimit"]);
-  // TradePosSizeIncrease updates the position size; use latest size as notional
   const INCREASE_ACTIONS = new Set(["TradePosSizeIncrease"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
 
-  // Sort oldest-first so increases run after the open event and correctly update notional
+  // Sort oldest-first so increases appear after their open event
   const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade; lastIncrease?: GainsApiTrade }>();
+  type Entry = {
+    open?: GainsApiTrade;
+    close?: GainsApiTrade;
+    increases: GainsApiTrade[];
+    lastIncrease?: GainsApiTrade; // earliest increase, fallback anchor for pre-window positions
+  };
+  const byId = new Map<number, Entry>();
+
   for (const t of sorted) {
-    if (!byId.has(t.id)) byId.set(t.id, {});
+    if (!byId.has(t.id)) byId.set(t.id, { increases: [] });
     const e = byId.get(t.id)!;
-    if (OPEN_ACTIONS.has(t.action)) e.open = t;
-    else if (INCREASE_ACTIONS.has(t.action)) {
-      if (e.open) e.open = { ...e.open, size: t.size, leverage: t.leverage };
-      // Track the earliest increase for positions opened before the window (no open event in data)
-      else if (!e.lastIncrease || new Date(t.date).getTime() < new Date(e.lastIncrease.date).getTime()) {
-        e.lastIncrease = t;
+    if (OPEN_ACTIONS.has(t.action)) {
+      e.open = t;
+    } else if (INCREASE_ACTIONS.has(t.action)) {
+      e.increases.push(t);
+      if (!e.open) {
+        // Track earliest increase as anchor for positions opened before the window
+        if (!e.lastIncrease || new Date(t.date).getTime() < new Date(e.lastIncrease.date).getTime()) {
+          e.lastIncrease = t;
+        }
       }
+    } else if (CLOSE_ACTIONS.has(t.action)) {
+      e.close = t;
     }
-    else if (CLOSE_ACTIONS.has(t.action)) e.close = t;
   }
 
   const now = Date.now();
   const slices: PositionSlice[] = [];
-  for (const { open, close, lastIncrease } of byId.values()) {
-    // Use open event if available; fall back to earliest increase in the window
-    // for positions opened before the fetch window (open event not in data).
+
+  for (const { open, close, increases, lastIncrease } of byId.values()) {
     const anchor = open ?? lastIncrease;
     if (!anchor) continue;
-    const rawOpenMs = new Date(anchor.date).getTime();
+
     const closeMs = close ? new Date(close.date).getTime() : now;
-    // Skip positions that closed before the analysis window
     if (closeMs < cutoffMs) continue;
-    // Cap openMs to the window start so long-running positions aren't missed
-    const openMs = Math.max(rawOpenMs, cutoffMs);
-    slices.push({
-      coin: anchor.pair.split("/")[0],
-      notionalUsd: anchor.size * anchor.leverage,
-      openMs,
-      closeMs,
-      isLong: anchor.buy !== false,
-    });
+
+    const isLong = anchor.buy !== false;
+    const coin = anchor.pair.split("/")[0];
+
+    // Build a size timeline: each entry = { ms, notionalUsd } when size changed.
+    // This lets us create one funding slice per size period instead of one for the whole position.
+    const timeline: Array<{ ms: number; notionalUsd: number }> = [
+      { ms: new Date(anchor.date).getTime(), notionalUsd: anchor.size * anchor.leverage },
+    ];
+    for (const inc of increases) {
+      const incMs = new Date(inc.date).getTime();
+      // Only track increases that happened after the anchor (skip pre-anchor increases already folded in)
+      if (incMs > new Date(anchor.date).getTime()) {
+        timeline.push({ ms: incMs, notionalUsd: inc.size * inc.leverage });
+      }
+    }
+    // Already sorted oldest-first since increases was pushed in order
+
+    // Emit one slice per size period
+    for (let i = 0; i < timeline.length; i++) {
+      const sliceOpen  = Math.max(timeline[i].ms, cutoffMs);
+      const sliceClose = i + 1 < timeline.length ? timeline[i + 1].ms : closeMs;
+      if (sliceClose <= cutoffMs) continue;  // period entirely before window
+      if (sliceOpen >= sliceClose) continue; // zero-duration
+      slices.push({
+        coin,
+        notionalUsd: timeline[i].notionalUsd,
+        openMs: sliceOpen,
+        closeMs: sliceClose,
+        isLong,
+      });
+    }
   }
 
   return slices;
@@ -1241,25 +1272,34 @@ function estimateGmxBorrowFees(
 }
 
 // Fetch HL 8h funding rate history for a set of coins over a period.
-// Returns map of coin → array of { time, rate (as fraction) }.
+// Paginates automatically: the HL API returns at most 500 entries per request.
+// At 3 entries/day, 500 covers ~167 days. Windows >167d need multiple pages.
 async function fetchHlFundingHistory(
   coins: string[],
   startMs: number
 ): Promise<Map<string, Array<{ time: number; rate: number }>>> {
+  const now = Date.now();
   const results = await Promise.allSettled(
     coins.map(async (coin) => {
-      const res = await fetch(HL_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "fundingHistory", coin, startTime: startMs }),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) return [coin, []] as [string, Array<{ time: number; rate: number }>];
-      const data = (await res.json()) as Array<{ time: number; fundingRate: string }>;
-      return [coin, data.map((d) => ({ time: d.time, rate: parseFloat(d.fundingRate) }))] as [
-        string,
-        Array<{ time: number; rate: number }>
-      ];
+      const rates: Array<{ time: number; rate: number }> = [];
+      let cursor = startMs;
+      for (let page = 0; page < 5; page++) {
+        const res = await fetch(HL_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "fundingHistory", coin, startTime: cursor }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) break;
+        const data = (await res.json()) as Array<{ time: number; fundingRate: string }>;
+        if (!Array.isArray(data) || data.length === 0) break;
+        rates.push(...data.map((d) => ({ time: d.time, rate: parseFloat(d.fundingRate) })));
+        // If the response is truncated (exactly 500), fetch the next page
+        if (data.length < 500) break;
+        cursor = data[data.length - 1].time + 1;
+        if (cursor >= now) break;
+      }
+      return [coin, rates] as [string, Array<{ time: number; rate: number }>];
     })
   );
 
@@ -1364,9 +1404,13 @@ function walletStats(slug: string, w: AnyWallet, otherSlug?: string): { notional
   }
   if (slug === "gains") {
     const x = w as GainsWalletData;
-    // When comparing against HL, exclude fees on coins not available on HL
+    // When comparing against HL: exclude exclusive fees AND use comparable-only notional
+    // so the HL equiv fee isn't inflated by PONS/other non-HL notional
     const exclusiveFees = otherSlug === "hyperliquid" ? (x.gainsExclusiveFeesUsdc ?? 0) : 0;
-    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.netCostUsdc - exclusiveFees } : null;
+    const notional = (otherSlug === "hyperliquid" && x.comparableNotionalUsdc !== undefined)
+      ? x.comparableNotionalUsdc
+      : x.positionSizeUsdc;
+    return x.events > 0 ? { notional, fees: x.netCostUsdc - exclusiveFees } : null;
   }
   if (slug === "gmx-v2") {
     const x = w as GmxWalletData;
@@ -1571,6 +1615,7 @@ export async function GET(req: Request) {
         let fundingFeesUsdc = 0;
         let borrowingFeesUsdc = 0;
         let notionalUsd = 0;
+        let comparableNotionalUsdc = 0;
         let gainsExclusiveFeesUsdc = 0;
         const checkHlComparable = otherSlug === "hyperliquid" && hlAvailableCoins.size > 0;
         const recentTrades: GainsWalletData["recentTrades"] = [];
@@ -1592,6 +1637,8 @@ export async function GET(req: Request) {
           const hlComparable = checkHlComparable ? hlAvailableCoins.has(coin) : undefined;
           if (hlComparable === false) {
             gainsExclusiveFeesUsdc += takerFee + fundingFee + borrowingFee;
+          } else {
+            comparableNotionalUsdc += tradeNotional;
           }
           if (recentTrades.length < 50) {
             // Don't show equivFee for Gains-exclusive coins — the coin doesn't exist on HL
@@ -1627,6 +1674,7 @@ export async function GET(req: Request) {
           positionSizeUsdc: notionalUsd,
           avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
           gainsExclusiveFeesUsdc: checkHlComparable ? gainsExclusiveFeesUsdc : undefined,
+          comparableNotionalUsdc: checkHlComparable ? comparableNotionalUsdc : undefined,
           recentTrades,
         } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
