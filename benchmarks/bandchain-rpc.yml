@@ -1,35 +1,138 @@
-id: 256
+# OpenChainBench. Bench No 256
+
 slug: bandchain-rpc
-title: "Band Protocol RPC"
-chain: bandchain
-description: "Latency and availability benchmark for Band Protocol public RPC endpoints"
-category: rpc
-kind: cosmos
+number: "256"
+title: Fastest free Band Protocol RPC, live no-key endpoint latency
+seo_title: "Fastest free Band Protocol RPC 2026"
+seo_description: "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (block height p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Band Protocol (laozi-mainnet) endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Band Protocol is a cross-chain decentralized oracle network built on Cosmos SDK (chain ID laozi-mainnet). It aggregates and connects real-world data and APIs to smart contracts across multiple blockchains via its Yoda oracle daemon and data feed infrastructure. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by the Band Protocol official team, High Stakes, and Stakewolle. Every provider was live-verified with consecutive block-height probes at launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Band Protocol (laozi-mainnet).
+  We measure the round-trip latency of a Tendermint /status query against
+  every available public Band Protocol endpoint that sustains continuous probing:
+  3 providers at launch, every 60 seconds, from us-east, eu-west and
+  Singapore. Each provider is probed via a GET /status request
+  from which the block number is extracted.
+  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
+  with a Cosmos-scaled staleness gap (40 blocks, around 4 min at 6 s/block).
+  The cross-chain view lives on the parent rpc-capabilities benchmark;
+  this page is the Band Protocol-scoped answer with per-region breakdowns as
+  a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: GET /status. The result.sync_info.latest_block_height field is extracted as the current block height."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
+  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 40 behind the cross-provider tip), timeout."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=bandchain. Provider coverage at launch: 3 endpoints (Band Protocol official, High Stakes, Stakewolle)."
+
+findings:
+  - "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Band Protocol RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Band Protocol block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which Band Protocol RPC endpoints work without an API key?"
+    a: "3 endpoints sustain continuous keyless probing at launch: Band Protocol official (rpc.laozi1.bandchain.org), High Stakes (bandprotocol-rpc.highstakes.ch), and Stakewolle (public.stakewolle.com/cosmos/bandchain/rpc). Every listed endpoint was live-verified before inclusion."
+  - q: "What is Band Protocol and why does its RPC latency matter?"
+    a: "Band Protocol is a cross-chain data oracle that aggregates real-world data feeds and delivers them to smart contracts via oracle scripts. Validators running the Yoda daemon and DeFi protocols consuming Band price feeds both depend on low-latency reliable RPC access to the Band chain."
+  - q: "Does the fastest Band Protocol RPC change by region?"
+    a: "Yes. The official Band node and community validators are hosted in different regions. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your deployment geography."
+  - q: "What is the BAND token?"
+    a: "BAND is the native staking and governance token of Band Protocol (denominated as uband on-chain). It is used to stake as validators, pay for oracle data requests, and participate in on-chain governance of the laozi-mainnet."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="bandchain"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
 
 providers:
   - slug: band-official
-    name: "Band Protocol"
-    url: "http://rpc.laozi1.bandchain.org:80"
+    name: Band Protocol
+    tag: Band Protocol official public RPC node, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.laozi1.bandchain.org."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="band-official", chain="bandchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="band-official", chain="bandchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="band-official", chain="bandchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="band-official", chain="bandchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="band-official", chain="bandchain"}) / sum(ocb:rpc_call:rate_24h{provider="band-official", chain="bandchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="band-official", chain="bandchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="band-official", chain="bandchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="band-official", chain="bandchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="band-official", chain="bandchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="band-official", chain="bandchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="band-official", chain="bandchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="band-official", chain="bandchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="band-official", chain="bandchain", region="sgp"}[1h])
+
   - slug: highstakes
-    name: "High Stakes"
-    url: "https://bandprotocol-rpc.highstakes.ch"
+    name: High Stakes
+    tag: High Stakes public Band Protocol RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to bandprotocol-rpc.highstakes.ch."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="bandchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="highstakes", chain="bandchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="highstakes", chain="bandchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="highstakes", chain="bandchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="highstakes", chain="bandchain"}) / sum(ocb:rpc_call:rate_24h{provider="highstakes", chain="bandchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="highstakes", chain="bandchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="bandchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="bandchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="bandchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="bandchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="bandchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="bandchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="bandchain", region="sgp"}[1h])
+
   - slug: stakewolle
-    name: "Stakewolle"
-    url: "https://public.stakewolle.com/cosmos/bandchain/rpc"
-
-seo_intro: |
-  Band Protocol is a cross-chain oracle network built on Cosmos SDK that aggregates and connects real-world data and APIs to smart contracts. The laozi-mainnet hosts its decentralized data oracle infrastructure, enabling DeFi protocols across multiple blockchains to access tamper-proof price feeds.
-
-  This benchmark continuously measures RPC latency, availability and block-height freshness across public Band Protocol Tendermint endpoints from three geographic regions. Use it to select the fastest endpoint for your integration or validator setup.
-
-faq:
-  - q: "What does this benchmark measure?"
-    a: "Each probe issues a GET /status request with anti-cache headers to retrieve the latest block height. We record round-trip latency (p50/p90/p99), HTTP availability, and whether the returned block height is current. Probes run every 30 seconds from US East, EU West, and AP Southeast."
-  - q: "Which endpoints are included?"
-    a: "The benchmark covers the Band Protocol official endpoint (rpc.laozi1.bandchain.org), High Stakes, and Stakewolle. All three are keyless public endpoints requiring no authentication."
-  - q: "Why does Band Protocol RPC performance matter?"
-    a: "Band Protocol validators and oracle scripts depend on reliable RPC access to submit data requests and retrieve oracle results. DeFi protocols integrating Band price feeds need low-latency RPC for real-time data consumption."
-  - q: "How are oracle scripts affected by RPC latency?"
-    a: "Yoda (the oracle daemon) and Bothan (data proxy) both rely on RPC to monitor pending data requests and submit responses within the request window. High latency or downtime directly reduces oracle reliability and can cause missed rewards."
-  - q: "Can I contribute an endpoint?"
-    a: "Yes. Open an issue or PR at github.com/ChainBench/OpenChainBench with the endpoint URL and operator name. We verify liveness and independence before adding."
+    name: Stakewolle
+    tag: Stakewolle public Band Protocol RPC, no API key required
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to public.stakewolle.com/cosmos/bandchain/rpc."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakewolle", chain="bandchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stakewolle", chain="bandchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stakewolle", chain="bandchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stakewolle", chain="bandchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stakewolle", chain="bandchain"}) / sum(ocb:rpc_call:rate_24h{provider="stakewolle", chain="bandchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stakewolle", chain="bandchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stakewolle", chain="bandchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakewolle", chain="bandchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakewolle", chain="bandchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakewolle", chain="bandchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakewolle", chain="bandchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakewolle", chain="bandchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakewolle", chain="bandchain", region="sgp"}[1h])
