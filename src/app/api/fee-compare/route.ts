@@ -1490,8 +1490,11 @@ export async function GET(req: Request) {
 
     await Promise.all(fetches);
 
-    // Phase 2: fetch HL funding history for Gains positions (Gains→HL carry projection)
+    // Phase 2: fetch HL funding history + extended Gains history for position reconstruction
     let hlFundingHistoryByCoins: Map<string, Array<{ time: number; rate: number }>> = new Map();
+    // Extended Gains history (1 year) used only for HL funding projection reconstruction —
+    // the fee accounting (taker/borrow/funding fees) still uses gainsTradesData (cutoffMs window).
+    let gainsPositionData: GainsApiTrade[] = gainsTradesData;
     if (
       fetchEvmWallet &&
       (venueA === "gains" || venueB === "gains") &&
@@ -1504,7 +1507,13 @@ export async function GET(req: Request) {
           .map((t) => t.pair.split("/")[0])
       );
       const coinsToFetch = [...gainsCoinSet].slice(0, 6);
-      hlFundingHistoryByCoins = await fetchHlFundingHistory(coinsToFetch, cutoffMs).catch(() => new Map());
+      const extendedCutoffMs = cutoffMs - 365 * 24 * 60 * 60 * 1000;
+      const [fundingHistory, extendedTrades] = await Promise.all([
+        fetchHlFundingHistory(coinsToFetch, cutoffMs).catch(() => new Map<string, Array<{ time: number; rate: number }>>()),
+        fetchGainsTrades(wallet, extendedCutoffMs).catch(() => gainsTradesData),
+      ]);
+      hlFundingHistoryByCoins = fundingHistory;
+      gainsPositionData = extendedTrades;
     }
 
     function buildVenueResult(slug: string, rate: number, note: string, rateIsLive: boolean): VenueResult {
@@ -1673,9 +1682,9 @@ export async function GET(req: Request) {
               hlOpenPositions,
               cutoffMs
             );
-          } else if (venueA === "gains" && gainsTradesData.length > 0) {
+          } else if (venueA === "gains" && gainsPositionData.length > 0) {
             positions = reconstructGainsPositions(
-              gainsTradesData.filter((t) => t.collateralIndex === 3),
+              gainsPositionData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
           } else if (venueA === "gmx-v2" && gmxWalletData) {
@@ -1813,9 +1822,9 @@ export async function GET(req: Request) {
               hlOpenPositions,
               cutoffMs
             );
-          } else if (venueB === "gains" && gainsTradesData.length > 0) {
+          } else if (venueB === "gains" && gainsPositionData.length > 0) {
             positions = reconstructGainsPositions(
-              gainsTradesData.filter((t) => t.collateralIndex === 3),
+              gainsPositionData.filter((t) => t.collateralIndex === 3),
               cutoffMs
             );
           } else if (venueB === "gmx-v2" && gmxWalletData) {
