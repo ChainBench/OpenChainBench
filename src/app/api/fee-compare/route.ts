@@ -1130,10 +1130,12 @@ function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): P
   const slices: PositionSlice[] = [];
   for (const { open, close } of byId.values()) {
     if (!open) continue;
-    const openMs = new Date(open.date).getTime();
-    if (openMs < cutoffMs) continue;
-    // Still-open positions use now as close time (same as reconstructHlPositions)
+    const rawOpenMs = new Date(open.date).getTime();
     const closeMs = close ? new Date(close.date).getTime() : now;
+    // Skip positions that closed before the analysis window
+    if (closeMs < cutoffMs) continue;
+    // Cap openMs to the window start so long-running positions aren't skipped
+    const openMs = Math.max(rawOpenMs, cutoffMs);
     slices.push({
       coin: open.pair.split("/")[0],
       notionalUsd: open.size * open.leverage,
