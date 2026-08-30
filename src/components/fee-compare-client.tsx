@@ -560,7 +560,7 @@ function WalletSide({
     if (crossSim) {
       const carry = crossSim.projectedCarry;
       const takerFees = carry ? carry.takerFees : crossSim.equivFees;
-      const hasCarry = carry && (carry.borrowFees > 0.01 || carry.fundingFees > 0.01);
+      const hasCarry = carry && (carry.borrowFees > 0.01 || Math.abs(carry.fundingFees) > 0.01);
       const netLabel = hasCarry
         ? "incl. est. carry"
         : carry
@@ -602,16 +602,22 @@ function WalletSide({
                   <p className="font-mono text-xs font-semibold text-red-400">+{fmtUsd(carry.borrowFees)}</p>
                 </div>
               )}
-              {carry && carry.borrowProjected === false && carry.fundingFees < 0.01 && (
+              {carry && carry.borrowProjected === false && Math.abs(carry.fundingFees) < 0.01 && (
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-ink-faint">Borrowing fees</p>
                   <p className="text-[11px] text-ink-faint/50 italic">not applicable</p>
                 </div>
               )}
-              {carry && carry.fundingFees > 0.01 && (
+              {carry && carry.fundingProjected && carry.fundingFees > 0.01 && (
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] text-ink-faint">Est. funding (projected)</p>
                   <p className="font-mono text-xs font-semibold text-red-400">+{fmtUsd(carry.fundingFees)}</p>
+                </div>
+              )}
+              {carry && carry.fundingProjected && carry.fundingFees < -0.01 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-ink-faint">Est. funding (projected)</p>
+                  <p className="font-mono text-xs font-semibold text-emerald-500">−{fmtUsd(Math.abs(carry.fundingFees))} received</p>
                 </div>
               )}
               {carry && !carry.fundingProjected && carry.borrowFees > 0.01 && (
@@ -691,11 +697,11 @@ function WalletSide({
       {/* Venue-specific extra stats */}
       {venue.slug === "hyperliquid" && (() => {
         const hlW = w as HlWalletData;
-        const hasFunding = Math.abs(hlW.fundingUsd) > 0.5;
+        const hasFunding = Math.abs(hlW.fundingUsd) > 0.01;
         return (
           <div className="bg-ink/4 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Volume</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">Total position value</p>
               <p className="font-mono text-xs font-semibold text-ink">{fmtUsd(volume)}</p>
             </div>
             <div className="border-t border-ink/8 pt-2 space-y-1.5">
@@ -766,7 +772,7 @@ function WalletSide({
               )}
               {hasBorrowing && (
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-ink-faint">Borrowing fees</p>
+                  <p className="text-[11px] text-ink-faint">Borrowing fees <span className="text-[9px] text-ink-faint/50">(vault)</span></p>
                   <p className="font-mono text-xs font-semibold text-red-400">
                     −{fmtUsd(gW.borrowingFeesUsdc)}
                   </p>

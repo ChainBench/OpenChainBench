@@ -1260,7 +1260,8 @@ async function fetchHlFundingHistory(
 }
 
 // Compute projected HL funding cost for a set of position slices.
-// Uses absolute funding rates so direction doesn't matter for the projection.
+// Returns signed net: positive = wallet pays, negative = wallet receives.
+// Rate > 0 = longs pay; < 0 = shorts pay (HL convention).
 function computeHlFunding(
   positions: PositionSlice[],
   history: Map<string, Array<{ time: number; rate: number }>>
@@ -1270,10 +1271,10 @@ function computeHlFunding(
     const rates = (history.get(pos.coin) ?? []).filter(
       (r) => r.time >= pos.openMs && r.time <= pos.closeMs
     );
-    // Each HL funding entry = one 8h interval. Rate > 0 = longs pay; < 0 = shorts pay.
     for (const r of rates) {
+      // positive cost = this position is on the paying side
       const cost = pos.isLong ? r.rate : -r.rate;
-      total += pos.notionalUsd * Math.max(0, cost);
+      total += pos.notionalUsd * cost;
     }
   }
   return total;
@@ -1683,7 +1684,7 @@ export async function GET(req: Request) {
               borrowFees: 0,
               fundingFees: hlFunding,
               borrowProjected: false,
-              fundingProjected: hlFunding > 0.01,
+              fundingProjected: Math.abs(hlFunding) > 0.01,
             };
           }
 
@@ -1821,9 +1822,9 @@ export async function GET(req: Request) {
             projectedCarry = {
               takerFees,
               borrowFees: 0,
-              fundingFees: hlFunding,
+              fundingFees: hlFunding, // signed: positive = pays, negative = receives
               borrowProjected: false,
-              fundingProjected: hlFunding > 0.01,
+              fundingProjected: Math.abs(hlFunding) > 0.01,
             };
           }
 
