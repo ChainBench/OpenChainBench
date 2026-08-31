@@ -586,7 +586,8 @@ export default async function BenchmarkPage({
         </div>
       )}
       {(benchmark.slug.endsWith("-rpc") ||
-        benchmark.slug === "rpc-capabilities") && (
+        benchmark.slug === "rpc-capabilities" ||
+        benchmark.slug.startsWith("keyed-rpc-")) && (
         <div
           className="mt-6 max-w-3xl rounded-lg border border-ink/15 px-4 py-3 flex items-start gap-3 flex-wrap"
           style={{
