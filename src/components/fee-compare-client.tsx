@@ -913,7 +913,7 @@ function WalletSummaryCard({ result }: { result: FeeCompareResult }) {
       <div className="px-5 py-4 border-b border-ink/8">
         <p className="font-bold text-sm text-ink">Wallet analysis</p>
         <p className="text-xs text-ink-faint mt-0.5">
-          Net cost including carry (funding + borrowing) vs taker-rate projection on the other venue
+          Net cost including carry (funding + borrowing) vs a maker/taker-aware projection on the other venue, matched on the coins both venues list
         </p>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr]">
@@ -1085,19 +1085,27 @@ function HlTradeTable({
                   <td className="px-3 py-3 text-right font-mono text-xs font-bold text-ink">
                     {fmtUsd(f.hlFee)}
                   </td>
-                  {hasEquiv && f.equivFee !== undefined && (
-                    <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${
-                      f.equivFee < f.hlFee ? "text-emerald-500" : f.equivFee > f.hlFee ? "text-red-400" : "text-ink-faint"
-                    }`}>
-                      {fmtUsd(f.equivFee)}
-                    </td>
+                  {hasEquiv && (
+                    f.equivFee !== undefined ? (
+                      <td className={`px-3 py-3 text-right font-mono text-xs font-bold ${
+                        f.equivFee < f.hlFee ? "text-emerald-500" : f.equivFee > f.hlFee ? "text-red-400" : "text-ink-faint"
+                      }`}>
+                        {fmtUsd(f.equivFee)}
+                      </td>
+                    ) : (
+                      <td className="px-3 py-3 text-right text-[10px] text-ink-faint/40">n/a</td>
+                    )
                   )}
-                  {hasEquiv && diff !== undefined && (
-                    <td className={`px-5 py-3 text-right font-mono text-xs font-semibold hidden sm:table-cell ${
-                      diff > 0.001 ? "text-emerald-500" : diff < -0.001 ? "text-red-400" : "text-ink-faint"
-                    }`}>
-                      {diff > 0.001 ? `+${fmtUsd(diff)}` : diff < -0.001 ? fmtUsd(diff) : "—"}
-                    </td>
+                  {hasEquiv && (
+                    diff !== undefined ? (
+                      <td className={`px-5 py-3 text-right font-mono text-xs font-semibold hidden sm:table-cell ${
+                        diff > 0.001 ? "text-emerald-500" : diff < -0.001 ? "text-red-400" : "text-ink-faint"
+                      }`}>
+                        {diff > 0.001 ? `+${fmtUsd(diff)}` : diff < -0.001 ? fmtUsd(diff) : "—"}
+                      </td>
+                    ) : (
+                      <td className="px-5 py-3 text-right text-[10px] text-ink-faint/40 hidden sm:table-cell">—</td>
+                    )
                   )}
                   {!hasEquiv && (
                     <td className="px-5 py-3 text-right font-mono text-xs hidden md:table-cell">
