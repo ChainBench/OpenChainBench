@@ -31,7 +31,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!report) return {};
 
   const canonical = `${SITE.url}/reports/${category}/${slug}`;
-  const ogImage = report.ogImage ?? `${SITE.url}/opengraph-image`;
+  // Use the per-report OG card (dynamic opengraph-image.tsx in this
+  // segment) as the default, NOT the site-wide /opengraph-image. Setting
+  // openGraph.images explicitly here shadows Next's file convention, so
+  // without this the bespoke titled card was never emitted and every
+  // report shared the generic site thumbnail on X / LinkedIn / SERP.
+  const ogImage =
+    report.ogImage ?? `${SITE.url}/reports/${category}/${slug}/opengraph-image`;
   const social = `${report.title} · OpenChainBench`;
 
   return {
@@ -264,7 +270,9 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       description: report.summary,
       datePublished: new Date(report.publishedAt).toISOString(),
       dateModified: new Date(report.publishedAt).toISOString(),
-      image: report.ogImage ?? `${SITE.url}/opengraph-image`,
+      image:
+        report.ogImage ??
+        `${SITE.url}/reports/${report.categorySlug}/${report.slug}/opengraph-image`,
       author: { "@id": PERSON_ID },
       publisher: { "@id": `${SITE.url}/#org` },
       inLanguage: "en",
