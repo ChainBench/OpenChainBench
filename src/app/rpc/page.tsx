@@ -37,6 +37,14 @@ export default async function RpcHubPage() {
   const rpcSpecs = specs
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
+  // Keyed / API-key RPC benches (e.g. keyed-rpc-robinhood). These do NOT
+  // belong in the no-key chain matrix above (different tier, and the
+  // slug->chain derivation `replace(/-rpc$/,'')` doesn't apply), so we
+  // surface them in a dedicated aside. Without this they were orphaned
+  // from the RPC cluster with no inbound link from the hub.
+  const keyedRpcSpecs = specs
+    .filter((s) => s.slug.startsWith("keyed-rpc-"))
+    .sort((a, b) => a.slug.localeCompare(b.slug));
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -149,6 +157,31 @@ export default async function RpcHubPage() {
           </Link>
         </div>
       </header>
+
+      {keyedRpcSpecs.length > 0 && (
+        <section className="mb-8 rounded-lg border border-ink/10 card-soft px-4 py-3">
+          <p className="label-mono text-[10px] text-ink-faint mb-2">
+            Keyed &amp; premium endpoints
+          </p>
+          <p className="text-sm text-ink-soft leading-snug mb-3 max-w-2xl">
+            The matrix above ranks free, no-key public RPCs. Newer chains
+            served only through API-key endpoints get their own keyed
+            benchmark:
+          </p>
+          <ul className="flex flex-wrap gap-2 text-[12.5px]">
+            {keyedRpcSpecs.map((s) => (
+              <li key={s.slug}>
+                <Link
+                  href={`/benchmarks/${s.slug}`}
+                  className="inline-flex rounded-full border border-ink/15 px-3 py-1 text-ink-soft hover:text-ink hover:border-ink/30"
+                >
+                  {s.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {snapshot ? (
         <>
