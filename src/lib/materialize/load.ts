@@ -145,6 +145,7 @@ export function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
     providerNotes: spec.provider_notes,
   };
@@ -164,9 +165,21 @@ export async function specToBenchmark(
 ): Promise<Benchmark> {
   const editorial = buildEditorial(spec);
 
-  const activeLabels = activeFilterLabels(options);
-  const isFiltered = Object.keys(activeLabels).length > 0;
-  const filteredSpec = isFiltered ? applyDimensionsToSpec(spec, activeLabels) : spec;
+  // Merge spec-declared aggregate defaults UNDER the reader's filters:
+  // an explicit ?region= / tab selection always wins over the pin. The
+  // unfiltered-view semantics below (provider augmentation, "All" copy)
+  // key on the reader's filters only, so a pinned aggregate still reads
+  // as the bench's headline view rather than a filtered slice.
+  const merged: BenchmarkFilters = {
+    ...((spec.aggregate_filters ?? {}) as BenchmarkFilters),
+    ...options,
+  };
+  const activeLabels = activeFilterLabels(merged);
+  const isFiltered = Object.keys(activeFilterLabels(options)).length > 0;
+  const filteredSpec =
+    Object.keys(activeLabels).length > 0
+      ? applyDimensionsToSpec(spec, activeLabels)
+      : spec;
 
   const live = await tryLoadLive(filteredSpec, isFiltered);
   if (live) {

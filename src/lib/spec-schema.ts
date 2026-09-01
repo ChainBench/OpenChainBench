@@ -383,6 +383,27 @@ export const SpecSchema = z
       .optional(),
 
     /**
+     * Default dimension scope for the unfiltered ("aggregate") build.
+     * When set, the tier-A snapshot (sig "") is built with these labels
+     * injected into every query selector, so the bench's headline view,
+     * TL;DR, JSON-LD and OG all cite the scoped slice instead of an
+     * average across dimensions. A reader-applied filter (region tab,
+     * ?region= variant) always wins over these defaults. Presentation
+     * surfaces (by-region grid) also read it to restrict what a
+     * single-vantage bench shows.
+     * First use: keyed-rpc-robinhood pins region=sgp so the default view
+     * is the Singapore probe. */
+    aggregate_filters: z
+      .object({
+        chain: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+        region: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+        kind: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+        venue: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+      })
+      .strict()
+      .optional(),
+
+    /**
      * Optional per-provider chip labels rendered next to the provider
      * name in the ranking row. Keys are provider slugs, values are the
      * short chip text (max ~20 chars so it fits inline without wrapping).

@@ -137,6 +137,9 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // worker running a divergent branch (keyed-rpc-robinhood: main is
     // Singapore-only while dev/worker carries the region dims).
     dimensions: spec.dimensions,
+    // Same source-of-truth rule as dimensions: the live YAML decides
+    // the aggregate pin, never the snapshot.
+    aggregateFilters: spec.aggregate_filters,
     // provider_notes is a YAML editorial declaration: drives the
     // per-provider chip rendered next to the name in the ranking row.
     // Overlay so newly added notes surface immediately without waiting
