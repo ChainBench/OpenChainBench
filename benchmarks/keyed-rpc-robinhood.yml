@@ -26,7 +26,8 @@ abstract: |
   We measure the round-trip latency of eth_getBlockByNumber against the
   keyed endpoints of Chainstack, Alchemy, and QuickNode on Robinhood Chain.
   The probe uses a rotating JSON-RPC id to defeat edge caches, fires every
-  60 seconds, and classifies each response as ok,
+  60 seconds from Singapore, the closest probe region to the chain's
+  Asia-Pacific infrastructure, and classifies each response as ok,
   http_err, jsonrpc_err, stale, or timeout. Only ok responses contribute to
   the latency distribution.
 
