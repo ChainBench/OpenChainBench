@@ -213,7 +213,9 @@ type RawGmxTrade = {
   fundingFeeAmount: string | null;
   pnlUsd: string | null;
   orderType: number;
-  indexToken: { symbol: string } | null;
+  // The subsquid schema dropped the indexToken relation; coins resolve from
+  // marketAddress via GMX_MARKETS instead.
+  marketAddress: string | null;
 };
 
 type GmxWalletData = {
@@ -433,21 +435,37 @@ async function fetchDydxCarryRates(): Promise<CarryRates> {
 async function fetchParadexCarryRates(): Promise<CarryRates> {
   const cached = carryRateCache["paradex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
-  const res = await fetch("https://api.prod.paradex.trade/v1/markets", {
-    signal: AbortSignal.timeout(8000),
-    next: { revalidate: 3600 },
-  });
-  const data = (await res.json()) as {
-    results: Array<{ symbol: string; interest_rate?: string; funding_period_hours?: number | string }>;
+  // markets/summary carries the SIGNED per-period funding_rate (positive = longs pay).
+  // The plain /markets interest_rate is unsigned — feeding it into the signed carry
+  // model would systematically credit shorts, so it must not be used here.
+  const [summaryRes, marketsRes] = await Promise.all([
+    fetch("https://api.prod.paradex.trade/v1/markets/summary?market=ALL", {
+      signal: AbortSignal.timeout(8000),
+      next: { revalidate: 3600 },
+    }),
+    fetch("https://api.prod.paradex.trade/v1/markets", {
+      signal: AbortSignal.timeout(8000),
+      next: { revalidate: 3600 },
+    }),
+  ]);
+  const summary = (await summaryRes.json()) as {
+    results: Array<{ symbol: string; funding_rate?: string }>;
   };
+  const markets = (await marketsRes.json()) as {
+    results: Array<{ symbol: string; funding_period_hours?: number | string }>;
+  };
+  const periodBySymbol: Record<string, number> = {};
+  for (const mkt of markets.results ?? []) {
+    periodBySymbol[mkt.symbol] = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
+  }
   const fundingPerSecPerCoin: Record<string, number> = {};
-  for (const mkt of data.results ?? []) {
+  for (const mkt of summary.results ?? []) {
     if (!mkt.symbol.endsWith("-PERP")) continue;
     // "BTC-USD-PERP" → "BTC"
     const coin = mkt.symbol.replace(/-USD-PERP$/, "").replace(/-PERP$/, "");
-    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
-    const rate = parseFloat(mkt.interest_rate ?? "0") / (periodHours * 3600);
-    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+    const periodHours = periodBySymbol[mkt.symbol] ?? 8;
+    const rate = parseFloat(mkt.funding_rate ?? "") / (periodHours * 3600);
+    if (Number.isFinite(rate) && rate !== 0) fundingPerSecPerCoin[coin] = rate;
   }
   const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
   carryRateCache["paradex"] = result;
@@ -465,7 +483,11 @@ async function fetchEdgeXRate(): Promise<{ rate: number; makerRate: number; note
   };
   const contracts = data.data?.contractList ?? [];
   const rates = contracts.map((c) => parseFloat(String(c.defaultTakerFeeRate ?? "0"))).filter((r) => r > 0);
-  const makerRates = contracts.map((c) => parseFloat(String(c.defaultMakerFeeRate ?? "0"))).filter((r) => r > 0);
+  // Zero is a legitimate maker rate (fee promos); only drop absent/unparsable values.
+  const makerRates = contracts
+    .filter((c) => c.defaultMakerFeeRate !== undefined && c.defaultMakerFeeRate !== null)
+    .map((c) => parseFloat(String(c.defaultMakerFeeRate)))
+    .filter((r) => Number.isFinite(r) && r >= 0);
   const rate = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0.00038;
   const makerRate = makerRates.length > 0 ? makerRates.reduce((a, b) => a + b, 0) / makerRates.length : rate;
   const entry = { rate, makerRate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
@@ -818,7 +840,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
               sizeDeltaUsd
               isLong
               orderType
-              indexToken { symbol }
+              marketAddress
               positionFeeAmount
               borrowingFeeAmount
               fundingFeeAmount
@@ -883,7 +905,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
         borrowingFee,
         fundingFee,
         pnlUsd,
-        indexToken: t.indexToken?.symbol,
+        indexToken: t.marketAddress ? GMX_MARKETS[t.marketAddress] : undefined,
         orderType: t.orderType,
       });
     }
@@ -1220,7 +1242,7 @@ function reconstructGmxPositions(rawTrades: RawGmxTrade[], cutoffMs: number): Po
   const slices: PositionSlice[] = [];
 
   for (const t of sorted) {
-    const coin = t.indexToken?.symbol ?? "UNKNOWN";
+    const coin = (t.marketAddress && GMX_MARKETS[t.marketAddress]) || "UNKNOWN";
     const isLong = t.isLong;
     const key = `${coin}:${isLong ? "L" : "S"}`;
     const notionalDelta =
@@ -1465,8 +1487,8 @@ function computeHlGainsSim(
   for (const fill of recent) {
     const n = parseFloat(fill.px) * parseFloat(fill.sz);
     // Gains is AMM-style: same fee regardless of maker/taker, so per-coin rate applies to all.
-    const coinRate = gainsData.perSide[fill.coin] ?? gainsData.avgPerSide;
-    takerEquiv += n * coinRate;
+    // `recent` is pre-filtered to Gains-listed coins, so perSide[coin] always exists here.
+    takerEquiv += n * gainsData.perSide[fill.coin];
     notional += n;
     hlFees += parseFloat(fill.fee);
   }
@@ -1743,11 +1765,13 @@ export async function GET(req: Request) {
 
         // When the API doesn't return per-trade funding (meta absent or zero), fall back to
         // the same per-second rate estimation used in the crossSim projection.
+        // The estimate is signed — a wallet on the receiving side gets a credit, matching
+        // how realized funding from the API would report it.
         let fundingEstimated = false;
-        if (fundingFeesUsdc >= 0 && fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
+        if (Math.abs(fundingFeesUsdc) < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
           const gainsPositions = reconstructGainsPositions(usdcTrades, cutoffMs);
           const est = estimateGainsFundingFees(gainsPositions, gainsData.fundingPerSecPerCoin);
-          if (est > 0.01) {
+          if (Math.abs(est) > 0.01) {
             fundingFeesUsdc = est;
             fundingEstimated = true;
           }
@@ -1788,6 +1812,9 @@ export async function GET(req: Request) {
     const venueBResult = buildVenueResult(venueB, rateB, noteB, rateIsLiveB);
 
     const comparison: ComparisonResult = { aToBSim: null, bToASim: null };
+    // An effective rate derived from the wallet's OWN fills on a venue must not be
+    // overwritten by a projection computed from the other venue's history.
+    let aActualRateSet = false;
 
     // aToBSim: venueA actual fills vs simulated venueB cost (with carry projection)
     if (venueAResult.wallet !== null) {
@@ -1797,6 +1824,7 @@ export async function GET(req: Request) {
           comparison.aToBSim = r.sim;
           venueAResult.effectiveRateBps = r.hlNetBps;
           venueAResult.effectiveRateNote = `${r.hlNetBps.toFixed(2)} bps net (fees + funding)`;
+          aActualRateSet = true;
           venueBResult.effectiveRateBps = r.gainsEffBps;
           venueBResult.effectiveRateNote = `${r.gainsEffBps.toFixed(2)} bps effective (your coins)`;
         }
@@ -1844,12 +1872,13 @@ export async function GET(req: Request) {
             };
           }
 
-          // HL→GMX: use wallet's own GMX history as carry proxy
+          // HL→GMX: use wallet's own GMX history as carry proxy.
+          // Funding stays SIGNED: net funding received on GMX projects as a credit.
           const gmxForA = gmxWalletData as GmxWalletData | null;
           if (venueA === "hyperliquid" && venueB === "gmx-v2" && gmxForA !== null && gmxForA.notionalUsd > 0) {
             const takerFees = equivFees;
             const gmxBorrowRate = gmxForA.borrowingFeesUsdc / gmxForA.notionalUsd;
-            const gmxFundingRate = Math.max(0, gmxForA.fundingFeesUsdc) / gmxForA.notionalUsd;
+            const gmxFundingRate = gmxForA.fundingFeesUsdc / gmxForA.notionalUsd;
             const gmxBorrowProj = stats.notional * gmxBorrowRate;
             const gmxFundingProj = stats.notional * gmxFundingRate;
             equivFees += gmxBorrowProj + gmxFundingProj;
@@ -1858,15 +1887,17 @@ export async function GET(req: Request) {
               borrowFees: gmxBorrowProj,
               fundingFees: gmxFundingProj,
               borrowProjected: gmxBorrowProj > 0.01,
-              fundingProjected: gmxFundingProj > 0.01,
+              fundingProjected: Math.abs(gmxFundingProj) > 0.01,
             };
           }
 
-          // Generic carry: dYdX, Paradex, and any future venue with rate data
+          // Generic carry: dYdX, Paradex, and any future venue with rate data.
+          // Math.abs on funding: a pure credit (negative fundingFees) must still be
+          // projected — dropping it would bias the comparison toward the source venue.
           if (!projectedCarry && positions.length > 0) {
             const bCarry = getVenueCarryRates(venueB);
             const { borrowFees, fundingFees } = estimateCarryFees(positions, bCarry);
-            if (borrowFees > 0.001 || fundingFees > 0.001) {
+            if (borrowFees > 0.001 || Math.abs(fundingFees) > 0.001) {
               const takerFees = equivFees;
               equivFees += borrowFees + fundingFees;
               projectedCarry = {
@@ -1874,7 +1905,7 @@ export async function GET(req: Request) {
                 borrowFees,
                 fundingFees,
                 borrowProjected: borrowFees > 0.01,
-                fundingProjected: fundingFees > 0.01,
+                fundingProjected: Math.abs(fundingFees) > 0.01,
               };
             }
           }
@@ -1888,9 +1919,12 @@ export async function GET(req: Request) {
             projectedCarry,
           };
           if (stats.notional > 0) {
+            const bBps = (equivFees / stats.notional) * 10000;
             venueAResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
             venueAResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
-            venueBResult.effectiveRateBps = (equivFees / stats.notional) * 10000;
+            aActualRateSet = true;
+            venueBResult.effectiveRateBps = bBps;
+            venueBResult.effectiveRateNote = `${bBps.toFixed(2)} bps projected (your ${venueAResult.name} trades)`;
           }
         }
       }
@@ -1904,8 +1938,11 @@ export async function GET(req: Request) {
           comparison.bToASim = r.sim;
           venueBResult.effectiveRateBps = r.hlNetBps;
           venueBResult.effectiveRateNote = `${r.hlNetBps.toFixed(2)} bps net (fees + funding)`;
-          venueAResult.effectiveRateBps = r.gainsEffBps;
-          venueAResult.effectiveRateNote = `${r.gainsEffBps.toFixed(2)} bps effective (your coins)`;
+          // Don't overwrite the Gains wallet's own-fills rate with the HL-derived projection.
+          if (!aActualRateSet) {
+            venueAResult.effectiveRateBps = r.gainsEffBps;
+            venueAResult.effectiveRateNote = `${r.gainsEffBps.toFixed(2)} bps effective (your coins)`;
+          }
         }
       } else {
         const stats = walletStats(venueB, venueBResult.wallet, venueA);
@@ -1952,11 +1989,12 @@ export async function GET(req: Request) {
           }
 
           // HL→GMX (venueB=HL, venueA=GMX)
+          // Funding stays SIGNED: net funding received on GMX projects as a credit.
           const gmxForB = gmxWalletData as GmxWalletData | null;
           if (venueB === "hyperliquid" && venueA === "gmx-v2" && gmxForB !== null && gmxForB.notionalUsd > 0) {
             const takerFees = equivFees;
             const gmxBorrowRate = gmxForB.borrowingFeesUsdc / gmxForB.notionalUsd;
-            const gmxFundingRate = Math.max(0, gmxForB.fundingFeesUsdc) / gmxForB.notionalUsd;
+            const gmxFundingRate = gmxForB.fundingFeesUsdc / gmxForB.notionalUsd;
             const gmxBorrowProj = stats.notional * gmxBorrowRate;
             const gmxFundingProj = stats.notional * gmxFundingRate;
             equivFees += gmxBorrowProj + gmxFundingProj;
@@ -1965,15 +2003,17 @@ export async function GET(req: Request) {
               borrowFees: gmxBorrowProj,
               fundingFees: gmxFundingProj,
               borrowProjected: gmxBorrowProj > 0.01,
-              fundingProjected: gmxFundingProj > 0.01,
+              fundingProjected: Math.abs(gmxFundingProj) > 0.01,
             };
           }
 
-          // Generic carry projection
+          // Generic carry projection.
+          // Math.abs on funding: a pure credit (negative fundingFees) must still be
+          // projected — dropping it would bias the comparison toward the source venue.
           if (!projectedCarry && positions.length > 0) {
             const aCarry = getVenueCarryRates(venueA);
             const { borrowFees, fundingFees } = estimateCarryFees(positions, aCarry);
-            if (borrowFees > 0.001 || fundingFees > 0.001) {
+            if (borrowFees > 0.001 || Math.abs(fundingFees) > 0.001) {
               const takerFees = equivFees;
               equivFees += borrowFees + fundingFees;
               projectedCarry = {
@@ -1981,7 +2021,7 @@ export async function GET(req: Request) {
                 borrowFees,
                 fundingFees,
                 borrowProjected: borrowFees > 0.01,
-                fundingProjected: fundingFees > 0.01,
+                fundingProjected: Math.abs(fundingFees) > 0.01,
               };
             }
           }
@@ -1997,7 +2037,12 @@ export async function GET(req: Request) {
           if (stats.notional > 0) {
             venueBResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
             venueBResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
-            venueAResult.effectiveRateBps = (equivFees / stats.notional) * 10000;
+            // Don't overwrite venueA's own-fills rate with a projection from venueB's history.
+            if (!aActualRateSet) {
+              const aBps = (equivFees / stats.notional) * 10000;
+              venueAResult.effectiveRateBps = aBps;
+              venueAResult.effectiveRateNote = `${aBps.toFixed(2)} bps projected (your ${venueBResult.name} trades)`;
+            }
           }
         }
       }
