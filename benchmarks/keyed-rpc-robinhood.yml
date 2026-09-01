@@ -43,6 +43,13 @@ findings:
   - "{{name:alchemy}} records {{p50:alchemy}} via its edge infrastructure."
   - "{{name:quicknode}} delivers {{p50:quicknode}} via its shared-endpoint fleet."
 
+# Single-vantage bench: the by-region grid and any region-aware surface
+# show only the Singapore probe. The us-east series still exists in
+# Prometheus (staging exposes it via region tabs) but prod does not
+# surface it.
+aggregate_filters:
+  region: sgp
+
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
     a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h). It is the lowest-latency keyed provider for Robinhood Chain in this benchmark."
