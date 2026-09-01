@@ -131,8 +131,12 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // too so newly added dimension values (e.g. region opts added to
     // an existing bench) surface immediately on the compare matrix
     // and the bench page filters without waiting on the materialise
-    // worker to rewrite the snapshot.
-    dimensions: spec.dimensions ?? stored.dimensions,
+    // worker to rewrite the snapshot. No `?? stored` fallback: the
+    // live YAML is the source of truth, so a spec that declares NO
+    // dimensions must not inherit tabs from a snapshot written by a
+    // worker running a divergent branch (keyed-rpc-robinhood: main is
+    // Singapore-only while dev/worker carries the region dims).
+    dimensions: spec.dimensions,
     // provider_notes is a YAML editorial declaration: drives the
     // per-provider chip rendered next to the name in the ranking row.
     // Overlay so newly added notes surface immediately without waiting
