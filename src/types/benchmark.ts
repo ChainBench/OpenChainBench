@@ -244,6 +244,15 @@ export type Benchmark = {
     kind?: { value: string; label: string }[];
     venue?: { value: string; label: string }[];
   };
+  /** Default dimension scope for the unfiltered build (spec
+   *  `aggregate_filters`). Presentation surfaces (e.g. the by-region
+   *  grid) also read it to restrict what a single-vantage bench shows. */
+  aggregateFilters?: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+  };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers" | "RWA";
   results: ProviderResult[];
   /** Per-chain leader, computed only on the unfiltered ("All chains") view
