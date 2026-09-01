@@ -145,6 +145,7 @@ export function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
     providerNotes: spec.provider_notes,
   };

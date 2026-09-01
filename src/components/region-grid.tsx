@@ -7,14 +7,39 @@ import { buildProviderColors } from "@/lib/series-colors";
 
 type Props = { benchmark: Benchmark };
 
-const REGIONS = [
+const LEGACY_REGIONS = [
   { key: "us-east", label: "US-East" },
   { key: "eu-west", label: "EU-West" },
   { key: "ap-southeast", label: "AP-Southeast" },
 ] as const;
 
+const REGION_LABELS: Record<string, string> = {
+  "us-east": "US-East",
+  "us-west": "US-West",
+  "eu-west": "EU-West",
+  "ap-southeast": "AP-Southeast",
+  sgp: "Singapore",
+  global: "Global",
+};
+
+/** Columns are driven by the live spec, not by whatever regions the
+ *  snapshot happens to carry (prod and staging share worker snapshots,
+ *  so a divergent branch's regions would otherwise leak):
+ *   1. dimensions.region declared → those columns, in declared order.
+ *   2. aggregate_filters.region pinned → that single column.
+ *   3. neither → the legacy fixed three-column layout. */
+function regionColumns(b: Benchmark): { key: string; label: string }[] {
+  const dims = (b.dimensions?.region ?? []).filter((r) => r.value !== "all");
+  if (dims.length > 0) return dims.map((r) => ({ key: r.value, label: r.label }));
+  const pinned = b.aggregateFilters?.region;
+  if (pinned) return [{ key: pinned, label: REGION_LABELS[pinned] ?? pinned }];
+  return [...LEGACY_REGIONS];
+}
+
 export function RegionGrid({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
+
+  const REGIONS = useMemo(() => regionColumns(benchmark), [benchmark]);
 
   // Both maps recompute O(n*m) over results × regions. Memoise so the
   // grid doesn't reprice every cell on each parent re-render (parent
@@ -32,7 +57,7 @@ export function RegionGrid({ benchmark }: Props) {
       map.set(region.key, m);
     }
     return map;
-  }, [results, extras.regions]);
+  }, [results, extras.regions, REGIONS]);
 
   if (!results.length) return null;
 
