@@ -46,11 +46,17 @@ findings:
 # fixed for the whole bench, so cells key on provider and region.
 rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="robinhood",tier="keyed"})
 
+# Headline view pinned to the Singapore probe: the default (unfiltered)
+# build, TL;DR, JSON-LD and OG cite the sgp slice; the US-East tab
+# re-scopes on click. No "all" option on purpose — an average across a
+# healthy region and a degraded one describes neither.
+aggregate_filters:
+  region: sgp
+
 dimensions:
   region:
-    - { value: all,     label: All regions }
-    - { value: us-east, label: US-East }
     - { value: sgp,     label: Singapore }
+    - { value: us-east, label: US-East }
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
