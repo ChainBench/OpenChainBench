@@ -113,6 +113,25 @@ const nextConfig: NextConfig = {
         headers: SECURITY_HEADERS,
       },
       {
+        // The RPC speed test fires fetch() at user-supplied endpoints
+        // straight from the browser — the whole product. The site-wide
+        // connect-src allowlist blocked every probe (surfaced as a fake
+        // "CORS" failure on endpoints that are actually CORS-open, e.g.
+        // publicnode). Open connect-src to any https origin on THIS
+        // route only; every other directive keeps the tight policy.
+        source: "/speedtest-rpc",
+        headers: [
+          ...SECURITY_HEADERS.filter((h) => h.key !== "Content-Security-Policy"),
+          {
+            key: "Content-Security-Policy",
+            value: CSP.replace(
+              /connect-src [^;]+/,
+              `connect-src 'self' https: ${RELAY_WS}`,
+            ),
+          },
+        ],
+      },
+      {
         // Badges are designed to be embedded as <img> in third-party
         // READMEs and blogs. Override frame-ancestors so SVG embedding
         // via <iframe>/<object> also works. Drop the X-Frame-Options
