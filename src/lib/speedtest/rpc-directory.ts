@@ -1,12 +1,13 @@
 /**
- * Public no-key RPC directory for the browser speed test, derived from
- * the rpc-capabilities harness config (harnesses/rpc-capabilities/cmd/
- * script/config.go) — i.e. exactly the endpoints the public per-chain
- * benches probe continuously. EVM chains only: the browser engine
- * speaks eth_* (solana/cosmos/polkadot kinds need different payloads).
+ * Public no-key RPC directory for the browser speed test.
  *
- * GENERATED — regenerate by re-running the extraction against the
- * harness config when chains/endpoints change (see PR #2241).
+ * GENERATED from the rpc-capabilities harness config CROSS-REFERENCED
+ * with each chain's public bench spec (benchmarks/<chain>-rpc.yml):
+ * only providers that actually rank on the public leaderboard are
+ * listed — MEV-protection gateways (flashbots, bloxroute) and other
+ * non-cohort probes are excluded, mirroring the site's own
+ * read-latency methodology. EVM chains only (browser engine speaks
+ * eth_*). Regenerate with the extraction script in PR #2242.
  */
 
 export type DirectoryEndpoint = { provider: string; url: string };
@@ -15,10 +16,10 @@ export type DirectoryChain = { slug: string; name: string; endpoints: DirectoryE
 export const FEATURED_CHAINS = ["ethereum", "base", "arbitrum", "bnb", "polygon", "optimism", "avalanche", "monad"];
 
 export const RPC_DIRECTORY: DirectoryChain[] = [
-  { slug: "ethereum", name: "Ethereum", endpoints: [{ provider: "PublicNode", url: "https://ethereum-rpc.publicnode.com" }, { provider: "dRPC", url: "https://eth.drpc.org" }, { provider: "MeowRPC", url: "https://eth.meowrpc.com" }, { provider: "Flashbots Protect", url: "https://rpc.flashbots.net" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/mainnet" }, { provider: "Nodies (POKT)", url: "https://eth-pokt.nodies.app" }, { provider: "Lava Network", url: "https://eth1.lava.build" }, { provider: "bloXroute", url: "https://eth.rpc.blxrbdn.com" }] },
-  { slug: "base", name: "Base", endpoints: [{ provider: "PublicNode", url: "https://base-rpc.publicnode.com" }, { provider: "dRPC", url: "https://base.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/base" }, { provider: "Nodies (POKT)", url: "https://base-pokt.nodies.app" }, { provider: "Base Official", url: "https://mainnet.base.org" }, { provider: "Blast API", url: "https://base-mainnet.public.blastapi.io" }, { provider: "bloXroute", url: "https://base.rpc.blxrbdn.com" }] },
-  { slug: "arbitrum", name: "Arbitrum One", endpoints: [{ provider: "PublicNode", url: "https://arbitrum-one-rpc.publicnode.com" }, { provider: "dRPC", url: "https://arbitrum.drpc.org" }, { provider: "MeowRPC", url: "https://arbitrum.meowrpc.com" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/arbitrum" }, { provider: "Nodies (POKT)", url: "https://arb-pokt.nodies.app" }, { provider: "Lava Network", url: "https://arb1.lava.build" }, { provider: "Arbitrum Official", url: "https://arb1.arbitrum.io/rpc" }, { provider: "Blast API", url: "https://arbitrum-one.public.blastapi.io" }] },
-  { slug: "bnb", name: "BNB Chain", endpoints: [{ provider: "PublicNode", url: "https://bsc-rpc.publicnode.com" }, { provider: "dRPC", url: "https://bsc.drpc.org" }, { provider: "Nodies (POKT)", url: "https://bsc-pokt.nodies.app" }, { provider: "Binance Official", url: "https://bsc-dataseed1.binance.org" }, { provider: "Blast API", url: "https://bsc-mainnet.public.blastapi.io" }, { provider: "bloXroute", url: "https://bsc.rpc.blxrbdn.com" }] },
+  { slug: "ethereum", name: "Ethereum", endpoints: [{ provider: "PublicNode", url: "https://ethereum-rpc.publicnode.com" }, { provider: "dRPC", url: "https://eth.drpc.org" }, { provider: "MeowRPC", url: "https://eth.meowrpc.com" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/mainnet" }, { provider: "Nodies (POKT)", url: "https://eth-pokt.nodies.app" }, { provider: "Lava Network", url: "https://eth1.lava.build" }] },
+  { slug: "base", name: "Base", endpoints: [{ provider: "PublicNode", url: "https://base-rpc.publicnode.com" }, { provider: "dRPC", url: "https://base.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/base" }, { provider: "Nodies (POKT)", url: "https://base-pokt.nodies.app" }, { provider: "Base Official", url: "https://mainnet.base.org" }] },
+  { slug: "arbitrum", name: "Arbitrum One", endpoints: [{ provider: "PublicNode", url: "https://arbitrum-one-rpc.publicnode.com" }, { provider: "dRPC", url: "https://arbitrum.drpc.org" }, { provider: "MeowRPC", url: "https://arbitrum.meowrpc.com" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/arbitrum" }, { provider: "Nodies (POKT)", url: "https://arb-pokt.nodies.app" }, { provider: "Lava Network", url: "https://arb1.lava.build" }, { provider: "Arbitrum Official", url: "https://arb1.arbitrum.io/rpc" }] },
+  { slug: "bnb", name: "BNB Chain", endpoints: [{ provider: "PublicNode", url: "https://bsc-rpc.publicnode.com" }, { provider: "dRPC", url: "https://bsc.drpc.org" }, { provider: "Nodies (POKT)", url: "https://bsc-pokt.nodies.app" }, { provider: "Binance Official", url: "https://bsc-dataseed1.binance.org" }] },
   { slug: "polygon", name: "Polygon", endpoints: [{ provider: "PublicNode", url: "https://polygon-bor-rpc.publicnode.com" }, { provider: "dRPC", url: "https://polygon.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/polygon" }, { provider: "Nodies (POKT)", url: "https://polygon-pokt.nodies.app" }] },
   { slug: "optimism", name: "Optimism", endpoints: [{ provider: "PublicNode", url: "https://optimism-rpc.publicnode.com" }, { provider: "dRPC", url: "https://optimism.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/optimism" }, { provider: "Nodies (POKT)", url: "https://op-pokt.nodies.app" }, { provider: "Optimism Official", url: "https://mainnet.optimism.io" }] },
   { slug: "avalanche", name: "Avalanche C-Chain", endpoints: [{ provider: "PublicNode", url: "https://avalanche-c-chain-rpc.publicnode.com" }, { provider: "dRPC", url: "https://avalanche.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/avalanche" }, { provider: "Avalanche Official", url: "https://api.avax.network/ext/bc/C/rpc" }] },
@@ -42,7 +43,7 @@ export const RPC_DIRECTORY: DirectoryChain[] = [
   { slug: "cronos", name: "Cronos", endpoints: [{ provider: "PublicNode", url: "https://cronos-evm-rpc.publicnode.com" }, { provider: "dRPC", url: "https://cronos.drpc.org" }, { provider: "Cronos Official", url: "https://evm.cronos.org" }] },
   { slug: "cronos-zkevm", name: "Cronos zkEVM", endpoints: [{ provider: "Crypto.com Foundation", url: "https://mainnet.zkevm.cronos.org" }, { provider: "dRPC", url: "https://cronos-zkevm.drpc.org" }] },
   { slug: "cyber", name: "Cyber", endpoints: [{ provider: "Cyber Network", url: "https://rpc.cyber.co" }, { provider: "AltLayer", url: "https://cyber.alt.technology" }, { provider: "Thirdweb", url: "https://7560.rpc.thirdweb.com" }] },
-  { slug: "ethereum-classic", name: "Ethereum Classic", endpoints: [{ provider: "dRPC", url: "https://etc.drpc.org" }, { provider: "ETC Desktop", url: "https://rpc.etcdesktop.com" }, { provider: "ETCMC", url: "https://etcmc.rpc.nz" }] },
+  { slug: "ethereum-classic", name: "Ethereum Classic", endpoints: [{ provider: "dRPC", url: "https://etc.drpc.org" }] },
   { slug: "etherlink", name: "Etherlink", endpoints: [{ provider: "Etherlink Foundation", url: "https://node.mainnet.etherlink.com" }, { provider: "dRPC", url: "https://etherlink.drpc.org" }] },
   { slug: "fantom", name: "Fantom", endpoints: [{ provider: "Fantom Foundation", url: "https://rpcapi.fantom.network" }, { provider: "dRPC", url: "https://fantom.drpc.org" }, { provider: "Thirdweb", url: "https://250.rpc.thirdweb.com" }] },
   { slug: "filecoin", name: "Filecoin EVM", endpoints: [{ provider: "Glif", url: "https://api.node.glif.io/rpc/v1" }, { provider: "dRPC", url: "https://filecoin.drpc.org" }, { provider: "Ankr", url: "https://rpc.ankr.com/filecoin" }] },
@@ -50,7 +51,7 @@ export const RPC_DIRECTORY: DirectoryChain[] = [
   { slug: "fraxtal", name: "Fraxtal", endpoints: [{ provider: "PublicNode", url: "https://fraxtal-rpc.publicnode.com" }, { provider: "dRPC", url: "https://fraxtal.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/fraxtal" }, { provider: "Fraxtal Official", url: "https://rpc.frax.com" }] },
   { slug: "fuse", name: "Fuse Network", endpoints: [{ provider: "Fuse Foundation", url: "https://rpc.fuse.io" }, { provider: "dRPC", url: "https://fuse.drpc.org" }, { provider: "Thirdweb", url: "https://122.rpc.thirdweb.com" }] },
   { slug: "gnosis", name: "Gnosis", endpoints: [{ provider: "PublicNode", url: "https://gnosis-rpc.publicnode.com" }, { provider: "dRPC", url: "https://gnosis.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/gnosis" }, { provider: "Gnosis Official", url: "https://rpc.gnosischain.com" }] },
-  { slug: "gravity", name: "Gravity", endpoints: [{ provider: "PublicNode", url: "https://rpc.gravity.xyz" }, { provider: "Ankr", url: "https://rpc.ankr.com/gravity" }] },
+  { slug: "gravity", name: "Gravity", endpoints: [{ provider: "Ankr", url: "https://rpc.ankr.com/gravity" }] },
   { slug: "haqq", name: "HAQQ", endpoints: [{ provider: "PublicNode", url: "https://haqq-evm-rpc.publicnode.com" }, { provider: "dRPC", url: "https://haqq.drpc.org" }, { provider: "HAQQ Foundation", url: "https://rpc.eth.haqq.network" }] },
   { slug: "harmony", name: "Harmony", endpoints: [{ provider: "Harmony S0", url: "https://a.api.s0.t.hmny.io" }] },
   { slug: "hemi", name: "Hemi", endpoints: [{ provider: "Hemi Labs", url: "https://rpc.hemi.network/rpc" }, { provider: "dRPC", url: "https://hemi.drpc.org" }, { provider: "Thirdweb", url: "https://43111.rpc.thirdweb.com" }] },
@@ -72,14 +73,12 @@ export const RPC_DIRECTORY: DirectoryChain[] = [
   { slug: "moonriver", name: "Moonriver", endpoints: [{ provider: "Moonbeam Foundation", url: "https://rpc.api.moonriver.moonbeam.network" }, { provider: "PublicNode", url: "https://moonriver-rpc.publicnode.com" }, { provider: "OnFinality", url: "https://moonriver.api.onfinality.io/public" }] },
   { slug: "morph", name: "Morph", endpoints: [{ provider: "Morph", url: "https://rpc.morphl2.io" }, { provider: "dRPC", url: "https://morph.drpc.org" }, { provider: "Thirdweb", url: "https://2818.rpc.thirdweb.com" }, { provider: "QuickNode", url: "https://rpc-quicknode.morph.network" }] },
   { slug: "neon", name: "Neon EVM", endpoints: [{ provider: "P2P Neon Proxy", url: "https://neon-proxy-mainnet.solana.p2p.org" }, { provider: "Thirdweb", url: "https://245022934.rpc.thirdweb.com" }, { provider: "Everstake", url: "https://neon-mainnet.everstake.one" }] },
-  { slug: "oasis-emerald", name: "Oasis Emerald", endpoints: [{ provider: "PublicNode", url: "https://emerald.oasis.io" }] },
-  { slug: "oasis-sapphire", name: "Oasis Sapphire", endpoints: [{ provider: "PublicNode", url: "https://sapphire.oasis.io" }] },
   { slug: "oktc", name: "OKTC", endpoints: [{ provider: "OKX Chain Official", url: "https://exchainrpc.okex.org" }, { provider: "1RPC", url: "https://1rpc.io/oktc" }, { provider: "dRPC", url: "https://oktc.drpc.org" }] },
   { slug: "opbnb", name: "opBNB", endpoints: [{ provider: "BNB Chain Team", url: "https://opbnb-mainnet-rpc.bnbchain.org" }, { provider: "PublicNode", url: "https://opbnb-rpc.publicnode.com" }, { provider: "dRPC", url: "https://opbnb.drpc.org" }] },
-  { slug: "plume", name: "Plume", endpoints: [{ provider: "PublicNode", url: "https://plume-rpc.publicnode.com" }, { provider: "dRPC", url: "https://plume.drpc.org" }] },
+  { slug: "plume", name: "Plume", endpoints: [{ provider: "dRPC", url: "https://plume.drpc.org" }] },
   { slug: "polygon-zkevm", name: "Polygon zkEVM", endpoints: [{ provider: "Polygon", url: "https://zkevm-rpc.com" }, { provider: "dRPC", url: "https://polygon-zkevm.drpc.org" }, { provider: "Thirdweb", url: "https://1101.rpc.thirdweb.com" }] },
   { slug: "pulsechain", name: "PulseChain", endpoints: [{ provider: "PublicNode", url: "https://pulsechain-rpc.publicnode.com" }, { provider: "PulseChain Foundation", url: "https://rpc.pulsechain.com" }, { provider: "G4MM4", url: "https://rpc-pulsechain.g4mm4.io" }] },
-  { slug: "reya", name: "Reya Network", endpoints: [{ provider: "PublicNode", url: "https://rpc.reya.network" }, { provider: "Thirdweb", url: "https://1729.rpc.thirdweb.com" }] },
+  { slug: "reya", name: "Reya Network", endpoints: [{ provider: "Thirdweb", url: "https://1729.rpc.thirdweb.com" }] },
   { slug: "ronin", name: "Ronin", endpoints: [{ provider: "Sky Mavis", url: "https://api.roninchain.com/rpc" }, { provider: "Tenderly Gateway", url: "https://ronin.gateway.tenderly.co" }, { provider: "Thirdweb", url: "https://ronin.rpc.thirdweb.com" }] },
   { slug: "rootstock", name: "Rootstock", endpoints: [{ provider: "Rootstock Foundation", url: "https://public-node.rsk.co" }, { provider: "dRPC", url: "https://rootstock.drpc.org" }, { provider: "Thirdweb", url: "https://30.rpc.thirdweb.com" }] },
   { slug: "scroll", name: "Scroll", endpoints: [{ provider: "PublicNode", url: "https://scroll-rpc.publicnode.com" }, { provider: "dRPC", url: "https://scroll.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/scroll-mainnet" }] },
@@ -94,13 +93,12 @@ export const RPC_DIRECTORY: DirectoryChain[] = [
   { slug: "thundercore", name: "ThunderCore", endpoints: [{ provider: "ThunderCore Official", url: "https://mainnet-rpc.thundercore.com" }, { provider: "ThunderToken", url: "https://mainnet-rpc.thundertoken.net" }, { provider: "dRPC", url: "https://thundercore.drpc.org" }] },
   { slug: "tron", name: "TRON", endpoints: [{ provider: "TronGrid", url: "https://api.trongrid.io/jsonrpc" }, { provider: "PublicNode", url: "https://tron.publicnode.com/jsonrpc" }] },
   { slug: "unichain", name: "Unichain", endpoints: [{ provider: "PublicNode", url: "https://unichain-rpc.publicnode.com" }, { provider: "dRPC", url: "https://unichain.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/unichain" }, { provider: "Unichain Official", url: "https://mainnet.unichain.org" }] },
-  { slug: "vana", name: "Vana", endpoints: [{ provider: "PublicNode", url: "https://rpc.vana.org" }] },
   { slug: "viction", name: "Viction", endpoints: [{ provider: "Viction Official", url: "https://rpc.viction.xyz" }, { provider: "Viction RPC2", url: "https://rpc2.viction.xyz" }, { provider: "dRPC", url: "https://viction.drpc.org" }] },
   { slug: "warden", name: "Warden Protocol", endpoints: [{ provider: "PublicNode", url: "https://warden-evm-rpc.publicnode.com" }, { provider: "Warden Foundation", url: "https://evm.wardenprotocol.org" }] },
   { slug: "wemix", name: "WEMIX", endpoints: [{ provider: "WeMade", url: "https://api.wemix.com" }, { provider: "dRPC", url: "https://wemix.drpc.org" }] },
   { slug: "world-chain", name: "World Chain", endpoints: [{ provider: "World Chain", url: "https://worldchain-mainnet.g.alchemy.com/public" }, { provider: "dRPC", url: "https://worldchain.drpc.org" }, { provider: "Tenderly Gateway", url: "https://worldchain-mainnet.gateway.tenderly.co" }] },
   { slug: "xlayer", name: "X Layer", endpoints: [{ provider: "X Layer", url: "https://rpc.xlayer.tech" }, { provider: "dRPC", url: "https://xlayer.drpc.org" }, { provider: "Thirdweb", url: "https://196.rpc.thirdweb.com" }] },
-  { slug: "xdc", name: "XDC Network", endpoints: [{ provider: "PublicNode", url: "https://rpc.xdc.org" }, { provider: "Ankr", url: "https://rpc.ankr.com/xdc" }, { provider: "XDC eRPC", url: "https://erpc.xinfin.network" }, { provider: "XDC.org", url: "https://rpc.xdc.org" }] },
+  { slug: "xdc", name: "XDC Network", endpoints: [{ provider: "Ankr", url: "https://rpc.ankr.com/xdc" }, { provider: "XDC eRPC", url: "https://erpc.xinfin.network" }] },
   { slug: "zetachain", name: "ZetaChain", endpoints: [{ provider: "Thirdweb", url: "https://7000.rpc.thirdweb.com" }] },
   { slug: "zircuit", name: "Zircuit", endpoints: [{ provider: "Zircuit Foundation", url: "https://mainnet.zircuit.com" }] },
   { slug: "zksync", name: "zkSync Era", endpoints: [{ provider: "dRPC", url: "https://zksync.drpc.org" }, { provider: "Tenderly Gateway", url: "https://gateway.tenderly.co/public/zksync" }, { provider: "zkSync Official", url: "https://mainnet.era.zksync.io" }] },
