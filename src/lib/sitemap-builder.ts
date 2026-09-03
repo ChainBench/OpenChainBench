@@ -147,6 +147,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE.url}/speedtest-rpc`, lastModified: pageMtime("speedtest-rpc/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
