@@ -14,6 +14,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FEATURED_CHAINS,
+  RPC_DIRECTORY,
+  providerForUrl,
+  type DirectoryChain,
+} from "@/lib/speedtest/rpc-directory";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -264,9 +270,17 @@ function hostOf(url: string): string {
   }
 }
 
+/** Display name: benchmarked provider name when the URL is from our
+ *  directory, bare host otherwise. */
+function epLabel(ep: { url: string; host: string }): string {
+  return providerForUrl(ep.url) ?? ep.host;
+}
+
 export function SpeedtestRpcClient() {
   const [stage, setStage] = useState<Stage>("setup");
   const [inputs, setInputs] = useState<string[]>(["", ""]);
+  const [chainQuery, setChainQuery] = useState("");
+  const [pickedChain, setPickedChain] = useState<string | null>(null);
   const [durationSec, setDurationSec] = useState(30);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -279,6 +293,20 @@ export function SpeedtestRpcClient() {
   const addInput = () => setInputs((xs) => [...xs, ""]);
   const removeInput = (i: number) =>
     setInputs((xs) => (xs.length <= 1 ? xs : xs.filter((_, j) => j !== i)));
+
+  const chainMatches = useMemo(() => {
+    const q = chainQuery.trim().toLowerCase();
+    if (!q) return [];
+    return RPC_DIRECTORY.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.slug.includes(q),
+    ).slice(0, 8);
+  }, [chainQuery]);
+
+  const pickChain = (c: DirectoryChain) => {
+    setInputs(c.endpoints.map((e) => e.url));
+    setPickedChain(c.slug);
+    setChainQuery("");
+  };
 
   const validCount = inputs.filter((u) => {
     try {
@@ -458,9 +486,73 @@ export function SpeedtestRpcClient() {
       {/* ── Stage: setup ─────────────────────────────────────────── */}
       {stage === "setup" && (
         <section className="st-stage card-soft rounded-xl p-5 sm:p-8">
-          <p className="label-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint mb-4">
+          <p className="label-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint mb-3">
             1 · Endpoints
           </p>
+
+          {/* Prefill from the benchmarked no-key cohort: pick a chain and
+              get exactly the endpoints the public per-chain benches probe
+              continuously (90 EVM chains, 291 endpoints). */}
+          <div className="mb-5 rounded-lg border border-rule px-4 py-3">
+            <p className="text-[12px] text-ink-soft mb-2">
+              Prefill with the endpoints we already benchmark — pick a chain:
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {FEATURED_CHAINS.map((slug) => {
+                const c = RPC_DIRECTORY.find((x) => x.slug === slug);
+                if (!c) return null;
+                const activeChip = pickedChain === slug;
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    onClick={() => pickChain(c)}
+                    className={`label-mono text-[11px] rounded-full px-3 py-1 border transition-colors ${
+                      activeChip
+                        ? "border-ink text-paper"
+                        : "border-rule text-ink-soft hover:border-ink/40 hover:text-ink"
+                    }`}
+                    style={activeChip ? { background: "var(--color-ink)", color: "var(--color-paper, #fff)" } : undefined}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative">
+              <input
+                value={chainQuery}
+                onChange={(e) => setChainQuery(e.target.value)}
+                placeholder={`Search ${RPC_DIRECTORY.length} benchmarked chains… (e.g. Sonic, Linea, Scroll)`}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full rounded-md border border-rule bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink-faint/60 focus:border-ink/50 focus:outline-none"
+              />
+              {chainMatches.length > 0 && (
+                <ul className="absolute z-20 mt-1 w-full rounded-md border border-rule bg-paper shadow-lg overflow-hidden" style={{ background: "var(--color-paper, #fff)" }}>
+                  {chainMatches.map((c) => (
+                    <li key={c.slug}>
+                      <button
+                        type="button"
+                        onClick={() => pickChain(c)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-left text-[13px] text-ink hover:bg-ink/5 transition-colors"
+                      >
+                        <span>{c.name}</span>
+                        <span className="label-mono text-[10px] text-ink-faint">
+                          {c.endpoints.length} endpoint{c.endpoints.length > 1 ? "s" : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {pickedChain && (
+              <p className="mt-2 label-mono text-[10px]" style={{ color: "var(--color-good)" }}>
+                ✓ {RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — {inputs.length} benchmarked endpoints loaded. Add your own keyed URLs below to race them.
+              </p>
+            )}
+          </div>
           <div className="space-y-2">
             {inputs.map((u, i) => (
               <div key={i} className="flex gap-2">
@@ -490,13 +582,6 @@ export function SpeedtestRpcClient() {
               className="label-mono text-[11px] border border-rule rounded-md px-3 py-1.5 text-ink-soft hover:text-ink hover:border-ink/40 transition-colors"
             >
               + Add endpoint
-            </button>
-            <button
-              type="button"
-              onClick={() => setInputs(EXAMPLE_URLS.slice())}
-              className="label-mono text-[11px] text-ink-faint hover:text-ink transition-colors"
-            >
-              Try with public Ethereum RPCs
             </button>
           </div>
 
@@ -589,13 +674,13 @@ export function SpeedtestRpcClient() {
                       <>
                         <Gauge
                           ms={ep.lastMs}
-                          label={ep.host}
+                          label={epLabel(ep)}
                           sub={
                             ep.status === "checking"
                               ? "checking reachability"
                               : isActive
                                 ? "probing…"
-                                : "eth_getBlockByNumber"
+                                : ep.host
                           }
                           className="mx-auto w-full max-w-[240px]"
                         />
@@ -639,7 +724,7 @@ export function SpeedtestRpcClient() {
               <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-2">
                 Fastest from your connection
               </p>
-              <p className="display text-3xl sm:text-4xl text-ink break-all">{ranked[0].ep.host}</p>
+              <p className="display text-3xl sm:text-4xl text-ink break-all">{epLabel(ranked[0].ep)}</p>
               <p className="mt-2 display text-5xl sm:text-6xl tabular-nums" style={{ color: msColor(ranked[0].s.p50) }}>
                 {Math.round(ranked[0].s.p50)}<span className="text-xl text-ink-faint ml-1">ms p50</span>
               </p>
@@ -655,7 +740,12 @@ export function SpeedtestRpcClient() {
               >
                 <div className="flex items-center gap-3">
                   <span className="label-mono text-[11px] text-ink-faint w-6">{String(i + 1).padStart(2, "0")}</span>
-                  <p className="font-mono text-[13px] text-ink truncate flex-1">{ep.host}</p>
+                  <p className="font-mono text-[13px] text-ink truncate flex-1">
+                    {epLabel(ep)}
+                    {providerForUrl(ep.url) && (
+                      <span className="text-ink-faint ml-2 text-[11px]">{ep.host}</span>
+                    )}
+                  </p>
                   <span className="display text-xl tabular-nums" style={{ color: Number.isNaN(s.p50) ? "var(--color-ink-faint)" : msColor(s.p50) }}>
                     {Number.isNaN(s.p50) ? "no data" : `${Math.round(s.p50)} ms`}
                   </span>
