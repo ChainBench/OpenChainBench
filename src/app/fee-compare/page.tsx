@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/page-metadata";
 import { FeeCompareClient } from "@/components/fee-compare-client";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { SITE } from "@/data/site";
 
 export const metadata: Metadata = pageMetadata({
   path: "/fee-compare",
@@ -26,8 +28,38 @@ export default async function FeeComparePage({
   const rawDays = parseInt(params.days ?? "90", 10);
   const initialDays = isFinite(rawDays) ? Math.min(180, Math.max(7, rawDays)) : 90;
 
+  // Only page on the site without JSON-LD until 2026-09: emit the same
+  // BreadcrumbList shape every hub page ships, plus a WebApplication
+  // node describing the comparison tool itself.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Perp DEX fee comparison", item: `${SITE.url}/fee-compare` },
+      ]),
+      {
+        "@type": "WebApplication",
+        "@id": `${SITE.url}/fee-compare#app`,
+        name: "Perp DEX fee comparison",
+        url: `${SITE.url}/fee-compare`,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Web",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        description:
+          "Compare taker fees between any two perp DEXs. Paste a wallet to see what was actually paid on Hyperliquid or Gains and what the same trades would have cost elsewhere.",
+        publisher: { "@id": `${SITE.url}/#org` },
+      },
+    ],
+  };
+
   return (
     <article className="mx-auto max-w-[720px] px-4 sm:px-6 py-10 sm:py-14">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+      />
       <p className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink-faint mb-3">
         Fee comparison
       </p>

@@ -10,6 +10,44 @@ import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 3600;
 
+/**
+ * Seed the live ticker with a real snapshot at ISR-regeneration time so
+ * the numbers exist in the cached HTML (most AI crawlers don't run JS
+ * and used to see dashes). Cost-neutral on Vercel: the fetch runs once
+ * per Data-Cache window (60s) shared across ALL visitors, never
+ * per-request — the page stays fully static/ISR. The client WebSocket
+ * takes over within seconds of hydration.
+ */
+async function fetchRelayStats(): Promise<
+  import("@/lib/live/types").GlobalView | null
+> {
+  try {
+    const res = await fetch("https://stream.openchainbench.com/stats", {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(3_000),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { global?: Record<string, number> };
+    const g = d.global;
+    if (!g || typeof g.vol24h !== "number") return null;
+    return {
+      vol24h: g.vol24h,
+      trades24h: g.trades24h ?? 0,
+      buys24h: g.buys24h ?? 0,
+      sells24h: g.sells24h ?? 0,
+      fees24h: g.fees24h ?? 0,
+      mcap: g.mcap ?? 0,
+      byChain: [],
+      lighthouseAt: g.lighthouseAt ?? 0,
+      mcapAt: g.mcapAt ?? 0,
+    };
+  } catch {
+    // Relay unreachable at regeneration time: render the pre-existing
+    // dashes rather than fail the page.
+    return null;
+  }
+}
+
 const DESCRIPTION =
   "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy. Open methodology, updated continuously.";
 
@@ -34,6 +72,7 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarksSafe();
+  const initialStats = await fetchRelayStats();
 
   // Same timestamp source the bench pages use for Dataset.dateModified:
   // the harness lastRunAt (real data timestamp, not build time). The
@@ -104,7 +143,7 @@ export default async function HomePage() {
             supported chains.
           </p>
         </header>
-        <LiveDashboard />
+        <LiveDashboard initialStats={initialStats} />
       </section>
 
       {/* Latest deployed benchmarks */}
