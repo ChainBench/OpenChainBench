@@ -347,19 +347,26 @@ function Gauge({
           </g>
         )}
       </svg>
-      <div className="absolute inset-x-0 bottom-0 text-center">
-        <div className="text-3xl sm:text-4xl tabular-nums leading-none font-light text-ink">
+      {/* Readout sits in the dial's open mouth (the 240° sweep leaves
+          the bottom-center free), Speedtest-style: number, then the unit
+          under it. Sized to never collide with the 1/1000 scale labels
+          at the mouth edges, at any tile width. */}
+      <div className="absolute inset-x-0 bottom-[26%] text-center pointer-events-none">
+        <div className="text-[26px] tabular-nums leading-none font-light text-ink">
           {eased == null ? "—" : Math.round(eased)}
-          <span className="text-sm ml-1.5 text-ink-faint">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
-              style={{ background: color }}
-            />
-            ms
-          </span>
         </div>
-        <p className="mt-1 label-mono text-[11px] text-ink truncate max-w-[90%] mx-auto">{label}</p>
-        <p className="label-mono text-[10px] text-ink-faint truncate">{sub}</p>
+        <div className="mt-0.5 label-mono text-[9px] text-ink-faint tracking-[0.14em]">
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle transition-colors duration-300"
+            style={{ background: color }}
+          />
+          MS
+        </div>
+      </div>
+      {/* Identity in normal flow below the dial: immune to overlap. */}
+      <div className="-mt-3 text-center">
+        <p className="label-mono text-[11px] text-ink truncate max-w-[92%] mx-auto">{label}</p>
+        <p className="label-mono text-[10px] text-ink-faint truncate max-w-[92%] mx-auto">{sub}</p>
       </div>
     </div>
   );
@@ -811,27 +818,22 @@ export function SpeedtestRpcClient() {
               const blocked = endpoints.filter((e) => e.status === "cors_blocked");
               return (
                 <>
-                  <div
-                    className={`mt-2 grid gap-4 ${
-                      visible.length <= 1
-                        ? "grid-cols-1 max-w-[340px] mx-auto"
-                        : visible.length === 2
-                          ? "grid-cols-1 sm:grid-cols-2"
-                          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                    }`}
-                  >
-                    {visible.map((ep) => {
+                  {/* Flex-wrap + justify-center: tiles keep an ideal width
+                      at every count and orphan rows self-center (4 tiles
+                      read as a clean 2x2, a lone 7th sits centered). */}
+                  <div className="mt-2 flex flex-wrap justify-center gap-4">
+                    {visible.map((ep, tileIdx) => {
                       const s = stats(ep);
                       const isActive = ep.id === activeId;
                       const dirEntry = directoryEntryForUrl(ep.url);
                       return (
                         <div
                           key={ep.id}
-                          className="rounded-xl border px-3 pt-3 pb-4 transition-all duration-300"
+                          className="st-row rounded-xl border border-rule bg-paper px-3 pt-3 pb-4 transition-all duration-300 w-full min-w-[230px] max-w-[280px] flex-1"
                           style={{
-                            borderColor: isActive ? "var(--color-ink)" : "var(--color-rule, #e2e8f0)",
-                            transform: isActive ? "translateY(-2px)" : undefined,
-                            boxShadow: isActive ? "0 6px 18px -8px rgba(15,23,42,0.25)" : undefined,
+                            animationDelay: `${tileIdx * 0.08}s`,
+                            borderColor: isActive ? "var(--color-ink)" : undefined,
+                            boxShadow: "0 2px 12px -6px rgba(15,23,42,0.12)",
                           }}
                         >
                           {dirEntry && (
