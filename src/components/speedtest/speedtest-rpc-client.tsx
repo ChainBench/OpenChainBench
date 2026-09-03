@@ -800,14 +800,11 @@ export function SpeedtestRpcClient() {
       {stage === "testing" && (
         <section className="st-stage">
           <div className="card-soft rounded-xl p-5 sm:p-8">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <p className="label-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
                 <span className="st-live inline-block w-2 h-2 rounded-full mr-2 align-middle" style={{ background: "var(--color-good)" }} />
                 Testing from your connection · round {round}
               </p>
-              <button type="button" onClick={stop} className="label-mono text-[11px] text-ink-faint hover:text-ink">
-                Stop early
-              </button>
             </div>
 
             {/* One speedometer per endpoint, all live at once. The
@@ -880,6 +877,25 @@ export function SpeedtestRpcClient() {
             <p className="mt-1 text-right label-mono text-[10px] text-ink-faint tabular-nums">
               {elapsed.toFixed(0)}s / {durationSec}s
             </p>
+
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={stop}
+                className="label-mono text-[12px] rounded-full px-6 py-2 border-2 transition-colors"
+                style={{ borderColor: "#ef4444", color: "#ef4444" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#ef4444";
+                  e.currentTarget.style.color = "#fff";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#ef4444";
+                }}
+              >
+                ■ Stop early
+              </button>
+            </div>
           </div>
         </section>
       )}
