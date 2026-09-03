@@ -77,9 +77,10 @@ export default function SpeedtestRpcPage() {
           </code>{" "}
           POST with a rotating request id, so no edge cache can answer without
           touching a real node. One warmup request absorbs the TCP + TLS
-          handshake, then endpoints are probed in randomized round-robin order
-          until the clock runs out — network wake-ups hit every endpoint
-          evenly. Responses are classified ok / http_err / jsonrpc_err /
+          handshake, then all endpoints are probed once per second in
+          staggered, randomized rounds until the clock runs out — request
+          bursts never align and network wake-ups hit every endpoint evenly.
+          Responses are classified ok / http_err / jsonrpc_err /
           timeout, and an endpoint reporting a block more than 20 behind the
           best tip in the same round is flagged stale. Latency percentiles use
           ok responses only, exactly like the{" "}
