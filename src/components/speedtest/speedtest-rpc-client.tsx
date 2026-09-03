@@ -169,45 +169,152 @@ function msColor(ms: number): string {
   return "#ef4444";
 }
 
+/** Smooth green→amber→red interpolation across the dial (t in 0..1),
+ *  Speedtest-style gradient fill but with latency semantics. */
+const GRAD_STOPS: [number, [number, number, number]][] = [
+  [0.0, [16, 185, 129]], // emerald (fast)
+  [0.55, [245, 158, 11]], // amber
+  [1.0, [239, 68, 68]], // red (slow)
+];
+function gradientColor(t: number): string {
+  const x = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < GRAD_STOPS.length; i++) {
+    const [t1, c1] = GRAD_STOPS[i];
+    const [t0, c0] = GRAD_STOPS[i - 1];
+    if (x <= t1) {
+      const f = (x - t0) / (t1 - t0);
+      const c = c0.map((v, j) => Math.round(v + (c1[j] - v) * f));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  return "rgb(239,68,68)";
+}
+
+/** rAF-driven exponential easing towards a moving target — the needle
+ *  and the readout glide continuously instead of jumping per sample,
+ *  which is what makes the dial read as a live instrument. */
+function useEased(target: number | null, tauMs = 220): number | null {
+  const [value, setValue] = useState<number | null>(target);
+  const valueRef = useRef<number | null>(target);
+  useEffect(() => {
+    if (target == null) {
+      valueRef.current = null;
+      setValue(null);
+      return;
+    }
+    if (valueRef.current == null) {
+      valueRef.current = target;
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    const step = (t: number) => {
+      const dt = t - last;
+      last = t;
+      const cur = valueRef.current ?? target;
+      const next = cur + (target - cur) * Math.min(1, dt / tauMs);
+      valueRef.current = next;
+      setValue(next);
+      if (Math.abs(target - next) > 0.4) raf = requestAnimationFrame(step);
+      else {
+        valueRef.current = target;
+        setValue(target);
+      }
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, tauMs]);
+  return value;
+}
+
+/** Last-N samples as tiny colored bars — motion + history at a glance. */
+function MiniSparkline({ samples }: { samples: Sample[] }) {
+  const last = samples.slice(-14);
+  if (last.length === 0) return <div className="h-[22px]" />;
+  return (
+    <div className="flex items-end justify-center gap-[3px] h-[22px]" aria-hidden>
+      {last.map((s, i) => {
+        const h = 4 + (Math.log(Math.max(1, Math.min(1000, s.ms))) / Math.log(1000)) * 18;
+        const bad = s.verdict !== "ok";
+        return (
+          <span
+            key={`${s.round}-${i}`}
+            className="w-[3px] rounded-full transition-all duration-300"
+            style={{
+              height: `${h}px`,
+              background: bad ? "var(--color-ink-faint)" : msColor(s.ms),
+              opacity: 0.35 + (i / last.length) * 0.65,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function Gauge({
   ms,
   label,
   sub,
+  live = false,
   className = "mx-auto w-[280px] sm:w-[340px]",
 }: {
   ms: number | null;
   label: string;
   sub: string;
+  live?: boolean;
   className?: string;
 }) {
-  const angle = ms == null ? GAUGE_START : msToAngle(ms);
+  const eased = useEased(ms);
+  const angle = eased == null ? GAUGE_START : msToAngle(eased);
+  const color = eased == null ? "var(--color-ink-faint)" : msColor(eased);
+  // Speedtest-style progressive fill: the arc is rendered as many thin
+  // segments; those before the needle carry a smooth green→amber→red
+  // gradient, the rest stay on the grey track. Because `eased` updates
+  // per animation frame, the fill grows/retracts fluidly with the needle.
+  const SEGS = 56;
+  const fillT = (angle - GAUGE_START) / GAUGE_SWEEP; // 0..1
   return (
     <div className={`relative ${className}`}>
       <svg viewBox="0 0 200 170" className="w-full">
+        <defs>
+          <linearGradient id="st-needle-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-ink)" stopOpacity="0.9" />
+            <stop offset="75%" stopColor="var(--color-ink)" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="var(--color-ink)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
         {/* Track */}
         <path
-          d={arcPath(100, 100, 78, GAUGE_START, GAUGE_START + GAUGE_SWEEP)}
+          d={arcPath(100, 100, 76, GAUGE_START, GAUGE_START + GAUGE_SWEEP)}
           fill="none"
           stroke="var(--color-rule, #e2e8f0)"
-          strokeWidth="10"
+          strokeWidth="13"
           strokeLinecap="round"
+          opacity="0.7"
         />
-        {/* Colored zones: <50 good, 50-200 warn, >200 danger */}
-        <path
-          d={arcPath(100, 100, 78, GAUGE_START, msToAngle(50))}
-          fill="none" stroke="var(--color-good)" strokeWidth="10" strokeLinecap="round" opacity="0.85"
-        />
-        <path
-          d={arcPath(100, 100, 78, msToAngle(50), msToAngle(200))}
-          fill="none" stroke="var(--color-warn)" strokeWidth="10" opacity="0.75"
-        />
-        <path
-          d={arcPath(100, 100, 78, msToAngle(200), GAUGE_START + GAUGE_SWEEP)}
-          fill="none" stroke="#ef4444" strokeWidth="10" strokeLinecap="round" opacity="0.55"
-        />
-        {/* Scale labels */}
+        {/* Gradient fill up to the needle */}
+        {Array.from({ length: SEGS }, (_, i) => {
+          const t0 = i / SEGS;
+          if (eased == null || t0 >= fillT) return null;
+          const t1 = Math.min((i + 1) / SEGS, fillT);
+          const a0 = GAUGE_START + t0 * GAUGE_SWEEP;
+          const a1 = GAUGE_START + t1 * GAUGE_SWEEP + 0.4; // overlap kills seams
+          return (
+            <path
+              key={i}
+              d={arcPath(100, 100, 76, a0, a1)}
+              fill="none"
+              stroke={gradientColor(t0)}
+              strokeWidth="13"
+              strokeLinecap={i === 0 ? "round" : "butt"}
+            />
+          );
+        })}
+        {/* Scale labels, inside the dial like the reference */}
         {GAUGE_STOPS.map((stop) => {
-          const [x, y] = polar(100, 100, 60, msToAngle(stop));
+          const [x, y] = polar(100, 100, 58, msToAngle(stop));
           return (
             <text
               key={stop}
@@ -216,32 +323,40 @@ function Gauge({
               textAnchor="middle"
               dominantBaseline="middle"
               fontSize="8"
-              fill="var(--color-ink-faint)"
-              fontFamily="var(--font-mono, monospace)"
+              fontWeight={500}
+              fill="var(--color-ink-muted)"
+              fontFamily="var(--font-sans, sans-serif)"
             >
               {stop}
             </text>
           );
         })}
-        {/* Needle */}
-        <g
-          style={{
-            transform: `rotate(${angle + 90}deg)`,
-            transformOrigin: "100px 100px",
-            transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        >
-          <line x1="100" y1="100" x2="100" y2="32" stroke="var(--color-ink)" strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="100" cy="100" r="5" fill="var(--color-ink)" />
-        </g>
+        {/* Needle: slim tapered blade fading toward the hub — no heavy
+            center cap, instrument-grade. rAF easing drives the rotation
+            continuously; a slow wobble runs while live. */}
+        {eased != null && (
+          <g className={live ? "st-wobble" : undefined} style={{ transformOrigin: "100px 100px" }}>
+            <g
+              style={{
+                transform: `rotate(${angle + 90}deg)`,
+                transformOrigin: "100px 100px",
+              }}
+            >
+              <polygon points="97.6,96 102.4,96 100.9,34 99.1,34" fill="url(#st-needle-grad)" />
+            </g>
+          </g>
+        )}
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
-        <div
-          className="display text-3xl sm:text-4xl tabular-nums leading-none"
-          style={{ color: ms == null ? "var(--color-ink-faint)" : msColor(ms) }}
-        >
-          {ms == null ? "—" : Math.round(ms)}
-          <span className="text-sm ml-1 text-ink-faint">ms</span>
+        <div className="text-3xl sm:text-4xl tabular-nums leading-none font-light text-ink">
+          {eased == null ? "—" : Math.round(eased)}
+          <span className="text-sm ml-1.5 text-ink-faint">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+              style={{ background: color }}
+            />
+            ms
+          </span>
         </div>
         <p className="mt-1 label-mono text-[11px] text-ink truncate max-w-[90%] mx-auto">{label}</p>
         <p className="label-mono text-[10px] text-ink-faint truncate">{sub}</p>
@@ -424,8 +539,12 @@ export function SpeedtestRpcClient() {
       }
     }
 
-    // Phase 3: measured rounds until the clock runs out. Order is
-    // re-shuffled every round so network wake-ups hit endpoints evenly.
+    // Phase 3: measured rounds until the clock runs out. Every endpoint
+    // is probed CONCURRENTLY each round (starts staggered by ~90ms so
+    // request bursts never align) at roughly one probe per second per
+    // endpoint — every needle lives simultaneously, speedtest-style.
+    // RPC payloads are a few KB, so uplink contention is negligible
+    // against the 10-500ms latencies being measured.
     const tEnd = performance.now() + durationSec * 1000;
     const t0 = performance.now();
     let roundNo = 0;
@@ -433,28 +552,30 @@ export function SpeedtestRpcClient() {
       () => setElapsed(Math.min(durationSec, (performance.now() - t0) / 1000)),
       200,
     );
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     try {
       while (performance.now() < tEnd && !abortRef.current.stop) {
         roundNo += 1;
         setRound(roundNo);
+        const roundStart = performance.now();
         const order = [...live].sort(() => Math.random() - 0.5);
         const roundBlocks: Record<string, number | null> = {};
-        for (const ep of order) {
-          if (performance.now() >= tEnd || abortRef.current.stop) break;
-          setActiveId(ep.id);
-          let sample: Sample;
-          try {
-            const r = await rpcCall(ep.url, "eth_getBlockByNumber", ["latest", false]);
-            sample = { ms: r.ms, verdict: r.verdict, block: r.block, round: roundNo };
-          } catch {
-            sample = { ms: PROBE_TIMEOUT_MS, verdict: "timeout", block: null, round: roundNo };
-          }
-          roundBlocks[ep.id] = sample.block;
-          ep.samples.push(sample);
-          patch(ep.id, { samples: [...ep.samples], lastMs: sample.ms });
-          // Politeness gap so we never hammer a provider.
-          await new Promise((r) => setTimeout(r, 150));
-        }
+        await Promise.all(
+          order.map(async (ep, idx) => {
+            await sleep(idx * 90);
+            if (abortRef.current.stop) return;
+            let sample: Sample;
+            try {
+              const r = await rpcCall(ep.url, "eth_getBlockByNumber", ["latest", false]);
+              sample = { ms: r.ms, verdict: r.verdict, block: r.block, round: roundNo };
+            } catch {
+              sample = { ms: PROBE_TIMEOUT_MS, verdict: "timeout", block: null, round: roundNo };
+            }
+            roundBlocks[ep.id] = sample.block;
+            ep.samples.push(sample);
+            patch(ep.id, { samples: [...ep.samples], lastMs: sample.ms });
+          }),
+        );
         // Stale detection: an endpoint more than STALE_BLOCKS behind the
         // best tip seen this round is serving an old head.
         const tips = Object.values(roundBlocks).filter((b): b is number => b != null);
@@ -468,6 +589,9 @@ export function SpeedtestRpcClient() {
             }
           }
         }
+        // Pace: ~1 round/second regardless of how fast the round ran.
+        const roundDur = performance.now() - roundStart;
+        if (performance.now() < tEnd) await sleep(Math.max(0, 1050 - roundDur));
       }
     } finally {
       clearInterval(timer);
@@ -507,6 +631,8 @@ export function SpeedtestRpcClient() {
         @keyframes st-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         @keyframes st-fade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes st-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+        @keyframes st-wobble-kf { 0%,100% { transform: rotate(-0.5deg); } 50% { transform: rotate(0.5deg); } }
+        .st-wobble { animation: st-wobble-kf 1.7s ease-in-out infinite; }
         .st-stage { animation: st-fade-up 0.5s cubic-bezier(0.22,1,0.36,1) both; }
         .st-row { animation: st-fade-up 0.55s cubic-bezier(0.22,1,0.36,1) both; }
         .st-live { animation: st-pulse 1.6s ease-in-out infinite; }
@@ -716,16 +842,12 @@ export function SpeedtestRpcClient() {
                           <Gauge
                             ms={ep.lastMs}
                             label={epLabel(ep)}
-                            sub={
-                              ep.status === "checking"
-                                ? "checking reachability"
-                                : isActive
-                                  ? "probing…"
-                                  : ep.host
-                            }
+                            sub={ep.status === "checking" ? "checking reachability" : ep.host}
+                            live={ep.status === "testing"}
                             className="mx-auto w-full max-w-[240px]"
                           />
-                          <div className="mt-2 flex items-center justify-center gap-3 label-mono text-[10px] text-ink-faint tabular-nums">
+                          <MiniSparkline samples={ep.samples} />
+                          <div className="mt-1.5 flex items-center justify-center gap-3 label-mono text-[10px] text-ink-faint tabular-nums">
                             <span>p50 {Number.isNaN(s.p50) ? "—" : `${Math.round(s.p50)}ms`}</span>
                             <span>{s.n} probes</span>
                             <span>{s.successPct}% ok</span>
