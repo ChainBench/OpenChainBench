@@ -10,7 +10,6 @@ export const contentType = "image/png";
 // deploy).
 const GAUGE_START = -210;
 const GAUGE_SWEEP = 240;
-const STOPS = [1, 5, 10, 25, 50, 100, 250, 500, 1000];
 
 function polar(cx: number, cy: number, r: number, deg: number): [number, number] {
   const rad = (deg * Math.PI) / 180;
@@ -76,7 +75,9 @@ export default function OG() {
           fontFamily: "Georgia, serif",
         }}
       >
-        {/* Dial */}
+        {/* Dial: svg for the arcs/needle, HTML overlay for the readout
+            (satori does not support svg <text> nodes). */}
+        <div style={{ display: "flex", position: "relative", width: 420, height: 420 }}>
         <svg width="420" height="420" viewBox="0 0 420 420">
           <path
             d={arcPath(210, 210, 160, GAUGE_START, GAUGE_START + GAUGE_SWEEP)}
@@ -95,23 +96,24 @@ export default function OG() {
               strokeLinecap={i === 0 ? "round" : "butt"}
             />
           ))}
-          {STOPS.map((stop) => {
-            const [x, y] = polar(210, 210, 122, msToAngle(stop));
-            return (
-              <text key={stop} x={x} y={y} textAnchor="middle" fontSize="17" fill="#8a8378">
-                {stop}
-              </text>
-            );
-          })}
           <line x1="210" y1="210" x2={nx} y2={ny} stroke="#1c1a17" strokeWidth="7" strokeLinecap="round" />
           <circle cx="210" cy="210" r="12" fill="#1c1a17" />
-          <text x="210" y="290" textAnchor="middle" fontSize="64" fill="#1c1a17">
-            {READING}
-          </text>
-          <text x="210" y="322" textAnchor="middle" fontSize="22" fill="#8a8378">
-            ms
-          </text>
         </svg>
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 252,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ display: "flex", fontSize: 66, color: "#1c1a17" }}>{READING}</div>
+            <div style={{ display: "flex", fontSize: 24, color: "#8a8378" }}>ms</div>
+          </div>
+        </div>
 
         {/* Copy */}
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
