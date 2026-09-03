@@ -153,6 +153,6 @@ export default async function OG({
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, headers: { "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400" } }
   );
 }

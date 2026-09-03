@@ -129,7 +129,18 @@ export async function GET(
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      // Every social/AI unfurl used to trigger a full satori render
+      // (max-age=0 → x-vercel-cache MISS on consecutive GETs). The
+      // underlying data moves every 60s but a 1h-old card is fine for
+      // an unfurl; s-maxage bounds renders to ~24/day/slug while SWR
+      // keeps scrapes instant.
+      headers: {
+        "cache-control":
+          "public, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    },
   );
 }
 
