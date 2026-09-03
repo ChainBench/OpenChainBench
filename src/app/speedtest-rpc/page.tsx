@@ -7,9 +7,9 @@ import { SITE } from "@/data/site";
 
 export const metadata: Metadata = pageMetadata({
   path: "/speedtest-rpc",
-  title: "RPC Speed Test — benchmark your endpoints from your browser",
+  title: "RPC Speed Test: benchmark your endpoints from your browser",
   description:
-    "Paste any RPC URLs and measure their real latency from your own connection. Same anti-cache methodology as our public benchmarks. No install, no signup — your URLs and API keys never leave your browser.",
+    "Paste any RPC URLs and measure their real latency from your own connection. Same anti-cache methodology as our public benchmarks. No install, no signup, and your URLs and API keys never leave your browser.",
 });
 
 export const revalidate = 3600;
@@ -51,8 +51,8 @@ export default function SpeedtestRpcPage() {
         Benchmark your RPC endpoints, from your connection
       </h1>
       <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-        Paste any JSON-RPC URLs — public gateways or your own keyed endpoints —
-        pick a duration, and watch them race. Every probe fires directly from
+        Paste any JSON-RPC URLs, public gateways or your own keyed endpoints,
+        then pick a duration, and watch them race. Every probe fires directly from
         your browser with the same anti-cache payload as our{" "}
         <Link href="/rpc" className="lnk">
           public RPC benchmarks
@@ -61,7 +61,7 @@ export default function SpeedtestRpcPage() {
       </p>
       <p className="mt-2 text-sm text-ink-faint">
         No install, no signup. Your URLs and API keys never leave this browser
-        tab — requests go straight from you to the provider.
+        tab. Requests go straight from you to the provider.
       </p>
 
       <SpeedtestRpcClient />
@@ -78,7 +78,7 @@ export default function SpeedtestRpcPage() {
           POST with a rotating request id, so no edge cache can answer without
           touching a real node. One warmup request absorbs the TCP + TLS
           handshake, then all endpoints are probed once per second in
-          staggered, randomized rounds until the clock runs out — request
+          staggered, randomized rounds until the clock runs out, so request
           bursts never align and network wake-ups hit every endpoint evenly.
           Responses are classified ok / http_err / jsonrpc_err /
           timeout, and an endpoint reporting a block more than 20 behind the
@@ -87,7 +87,7 @@ export default function SpeedtestRpcPage() {
           <Link href="/methodology" className="lnk">
             public benchmark methodology
           </Link>
-          . Results reflect your device, network and location — that is the
+          . Results reflect your device, network and location. That is the
           point: it is the latency your application would actually see.
         </p>
       </section>
