@@ -165,14 +165,16 @@ function Gauge({
   ms,
   label,
   sub,
+  className = "mx-auto w-[280px] sm:w-[340px]",
 }: {
   ms: number | null;
   label: string;
   sub: string;
+  className?: string;
 }) {
   const angle = ms == null ? GAUGE_START : msToAngle(ms);
   return (
-    <div className="relative mx-auto w-[280px] sm:w-[340px]">
+    <div className={`relative ${className}`}>
       <svg viewBox="0 0 200 170" className="w-full">
         {/* Track */}
         <path
@@ -227,14 +229,14 @@ function Gauge({
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
         <div
-          className="display text-4xl sm:text-5xl tabular-nums leading-none"
+          className="display text-3xl sm:text-4xl tabular-nums leading-none"
           style={{ color: ms == null ? "var(--color-ink-faint)" : msColor(ms) }}
         >
           {ms == null ? "—" : Math.round(ms)}
-          <span className="text-base ml-1 text-ink-faint">ms</span>
+          <span className="text-sm ml-1 text-ink-faint">ms</span>
         </div>
-        <p className="mt-1 label-mono text-[11px] text-ink truncate max-w-[260px] mx-auto">{label}</p>
-        <p className="label-mono text-[10px] text-ink-faint">{sub}</p>
+        <p className="mt-1 label-mono text-[11px] text-ink truncate max-w-[90%] mx-auto">{label}</p>
+        <p className="label-mono text-[10px] text-ink-faint truncate">{sub}</p>
       </div>
     </div>
   );
@@ -340,7 +342,7 @@ export function SpeedtestRpcClient() {
         patch(ep.id, {
           status: "cors_blocked",
           error:
-            "Endpoint rejected the browser request (CORS or network). Test it from a terminal instead — see the curl below.",
+            "This endpoint does not answer browser requests (no CORS headers on preflight) — dapps cannot call it from a browser either. It may still be fast server-side: measure it from a terminal with the curl below.",
         });
       }
     }
@@ -425,7 +427,6 @@ export function SpeedtestRpcClient() {
 
   useEffect(() => () => { abortRef.current.stop = true; }, []);
 
-  const active = endpoints.find((e) => e.id === activeId) ?? null;
   const ranked = useMemo(() => {
     const done = endpoints.filter((e) => e.samples.length > 0);
     return done
@@ -552,11 +553,66 @@ export function SpeedtestRpcClient() {
               </button>
             </div>
 
-            <Gauge
-              ms={active?.lastMs ?? null}
-              label={active ? active.host : "…"}
-              sub={active?.status === "checking" ? "checking reachability" : "eth_getBlockByNumber · latest"}
-            />
+            {/* One speedometer per endpoint, all live at once. The
+                active one (currently being probed) lifts and gets an
+                ink border; the others keep their last reading. */}
+            <div
+              className={`mt-2 grid gap-4 ${
+                endpoints.length <= 1
+                  ? "grid-cols-1 max-w-[340px] mx-auto"
+                  : endpoints.length === 2
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              }`}
+            >
+              {endpoints.map((ep) => {
+                const s = stats(ep);
+                const isActive = ep.id === activeId;
+                const blocked = ep.status === "cors_blocked";
+                return (
+                  <div
+                    key={ep.id}
+                    className="rounded-xl border px-3 pt-3 pb-4 transition-all duration-300"
+                    style={{
+                      borderColor: isActive ? "var(--color-ink)" : "var(--color-rule, #e2e8f0)",
+                      transform: isActive ? "translateY(-2px)" : undefined,
+                      boxShadow: isActive ? "0 6px 18px -8px rgba(15,23,42,0.25)" : undefined,
+                      opacity: blocked ? 0.55 : 1,
+                    }}
+                  >
+                    {blocked ? (
+                      <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-center px-2">
+                        <p className="font-mono text-[12px] text-ink truncate max-w-full">{ep.host}</p>
+                        <p className="mt-2 label-mono text-[10px] text-ink-faint">no CORS · browser-blocked</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Gauge
+                          ms={ep.lastMs}
+                          label={ep.host}
+                          sub={
+                            ep.status === "checking"
+                              ? "checking reachability"
+                              : isActive
+                                ? "probing…"
+                                : "eth_getBlockByNumber"
+                          }
+                          className="mx-auto w-full max-w-[240px]"
+                        />
+                        <div className="mt-2 flex items-center justify-center gap-3 label-mono text-[10px] text-ink-faint tabular-nums">
+                          <span>p50 {Number.isNaN(s.p50) ? "—" : `${Math.round(s.p50)}ms`}</span>
+                          <span>{s.n} probes</span>
+                          <span>{s.successPct}% ok</span>
+                          {ep.staleRounds > 0 && (
+                            <span style={{ color: "var(--color-warn)" }}>stale ×{ep.staleRounds}</span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
             {/* Progress */}
             <div className="mt-6 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-rule, #e2e8f0)" }}>
@@ -568,41 +624,6 @@ export function SpeedtestRpcClient() {
             <p className="mt-1 text-right label-mono text-[10px] text-ink-faint tabular-nums">
               {elapsed.toFixed(0)}s / {durationSec}s
             </p>
-          </div>
-
-          {/* Live per-endpoint cards */}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {endpoints.map((ep) => {
-              const s = stats(ep);
-              const isActive = ep.id === activeId;
-              return (
-                <div
-                  key={ep.id}
-                  className="card-soft rounded-lg px-4 py-3 border transition-all duration-300"
-                  style={{
-                    borderColor: isActive ? "var(--color-ink)" : "var(--color-rule, #e2e8f0)",
-                    transform: isActive ? "scale(1.015)" : undefined,
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-[12px] text-ink truncate">{ep.host}</p>
-                    {ep.status === "cors_blocked" ? (
-                      <span className="label-mono text-[10px] text-ink-faint shrink-0">browser-blocked</span>
-                    ) : (
-                      <span className="label-mono text-[11px] tabular-nums shrink-0" style={{ color: ep.lastMs != null ? msColor(ep.lastMs) : "var(--color-ink-faint)" }}>
-                        {ep.lastMs != null ? `${Math.round(ep.lastMs)} ms` : "…"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-4 label-mono text-[10px] text-ink-faint tabular-nums">
-                    <span>p50 {Number.isNaN(s.p50) ? "—" : `${Math.round(s.p50)}ms`}</span>
-                    <span>{s.n} probes</span>
-                    <span>{s.successPct}% ok</span>
-                    {ep.staleRounds > 0 && <span style={{ color: "var(--color-warn)" }}>stale ×{ep.staleRounds}</span>}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </section>
       )}
