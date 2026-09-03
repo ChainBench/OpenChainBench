@@ -108,8 +108,16 @@ function emptySeries(): SeriesByRange {
   };
 }
 
-export function LiveDashboard() {
-  const [stats, setStats] = useState<GlobalView | null>(null);
+export function LiveDashboard({
+  initialStats = null,
+}: {
+  /** Server-fetched snapshot of the relay's /stats global block, baked
+   *  into the ISR HTML so crawlers (most AI bots don't run JS) see real
+   *  ticker numbers instead of dashes. The WebSocket replaces it within
+   *  seconds of hydration. */
+  initialStats?: GlobalView | null;
+} = {}) {
+  const [stats, setStats] = useState<GlobalView | null>(initialStats);
   const [recent, setRecent] = useState<SwapEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [series, setSeries] = useState<SeriesByRange>(emptySeries);
