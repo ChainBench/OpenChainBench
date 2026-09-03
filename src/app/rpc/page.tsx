@@ -158,6 +158,19 @@ export default async function RpcHubPage() {
         </div>
       </header>
 
+      <section className="mb-8 rounded-lg border border-ink/10 card-soft px-4 py-3 flex items-start gap-3">
+        <span className="mt-0.5 inline-block w-2 h-2 rounded-full shrink-0" style={{ background: "var(--color-good)" }} aria-hidden />
+        <p className="text-sm text-ink leading-snug">
+          Want these numbers from <em>your</em> connection?{" "}
+          <Link href="/speedtest-rpc" className="font-semibold underline underline-offset-2">
+            Run the browser RPC speed test →
+          </Link>{" "}
+          <span className="text-ink-faint">
+            Paste any endpoints (keyed included), no install, URLs never leave your browser.
+          </span>
+        </p>
+      </section>
+
       {keyedRpcSpecs.length > 0 && (
         <section className="mb-8 rounded-lg border border-ink/10 card-soft px-4 py-3">
           <p className="label-mono text-[10px] text-ink-faint mb-2">
