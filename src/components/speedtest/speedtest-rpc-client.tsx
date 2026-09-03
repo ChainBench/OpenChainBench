@@ -515,7 +515,7 @@ export function SpeedtestRpcClient() {
         patch(ep.id, {
           status: "cors_blocked",
           error:
-            "This endpoint does not answer browser requests (no CORS headers on preflight) — dapps cannot call it from a browser either. It may still be fast server-side: measure it from a terminal with the curl below.",
+            "This endpoint does not answer browser requests (no CORS headers on preflight). Dapps cannot call it from a browser either. It may still be fast server-side: measure it from a terminal with the curl below.",
         });
       }
     }
@@ -651,7 +651,7 @@ export function SpeedtestRpcClient() {
               continuously (90 EVM chains, 291 endpoints). */}
           <div className="mb-5 rounded-lg border border-rule px-4 py-3">
             <p className="text-[12px] text-ink-soft mb-2">
-              Prefill with the endpoints we already benchmark — pick a chain:
+              Prefill with the endpoints we already benchmark. Pick a chain:
             </p>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {FEATURED_CHAINS.map((slug) => {
@@ -708,13 +708,13 @@ export function SpeedtestRpcClient() {
             {pickedChain && (
               <p className="mt-2 label-mono text-[10px]" style={{ color: "var(--color-good)" }}>
                 {prefillState === "validating"
-                  ? `⏳ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — checking ${inputs.length} benchmarked endpoints from your browser…`
-                  : `✓ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — ${inputs.filter(Boolean).length} endpoints ready. Add your own keyed URLs below to race them.`}
+                  ? `⏳ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name}: checking ${inputs.length} benchmarked endpoints from your browser…`
+                  : `✓ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name}: ${inputs.filter(Boolean).length} endpoints ready. Add your own keyed URLs below to race them.`}
               </p>
             )}
             {skippedProviders.length > 0 && (
               <p className="mt-1 label-mono text-[10px] text-ink-faint">
-                Skipped {skippedProviders.join(", ")} — no browser (CORS) support; the public bench probes it server-side.
+                Skipped {skippedProviders.join(", ")}: no browser (CORS) support. The public bench probes it server-side.
               </p>
             )}
           </div>
@@ -959,7 +959,7 @@ export function SpeedtestRpcClient() {
               if (blockedDir.length === 0) return null;
               return (
                 <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: `${0.2 + ranked.length * 0.12}s` }}>
-                  Not testable from a browser (skipped): {blockedDir.map((e) => epLabel(e)).join(", ")} — the public bench covers {blockedDir.length > 1 ? "them" : "it"} server-side.
+                  Not testable from a browser (skipped): {blockedDir.map((e) => epLabel(e)).join(", ")}. The public bench covers {blockedDir.length > 1 ? "them" : "it"} server-side.
                 </p>
               );
             })()}
