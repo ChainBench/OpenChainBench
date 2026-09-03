@@ -14,9 +14,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ProviderLogo } from "@/components/provider-logo";
 import {
   FEATURED_CHAINS,
   RPC_DIRECTORY,
+  directoryEntryForUrl,
   providerForUrl,
   type DirectoryChain,
 } from "@/lib/speedtest/rpc-directory";
@@ -281,6 +283,9 @@ export function SpeedtestRpcClient() {
   const [inputs, setInputs] = useState<string[]>(["", ""]);
   const [chainQuery, setChainQuery] = useState("");
   const [pickedChain, setPickedChain] = useState<string | null>(null);
+  const [prefillState, setPrefillState] = useState<"idle" | "validating" | "done">("idle");
+  const [skippedProviders, setSkippedProviders] = useState<string[]>([]);
+  const prefillEpoch = useRef(0);
   const [durationSec, setDurationSec] = useState(30);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -303,9 +308,34 @@ export function SpeedtestRpcClient() {
   }, [chainQuery]);
 
   const pickChain = (c: DirectoryChain) => {
+    // Fill immediately, then validate each endpoint from THIS browser
+    // (eth_chainId, short timeout) and silently drop the ones that
+    // reject browser requests — a prefilled endpoint must never show
+    // up as a dead "no CORS" tile. Manual URLs keep full feedback.
+    const epoch = ++prefillEpoch.current;
     setInputs(c.endpoints.map((e) => e.url));
     setPickedChain(c.slug);
     setChainQuery("");
+    setSkippedProviders([]);
+    setPrefillState("validating");
+    void (async () => {
+      const checks = await Promise.all(
+        c.endpoints.map(async (e) => {
+          try {
+            const r = await rpcCall(e.url, "eth_chainId", []);
+            return { e, ok: r.verdict === "ok" || r.verdict === "http_err" };
+          } catch {
+            return { e, ok: false }; // CORS / network-level rejection
+          }
+        }),
+      );
+      if (prefillEpoch.current !== epoch) return; // user picked again
+      const good = checks.filter((x) => x.ok).map((x) => x.e.url);
+      const skipped = checks.filter((x) => !x.ok).map((x) => x.e.provider);
+      if (skipped.length > 0) setInputs(good.length > 0 ? good : [""]);
+      setSkippedProviders(skipped);
+      setPrefillState("done");
+    })();
   };
 
   const validCount = inputs.filter((u) => {
@@ -507,13 +537,14 @@ export function SpeedtestRpcClient() {
                     key={slug}
                     type="button"
                     onClick={() => pickChain(c)}
-                    className={`label-mono text-[11px] rounded-full px-3 py-1 border transition-colors ${
+                    className={`label-mono text-[11px] rounded-full pl-1.5 pr-3 py-1 border transition-colors inline-flex items-center gap-1.5 ${
                       activeChip
                         ? "border-ink text-paper"
                         : "border-rule text-ink-soft hover:border-ink/40 hover:text-ink"
                     }`}
                     style={activeChip ? { background: "var(--color-ink)", color: "var(--color-paper, #fff)" } : undefined}
                   >
+                    <ProviderLogo slug={slug} name={c.name} size={16} />
                     {c.name}
                   </button>
                 );
@@ -535,9 +566,10 @@ export function SpeedtestRpcClient() {
                       <button
                         type="button"
                         onClick={() => pickChain(c)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left text-[13px] text-ink hover:bg-ink/5 transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-ink/5 transition-colors"
                       >
-                        <span>{c.name}</span>
+                        <ProviderLogo slug={c.slug} name={c.name} size={18} />
+                        <span className="flex-1">{c.name}</span>
                         <span className="label-mono text-[10px] text-ink-faint">
                           {c.endpoints.length} endpoint{c.endpoints.length > 1 ? "s" : ""}
                         </span>
@@ -549,7 +581,14 @@ export function SpeedtestRpcClient() {
             </div>
             {pickedChain && (
               <p className="mt-2 label-mono text-[10px]" style={{ color: "var(--color-good)" }}>
-                ✓ {RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — {inputs.length} benchmarked endpoints loaded. Add your own keyed URLs below to race them.
+                {prefillState === "validating"
+                  ? `⏳ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — checking ${inputs.length} benchmarked endpoints from your browser…`
+                  : `✓ ${RPC_DIRECTORY.find((c) => c.slug === pickedChain)?.name} — ${inputs.filter(Boolean).length} endpoints ready. Add your own keyed URLs below to race them.`}
+              </p>
+            )}
+            {skippedProviders.length > 0 && (
+              <p className="mt-1 label-mono text-[10px] text-ink-faint">
+                Skipped {skippedProviders.join(", ")} — no browser (CORS) support; the public bench probes it server-side.
               </p>
             )}
           </div>
@@ -641,63 +680,71 @@ export function SpeedtestRpcClient() {
             {/* One speedometer per endpoint, all live at once. The
                 active one (currently being probed) lifts and gets an
                 ink border; the others keep their last reading. */}
-            <div
-              className={`mt-2 grid gap-4 ${
-                endpoints.length <= 1
-                  ? "grid-cols-1 max-w-[340px] mx-auto"
-                  : endpoints.length === 2
-                    ? "grid-cols-1 sm:grid-cols-2"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              }`}
-            >
-              {endpoints.map((ep) => {
-                const s = stats(ep);
-                const isActive = ep.id === activeId;
-                const blocked = ep.status === "cors_blocked";
-                return (
+            {(() => {
+              const visible = endpoints.filter((e) => e.status !== "cors_blocked");
+              const blocked = endpoints.filter((e) => e.status === "cors_blocked");
+              return (
+                <>
                   <div
-                    key={ep.id}
-                    className="rounded-xl border px-3 pt-3 pb-4 transition-all duration-300"
-                    style={{
-                      borderColor: isActive ? "var(--color-ink)" : "var(--color-rule, #e2e8f0)",
-                      transform: isActive ? "translateY(-2px)" : undefined,
-                      boxShadow: isActive ? "0 6px 18px -8px rgba(15,23,42,0.25)" : undefined,
-                      opacity: blocked ? 0.55 : 1,
-                    }}
+                    className={`mt-2 grid gap-4 ${
+                      visible.length <= 1
+                        ? "grid-cols-1 max-w-[340px] mx-auto"
+                        : visible.length === 2
+                          ? "grid-cols-1 sm:grid-cols-2"
+                          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                    }`}
                   >
-                    {blocked ? (
-                      <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-center px-2">
-                        <p className="font-mono text-[12px] text-ink truncate max-w-full">{ep.host}</p>
-                        <p className="mt-2 label-mono text-[10px] text-ink-faint">no CORS · browser-blocked</p>
-                      </div>
-                    ) : (
-                      <>
-                        <Gauge
-                          ms={ep.lastMs}
-                          label={epLabel(ep)}
-                          sub={
-                            ep.status === "checking"
-                              ? "checking reachability"
-                              : isActive
-                                ? "probing…"
-                                : ep.host
-                          }
-                          className="mx-auto w-full max-w-[240px]"
-                        />
-                        <div className="mt-2 flex items-center justify-center gap-3 label-mono text-[10px] text-ink-faint tabular-nums">
-                          <span>p50 {Number.isNaN(s.p50) ? "—" : `${Math.round(s.p50)}ms`}</span>
-                          <span>{s.n} probes</span>
-                          <span>{s.successPct}% ok</span>
-                          {ep.staleRounds > 0 && (
-                            <span style={{ color: "var(--color-warn)" }}>stale ×{ep.staleRounds}</span>
+                    {visible.map((ep) => {
+                      const s = stats(ep);
+                      const isActive = ep.id === activeId;
+                      const dirEntry = directoryEntryForUrl(ep.url);
+                      return (
+                        <div
+                          key={ep.id}
+                          className="rounded-xl border px-3 pt-3 pb-4 transition-all duration-300"
+                          style={{
+                            borderColor: isActive ? "var(--color-ink)" : "var(--color-rule, #e2e8f0)",
+                            transform: isActive ? "translateY(-2px)" : undefined,
+                            boxShadow: isActive ? "0 6px 18px -8px rgba(15,23,42,0.25)" : undefined,
+                          }}
+                        >
+                          {dirEntry && (
+                            <div className="flex items-center justify-center gap-1.5 -mb-1">
+                              <ProviderLogo slug={dirEntry.slug} name={dirEntry.provider} size={18} />
+                            </div>
                           )}
+                          <Gauge
+                            ms={ep.lastMs}
+                            label={epLabel(ep)}
+                            sub={
+                              ep.status === "checking"
+                                ? "checking reachability"
+                                : isActive
+                                  ? "probing…"
+                                  : ep.host
+                            }
+                            className="mx-auto w-full max-w-[240px]"
+                          />
+                          <div className="mt-2 flex items-center justify-center gap-3 label-mono text-[10px] text-ink-faint tabular-nums">
+                            <span>p50 {Number.isNaN(s.p50) ? "—" : `${Math.round(s.p50)}ms`}</span>
+                            <span>{s.n} probes</span>
+                            <span>{s.successPct}% ok</span>
+                            {ep.staleRounds > 0 && (
+                              <span style={{ color: "var(--color-warn)" }}>stale ×{ep.staleRounds}</span>
+                            )}
+                          </div>
                         </div>
-                      </>
-                    )}
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                  {blocked.length > 0 && (
+                    <p className="mt-3 label-mono text-[10px] text-ink-faint text-center">
+                      Skipped (no browser support): {blocked.map((e) => epLabel(e)).join(", ")}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Progress */}
             <div className="mt-6 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-rule, #e2e8f0)" }}>
@@ -724,7 +771,16 @@ export function SpeedtestRpcClient() {
               <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-2">
                 Fastest from your connection
               </p>
-              <p className="display text-3xl sm:text-4xl text-ink break-all">{epLabel(ranked[0].ep)}</p>
+              <div className="flex items-center justify-center gap-3">
+                {directoryEntryForUrl(ranked[0].ep.url) && (
+                  <ProviderLogo
+                    slug={directoryEntryForUrl(ranked[0].ep.url)!.slug}
+                    name={epLabel(ranked[0].ep)}
+                    size={34}
+                  />
+                )}
+                <p className="display text-3xl sm:text-4xl text-ink break-all">{epLabel(ranked[0].ep)}</p>
+              </div>
               <p className="mt-2 display text-5xl sm:text-6xl tabular-nums" style={{ color: msColor(ranked[0].s.p50) }}>
                 {Math.round(ranked[0].s.p50)}<span className="text-xl text-ink-faint ml-1">ms p50</span>
               </p>
@@ -740,6 +796,13 @@ export function SpeedtestRpcClient() {
               >
                 <div className="flex items-center gap-3">
                   <span className="label-mono text-[11px] text-ink-faint w-6">{String(i + 1).padStart(2, "0")}</span>
+                  {directoryEntryForUrl(ep.url) && (
+                    <ProviderLogo
+                      slug={directoryEntryForUrl(ep.url)!.slug}
+                      name={epLabel(ep)}
+                      size={20}
+                    />
+                  )}
                   <p className="font-mono text-[13px] text-ink truncate flex-1">
                     {epLabel(ep)}
                     {providerForUrl(ep.url) && (
@@ -767,8 +830,19 @@ export function SpeedtestRpcClient() {
               </div>
             ))}
 
+            {(() => {
+              const blockedDir = endpoints.filter(
+                (e) => e.status === "cors_blocked" && directoryEntryForUrl(e.url),
+              );
+              if (blockedDir.length === 0) return null;
+              return (
+                <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: `${0.2 + ranked.length * 0.12}s` }}>
+                  Not testable from a browser (skipped): {blockedDir.map((e) => epLabel(e)).join(", ")} — the public bench covers {blockedDir.length > 1 ? "them" : "it"} server-side.
+                </p>
+              );
+            })()}
             {endpoints
-              .filter((e) => e.status === "cors_blocked")
+              .filter((e) => e.status === "cors_blocked" && !directoryEntryForUrl(e.url))
               .map((ep, i) => (
                 <div key={ep.id} className="st-row card-soft rounded-lg px-4 py-4 sm:px-5 opacity-80" style={{ animationDelay: `${0.2 + (ranked.length + i) * 0.12}s` }}>
                   <p className="font-mono text-[13px] text-ink truncate">{ep.host}</p>
