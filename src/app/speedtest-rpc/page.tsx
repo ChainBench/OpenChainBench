@@ -31,12 +31,25 @@ const FAQ = [
   },
 ];
 
-export const metadata: Metadata = pageMetadata({
+const baseMetadata = pageMetadata({
   path: "/speedtest-rpc",
   title: "RPC Speed Test: benchmark your endpoints from your browser",
   description:
     "Free online RPC latency test. Paste any RPC URLs and measure their real speed from your own connection, across 87 EVM chains. No install, no signup, keys never leave your browser.",
 });
+
+// pageMetadata pins the generic root card; point socials at the
+// dedicated dial card rendered by ./opengraph-image.tsx instead.
+const OG_IMAGE = {
+  url: `${SITE.url}/speedtest-rpc/opengraph-image`,
+  width: 1200,
+  height: 630,
+};
+export const metadata: Metadata = {
+  ...baseMetadata,
+  openGraph: { ...baseMetadata.openGraph, images: [OG_IMAGE] },
+  twitter: { ...baseMetadata.twitter, images: [OG_IMAGE.url] },
+};
 
 export const revalidate = 3600;
 
