@@ -31,7 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!report) return {};
 
   const canonical = `${SITE.url}/reports/${category}/${slug}`;
-  const ogImage = report.ogImage ?? `${SITE.url}/opengraph-image`;
+  // Default to the per-report dynamic OG image (opengraph-image.tsx in this
+  // segment), not the site-wide generic one.
+  const ogImage = report.ogImage ?? `${canonical}/opengraph-image`;
   const social = `${report.title} · OpenChainBench`;
 
   return {
