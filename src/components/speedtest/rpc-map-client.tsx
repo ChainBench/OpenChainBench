@@ -48,6 +48,20 @@ type CellDetail = {
   }[];
 };
 
+function unproject(x: number, y: number): { lat: number; lon: number } {
+  return { lon: (x / WORLD_W) * 360 - 180, lat: 90 - (y / WORLD_H) * 180 };
+}
+
+function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLon = ((bLon - aLon) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
 function timeAgo(ts: number | null): string {
   if (ts == null) return "recently";
   const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
@@ -90,6 +104,8 @@ export function RpcMapClient() {
   const [selectedGh, setSelectedGh] = useState<string | null>(null);
   const [cellDetail, setCellDetail] = useState<CellDetail | null>(null);
   const [cellLoading, setCellLoading] = useState(false);
+  const [pin, setPin] = useState<{ lat: number; lon: number; label: string } | null>(null);
+  const [locating, setLocating] = useState(false);
   // viewBox as [x, y, w, h]; wheel zooms toward the cursor, drag pans.
   const [vb, setVb] = useState<[number, number, number, number]>([0, 0, WORLD_W, WORLD_H]);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -238,6 +254,41 @@ export function RpcMapClient() {
     setCellDetail(null);
   };
 
+  // Nearest measured areas to the pin, closest first.
+  const nearest = useMemo(() => {
+    if (!pin) return [];
+    return cells
+      .map((c) => ({ cell: c, km: haversineKm(pin.lat, pin.lon, c.lat, c.lon) }))
+      .sort((a, b) => a.km - b.km)
+      .slice(0, 3);
+  }, [pin, cells]);
+
+  const zoomTo = useCallback((lat: number, lon: number, widthFrac = 0.18) => {
+    const [x, y] = project(lat, lon);
+    const w = WORLD_W * widthFrac;
+    const h = (w / WORLD_W) * WORLD_H;
+    setVb([
+      Math.max(0, Math.min(WORLD_W - w, x - w / 2)),
+      Math.max(0, Math.min(WORLD_H - h, y - h / 2)),
+      w,
+      h,
+    ]);
+  }, []);
+
+  const locateMe = useCallback(() => {
+    setLocating(true);
+    fetch("/api/speedtest/whereami")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok) {
+          setPin({ lat: d.lat, lon: d.lon, label: d.city ? `${d.city}, ${d.country}` : "Your location" });
+          zoomTo(d.lat, d.lon);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLocating(false));
+  }, [zoomTo]);
+
   const openCell = useCallback(
     (c: MapCell) => {
       setSelectedGh(c.gh);
@@ -362,6 +413,21 @@ export function RpcMapClient() {
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         >
+          {/* Invisible click surface: a clean click anywhere (ocean or
+              land) drops the pin; dots keep their own click handler. */}
+          <rect
+            x={0}
+            y={0}
+            width={WORLD_W}
+            height={WORLD_H}
+            fill="transparent"
+            onClick={(e) => {
+              if (dragRef.current?.moved) return;
+              const [x, y] = toSvgPoint(e.clientX, e.clientY);
+              const { lat, lon } = unproject(x, y);
+              setPin({ lat, lon, label: "Dropped pin" });
+            }}
+          />
           <path
             d={WORLD_PATH}
             fill="var(--color-rule, #e8e2d6)"
@@ -369,6 +435,7 @@ export function RpcMapClient() {
             stroke="var(--color-ink-faint)"
             strokeOpacity="0.3"
             strokeWidth={Math.max(0.3, 0.6 * zoomRatio)}
+            style={{ pointerEvents: "none" }}
           />
           {cells.map((c) => {
             const [x, y] = project(c.lat, c.lon);
@@ -474,6 +541,57 @@ export function RpcMapClient() {
           </div>
         )}
 
+        {/* Pin marker rendered above the data dots */}
+        {pin && (
+          <svg
+            viewBox={vb.join(" ")}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ aspectRatio: `${WORLD_W} / ${WORLD_H * 0.86}` }}
+          >
+            {(() => {
+              const [x, y] = project(pin.lat, pin.lon);
+              const s = Math.max(4, 14 * zoomRatio);
+              return (
+                <g>
+                  <circle cx={x} cy={y} r={s * 0.9} fill="var(--color-ink)" fillOpacity="0.12" />
+                  <path
+                    d={`M ${x} ${y} l ${-s * 0.38} ${-s * 0.95} a ${s * 0.42} ${s * 0.42} 0 1 1 ${s * 0.76} 0 Z`}
+                    fill="var(--color-ink)"
+                  />
+                  <circle cx={x} cy={y - s * 0.95} r={s * 0.16} fill="var(--color-paper, #fff)" />
+                </g>
+              );
+            })()}
+          </svg>
+        )}
+
+        {/* Near me + pin controls, floating on the map */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={locateMe}
+            disabled={locating}
+            className="label-mono text-[10px] rounded-full border border-rule px-3 py-1 text-ink-soft hover:text-ink disabled:opacity-50"
+            style={{ background: "var(--color-paper, #fff)" }}
+          >
+            {locating ? "Locating…" : "◎ Near me"}
+          </button>
+          {pin ? (
+            <button
+              type="button"
+              onClick={() => setPin(null)}
+              className="label-mono text-[10px] rounded-full border border-rule px-3 py-1 text-ink-soft hover:text-ink"
+              style={{ background: "var(--color-paper, #fff)" }}
+            >
+              clear pin ×
+            </button>
+          ) : (
+            <span className="label-mono text-[9px] text-ink-faint hidden sm:inline" style={{ textShadow: "0 1px 2px var(--color-paper, #fff)" }}>
+              or click the map to drop a pin
+            </span>
+          )}
+        </div>
+
         {/* Reset zoom floating control */}
         {zoomed && (
           <button
@@ -505,6 +623,59 @@ export function RpcMapClient() {
           </div>
         )}
       </div>
+
+      {/* Nearest measured areas to the pin */}
+      {pin && (
+        <div className="mt-4 rounded-xl border border-rule card-soft p-4 sm:p-5">
+          <p className="text-[15px] font-semibold text-ink mb-3">
+            Closest measured areas to {pin.label}
+          </p>
+          {nearest.length === 0 ? (
+            <p className="text-[13px] text-ink-soft">
+              Nothing measured near this pin yet for this selection.{" "}
+              <Link href="/speedtest-rpc" className="lnk">
+                Run a test from here to add the first point →
+              </Link>
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {nearest.map(({ cell: c, km }) => {
+                const best = c.providers[0];
+                return (
+                  <button
+                    key={c.gh}
+                    type="button"
+                    onClick={() => {
+                      openCell(c);
+                      zoomTo(c.lat, c.lon, 0.14);
+                    }}
+                    className="text-left rounded-lg border border-rule px-3.5 py-3 hover:border-ink/50 transition-colors"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[13px] font-semibold text-ink truncate">
+                        {c.city}, {c.country}
+                      </span>
+                      <span className="label-mono text-[10px] text-ink-faint shrink-0">
+                        {km < 1 ? "here" : `${Math.round(km)} km`}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-ink">
+                      <ProviderLogo slug={best.slug} name={providerName(best.slug)} size={15} />
+                      <span className="flex-1 truncate">{providerName(best.slug)}</span>
+                      <span className="label-mono tabular-nums" style={{ color: latencyColor(best.p50) }}>
+                        {Math.round(best.p50)} ms
+                      </span>
+                    </div>
+                    <p className="mt-1 label-mono text-[9px] text-ink-faint">
+                      {c.providers.reduce((s, p) => s + p.samples, 0)} samples · tap for history
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Cell detail: opened by clicking a dot. Median, freshness and
           the retained contribution history per provider. */}
