@@ -519,7 +519,21 @@ export function SpeedtestRpcClient() {
       if (prefillEpoch.current !== epoch) return; // user picked again
       const good = checks.filter((x) => x.ok).map((x) => x.e.url);
       const skipped = checks.filter((x) => !x.ok).map((x) => x.e.provider);
-      if (skipped.length > 0) setInputs(good.length > 0 ? good : [""]);
+      // FAIL-OPEN: when every endpoint flunks the quick check, the
+      // blocker is almost certainly environmental (VPN, shields, a
+      // privacy extension, captive portal), not five independent CORS
+      // failures. Keep the full list and let the real test classify;
+      // only drop endpoints when the signal is differential (some pass,
+      // some fail).
+      if (good.length === 0) {
+        setSkippedProviders([]);
+        setPrefillState("done");
+        console.warn(
+          "[speedtest] reachability precheck failed for ALL endpoints; keeping the list (likely browser/network-level blocking).",
+        );
+        return;
+      }
+      if (skipped.length > 0) setInputs(good);
       setSkippedProviders(skipped);
       setPrefillState("done");
     })();
