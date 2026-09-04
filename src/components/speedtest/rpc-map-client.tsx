@@ -29,11 +29,33 @@ type MapCell = {
   lon: number;
   city: string;
   country: string;
-  providers: { slug: string; p50: number; samples: number }[];
+  providers: { slug: string; p50: number; samples: number; lastTs: number | null }[];
   best: string;
 };
 
 type MapData = { chain: string; cells: MapCell[]; total: number };
+
+type CellDetail = {
+  gh: string;
+  city: string;
+  country: string;
+  providers: {
+    slug: string;
+    p50: number;
+    samples: number;
+    lastTs: number | null;
+    history: { ts: number | null; p50: number }[];
+  }[];
+};
+
+function timeAgo(ts: number | null): string {
+  if (ts == null) return "recently";
+  const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (s < 90) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} d ago`;
+}
 
 const FEATURED = ["ethereum", "base", "arbitrum", "bnb", "polygon", "optimism"];
 
@@ -65,6 +87,9 @@ export function RpcMapClient() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hover, setHover] = useState<MapCell | null>(null);
   const [hoverXY, setHoverXY] = useState<[number, number]>([0, 0]);
+  const [selectedGh, setSelectedGh] = useState<string | null>(null);
+  const [cellDetail, setCellDetail] = useState<CellDetail | null>(null);
+  const [cellLoading, setCellLoading] = useState(false);
   // viewBox as [x, y, w, h]; wheel zooms toward the cursor, drag pans.
   const [vb, setVb] = useState<[number, number, number, number]>([0, 0, WORLD_W, WORLD_H]);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -209,7 +234,25 @@ export function RpcMapClient() {
     setChainQuery("");
     setSelected(new Set());
     setVb([0, 0, WORLD_W, WORLD_H]);
+    setSelectedGh(null);
+    setCellDetail(null);
   };
+
+  const openCell = useCallback(
+    (c: MapCell) => {
+      setSelectedGh(c.gh);
+      setCellLoading(true);
+      setCellDetail(null);
+      fetch(`/api/speedtest/cell?chain=${chain}&gh=${c.gh}`)
+        .then((r) => r.json())
+        .then((d) => {
+          setCellDetail(d);
+          setCellLoading(false);
+        })
+        .catch(() => setCellLoading(false));
+    },
+    [chain],
+  );
 
   return (
     <div className="mt-8">
@@ -338,6 +381,9 @@ export function RpcMapClient() {
               <g key={c.gh}>
                 {/* soft halo then crisp dot: reads as data, not sticker */}
                 <circle cx={x} cy={y} r={r * 2.1} fill={color} fillOpacity="0.14" />
+                {selectedGh === c.gh && (
+                  <circle cx={x} cy={y} r={r * 1.7} fill="none" stroke="var(--color-ink)" strokeWidth={r * 0.22} strokeDasharray={`${r * 0.6} ${r * 0.4}`} />
+                )}
                 <circle
                   cx={x}
                   cy={y}
@@ -352,6 +398,9 @@ export function RpcMapClient() {
                     if (rect) setHoverXY([e.clientX - rect.left, e.clientY - rect.top]);
                   }}
                   onMouseLeave={() => setHover(null)}
+                  onClick={() => {
+                    if (!dragRef.current?.moved) openCell(c);
+                  }}
                 />
                 {showCityLabels && (
                   <text
@@ -413,7 +462,14 @@ export function RpcMapClient() {
                 ))}
             </div>
             <p className="mt-1.5 label-mono text-[9px] text-ink-faint">
-              {hover.providers.reduce((s, p) => s + p.samples, 0)} samples in this area
+              {hover.providers.reduce((s, p) => s + p.samples, 0)} samples · last measured{" "}
+              {timeAgo(
+                hover.providers.reduce<number | null>(
+                  (m, p) => (p.lastTs != null && (m == null || p.lastTs > m) ? p.lastTs : m),
+                  null,
+                ),
+              )}{" "}
+              · click for history
             </p>
           </div>
         )}
@@ -449,6 +505,74 @@ export function RpcMapClient() {
           </div>
         )}
       </div>
+
+      {/* Cell detail: opened by clicking a dot. Median, freshness and
+          the retained contribution history per provider. */}
+      {selectedGh && (
+        <div className="mt-4 rounded-xl border border-rule card-soft p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <p className="text-[15px] font-semibold text-ink">
+              {cellDetail ? `${cellDetail.city}, ${cellDetail.country}` : "Loading area…"}
+              <span className="label-mono text-[10px] text-ink-faint ml-2">cell {selectedGh}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedGh(null);
+                setCellDetail(null);
+              }}
+              className="label-mono text-[11px] text-ink-faint hover:text-ink"
+            >
+              close ×
+            </button>
+          </div>
+          {cellLoading && <p className="label-mono text-[11px] text-ink-faint">Loading history…</p>}
+          {cellDetail && cellDetail.providers.length === 0 && !cellLoading && (
+            <p className="text-[13px] text-ink-soft">No retained history for this area yet.</p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(cellDetail?.providers ?? [])
+              .filter((p) => selected.size === 0 || selected.has(p.slug))
+              .map((p) => {
+                const chrono = [...p.history].reverse(); // oldest → newest
+                const maxV = Math.max(...chrono.map((h) => h.p50), 1);
+                return (
+                  <div key={p.slug} className="rounded-lg border border-rule px-3.5 py-3">
+                    <div className="flex items-center gap-2">
+                      <ProviderLogo slug={p.slug} name={providerName(p.slug)} size={18} />
+                      <span className="text-[13px] font-semibold text-ink flex-1 truncate">
+                        {providerName(p.slug)}
+                      </span>
+                      <span className="label-mono tabular-nums text-[13px]" style={{ color: latencyColor(p.p50) }}>
+                        {Math.round(p.p50)} ms
+                      </span>
+                    </div>
+                    <div className="mt-2.5 flex items-end gap-[3px] h-[34px]">
+                      {chrono.map((h, i) => (
+                        <span
+                          key={i}
+                          className="flex-1 max-w-[10px] rounded-sm"
+                          title={`${Math.round(h.p50)} ms · ${h.ts != null ? new Date(h.ts * 1000).toLocaleString() : "no timestamp"}`}
+                          style={{
+                            height: `${Math.max(12, (h.p50 / maxV) * 100)}%`,
+                            background: latencyColor(h.p50),
+                            opacity: 0.4 + (i / Math.max(1, chrono.length - 1)) * 0.6,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-2 label-mono text-[10px] text-ink-faint">
+                      median of {p.samples} contribution{p.samples > 1 ? "s" : ""} · last measured {timeAgo(p.lastTs)}
+                    </p>
+                  </div>
+                );
+              })}
+          </div>
+          <p className="mt-3 label-mono text-[9px] text-ink-faint">
+            Bars are the last {Math.min(24, Math.max(...(cellDetail?.providers ?? [{ samples: 0 }]).map((p) => p.samples)))} contributed medians for this area, oldest to newest. Hover a bar for the exact reading and time.
+          </p>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 label-mono text-[10px] text-ink-faint">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { redisPipeline, storeConfigured } from "@/lib/materialize/store";
-import { geohashCenter, median, monthKeys } from "@/lib/speedtest/geo";
+import { geohashCenter, median, monthKeys, parseLatEntry } from "@/lib/speedtest/geo";
 import { RPC_DIRECTORY } from "@/lib/speedtest/rpc-directory";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ type CellOut = {
   lon: number;
   city: string;
   country: string;
-  providers: { slug: string; p50: number; samples: number }[];
+  providers: { slug: string; p50: number; samples: number; lastTs: number | null }[];
   best: string;
 };
 
@@ -68,7 +68,10 @@ async function buildMap(chain: string): Promise<{ cells: CellOut[]; total: numbe
     const slug = pair.slice(5);
     const curList = (results[i * 2] as string[] | null) ?? [];
     const prevList = (results[i * 2 + 1] as string[] | null) ?? [];
-    const values = [...curList, ...prevList].map(Number).filter((v) => Number.isFinite(v));
+    const entries = [...curList, ...prevList]
+      .map((raw) => parseLatEntry(String(raw)))
+      .filter((e): e is { ts: number | null; p50: number } => e !== null);
+    const values = entries.map((e) => e.p50);
     if (values.length === 0) continue;
     let cell = byCell.get(gh);
     if (!cell) {
@@ -85,10 +88,12 @@ async function buildMap(chain: string): Promise<{ cells: CellOut[]; total: numbe
       };
       byCell.set(gh, cell);
     }
+    const tss = entries.map((e) => e.ts).filter((t): t is number => t !== null);
     cell.providers.push({
       slug,
       p50: Math.round(median(values) * 10) / 10,
       samples: values.length,
+      lastTs: tss.length > 0 ? Math.max(...tss) : null,
     });
   }
   const cells = Array.from(byCell.values());
