@@ -400,11 +400,75 @@ function epLabel(ep: { url: string; host: string }): string {
   return providerForUrl(ep.url) ?? ep.host;
 }
 
+// Keyed-provider families recognized by hostname, so a private Alchemy
+// or Chainstack URL contributes to the map as its brand only. The URL
+// and key never leave the browser.
+const KEYED_FAMILY_PATTERNS: [RegExp, string][] = [
+  [/\.alchemy\.com$/i, "alchemy"],
+  [/\.infura\.io$/i, "infura"],
+  [/\.quiknode\.pro$/i, "quicknode"],
+  [/\.quicknode\.com$/i, "quicknode"],
+  [/chainstack\.com$/i, "chainstack"],
+  [/\.ankr\.com$/i, "ankr"],
+  [/\.helius-rpc\.com$/i, "helius"],
+];
+
+function contributionSlug(url: string, host: string): string | null {
+  const dir = directoryEntryForUrl(url);
+  if (dir) return dir.slug;
+  for (const [re, family] of KEYED_FAMILY_PATTERNS) {
+    if (re.test(host)) return family;
+  }
+  return null;
+}
+
+const CONTRIBUTE_PREF_KEY = "ocb-st-contribute";
+
+/** Fire-and-forget anonymous contribution to the global latency map.
+ *  Sends provider slugs + medians only; custom hosts are skipped. */
+function contributeToMap(chainSlug: string | null, endpoints: Endpoint[]) {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem(CONTRIBUTE_PREF_KEY) === "off") return;
+  } catch {
+    /* storage blocked: still fine to contribute */
+  }
+  if (!chainSlug) return;
+  const entries = endpoints
+    .filter((e) => e.samples.length >= 3)
+    .map((e) => {
+      const slug = contributionSlug(e.url, e.host);
+      if (!slug) return null;
+      const s = stats(e);
+      if (Number.isNaN(s.p50)) return null;
+      return { slug, p50: s.p50, n: s.n };
+    })
+    .filter((x): x is { slug: string; p50: number; n: number } => x !== null)
+    .slice(0, 8);
+  if (entries.length === 0) return;
+  void fetch("/api/speedtest/contribute", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chain: chainSlug, entries }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export function SpeedtestRpcClient() {
   const [stage, setStage] = useState<Stage>("setup");
   const [inputs, setInputs] = useState<string[]>(["", ""]);
   const [chainQuery, setChainQuery] = useState("");
   const [pickedChain, setPickedChain] = useState<string | null>(null);
+  // Ref mirror so the long-running start() closure reads the current
+  // value instead of the one captured at callback creation.
+  const pickedChainRef = useRef<string | null>(null);
+  const [contribOff, setContribOff] = useState(false);
+  useEffect(() => {
+    try {
+      setContribOff(localStorage.getItem(CONTRIBUTE_PREF_KEY) === "off");
+    } catch {
+      /* storage blocked */
+    }
+  }, []);
   const [prefillState, setPrefillState] = useState<"idle" | "validating" | "done">("idle");
   const [skippedProviders, setSkippedProviders] = useState<string[]>([]);
   const prefillEpoch = useRef(0);
@@ -437,6 +501,7 @@ export function SpeedtestRpcClient() {
     const epoch = ++prefillEpoch.current;
     setInputs(c.endpoints.map((e) => e.url));
     setPickedChain(c.slug);
+    pickedChainRef.current = c.slug;
     setChainQuery("");
     setSkippedProviders([]);
     setPrefillState("validating");
@@ -604,6 +669,9 @@ export function SpeedtestRpcClient() {
       clearInterval(timer);
     }
     for (const ep of live) patch(ep.id, { status: "done" });
+    // Anonymous map contribution (provider slugs + medians only, see
+    // /rpc-map). Fire-and-forget; opt-out persisted in localStorage.
+    contributeToMap(pickedChainRef.current, live);
     setActiveId(null);
     // Small beat before the reveal — lets the last needle move land.
     await new Promise((r) => setTimeout(r, 650));
@@ -1010,6 +1078,32 @@ export function SpeedtestRpcClient() {
               timeout). Your URLs never left this browser tab.
             </p>
           </div>
+
+          <p className="mt-4 text-[11px] text-ink-faint leading-snug max-w-[560px]">
+            {contribOff
+              ? "Anonymous map contribution is off for this browser."
+              : "This result was added anonymously to the global latency map (provider names and medians only, no URLs, no IP stored)."}{" "}
+            <a href="/rpc-map" className="lnk">
+              View the map
+            </a>
+            {" · "}
+            <button
+              type="button"
+              className="lnk"
+              onClick={() => {
+                const next = !contribOff;
+                setContribOff(next);
+                try {
+                  if (next) localStorage.setItem(CONTRIBUTE_PREF_KEY, "off");
+                  else localStorage.removeItem(CONTRIBUTE_PREF_KEY);
+                } catch {
+                  /* storage blocked */
+                }
+              }}
+            >
+              {contribOff ? "turn contribution on" : "turn contribution off"}
+            </button>
+          </p>
         </section>
       )}
     </div>
