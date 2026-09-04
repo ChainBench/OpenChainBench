@@ -84,6 +84,20 @@ export function median(values: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+/** Parse a stored latency entry: "unixSeconds:p50" (current format) or
+ *  a bare legacy number (ts null). Invalid entries return null. */
+export function parseLatEntry(raw: string): { ts: number | null; p50: number } | null {
+  const idx = raw.indexOf(":");
+  if (idx === -1) {
+    const v = Number(raw);
+    return Number.isFinite(v) ? { ts: null, p50: v } : null;
+  }
+  const ts = Number(raw.slice(0, idx));
+  const v = Number(raw.slice(idx + 1));
+  if (!Number.isFinite(v)) return null;
+  return { ts: Number.isFinite(ts) ? ts : null, p50: v };
+}
+
 /** Current + previous month keys ("2026-09"), the map's rolling window. */
 export function monthKeys(now: Date): [string, string] {
   const y = now.getUTCFullYear();

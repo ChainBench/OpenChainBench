@@ -125,7 +125,10 @@ export async function POST(req: NextRequest) {
     const pair = `${gh}:${e.slug}`;
     const latKey = `stm:lat:${ym}:${gh}:${parsed.chain}:${e.slug}`;
     cmds.push(["SADD", `stm:idx:${ym}:${parsed.chain}`, pair]);
-    cmds.push(["LPUSH", latKey, e.p50]);
+    // "unixSeconds:p50" so the map can show when each area was last
+    // measured and render per-provider contribution history. The map
+    // reader also accepts bare legacy numbers.
+    cmds.push(["LPUSH", latKey, `${Math.floor(Date.now() / 1000)}:${e.p50}`]);
     cmds.push(["LTRIM", latKey, 0, RESERVOIR - 1]);
     cmds.push(["EXPIRE", latKey, TTL_SEC]);
   }
