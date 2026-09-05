@@ -36,6 +36,7 @@ func runAnchorFeeder(ctx context.Context, q *queue) {
 				address:      a.Address,
 				chain:        a.Chain,
 				kind:         a.Kind,
+				hint:         a.Hint,
 				discoveredAt: time.Now(),
 			}) {
 				// queue full — wait a bit so workers can catch up.

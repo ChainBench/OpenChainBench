@@ -12,6 +12,7 @@ type sample struct {
 	address      string
 	chain        string
 	kind         string // "contract" | "eoa" — carried into Prom labels so the bench can split by anchor kind
+	hint         string // curated entity name for this anchor; scores the accuracy series, never the hit rule
 	discoveredAt time.Time
 }
 
@@ -105,6 +106,12 @@ func lookupAll(ctx context.Context, providers []Provider, s sample) {
 			continue
 		}
 		recordCheck(r.Provider, r.Chain, s.kind, r.HasLabel, float64(r.LatencyMs), r.Err)
+		// Stricter companion series: a hit only counts when the label
+		// actually names the curated entity. Published alongside, never
+		// folded into, the hit rate. See accuracy.go.
+		if r.Err == nil {
+			recordAccuracy(r.Provider, r.Chain, s.kind, r.HasLabel && accurateLabel(s.hint, r.Label))
+		}
 		recordDebug(debugEntry{
 			Provider: r.Provider, Chain: r.Chain, Address: r.Address,
 			HasLabel: r.HasLabel, LatencyMs: r.LatencyMs,

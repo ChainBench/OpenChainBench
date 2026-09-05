@@ -26,6 +26,21 @@ var (
 		ConstLabels: commonLabels,
 	}, []string{"provider", "chain", "kind"})
 
+	// Companion series to successTotal. Same denominator, stricter rule:
+	// the label must actually name the curated entity for the anchor, not
+	// merely be non-generic. See accuracy.go for why this exists.
+	accuracyChecksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        "wallet_labels_accuracy_checks_total",
+		Help:        "Label checks scored for accuracy against the curated anchor hint.",
+		ConstLabels: commonLabels,
+	}, []string{"provider", "chain", "kind"})
+
+	accurateTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        "wallet_labels_accurate_total",
+		Help:        "Checks where the returned label names the curated entity for that anchor.",
+		ConstLabels: commonLabels,
+	}, []string{"provider", "chain", "kind"})
+
 	apiLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        "wallet_labels_api_latency_milliseconds",
 		Help:        "Provider API response time in milliseconds.",
@@ -65,6 +80,19 @@ var (
 
 func recordSkipped(provider, chain string) {
 	skippedTotal.WithLabelValues(provider, chain).Inc()
+}
+
+// recordAccuracy feeds the companion series that scores a label against
+// the curated Hint rather than against "is it non-generic". Same label
+// set as checksTotal so the two ratios share a denominator.
+func recordAccuracy(provider, chain, kind string, accurate bool) {
+	if kind == "" {
+		kind = "unknown"
+	}
+	accuracyChecksTotal.WithLabelValues(provider, chain, kind).Inc()
+	if accurate {
+		accurateTotal.WithLabelValues(provider, chain, kind).Inc()
+	}
 }
 
 func recordCheck(provider, chain, kind string, hasLabel bool, latencyMs float64, err error) {
