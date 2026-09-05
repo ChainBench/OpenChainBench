@@ -90,6 +90,19 @@ providers:
       sample_size: networks_supported_total{provider="geckoterminal"}
       series: networks_supported_total{provider="geckoterminal"}
 
+  - slug: serialized
+    name: Serialized
+    tag: Own indexers, 18 EVM + Solana
+    formula: "Count of chains returned as live by Serialized's `/v1/meta/chains` endpoint; every listed chain carries DEX pool indexing. Refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="serialized"}
+      p90: networks_supported_total{provider="serialized"}
+      p99: networks_supported_total{provider="serialized"}
+      mean: networks_supported_total{provider="serialized"}
+      success: clamp_max(networks_supported_total{provider="serialized"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="serialized"}
+      series: networks_supported_total{provider="serialized"}
+
   - slug: codex
     name: Codex
     tag: Defined.fi DEX data API
