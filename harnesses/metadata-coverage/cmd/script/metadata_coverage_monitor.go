@@ -661,6 +661,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 
 	// Record Prometheus metrics for Mobula
 	RecordMetadataCoverage("mobula", chainName, "logo", mobulaResult.HasLogo, config.MonitorRegion)
+	RecordMetadataCoverage("mobula", chainName, "logo_resolved", mobulaResult.HasLogo && logoResolves(mobulaResult.LogoURL), config.MonitorRegion)
 	RecordMetadataCoverage("mobula", chainName, "description", mobulaResult.HasDescription, config.MonitorRegion)
 	RecordMetadataCoverage("mobula", chainName, "twitter", mobulaResult.HasTwitter, config.MonitorRegion)
 	RecordMetadataCoverage("mobula", chainName, "website", mobulaResult.HasWebsite, config.MonitorRegion)
@@ -676,6 +677,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 
 	// Record Prometheus metrics for Codex
 	RecordMetadataCoverage("codex", chainName, "logo", codexResult.HasLogo, config.MonitorRegion)
+	RecordMetadataCoverage("codex", chainName, "logo_resolved", codexResult.HasLogo && logoResolves(codexResult.LogoURL), config.MonitorRegion)
 	RecordMetadataCoverage("codex", chainName, "description", codexResult.HasDescription, config.MonitorRegion)
 	RecordMetadataCoverage("codex", chainName, "twitter", codexResult.HasTwitter, config.MonitorRegion)
 	RecordMetadataCoverage("codex", chainName, "website", codexResult.HasWebsite, config.MonitorRegion)
@@ -689,6 +691,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 
 		// Record Prometheus metrics for Jupiter
 		RecordMetadataCoverage("jupiter", chainName, "logo", jupiterResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("jupiter", chainName, "logo_resolved", jupiterResult.HasLogo && logoResolves(jupiterResult.LogoURL), config.MonitorRegion)
 		RecordMetadataCoverage("jupiter", chainName, "description", jupiterResult.HasDescription, config.MonitorRegion)
 		RecordMetadataCoverage("jupiter", chainName, "twitter", jupiterResult.HasTwitter, config.MonitorRegion)
 		RecordMetadataCoverage("jupiter", chainName, "website", jupiterResult.HasWebsite, config.MonitorRegion)
@@ -706,6 +709,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		updateStats("serialized", serializedResult)
 
 		RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("serialized", chainName, "logo_resolved", serializedResult.HasLogo && logoResolves(serializedResult.LogoURL), config.MonitorRegion)
 		RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
 		RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
 		RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
