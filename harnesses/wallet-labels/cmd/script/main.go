@@ -53,6 +53,7 @@ func buildProviders(cfg *Config) []Provider {
 		NewMobulaProvider(cfg.MobulaAPIKey),
 		NewMoralisProvider(cfg.MoralisAPIKey),
 		NewHeliusProvider(cfg.HeliusAPIKey),
+		NewSerializedProvider(cfg.SerializedAPIKey),
 		NewBlockscoutProvider(),
 		NewOLIProvider(),
 		NewTonAPIProvider(),
