@@ -11,27 +11,29 @@ import (
 // printed in full — only their length, so misconfigured deploys
 // fail loudly without leaking material.
 type Config struct {
-	MobulaAPIKey  string
-	MoralisAPIKey string
-	HeliusAPIKey  string
+	MobulaAPIKey     string
+	MoralisAPIKey    string
+	HeliusAPIKey     string
+	SerializedAPIKey string
 
-	CheckDelay    time.Duration
-	Workers       int
-	QueueSize     int
-	PromListen    string
-	LogsToken     string
+	CheckDelay time.Duration
+	Workers    int
+	QueueSize  int
+	PromListen string
+	LogsToken  string
 }
 
 func loadConfig() *Config {
 	c := &Config{
-		MobulaAPIKey:  os.Getenv("MOBULA_API_KEY"),
-		MoralisAPIKey: os.Getenv("MORALIS_API_KEY"),
-		HeliusAPIKey:  os.Getenv("HELIUS_API_KEY"),
-		CheckDelay:    parseDurationSec("WALLET_LABELS_CHECK_DELAY_SECONDS", 30),
-		Workers:       parseInt("WALLET_LABELS_WORKERS", 8),
-		QueueSize:     parseInt("WALLET_LABELS_QUEUE_SIZE", 2000),
-		PromListen:    envDefault("PROM_LISTEN_ADDR", ":2112"),
-		LogsToken:     os.Getenv("LOGS_TOKEN"),
+		MobulaAPIKey:     os.Getenv("MOBULA_API_KEY"),
+		MoralisAPIKey:    os.Getenv("MORALIS_API_KEY"),
+		HeliusAPIKey:     os.Getenv("HELIUS_API_KEY"),
+		SerializedAPIKey: os.Getenv("SERIALIZED_API_KEY"),
+		CheckDelay:       parseDurationSec("WALLET_LABELS_CHECK_DELAY_SECONDS", 30),
+		Workers:          parseInt("WALLET_LABELS_WORKERS", 8),
+		QueueSize:        parseInt("WALLET_LABELS_QUEUE_SIZE", 2000),
+		PromListen:       envDefault("PROM_LISTEN_ADDR", ":2112"),
+		LogsToken:        os.Getenv("LOGS_TOKEN"),
 	}
 
 	fmt.Println("=== Wallet Labels Coverage Monitor ===")
@@ -42,6 +44,7 @@ func loadConfig() *Config {
 	fmt.Printf("   Mobula key set: %v (len=%d)\n", c.MobulaAPIKey != "", len(c.MobulaAPIKey))
 	fmt.Printf("   Moralis key set: %v (len=%d)\n", c.MoralisAPIKey != "", len(c.MoralisAPIKey))
 	fmt.Printf("   Helius key set: %v (len=%d)\n", c.HeliusAPIKey != "", len(c.HeliusAPIKey))
+	fmt.Printf("   Serialized key set: %v (len=%d)\n", c.SerializedAPIKey != "", len(c.SerializedAPIKey))
 	fmt.Println()
 
 	return c
