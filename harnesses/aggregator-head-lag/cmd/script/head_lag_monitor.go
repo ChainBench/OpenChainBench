@@ -811,6 +811,9 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	wg.Add(1)
 	go runGeckoTerminalHeadLagMonitor(config, stopChan, &wg)
 
+	wg.Add(1)
+	go runSerializedHeadLagMonitor(config, stopChan, &wg)
+
 	// Wait for all to finish
 	wg.Wait()
 	fmt.Println("[HEAD-LAG] All monitors stopped")
