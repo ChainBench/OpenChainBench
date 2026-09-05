@@ -115,6 +115,47 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Independent crypto market data API. Token prices, OHLCV, exchange tickers, and contract/platform lookups across 300+ supported chains. Public free tier with no auth.",
     twitter: "@coinpaprika",
   },
+  serialized: {
+    url: "https://serialized.xyz",
+    description:
+      "Onchain market data and token security API for trading apps. Own indexers across 18 EVM chains plus Solana, REST plus a single-connection WebSocket for trades and token updates.",
+    longDescription:
+      "Serialized runs its own indexers rather than reselling a third-party pipeline, and scopes coverage deliberately narrow: 18 EVM chains plus Solana, weighted toward venues where launchpad and memecoin flow actually lands (Base, BNB, Solana, HyperEVM, Abstract, Monad, MegaETH, Plasma, Tempo, Arc, Robinhood Chain). The surface splits into market data (token details, price, stats, OHLCV from 1s, trades tape, pools, screener, Axiom-style launchpad lifecycle filters), wallet analytics (positions, PnL, closed positions, transfers, funding, an identity graph behind wallet profiles), and token security (holder concentration, sniper and bundler share, LP burn and lock state, plus a separate async contract-audit engine). Streams run over one WebSocket at wss://api.serialized.xyz/v1/stream, billed per connection-minute rather than per message. On Base the trade tape emits preconfirmed flashblock trades ahead of the block timestamp.",
+    twitter: "@serializedaudit",
+    docs: "https://docs.serialized.xyz",
+    chains: [
+      "ethereum",
+      "base",
+      "bnb",
+      "arbitrum",
+      "avalanche",
+      "solana",
+      "abstract",
+      "hyperevm",
+      "ink",
+      "story",
+      "xlayer",
+      "plasma",
+      "unichain",
+      "monad",
+      "megaeth",
+      "tempo",
+      "robinhood",
+      "arc",
+      "stable",
+    ],
+    features: [
+      "Token details, price, windowed stats and OHLCV from 1s to 1M",
+      "Trades tape with maker resolution, sniper/pro-trader/wash badges",
+      "Wallet positions, realized and unrealized PnL, funding and transfers",
+      "Token security: holder concentration, sniper and bundler share, LP burn and lock",
+      "Async contract audit engine across 18 EVM chains",
+      "Launchpad lifecycle filters over ~90 launchpads",
+      "WebSocket streams for trades, token updates and pool updates",
+    ],
+    pricing:
+      "Credit-metered. Free 15k credits/month, Starter 150k, Growth 2M, Enterprise unlimited. Most endpoints cost 1 credit; token/security costs 10 and a fresh contract audit 750.",
+  },
   dexpaprika: {
     url: "https://dexpaprika.com",
     description:

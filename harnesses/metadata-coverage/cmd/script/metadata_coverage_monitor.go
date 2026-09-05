@@ -65,18 +65,20 @@ type ProviderCoverage struct {
 
 // MetadataCoverageStats holds overall stats
 type MetadataCoverageStats struct {
-	mu        sync.Mutex
-	Mobula    ProviderCoverage
-	Codex     ProviderCoverage
-	Jupiter   ProviderCoverage
-	LastPrint time.Time
+	mu         sync.Mutex
+	Mobula     ProviderCoverage
+	Codex      ProviderCoverage
+	Jupiter    ProviderCoverage
+	Serialized ProviderCoverage
+	LastPrint  time.Time
 }
 
 var (
 	coverageStats = &MetadataCoverageStats{
-		Mobula:  ProviderCoverage{Provider: "mobula"},
-		Codex:   ProviderCoverage{Provider: "codex"},
-		Jupiter: ProviderCoverage{Provider: "jupiter"},
+		Mobula:     ProviderCoverage{Provider: "mobula"},
+		Codex:      ProviderCoverage{Provider: "codex"},
+		Jupiter:    ProviderCoverage{Provider: "jupiter"},
+		Serialized: ProviderCoverage{Provider: "serialized"},
 	}
 	tokenQueue     = make(chan TokenToCheck, 500)
 	metadataClient = &http.Client{Timeout: 10 * time.Second}
@@ -194,12 +196,12 @@ type CodexTokenResponse struct {
 
 // CodexEnhancedToken matches the EnhancedToken type from Codex API
 type CodexEnhancedToken struct {
-	Address     string           `json:"address"`
-	Name        string           `json:"name"`
-	Symbol      string           `json:"symbol"`
-	Decimals    int              `json:"decimals"`
-	NetworkID   int              `json:"networkId"`
-	Info        *CodexTokenInfo  `json:"info"`
+	Address     string            `json:"address"`
+	Name        string            `json:"name"`
+	Symbol      string            `json:"symbol"`
+	Decimals    int               `json:"decimals"`
+	NetworkID   int               `json:"networkId"`
+	Info        *CodexTokenInfo   `json:"info"`
 	SocialLinks *CodexSocialLinks `json:"socialLinks"`
 }
 
@@ -215,11 +217,11 @@ type CodexTokenInfo struct {
 
 // CodexSocialLinks contains social media links for the token
 type CodexSocialLinks struct {
-	Twitter   string `json:"twitter"`
-	Website   string `json:"website"`
-	Telegram  string `json:"telegram"`
-	Discord   string `json:"discord"`
-	Github    string `json:"github"`
+	Twitter  string `json:"twitter"`
+	Website  string `json:"website"`
+	Telegram string `json:"telegram"`
+	Discord  string `json:"discord"`
+	Github   string `json:"github"`
 }
 
 func getCodexNetworkID(chainID string) int {
@@ -553,6 +555,8 @@ func updateStats(provider string, fields MetadataFields) {
 		stats = &coverageStats.Codex
 	case "jupiter":
 		stats = &coverageStats.Jupiter
+	case "serialized":
+		stats = &coverageStats.Serialized
 	default:
 		return
 	}
@@ -601,7 +605,7 @@ func printCoverageStats() {
 	fmt.Printf("║ Provider │ Checks │ Logo  │ Name  │ Symbol│ Desc  │Twitter│Website│Telegram│ Errors │\n")
 	fmt.Printf("╠══════════════════════════════════════════════════════════════════════════════╣\n")
 
-	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter} {
+	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter, &coverageStats.Serialized} {
 		if stats.TotalChecks == 0 {
 			fmt.Printf("║ %-8s │ %6d │   -   │   -   │   -   │   -   │   -   │   -   │   -    │ %6d ║\n",
 				stats.Provider, stats.TotalChecks, stats.ErrorCount)
@@ -691,6 +695,23 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		RecordMetadataLatency("jupiter", chainName, jupiterResult.ResponseTimeMs, config.MonitorRegion)
 	}
 
+	// Check Serialized (18 EVM chains + Solana; skipped elsewhere)
+	var serializedResult MetadataFields
+	if _, supported := serializedChainID(token.ChainID); supported {
+		serializedResult = checkSerializedMetadata(token, config.SerializedAPIKey)
+		if serializedResult.Error != "" {
+			fmt.Printf("[META][SERIALIZED][%s] %s | %s | err=%s\n",
+				chainName, token.Symbol, token.Address, serializedResult.Error)
+		}
+		updateStats("serialized", serializedResult)
+
+		RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
+		RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
+		RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
+		RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+	}
+
 	// Single condensed log line
 	boolToIcon := func(b bool) string {
 		if b {
@@ -709,11 +730,17 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 	// without cross-referencing logs. Address goes after symbol; 4 boolean
 	// columns per provider so website is visible alongside logo/desc/twitter
 	// (the page renders 4 fields, the prior 3-column line hid that one).
-	fmt.Printf("[META] %s/%s %s | M:%s%s%s%s | C:%s%s%s%s | J:%s\n",
+	serializedCols := "----"
+	if _, supported := serializedChainID(token.ChainID); supported {
+		serializedCols = boolToIcon(serializedResult.HasLogo) + boolToIcon(serializedResult.HasDescription) +
+			boolToIcon(serializedResult.HasTwitter) + boolToIcon(serializedResult.HasWebsite)
+	}
+
+	fmt.Printf("[META] %s/%s %s | M:%s%s%s%s | C:%s%s%s%s | J:%s | S:%s\n",
 		token.Symbol, chainName, token.Address,
 		boolToIcon(mobulaResult.HasLogo), boolToIcon(mobulaResult.HasDescription), boolToIcon(mobulaResult.HasTwitter), boolToIcon(mobulaResult.HasWebsite),
 		boolToIcon(codexResult.HasLogo), boolToIcon(codexResult.HasDescription), boolToIcon(codexResult.HasTwitter), boolToIcon(codexResult.HasWebsite),
-		jupiterLogo)
+		jupiterLogo, serializedCols)
 
 	// Print stats every 50 checks (reduced from 10)
 	coverageStats.mu.Lock()
@@ -808,4 +835,3 @@ func runMetadataCoverageMonitor(config *Config, stopChan <-chan struct{}) {
 		}
 	}
 }
-
