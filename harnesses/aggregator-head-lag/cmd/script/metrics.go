@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"sync"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
+	"sync"
 )
 
 var (
@@ -29,11 +29,14 @@ var (
 	metadataAPILatency      *prometheus.HistogramVec
 
 	// Head lag metrics
-	headLagBlocks      *prometheus.GaugeVec
-	headLagSeconds     *prometheus.GaugeVec
-	blockchainHead     *prometheus.GaugeVec
-	aggregatorHead     *prometheus.GaugeVec
-	headLagErrors      *prometheus.CounterVec
+	headLagBlocks     *prometheus.GaugeVec
+	headLagSeconds    *prometheus.GaugeVec
+	blockchainHead    *prometheus.GaugeVec
+	aggregatorHead    *prometheus.GaugeVec
+	headLagErrors     *prometheus.CounterVec
+	headLagRefSeconds *prometheus.GaugeVec
+	headLagRefMatches *prometheus.CounterVec
+	refClockEntries   prometheus.Gauge
 
 	// Fast-trade latency (for comparison with Pulse V2)
 	fastTradeLatency *prometheus.GaugeVec
@@ -186,6 +189,39 @@ func init() {
 		[]string{"aggregator", "chain", "region"},
 	)
 	prometheus.MustRegister(headLagSeconds)
+
+	// Companion to head_lag_seconds, measured against our own node
+	// subscription instead of the timestamp each provider sends us. Same
+	// labels so the two are directly comparable. See reference_monitor.go
+	// for why the legacy series cannot be trusted as an absolute number.
+	headLagRefSeconds = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "head_lag_ref_seconds",
+			Help: "Indexation latency in seconds, measured from a node subscription we hold ourselves, matched by transaction hash.",
+		},
+		[]string{"aggregator", "chain", "region"},
+	)
+	prometheus.MustRegister(headLagRefSeconds)
+
+	// How many provider emissions we could and could not match against the
+	// reference clock. A high miss rate means the reference subscription is
+	// lagging or disconnected and the ref series must not be trusted.
+	headLagRefMatches = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_ref_matches_total",
+			Help: "Provider trade emissions matched against the node reference clock, by outcome.",
+		},
+		[]string{"aggregator", "chain", "region", "outcome"},
+	)
+	prometheus.MustRegister(headLagRefMatches)
+
+	refClockEntries = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "head_lag_ref_clock_entries",
+			Help: "Transactions currently held in the reference clock window.",
+		},
+	)
+	prometheus.MustRegister(refClockEntries)
 
 	// Blockchain head block number (source of truth)
 	blockchainHead = prometheus.NewGaugeVec(
@@ -396,6 +432,51 @@ func RecordHeadLag(aggregator string, chain string, lagBlocks int64, lagSeconds 
 	headLagSeconds.WithLabelValues(aggregator, chain, region).Set(lagSeconds)
 	// tx_hash is logged but not stored as a metric label to avoid cardinality explosion
 }
+
+// RecordHeadLagRef records head lag measured against our own node
+// subscription. Only called when the trade was actually seen by the
+// reference clock; an unmatched emission is counted as a miss and
+// deliberately produces no lag value, because falling back to the
+// provider's own timestamp is the defect this series exists to remove.
+//
+// The value is SIGNED and negatives are kept. Validated end to end
+// before shipping, on trades matched by hash at a 100% match rate:
+// against public endpoints (publicnode on Base, mainnet-beta on Solana)
+// Mobula delivers the trade BEFORE our subscription sees it, p50 -1.20 s
+// on Base and -0.32 s on Solana. That is not a provider being fast
+// enough to time travel, it is the public node being slower than the
+// provider's pipeline.
+//
+// The consequence for how this series must be read: the reference node's
+// own latency sits in every sample as a roughly constant offset, so the
+// ABSOLUTE number is not a head lag. The RELATIVE comparison is sound,
+// because every provider is measured against the same clock on the same
+// transaction, which is exactly what the legacy series cannot claim
+// (measured: the legacy method is off by 1,946 ms on Base and 331 ms on
+// Solana versus this one). Point REF_WS_URL_<CHAIN> at a paid or
+// colocated node to collapse the offset and make the absolute number
+// meaningful too.
+func RecordHeadLagRef(aggregator, chain string, lagSeconds float64, region string) {
+	if lagSeconds > 120 || lagSeconds < -120 {
+		headLagRefMatches.WithLabelValues(aggregator, chain, region, "out_of_range").Inc()
+		return
+	}
+	outcome := "matched"
+	if lagSeconds < 0 {
+		outcome = "ahead_of_reference"
+	}
+	headLagRefMatches.WithLabelValues(aggregator, chain, region, outcome).Inc()
+	headLagRefSeconds.WithLabelValues(aggregator, chain, region).Set(lagSeconds)
+}
+
+// RecordHeadLagRefMiss counts a provider emission the reference clock
+// never saw, so the match rate is auditable from the metrics alone.
+func RecordHeadLagRefMiss(aggregator, chain, region string) {
+	headLagRefMatches.WithLabelValues(aggregator, chain, region, "unmatched").Inc()
+}
+
+// RecordRefClockSize publishes the reference window occupancy.
+func RecordRefClockSize(n int) { refClockEntries.Set(float64(n)) }
 
 // RecordBlockchainHead records the current blockchain head block number
 func RecordBlockchainHead(chain string, blockNumber int64, region string) {
