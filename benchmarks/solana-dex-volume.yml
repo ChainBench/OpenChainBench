@@ -16,6 +16,10 @@ higher_is_better: true
 disclaimer: |
   Volume and revenue data sourced from DeFiLlama's DEX and fees APIs. DeFiLlama attributes volume via on-chain referral tags and program IDs; platforms without standard tags may be undercounted. Figures are 24-hour and 7-day rolling totals updated every 30 minutes. Revenue uses DeFiLlama's dailyRevenue dataType, stripping LP fees. Terminal volume (Axiom, GMGN, Fomo) and launchpad volume (pump.fun) use different attribution methods and are not directly additive.
 
+provider_notes:
+  gmgn: "Solana only"
+  fomo: "on-chain swaps only"
+
 seo_intro: |
   The Solana DEX market in summer 2026 is split between pump.fun's launchpad,
   which dominates early-stage token trading, and a set of competing terminals
@@ -38,9 +42,10 @@ abstract: |
   defillama_dex_take_rate and defillama_dex_health.
 
 methodology:
-  - "Source: DeFiLlama public DEX API (api.llama.fi/summary/dexs/{slug}) and fees API (api.llama.fi/summary/fees/{slug}?dataType=dailyRevenue). No authentication required."
-  - "Poll cadence: harness fetches each platform every 30 minutes and updates Prometheus gauges immediately."
-  - "Volume: total24h and total7d fields from DeFiLlama's DEX endpoint, sum of all swap notional values in USD attributed to this platform."
+  - "Source: DeFiLlama public chain overview APIs (api.llama.fi/overview/dexs/solana and overview/fees/solana?dataType=dailyRevenue), which report SOLANA-scoped totals per protocol. Multichain platforms such as GMGN therefore show their Solana volume only, keeping every row comparable. No authentication required."
+  - "Poll cadence: harness fetches every 30 minutes and updates Prometheus gauges immediately."
+  - "Fomo caveat: DeFiLlama attributes Fomo volume from on-chain Solana swaps matched to its fee wallet, while its revenue figure also includes relay fees the Fomo team self-reports. Fomo's displayed revenue-to-volume ratio (~5%) versus its stated 0.5% fee implies substantially higher total activity than the on-chain volume shown here; its Hyperliquid perps flow is tracked separately on the hyperliquid-frontends bench."
+  - "Volume: total24h and total7d fields, sum of swap notional values in USD attributed to this platform on Solana. DeFiLlama aggregates in daily buckets with roughly a 10-hour indexing delay, so intraday values are flat by construction and step once per day."
   - "Revenue: total24h and total7d from the fees endpoint with dataType=dailyRevenue. This strips LP fees that stay in pool accounts and returns only the protocol's own share. Note: dailyRevenue also nets out referral paybacks (e.g. GMGN nets ~34% back to affiliates) and for pump.fun reflects the buyback-adjusted split introduced in 2026. Use dailyFees if comparing what users pay, not what protocols retain."
   - "Take rate: protocol revenue divided by trading volume (defillama_dex_fees_24h_usd / defillama_dex_volume_24h_usd). Measures how much of each dollar traded the platform captures."
   - "Attribution: DeFiLlama uses on-chain referral tags, program IDs and memo fields. Platforms without standard tagging may be undercounted."
