@@ -156,6 +156,19 @@ providers:
       sample_size: sum(increase(metadata_coverage_checks_total{provider="codex"}[24h]))
       series: 100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h]))
 
+  - slug: serialized
+    name: Serialized
+    tag: REST `/v1/token/metadata`
+    formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Serialized `/v1/token/metadata` for fresh tokens, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[24h]))
+      success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="serialized"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))), 1)
+      sample_size: sum(increase(metadata_coverage_checks_total{provider="serialized"}[24h]))
+      series: 100 * sum(rate(metadata_coverage_success_total{provider="serialized"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="serialized"}[1h]))
+
   - slug: jupiter
     name: Jupiter
     tag: REST `/v6/tokens` (Solana)

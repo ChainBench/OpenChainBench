@@ -194,6 +194,19 @@ providers:
       sample_size: sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h]))
 
+  - slug: serialized
+    name: Serialized
+    tag: Identity graph, 18 EVM chains + Solana, API key required
+    formula: "Share of anchor addresses for which Serialized /v1/wallet/profile returns a non-generic identity name, success_total ÷ checks_total over 24h."
+    queries:
+      p50: 100 * sum(increase(wallet_labels_success_total{provider="serialized"}[24h])) / sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
+      p90: 100 * sum(increase(wallet_labels_success_total{provider="serialized"}[24h])) / sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
+      p99: 100 * sum(increase(wallet_labels_success_total{provider="serialized"}[24h])) / sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
+      mean: 100 * sum(increase(wallet_labels_success_total{provider="serialized"}[24h])) / sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="serialized"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="serialized"}[24h])), 1), 0)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="serialized"}[1h])) / sum(rate(wallet_labels_checks_total{provider="serialized"}[1h]))
+
   - slug: helius
     name: Helius
     tag: Solana specialist, native program graph, API key required
