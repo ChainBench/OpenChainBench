@@ -3,7 +3,7 @@
 > **Pre-onboarding evaluation.** Run before Serialized is wired into any live harness, so the
 > decision to include or exclude them on each bench is documented and reproducible.
 >
-> **Version:** v1.1, 2026-09-05 (v1.0 same day; §8 corrected, §16 added). Author: internal. Key used: tenant `OpenChainBench`,
+> **Version:** v1.2, 2026-09-05 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2). Author: internal. Key used: tenant `OpenChainBench`,
 > plan `starter`, keyId `d5511a080aaa`, issued 2026-09-04.
 
 ---
@@ -387,11 +387,30 @@ Confirmed by request rather than by reading docs. Every path returns `404 NOT_FO
 Three independent sources agree; Serialized is low by a factor of 5.2, and reports a $55.7M market
 cap against a real ~$290M.
 
-Root cause is visible in their own response. `/v1/token/pools?chain=solana&address=DezXAZ...` ranks
-`Gx1WGimRY3jF...` first with liquidity 4,339, and the deep Orca pool everyone else prices from is
-absent from the list entirely. Their own ranks 2 and 3 quote ~3.18e-08 and ~3.20e-08 native against
-rank 1 at 6.09e-09, so the pool list is internally inconsistent by the same 5x. This is pool
-discovery missing the main market, not a decimals bug (`decimals: 5` is correct for BONK).
+**Correction (v1.2).** An earlier revision said the deep Orca pool was absent from their list. It is
+not: it is present, ranked second. The defect is the ranking, and it is sharper than "missing pool".
+Their `/v1/token/pools` returns 50 pools; the top 8 with liquidity converted to USD at their own
+`/v1/prices/native` SOL price of $103.85:
+
+| rank | pair | liquidity, raw | liquidity, USD | priceNative | implied USD |
+|---|---|---|---|---|---|
+| **1** | Bonk/USDC | 4,346.7 USDC | **$4,347** | 6.0867e-09 | $6.32e-07 |
+| 2 | Bonk/SOL | 728.7 SOL | **$75,679** | 3.1853e-08 | $3.31e-06 |
+| 3 | Bonk/USDC | 528.3 USDC | $528 | 3.1794e-08 | $3.30e-06 |
+| 6 | Bonk/SOL | 298.7 SOL | $31,017 | 3.1843e-08 | $3.31e-06 |
+
+Seven of eight pools agree at ~$3.31e-06. Rank 1 is the lone outlier, and `/v1/token/price` prices
+from it. Rank 1 holds the largest **raw** `liquidityNative` number (4,346.7) but the pool it beats
+holds 728.7 SOL, which is $75,679, or 17.4x deeper.
+
+The ranking compares `liquidityNative` across different quote assets without converting to USD, so a
+pool quoted in USDC outranks a deeper pool quoted in SOL purely because 4,346 > 728. Not a decimals
+bug (`decimals: 5` is correct for BONK), not a discovery gap: a unit bug in the pool ranking.
+
+This matters beyond pricing. `lpBurnedPct`, `lpLockedPct` and `lpSource` are all properties of the
+selected pool, so a wrong rank-1 selection also describes the LP safety of the wrong market. On BONK
+those fields degrade to `null` / `unknown`, but on a token where the thin pool has a burned LP and
+the real market does not, the security verdict would be wrong in the dangerous direction.
 
 Worth raising with them directly: a top-100 token mispriced 5x is a bigger problem for their
 prospects than any leaderboard position.
@@ -410,3 +429,75 @@ The idea remains the most promising new bench for this vertical, and the BONK ca
 is real. But it cannot be built on another aggregator as reference: the reference has to be computed
 from on-chain reserves of the deepest pool over an RPC we control, which is the actual work and the
 actual reason the bench would be defensible.
+
+
+## 17. Token-security bench: feasibility testing
+
+### 17.1 The cohort exists
+
+Six providers expose a live security endpoint, four of them keyless: Serialized, Mobula
+(`/api/2/token/security`), GoPlus (EVM and Solana), RugCheck (Solana), Honeypot.is. A leaderboard
+has enough rows on day one.
+
+### 17.2 Latency, ready to publish as-is (20 tokens, 4 chains)
+
+| Provider | p50 | p90 | max |
+|---|---|---|---|
+| RugCheck | 91 ms | 217 ms | 217 ms |
+| GoPlus | 249 ms | 376 ms | 597 ms |
+| Serialized | 306 ms | 847 ms | 2,416 ms |
+| **Mobula** | **5,240 ms** | 5,691 ms | **30,041 ms** |
+
+Mobula is 17x slower than Serialized and 57x slower than RugCheck. That is our own product at the
+bottom of a leaderboard we would be publishing, and it should be weighed before shipping this axis.
+
+### 17.3 Three design traps, all measured
+
+1. **Tax fields carry no signal.** Agreement on buy/sell tax: Serialized vs GoPlus 100% (n=22),
+   Serialized vs Mobula 90% (n=30), Mobula vs GoPlus 91% (n=22). A bench scoring tax accuracy is a
+   four-way tie.
+2. **LP fields are not comparable across vendors.** `serialized.lpBurnedPct` is LP burned,
+   `mobula.burnedHoldingsPercentage` is *token* burned, `rugcheck.lpLockedPct` is LP *locked*.
+   Three different quantities under similar names. Putting them in one column manufactures a false
+   ranking. The harness must define canonical fields and map each vendor explicitly.
+3. **Coverage alone is gameable.** A provider that always returns a number wins. Null rates measured
+   (share of nulls): Serialized top10 0%, taxes 25%, honeypot 100% (no such field);
+   Mobula taxes 5%, honeypot 30%, top10 100%; GoPlus taxes 40-50%; RugCheck LP 0%, rest 100%.
+
+### 17.4 Retrospective backtest: does the signal exist?
+
+Cohort of 128 tokens taken from `/v1/pulse?view=graduated` on Solana, Base and BNB. Cohort is defined
+by an event (graduation), not by survival, so no survivorship bias in selection. Split by current
+liquidity: 77 below $5k ("dead"), 19 above $50k ("alive"), 32 in between discarded.
+
+Median values, dead vs alive: `top10HoldersPct` 20.3 vs 10.0, `bundlersHoldingsPct` 51.6 vs 19.5,
+`holdersCount` 24 vs 239, `devHoldingsPct` 0.0 vs 79.3, `snipersHoldingsPct` 0.01 vs 98.4.
+
+**Age confound ruled out**: median age 0.8 h (dead) vs 1.0 h (alive), ratio 0.86.
+
+**But the test does not answer the prospective question.** Both cohorts are roughly one hour old, so
+"dead" means "never grew past $5k in its first hour", not "rugged over seven days". A retrospective
+query cannot substitute for snapshotting a verdict at mint and resolving the outcome later.
+
+### 17.5 Which fields are worth snapshotting (n=70)
+
+| Field | Distinct values | Read |
+|---|---|---|
+| `top10HoldersPct` | 68 / 70 (97%) | Genuine continuous measurement. Use it. |
+| `bundlersHoldingsPct` | 46 / 70 (66%) | Bimodal: 13 tokens at exactly 100.0, 13 at exactly 0.0. The 100.0 cluster tracked the dead group. Strongest candidate signal. |
+| `snipersHoldingsPct` | 45 / 70 (64%) | 26 zeros. Middling. |
+| `devHoldingsPct` | 21 / 70 (30%) | 42 zeros plus a 79.31 cluster appearing 7 times, a launchpad template signature. Low discriminative power on graduated tokens. |
+
+### 17.6 Cost constraint
+
+`token/security` costs 10 credits, `audit/contract` costs 750. At 200 fresh tokens a day the security
+endpoint costs ~60k credits a month, inside our 1M allowance. The audit endpoint is not benchmarkable
+at any useful cadence and must be excluded from the design and said so in the methodology.
+
+### 17.7 Recommended shape
+
+Layer 1, ship first: latency. No ground truth needed, 57x spread already measured.
+Layer 2: coverage against canonical fields we define, with the per-vendor mapping documented.
+Layer 3, the real bench: snapshot every provider's verdict at mint, resolve on-chain at T+7d
+(liquidity below 5% of peak, or LP pulled), publish recall and false-positive rate per provider.
+Snapshot `top10HoldersPct` and `bundlersHoldingsPct` as the primary signals per §17.5.
