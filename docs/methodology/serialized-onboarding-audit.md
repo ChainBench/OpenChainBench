@@ -3,7 +3,7 @@
 > **Pre-onboarding evaluation.** Run before Serialized is wired into any live harness, so the
 > decision to include or exclude them on each bench is documented and reproducible.
 >
-> **Version:** v1.0, first commit 2026-09-05. Author: internal. Key used: tenant `OpenChainBench`,
+> **Version:** v1.1, 2026-09-05 (v1.0 same day; §8 corrected, §16 added). Author: internal. Key used: tenant `OpenChainBench`,
 > plan `starter`, keyId `d5511a080aaa`, issued 2026-09-04.
 
 ---
@@ -211,10 +211,41 @@ negative while Mobula beats it to the wire on three trades out of four. **Any he
 on a provider's own timestamp is not a latency measurement, it is a measurement of where that
 provider chooses to put its clock.**
 
-Bench 001 already does the right thing by referencing archive nodes and validating against block
-hashes, so the published leaderboard is not affected by this. It does mean two things going forward:
-the archive-node reference is load-bearing and must never be relaxed to a self-reported field, and
-Serialized cannot be onboarded through a shortcut that trusts their `at`.
+**Correction, 2026-09-05 (v1.1).** An earlier draft of this file claimed bench 001 already
+references archive nodes and was therefore unaffected. That was wrong: it repeated the spec's
+methodology instead of reading the harness. `harnesses/aggregator-head-lag` contains no archive-node
+reference at all (`grep -rl "archive|eth_getBlockByNumber|getBlockTime|blockTimestamp"` over
+`cmd/` returns nothing). The gauge that feeds the leaderboard is computed from each provider's own
+self-reported timestamp:
+
+```go
+// head_lag_monitor.go:211  (Mobula)
+onChainTime := time.UnixMilli(trade.Date)     // Mobula's own field
+totalLagMs  := receiveTime.Sub(onChainTime)
+// head_lag_monitor.go:707  (Codex)
+onChainTime := time.Unix(event.Timestamp, 0)  // Codex's own field
+```
+
+The published spec says otherwise in three places: `methodology[7]` ("Reference: archive nodes per
+chain, validated against block hashes"), the FAQ ("The harness holds a live WebSocket subscription
+to canonical-tip archive nodes on each chain"), and the per-chain explainers ("Measured against a
+canonical archive node"). The documentation and the code disagree, on a live bench that is publicly
+cited. That is a defect independent of Serialized and should be resolved before any provider is
+added.
+
+Second code-level issue, `head_lag_monitor.go:219`:
+
+```go
+if totalLagMs < 0 || totalLagMs > 30000 { continue }
+```
+
+Negative lags are dropped silently. Serialized's Base feed was negative on 13 of 13 sampled trades,
+so under this filter its entire Base preconfirmed population would be discarded and its Base sample
+would retain only its slowest trades. This is a measurable bias, not a policy question.
+
+Recommended resolution: make the harness hold its own node subscription per chain and timestamp each
+swap on receipt, matching by transaction hash. That is what the spec already claims, so no published
+text changes, and it makes the three providers comparable for the first time.
 
 **Blocking issue: Base preconfirmations.** Serialized emits Base trades from flashblocks
 preconfirmations, ahead of the block timestamp they attach to the event. Measured on their stream,
@@ -311,3 +342,71 @@ Worth knowing before any commercial discussion, neutral observation either way:
 
 Every onboarding needs a `docker build --no-cache` of the materialize-worker on `ocb-par-main`
 after the harness change, or the new provider will not appear.
+
+
+## 16. Follow-up tests, 2026-09-05
+
+### 16.1 Bench 067, now conclusive
+
+The earlier §9 result was inconclusive because it used the wrong probe address. The harness already
+pins canonical ones in `registry.go`: EVM `0xF977...aceC` (Binance 8), Solana `9WzDX...WWM`, with a
+$1 USD floor. Re-run verbatim against those:
+
+| Metric | Serialized |
+|---|---|
+| listed (`/v1/meta/chains`) | 19 |
+| verified (returned a > $1 balance) | **5** |
+| errors | 0 |
+| total probe latency, 19 calls | 1,696 ms |
+
+Verified: ethereum (177 positions, $72.7M), bsc (93, $43.9M), base (27, $5.1M), arbitrum (12,
+$3.5M), solana (1, $12). The other 14 chains returned zero rows because Binance 8 holds nothing
+there, which is the harness's own "untestable residue" (`listed - probed`), not an indexer failure.
+
+Published leaderboard: CoinStats 127, Mobula 50, Zerion 42, Moralis 15. Serialized would rank
+last at 5. Verdict: addable and now measurable, but it is a third breadth metric and a third last
+place. Their `verified / probed` ratio is 5/5, which the bench exposes as a separate series and is
+the only flattering read available.
+
+### 16.2 Negative capability probes
+
+Confirmed by request rather than by reading docs. Every path returns `404 NOT_FOUND`:
+`/v1/wallet/nfts`, `/v1/nft/collection`, `/v1/nfts`, `/v1/swap/quote`, `/v1/quote`, `/v1/route`,
+`/v1/bridge/quote`. Benches 033, 102, `nft-collection-metadata`, `bridge-fee` and
+`bridge-quote-latency` are definitively out.
+
+### 16.3 A real pricing defect: BONK is 5.2x wrong
+
+| Source | BONK price |
+|---|---|
+| Mobula | 3.3097e-06 |
+| DexScreener (Orca, $305,835 liquidity) | 3.309e-06 |
+| GeckoTerminal | 3.309731e-06 |
+| **Serialized** | **6.3314e-07** |
+
+Three independent sources agree; Serialized is low by a factor of 5.2, and reports a $55.7M market
+cap against a real ~$290M.
+
+Root cause is visible in their own response. `/v1/token/pools?chain=solana&address=DezXAZ...` ranks
+`Gx1WGimRY3jF...` first with liquidity 4,339, and the deep Orca pool everyone else prices from is
+absent from the list entirely. Their own ranks 2 and 3 quote ~3.18e-08 and ~3.20e-08 native against
+rank 1 at 6.09e-09, so the pool list is internally inconsistent by the same 5x. This is pool
+discovery missing the main market, not a decimals bug (`decimals: 5` is correct for BONK).
+
+Worth raising with them directly: a top-100 token mispriced 5x is a bigger problem for their
+prospects than any leaderboard position.
+
+### 16.4 Cross-API price accuracy as a new bench: not proven
+
+Two attempts, neither conclusive, recorded so nobody repeats them:
+
+1. Basket from a DexScreener search returned eight distinct addresses all symbolled "SOL", i.e.
+   impostor tokens rather than eight real assets. Result discarded.
+2. Basket from GeckoTerminal top pools (28 distinct tokens) gated on DexScreener and GeckoTerminal
+   agreeing within 200 bps. Only 3 tokens survived, because GeckoTerminal returned no price for 25
+   of them. n=3 proves nothing.
+
+The idea remains the most promising new bench for this vertical, and the BONK case shows the signal
+is real. But it cannot be built on another aggregator as reference: the reference has to be computed
+from on-chain reserves of the deepest pool over an RPC we control, which is the actual work and the
+actual reason the bench would be defensible.
