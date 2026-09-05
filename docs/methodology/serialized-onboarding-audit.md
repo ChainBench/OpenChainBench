@@ -3,7 +3,7 @@
 > **Pre-onboarding evaluation.** Run before Serialized is wired into any live harness, so the
 > decision to include or exclude them on each bench is documented and reproducible.
 >
-> **Version:** v1.2, 2026-09-05 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2). Author: internal. Key used: tenant `OpenChainBench`,
+> **Version:** v1.3, 2026-09-06 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2; §18 added in v1.3: Serialized wired into bench 001). Author: internal. Key used: tenant `OpenChainBench`,
 > plan `starter`, keyId `d5511a080aaa`, issued 2026-09-04.
 
 ---
@@ -501,3 +501,35 @@ Layer 2: coverage against canonical fields we define, with the per-vendor mappin
 Layer 3, the real bench: snapshot every provider's verdict at mint, resolve on-chain at T+7d
 (liquidity below 5% of peak, or LP pulled), publish recall and false-positive rate per provider.
 Snapshot `top10HoldersPct` and `bundlersHoldingsPct` as the primary signals per §17.5.
+
+
+## 18. Bench 001: Serialized is in (v1.3, 2026-09-06)
+
+Earlier sections called 001 "blocked on a policy decision". That was the wrong framing, and it hid a
+practical question nobody had tested: does Serialized's stream cover the four bench pools at all?
+
+Their trades stream is keyed by **token** with an optional `pools` filter, while the bench is keyed
+by **pool**. Subscribing by the pool's native side (SOL, WETH, WBNB) acknowledges and delivers
+nothing, consistent with their REST 404 on `So111...112`: the chain native is a quote asset to them,
+never a token. Their own `GET /v1/pool` names the other side under `token` (USDC on Solana and Base,
+BUSD on BNB, USDG on Robinhood). Subscribing by that address with `pools=<bench pool>` delivers the
+tape for exactly that market.
+
+| Chain | pool | subscribe by | events with `txHash` |
+|---|---|---|---|
+| solana | 7qbRF6... | USDC `EPjF...`  | 4 in 75 s (1,694 token-wide) |
+| base | 0xd0b5... | USDC `0x8335...` | 10 in 90 s (173 token-wide) |
+| bnb | 0x58f8... | BUSD `0xe9e7...` | 2 in 90 s |
+| robinhood | 0x69bf... | USDG `0x5fc5...` | 79 in 90 s (3,888 token-wide) |
+
+One constraint from their official docs shaped the implementation: **5 concurrent connections per
+key**. The harness runs in three regions off one key, so the monitor opens one connection per
+process and multiplexes the four pools as subscriptions. A first test that opened eight connections
+was refused with close code 1008 ("connection limit (5 per key)"), which is also why an earlier
+Solana attempt looked like a failure.
+
+`harnesses/aggregator-head-lag/cmd/script/serialized_head_lag_monitor.go` records both series:
+`head_lag_seconds` from their own `at` (same treatment as Mobula and Codex, same negative filter), and
+`head_lag_ref_seconds` against the node reference clock matched by `txHash`, which is the one that can
+rank providers. Every event carries `txHash`, `block`, `poolAddress` and a `preconfirmed` boolean per
+their docs, so Base flashblocks are visible rather than inferred.
