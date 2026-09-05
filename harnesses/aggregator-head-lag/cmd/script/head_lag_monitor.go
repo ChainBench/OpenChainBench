@@ -214,6 +214,18 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 			// Total lag: on-chain → WebSocket receipt
 			totalLagMs := receiveTime.Sub(onChainTime).Milliseconds()
 
+			// Reference lag: same trade, but timed against the node
+			// subscription we hold ourselves rather than against the
+			// timestamp Mobula sent us. Recorded before the legacy
+			// filter below so a preconfirmed emission is counted rather
+			// than dropped. See reference_monitor.go.
+			refChainName := getChainNameFromBlockchain(trade.Blockchain)
+			if refAt, ok := reference.lookup(refChainName, trade.Hash); ok {
+				RecordHeadLagRef("mobula", refChainName, receiveTime.Sub(refAt).Seconds(), config.MonitorRegion)
+			} else {
+				RecordHeadLagRefMiss("mobula", refChainName, config.MonitorRegion)
+			}
+
 			// Drop WebSocket replays / clock-skew events: not real indexation latency
 			// (Mobula WS occasionally replays old trades on reconnect; those would otherwise fire alerts)
 			if totalLagMs < 0 || totalLagMs > 30000 {
@@ -711,6 +723,14 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 				// Get chain name
 				chainName := getChainNameFromNetworkID(networkID)
 
+				// Reference lag against our own node subscription, matched
+				// by transaction hash. See reference_monitor.go.
+				if refAt, ok := reference.lookup(chainName, event.TransactionHash); ok {
+					RecordHeadLagRef("codex", chainName, receiveTime.Sub(refAt).Seconds(), config.MonitorRegion)
+				} else {
+					RecordHeadLagRefMiss("codex", chainName, config.MonitorRegion)
+				}
+
 				lastEventMu.Lock()
 				lastEventByChain[chainName] = time.Now()
 				lastEventMu.Unlock()
@@ -776,6 +796,11 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 
 	// Start Mobula fast-trade monitor
 	wg.Add(1)
+	// The reference clock must be up before the provider monitors, so the
+	// first emissions have something to match against. It is never fatal:
+	// a chain with no endpoint simply leaves the ref series empty.
+	runReferenceMonitor(stopChan)
+
 	go runMobulaHeadLagMonitor(config, stopChan, &wg)
 
 	// Start Codex monitor
