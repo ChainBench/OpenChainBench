@@ -200,11 +200,12 @@ export type ProviderAppearance = {
   result: ProviderResult;
   rank: number;
   totalRanked: number;
-  /** Per-chain rank for this provider on this bench. Only populated when
-   *  the bench declares chain dimensions AND bestPerChain has at least one
-   *  entry. Key = chain slug (matching dimensions.chain[].value), value =
-   *  { rank, totalRanked } computed within the providers present on that
-   *  chain. Renderers can fall back to `rank` when this is empty. */
+  /** Per-chain leadership for this provider on this bench. Populated only
+   *  for chains this provider *leads*, so `rank` is always 1 and an absent
+   *  key means "does not lead here", never "ranked lower here". Key = chain
+   *  slug (matching dimensions.chain[].value). `totalRanked` is how many
+   *  providers were measured on that chain, or 0 when that set is unknown.
+   *  Renderers fall back to the aggregate `rank` when this is empty. */
   rankPerChain?: Record<string, { rank: number; totalRanked: number }>;
 };
 
@@ -245,18 +246,23 @@ function rankProviders(b: Benchmark): ProviderResult[] {
 }
 
 /**
- * Compute per-chain rank for every provider on a bench. Bench must declare
- * `dimensions.chain` and have a non-empty `bestPerChain` for any rank to be
+ * Compute per-chain leadership for a bench. Bench must declare
+ * `dimensions.chain` and have a non-empty `bestPerChain` for anything to be
  * recorded.
  *
- * Approximation: spec.ts only stashes the *leader* per chain (one extra Prom
- * roundtrip per chain). To express other providers' rank-per-chain, we use a
- * coarse fallback: anyone present in the unfiltered `results` is ranked by
- * the bench's standard direction (lower-is-better or higher-is-better)
- * within the live result set, and the leader's slot is forcibly overridden
- * with rank 1 for that chain. This is a soft signal — the bench page chain
- * tabs are authoritative — but it is enough to flag chain-restricted
- * providers like GMGN as "#1 on Solana only" on /products/[slug].
+ * Leaders only, deliberately. spec.ts stashes the *leader* per chain (one
+ * extra Prom roundtrip per chain), and that is the only per-chain fact we
+ * actually hold. An earlier version also emitted ranks for non-leaders by
+ * reusing the unfiltered aggregate order shifted by one slot; those chips
+ * rendered as "#3 on Solana" while being the provider's *global* rank with a
+ * chain label stuck on it, identical across every chain of the bench. That
+ * reads as a measurement and is not one, so it is gone: a provider now gets a
+ * chip for a chain only when it leads that chain.
+ *
+ * `totalRanked` is the number of providers actually measured on the chain,
+ * taken from `providersPerChain`. It is 0 when the bench has not stashed that
+ * set (older cached entries), and renderers must then omit the denominator
+ * rather than substitute the global count.
  */
 function rankPerChainForBench(
   b: Benchmark,
@@ -280,24 +286,14 @@ function rankPerChainForBench(
     const presentSet = providersPerChain?.[chain.value]
       ? new Set(providersPerChain[chain.value].map((s) => s.toLowerCase()))
       : undefined;
-    const scoped = presentSet
-      ? liveSorted.filter((r) => presentSet.has(r.slug.toLowerCase()))
-      : liveSorted;
+    // Only claim a denominator when we know who was measured on this
+    // chain; scoped.length over the global list would be a different
+    // number wearing the same label.
+    const totalRanked = presentSet
+      ? liveSorted.filter((r) => presentSet.has(r.slug.toLowerCase())).length
+      : 0;
     const perProvider = new Map<string, { rank: number; totalRanked: number }>();
-    const leaderLc = leader.slug.toLowerCase();
-    const leaderIdx = scoped.findIndex((r) => r.slug.toLowerCase() === leaderLc);
-    scoped.forEach((r, idx) => {
-      const lc = r.slug.toLowerCase();
-      if (lc === leaderLc) {
-        perProvider.set(lc, { rank: 1, totalRanked: scoped.length });
-        return;
-      }
-      // Anyone ranked above the leader in the unfiltered set drops by one
-      // slot here (since the leader skips ahead of them on this chain).
-      const rankOnChain =
-        leaderIdx !== -1 && idx < leaderIdx ? idx + 2 : idx + 1;
-      perProvider.set(lc, { rank: rankOnChain, totalRanked: scoped.length });
-    });
+    perProvider.set(leader.slug.toLowerCase(), { rank: 1, totalRanked });
     out[chain.value] = perProvider;
   }
   return out;

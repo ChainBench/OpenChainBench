@@ -82,13 +82,10 @@ export async function BenchAppearancesSection({ providerSlug }: Props) {
                       {chainRanks.map(({ chain, entry }) => (
                         <span
                           key={chain.value}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
-                            entry.rank === 1
-                              ? "border-good/40 bg-good/10 text-good"
-                              : "border-rule bg-paper-soft text-ink-muted"
-                          }`}
+                          className="inline-flex items-center gap-1 rounded-full border border-good/40 bg-good/10 px-2 py-0.5 text-good"
                         >
-                          #{entry.rank} on {chain.label}
+                          #1{entry.totalRanked > 0 ? ` of ${entry.totalRanked}` : ""} on{" "}
+                          {chain.label}
                         </span>
                       ))}
                     </p>
