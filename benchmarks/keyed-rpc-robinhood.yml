@@ -2,8 +2,8 @@
 
 slug: keyed-rpc-robinhood
 number: "243"
-title: "Fastest Robinhood Chain RPC with API key: Chainstack vs Alchemy vs QuickNode"
-seo_title: "Fastest Robinhood Chain RPC API key 2026: Chainstack vs Alchemy vs QuickNode latency"
+title: "Fastest Robinhood Chain RPC with API key, measured from Singapore: Chainstack vs Alchemy vs QuickNode"
+seo_title: "Fastest Robinhood Chain RPC API key 2026 from Singapore: Chainstack vs Alchemy vs QuickNode latency"
 seo_description: "Live Robinhood Chain RPC latency: Chainstack, Alchemy, and QuickNode keyed endpoints probed every 60s. First public benchmark for this Arbitrum Orbit L2."
 subtitle: eth_getBlockByNumber latency against keyed Robinhood Chain endpoints (Chainstack, Alchemy, QuickNode), probed every 60 seconds.
 category: RPCs
@@ -19,7 +19,10 @@ seo_intro: |
   chain with low tolerance for RPC latency.
   This bench probes Chainstack, Alchemy, and QuickNode on their keyed
   Robinhood Chain endpoints every 60 seconds from two probe regions
-  (Singapore and US-East). Chainstack posts the lowest median latency. This is the only independently-run public
+  (Singapore and US-East). Chainstack posts the lowest median from the Singapore probe, the origin the
+  headline cites; the region tabs re-scope every figure. Round-trip latency depends on where the probe
+  sits relative to each provider's serving node, so no figure here is a chain-wide claim.
+  This is the only independently-run public
   latency benchmark for Robinhood Chain.
 
 abstract: |
@@ -31,7 +34,7 @@ abstract: |
   the latency distribution.
 
 methodology:
-  - "Cadence: every 60 seconds per provider from each probe region (Singapore; US-East Virginia). Headline numbers cite the Singapore probe, the closest region to the chain's Asia-Pacific infrastructure; the region tabs re-scope every figure to one origin. Robinhood Chain runs on the Arbitrum Orbit stack with ~100ms block times; the 60s probe cadence captures 600 blocks per hour."
+  - "Cadence: every 60 seconds per provider from each probe region (Singapore; US-East Virginia). Headline numbers cite the Singapore probe; the region tabs re-scope every figure to one origin, and provider ranking is origin-dependent. Robinhood Chain runs on the Arbitrum Orbit stack with ~100ms block times; the 60s probe cadence captures 600 blocks per hour."
   - "Payload: eth_getBlockByNumber('latest', false) with a rotating JSON-RPC id. Non-cacheable by design: the rotating id defeats body-keyed edge caches and forces the provider to serve a real Robinhood Chain tip."
   - "Authentication: Chainstack Global Node key (node-scoped, dedicated to Robinhood Chain; key in Railway env, not in repo). Alchemy uses its standard multi-chain key. QuickNode uses its shared-endpoint key for Robinhood Chain. All keys in Railway env, not in repo."
   - "Call-result classification: ok (HTTP 200 with usable block number), http_err, jsonrpc_err (HTTP 200 with error body), stale (block more than 20 behind the cross-provider tip), timeout. Latency is recorded only for ok responses."
@@ -60,13 +63,13 @@ dimensions:
 
 faq:
   - q: "Which Robinhood Chain RPC provider is fastest?"
-    a: "Per the live data above: {{name:chainstack}} at {{p50:chainstack}} p50 (24h). It is the lowest-latency keyed provider for Robinhood Chain in this benchmark."
+    a: "From the Singapore probe: {{name:chainstack}} at {{p50:chainstack}} p50 (24h), the lowest-latency keyed provider for Robinhood Chain as measured from that origin."
   - q: "What is Robinhood Chain?"
     a: "Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 built by Robinhood for tokenized equity trading. It launched on mainnet in July 2026 with ~100ms block times and a gas fee subsidy running through September 29, 2026. It supports EVM-compatible tooling and standard eth_ JSON-RPC methods."
   - q: "Why is this the only Robinhood Chain latency benchmark?"
     a: "Robinhood Chain is a new chain. OpenChainBench added it within days of Chainstack, Alchemy, and QuickNode support going live, making this the first and so far only independent latency measurement. Infura and Ankr do not currently list Robinhood Chain in their supported networks."
   - q: "Which regions does this benchmark probe from?"
-    a: "Two origins: Singapore and US-East (Virginia). The headline figures cite the Singapore probe, the closest region to the chain's Asia-Pacific infrastructure; the region tabs at the top of the page re-scope every number to a single origin."
+    a: "Two origins: Singapore and US-East (Virginia). The headline figures cite the Singapore probe; the region tabs at the top of the page re-scope every number to a single origin. Round-trip latency depends on where the probe sits relative to each provider's serving node, so provider ranking is origin-dependent and no figure is a chain-wide claim."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
 
