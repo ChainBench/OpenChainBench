@@ -48,16 +48,60 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
   return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
 
+/**
+ * Chains each provider leads, counting **contested** chains only: a chain
+ * where at least two providers reported data.
+ *
+ * The exclusion is the whole point. On a chain-dimensioned bench the
+ * cross-chain aggregate is a mix, not a comparison, and a provider
+ * measured on exactly one easy chain with no competitor on it can top the
+ * board without ever beating anyone. Bench 008 shipped that way:
+ * StellarExpert and XRPScan sat 1st and 2nd, each measured on a single
+ * uncontested chain, above Serialized which led four contested ones. Four
+ * other live benches had the same shape, `rpc-capabilities` worst of all
+ * (Binance 1st on one chain while PublicNode led six).
+ *
+ * Returns null when the bench cannot support the count — no chain
+ * dimensions, or the per-chain stashes absent. Those stashes are only
+ * populated on the unfiltered view (see materialize/load.ts), which is
+ * also the guard that keeps a chain-filtered variant from being ranked by
+ * cross-chain wins: on `?chain=bnb` there is nothing to count.
+ */
+export function chainWins(b: Benchmark): Map<string, number> | null {
+  const best = b.bestPerChain;
+  const present = b.providersPerChain;
+  if (!best || !present) return null;
+  const wins = new Map<string, number>();
+  for (const [chain, chainLeader] of Object.entries(best)) {
+    if ((present[chain]?.length ?? 0) < 2) continue;
+    const slug = chainLeader.slug.toLowerCase();
+    wins.set(slug, (wins.get(slug) ?? 0) + 1);
+  }
+  return wins.size > 0 ? wins : null;
+}
+
 /** Sorted candidate pool for the machine-readable `rankings` array on
  *  `/api/stat`, MCP, llm-context and any downstream that ranks the
  *  full field. Applies the same reliability + insufficient-sample
  *  filters as `leader()` so a document that names X as leader ranks X
- *  first in its own list. Sort direction honors the bench's
- *  `higherIsBetter` flag. */
+ *  first in its own list.
+ *
+ *  On a bench that can count contested-chain wins, those wins are the
+ *  primary key and the aggregate value only breaks ties: head-to-head
+ *  record first, chain-mix average second. Everywhere else (no chain
+ *  dimensions, filtered variants) it is the aggregate value alone, sorted
+ *  in the direction the bench's `higherIsBetter` flag asks for. */
 export function rankedCandidates(b: Benchmark): ProviderResult[] {
-  return [...citationCandidates(b)].sort((a, c) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-  );
+  const byValue = (a: ProviderResult, c: ProviderResult) =>
+    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50;
+  const pool = [...citationCandidates(b)];
+  const wins = chainWins(b);
+  if (!wins) return pool.sort(byValue);
+  return pool.sort((a, c) => {
+    const delta =
+      (wins.get(c.slug.toLowerCase()) ?? 0) - (wins.get(a.slug.toLowerCase()) ?? 0);
+    return delta !== 0 ? delta : byValue(a, c);
+  });
 }
 
 /** Timestamp of the last real measurement, or null when the bench has
