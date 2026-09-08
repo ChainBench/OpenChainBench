@@ -6,6 +6,8 @@ import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { getSpecs } from "@/lib/spec";
+import { PROVIDER_REGISTRY } from "@/data/provider-registry";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
@@ -275,9 +277,22 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Prom) so it's safe async — no OOM risk (unlike the old getProvider fan-out).
   // It also catches dormant HL frontends missing from the Prom cohort that
   // the worker couldn't filter without the spec provider list.
+  // Only list product pages this build can actually serve. The blob is
+  // produced by the worker from its own checkout, so it can name providers
+  // that a spec on THIS branch does not declare yet; /products/<slug> then
+  // 404s and the deploy's sitemap smoke blocks the release (2026-09-08:
+  // /products/serialized, declared on dev, listed in prod's sitemap).
+  const declaredProviderSlugs = new Set<string>();
+  for (const spec of await getSpecs()) {
+    for (const p of spec.providers ?? []) declaredProviderSlugs.add(p.slug);
+  }
+  for (const entry of Object.values(PROVIDER_REGISTRY)) {
+    if (entry.parent) declaredProviderSlugs.add(entry.parent);
+  }
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
+        if (!declaredProviderSlugs.has(slug)) return null;
         if (CHAIN_BY_SLUG.has(slug)) return null;
         if (hlBuilderSlugSet.has(slug)) return null;
         if (await isHlBuilderSlug(slug)) return null;
