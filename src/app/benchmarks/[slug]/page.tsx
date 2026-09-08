@@ -271,46 +271,10 @@ export default async function BenchmarkPage({
   const variants: Record<string, Benchmark> = {
     [variantKey(null, null, null)]: aggregate,
   };
-  // Single-origin surface guard. When this build pins one region
-  // (aggregate_filters.region) and declares no region dimension, the page
-  // must not ship the other regions' data in its payload either: the blob
-  // carries every region the worker computed, and whatever is passed to a
-  // client component lands in the RSC payload, readable in view-source even
-  // though nothing renders it. Keep the pinned region's cells, drop the
-  // rest. Benches that declare region tabs are untouched.
-  const pinnedRegion = aggregate.aggregateFilters?.region;
-  const singleOrigin = regionOptions.length === 0 && typeof pinnedRegion === "string";
-  const samePinned = (r: string) => canonRegion(r) === canonRegion(pinnedRegion ?? "");
-  const benchmark = !singleOrigin
-    ? aggregate
-    : {
-        ...aggregate,
-        extras: {
-          ...aggregate.extras,
-          regions: Object.fromEntries(
-            Object.entries(aggregate.extras.regions ?? {}).map(([slug, pts]) => [
-              slug,
-              (pts ?? []).filter((pt) => samePinned(pt.region)),
-            ]),
-          ),
-          seriesByRegion24h: aggregate.extras.seriesByRegion24h
-            ? Object.fromEntries(
-                Object.entries(aggregate.extras.seriesByRegion24h).map(([slug, byRegion]) => [
-                  slug,
-                  Object.fromEntries(Object.entries(byRegion).filter(([r]) => samePinned(r))),
-                ]),
-              )
-            : undefined,
-        },
-        cellRanks: aggregate.cellRanks
-          ? Object.fromEntries(
-              Object.entries(aggregate.cellRanks).filter(([key]) => {
-                const r = key.split("|").pop() ?? "";
-                return r === "" || r === "all" || samePinned(r);
-              }),
-            )
-          : undefined,
-      };
+  // Region confinement for single-origin builds lives in overlayEditorial
+  // (src/lib/spec.ts), so `aggregate` and everything derived from it,
+  // including `variants`, is already scoped by the time it reaches here.
+  const benchmark = aggregate;
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
