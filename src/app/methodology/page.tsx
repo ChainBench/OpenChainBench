@@ -61,6 +61,10 @@ const CONVENTIONS = [
     body: "Share of requests returning a usable result within the published timeout. The only metric that includes failures.",
   },
   {
+    term: "Ranking on multi-chain benchmarks",
+    body: "When a benchmark measures several chains, providers are ranked first by the number of chains they lead, and only then by their cross-chain figure. A chain counts toward that total only when at least two providers reported data on it. A cross-chain average is a mix rather than a comparison, so ranking on it alone let a provider measured on one uncontested chain finish above a provider that led several contested ones.",
+  },
+  {
     term: "Region normalisation",
     body: "Where a benchmark is multi-region, the headline figure is the cross-region median. Per-region figures appear on every benchmark page.",
   },
