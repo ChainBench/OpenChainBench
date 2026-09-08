@@ -782,11 +782,13 @@ export default async function ProviderPage({
             const catColor = CATEGORY_COLOR[a.benchmark.category];
             const hasData = a.rank > 0 && a.result.ms.p50 !== 0;
             const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
-            // Per-chain rank chips. Rendered alongside the aggregate rank
-            // when the bench declares chain dimensions and the provider has
-            // per-chain ranks populated. Surface text reads e.g. "#1 on
-            // Solana · #4 on Base · #4 on BNB" so a chain-restricted
-            // provider can't be passed off as a free cross-chain #1.
+            // Per-chain leadership chips, rendered alongside the aggregate
+            // rank when the bench declares chain dimensions. Leaders only:
+            // a chip means "leads this chain", and its absence means "does
+            // not lead", never "ranks lower". Reads e.g. "#1 of 4 on
+            // Ethereum" so a chain-restricted provider can't be passed off
+            // as a free cross-chain #1, and so a win on a two-provider
+            // chain isn't dressed up as a win on a crowded one.
             const chainRanks =
               a.rankPerChain && a.benchmark.chainDimensions
                 ? a.benchmark.chainDimensions
@@ -840,13 +842,10 @@ export default async function ProviderPage({
                         {chainRanks.map(({ chain, entry }) => (
                           <span
                             key={chain.value}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
-                              entry.rank === 1
-                                ? "border-good/40 bg-good/10 text-good"
-                                : "border-rule bg-paper-soft text-ink-muted"
-                            }`}
+                            className="inline-flex items-center gap-1 rounded-full border border-good/40 bg-good/10 px-2 py-0.5 text-good"
                           >
-                            #{entry.rank} on {chain.label}
+                            #1{entry.totalRanked > 0 ? ` of ${entry.totalRanked}` : ""} on{" "}
+                            {chain.label}
                           </span>
                         ))}
                       </p>
