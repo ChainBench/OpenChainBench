@@ -161,7 +161,63 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   // hits overlayEditorial directly). The materialise sweep also passes
   // its output through renderBenchmarkText; calling it here on the
   // fallback path keeps the two paths consistent.
-  return renderBenchmarkText(overlaid);
+  return renderBenchmarkText(confineToPinnedRegion(overlaid, spec));
+}
+
+// Region keys the harness emits vs the values specs declare: the Singapore
+// probe was historically labelled ap-southeast.
+const REGION_KEY_ALIASES: Record<string, string> = { "ap-southeast": "sgp" };
+const canonRegionKey = (r: string) => REGION_KEY_ALIASES[r] ?? r;
+
+/**
+ * Single-origin surface guard. When THIS build declares no region
+ * dimension but pins one region via `aggregate_filters`, the stored
+ * snapshot can still carry every region the worker computed: the worker
+ * runs from its own checkout, which may declare more regions than this
+ * build does. Everything left on the object reaches client components and
+ * therefore the RSC payload, readable in view-source even though nothing
+ * renders it (2026-09-08: keyed-rpc-robinhood shipped its us-east series
+ * and ranks inside `variants` while the page only ever showed Singapore).
+ * Keep the pinned region's cells, drop the rest. Benches that declare
+ * region tabs, or pin nothing, are returned untouched.
+ */
+export function confineToPinnedRegion(b: Benchmark, spec: Spec): Benchmark {
+  const declared = spec.dimensions?.region ?? [];
+  const pinned = (spec.aggregate_filters as { region?: string } | undefined)?.region;
+  if (declared.length > 0 || typeof pinned !== "string") return b;
+  const keep = (r: string) => canonRegionKey(r) === canonRegionKey(pinned);
+  const byRegion = <T,>(m?: Record<string, Record<string, T>>) =>
+    m
+      ? Object.fromEntries(
+          Object.entries(m).map(([slug, per]) => [
+            slug,
+            Object.fromEntries(Object.entries(per).filter(([r]) => keep(r))),
+          ]),
+        )
+      : undefined;
+  return {
+    ...b,
+    extras: {
+      ...b.extras,
+      regions: Object.fromEntries(
+        Object.entries(b.extras.regions ?? {}).map(([slug, pts]) => [
+          slug,
+          (pts ?? []).filter((pt) => keep(pt.region)),
+        ]),
+      ),
+      seriesByRegion24h: byRegion(b.extras.seriesByRegion24h),
+      seriesByRegion7d: byRegion(b.extras.seriesByRegion7d),
+      seriesByRegion30d: byRegion(b.extras.seriesByRegion30d),
+    },
+    cellRanks: b.cellRanks
+      ? Object.fromEntries(
+          Object.entries(b.cellRanks).filter(([key]) => {
+            const r = key.split("|").pop() ?? "";
+            return r === "" || r === "all" || keep(r);
+          }),
+        )
+      : undefined,
+  };
 }
 
 // Strip lazy-loadable series fields from the cached Benchmark to bring
