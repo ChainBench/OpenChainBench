@@ -3,7 +3,7 @@
 > **Pre-onboarding evaluation.** Run before Serialized is wired into any live harness, so the
 > decision to include or exclude them on each bench is documented and reproducible.
 >
-> **Version:** v1.3, 2026-09-06 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2; §18 added in v1.3: Serialized wired into bench 001). Author: internal. Key used: tenant `OpenChainBench`,
+> **Version:** v1.4, 2026-09-08 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2; §18 added in v1.3: Serialized wired into bench 001; §18.1 added in v1.4: that wiring reverted after measurement). Author: internal. Key used: tenant `OpenChainBench`,
 > plan `starter`, keyId `d5511a080aaa`, issued 2026-09-04.
 
 ---
@@ -503,7 +503,7 @@ Layer 3, the real bench: snapshot every provider's verdict at mint, resolve on-c
 Snapshot `top10HoldersPct` and `bundlersHoldingsPct` as the primary signals per §17.5.
 
 
-## 18. Bench 001: Serialized is in (v1.3, 2026-09-06)
+## 18. Bench 001: Serialized wired, then pulled (v1.4, 2026-09-08)
 
 Earlier sections called 001 "blocked on a policy decision". That was the wrong framing, and it hid a
 practical question nobody had tested: does Serialized's stream cover the four bench pools at all?
@@ -533,3 +533,50 @@ Solana attempt looked like a failure.
 `head_lag_ref_seconds` against the node reference clock matched by `txHash`, which is the one that can
 rank providers. Every event carries `txHash`, `block`, `poolAddress` and a `preconfirmed` boolean per
 their docs, so Base flashblocks are visible rather than inferred.
+
+### 18.1 Why it was reverted
+
+Measured 2026-09-08 before promoting the wiring to `main`. One WS connection, the four bench pools,
+a 240 s capture, plus a targeted 150 s run that asked a public Base node whether the block existed
+at the moment each trade arrived. Single vantage (workstation, NTP offset +0.078 s), so absolute
+latencies are not comparable to harness numbers; the signs and the orders of magnitude are.
+
+**The ruler matches.** Their `at` is the block timestamp exactly, so `head_lag_seconds` would measure
+the same quantity as Mobula's `trade.Date` and Codex's `event.Timestamp`:
+
+| chain | n | median(`at` − block timestamp) |
+|---|---|---|
+| base | 105 | +0.000 s |
+| bnb | 1 | +0.000 s |
+| solana | 28 | +0.473 s (artefact: `getBlockTime` returns whole seconds) |
+
+**But they read a different thing.** On Base, every sampled trade arrived before its own block:
+
+| check | result |
+|---|---|
+| median(receipt − block timestamp), base | −0.911 s |
+| share of base events with negative lag | 105/105 (100%) |
+| trades received before the block existed on a public node | 11/11 |
+| median lead over block publication | 1.04 s |
+
+In all eleven cases the node head at receipt was exactly `target block − 1`: the block was not late in
+propagation, it did not exist yet. The spread (−0.21 s to −1.80 s) is the width of one Base slot.
+Serialized streams sequencer preconfirmations; Mobula, Codex and GeckoTerminal read sealed blocks.
+
+**Decision: excluded from bench 001.** Not because the measurement is wrong, but because the two
+emissions are different products. A preconfirmation carries no finality guarantee and can be
+reordered, so the ~1.5 s lead is a latency/finality trade-off, not pure speed. Publishing both in one
+ranking would present that trade-off as superiority. `RecordHeadLag` also drops negatives outright
+(`metrics.go`), so on the legacy series they would show as no data on Base while being the fastest —
+and any rare positive sample would stick on the gauge and become their published p50.
+
+Two findings worth raising with them:
+
+- `preconfirmed` was `false` on all eleven events that preceded block publication. A consumer cannot
+  tell the two regimes apart from the payload.
+- Robinhood delivered **0 events in 240 s** despite an acknowledged subscription, against 79 in 90 s
+  recorded on 2026-09-06 (§18 table). Re-verify before any future wiring.
+
+**Reopen if** the bench gains an emission-regime dimension (sealed vs preconfirmed), or a landing-rate
+companion series shows their preconfirmations reach sealed blocks 1:1. Serialized stays on benches
+004, 005, 008 and 090, where the comparison is like for like.
