@@ -271,6 +271,12 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, hash, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
 		case "cosmos":
 			block, hash, result, latency, err = callCosmosStatus(probeCtx, p.URL)
+			// Some Cosmos providers (NOWNodes public Coreum) answer 501 on
+			// Tendermint /status but serve the gRPC-gateway REST. Fall back so a
+			// REST-only endpoint isn't scored dead.
+			if result == "http_err" {
+				block, hash, result, latency, err = callCosmosRESTBlock(probeCtx, p.URL)
+			}
 		case "starknet":
 			block, result, latency, err = callStarknetBlockNumber(probeCtx, p.URL)
 		case "stellar":
@@ -315,6 +321,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			} else {
 				block, result, latency, err = callBCHNodeInfo(probeCtx, p.URL)
 			}
+		case "bitcoin":
+			block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
 		case "litecoin":
 			if strings.Contains(p.URL, "blockcypher.com") {
 				block, result, latency, err = callBlockCypherLTC(probeCtx, p.URL)
@@ -664,6 +672,54 @@ func callCosmosStatus(ctx context.Context, url string) (block uint64, hash strin
 		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric latest_block_height: %q", st.SyncInfo.LatestBlockHeight)
 	}
 	return n, st.SyncInfo.LatestBlockHash, "ok", latencyMs, nil
+}
+
+// callCosmosRESTBlock is the REST fallback for Cosmos providers that don't
+// serve Tendermint /status (NOWNodes public Coreum answers 501 on /status
+// but serves the gRPC-gateway REST). GET
+// /cosmos/base/tendermint/v1beta1/blocks/latest, read block.header.height.
+func callCosmosRESTBlock(ctx context.Context, url string) (block uint64, hash string, result string, latencyMs float64, err error) {
+	target := strings.TrimRight(url, "/") + "/cosmos/base/tendermint/v1beta1/blocks/latest"
+	req, _ := http.NewRequestWithContext(ctx, "GET", target, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "", "timeout", latencyMs, err
+		}
+		return 0, "", "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "", "http_err", latencyMs, err
+	}
+	var r struct {
+		Block struct {
+			Header struct {
+				Height string `json:"height"`
+			} `json:"header"`
+		} `json:"block"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "", "jsonrpc_err", latencyMs, err
+	}
+	if r.Block.Header.Height == "" {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("cosmos REST missing block.header.height")
+	}
+	n, err := strconv.ParseUint(r.Block.Header.Height, 10, 64)
+	if err != nil {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric height: %q", r.Block.Header.Height)
+	}
+	return n, "", "ok", latencyMs, nil
 }
 
 // callStarknetBlockNumber is the Starknet probe path: starknet_blockNumber
