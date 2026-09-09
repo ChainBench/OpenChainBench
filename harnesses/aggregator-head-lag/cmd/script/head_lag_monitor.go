@@ -214,6 +214,18 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 			// Total lag: on-chain → WebSocket receipt
 			totalLagMs := receiveTime.Sub(onChainTime).Milliseconds()
 
+			// Reference lag: same trade, but timed against the node
+			// subscription we hold ourselves rather than against the
+			// timestamp Mobula sent us. Recorded before the legacy
+			// filter below so a preconfirmed emission is counted rather
+			// than dropped. See reference_monitor.go.
+			refChainName := getChainNameFromBlockchain(trade.Blockchain)
+			if refAt, ok := reference.lookup(refChainName, trade.Hash); ok {
+				RecordHeadLagRef("mobula", refChainName, receiveTime.Sub(refAt).Seconds(), config.MonitorRegion)
+			} else {
+				RecordHeadLagRefMiss("mobula", refChainName, config.MonitorRegion)
+			}
+
 			// Drop WebSocket replays / clock-skew events: not real indexation latency
 			// (Mobula WS occasionally replays old trades on reconnect; those would otherwise fire alerts)
 			if totalLagMs < 0 || totalLagMs > 30000 {
@@ -232,7 +244,9 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 			chainName := getChainNameFromBlockchain(trade.Blockchain)
 
 			// Record basic metric
-			RecordHeadLag("mobula", chainName, totalLagMs, lagSeconds, config.MonitorRegion, trade.Hash)
+			if pubLag, ok := headlineLag(chainName, receiveTime, lagSeconds, trade.Hash); ok {
+				RecordHeadLag("mobula", chainName, totalLagMs, pubLag, config.MonitorRegion, trade.Hash)
+			}
 
 			// Track latest tx per pool so alert annotations can link to it
 			RecordMobulaLastTx(chainName, config.MonitorRegion, trade.Pair, trade.Hash)
@@ -711,12 +725,22 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 				// Get chain name
 				chainName := getChainNameFromNetworkID(networkID)
 
+				// Reference lag against our own node subscription, matched
+				// by transaction hash. See reference_monitor.go.
+				if refAt, ok := reference.lookup(chainName, event.TransactionHash); ok {
+					RecordHeadLagRef("codex", chainName, receiveTime.Sub(refAt).Seconds(), config.MonitorRegion)
+				} else {
+					RecordHeadLagRefMiss("codex", chainName, config.MonitorRegion)
+				}
+
 				lastEventMu.Lock()
 				lastEventByChain[chainName] = time.Now()
 				lastEventMu.Unlock()
 
 				// Record metrics with tx hash
-				RecordHeadLag("codex", chainName, lagMs, lagSeconds, config.MonitorRegion, event.TransactionHash)
+				if pubLag, ok := headlineLag(chainName, receiveTime, lagSeconds, event.TransactionHash); ok {
+					RecordHeadLag("codex", chainName, lagMs, pubLag, config.MonitorRegion, event.TransactionHash)
+				}
 				RecordCodexBlockNumber(chainName, event.BlockNumber, config.MonitorRegion)
 
 				// Enhanced logging for spikes
@@ -760,6 +784,28 @@ func getChainNameFromNetworkID(networkID int) string {
 // Main Head Lag Monitor
 // ============================================================================
 
+// headlineLag returns the lag to publish for one emission.
+//
+// Base is measured against the flashblock reference, every other chain
+// against the on-chain timestamp the provider reports. The substitution is
+// applied here, in one place, so it lands on all four providers at once:
+// re-basing a single provider while leaving the others on the old ruler
+// would be exactly the asymmetry this whole change exists to remove.
+//
+// A Base emission with no reference match returns ok=false and the caller
+// drops the sample. Falling back to the provider timestamp would silently
+// mix two rulers in one series; a dead flashblock stream should show up as
+// missing data, not as quietly different numbers.
+func headlineLag(chain string, receiveTime time.Time, providerLag float64, hash string) (float64, bool) {
+	if chain != "base" {
+		return providerLag, true
+	}
+	if refAt, ok := reference.lookup(chain, hash); ok {
+		return receiveTime.Sub(refAt).Seconds(), true
+	}
+	return 0, false
+}
+
 func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════╗")
@@ -776,6 +822,15 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 
 	// Start Mobula fast-trade monitor
 	wg.Add(1)
+	// The reference clock must be up before the provider monitors, so the
+	// first emissions have something to match against. It is never fatal:
+	// a chain with no endpoint simply leaves the ref series empty.
+	runReferenceMonitor(stopChan)
+	// Base only: the sealed-block observation above is too late to be the
+	// zero point there. See base_flashblock_ref.go. Started before the
+	// providers for the same reason.
+	go runBaseFlashblockReference(stopChan)
+
 	go runMobulaHeadLagMonitor(config, stopChan, &wg)
 
 	// Start Codex monitor
@@ -785,6 +840,10 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	// Start GeckoTerminal monitor
 	wg.Add(1)
 	go runGeckoTerminalHeadLagMonitor(config, stopChan, &wg)
+
+	// Start Serialized monitor. Disabled cleanly when the key is unset.
+	wg.Add(1)
+	go runSerializedHeadLagMonitor(config, stopChan, &wg)
 
 	// Wait for all to finish
 	wg.Wait()
