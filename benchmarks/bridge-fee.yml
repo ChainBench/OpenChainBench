@@ -23,12 +23,9 @@ dimensions:
     - { value: Solana,    label: Arb to Sol }
     - { value: HyperCore, label: Arb to HyperCore }
   # us-east and sgp probes are temporarily paused (2026-09-10): only the
-  # EU-West (Paris) origin is live, so those two tabs are hidden. The
-  # All-regions aggregate self-corrects to EU-West within 24h as the paused
-  # series age out of the rolling window. Restore the two lines when the
-  # Railway us/sgp probes resume.
+  # EU-West (Paris) origin is live, so the bench is scoped to a single region.
+  # Restore the all/us-east/sgp values when the Railway us/sgp probes resume.
   region:
-    - { value: all,     label: All regions }
     - { value: eu-west, label: EU-West }
   amount_usd:
     - { value: "300", label: "$300" }
