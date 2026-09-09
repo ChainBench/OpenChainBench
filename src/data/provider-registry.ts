@@ -2311,8 +2311,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   nownodes: {
     url: "https://nownodes.io",
     description:
-      "NOWNodes is a multi-chain node provider covering Gram (TON), Bitcoin, Ethereum and 50+ other chains. Offers API-key-based access with a free trial tier.",
+      "Multi-chain node provider covering 110+ blockchains. Key-based REST and WebSocket RPC plus block explorers, with keyless public endpoints on a handful of chains (Ethereum, BNB, Bitcoin) rate-limited to 5 requests per second.",
     twitter: "@NOWNodes_io",
+    docs: "https://docs.nownodes.io",
+    chains: ["ethereum", "bnb", "bitcoin", "litecoin", "dogecoin", "gram", "xrp", "tron"],
+    features: [
+      "110+ chains via a single API key",
+      "REST and WebSocket JSON-RPC endpoints",
+      "Block explorers for major UTXO chains",
+      "Keyless public endpoints on Ethereum, BNB and Bitcoin (5 RPS)",
+      "Free trial tier, then usage-based paid plans",
+    ],
+    pricing:
+      "Free trial key, then paid plans by request volume. Public no-key endpoints exist on select chains at 5 requests per second.",
   },
   tatum: {
     url: "https://tatum.io",
