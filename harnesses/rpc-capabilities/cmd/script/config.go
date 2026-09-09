@@ -1260,6 +1260,7 @@ func chains() []Chain {
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_COREUM_POLKACHU", "https://coreum-rpc.polkachu.com")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_COREUM_PUBLICNODE", "https://coreum-rpc.publicnode.com")},
 				{Slug: "coreum-official", Name: "Coreum Foundation", URL: envDefault("RPC_URL_COREUM_OFFICIAL", "https://full-node.mainnet-1.coreum.dev:26657")},
+				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_COREUM_NOWNODES", "https://public-coreum.nownodes.io")},
 			},
 		},
 		// Nolus — DeFi lease protocol (pirin-1). 2 keyless providers.
@@ -1629,6 +1630,27 @@ func chains() []Chain {
 				{Slug: "nspcc", Name: "NSPCC", URL: envDefault("RPC_URL_NEO_NSPCC", "https://rpc10.n3.nspcc.ru:10331")},
 				{Slug: "ngd", Name: "NGD", URL: envDefault("RPC_URL_NEO_NGD", "https://n3seed1.ngd.network:10332")},
 				{Slug: "ngd2", Name: "NGD (2)", URL: envDefault("RPC_URL_NEO_NGD2", "https://n3seed2.ngd.network:10332")},
+			},
+		},
+		// 2026-09-09 — Bitcoin. Bitcoin Core JSON-RPC getblockcount (no key). ~10min/block.
+		{
+			Slug: "bitcoin",
+			Name: "Bitcoin",
+			Kind: "bitcoin",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BTC_PUBLICNODE", "https://bitcoin-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BTC_DRPC", "https://bitcoin.drpc.org")},
+				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BTC_NOWNODES", "https://public-btc.nownodes.io")},
+			},
+		},
+		// 2026-09-09 — LUKSO (EVM L1, chain 42). eth_getBlockByNumber (no key).
+		{
+			Slug: "lukso",
+			Name: "LUKSO",
+			Providers: []Provider{
+				{Slug: "lukso-official", Name: "LUKSO Foundation", URL: envDefault("RPC_URL_LUKSO_OFFICIAL", "https://rpc.mainnet.lukso.network")},
+				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_LUKSO_NOWNODES", "https://public-lukso.nownodes.io")},
+				{Slug: "thirdweb", Name: "thirdweb", URL: envDefault("RPC_URL_LUKSO_THIRDWEB", "https://42.rpc.thirdweb.com")},
 			},
 		},
 		// 2026-08-27 wave-10. Litecoin — Tatum JSON-RPC (getblockcount) + BlockCypher REST + LitecoinSpace Esplora REST. ~150 s/block.
