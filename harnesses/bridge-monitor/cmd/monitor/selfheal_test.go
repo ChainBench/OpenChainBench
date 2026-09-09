@@ -103,9 +103,8 @@ func TestDowngradeLadder(t *testing.T) {
 		tier float64
 		want []float64
 	}{
-		{300, []float64{300, 50, 5}},
-		{50, []float64{50, 5}},
-		{5, []float64{5}},
+		{30, []float64{30, 3}},
+		{3, []float64{3}},
 	}
 	for _, c := range cases {
 		got := downgradeLadder(c.tier)
@@ -153,9 +152,10 @@ func TestSlotBudgetSharedAcrossRungs(t *testing.T) {
 		t.Fatalf("fresh budget: got %d remaining, want 2", b.remaining)
 	}
 
-	// Rung 1 ($300) consumes one attempt, rung 2 ($50) consumes the second:
-	// the SAME budget instance is threaded through the ladder, so rung 3
-	// ($5) has nothing left. Per-rung counters allowed up to 6 transfers.
+	// Rung 1 ($30) consumes one attempt, rung 2 ($3) consumes the second:
+	// the SAME budget instance is threaded through the ladder plus the
+	// proactive equalizer, so nothing is left after two. Per-rung counters
+	// previously allowed far more transfers per slot.
 	b.remaining--
 	b.remaining--
 	if b.remaining > 0 {
@@ -211,12 +211,13 @@ func TestStrandedHoursComputation(t *testing.T) {
 	tracker := NewStrandedTracker()
 	t0 := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
 
-	// USDC on Arbitrum is off-home (triangle expects USDT there).
+	// USDT on Solana is off-home (Solana expects USDC/SOL/TRUMP). Arb USDC is no
+	// longer a valid stranded probe now that it is R5's home pool.
 	balances := balancesSnapshot(100, 100, 100)
-	balances["Arbitrum"]["USDC"] = 42
+	balances["Solana"]["USDT"] = 42
 
 	hours := tracker.Update(balances, t0)
-	k := strandKey{"Arbitrum", "USDC"}
+	k := strandKey{"Solana", "USDT"}
 	if hours[k] != 0 {
 		t.Errorf("first sighting should report 0 hours, got %.2f", hours[k])
 	}
@@ -236,13 +237,13 @@ func TestStrandedHoursComputation(t *testing.T) {
 
 	// Funds moved home: the key must report an explicit 0 so the gauge resets,
 	// and the clock must restart if it strands again later.
-	delete(balances["Arbitrum"], "USDC")
+	delete(balances["Solana"], "USDT")
 	hours = tracker.Update(balances, t0.Add(8*time.Hour))
 	if hours[k] != 0 {
 		t.Errorf("expected explicit 0 after funds came home, got %.2f", hours[k])
 	}
 
-	balances["Arbitrum"]["USDC"] = 42
+	balances["Solana"]["USDT"] = 42
 	hours = tracker.Update(balances, t0.Add(20*time.Hour))
 	if hours[k] != 0 {
 		t.Errorf("re-stranding must restart the clock at 0, got %.2f", hours[k])
@@ -254,11 +255,11 @@ func TestStrandedIgnoresDustAndAddressKeys(t *testing.T) {
 	now := time.Now().UTC()
 
 	balances := balancesSnapshot(100, 100, 100)
-	balances["Arbitrum"]["USDC"] = 0.5
+	balances["Solana"]["USDT"] = 0.5
 	balances["Arbitrum"][arbUSDCAddr] = 5000
 
 	hours := tracker.Update(balances, now)
-	if _, ok := hours[strandKey{"Arbitrum", "USDC"}]; ok {
+	if _, ok := hours[strandKey{"Solana", "USDT"}]; ok {
 		t.Error("dust below $1 must not count as stranded")
 	}
 	for k := range hours {

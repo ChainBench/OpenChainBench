@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"net/http"
 	"os"
 	"runtime"
@@ -123,9 +124,8 @@ func main() {
 	if config.ExecutionMode != "" {
 		execConfig := &ExecutionConfig{
 			Mode:             ExecutionMode(config.ExecutionMode),
-			Freq5USD:         config.Freq5USD,
-			Freq50USD:        config.Freq50USD,
-			Freq300USD:       config.Freq300USD,
+			Freq3USD:         config.Freq3USD,
+			Freq30USD:        config.Freq30USD,
 			EnableDebridge:   config.EnableDebridge,
 			MaxDailySpendUSD: config.MaxDailySpendUSD,
 		}
@@ -150,6 +150,14 @@ func main() {
 			executor.PrintExecutionPlan()
 			executor.EstimateMonthlyCost()
 		}
+	}
+
+	// Hyperliquid client for the R5 return leg (HyperCore -> Arbitrum native
+	// withdraw). Nil when no EVM key is loaded (quote-only mode): runR5RoundTrip
+	// treats nil as "R5 execution unavailable" and skips.
+	var hlClient *HyperliquidClient
+	if executor != nil {
+		hlClient = NewHyperliquidClient(executor.txExecutor)
 	}
 
 	// Pre-seed the self-healing series so alerting rules match from startup.
@@ -368,49 +376,150 @@ func main() {
 	// corrective transfers only in production and unpaused.
 	StartReaper(balanceChecker, rebalancer, slackNotifier, config.ExecutionMode, paused)
 
-	// Track last meme execution day to run weekly
-	lastMemeDay := -1
-
 	// Main loop — scheduler-only (quote loop now lives in its own goroutine).
+	// Two tiers: $3 daily, $30 Mon+Thu. Each tick equalizes the stable legs,
+	// runs the conserving triangle, then the opt-in R4/R5 round-trips.
 	for {
 		select {
-		case <-getSchedulerChan(scheduler, "$5"):
-			// $5 execution loop - daily at 10:00 UTC
-			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 5.0, "daily")
+		case <-getSchedulerChan(scheduler, "$3"):
+			runLoopTier(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, hlClient, config, 3.0, "daily")
+		case <-getSchedulerChan(scheduler, "$30"):
+			runLoopTier(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, hlClient, config, 30.0, "Mon+Thu")
+		}
+	}
+}
 
-				// Meme routes use independent capital (TRUMP) — always attempt,
-				// the per-route RunReal check catches insufficient TRUMP.
-				now := time.Now().UTC()
-				if now.Weekday() == time.Monday && now.YearDay() != lastMemeDay {
-					log.Println("💸 Running $5 meme execution tests (weekly)...")
-					execMu.Lock()
-					for _, route := range GetMemeRoutes() {
-						executor.RunReal(route, 5.0)
-					}
-					execMu.Unlock()
-					lastMemeDay = now.YearDay()
-				}
-			}
+// runLoopTier runs one scheduled tier end to end: the conserving stable
+// triangle (R1/R2/R3, which also proactively equalizes its legs), then the
+// opt-in R4 (TRUMP<->BRETT) and R5 (Arb<->HyperCore) round-trips. No-ops
+// outside production mode.
+func runLoopTier(executor *Executor, bc *BalanceChecker, slack *SlackNotifier,
+	rebalancer *Rebalancer, gasTopper *GasTopper, hl *HyperliquidClient, config *Config,
+	tier float64, label string,
+) {
+	if executor == nil || config.ExecutionMode != "production" {
+		return
+	}
+	runTierIfViable(executor, bc, slack, rebalancer, gasTopper, GetTriangleRoutes(), tier, label)
+	if config.EnableR4RoundTrip {
+		runR4RoundTrip(executor, slack, tier)
+	}
+	if config.EnableR5Hypercore {
+		runR5RoundTrip(executor, bc, slack, hl, tier)
+	}
+}
 
-		case <-getSchedulerChan(scheduler, "$50"):
-			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 50.0, "Mon+Thu")
-			}
-
-		case <-getSchedulerChan(scheduler, "$300"):
-			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 300.0, "Mon weekly")
+// runR4RoundTrip executes R4 (TRUMP->BRETT) and immediately its return leg
+// (BRETT->TRUMP) per bridge, so the meme pool is restored each cycle. Memes
+// carry real slippage, so the standing TRUMP/BRETT pools absorb the drift and
+// are reseeded periodically (this is not fee-neutral by design).
+func runR4RoundTrip(executor *Executor, slack *SlackNotifier, tier float64) {
+	r4, ok := R4Route()
+	if !ok {
+		return
+	}
+	ret := ReverseRoute(r4)
+	execMu.Lock()
+	defer execMu.Unlock()
+	log.Printf("🎭 R4 round-trip $%.0f (TRUMP<->BRETT)...", tier)
+	for _, bridge := range []string{"mobula", "relay", "lifi"} {
+		dep := executor.RunBridgeOnRoute(bridge, r4, tier)
+		time.Sleep(2 * time.Second)
+		if dep == nil || !dep.Success {
+			log.Printf("  ⚠️  R4 deposit via %s failed — skipping its return leg (TRUMP not spent)", bridge)
+			continue
+		}
+		retRes := executor.RunBridgeOnRoute(bridge, ret, tier)
+		time.Sleep(2 * time.Second)
+		if retRes == nil || !retRes.Success {
+			log.Printf("  ⚠️  R4 return via %s failed — TRUMP pool short until reseed", bridge)
+			if slack != nil {
+				_ = slack.NotifyTierSkipped(tier, "R4-return-"+bridge, "BRETT->TRUMP return leg failed; TRUMP pool will need a reseed")
 			}
 		}
 	}
 }
 
+// runR5RoundTrip executes R5 (Arb USDC -> HyperCore) per bridge, then withdraws
+// the credited amount back to Arbitrum via the HL-native withdraw3 action so
+// the loop conserves Arb USDC. Skips the withdraw (leaving funds for the reaper
+// / alert) whenever the HL credit is not observed, to avoid over-withdrawing.
+func runR5RoundTrip(executor *Executor, bc *BalanceChecker, slack *SlackNotifier, hl *HyperliquidClient, tier float64) {
+	r5, ok := R5Route()
+	if !ok {
+		return
+	}
+	if hl == nil {
+		log.Println("⚠️  R5 skipped: HyperliquidClient unavailable (no EVM key)")
+		return
+	}
+	evm := executor.walletManager.EVMAddress
+	execMu.Lock()
+	defer execMu.Unlock()
+	log.Printf("🏦 R5 round-trip $%.0f (Arb USDC <-> HyperCore)...", tier)
+	for _, bridge := range []string{"mobula", "relay", "lifi"} {
+		before, err := hl.Withdrawable(evm)
+		if err != nil {
+			log.Printf("  ⚠️  R5 %s: cannot read HL withdrawable pre-deposit: %v — skipping", bridge, err)
+			continue
+		}
+		dep := executor.RunBridgeOnRoute(bridge, r5, tier)
+		time.Sleep(2 * time.Second)
+		if dep == nil || !dep.Success {
+			log.Printf("  ⚠️  R5 deposit via %s failed — skipping withdraw", bridge)
+			continue
+		}
+		delta := waitForHLCredit(hl, evm, before, tier, 5*time.Minute)
+		if delta < hyperliquidMinWithdrawUSD {
+			log.Printf("  ⚠️  R5 %s: HL credit not observed (delta $%.2f) within timeout — leaving funds on HL for reaper/alert", bridge, delta)
+			if slack != nil {
+				_ = slack.NotifyTierSkipped(tier, "R5-withdraw-"+bridge, "HL credit not observed; withdraw skipped to avoid over-withdraw")
+			}
+			continue
+		}
+		// Never withdraw more than the round-trip notional plus a small margin.
+		amt := delta
+		if amt > tier*rebalanceBufferFactor {
+			amt = tier * rebalanceBufferFactor
+		}
+		if err := hl.Withdraw(amt, evm); err != nil {
+			log.Printf("  ⚠️  R5 %s withdraw failed: %v", bridge, err)
+			if slack != nil {
+				_ = slack.NotifyTierSkipped(tier, "R5-withdraw-"+bridge, "HL withdraw failed: "+err.Error())
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// waitForHLCredit polls HL withdrawable until it rises by at least the deposit
+// notional (minus a tolerance for HL fees/rounding) or the timeout elapses.
+// Returns the observed increase in USD (0 if nothing credited).
+func waitForHLCredit(hl *HyperliquidClient, addr string, before, tier float64, timeout time.Duration) float64 {
+	deadline := time.Now().Add(timeout)
+	target := tier * 0.9 // accept a 10% haircut for HL fees / rounding
+	for time.Now().Before(deadline) {
+		time.Sleep(15 * time.Second)
+		now, err := hl.Withdrawable(addr)
+		if err != nil {
+			continue
+		}
+		if now-before >= target {
+			return now - before
+		}
+	}
+	last, err := hl.Withdrawable(addr)
+	if err != nil {
+		return 0
+	}
+	return last - before
+}
+
 // downgradeLadder returns the tier amounts to try, largest first, starting at
-// the scheduled tier. Partial data beats none: if $300 cannot run we still
-// want the $50 or $5 datapoint from the same slot.
+// the scheduled tier. Partial data beats none: if $30 cannot run we still
+// want the $3 datapoint from the same slot.
 func downgradeLadder(tier float64) []float64 {
-	all := []float64{300, 50, 5}
+	all := []float64{30, 3}
 	var out []float64
 	for _, t := range all {
 		if t <= tier {
@@ -450,6 +559,16 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 	// every ladder rung. Without sharing, each rung consumed its own attempt
 	// counter and a single slot could broadcast up to six transfers.
 	budget := newSlotBudget()
+
+	// Proactive equalization: top every stable home leg up to the largest tier
+	// plus buffer BEFORE checking viability, so the loop self-heals even when
+	// nothing is blocked yet. Shares the same slot budget as the reactive
+	// per-rung rebalancing below, so the two together never exceed the cap.
+	if rebalancer != nil {
+		if balances, degraded, err := bc.GetAllBalancesDetailed(); err == nil && !degraded {
+			rebalancer.EqualizeStableLegs(balances, budget)
+		}
+	}
 
 	for i, amount := range ladder {
 		balances, degraded, err := bc.GetAllBalancesDetailed()
@@ -548,12 +667,10 @@ func getSchedulerChan(s *Scheduler, amount string) <-chan struct{} {
 		return nil
 	}
 	switch amount {
-	case "$5":
-		return s.Exec5Chan()
-	case "$50":
-		return s.Exec50Chan()
-	case "$300":
-		return s.Exec300Chan()
+	case "$3":
+		return s.Exec3Chan()
+	case "$30":
+		return s.Exec30Chan()
 	}
 	return nil
 }
@@ -564,6 +681,15 @@ const tokenDecimals = 6
 func toRawUnits(amount float64) string {
 	raw := amount * math.Pow10(tokenDecimals)
 	return strconv.FormatInt(int64(math.Round(raw)), 10)
+}
+
+// toRawUnitsDec is toRawUnits for a token whose decimals differ from the 6-dec
+// stable default (e.g. BRETT at 18). Uses big.Float so 18-decimal magnitudes
+// don't overflow int64 before rounding.
+func toRawUnitsDec(amount float64, decimals int) string {
+	scaled := new(big.Float).Mul(big.NewFloat(amount), big.NewFloat(math.Pow10(decimals)))
+	i, _ := scaled.Int(nil)
+	return i.String()
 }
 
 // runQuoteTests runs quote-only tests (FREE, no execution)
