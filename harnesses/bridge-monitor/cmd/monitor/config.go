@@ -12,13 +12,13 @@ import (
 
 type Config struct {
 	// API Keys
-	RelayAPIKey        string
-	MobulaAPIKey       string
-	DebridgeAPIKey     string
-	LiFiAPIKey         string
-	NearIntentsAPIKey  string
-	SquidIntegratorID  string
-	SocketAPIKey       string
+	RelayAPIKey       string
+	MobulaAPIKey      string
+	DebridgeAPIKey    string
+	LiFiAPIKey        string
+	NearIntentsAPIKey string
+	SquidIntegratorID string
+	SocketAPIKey      string
 
 	// Wallet Configuration
 	WalletEVMPrivateKey string
@@ -27,13 +27,14 @@ type Config struct {
 	WalletSOLAddress    string
 
 	// Execution Configuration
-	ExecutionMode    string        // "dry-run", "single-test", "production"
-	Freq5USD         time.Duration // Frequency for $5 tests
-	Freq50USD        time.Duration // Frequency for $50 tests
-	Freq300USD       time.Duration // Frequency for $300 tests
-	EnableDebridge   bool          // Execute Debridge (expensive)
-	MaxDailySpendUSD float64       // Safety cap
-	TestAmountUSD    float64       // Override test amount (for testing with small amounts)
+	ExecutionMode     string        // "dry-run", "single-test", "production"
+	Freq3USD          time.Duration // Frequency for $3 tests
+	Freq30USD         time.Duration // Frequency for $30 tests
+	EnableDebridge    bool          // Execute Debridge (expensive)
+	EnableR4RoundTrip bool          // Execute R4 TRUMP<->BRETT round-trip (memes, not fee-neutral)
+	EnableR5Hypercore bool          // Execute R5 Arb<->HyperCore round-trip (needs HL withdraw path)
+	MaxDailySpendUSD  float64       // Safety cap
+	TestAmountUSD     float64       // Override test amount (for testing with small amounts)
 
 	// General
 	MonitorRegion    string
@@ -53,6 +54,16 @@ func parseDuration(s string, defaultVal time.Duration) time.Duration {
 		return defaultVal
 	}
 	return d
+}
+
+// mobulaAPIBase returns the Mobula REST base URL (no trailing slash). Defaults
+// to the production host; override with MOBULA_API_BASE. We moved off
+// demo-api.mobula.io to the production api.mobula.io endpoint.
+func mobulaAPIBase() string {
+	if v := strings.TrimSpace(os.Getenv("MOBULA_API_BASE")); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return "https://api.mobula.io"
 }
 
 // parseFloat parses a float string, returns default if invalid
@@ -91,13 +102,18 @@ func loadEnv() (*Config, error) {
 		config.ExecutionMode = "dry-run" // Safe default
 	}
 
-	// Frequencies (default: $5 daily, $50 2x/week, $300 2x/month)
-	config.Freq5USD = parseDuration(os.Getenv("FREQ_5_USD"), 24*time.Hour)
-	config.Freq50USD = parseDuration(os.Getenv("FREQ_50_USD"), 84*time.Hour)    // ~3.5 days
-	config.Freq300USD = parseDuration(os.Getenv("FREQ_300_USD"), 168*time.Hour) // 7 days (weekly)
+	// Frequencies (default: $3 daily, $30 2x/week)
+	config.Freq3USD = parseDuration(os.Getenv("FREQ_3_USD"), 24*time.Hour)
+	config.Freq30USD = parseDuration(os.Getenv("FREQ_30_USD"), 84*time.Hour) // ~3.5 days
 
 	// Debridge execution (default: disabled, too expensive)
 	config.EnableDebridge = os.Getenv("ENABLE_DEBRIDGE_EXEC") == "true"
+
+	// R4 (TRUMP<->BRETT) and R5 (Arb<->HyperCore) round-trip execution are
+	// opt-in: both move value across non-stable or asymmetric legs, so they
+	// stay quote-only until deliberately enabled and validated in single-test.
+	config.EnableR4RoundTrip = os.Getenv("ENABLE_R4_ROUNDTRIP_EXEC") == "true"
+	config.EnableR5Hypercore = os.Getenv("ENABLE_R5_HYPERCORE_EXEC") == "true"
 
 	// Max daily spend (default: $10/day for safety)
 	config.MaxDailySpendUSD = parseFloat(os.Getenv("MAX_DAILY_SPEND_USD"), 10.0)
@@ -216,10 +232,11 @@ func (c *Config) LogConfig() {
 	log.Printf("  EVM Private Key: %s", maskKey(c.WalletEVMPrivateKey))
 	log.Printf("  Solana Private Key: %s", maskKey(c.WalletSOLPrivateKey))
 	log.Printf("  Execution Mode: %s", c.ExecutionMode)
-	log.Printf("  $5 Frequency: %v", c.Freq5USD)
-	log.Printf("  $50 Frequency: %v", c.Freq50USD)
-	log.Printf("  $300 Frequency: %v", c.Freq300USD)
+	log.Printf("  $3 Frequency: %v", c.Freq3USD)
+	log.Printf("  $30 Frequency: %v", c.Freq30USD)
 	log.Printf("  Debridge Execution: %v", c.EnableDebridge)
+	log.Printf("  R4 Round-trip Execution: %v", c.EnableR4RoundTrip)
+	log.Printf("  R5 HyperCore Execution: %v", c.EnableR5Hypercore)
 	log.Printf("  Max Daily Spend: $%.2f", c.MaxDailySpendUSD)
 	if c.TestAmountUSD > 0 {
 		log.Printf("  Test Amount Override: $%.2f", c.TestAmountUSD)

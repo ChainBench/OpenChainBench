@@ -178,12 +178,10 @@ var (
 // query, so the series exist on /metrics from process start instead of only
 // after the first event.
 func initSelfHealingMetrics() {
-	for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "in_flight"} {
+	for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "in_flight", "equalize"} {
 		bridgeRebalanceAttempts.WithLabelValues(outcome).Add(0)
 	}
-	bridgeTierDowngraded.WithLabelValues("300", "50").Set(0)
-	bridgeTierDowngraded.WithLabelValues("300", "5").Set(0)
-	bridgeTierDowngraded.WithLabelValues("50", "5").Set(0)
+	bridgeTierDowngraded.WithLabelValues("30", "3").Set(0)
 	bridgeStrandedHours.WithLabelValues("Solana", "USDC").Set(0)
 	bridgeStrandedHours.WithLabelValues("Base", "USDC").Set(0)
 	bridgeStrandedHours.WithLabelValues("Arbitrum", "USDT0").Set(0)

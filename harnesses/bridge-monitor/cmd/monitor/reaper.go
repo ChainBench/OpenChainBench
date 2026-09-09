@@ -22,24 +22,27 @@ const strandedDustUSD = 1.0
 
 // Reaper transfers share the rebalancer's spirit of "never move more than a
 // tier plus buffer": one capped hop per tick instead of one big blind sweep.
-const reaperMaxTransferUSD = 300 * rebalanceBufferFactor
+const reaperMaxTransferUSD = 30 * rebalanceBufferFactor
 
 // Tokens that are SUPPOSED to sit on each chain. Everything else above the
-// dust floor counts as stranded. TRUMP and BRETT are meme-route inventory,
-// native SOL and ETH are gas.
+// dust floor counts as stranded. TRUMP and BRETT are meme-route inventory
+// (R4), native SOL and ETH are gas. Arb USDC is now a home pool: it is R5's
+// source and the destination of the HL withdraw return leg, so the reaper must
+// NOT sweep it (that would drain the R5 inventory each hour).
 var homeTokens = map[string]map[string]bool{
 	"Solana":   {"USDC": true, "SOL": true, "TRUMP": true},
 	"Base":     {"USDC": true, "ETH": true, "BRETT": true},
-	"Arbitrum": {"USDT0": true, "USDT": true, "ETH": true},
+	"Arbitrum": {"USDT0": true, "USDT": true, "USDC": true, "ETH": true},
 }
 
 // Stranded tokens we know how to route home. Anything else is alert-only:
 // building a bridge TX for an unknown asset from inside a repair loop is how
 // funds get burned, so we only ever move assets we have addresses for.
+// Arb USDC was here as an R3-refund leftover; it is now a home pool (see
+// homeTokens) so it is intentionally no longer swept.
 var movableStranded = map[string]map[string]string{
-	"Solana":   {"USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"},
-	"Base":     {"USDT": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"},
-	"Arbitrum": {"USDC": arbUSDCAddr},
+	"Solana": {"USDT": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"},
+	"Base":   {"USDT": "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"},
 }
 
 type strandKey struct {
