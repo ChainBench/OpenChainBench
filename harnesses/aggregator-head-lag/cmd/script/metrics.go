@@ -29,14 +29,15 @@ var (
 	metadataAPILatency      *prometheus.HistogramVec
 
 	// Head lag metrics
-	headLagBlocks     *prometheus.GaugeVec
-	headLagSeconds    *prometheus.GaugeVec
-	blockchainHead    *prometheus.GaugeVec
-	aggregatorHead    *prometheus.GaugeVec
-	headLagErrors     *prometheus.CounterVec
-	headLagRefSeconds *prometheus.GaugeVec
-	headLagRefMatches *prometheus.CounterVec
-	refClockEntries   prometheus.Gauge
+	headLagBlocks      *prometheus.GaugeVec
+	headLagSeconds     *prometheus.GaugeVec
+	flashblockObserved prometheus.Counter
+	blockchainHead     *prometheus.GaugeVec
+	aggregatorHead     *prometheus.GaugeVec
+	headLagErrors      *prometheus.CounterVec
+	headLagRefSeconds  *prometheus.GaugeVec
+	headLagRefMatches  *prometheus.CounterVec
+	refClockEntries    prometheus.Gauge
 
 	// Fast-trade latency (for comparison with Pulse V2)
 	fastTradeLatency *prometheus.GaugeVec
@@ -189,6 +190,15 @@ func init() {
 		[]string{"aggregator", "chain", "region"},
 	)
 	prometheus.MustRegister(headLagSeconds)
+
+	// Health of the Base preconfirmation reference. A flat counter means
+	// the flashblock stream is dead, which shows up as ref misses on every
+	// Base provider rather than as wrong numbers.
+	flashblockObserved = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "head_lag_flashblock_observed_total",
+		Help: "Transactions observed on Base's flashblock preconfirmation stream and fed to the reference clock.",
+	})
+	prometheus.MustRegister(flashblockObserved)
 
 	// Companion to head_lag_seconds, measured against our own node
 	// subscription instead of the timestamp each provider sends us. Same
@@ -547,3 +557,7 @@ func StartMetricsServer(addr string) error {
 
 	return http.ListenAndServe(addr, mux)
 }
+
+// RecordFlashblockObserved counts one transaction seen on the Base
+// preconfirmation stream. See base_flashblock_ref.go.
+func RecordFlashblockObserved() { flashblockObserved.Inc() }
