@@ -71,10 +71,10 @@ type MobulaQuoteResponse struct {
 
 type MobulaStatusResponse struct {
 	Data struct {
-		Status     string  `json:"status"` // "pending", "filled", "refunded", "failed"
-		LatencyMs  int64   `json:"latencyMs"`
-		FromTxHash string  `json:"fromTxHash"`
-		ToTxHash   string  `json:"toTxHash"`
+		Status     string `json:"status"` // "pending", "filled", "refunded", "failed"
+		LatencyMs  int64  `json:"latencyMs"`
+		FromTxHash string `json:"fromTxHash"`
+		ToTxHash   string `json:"toTxHash"`
 	} `json:"data"`
 }
 
@@ -216,7 +216,7 @@ func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, sen
 	start := time.Now()
 
 	url := fmt.Sprintf(
-		"https://demo-api.mobula.io/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s&apiKey=%s",
+		mobulaAPIBase()+"/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s&apiKey=%s",
 		originChain, originToken, destChain, destToken,
 		strconv.FormatFloat(amount, 'f', -1, 64),
 		walletAddress, m.apiKey,
@@ -261,7 +261,7 @@ func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, sen
 }
 
 func (m *MobulaBridge) GetStatus(txHash string) (*MobulaStatusResponse, error) {
-	url := fmt.Sprintf("https://demo-api.mobula.io/api/2/bridge/status/%s", txHash)
+	url := fmt.Sprintf(mobulaAPIBase()+"/api/2/bridge/status/%s", txHash)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -290,7 +290,7 @@ func (m *MobulaBridge) GetStatus(txHash string) (*MobulaStatusResponse, error) {
 }
 
 func (m *MobulaBridge) VerifyRoutes() (*MobulaRoutesResponse, error) {
-	url := "https://demo-api.mobula.io/api/2/bridge/routes"
+	url := mobulaAPIBase() + "/api/2/bridge/routes"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -320,8 +320,8 @@ func (m *MobulaBridge) VerifyRoutes() (*MobulaRoutesResponse, error) {
 
 type TestRoute struct {
 	Name         string
-	FromChain    string  // Human-readable label (e.g. "Solana")
-	FromChainAPI string  // API-specific id (e.g. "solana:solana")
+	FromChain    string // Human-readable label (e.g. "Solana")
+	FromChainAPI string // API-specific id (e.g. "solana:solana")
 	FromToken    string
 	ToChain      string
 	ToChainAPI   string
@@ -353,80 +353,81 @@ func GetTestRoutes() []TestRoute {
 	return []TestRoute{
 		// R1: Solana USDC → Base USDC
 		{
-			Name:         "USDC_SOL_BASE",
-			FromChain:    "Solana", FromChainAPI: "solana:solana",
-			FromToken:    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-			ToChain:      "Base", ToChainAPI: "evm:8453",
-			ToToken:      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-			Amounts:      []float64{5, 50, 300},
-			UsdAmounts:   []float64{5, 50, 300},
-			IsSolanaSrc:  true,
-			WeeklyOnly:   false,
+			Name:      "USDC_SOL_BASE",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			ToChain:   "Base", ToChainAPI: "evm:8453",
+			ToToken:     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			WeeklyOnly:  false,
 		},
 		// R2: Base USDC → Arbitrum USDT
 		{
-			Name:         "USDC_BASE_USDT_ARB",
-			FromChain:    "Base", FromChainAPI: "evm:8453",
-			FromToken:    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-			ToChain:      "Arbitrum", ToChainAPI: "evm:42161",
-			ToToken:      "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-			Amounts:      []float64{5, 50, 300},
-			UsdAmounts:   []float64{5, 50, 300},
-			IsSolanaSrc:  false,
-			WeeklyOnly:   false,
+			Name:      "USDC_BASE_USDT_ARB",
+			FromChain: "Base", FromChainAPI: "evm:8453",
+			FromToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
+			ToToken:     "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: false,
+			WeeklyOnly:  false,
 		},
 		// R3: Arbitrum USDT → Solana USDC (completes the triangle)
 		{
-			Name:         "USDT_ARB_USDC_SOL",
-			FromChain:    "Arbitrum", FromChainAPI: "evm:42161",
-			FromToken:    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-			ToChain:      "Solana", ToChainAPI: "solana:solana",
-			ToToken:      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-			Amounts:      []float64{5, 50, 300},
-			UsdAmounts:   []float64{5, 50, 300},
-			IsSolanaSrc:  false,
-			WeeklyOnly:   false,
+			Name:      "USDT_ARB_USDC_SOL",
+			FromChain: "Arbitrum", FromChainAPI: "evm:42161",
+			FromToken: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+			ToChain:   "Solana", ToChainAPI: "solana:solana",
+			ToToken:     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: false,
+			WeeklyOnly:  false,
 		},
-		// R4: TRUMP (Solana) → BRETT (Base) - one-way.
-		// Amounts computed at startup from live TRUMP price (refreshed every 5min via
-		// TokenPriceUSD cache). Execution stays weekly at $5 only.
+		// R4: TRUMP (Solana) → BRETT (Base). Part of the round-trip loop when
+		// ENABLE_R4_ROUNDTRIP_EXEC=true: the return leg BRETT→TRUMP is built at
+		// runtime via ReverseRoute so meme inventory is restored each cycle.
+		// Amounts computed at startup from the live TRUMP price (5min cache).
+		// WeeklyOnly keeps it out of the always-on stable triangle.
 		{
-			Name:         "TRUMP_SOL_BRETT_BASE",
-			FromChain:    "Solana", FromChainAPI: "solana:solana",
-			FromToken:    "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
-			ToChain:      "Base", ToChainAPI: "evm:8453",
-			ToToken:      "0x532f27101965dd16442E59d40670FaF5eBB142E4",
-			Amounts:      []float64{trump5, trump50, trump300},
-			UsdAmounts:   []float64{5, 50, 300},
-			IsSolanaSrc:  true,
-			WeeklyOnly:   true,
+			Name:      "TRUMP_SOL_BRETT_BASE",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+			ToChain:   "Base", ToChainAPI: "evm:8453",
+			ToToken:     "0x532f27101965dd16442E59d40670FaF5eBB142E4",
+			Amounts:     []float64{trump5, trump50, trump300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			WeeklyOnly:  true,
 		},
 		// R5: Arbitrum USDC → HyperCore USDC (Hyperliquid perp account).
-		// One-way deposit benchmark: HL is asymmetric (perp account credit,
-		// withdraw goes through HL's L1 signed action, not handled here).
-		// Phase 1 = quote-only — flagged QuoteOnly:true so GetTriangleRoutes()
-		// excludes it from the $5/$50/$300 execution scheduler. Quote loop
-		// still runs every 5min, so the dashboard gets latency/fees/cost data
-		// for Mobula vs Relay vs LiFi on HC. Flip to false in Phase 2 once HL
-		// balance reader + manual capital seed are in place.
+		// The deposit leg is a normal provider bridge (benchmarked per bridge).
+		// The return leg HyperCore → Arbitrum is HL-native (withdraw3 signed
+		// action, see hyperliquid_withdraw.go), executed once after the deposit
+		// so the loop conserves Arb USDC. QuoteOnly:true keeps it out of the
+		// always-on stable triangle and the 5min quote loop keeps measuring it;
+		// real execution is gated behind ENABLE_R5_HYPERCORE_EXEC.
 		{
-			Name:         "USDC_ARB_HYPERCORE",
-			FromChain:    "Arbitrum", FromChainAPI: "evm:42161",
-			FromToken:    "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-			ToChain:      "HyperCore", ToChainAPI: "hl:mainnet",
-			ToToken:      "USDC", // Mobula uses symbol; per-bridge translators map to provider-specific addr
-			Amounts:      []float64{5, 50, 300},
-			UsdAmounts:   []float64{5, 50, 300},
-			IsSolanaSrc:  false,
-			WeeklyOnly:   false,
-			QuoteOnly:    true,
+			Name:      "USDC_ARB_HYPERCORE",
+			FromChain: "Arbitrum", FromChainAPI: "evm:42161",
+			FromToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+			ToChain:   "HyperCore", ToChainAPI: "hl:mainnet",
+			ToToken:     "USDC", // Mobula uses symbol; per-bridge translators map to provider-specific addr
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: false,
+			WeeklyOnly:  false,
+			QuoteOnly:   true,
 		},
 	}
 }
 
-// GetTriangleRoutes returns only the routes that should run in the scheduled
-// $5 / $50 / $300 execution cycles — i.e. the USDC triangle (R1, R2, R3).
-// Excludes WeeklyOnly (R4 meme) and QuoteOnly (R5 HyperCore — quote loop only).
+// GetTriangleRoutes returns only the routes that run in every scheduled
+// $3 / $30 cycle unconditionally — i.e. the self-conserving USDC triangle
+// (R1, R2, R3). Excludes WeeklyOnly (R4 meme) and QuoteOnly (R5 HyperCore).
 func GetTriangleRoutes() []TestRoute {
 	routes := GetTestRoutes()
 	var triangle []TestRoute
@@ -449,6 +450,37 @@ func GetMemeRoutes() []TestRoute {
 		}
 	}
 	return meme
+}
+
+// getRouteByName returns the named route from the canonical set.
+func getRouteByName(name string) (TestRoute, bool) {
+	for _, r := range GetTestRoutes() {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return TestRoute{}, false
+}
+
+// R4Route returns the TRUMP→BRETT deposit route (R4).
+func R4Route() (TestRoute, bool) { return getRouteByName("TRUMP_SOL_BRETT_BASE") }
+
+// R5Route returns the Arb USDC→HyperCore deposit route (R5).
+func R5Route() (TestRoute, bool) { return getRouteByName("USDC_ARB_HYPERCORE") }
+
+// ReverseRoute builds the return leg of a route by swapping origin and
+// destination. Used to close R4 (BRETT→TRUMP) so the meme pool is restored
+// each cycle; the amount arrays are carried over (they are USD-notional for
+// UsdAmounts and recomputed per tier by the caller). Not used for R5, whose
+// return leg is the HL-native withdraw rather than a provider bridge.
+func ReverseRoute(r TestRoute) TestRoute {
+	rev := r
+	rev.Name = r.Name + "_RETURN"
+	rev.FromChain, rev.ToChain = r.ToChain, r.FromChain
+	rev.FromChainAPI, rev.ToChainAPI = r.ToChainAPI, r.FromChainAPI
+	rev.FromToken, rev.ToToken = r.ToToken, r.FromToken
+	rev.IsSolanaSrc = r.ToChain == "Solana"
+	return rev
 }
 
 // TestRoute runs a quote against a given route, using amount (token-native) + amountUsd (for labels).
@@ -479,7 +511,6 @@ func (m *MobulaBridge) TestRoute(route TestRoute, amount, amountUsd float64, reg
 		walletAddress,
 		amount,
 	)
-
 
 	if err != nil {
 		log.Printf("[MOBULA][%s][%.0f USD] ❌ Quote failed: %v", route.Name, amountUsd, err)
