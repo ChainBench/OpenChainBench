@@ -393,6 +393,27 @@ export const SpecSchema = z
      * PromQL label-value alphabet as dimension values.
      * First use: keyed-rpc-robinhood pins region=sgp so the default view
      * is the Singapore probe while the US-East tab stays available. */
+    /**
+     * How the headline value is scoped on a bench that declares
+     * `dimensions.chain`.
+     *
+     * Default (absent) keeps the cross-chain aggregate the Prom queries
+     * return. `contested_chains` narrows it to the chains where at least
+     * two providers reported data, and drops a provider that has none of
+     * those from the ranked field.
+     *
+     * The reason is that a cross-chain aggregate is a mix rather than a
+     * comparison: it rewards a provider for the chains it happens to be
+     * measured on. On wallet-labels-coverage that put StellarExpert and
+     * XRPScan first and second, each scored on a single chain no other
+     * provider reported, above a provider that led four contested ones.
+     *
+     * Opt-in per bench, and it describes a property rather than naming a
+     * bench: any bench whose chain set contains uncontested chains is a
+     * candidate. Excluded providers stay visible on their own chain tab.
+     */
+    score_scope: z.enum(["contested_chains"]).optional(),
+
     aggregate_filters: z
       .object({
         chain: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
