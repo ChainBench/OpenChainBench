@@ -391,7 +391,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
   // v57: drop rpc-keyed-latency bench.
-  ["bench-unfiltered-v62", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v63: score_scope contested_chains on bench 008 changes its provider values.
+  ["bench-unfiltered-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -604,7 +605,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
   // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
-  ["all-benchmarks-v57", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
