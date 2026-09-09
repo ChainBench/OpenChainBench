@@ -225,3 +225,27 @@ function formatPercent(pct: number): string {
   if (abs >= 0.001) return `${pct.toFixed(4)}%`;
   return `${pct.toFixed(5)}%`;
 }
+
+/**
+ * Label rendered under a benchmark's headline value.
+ *
+ * "p50 · 24h" is only honest when a percentile was actually computed. On a
+ * coverage or count bench the provider block repeats one expression for
+ * p50, p90 and p99, so the number is a single measurement and the badge
+ * would be claiming a distribution that does not exist: "19 DEX-indexed
+ * chains, p50 over 24h" reads as nonsense because it is.
+ *
+ * Percentages and basis points are rolling ratios over the window, so they
+ * get "24h avg". Everything else with a single measurement gets the bare
+ * window.
+ */
+export function valueWindowLabel(bench: {
+  unit: string;
+  hasDistribution?: boolean;
+}): string {
+  if (bench.hasDistribution !== false) return "p50 · 24h";
+  if (bench.unit === "pct" || bench.unit === "bps" || bench.unit === "bp") {
+    return "24h avg";
+  }
+  return "24h";
+}

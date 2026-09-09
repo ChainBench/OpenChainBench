@@ -266,6 +266,14 @@ export type Benchmark = {
    *  are computed via extra Prom queries with `chain="<x>"` injected, so
    *  headline copy / OG image / badge endpoint can call out the leader on
    *  each chain instead of one biased global winner. */
+  /** True when the bench's p50/p90/p99 queries are genuinely different
+   *  expressions, i.e. the value really is a percentile of a distribution.
+   *  False when a provider block repeats one expression across all three,
+   *  which is how coverage and count benches are written: there is a single
+   *  measurement, not a distribution, and labelling it "p50" claims a
+   *  percentile that was never computed. Derived from the live spec in
+   *  spec.ts, so a YAML edit takes effect without a worker rewrite. */
+  hasDistribution?: boolean;
   bestPerChain?: Record<string, ProviderResult>;
   /** Per-chain trailing provider, populated in lockstep with
    *  `bestPerChain` (same key set, same population conditions). Powers

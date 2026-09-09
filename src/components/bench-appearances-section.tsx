@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getProviders } from "@/lib/providers";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { fmtUnit } from "@/lib/format";
+import { fmtUnit, valueWindowLabel } from "@/lib/format";
 
 interface Props {
   providerSlug: string;
@@ -96,7 +96,7 @@ export async function BenchAppearancesSection({ providerSlug }: Props) {
                     <>
                       <p className="font-sans tabular text-base text-ink">{value}</p>
                       <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                        p50 · 24h
+                        {valueWindowLabel(a.benchmark)}
                       </p>
                     </>
                   ) : (
