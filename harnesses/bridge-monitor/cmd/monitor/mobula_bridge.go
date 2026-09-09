@@ -346,8 +346,9 @@ func GetTestRoutes() []TestRoute {
 	// amounts always reflect the real token value — fixes the bug where a stale
 	// hardcoded $2.87 made our $300-labelled quote actually send $266 worth.
 	trumpPrice := TokenPriceUSD("TRUMP", 2.55) // current price ~$2.55, fallback if API unreachable
-	trump3 := 3.0 / trumpPrice
-	trump30 := 30.0 / trumpPrice
+	trump5 := 5.0 / trumpPrice
+	trump50 := 50.0 / trumpPrice
+	trump300 := 300.0 / trumpPrice
 
 	return []TestRoute{
 		// R1: Solana USDC → Base USDC
@@ -357,8 +358,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "Base", ToChainAPI: "evm:8453",
 			ToToken:     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-			Amounts:     []float64{3, 30},
-			UsdAmounts:  []float64{3, 30},
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: true,
 			WeeklyOnly:  false,
 		},
@@ -369,8 +370,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
 			ToToken:     "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-			Amounts:     []float64{3, 30},
-			UsdAmounts:  []float64{3, 30},
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 		},
@@ -381,8 +382,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
 			ToChain:   "Solana", ToChainAPI: "solana:solana",
 			ToToken:     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-			Amounts:     []float64{3, 30},
-			UsdAmounts:  []float64{3, 30},
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 		},
@@ -397,8 +398,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
 			ToChain:   "Base", ToChainAPI: "evm:8453",
 			ToToken:     "0x532f27101965dd16442E59d40670FaF5eBB142E4",
-			Amounts:     []float64{trump3, trump30},
-			UsdAmounts:  []float64{3, 30},
+			Amounts:     []float64{trump5, trump50, trump300},
+			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: true,
 			WeeklyOnly:  true,
 		},
@@ -415,8 +416,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
 			ToChain:   "HyperCore", ToChainAPI: "hl:mainnet",
 			ToToken:     "USDC", // Mobula uses symbol; per-bridge translators map to provider-specific addr
-			Amounts:     []float64{3, 30},
-			UsdAmounts:  []float64{3, 30},
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 			QuoteOnly:   true,
