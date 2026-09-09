@@ -2267,11 +2267,28 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TON Center provides the official HTTP API v2 for the TON/Gram blockchain, operated by the TON Foundation. Keyless access is available at 1 request per second; higher rates require an API key.",
     twitter: "@toncenter",
   },
+  "lukso-official": {
+    url: "https://lukso.network",
+    description:
+      "The LUKSO Foundation's official mainnet RPC endpoint for the LUKSO EVM chain (chain ID 42), served with no API key.",
+    twitter: "@lukso_io",
+  },
   nownodes: {
     url: "https://nownodes.io",
     description:
-      "NOWNodes is a multi-chain node provider covering Gram (TON), Bitcoin, Ethereum and 50+ other chains. Offers API-key-based access with a free trial tier.",
-    twitter: "@NOWNodes_io",
+      "Multi-chain node provider covering 110+ blockchains. Key-based REST and WebSocket RPC plus block explorers, with keyless public endpoints on a handful of chains (Ethereum, BNB, Bitcoin) rate-limited to 5 requests per second.",
+    twitter: "@NOWNodes",
+    docs: "https://docs.nownodes.io",
+    chains: ["ethereum", "bnb", "bitcoin", "litecoin", "dogecoin", "gram", "xrp", "tron"],
+    features: [
+      "110+ chains via a single API key",
+      "REST and WebSocket JSON-RPC endpoints",
+      "Block explorers for major UTXO chains",
+      "Keyless public endpoints on Ethereum, BNB and Bitcoin (5 RPS)",
+      "Free trial tier, then usage-based paid plans",
+    ],
+    pricing:
+      "Free trial key, then paid plans by request volume. Public no-key endpoints exist on select chains at 5 requests per second.",
   },
   tatum: {
     url: "https://tatum.io",
