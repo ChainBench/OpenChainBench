@@ -237,7 +237,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MEGAETH_TENDERLY", "https://megaeth.gateway.tenderly.co")},
 			},
 		},
-		// ─── Ethereum mainnet (8 providers) ────────────────────────
+		// ─── Ethereum mainnet (9 providers) ────────────────────────
 		{
 			Slug: "ethereum",
 			Name: "Ethereum",
@@ -250,6 +250,7 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ETHEREUM_NODIES", "https://eth-pokt.nodies.app")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ETHEREUM_LAVA", "https://eth1.lava.build")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
+				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_ETHEREUM_NOWNODES", "https://public-eth.nownodes.io")},
 			},
 		},
 		// ─── Polygon PoS (5 providers) ──────────────────────────────
@@ -304,7 +305,7 @@ func chains() []Chain {
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
-		// ─── BNB Chain (5 providers) ────────────────────────────────
+		// ─── BNB Chain (7 providers) ────────────────────────────────
 		{
 			Slug: "bnb",
 			Name: "BNB Chain",
@@ -315,6 +316,7 @@ func chains() []Chain {
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BNB_BLASTAPI", "https://bsc-mainnet.public.blastapi.io")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
+				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
 			},
 		},
 		// ─── Avalanche C-Chain (6 providers) ────────────────────────
