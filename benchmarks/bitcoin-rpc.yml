@@ -1,0 +1,127 @@
+# OpenChainBench. Bench No 259
+
+slug: bitcoin-rpc
+number: "259"
+title: Fastest free Bitcoin RPC, live no-key endpoint latency
+seo_title: "Fastest free Bitcoin RPC 2026"
+seo_description: "{{best_name}} leads free Bitcoin RPC at {{best_p50}} (getblockcount p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for block-height queries against every available public Bitcoin endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Bitcoin is the original proof-of-work UTXO blockchain, targeting one block every ten minutes under SHA-256. It exposes the canonical Bitcoin Core JSON-RPC interface; the lightest height method is getblockcount, which returns the current chain tip as a plain integer. A handful of providers serve this endpoint with no API key: PublicNode, dRPC and NOWNodes (public no-key endpoint, rate-limited to 5 requests per second). Every provider was live-verified with consecutive getblockcount probes at launch, all returning the same tip.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Bitcoin. We probe every
+  public no-key endpoint with a single getblockcount call every 60 seconds from three
+  regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok
+  responses (HTTP 200 with a usable block height, not stale) contribute to the distribution;
+  p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
+
+methodology:
+  - "Probe: a single getblockcount JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."
+  - "Classification: ok (HTTP 200 with a usable height), http_err, jsonrpc_err (HTTP 200 with an error body), stale (tip more than 20 blocks behind the cross-provider max), timeout. Only ok responses contribute latency."
+  - "Providers: PublicNode (bitcoin-rpc.publicnode.com), dRPC (bitcoin.drpc.org), NOWNodes (public-btc.nownodes.io, no key, 5 RPS)."
+  - "Aggregation: p50/p90/p99 via Prometheus quantile_over_time over 24h; the headline cites the cross-region figure and the region tabs re-scope it."
+
+findings:
+  - "{{best_name}} leads at {{best_p50}} (getblockcount p50, 24h) across {{provider_count}} no-key Bitcoin endpoints."
+  - "Bitcoin's ten-minute block time means read latency reflects the provider's edge, not chain speed: a stale tip is rare, so this bench is a near-pure latency race."
+  - "{{name:nownodes}} serves Bitcoin from its public no-key endpoint at {{p50:nownodes}} (p50, 24h), rate-limited to 5 requests per second."
+
+faq:
+  - q: "Which free Bitcoin RPC is fastest?"
+    a: "Per the live data above: {{best_name}} at {{best_p50}} (getblockcount p50, 24h) across the no-key providers measured here."
+  - q: "How is Bitcoin RPC latency measured?"
+    a: "A single getblockcount call every 60 seconds from three regions (us-east, eu-west, Singapore), recording the wall-clock round trip. Only successful, non-stale responses count."
+  - q: "Do these endpoints need an API key?"
+    a: "No. All three (PublicNode, dRPC, NOWNodes) serve Bitcoin Core JSON-RPC with no key. NOWNodes' public endpoint is rate-limited to 5 requests per second."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 5400
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="bitcoin"})
+
+dimensions:
+  region:
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, no-key Bitcoin Core JSON-RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Bitcoin endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="bitcoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="bitcoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="bitcoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="bitcoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="bitcoin"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="bitcoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="bitcoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="bitcoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="bitcoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="bitcoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="bitcoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="bitcoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="bitcoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="bitcoin", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralised RPC mesh, no-key Bitcoin endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Bitcoin endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitcoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="bitcoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="bitcoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="bitcoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="bitcoin"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="bitcoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="bitcoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitcoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitcoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitcoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitcoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitcoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitcoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitcoin", region="sgp"}[1h])
+
+  - slug: nownodes
+    name: NOWNodes
+    tag: Public node, 110+ chains, 5 RPS free tier
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes's no-key Bitcoin endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="bitcoin"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nownodes", chain="bitcoin"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nownodes", chain="bitcoin"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nownodes", chain="bitcoin"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="nownodes", chain="bitcoin"}) / sum(ocb:rpc_call:rate_24h{provider="nownodes", chain="bitcoin"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="nownodes", chain="bitcoin"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="bitcoin"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="bitcoin", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="bitcoin", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="bitcoin", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="bitcoin", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="bitcoin", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="bitcoin", region="sgp"}[1h])

@@ -1,0 +1,127 @@
+# OpenChainBench. Bench No 260
+
+slug: lukso-rpc
+number: "260"
+title: Fastest free LUKSO RPC, live no-key endpoint latency
+seo_title: "Fastest free LUKSO RPC 2026"
+seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public LUKSO endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). Three providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every
+  public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three
+  regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok
+  responses (HTTP 200 with a usable block height, not stale) contribute to the distribution;
+  p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
+
+methodology:
+  - "Probe: a single eth_getBlockByNumber('latest', false) JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."
+  - "Classification: ok (HTTP 200 with a usable block number), http_err, jsonrpc_err, stale (block more than 20 behind the cross-provider tip), timeout. Only ok responses contribute latency."
+  - "Providers: LUKSO Foundation (rpc.mainnet.lukso.network), NOWNodes (public-lukso.nownodes.io, no key, 5 RPS), thirdweb (42.rpc.thirdweb.com)."
+  - "Aggregation: p50/p90/p99 via Prometheus quantile_over_time over 24h; the headline cites the cross-region figure and the region tabs re-scope it."
+
+findings:
+  - "{{best_name}} leads at {{best_p50}} (eth_getBlockByNumber p50, 24h) across {{provider_count}} no-key LUKSO endpoints."
+  - "LUKSO targets a short EVM block time, so a stale tip is uncommon and the ranking is driven by each provider's regional edge placement."
+  - "{{name:nownodes}} serves LUKSO from its public no-key endpoint at {{p50:nownodes}} (p50, 24h), rate-limited to 5 requests per second."
+
+faq:
+  - q: "Which free LUKSO RPC is fastest?"
+    a: "Per the live data above: {{best_name}} at {{best_p50}} (eth_getBlockByNumber p50, 24h) across the no-key providers measured here."
+  - q: "How is LUKSO RPC latency measured?"
+    a: "A single eth_getBlockByNumber call every 60 seconds from three regions (us-east, eu-west, Singapore), recording the wall-clock round trip. Only successful, non-stale responses count."
+  - q: "Do these endpoints need an API key?"
+    a: "No. LUKSO Foundation, NOWNodes and thirdweb all serve LUKSO mainnet JSON-RPC with no key. NOWNodes' public endpoint is rate-limited to 5 requests per second."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 5400
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="lukso"})
+
+dimensions:
+  region:
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: lukso-official
+    name: LUKSO Foundation
+    tag: Official LUKSO mainnet RPC, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to LUKSO Foundation's no-key LUKSO endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lukso-official", chain="lukso"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lukso-official", chain="lukso"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lukso-official", chain="lukso"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lukso-official", chain="lukso"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="lukso-official", chain="lukso"}) / sum(ocb:rpc_call:rate_24h{provider="lukso-official", chain="lukso"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="lukso-official", chain="lukso"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lukso-official", chain="lukso"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lukso-official", chain="lukso", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lukso-official", chain="lukso", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lukso-official", chain="lukso", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lukso-official", chain="lukso", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lukso-official", chain="lukso", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lukso-official", chain="lukso", region="sgp"}[1h])
+
+  - slug: nownodes
+    name: NOWNodes
+    tag: Public node, 110+ chains, 5 RPS free tier
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes's no-key LUKSO endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="lukso"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nownodes", chain="lukso"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nownodes", chain="lukso"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nownodes", chain="lukso"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="nownodes", chain="lukso"}) / sum(ocb:rpc_call:rate_24h{provider="nownodes", chain="lukso"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="nownodes", chain="lukso"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="lukso"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="lukso", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="lukso", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="lukso", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="lukso", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", chain="lukso", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", chain="lukso", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: thirdweb
+    tag: Multi-chain RPC edge, no-key public endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to thirdweb's no-key LUKSO endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="lukso"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="lukso"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="lukso"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="lukso"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="lukso"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="lukso"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="lukso"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="lukso"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="lukso", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="lukso", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="lukso", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="lukso", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="lukso", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="lukso", region="sgp"}[1h])
