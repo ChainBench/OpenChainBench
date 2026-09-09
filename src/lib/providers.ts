@@ -177,6 +177,7 @@ export type ProviderAppearance = {
     | "higherIsBetter"
     | "status"
     | "lastRunAt"
+    | "hasDistribution"
   > & {
     /** Chain dimension values from the spec, when present. Stored on the
      *  appearance so /products/[slug] can render chain-aware chips without
@@ -371,6 +372,7 @@ async function buildProviders(): Promise<ProviderProfile[]> {
           higherIsBetter: b.higherIsBetter,
           status: b.status,
           lastRunAt: b.lastRunAt,
+          hasDistribution: b.hasDistribution,
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
