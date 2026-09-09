@@ -151,6 +151,12 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // the worker re-publishes the snapshot, otherwise a bench keeps
     // ranking 3-sample providers as healthy through the materialise
     // lag.
+    // Does this bench actually compute a distribution? A provider block
+    // that repeats one expression for p50, p90 and p99 has a single
+    // measurement, so the UI must not badge the value "p50". Coverage and
+    // count benches are all written that way; latency benches are not.
+    // Overlaid from the live YAML for the same reason as the fields above.
+    hasDistribution: specHasDistribution(spec) ?? stored.hasDistribution,
     expectedN: spec.expected_n ?? stored.expectedN,
   };
   // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
@@ -765,5 +771,25 @@ export const getSpecs = (): Promise<Spec[]> => loadSpecs();
 
 const loadSpecs = cache(loadSpecsUncached);
 
-
-
+/**
+ * True when at least one provider declares p50, p90 and p99 as expressions
+ * that are not all identical. Undefined when the spec declares no provider
+ * queries at all, so the caller can fall back to whatever the snapshot held
+ * rather than asserting "no distribution" about a spec it could not read.
+ */
+function specHasDistribution(spec: {
+  providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
+}): boolean | undefined {
+  const providers = spec.providers ?? [];
+  let sawQueries = false;
+  for (const p of providers) {
+    const q = p.queries;
+    if (!q?.p50) continue;
+    sawQueries = true;
+    const distinct = new Set(
+      [q.p50, q.p90, q.p99].filter((x): x is string => !!x).map((x) => x.trim()),
+    );
+    if (distinct.size > 1) return true;
+  }
+  return sawQueries ? false : undefined;
+}

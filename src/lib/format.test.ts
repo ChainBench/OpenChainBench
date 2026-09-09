@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  fmtUnit,
-  fmtValue,
-  fmtAsOfUtc,
-  unitSuffix,
-  valueInDeclaredUnit,
-} from "./format";
+import { fmtAsOfUtc, fmtUnit, fmtValue, unitSuffix, valueInDeclaredUnit, valueWindowLabel } from "./format";
 
 describe("fmtUnit — ms (default latency unit)", () => {
   test("integer ms", () => expect(fmtUnit(150, "ms")).toBe("150 ms"));
@@ -148,4 +142,31 @@ describe("fmtValue (number only, no unit word)", () => {
   test("keeps $ prefix for usd", () => expect(fmtValue(100, "usd")).toBe("$100"));
   test("keeps K/M compact notation", () => expect(fmtValue(1_500_000, "count")).toBe("1.50M"));
   test("strips % from pct", () => expect(fmtValue(5, "pct")).toBe("5.00"));
+});
+
+describe("valueWindowLabel", () => {
+  test("a real percentile keeps the p50 badge", () => {
+    // metadata-coverage: quantile_over_time(0.50, …) vs (0.90, …), so the
+    // number really is the median of hourly coverage rates.
+    expect(valueWindowLabel({ unit: "pct", hasDistribution: true })).toBe("p50 · 24h");
+    expect(valueWindowLabel({ unit: "ms", hasDistribution: true })).toBe("p50 · 24h");
+  });
+
+  test("a single measurement drops the percentile claim", () => {
+    // dex-network-coverage: one instant gauge repeated across p50/p90/p99.
+    // "19 DEX-indexed chains, p50 over 24h" claims a distribution that was
+    // never computed.
+    expect(valueWindowLabel({ unit: "count", hasDistribution: false })).toBe("24h");
+    expect(valueWindowLabel({ unit: "usd", hasDistribution: false })).toBe("24h");
+  });
+
+  test("rolling ratios read as an average, not a percentile", () => {
+    // wallet-labels-coverage: sum(increase)/sum(increase) over the window.
+    expect(valueWindowLabel({ unit: "pct", hasDistribution: false })).toBe("24h avg");
+    expect(valueWindowLabel({ unit: "bps", hasDistribution: false })).toBe("24h avg");
+  });
+
+  test("an unknown shape stays on the historical label", () => {
+    expect(valueWindowLabel({ unit: "ms" })).toBe("p50 · 24h");
+  });
 });
