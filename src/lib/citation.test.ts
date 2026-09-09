@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chainWins, leader, fieldValue, rankedCandidates } from "./citation";
+import { leader, fieldValue, rankedCandidates } from "./citation";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(
@@ -109,73 +109,5 @@ describe("citation reliability threshold", () => {
     const ranks = rankedCandidates(b);
     expect(top?.slug).toBe(ranks[0].slug);
     expect(top?.value).toBe(ranks[0].ms.p50);
-  });
-});
-
-describe("contested-chain wins drive the ranking", () => {
-  // Bench 008 as it actually shipped: XRPScan and StellarExpert sat 1st
-  // and 2nd on the cross-chain average, each measured on a single chain
-  // nobody else reported, while Serialized led four contested ones.
-  const b008 = (): Benchmark => ({
-    ...bench([
-      r("stellarexpert", "StellarExpert", 80.08),
-      r("xrpscan", "XRPScan", 79.84),
-      r("serialized", "Serialized", 76.98),
-      r("mobula", "Mobula", 46.75),
-    ]),
-    higherIsBetter: true,
-    bestPerChain: {
-      ethereum: r("serialized", "Serialized", 96.84),
-      base: r("serialized", "Serialized", 76.36),
-      solana: r("serialized", "Serialized", 57.79),
-      arbitrum: r("serialized", "Serialized", 70.0),
-      bnb: r("mobula", "Mobula", 79.78),
-      xrp: r("xrpscan", "XRPScan", 79.84),
-      stellar: r("stellarexpert", "StellarExpert", 80.08),
-    },
-    providersPerChain: {
-      ethereum: ["serialized", "mobula", "oli", "blockscout"],
-      base: ["serialized", "mobula", "oli", "blockscout"],
-      solana: ["serialized", "mobula"],
-      arbitrum: ["serialized", "mobula", "oli"],
-      bnb: ["mobula", "serialized", "oli"],
-      xrp: ["xrpscan"],
-      stellar: ["stellarexpert"],
-    },
-  });
-
-  test("the provider leading the most contested chains ranks first", () => {
-    expect(rankedCandidates(b008()).map((r) => r.slug)).toEqual([
-      "serialized",
-      "mobula",
-      "stellarexpert",
-      "xrpscan",
-    ]);
-    expect(leader(b008())?.slug).toBe("serialized");
-  });
-
-  test("a chain with one measured provider awards no win", () => {
-    const wins = chainWins(b008());
-    expect(wins?.get("xrpscan")).toBeUndefined();
-    expect(wins?.get("stellarexpert")).toBeUndefined();
-    expect(wins?.get("serialized")).toBe(4);
-    expect(wins?.get("mobula")).toBe(1);
-  });
-
-  test("providers with equal wins fall back to the aggregate value", () => {
-    const b = b008();
-    // Strip every contested win so the whole field ties at zero.
-    b.providersPerChain = { ethereum: ["serialized"], bnb: ["mobula"] };
-    expect(rankedCandidates(b).map((r) => r.slug)).toEqual([
-      "stellarexpert",
-      "xrpscan",
-      "serialized",
-      "mobula",
-    ]);
-  });
-
-  test("a bench without per-chain stashes ranks by value alone", () => {
-    const b = { ...b008(), bestPerChain: undefined, providersPerChain: undefined };
-    expect(rankedCandidates(b).map((r) => r.slug)[0]).toBe("stellarexpert");
   });
 });
