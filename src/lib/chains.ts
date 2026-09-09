@@ -46,6 +46,24 @@ export type ChainEntry = {
 
 export const CHAINS: ChainEntry[] = [
   {
+    slug: "bitcoin",
+    label: "Bitcoin",
+    category: "L1",
+    nativeSymbol: "BTC",
+    website: "https://bitcoin.org",
+    description:
+      "The original proof-of-work UTXO blockchain. SHA-256 mining, ~10-minute block target, Bitcoin Core JSON-RPC (getblockcount) for chain-tip reads.",
+  },
+  {
+    slug: "lukso",
+    label: "LUKSO",
+    category: "L1",
+    nativeSymbol: "LYX",
+    website: "https://lukso.network",
+    description:
+      "EVM Layer 1 (chain ID 42) for Universal Profiles and the LSP standards. Standard Ethereum JSON-RPC surface; proof-of-stake consensus.",
+  },
+  {
     slug: "ethereum",
     label: "Ethereum",
     category: "L1",

@@ -182,6 +182,8 @@ const RAW: Record<string, string> = {
   // ─── Gram/TON providers (bench 215) ───
   toncenter: "/logos/ton.svg",
   nownodes: "/logos/nownodes.svg",
+  lukso: "/logos/lukso.svg",
+  "lukso-official": "/logos/lukso.svg",
   tatum: "/logos/tatum.svg",
   uniblock: "/logos/uniblock.svg",
   // ─── Wave-2 non-EVM chains (benches 216-221) ───
