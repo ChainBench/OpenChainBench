@@ -2312,7 +2312,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://nownodes.io",
     description:
       "Multi-chain node provider covering 110+ blockchains. Key-based REST and WebSocket RPC plus block explorers, with keyless public endpoints on a handful of chains (Ethereum, BNB, Bitcoin) rate-limited to 5 requests per second.",
-    twitter: "@NOWNodes_io",
+    twitter: "@NOWNodes",
     docs: "https://docs.nownodes.io",
     chains: ["ethereum", "bnb", "bitcoin", "litecoin", "dogecoin", "gram", "xrp", "tron"],
     features: [
