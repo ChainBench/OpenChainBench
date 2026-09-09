@@ -12,7 +12,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
-import { chainWins, citationCandidates } from "@/lib/citation";
+import { citationCandidates } from "@/lib/citation";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -240,19 +240,9 @@ function rankProviders(b: Benchmark): ProviderResult[] {
   // a best-of-bad-options ranking.
   const pool = citationCandidates(b);
   const live = pool.length > 0 ? pool : liveResults(b.results);
-  // Same ordering as the bench page: contested-chain wins first, aggregate
-  // value as the tiebreak (see rankedCandidates). Sorting these two
-  // surfaces differently is what let /products show "#3 of 8" beside five
-  // chain-leadership chips on the same bench.
-  const byValue = (a: ProviderResult, c: ProviderResult) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50;
-  const wins = chainWins(b);
-  if (!wins) return [...live].sort(byValue);
-  return [...live].sort((a, c) => {
-    const delta =
-      (wins.get(c.slug.toLowerCase()) ?? 0) - (wins.get(a.slug.toLowerCase()) ?? 0);
-    return delta !== 0 ? delta : byValue(a, c);
-  });
+  return [...live].sort((a, c) =>
+    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
+  );
 }
 
 /**

@@ -286,15 +286,26 @@ export async function specToBenchmark(
           const chainSpec = applyDimensionsToSpec(spec, { chain });
           const chainLive = await tryLoadLive(chainSpec, true);
           if (!chainLive) {
-            return [chain, undefined, undefined, [] as string[]] as const;
+            return [
+              chain,
+              undefined,
+              undefined,
+              [] as string[],
+              {} as Record<string, number>,
+            ] as const;
           }
           for (const r of chainLive.results) {
             if (!r.unresponsive) r.availability = "live";
           }
           const liveForChain = liveProviderResults(chainLive.results);
           const slugs = liveForChain.map((r) => r.slug);
+          // Per-provider value on this chain. Kept (not just the leader)
+          // so `score_scope: contested_chains` can rebuild a value from
+          // the chains a provider was actually compared on.
+          const values: Record<string, number> = {};
+          for (const r of liveForChain) values[r.slug.toLowerCase()] = r.ms.p50;
           if (liveForChain.length === 0) {
-            return [chain, undefined, undefined, slugs] as const;
+            return [chain, undefined, undefined, slugs, values] as const;
           }
           const sorted = [...liveForChain].sort((a, b) =>
             spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
@@ -304,20 +315,27 @@ export async function specToBenchmark(
             sorted[0],
             sorted[sorted.length - 1],
             slugs,
+            values,
           ] as const;
         }),
       );
       const bests: Record<string, ProviderResult> = {};
       const worsts: Record<string, ProviderResult> = {};
       const providers: Record<string, string[]> = {};
-      for (const [chain, leader, trailer, slugs] of perChainEntries) {
+      const valuesByChain: Record<string, Record<string, number>> = {};
+      for (const [chain, leader, trailer, slugs, values] of perChainEntries) {
         if (leader) bests[chain] = leader;
         if (trailer) worsts[chain] = trailer;
         if (slugs.length > 0) providers[chain] = slugs;
+        valuesByChain[chain] = values;
       }
       if (Object.keys(bests).length > 0) bestPerChain = bests;
       if (Object.keys(worsts).length > 0) worstPerChain = worsts;
       if (Object.keys(providers).length > 0) providersPerChain = providers;
+
+      if (spec.score_scope === "contested_chains") {
+        applyContestedChainScope(live.results, providers, valuesByChain);
+      }
     }
 
     // Exact per-cell rankings (chain × region) from the spec's single
@@ -379,6 +397,50 @@ export async function specToBenchmark(
     return rendered;
   }
   return draftBenchmark(spec, editorial);
+}
+
+/**
+ * Rewrite each provider's headline value as its mean over the **contested**
+ * chains of the bench: those where at least two providers reported data.
+ * A provider with no contested chain is marked unavailable, which takes it
+ * out of `liveResults` and therefore out of every ranked surface, while
+ * leaving it visible on its own chain tab.
+ *
+ * Why the value and not the sort order: a cross-chain aggregate is a mix
+ * rather than a comparison, so it credits a provider for the chains it
+ * happens to be measured on. Narrowing the number keeps one quantity on
+ * screen and the ordering follows from it. Ranking on a separate key while
+ * still displaying the wide aggregate produced a column that did not
+ * descend (80% shown at rank 4, a 74 ms leader shown at rank 3).
+ *
+ * The residual limitation, stated in the methodology: providers are still
+ * averaged over different subsets of the contested chains, since they do
+ * not all cover the same ones. It removes the uncontested win, not every
+ * difference in chain mix. An unweighted mean is used so a chain counts
+ * once regardless of how many samples it carries.
+ */
+export function applyContestedChainScope(
+  results: ProviderResult[],
+  providersPerChain: Record<string, string[]>,
+  valuesByChain: Record<string, Record<string, number>>,
+): void {
+  const contested = Object.keys(providersPerChain).filter(
+    (chain) => (providersPerChain[chain]?.length ?? 0) >= 2,
+  );
+  if (contested.length === 0) return;
+  for (const r of results) {
+    if (r.availability === "unavailable") continue;
+    const slug = r.slug.toLowerCase();
+    const vals = contested
+      .map((chain) => valuesByChain[chain]?.[slug])
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    if (vals.length === 0) {
+      r.availability = "unavailable";
+      continue;
+    }
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    r.ms = { p50: mean, p90: mean, p99: mean, mean };
+  }
 }
 
 function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
