@@ -218,9 +218,9 @@ func runDailyPnL(bc *BalanceChecker, slack *SlackNotifier) {
 // starts AFTER R1 has delivered ~3×amount × 99% to Base, and R3 starts AFTER R2 has
 // delivered ~3×amount × 99% to Arb. The per-leg requirement is therefore:
 //
-//   R1 source (Sol USDC):  initial ≥ 3 × amount        (no preceding inflow)
-//   R2 source (Base USDC): initial + R1_inflow ≥ 3×amount
-//   R3 source (Arb USDT):  initial + R2_inflow ≥ 3×amount
+//	R1 source (Sol USDC):  initial ≥ 3 × amount        (no preceding inflow)
+//	R2 source (Base USDC): initial + R1_inflow ≥ 3×amount
+//	R3 source (Arb USDT):  initial + R2_inflow ≥ 3×amount
 //
 // where inflow ≈ 3×amount × (1 - avg_fee). Using a conservative 2% cumulative loss.
 func formatTierHealth(balances map[string]map[string]float64) string {
@@ -229,7 +229,7 @@ func formatTierHealth(balances map[string]map[string]float64) string {
 	solUSDC := balances["Solana"]["USDC"]
 	baseUSDC := balances["Base"]["USDC"]
 	arbUSDT := balances["Arbitrum"]["USDT0"]
-	tiers := []float64{5, 50, 300}
+	tiers := []float64{3, 30}
 
 	// Simulate the cycle for a given tier using the sequential per-bridge model
 	// (1× tier per leg, matches cycle_sim.SimulateTriangleCycle). Shared logic
