@@ -307,6 +307,64 @@ func (r *Rebalancer) TryUnblockTier(sim CycleSimulation, balances map[string]map
 	}
 }
 
+// EqualizeStableLegs proactively tops up every triangle home leg (Sol USDC,
+// Base USDC, Arb USDT) to the largest tier plus buffer, moving from the leg
+// holding the most surplus. It runs BEFORE any tier viability check so the loop
+// self-heals continuously rather than only when a tier is blocked. Bounded by
+// the shared slot budget and the daily spend cap; best-effort and never sources
+// from a leg that would itself fall short.
+func (r *Rebalancer) EqualizeStableLegs(balances map[string]map[string]float64, budget *slotBudget) {
+	if !r.canAct() || budget == nil {
+		return
+	}
+	const target = 30.0 * rebalanceBufferFactor
+	for _, leg := range triangleLegs {
+		if budget.remaining <= 0 {
+			return
+		}
+		if r.executor.DailySpent() >= r.executor.config.MaxDailySpendUSD {
+			return
+		}
+		have := legBalanceUSD(balances, leg)
+		if have >= target {
+			continue
+		}
+		sim := CycleSimulation{
+			Tier:        30,
+			RefillChain: leg.Chain,
+			RefillToken: leg.Token,
+			RefillUSD:   target - have,
+		}
+		route, amountUSD, err := BuildRefillRoute(sim, balances)
+		if err != nil {
+			// No leg holds enough surplus to cover this one right now; leave it
+			// for the reactive path / reaper. Too routine to alert every tick.
+			continue
+		}
+		if budget.blockedByInFlight(leg.Chain) {
+			continue
+		}
+		budget.remaining--
+		bridgeRebalanceAttempts.WithLabelValues("equalize").Inc()
+		log.Printf("⚖️  Equalize: $%.2f %s -> %s %s (leg at $%.2f, target $%.2f)",
+			amountUSD, route.FromChain, sourceSymbol(route), route.ToChain, have, target)
+		result := r.ExecuteCheapest(route, amountUSD)
+		switch classifyCorrectiveResult(result) {
+		case outcomeSuccess:
+			// Reflect the move locally so the next leg sees the reduced surplus
+			// on the source and the increased balance on the destination.
+			dst := balances[route.ToChain]
+			if dst != nil {
+				dst[strings.ToLower(leg.TokenAddr)] = have + amountUSD
+			}
+		case outcomeInFlight:
+			budget.inFlight = true
+			budget.inFlightChain = leg.Chain
+			return
+		}
+	}
+}
+
 // ExecuteCheapest quotes all three executing bridges and broadcasts through
 // the cheapest one that returned a live quote. Shared by the tier rebalancer
 // and the stuck-fund reaper so both follow the same cost discipline.

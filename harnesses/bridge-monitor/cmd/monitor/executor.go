@@ -25,9 +25,8 @@ const (
 // zeroed by every restart.
 type ExecutionConfig struct {
 	Mode             ExecutionMode
-	Freq5USD         time.Duration // How often to run $5 tests
-	Freq50USD        time.Duration // How often to run $50 tests
-	Freq300USD       time.Duration // How often to run $300 tests
+	Freq3USD         time.Duration // How often to run $3 tests
+	Freq30USD        time.Duration // How often to run $30 tests
 	EnableDebridge   bool          // Whether to execute Debridge (expensive)
 	MaxDailySpendUSD float64       // Safety cap on daily spending
 }
@@ -38,8 +37,8 @@ type ExecutionResult struct {
 	Route              TestRoute
 	AmountUSD          float64
 	QuoteLatencyMs     int64
-	ExecutionLatencyMs int64   // Time from broadcast to funds received
-	E2ELatencyMs       int64   // Time from quote start to funds received
+	ExecutionLatencyMs int64 // Time from broadcast to funds received
+	E2ELatencyMs       int64 // Time from quote start to funds received
 	Success            bool
 	Reverted           bool
 	Error              error
@@ -280,12 +279,9 @@ func (e *Executor) RunReal(route TestRoute, amountUSD float64) []*ExecutionResul
 		return results
 	}
 
-	// Calculate raw units - for USDC/USDT amount equals USD, for TRUMP convert
-	amount := amountUSD
-	if route.Name == "TRUMP_SOL_BRETT_BASE" {
-		amount = amountUSD / TokenPriceUSD("TRUMP", 2.55) // live TRUMP price (5min cache)
-	}
-	rawUnits := toRawUnits(amount)
+	// Calculate raw units. Stables map 1:1 at 6 decimals; TRUMP/BRETT convert
+	// via live price and their own decimals (see sourceNativeAmount).
+	amount, rawUnits := sourceNativeAmount(route, amountUSD)
 
 	// Execute on each bridge (except Debridge - too expensive)
 	bridges := []string{"mobula", "relay", "lifi"}
@@ -333,11 +329,9 @@ func (e *Executor) RunBridgeOnRoute(bridge string, route TestRoute, amountUSD fl
 		return nil
 	}
 
-	amount := amountUSD
-	if route.Name == "TRUMP_SOL_BRETT_BASE" {
-		amount = amountUSD / TokenPriceUSD("TRUMP", 2.55) // live TRUMP price (5min cache)
-	}
-	rawUnits := toRawUnits(amount)
+	// Calculate raw units. Stables map 1:1 at 6 decimals; TRUMP/BRETT convert
+	// via live price and their own decimals (see sourceNativeAmount).
+	amount, rawUnits := sourceNativeAmount(route, amountUSD)
 
 	result := e.executeOnBridge(bridge, route, amount, amountUSD, rawUnits)
 	if result == nil {
@@ -944,6 +938,16 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 
 // getSourceTokenName returns the source token name for balance checking (legacy - fallback)
 func getSourceTokenName(route TestRoute) string {
+	// Resolve by source token address first so reverse legs (e.g. the R4
+	// return BRETT→TRUMP) are classified correctly regardless of route name.
+	switch strings.ToLower(route.FromToken) {
+	case "6p6xghyf7aee6tzksmfsko444wqop15icusqi2jfgipn":
+		return "TRUMP"
+	case "0x532f27101965dd16442e59d40670faf5ebb142e4":
+		return "BRETT"
+	case "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9":
+		return "USDT"
+	}
 	switch route.Name {
 	case "TRUMP_SOL_BRETT_BASE":
 		return "TRUMP"
@@ -951,6 +955,23 @@ func getSourceTokenName(route TestRoute) string {
 		return "USDT"
 	default:
 		return "USDC"
+	}
+}
+
+// sourceNativeAmount converts a USD notional into the source token's native
+// amount and its raw on-chain units, handling non-stable / non-6-decimal
+// sources: TRUMP (6 dec) and BRETT (18 dec, only ever a source on the R4
+// return leg). USDC/USDT map 1:1 at 6 decimals.
+func sourceNativeAmount(route TestRoute, amountUSD float64) (float64, string) {
+	switch getSourceTokenName(route) {
+	case "TRUMP":
+		amt := amountUSD / TokenPriceUSD("TRUMP", 2.55)
+		return amt, toRawUnits(amt)
+	case "BRETT":
+		amt := amountUSD / TokenPriceUSD("BRETT", 0.0072)
+		return amt, toRawUnitsDec(amt, 18)
+	default:
+		return amountUSD, toRawUnits(amountUSD)
 	}
 }
 
@@ -973,12 +994,9 @@ func getAvailableBalance(balances map[string]map[string]float64, route TestRoute
 func (e *Executor) testBridgeDryRun(bridge string, route TestRoute, amountUSD float64) {
 	log.Printf("    [%s] Simulating $%.0f %s...", bridge, amountUSD, route.Name)
 
-	// Calculate raw units - for USDC/USDT amount equals USD, for TRUMP convert
-	amount := amountUSD
-	if route.Name == "TRUMP_SOL_BRETT_BASE" {
-		amount = amountUSD / TokenPriceUSD("TRUMP", 2.55) // live TRUMP price (5min cache)
-	}
-	rawUnits := toRawUnits(amount)
+	// Calculate raw units. Stables map 1:1 at 6 decimals; TRUMP/BRETT convert
+	// via live price and their own decimals (see sourceNativeAmount).
+	amount, rawUnits := sourceNativeAmount(route, amountUSD)
 
 	// Determine sender address based on source chain
 	senderAddress := e.walletManager.EVMAddress
@@ -1110,9 +1128,8 @@ func (e *Executor) ValidateSetup() error {
 
 	// Check execution config
 	log.Printf("  ⚙️  Mode: %s", e.config.Mode)
-	log.Printf("  ⚙️  $5 frequency: %v", e.config.Freq5USD)
-	log.Printf("  ⚙️  $50 frequency: %v", e.config.Freq50USD)
-	log.Printf("  ⚙️  $300 frequency: %v", e.config.Freq300USD)
+	log.Printf("  ⚙️  $3 frequency: %v", e.config.Freq3USD)
+	log.Printf("  ⚙️  $30 frequency: %v", e.config.Freq30USD)
 	log.Printf("  ⚙️  Debridge execution: %v", e.config.EnableDebridge)
 	log.Printf("  ⚙️  Max daily spend: $%.2f", e.config.MaxDailySpendUSD)
 
@@ -1124,34 +1141,30 @@ func (e *Executor) ValidateSetup() error {
 func (e *Executor) EstimateMonthlyCost() {
 	log.Println("💰 Estimating monthly costs...")
 
-	// Costs per execution (from analysis). $300 is the new "large ticket" tier
-	// (down from $500 — capital constraint on current wallet, see README).
-	costPer5 := 1.55 // M/R/L combined for 3 routes
-	costPer50 := 2.85
-	costPer300 := 9.02 // ~$3.01/cycle × 3 bridges = 9 TX
+	// Costs per execution (from analysis). Two tiers only ($3 daily, $30 2x/wk);
+	// the fee is dominated by fixed per-TX gas, so the small notionals cost
+	// almost the same as the retired $5/$50 rungs.
+	costPer3 := 1.55 // M/R/L combined for 3 routes
+	costPer30 := 2.85
 
 	if e.config.EnableDebridge {
-		costPer5 += 8.30
-		costPer50 += 8.95
-		costPer300 += 11.00
+		costPer3 += 8.30
+		costPer30 += 8.95
 	}
 
 	// Calculate monthly executions based on frequency
 	daysInMonth := 30.0
 
-	exec5PerMonth := (24 * daysInMonth) / e.config.Freq5USD.Hours()
-	exec50PerMonth := (24 * daysInMonth) / e.config.Freq50USD.Hours()
-	exec300PerMonth := (24 * daysInMonth) / e.config.Freq300USD.Hours()
+	exec3PerMonth := (24 * daysInMonth) / e.config.Freq3USD.Hours()
+	exec30PerMonth := (24 * daysInMonth) / e.config.Freq30USD.Hours()
 
-	cost5 := exec5PerMonth * costPer5
-	cost50 := exec50PerMonth * costPer50
-	cost300 := exec300PerMonth * costPer300
+	cost3 := exec3PerMonth * costPer3
+	cost30 := exec30PerMonth * costPer30
 
-	totalMonthly := cost5 + cost50 + cost300
+	totalMonthly := cost3 + cost30
 
-	log.Printf("  $5 tests:   %.0f/month × $%.2f = $%.2f", exec5PerMonth, costPer5, cost5)
-	log.Printf("  $50 tests:  %.0f/month × $%.2f = $%.2f", exec50PerMonth, costPer50, cost50)
-	log.Printf("  $300 tests: %.0f/month × $%.2f = $%.2f", exec300PerMonth, costPer300, cost300)
+	log.Printf("  $3 tests:  %.0f/month × $%.2f = $%.2f", exec3PerMonth, costPer3, cost3)
+	log.Printf("  $30 tests: %.0f/month × $%.2f = $%.2f", exec30PerMonth, costPer30, cost30)
 	log.Printf("  ─────────────────────────────────")
 	log.Printf("  TOTAL:      $%.2f/month", totalMonthly)
 
@@ -1173,14 +1186,13 @@ func (e *Executor) EstimateMonthlyCost() {
 // PrintExecutionPlan shows what will be executed
 func (e *Executor) PrintExecutionPlan() {
 	plan := map[string]interface{}{
-		"mode":             e.config.Mode,
-		"freq_5_usd":       e.config.Freq5USD.String(),
-		"freq_50_usd":      e.config.Freq50USD.String(),
-		"freq_300_usd":     e.config.Freq300USD.String(),
-		"enable_debridge":  e.config.EnableDebridge,
-		"max_daily_spend":  e.config.MaxDailySpendUSD,
-		"evm_address":      e.walletManager.EVMAddress,
-		"solana_address":   e.walletManager.SolanaAddress,
+		"mode":            e.config.Mode,
+		"freq_3_usd":      e.config.Freq3USD.String(),
+		"freq_30_usd":     e.config.Freq30USD.String(),
+		"enable_debridge": e.config.EnableDebridge,
+		"max_daily_spend": e.config.MaxDailySpendUSD,
+		"evm_address":     e.walletManager.EVMAddress,
+		"solana_address":  e.walletManager.SolanaAddress,
 	}
 
 	planJSON, _ := json.MarshalIndent(plan, "", "  ")

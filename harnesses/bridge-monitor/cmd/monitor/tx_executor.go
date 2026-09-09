@@ -427,7 +427,7 @@ func (tx *TxExecutor) PollMobulaStatus(txHash string, timeout time.Duration) (*B
 }
 
 func (tx *TxExecutor) getMobulaStatus(txHash string) (*BridgeStatus, error) {
-	url := fmt.Sprintf("https://demo-api.mobula.io/api/2/bridge/status/%s", txHash)
+	url := fmt.Sprintf(mobulaAPIBase()+"/api/2/bridge/status/%s", txHash)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -518,9 +518,13 @@ func (tx *TxExecutor) getLiFiStatus(txHash, fromChain, toChain string) (*BridgeS
 	}
 
 	var result struct {
-		Status   string `json:"status"`
-		Sending  struct{ TxHash string `json:"txHash"` } `json:"sending"`
-		Received struct{ TxHash string `json:"txHash"` } `json:"received"`
+		Status  string `json:"status"`
+		Sending struct {
+			TxHash string `json:"txHash"`
+		} `json:"sending"`
+		Received struct {
+			TxHash string `json:"txHash"`
+		} `json:"received"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
