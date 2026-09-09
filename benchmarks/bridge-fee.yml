@@ -22,11 +22,11 @@ dimensions:
     - { value: Arbitrum,  label: Base to Arb }
     - { value: Solana,    label: Arb to Sol }
     - { value: HyperCore, label: Arb to HyperCore }
+  # us-east and sgp probes are temporarily paused (2026-09-10): only the
+  # EU-West (Paris) origin is live, so the bench is scoped to a single region.
+  # Restore the all/us-east/sgp values when the Railway us/sgp probes resume.
   region:
-    - { value: all,     label: All regions }
     - { value: eu-west, label: EU-West }
-    - { value: us-east, label: US-East }
-    - { value: sgp,     label: Singapore }
   amount_usd:
     - { value: "300", label: "$300" }
     - { value: "50",  label: "$50" }
@@ -65,7 +65,7 @@ methodology:
   - "Cadence: full sweep every 5 minutes for 24 hours."
   - "Aggregation: the headline number is the average of per-corridor 24h medians over the corridors a provider actually quotes. The TRUMP to BRETT calibration route is excluded. Near Intents has no USDT legs, so its aggregate covers the Solana to Base and Arbitrum to HyperCore corridors only. deBridge does not quote the Arbitrum to HyperCore corridor, so its aggregate covers the remaining three. Across also skips Arbitrum to HyperCore, so its aggregate covers the same three corridors as deBridge."
   - "Normalization: cost is quoted USD in minus quoted USD delivered, the same all-in definition for every provider. Near Intents bundles the destination chain withdrawal fee into its quoted amountOut (the 1Click API documents withdrawFee as already deducted), so no extra gas term is added on top."
-  - "Regions: eu-west, us-east, sgp. Three independent instances probe simultaneously; the All-regions aggregate uses the full union; per-region tabs isolate the view to one origin."
+  - "Regions: eu-west only at present. The us-east and sgp probes are temporarily paused, so the live figures reflect the EU-West (Paris) origin; the other two tabs return when those probes resume."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
   - "Provider types are surfaced as badges: direct protocols (deBridge) charge their own bridging fees; aggregators (LI.FI) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay, Across, Near Intents) bake cost into the spread of a settlement intent or optimistic fill rather than charging an explicit fee."
   - "Excluded by design: Stargate, because its keyless quote endpoint was deprecated in favor of a key-gated LayerZero API, and its on-chain quoteOFT path is same-asset EVM-only, which matches none of this bench's corridors. CCTP, because Circle's burn/mint has no quote that returns a delivered amount; standard transfers mint 1:1 and the whole cost is user-paid gas we would have to estimate ourselves, which breaks the quoted USD in minus quoted USD delivered definition used for every other row."
