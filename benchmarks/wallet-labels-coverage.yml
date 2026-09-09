@@ -151,6 +151,11 @@ prometheus:
 # Default is `eoa` because the contract tab is trivially easy for explorers
 # and saturates near 100%; the EOA tab is where curated entity coverage
 # actually differentiates providers.
+# Scored on contested chains only: stellar, xrp and bitcoin carry a single
+# measured provider each, and a cross-chain average that counts them puts a
+# provider first for a chain nobody else reported. See spec-schema.ts.
+score_scope: contested_chains
+
 dimensions:
   kind:
     - { value: eoa,      label: EOA }
