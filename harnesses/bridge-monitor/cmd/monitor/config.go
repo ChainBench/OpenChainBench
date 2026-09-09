@@ -56,6 +56,16 @@ func parseDuration(s string, defaultVal time.Duration) time.Duration {
 	return d
 }
 
+// mobulaAPIBase returns the Mobula REST base URL (no trailing slash). Defaults
+// to the production host; override with MOBULA_API_BASE. We moved off
+// demo-api.mobula.io to the production api.mobula.io endpoint.
+func mobulaAPIBase() string {
+	if v := strings.TrimSpace(os.Getenv("MOBULA_API_BASE")); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return "https://api.mobula.io"
+}
+
 // parseFloat parses a float string, returns default if invalid
 func parseFloat(s string, defaultVal float64) float64 {
 	if s == "" {
