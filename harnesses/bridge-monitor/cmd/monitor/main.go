@@ -163,6 +163,9 @@ func main() {
 
 	// Pre-seed the self-healing series so alerting rules match from startup.
 	initSelfHealingMetrics()
+	// 0-baseline the execution series for our corridors so the first real run
+	// is visible to rate()/increase() over the 24h window (see the function doc).
+	preseedExecutionMetrics(config.MonitorRegion)
 
 	// Start Prometheus metrics endpoint. Railway / most PaaS inject $PORT
 	// and route external traffic to whatever value they chose. If we bind
