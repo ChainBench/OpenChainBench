@@ -599,6 +599,29 @@ func (tx *TxExecutor) getRelayStatus(requestID string) (*BridgeStatus, error) {
 }
 
 // Close closes all connections
+
+// nativeBalanceUSD returns the native-token (ETH/SOL) balance of ownerAddr on
+// chain, valued in USD. Used to measure the real gas we pay for an execution
+// as the source-chain native balance delta (pre - post).
+func (tx *TxExecutor) nativeBalanceUSD(chain, ownerAddr string) (float64, error) {
+	if strings.EqualFold(chain, "Solana") {
+		k, err := solana.PublicKeyFromBase58(ownerAddr)
+		if err != nil {
+			return 0, err
+		}
+		lamports, err := tx.solanaNativeBalance(k)
+		if err != nil {
+			return 0, err
+		}
+		return rawToFloat(lamports, 9) * TokenPriceUSD("SOL", 150), nil
+	}
+	wei, err := tx.evmNativeBalance(chain, common.HexToAddress(ownerAddr))
+	if err != nil {
+		return 0, err
+	}
+	return rawToFloat(wei, 18) * TokenPriceUSD("ETH", 3600), nil
+}
+
 func (tx *TxExecutor) Close() {
 	if tx.baseClient != nil {
 		tx.baseClient.Close()

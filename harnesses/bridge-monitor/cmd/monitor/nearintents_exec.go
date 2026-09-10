@@ -303,6 +303,7 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 		result.Success = true
 	case "REFUNDED", "FAILED":
 		result.Reverted = true
+		result.Refunded = status == "REFUNDED"
 	default:
 		// Timed out in PROCESSING/PENDING: terminal-ambiguous. Leave Success
 		// false with the TxHash set so the caller treats it as in-flight.
