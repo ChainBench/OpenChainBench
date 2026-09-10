@@ -30,7 +30,7 @@ func SimulateTriangleCycle(balances map[string]map[string]float64, tier float64)
 
 	solUSDC := balances["Solana"]["USDC"]
 	baseUSDC := balances["Base"]["USDC"]
-	arbUSDT := balances["Arbitrum"]["USDT0"]
+	arbUSDC := balances["Arbitrum"]["USDC"]
 
 	// Per-bridge leg requirement is 1×tier (not 3×): one TX at a time, settlement
 	// replenishes the next leg before it has to source.
@@ -60,15 +60,15 @@ func SimulateTriangleCycle(balances map[string]map[string]float64, tier float64)
 		return sim
 	}
 
-	// R3: Arb USDT → Sol USDC. R2 of current bridge deposited ~tier × 0.98 on Arb.
-	arbEff := arbUSDT + need*netFactor
+	// R3: Arb USDC → Sol USDC. R2 of current bridge deposited ~tier × 0.98 on Arb.
+	arbEff := arbUSDC + need*netFactor
 	if arbEff < need {
-		sim.BlockLeg = "R3 Arb USDT"
+		sim.BlockLeg = "R3 Arb USDC"
 		sim.Needed = need
 		sim.Available = arbEff
-		sim.Reason = fmt.Sprintf("R3 Arb→Sol blocked: need $%.2f USDT on Arbitrum (incl. R2 inflow ≈$%.2f), effective $%.2f",
+		sim.Reason = fmt.Sprintf("R3 Arb→Sol blocked: need $%.2f USDC on Arbitrum (incl. R2 inflow ≈$%.2f), effective $%.2f",
 			need, need*netFactor, arbEff)
-		sim.RefillChain, sim.RefillToken, sim.RefillUSD = "Arbitrum", "USDT", need-arbEff
+		sim.RefillChain, sim.RefillToken, sim.RefillUSD = "Arbitrum", "USDC", need-arbEff
 		return sim
 	}
 

@@ -95,7 +95,7 @@ type legSpec struct {
 var triangleLegs = []legSpec{
 	{Chain: "Solana", ChainAPI: "solana:solana", Token: "USDC", TokenAddr: solanaUSDCMint},
 	{Chain: "Base", ChainAPI: "evm:8453", Token: "USDC", TokenAddr: baseUSDCAddr},
-	{Chain: "Arbitrum", ChainAPI: "evm:42161", Token: "USDT", TokenAddr: arbUSDTAddr},
+	{Chain: "Arbitrum", ChainAPI: "evm:42161", Token: "USDC", TokenAddr: arbUSDCAddr},
 }
 
 func findLeg(chain string) (legSpec, bool) {
