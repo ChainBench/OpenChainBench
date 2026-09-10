@@ -1,0 +1,121 @@
+# OpenChainBench. Bench № 261
+
+slug: bridge-execution-latency
+number: "261"
+title: "Fastest on-chain bridge execution: real settlement latency, Mobula vs Relay vs LI.FI"
+seo_title: "Fastest bridge execution 2026: real on-chain settlement latency and success rate"
+seo_description: "Live on-chain bridge execution, not quotes: real broadcast-to-settlement latency, success rate and realized fees for Mobula, Relay and LI.FI on a self-conserving USDC triangle across Solana, Base and Arbitrum."
+subtitle: Real broadcast-to-funds-received latency, success rate and realized fees for executed bridge transactions on a self-conserving USDC triangle (Solana, Base, Arbitrum), at $3 and $30, measured from EU-West.
+category: Bridges
+status: live
+metric: Execution latency
+unit: ms
+higher_is_better: false
+
+# Per-corridor breakdown. The chain label carries route.ToChain, so each tab
+# isolates one leg of the triangle: Sol to Base, Base to Arb, Arb to Sol. The
+# amount tab isolates the $3 and $30 ticket sizes. Every figure is a REAL
+# executed transaction (broadcast to on-chain settlement), never a quote.
+dimensions:
+  chain:
+    - { value: Base,     label: Sol to Base }
+    - { value: Arbitrum, label: Base to Arb }
+    - { value: Solana,   label: Arb to Sol }
+  amount_usd:
+    - { value: "3",  label: "$3" }
+    - { value: "30", label: "$30" }
+
+seo_intro: |
+  Every other bridge comparison on the internet measures quotes. This one
+  measures the transaction. We run a self-conserving USDC triangle (Solana
+  to Base to Arbitrum and back) with real capital, broadcasting real
+  transfers through Mobula, Relay and LI.FI, and we time each one from
+  broadcast to the moment the funds actually land on the destination chain.
+  Quotes are a promise; settlement is the truth, and the gap between them is
+  where slippage, failed fills and refunds live. This benchmark reports the
+  real broadcast-to-settlement latency, the success rate (fills versus
+  reverts and refunds) and the realized fee (amount sent minus amount
+  received) for two ticket sizes, $3 and $30, per corridor, measured from
+  EU-West. Inventory is conserved across the cycle, so only fees burn.
+
+abstract: |
+  We execute real cross-chain transfers on a conserving USDC triangle
+  (Solana to Base, Base to Arbitrum, Arbitrum to Solana) through Mobula,
+  Relay and LI.FI, at $3 and $30. For each executed transaction we record
+  the on-chain execution latency (broadcast to funds received), the
+  end-to-end latency (quote to funds received), the realized fee, and
+  whether it settled, reverted or was refunded. p50, p90 and p99 latency are
+  derived over a rolling 24-hour window; success rate is fills over fills
+  plus reverts and refunds. Reverted and refunded transactions are excluded
+  from the latency distribution and counted against the success rate.
+
+methodology:
+  - "Route: a self-conserving USDC triangle. Solana USDC to Base USDC, Base USDC to Arbitrum USDT, Arbitrum USDT to Solana USDC. Each executing bridge completes the full triangle before the next starts, so inventory returns to its origin and only fees burn."
+  - "Ticket sizes: $3 daily and $30 twice weekly, on fixed UTC schedules. Amounts are deliberately small: this measures settlement reliability, not large-ticket cost."
+  - "Latency: execution latency is wall-clock from broadcast to the destination credit; end-to-end latency adds the quote round-trip. Histogram buckets 1s, 5s, 10s, 30s, 60s, 120s, 300s, 600s; p50, p90 and p99 via histogram_quantile over 24h."
+  - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts and refunds count against the success rate."
+  - "Region: EU-West only at present. The execution node runs a single wallet, so a second origin would race the same inventory; additional origins are not planned for the execution loop."
+  - "Cohort: Mobula, Relay and LI.FI. deBridge is quote-only in this loop. Providers without a symmetric route on all three legs are excluded so the triangle conserves."
+
+findings:
+  - "{{name:mobula}} settles at {{p50:mobula}} (p50, broadcast to funds received) with a {{success:mobula}} success rate over the last 24 hours."
+  - "{{name:relay}} settles at {{p50:relay}} with a {{success:relay}} success rate."
+  - "{{name:lifi}} settles at {{p50:lifi}} with a {{success:lifi}} success rate."
+
+faq:
+  - q: "How is this different from the bridge quote and bridge fee benchmarks?"
+    a: "Those measure the API response: how fast a quote comes back and what it claims the cost will be. This benchmark broadcasts and settles a real transaction, then measures how long the funds actually took to arrive and what the realized cost was. A provider can quote fast and cheap yet settle slowly or fail, and only an execution benchmark surfaces that."
+  - q: "What does the triangle conserve, and why does it matter?"
+    a: "The route returns every unit of capital to its origin over a full cycle (Solana to Base to Arbitrum to Solana), so the loop can run indefinitely on a fixed float with only fees burning. That is what makes continuous real execution affordable to benchmark."
+  - q: "Why only $3 and $30?"
+    a: "The goal is settlement reliability and latency, which do not require large notionals. Small tickets keep the standing capital and the burned fees low while still exercising the full broadcast, settle and accounting path on every provider."
+  - q: "How is the success rate computed?"
+    a: "Settled transactions divided by settled plus reverted and refunded. A transaction that never broadcast (a pre-flight or quote failure) is not counted against a provider; a broadcast that reverts or is refunded is."
+  - q: "Where does this run from?"
+    a: "EU-West. The execution node holds a single wallet and signs every broadcast, so running a second origin would race the same inventory. The latency therefore reflects an EU-West vantage; the quote-latency benchmark on this site covers multi-region read latency separately."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+
+prometheus:
+  window: 24h
+  freshness_metric: bridge_execution_latency_ms
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
+    formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through Mobula from EU-West, at the selected ticket size and corridor."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="mobula", region="eu-west"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="mobula", region="eu-west"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="mobula", region="eu-west"}[24h])))
+      mean: sum(rate(bridge_execution_latency_ms_sum{bridge="mobula", region="eu-west"}[24h])) / clamp_min(sum(rate(bridge_execution_latency_ms_count{bridge="mobula", region="eu-west"}[24h])), 1)
+      success: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h])), 1)
+      sample_size: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="mobula", region="eu-west"}[1h])))
+
+  - slug: relay
+    name: Relay
+    tag: Cross-chain relay
+    formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through Relay from EU-West, at the selected ticket size and corridor."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="relay", region="eu-west"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="relay", region="eu-west"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="relay", region="eu-west"}[24h])))
+      mean: sum(rate(bridge_execution_latency_ms_sum{bridge="relay", region="eu-west"}[24h])) / clamp_min(sum(rate(bridge_execution_latency_ms_count{bridge="relay", region="eu-west"}[24h])), 1)
+      success: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h])), 1)
+      sample_size: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="relay", region="eu-west"}[1h])))
+
+  - slug: lifi
+    name: LI.FI
+    tag: Aggregator
+    formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, at the selected ticket size and corridor."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="lifi", region="eu-west"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="lifi", region="eu-west"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="lifi", region="eu-west"}[24h])))
+      mean: sum(rate(bridge_execution_latency_ms_sum{bridge="lifi", region="eu-west"}[24h])) / clamp_min(sum(rate(bridge_execution_latency_ms_count{bridge="lifi", region="eu-west"}[24h])), 1)
+      success: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h])), 1)
+      sample_size: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_execution_latency_ms_bucket{bridge="lifi", region="eu-west"}[1h])))
