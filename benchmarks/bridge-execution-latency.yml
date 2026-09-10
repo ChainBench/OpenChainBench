@@ -56,6 +56,7 @@ methodology:
   - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts and refunds count against the success rate."
   - "Region: EU-West only at present. The execution node runs a single wallet, so a second origin would race the same inventory; additional origins are not planned for the execution loop."
   - "Cohort: Mobula, Relay and LI.FI. deBridge is quote-only in this loop. Providers without a symmetric route on all three legs are excluded so the triangle conserves."
+  - "Cost metrics captured per real execution (beyond latency and success): realized output on-chain, execution slippage vs the quote (realized fee minus quote-projected fee), our own on-chain gas paid (approve + deposit, measured as source-chain native balance delta), and the refund rate split from hard-fail rate. These surface the true all-in cost and the gap between a quote and what actually settles."
 
 findings:
   - "{{name:mobula}} settles at {{p50:mobula}} (p50, broadcast to funds received) with a {{success:mobula}} success rate over the last 24 hours."
