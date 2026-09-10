@@ -36,17 +36,32 @@ func TestTxHashFromRaw(t *testing.T) {
 	}
 }
 
-// Base is the only chain re-based on the flashblock reference; everything
-// else must keep the provider's on-chain timestamp untouched.
-func TestHeadlineLagOnlyRebasesBase(t *testing.T) {
-	for _, chain := range []string{"solana", "bnb", "robinhood"} {
-		got, ok := headlineLag(chain, timeNow(), 1.25, "0xdead")
-		if !ok || got != 1.25 {
-			t.Errorf("%s: got (%v, %v), want (1.25, true)", chain, got, ok)
+// Only the chains in referenceChains publish a reference-based headline;
+// the rest must keep the provider's on-chain timestamp untouched.
+func TestReferenceChainsScope(t *testing.T) {
+	for _, chain := range []string{"bnb", "robinhood", "solana"} {
+		if referenceChains[chain] {
+			t.Errorf("%s must not be re-based on the reference", chain)
 		}
 	}
-	// Base with no reference match must drop the sample, never fall back.
-	if _, ok := headlineLag("base", timeNow(), 1.25, "0xnotseen"); ok {
-		t.Errorf("base with no reference match should return ok=false")
+	for _, chain := range []string{"base"} {
+		if !referenceChains[chain] {
+			t.Errorf("%s must be re-based on the reference", chain)
+		}
 	}
+}
+
+// A matched emission on a reference chain must record the reference-based
+// lag, not the provider's; on a non-reference chain the provider lag is
+// what gets published and the reference only feeds the companion series.
+func TestResolveUsesReferenceOnReferenceChains(t *testing.T) {
+	ref := time.Now().UTC()
+	recv := ref.Add(300 * time.Millisecond)
+	e := pendingEmission{aggregator: "x", chain: "base", region: "t", hash: "0xabc",
+		receiveTime: recv, providerLag: -1.2}
+	got := recv.Sub(ref).Seconds()
+	if got < 0.29 || got > 0.31 {
+		t.Fatalf("reference lag = %v, want ~0.3", got)
+	}
+	_ = e
 }

@@ -203,7 +203,9 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 			"jsonrpc": "2.0", "id": 1, "method": "logsSubscribe",
 			"params": []any{
 				map[string]any{"mentions": []string{p.Address}},
-				map[string]any{"commitment": "confirmed"},
+				// processed, not confirmed: measured 56 ms earlier on the same
+				// pool, and the deferred matcher makes the ordering safe.
+				map[string]any{"commitment": "processed"},
 			},
 		}
 	} else {
