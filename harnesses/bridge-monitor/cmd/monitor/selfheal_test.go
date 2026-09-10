@@ -11,7 +11,7 @@ func balancesSnapshot(sol, base, arb float64) map[string]map[string]float64 {
 	return map[string]map[string]float64{
 		"Solana":   {"USDC": sol, "SOL": 30},
 		"Base":     {"USDC": base, "ETH": 40},
-		"Arbitrum": {"USDT0": arb, "ETH": 25},
+		"Arbitrum": {"USDC": arb, "ETH": 25},
 	}
 }
 
@@ -225,8 +225,8 @@ func TestStrandedHoursComputation(t *testing.T) {
 	if _, ok := hours[strandKey{"Solana", "USDC"}]; ok {
 		t.Error("home leg Solana/USDC reported as stranded")
 	}
-	if _, ok := hours[strandKey{"Arbitrum", "USDT0"}]; ok {
-		t.Error("home leg Arbitrum/USDT0 reported as stranded")
+	if _, ok := hours[strandKey{"Arbitrum", "USDC"}]; ok {
+		t.Error("home leg Arbitrum/USDC reported as stranded")
 	}
 
 	// 7 hours later the same balance is still there: above the 6h default.

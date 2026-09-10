@@ -92,12 +92,12 @@ type NearIntentsQuoteRequest struct {
 
 type NearIntentsQuoteResponse struct {
 	Quote struct {
-		AmountIn          string `json:"amountIn"`
-		AmountInFormatted string `json:"amountInFormatted"`
-		AmountInUsd       string `json:"amountInUsd"`
-		AmountOut         string `json:"amountOut"`
+		AmountIn           string `json:"amountIn"`
+		AmountInFormatted  string `json:"amountInFormatted"`
+		AmountInUsd        string `json:"amountInUsd"`
+		AmountOut          string `json:"amountOut"`
 		AmountOutFormatted string `json:"amountOutFormatted"`
-		AmountOutUsd      string `json:"amountOutUsd"`
+		AmountOutUsd       string `json:"amountOutUsd"`
 		// timeEstimate is the solver-reported settlement ETA in seconds.
 		TimeEstimate float64 `json:"timeEstimate"`
 	} `json:"quote"`

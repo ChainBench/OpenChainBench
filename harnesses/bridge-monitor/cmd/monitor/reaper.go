@@ -32,7 +32,7 @@ const reaperMaxTransferUSD = 30 * rebalanceBufferFactor
 var homeTokens = map[string]map[string]bool{
 	"Solana":   {"USDC": true, "SOL": true, "TRUMP": true},
 	"Base":     {"USDC": true, "ETH": true, "BRETT": true},
-	"Arbitrum": {"USDT0": true, "USDT": true, "USDC": true, "ETH": true},
+	"Arbitrum": {"USDC": true, "ETH": true},
 }
 
 // Stranded tokens we know how to route home. Anything else is alert-only:
@@ -156,11 +156,7 @@ func reaperTick(fetch func() (map[string]map[string]float64, bool, error), rebal
 
 	// Home legs always report 0 so alert expressions have a baseline series.
 	for _, leg := range triangleLegs {
-		sym := leg.Token
-		if leg.Chain == "Arbitrum" {
-			sym = "USDT0"
-		}
-		bridgeStrandedHours.WithLabelValues(leg.Chain, sym).Set(0)
+		bridgeStrandedHours.WithLabelValues(leg.Chain, leg.Token).Set(0)
 	}
 	for k, h := range hours {
 		bridgeStrandedHours.WithLabelValues(k.Chain, k.Token).Set(h)
