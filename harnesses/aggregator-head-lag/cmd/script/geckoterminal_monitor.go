@@ -245,9 +245,7 @@ func handleGeckoDataMessage(config *Config, identifier string, message json.RawM
 	lagSeconds := float64(lagMs) / 1000.0
 
 	// Record metrics with tx hash
-	if pubLag, ok := headlineLag(poolChain, receiveTime, lagSeconds, swapData.Data.TxHash); ok {
-		RecordHeadLag("geckoterminal", poolChain, lagMs, pubLag, config.MonitorRegion, swapData.Data.TxHash)
-	}
+	emitHeadLag("geckoterminal", poolChain, config.MonitorRegion, swapData.Data.TxHash, receiveTime, lagMs, lagSeconds)
 
 	// Log occasionally (not every trade)
 	if lagMs > 10000 || time.Now().Second()%30 == 0 {
