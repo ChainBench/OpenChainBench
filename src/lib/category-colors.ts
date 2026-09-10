@@ -20,4 +20,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   "NFT APIs": "#6366f1",
   // RWA: teal, the tradfi-meets-onchain lane gets its own hue.
   RWA: "#0d9488",
+  // On-ramps: olive, fiat-to-crypto sits between Trading purple and
+  // Bridges amber without borrowing either.
+  "On-ramps": "#7a8f3c",
 };
