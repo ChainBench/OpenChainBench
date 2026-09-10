@@ -2,10 +2,10 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
+title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal, Serialized
 seo_title: "Fastest crypto price API 2026"
-seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana, Robinhood."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
+seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST, Serialized WebSocket live across Base, BNB, Solana, Robinhood."
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal and Serialized on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -36,10 +36,12 @@ seo_intro: |
   data provider. how many seconds elapse between a swap landing on
   chain and the same event appearing on the provider's feed. Marketing
   pages quote "real-time" without a number; this page quotes the
-  number. Mobula's WebSocket, Codex's GraphQL feed and GeckoTerminal's
-  REST endpoint are watched from three regions (us-east, eu-west, sgp)
-  against canonical-tip archive
-  nodes on Base, BNB Chain, Solana and Robinhood Chain. Because each chain has its own
+  number. Mobula's WebSocket, Codex's GraphQL feed, GeckoTerminal's
+  REST endpoint and Serialized's WebSocket trades stream are watched
+  from three regions (us-east, eu-west, sgp). On Base the zero point is
+  the sequencer's flashblock preconfirmation stream, which we hold
+  ourselves; on BNB Chain, Solana and Robinhood Chain it is the
+  on-chain timestamp against canonical-tip archive nodes. Because each chain has its own
   base block cadence (Solana's ~400 ms slots vs Base/BNB's 2-3 s
   blocks), the headline winner shifts by chain. On Solana the leader
   is {{best_name:chain:solana}} at {{best_p50:chain:solana}}; on Base
@@ -74,12 +76,13 @@ methodology:
 findings:
   - "Cross-chain average puts {{best_name}} on top at {{best_p50}} (p50, 24h) across {{count}} providers. Per-chain leaders differ: Base {{best_name:chain:base}} at {{best_p50:chain:base}}, Solana {{best_name:chain:solana}} at {{best_p50:chain:solana}}, BNB {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Robinhood {{best_name:chain:robinhood}} at {{best_p50:chain:robinhood}}. Chains differ in block cadence (Solana 400ms vs Base/BNB 2-3s), which shifts the floor independently of provider speed."
   - "On Solana the leader is {{best_name:chain:solana}} at {{best_p50:chain:solana}} (p50, 24 h); the trailer is {{worst_name:chain:solana}} at {{worst_p50:chain:solana}}. Slot cadence is sub-second, so any second-scale aggregate latency is on the provider's pipeline, not the chain."
-  - "On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); the trailer is {{worst_name:chain:base}} at {{worst_p50:chain:base}}. Base targets a 2 s block cadence, so head lag here measures pipeline latency on top of the chain's natural block interval."
+  - "On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); the trailer is {{worst_name:chain:base}} at {{worst_p50:chain:base}}. Measured against the flashblock preconfirmation stream, so the number is how long after a trade became public the provider delivered it, whichever layer it reads."
   - "On BNB Chain the leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (p50, 24 h); the trailer is {{worst_name:chain:bnb}} at {{worst_p50:chain:bnb}}. BNB's ~3 s blocks set the floor; the spread between leader and trailer is the provider-side delta."
-  - "{{name:mobula}} leads on three of four chains. WebSocket feeds compress latency by pushing events the moment the harness emits them rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST."
-  - "{{name:codex}} leads on Base at {{best_p50:chain:base}} (p50, 24 h). GraphQL subscriptions are a server-push pattern in practice and cluster near WebSocket performance on liquid pools, but tail latency tends to widen on long-tail tokens with sparse events."
+  - "Push feeds (WebSocket, GraphQL subscription) compress latency by emitting the moment the provider's indexer has the event rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST. Which push feed leads shifts by chain, see the per-chain lines above."
+  - "On Base, what a provider reads matters more than how fast its pipeline is. A provider emitting from flashblock preconfirmations delivers a trade about 1.6 s (median over 21,538 transactions) before the sealed block carrying it becomes queryable, so a sealed-block reader carries that floor before any pipeline work. A preconfirmation is not final and can be reordered."
+  - "The Base spread is therefore mostly that floor: the providers' own pipelines sit within a few hundred milliseconds of each other. Read the Base column as a latency versus finality choice, not as a pure speed ranking."
   - "{{name:geckoterminal}} trails on every chain. REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
-  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
+  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:serialized}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
@@ -104,7 +107,7 @@ faq:
   - q: "How fast does GeckoTerminal update prices?"
     a: "{{name:geckoterminal}} currently sits at {{p50:geckoterminal}} (p50, 24 h) head lag on this benchmark. REST endpoints update at the publisher's chosen cadence rather than the moment a swap lands, which is the architectural reason REST polling reads slower than WebSocket feeds for the same underlying chain data."
   - q: "How is head lag measured on OpenChainBench?"
-    a: "The harness holds a live WebSocket subscription to canonical-tip archive nodes on each chain (Base, BNB Chain, Solana, Robinhood Chain). Every new on-chain swap is timestamped on receipt with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
+    a: "On Base the harness holds the sequencer's flashblock preconfirmation stream in every region and timestamps each transaction the first time it appears there; on BNB Chain, Solana and Robinhood Chain it holds canonical-tip archive nodes and uses the on-chain timestamp. Every swap is timestamped with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
   - q: "Which data provider should I pick for a real-time trading interface?"
     a: "Read both the p50 and the p99 columns. p50 tells the typical experience, p99 tells the worst minute a user will see when a chain spikes or a region's path degrades. A 500 ms p50 with a 30 s p99 means most of the time the UI feels snappy and once per minute it stutters. The leaderboard splits both, plus the success rate column flags providers whose feed dropped during the measurement window."
 
