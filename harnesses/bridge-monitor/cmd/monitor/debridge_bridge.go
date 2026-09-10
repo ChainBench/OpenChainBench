@@ -35,8 +35,9 @@ func debridgeChainID(chain string) int64 {
 // Debridge protocol charges a fixed amount in native tokens that we convert to USD
 // using live spot prices (5min cache). Hardcoded fallbacks are intentionally
 // conservative so an API outage doesn't make Debridge look artificially cheap.
-//   Solana: 0.015 SOL native fix fee
-//   EVM:    0.001 ETH native fix fee
+//
+//	Solana: 0.015 SOL native fix fee
+//	EVM:    0.001 ETH native fix fee
 func debridgeFixFeeUSD(fromChain string) float64 {
 	switch strings.ToLower(fromChain) {
 	case "solana":
@@ -56,9 +57,9 @@ type DebridgeQuoteResponse struct {
 			ApproximateUsdValue float64 `json:"approximateUsdValue"`
 		} `json:"dstChainTokenOut"`
 	} `json:"estimation"`
-	FixFee                           string  `json:"fixFee"`
-	ProtocolFeeApproximateUsdValue   float64 `json:"protocolFeeApproximateUsdValue"`
-	Order                            struct {
+	FixFee                         string  `json:"fixFee"`
+	ProtocolFeeApproximateUsdValue float64 `json:"protocolFeeApproximateUsdValue"`
+	Order                          struct {
 		ApproximateFulfillmentDelay int64 `json:"approximateFulfillmentDelay"`
 	} `json:"order"`
 	ErrorMessage string `json:"errorMessage,omitempty"`

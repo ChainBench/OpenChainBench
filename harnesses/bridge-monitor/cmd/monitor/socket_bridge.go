@@ -51,11 +51,11 @@ func socketChainID(chain string) string {
 }
 
 type socketRoute struct {
-	OutputValueInUsd    float64 `json:"outputValueInUsd"`
-	InputValueInUsd     float64 `json:"inputValueInUsd"`
-	TotalGasFeesInUsd   float64 `json:"totalGasFeesInUsd"`
-	ServiceTime         int     `json:"serviceTime"`
-	BridgeRoute struct {
+	OutputValueInUsd  float64 `json:"outputValueInUsd"`
+	InputValueInUsd   float64 `json:"inputValueInUsd"`
+	TotalGasFeesInUsd float64 `json:"totalGasFeesInUsd"`
+	ServiceTime       int     `json:"serviceTime"`
+	BridgeRoute       struct {
 		BridgeFeeAmount string `json:"bridgeFeeAmount"`
 	} `json:"bridgeRoute"`
 }

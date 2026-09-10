@@ -337,7 +337,7 @@ func GetTestRoutes() []TestRoute {
 	// USDC Triangle (self-balancing):
 	// R1: Solana USDC → Base USDC
 	// R2: Base USDC → Arbitrum USDT
-	// R3: Arbitrum USDT → Solana USDC
+	// R3: Arbitrum USDC → Solana USDC
 	//
 	// Meme Route (separate, weekly only):
 	// R4: TRUMP (Solana) → BRETT (Base)
@@ -363,23 +363,23 @@ func GetTestRoutes() []TestRoute {
 			IsSolanaSrc: true,
 			WeeklyOnly:  false,
 		},
-		// R2: Base USDC → Arbitrum USDT
+		// R2: Base USDC → Arbitrum USDC (all-USDC triangle)
 		{
-			Name:      "USDC_BASE_USDT_ARB",
+			Name:      "USDC_BASE_ARB",
 			FromChain: "Base", FromChainAPI: "evm:8453",
 			FromToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
-			ToToken:     "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+			ToToken:     "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
 			Amounts:     []float64{5, 50, 300},
 			UsdAmounts:  []float64{5, 50, 300},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 		},
-		// R3: Arbitrum USDT → Solana USDC (completes the triangle)
+		// R3: Arbitrum USDC → Solana USDC (completes the all-USDC triangle)
 		{
-			Name:      "USDT_ARB_USDC_SOL",
+			Name:      "USDC_ARB_SOL",
 			FromChain: "Arbitrum", FromChainAPI: "evm:42161",
-			FromToken: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+			FromToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
 			ToChain:   "Solana", ToChainAPI: "solana:solana",
 			ToToken:     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			Amounts:     []float64{5, 50, 300},

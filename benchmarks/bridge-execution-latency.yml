@@ -50,7 +50,7 @@ abstract: |
   from the latency distribution and counted against the success rate.
 
 methodology:
-  - "Route: a self-conserving USDC triangle. Solana USDC to Base USDC, Base USDC to Arbitrum USDT, Arbitrum USDT to Solana USDC. Each executing bridge completes the full triangle before the next starts, so inventory returns to its origin and only fees burn."
+  - "Route: a self-conserving all-USDC triangle. Solana USDC to Base USDC, Base USDC to Arbitrum USDC, Arbitrum USDC to Solana USDC. Each executing bridge completes the full triangle before the next starts, so inventory returns to its origin and only fees burn."
   - "Ticket sizes: $3 daily and $30 twice weekly, on fixed UTC schedules. Amounts are deliberately small: this measures settlement reliability, not large-ticket cost."
   - "Latency: execution latency is wall-clock from broadcast to the destination credit; end-to-end latency adds the quote round-trip. Histogram buckets 1s, 5s, 10s, 30s, 60s, 120s, 300s, 600s; p50, p90 and p99 via histogram_quantile over 24h."
   - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts and refunds count against the success rate."
