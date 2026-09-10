@@ -13,8 +13,8 @@ The monitor connects to each aggregator's WebSocket / REST feed and measures lat
 
 The delta is exported as a Prometheus gauge (`head_lag_seconds`), labelled by aggregator, chain and region. Failures surface as `head_lag_errors_total` counters. REST API latency, quote API latency and metadata coverage are recorded in parallel from the same process.
 
-**Tracked aggregators**: GeckoTerminal · Mobula · Codex
-**Supported chains**: Solana · Ethereum · BNB Chain · Base
+**Tracked aggregators**: GeckoTerminal · Mobula · Codex · Serialized
+**Supported chains**: Solana · Base · BNB Chain · Robinhood Chain
 
 ## Where the data goes
 
@@ -73,6 +73,7 @@ This service is deployed from the OpenChainBench repo, root directory `harnesses
 | `COINGECKO_API_KEY` | CoinGecko Pro key (for GeckoTerminal feed) | optional |
 | `DEFINED_SESSION_COOKIE` | Defined.fi session cookie (for Codex). Auto-scraped if absent. | optional |
 | `MOBULA_WS_URL` | Override the Mobula WS endpoint | optional |
+| `SERIALIZED_API_KEY` | Serialized API key | optional |
 | `MONITOR_REGION` | Label written on every metric (e.g. `us-east`) | recommended |
 
 A monitor with no key for a given aggregator is skipped cleanly. the harness will run for whatever providers it can authenticate with.

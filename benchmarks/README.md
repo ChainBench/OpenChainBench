@@ -112,7 +112,7 @@ This is intentionally conservative: half-live data is worse than mock data becau
 The following specs ship on staging (dev) but are intentionally held out
 of production releases until cleared: hyperliquid-frontends, perp-funding,
 evm-quote-latency, solana-dex-quote-latency, solana-tx-landing,
-bridge-revenue, wallet-labels-coverage; plus pending edits to
+bridge-revenue; plus pending edits to
 hyperliquid-hip3-deployers and gas-estimation. Publishing one = include
 its YAML in the next release branch to main. NEVER fast-forward dev from
 main: main's release branches delete these files and an ff would wipe

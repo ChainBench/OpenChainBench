@@ -2,10 +2,10 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
+title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal, Serialized
 seo_title: "Fastest crypto price API 2026"
-seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana, Robinhood."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
+seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST, Serialized WebSocket live across Base, BNB, Solana, Robinhood."
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal and Serialized on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -36,8 +36,8 @@ seo_intro: |
   data provider. how many seconds elapse between a swap landing on
   chain and the same event appearing on the provider's feed. Marketing
   pages quote "real-time" without a number; this page quotes the
-  number. Mobula's WebSocket, Codex's GraphQL feed and GeckoTerminal's
-  REST endpoint are watched from three regions (us-east, eu-west, sgp)
+  number. Mobula's WebSocket, Codex's GraphQL feed, GeckoTerminal's
+  REST endpoint and Serialized's WebSocket are watched from three regions (us-east, eu-west, sgp)
   against canonical-tip archive
   nodes on Base, BNB Chain, Solana and Robinhood Chain. Because each chain has its own
   base block cadence (Solana's ~400 ms slots vs Base/BNB's 2-3 s
@@ -76,10 +76,10 @@ findings:
   - "On Solana the leader is {{best_name:chain:solana}} at {{best_p50:chain:solana}} (p50, 24 h); the trailer is {{worst_name:chain:solana}} at {{worst_p50:chain:solana}}. Slot cadence is sub-second, so any second-scale aggregate latency is on the provider's pipeline, not the chain."
   - "On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); the trailer is {{worst_name:chain:base}} at {{worst_p50:chain:base}}. Base targets a 2 s block cadence, so head lag here measures pipeline latency on top of the chain's natural block interval."
   - "On BNB Chain the leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (p50, 24 h); the trailer is {{worst_name:chain:bnb}} at {{worst_p50:chain:bnb}}. BNB's ~3 s blocks set the floor; the spread between leader and trailer is the provider-side delta."
-  - "{{name:mobula}} leads on three of four chains. WebSocket feeds compress latency by pushing events the moment the harness emits them rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST."
-  - "{{name:codex}} leads on Base at {{best_p50:chain:base}} (p50, 24 h). GraphQL subscriptions are a server-push pattern in practice and cluster near WebSocket performance on liquid pools, but tail latency tends to widen on long-tail tokens with sparse events."
+  - "{{name:mobula}} and {{name:serialized}} both ship WebSocket feeds. WebSocket feeds compress latency by pushing events the moment the harness emits them rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST."
+  - "{{name:codex}} posts {{p50:codex}} (p50, 24 h) on GraphQL subscriptions, a server-push pattern in practice that clusters near WebSocket performance on liquid pools, but tail latency tends to widen on long-tail tokens with sparse events."
   - "{{name:geckoterminal}} trails on every chain. REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
-  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
+  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} / {{p99:serialized}} is what a live UI feels when a chain spikes or a region's path degrades."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
@@ -100,7 +100,7 @@ faq:
   - q: "What is head lag in a crypto data feed?"
     a: "Head lag is the wall-clock interval between a transaction landing in a confirmed block on chain and the same transaction appearing on the data provider's feed. A provider with 200 ms head lag pushes the event a fifth of a second after it settled; a provider with 6 s head lag pushes it after six seconds. The number controls how live a trading UI, a chart or a PnL tracker actually feels when the underlying chain moves."
   - q: "Is WebSocket faster than REST for crypto market data?"
-    a: "Yes, structurally. A WebSocket connection pushes events the moment the provider's indexer has them, so latency tracks the publisher's indexer speed and the network path. REST polling adds the poll interval to every read: a one-second poll cadence puts a floor of one second on top of whatever the indexer adds. The leaderboard shows the difference live, with Mobula on a WebSocket feed, Codex on GraphQL subscriptions and GeckoTerminal on REST."
+    a: "Yes, structurally. A WebSocket connection pushes events the moment the provider's indexer has them, so latency tracks the publisher's indexer speed and the network path. REST polling adds the poll interval to every read: a one-second poll cadence puts a floor of one second on top of whatever the indexer adds. The leaderboard shows the difference live, with Mobula and Serialized on WebSocket feeds, Codex on GraphQL subscriptions and GeckoTerminal on REST."
   - q: "How fast does GeckoTerminal update prices?"
     a: "{{name:geckoterminal}} currently sits at {{p50:geckoterminal}} (p50, 24 h) head lag on this benchmark. REST endpoints update at the publisher's chosen cadence rather than the moment a swap lands, which is the architectural reason REST polling reads slower than WebSocket feeds for the same underlying chain data."
   - q: "How is head lag measured on OpenChainBench?"
