@@ -57,6 +57,7 @@ methodology:
   - "Region: EU-West only at present. The execution node runs a single wallet, so a second origin would race the same inventory; additional origins are not planned for the execution loop."
   - "Cohort: Mobula, Relay and LI.FI. deBridge is quote-only in this loop. Providers without a symmetric route on all three legs are excluded so the triangle conserves."
   - "Cost metrics captured per real execution (beyond latency and success): realized output on-chain, execution slippage vs the quote (realized fee minus quote-projected fee), our own on-chain gas paid (approve + deposit, measured as source-chain native balance delta), and the refund rate split from hard-fail rate. These surface the true all-in cost and the gap between a quote and what actually settles."
+  - "Reliability tail: cross-chain settlement is asynchronous, so a broadcast can end three ways beyond a clean fill. We split them: refunded (capital returned, with a refund-latency histogram for how fast it came back), reverted (on-chain failure), and stuck (a deposit whose status never resolved to a fill or refund in the poll window). The stuck rate is the share of swaps a user would have to chase manually: the honest measure of what is not automatically handled."
 
 findings:
   - "{{name:mobula}} settles at {{p50:mobula}} (p50, broadcast to funds received) with a {{success:mobula}} success rate over the last 24 hours."
@@ -76,6 +77,28 @@ faq:
     a: "EU-West. The execution node holds a single wallet and signs every broadcast, so running a second origin would race the same inventory. The latency therefore reflects an EU-West vantage; the quote-latency benchmark on this site covers multi-region read latency separately."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+
+# Companion panels beside the latency headline. Both are single-selector
+# gauges so the per-provider label injection stays exact. Slippage-vs-quote
+# and our all-in gas are the two cost signals a quote can never show; the
+# refund rate, stuck rate and refund latency live as raw metrics
+# (bridge_refunds_total, bridge_stuck_total, bridge_refund_latency_ms) and
+# are documented in the methodology until they accrue enough samples to panel.
+metric_panels:
+  - id: slippage
+    label: Slippage vs quote
+    metric: avg by (bridge) (bridge_quote_slippage_usd{region="eu-west"})
+    label_key: bridge
+    unit: usd
+    higher_is_better: false
+    description: "Realized fee minus quote-projected fee, in USD. The gap between what the quote promised and what actually settled."
+  - id: gas
+    label: All-in gas we paid
+    metric: avg by (bridge) (bridge_exec_gas_usd{region="eu-west"})
+    label_key: bridge
+    unit: usd
+    higher_is_better: false
+    description: "Our own on-chain gas (approve plus deposit), measured as the source-chain native balance delta. The cost the user bears on top of the bridge fee."
 
 prometheus:
   window: 24h
