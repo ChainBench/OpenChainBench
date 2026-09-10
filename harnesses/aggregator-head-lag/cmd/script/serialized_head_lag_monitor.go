@@ -327,16 +327,9 @@ func serializedConnectAndStream(config *Config, tokens map[string]string, poolCh
 		// Legacy series: provider's own clock, identical treatment to the
 		// incumbents (RecordHeadLag drops negatives and >120 s itself).
 		lagSeconds := receiveTime.Sub(time.UnixMilli(d.At)).Seconds()
-		if pubLag, ok := headlineLag(chainName, receiveTime, lagSeconds, txHash); ok {
-			RecordHeadLag("serialized", chainName, 0, pubLag, config.MonitorRegion, txHash)
-		}
+		emitHeadLag("serialized", chainName, config.MonitorRegion, txHash, receiveTime, 0, lagSeconds)
 
 		// Reference series: our node clock, matched by hash.
-		if refAt, ok := reference.lookup(chainName, txHash); ok {
-			RecordHeadLagRef("serialized", chainName, receiveTime.Sub(refAt).Seconds(), config.MonitorRegion)
-		} else {
-			RecordHeadLagRefMiss("serialized", chainName, config.MonitorRegion)
-		}
 		if d.Preconfirmed {
 			// Flashblocks preconfirmation on Base. Kept visible in the log;
 			// the ref series counts it under ahead_of_reference when it lands
