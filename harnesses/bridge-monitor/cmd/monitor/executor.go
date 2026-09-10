@@ -950,6 +950,20 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 	if result.Refunded {
 		bridgeRefunds.WithLabelValues(labels...).Inc()
+		// How fast the money came back. ExecutionLatencyMs is set to
+		// broadcast→resolution before the refund branch, so it is the
+		// broadcast-to-refund latency here.
+		if result.ExecutionLatencyMs > 0 {
+			bridgeRefundLatency.WithLabelValues(labels...).Observe(float64(result.ExecutionLatencyMs))
+		}
+	}
+	// Stuck: the deposit broadcast but the bridge status never resolved to a
+	// fill or a refund within the poll window (status poll timed out with a
+	// TxHash in hand). These are the swaps a real user would have to chase
+	// manually — the "not automatically handled" rate.
+	if result.TxHash != "" && !result.Success && !result.Reverted &&
+		result.Error != nil && strings.Contains(result.Error.Error(), "status poll failed") {
+		bridgeStuck.WithLabelValues(labels...).Inc()
 	}
 	if result.Error != nil {
 		bridgeErrors.WithLabelValues(append(labels, "execution_failed")...).Inc()

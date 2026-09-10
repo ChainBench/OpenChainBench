@@ -65,6 +65,25 @@ var (
 		Help: "Bridge transactions the provider refunded (capital returned to source)",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Stuck: a deposit broadcast whose bridge status never resolved to a fill
+	// OR a refund within our poll window. On a real user's swap these are the
+	// ones that need a manual claim / support ticket — the "not automatically
+	// handled" rate, distinct from clean fills and clean refunds. Cross-chain
+	// is fundamentally asynchronous, so this is the honest reliability tail.
+	bridgeStuck = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_stuck_total",
+		Help: "Broadcasts whose status never resolved to a fill or refund in the poll window (funds in limbo, manual intervention needed)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Refund latency: time from deposit broadcast to the provider returning
+	// capital to source (status "refunded"). A failed swap is only half the
+	// story; how fast you get your money back is the other half of the UX.
+	bridgeRefundLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "bridge_refund_latency_ms",
+		Help:    "Latency from deposit broadcast to refund settlement in milliseconds",
+		Buckets: []float64{5000, 10000, 30000, 60000, 120000, 300000, 600000},
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
 	// Realized output that actually landed on the destination (on-chain fill).
 	bridgeRealizedOutputUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_realized_output_usd",
