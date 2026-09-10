@@ -980,8 +980,13 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	if result.OutputUSD > 0 {
 		bridgeRealizedOutputUSD.WithLabelValues(labels...).Set(result.OutputUSD)
 	}
-	// Execution slippage vs quote = realized fee - quote-projected fee.
-	bridgeQuoteSlippageUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD - result.QuoteFeeUSD)
+	// Execution slippage vs quote = realized fee - quote-projected fee. Only on
+	// a real fill: on a revert / refund / pre-broadcast failure there is no
+	// realized fee (ActualFeeUSD stays 0 while QuoteFeeUSD was set), so recording
+	// it would inject spurious 0 / negative samples into the realized-cost bench.
+	if result.Success {
+		bridgeQuoteSlippageUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD - result.QuoteFeeUSD)
+	}
 	if result.ExecGasUSD > 0 {
 		bridgeExecGasUSD.WithLabelValues(labels...).Set(result.ExecGasUSD)
 	}
