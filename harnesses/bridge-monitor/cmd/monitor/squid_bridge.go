@@ -74,10 +74,10 @@ type squidGasCost struct {
 type squidRouteResponse struct {
 	Route struct {
 		Estimate struct {
-			FromAmountUSD         string         `json:"fromAmountUSD"`
-			ToAmountUSD           string         `json:"toAmountUSD"`
-			FeeCosts              []squidFeeCost `json:"feeCosts"`
-			GasCosts              []squidGasCost `json:"gasCosts"`
+			FromAmountUSD          string         `json:"fromAmountUSD"`
+			ToAmountUSD            string         `json:"toAmountUSD"`
+			FeeCosts               []squidFeeCost `json:"feeCosts"`
+			GasCosts               []squidGasCost `json:"gasCosts"`
 			EstimatedRouteDuration int            `json:"estimatedRouteDuration"`
 		} `json:"estimate"`
 	} `json:"route"`

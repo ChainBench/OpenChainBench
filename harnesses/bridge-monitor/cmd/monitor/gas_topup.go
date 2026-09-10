@@ -27,7 +27,7 @@ const gasTierSafeBuffer = 1.20
 const gasMinMeaningfulUSD = 5.0
 
 type gasChain struct {
-	Chain string
+	Chain     string
 	NativeSym string
 	// PrimaryStable is the stablecoin sold first for gas (contract address).
 	PrimaryStable string

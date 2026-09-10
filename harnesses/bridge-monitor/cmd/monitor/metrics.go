@@ -184,7 +184,7 @@ func initSelfHealingMetrics() {
 	bridgeTierDowngraded.WithLabelValues("30", "3").Set(0)
 	bridgeStrandedHours.WithLabelValues("Solana", "USDC").Set(0)
 	bridgeStrandedHours.WithLabelValues("Base", "USDC").Set(0)
-	bridgeStrandedHours.WithLabelValues("Arbitrum", "USDT0").Set(0)
+	bridgeStrandedHours.WithLabelValues("Arbitrum", "USDC").Set(0)
 	for _, chain := range []string{"Solana", "Base", "Arbitrum"} {
 		for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "gated"} {
 			bridgeGasTopup.WithLabelValues(chain, outcome).Add(0)
