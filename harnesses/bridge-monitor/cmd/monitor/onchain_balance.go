@@ -40,11 +40,25 @@ func (tx *TxExecutor) erc20BalanceOf(chain string, token, owner common.Address) 
 }
 
 // evmClientFor maps a Route chain name (Base / Arbitrum) to the cached ethclient.
-func (tx *TxExecutor) evmClientFor(chain string) interface{ CallContract(context.Context, ethereum.CallMsg, *big.Int) ([]byte, error) } {
+func (tx *TxExecutor) evmClientFor(chain string) interface {
+	CallContract(context.Context, ethereum.CallMsg, *big.Int) ([]byte, error)
+} {
+	// Return a genuinely-nil interface when the concrete client failed to
+	// initialize. Returning a typed nil *ethclient.Client here would satisfy
+	// `client == nil` as FALSE in erc20BalanceOf (non-nil interface wrapping a
+	// nil pointer), then panic on CallContract. This is what crash-looped the
+	// VPS container when the portfolio API went down and the on-chain fallback
+	// ran against un-dialled EVM clients.
 	switch strings.ToLower(chain) {
 	case "base":
+		if tx.baseClient == nil {
+			return nil
+		}
 		return tx.baseClient
 	case "arbitrum":
+		if tx.arbitrumClient == nil {
+			return nil
+		}
 		return tx.arbitrumClient
 	}
 	return nil
