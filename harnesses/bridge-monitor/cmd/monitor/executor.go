@@ -69,6 +69,7 @@ type Executor struct {
 	relay         *RelayBridge
 	lifi          *LiFiBridge
 	debridge      *DebridgeBridge
+	nearIntents   *NearIntentsBridge
 	region        string
 	slack         *SlackNotifier
 	spend         *SpendTracker
@@ -396,6 +397,8 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 		result, txHash, err = e.executeRelay(route, rawUnits, quoteStart)
 	case "lifi":
 		result, txHash, err = e.executeLiFi(route, rawUnits, quoteStart)
+	case "near-intents":
+		result, txHash, err = e.executeNearIntents(route, amountUSD, rawUnits, quoteStart)
 	}
 
 	// Populate route fields for Slack (do this before error check so failed results have route info)
