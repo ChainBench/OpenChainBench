@@ -158,6 +158,7 @@ func main() {
 	var hlClient *HyperliquidClient
 	if executor != nil {
 		hlClient = NewHyperliquidClient(executor.txExecutor)
+		executor.SetNearIntents(nearIntentsBridge)
 	}
 
 	// Pre-seed the self-healing series so alerting rules match from startup.
@@ -406,6 +407,9 @@ func runLoopTier(executor *Executor, bc *BalanceChecker, slack *SlackNotifier,
 	}
 	if config.EnableR5Hypercore {
 		runR5RoundTrip(executor, bc, slack, hl, tier)
+	}
+	if config.EnableNearIntentsExec {
+		runNearIntentsTriangle(executor, tier)
 	}
 }
 

@@ -27,14 +27,15 @@ type Config struct {
 	WalletSOLAddress    string
 
 	// Execution Configuration
-	ExecutionMode     string        // "dry-run", "single-test", "production"
-	Freq3USD          time.Duration // Frequency for $3 tests
-	Freq30USD         time.Duration // Frequency for $30 tests
-	EnableDebridge    bool          // Execute Debridge (expensive)
-	EnableR4RoundTrip bool          // Execute R4 TRUMP<->BRETT round-trip (memes, not fee-neutral)
-	EnableR5Hypercore bool          // Execute R5 Arb<->HyperCore round-trip (needs HL withdraw path)
-	MaxDailySpendUSD  float64       // Safety cap
-	TestAmountUSD     float64       // Override test amount (for testing with small amounts)
+	ExecutionMode         string        // "dry-run", "single-test", "production"
+	Freq3USD              time.Duration // Frequency for $3 tests
+	Freq30USD             time.Duration // Frequency for $30 tests
+	EnableDebridge        bool          // Execute Debridge (expensive)
+	EnableR4RoundTrip     bool          // Execute R4 TRUMP<->BRETT round-trip (memes, not fee-neutral)
+	EnableR5Hypercore     bool          // Execute R5 Arb<->HyperCore round-trip (needs HL withdraw path)
+	EnableNearIntentsExec bool          // Execute the USDC-only triangle via Near Intents 1Click
+	MaxDailySpendUSD      float64       // Safety cap
+	TestAmountUSD         float64       // Override test amount (for testing with small amounts)
 
 	// General
 	MonitorRegion    string
@@ -114,6 +115,7 @@ func loadEnv() (*Config, error) {
 	// stay quote-only until deliberately enabled and validated in single-test.
 	config.EnableR4RoundTrip = os.Getenv("ENABLE_R4_ROUNDTRIP_EXEC") == "true"
 	config.EnableR5Hypercore = os.Getenv("ENABLE_R5_HYPERCORE_EXEC") == "true"
+	config.EnableNearIntentsExec = os.Getenv("ENABLE_NEARINTENTS_EXEC") == "true"
 
 	// Max daily spend (default: $10/day for safety)
 	config.MaxDailySpendUSD = parseFloat(os.Getenv("MAX_DAILY_SPEND_USD"), 10.0)
@@ -237,6 +239,7 @@ func (c *Config) LogConfig() {
 	log.Printf("  Debridge Execution: %v", c.EnableDebridge)
 	log.Printf("  R4 Round-trip Execution: %v", c.EnableR4RoundTrip)
 	log.Printf("  R5 HyperCore Execution: %v", c.EnableR5Hypercore)
+	log.Printf("  Near Intents Execution: %v", c.EnableNearIntentsExec)
 	log.Printf("  Max Daily Spend: $%.2f", c.MaxDailySpendUSD)
 	if c.TestAmountUSD > 0 {
 		log.Printf("  Test Amount Override: $%.2f", c.TestAmountUSD)
