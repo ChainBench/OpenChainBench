@@ -57,6 +57,35 @@ var (
 		Help: "Total number of reverted/refunded bridge transactions",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Refund counter: subset of reverts where the bridge returned capital to
+	// source (status "refunded") rather than an on-chain revert. Lets us split
+	// refund-rate from hard-fail-rate (reverts minus refunds).
+	bridgeRefunds = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_refunds_total",
+		Help: "Bridge transactions the provider refunded (capital returned to source)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Realized output that actually landed on the destination (on-chain fill).
+	bridgeRealizedOutputUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_realized_output_usd",
+		Help: "USD value that actually landed on the destination chain (realized fill)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Execution slippage vs the quote: realized fee minus quote-projected fee.
+	// Positive means the execution cost more than the quote promised.
+	bridgeQuoteSlippageUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_quote_slippage_usd",
+		Help: "Realized fee minus quote-projected fee (execution cost above what the quote promised)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Our own on-chain gas cost for this execution (approve + deposit), measured
+	// as the source-chain native balance delta. This is the cost WE bear, on top
+	// of the bridge's own fee, for the true all-in cost.
+	bridgeExecGasUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_gas_usd",
+		Help: "On-chain gas we paid (approve + deposit), source-chain native balance delta in USD",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_errors_total",
