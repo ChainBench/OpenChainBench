@@ -280,6 +280,14 @@ func main() {
 		}
 		execMu.Unlock()
 
+		// Near Intents runs its own USDC triangle (separate route set + 1Click
+		// deposit flow), so exercise it here too when opted in, otherwise it
+		// would only ever execute in production and never get a single-test pass.
+		if config.EnableNearIntentsExec {
+			log.Printf("\n━━━ Bridge: near-intents ━━━")
+			runNearIntentsTriangle(executor, testAmount)
+		}
+
 		log.Println("\n✅ Single-test complete! Exiting.")
 		return
 	}
