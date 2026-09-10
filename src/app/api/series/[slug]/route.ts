@@ -108,9 +108,12 @@ const getSeriesMapCached = unstable_cache(
     const prom = new Prometheus(promUrl);
 
     const windowSec = range === "90d" ? 90 * 86_400 : 365 * 86_400;
-    // ~1 point per day for 90d, ~3 days per point for 1y — dense enough
-    // for a smooth bar-chart race without blowing Prom step budgets.
-    const numPoints = range === "90d" ? 90 : 120;
+    // Resolution, not a fixed point budget: ~6h step for 90d, ~18h for 1y.
+    // A fixed low point count (90 / 120) collapsed young benches — 23 days of
+    // data rendered as ~24 points on 90d and ~8 on 1y, so a fresh bench looked
+    // like a sliver near "now". Stepping by time instead means every day of
+    // available history shows at full fidelity regardless of the window width.
+    const numPoints = range === "90d" ? 360 : 480;
 
     const result: Record<string, (number | null)[]> = {};
     await Promise.all(
@@ -135,8 +138,8 @@ const getSeriesMapCached = unstable_cache(
 
     return Object.keys(result).length > 0 ? result : null;
   },
-  // v7: targeted Prom fallback for panel 7d/30d misses (avoids specToBenchmark O(providers×panels)).
-  ["series-by-range-v7"],
+  // v8: denser 90d/1y resolution (6h / 18h step) so young benches render at full fidelity.
+  ["series-by-range-v8"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -160,8 +163,8 @@ const RANGE_CONFIG = {
   "24h": { windowMs: 24 * 3600 * 1000, points: 72 },
   "7d": { windowMs: 7 * 24 * 3600 * 1000, points: 84 },
   "30d": { windowMs: 30 * 24 * 3600 * 1000, points: 60 },
-  "90d": { windowMs: 90 * 24 * 3600 * 1000, points: 90 },
-  "1y": { windowMs: 365 * 24 * 3600 * 1000, points: 120 },
+  "90d": { windowMs: 90 * 24 * 3600 * 1000, points: 360 },
+  "1y": { windowMs: 365 * 24 * 3600 * 1000, points: 480 },
 } as const;
 
 type RangeKey = keyof typeof RANGE_CONFIG;
