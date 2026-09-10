@@ -41,6 +41,7 @@ type ExecutionResult struct {
 	E2ELatencyMs       int64 // Time from quote start to funds received
 	Success            bool
 	Reverted           bool
+	Refunded           bool // subset of Reverted: provider returned capital (status "refunded")
 	Error              error
 	QuoteFeeUSD        float64 // Fee from quote
 	ActualFeeUSD       float64 // Actual fee paid (input - output)
@@ -55,6 +56,7 @@ type ExecutionResult struct {
 	FeesPercent float64
 	CostUSD     float64
 	OutputUSD   float64 // What landed on destination (the fill)
+	ExecGasUSD  float64 // Our on-chain gas paid (approve + deposit), source native delta
 }
 
 // Executor handles the execution loop
@@ -373,6 +375,15 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 		log.Printf("    ⚠️  pre-execution balance read failed (%v) — falling back to quote-projected fill", preBalErr)
 	}
 
+	// Source-chain native balance before execution, to measure the real gas we
+	// pay (approve + deposit) as the pre-minus-post delta. Single-flight (execMu)
+	// guarantees no other tx moves it during this one leg.
+	srcOwner := e.walletManager.EVMAddress
+	if route.FromChain == "Solana" {
+		srcOwner = e.walletManager.SolanaAddress
+	}
+	preNativeUSD, preNativeErr := e.txExecutor.nativeBalanceUSD(route.FromChain, srcOwner)
+
 	// PHASE 1: Get quote with TX data
 	quoteStart := time.Now()
 	var txHash string
@@ -428,6 +439,15 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 				realFees = 0
 			}
 			result.ActualFeeUSD = realFees
+		}
+	}
+
+	// Real gas we paid this leg = source native balance delta (approve + deposit).
+	if preNativeErr == nil {
+		if postNativeUSD, nerr := e.txExecutor.nativeBalanceUSD(route.FromChain, srcOwner); nerr == nil {
+			if g := preNativeUSD - postNativeUSD; g > 0 {
+				result.ExecGasUSD = g
+			}
 		}
 	}
 
@@ -615,6 +635,7 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 		result.ActualFeeUSD = result.QuoteFeeUSD
 	} else if status.Status == "refunded" {
 		result.Reverted = true
+		result.Refunded = true
 		log.Printf("    [mobula] ⚠️ Transaction was refunded!")
 	}
 
@@ -752,6 +773,7 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 		result.ActualFeeUSD = result.QuoteFeeUSD
 	} else if status.Status == "refunded" {
 		result.Reverted = true
+		result.Refunded = true
 		log.Printf("    [relay] ⚠️ Transaction was refunded!")
 	}
 
@@ -883,6 +905,7 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 		result.ActualFeeUSD = result.QuoteFeeUSD
 	} else if status.Status == "refunded" || status.Status == "failed" {
 		result.Reverted = true
+		result.Refunded = status.Status == "refunded"
 		log.Printf("    [lifi] ⚠️ Transaction was refunded/failed!")
 	}
 
@@ -922,6 +945,9 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 		bridgeReverts.WithLabelValues(labels...).Inc()
 		bridgeConsecutiveFailures.WithLabelValues(result.Bridge, e.region).Inc()
 	}
+	if result.Refunded {
+		bridgeRefunds.WithLabelValues(labels...).Inc()
+	}
 	if result.Error != nil {
 		bridgeErrors.WithLabelValues(append(labels, "execution_failed")...).Inc()
 		if !result.Reverted {
@@ -929,10 +955,18 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 		}
 	}
 
-	// Record fees
+	// Record fees + the new execution-cost metrics
 	bridgeFeesUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD)
 	if result.AmountUSD > 0 {
 		bridgeFeesPercent.WithLabelValues(labels...).Set((result.ActualFeeUSD / result.AmountUSD) * 100)
+	}
+	if result.OutputUSD > 0 {
+		bridgeRealizedOutputUSD.WithLabelValues(labels...).Set(result.OutputUSD)
+	}
+	// Execution slippage vs quote = realized fee - quote-projected fee.
+	bridgeQuoteSlippageUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD - result.QuoteFeeUSD)
+	if result.ExecGasUSD > 0 {
+		bridgeExecGasUSD.WithLabelValues(labels...).Set(result.ExecGasUSD)
 	}
 }
 
