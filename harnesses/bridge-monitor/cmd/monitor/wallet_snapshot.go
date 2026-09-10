@@ -220,7 +220,7 @@ func runDailyPnL(bc *BalanceChecker, slack *SlackNotifier) {
 //
 //	R1 source (Sol USDC):  initial ≥ 3 × amount        (no preceding inflow)
 //	R2 source (Base USDC): initial + R1_inflow ≥ 3×amount
-//	R3 source (Arb USDT):  initial + R2_inflow ≥ 3×amount
+//	R3 source (Arb USDC):  initial + R2_inflow ≥ 3×amount
 //
 // where inflow ≈ 3×amount × (1 - avg_fee). Using a conservative 2% cumulative loss.
 func formatTierHealth(balances map[string]map[string]float64) string {
@@ -228,7 +228,7 @@ func formatTierHealth(balances map[string]map[string]float64) string {
 
 	solUSDC := balances["Solana"]["USDC"]
 	baseUSDC := balances["Base"]["USDC"]
-	arbUSDT := balances["Arbitrum"]["USDT0"]
+	arbUSDC := balances["Arbitrum"]["USDC"]
 	tiers := []float64{3, 30}
 
 	// Simulate the cycle for a given tier using the sequential per-bridge model
@@ -254,10 +254,10 @@ func formatTierHealth(balances map[string]map[string]float64) string {
 			return result{r1OK: true, blockLeg: "R2 Base USDC", blockNeed: need, blockHave: baseEffective}
 		}
 		r.r2OK = true
-		arbEffective := arbUSDT + need*netFactor // R2 inflow
+		arbEffective := arbUSDC + need*netFactor // R2 inflow
 
 		if arbEffective < need {
-			return result{r1OK: true, r2OK: true, blockLeg: "R3 Arb USDT", blockNeed: need, blockHave: arbEffective}
+			return result{r1OK: true, r2OK: true, blockLeg: "R3 Arb USDC", blockNeed: need, blockHave: arbEffective}
 		}
 		r.r3OK = true
 		return r
@@ -273,7 +273,7 @@ func formatTierHealth(balances map[string]map[string]float64) string {
 	}{
 		{"R1 Sol USDC ", func(r result) bool { return r.r1OK }},
 		{"R2 Base USDC", func(r result) bool { return r.r2OK }},
-		{"R3 Arb USDT ", func(r result) bool { return r.r3OK }},
+		{"R3 Arb USDC ", func(r result) bool { return r.r3OK }},
 	}
 	results := make(map[float64]result)
 	for _, t := range tiers {
@@ -308,12 +308,12 @@ func formatTierHealth(balances map[string]map[string]float64) string {
 
 		// Can we cover it from other legs? (for R1 Sol blocker only — R2/R3 fed by upstream)
 		if strings.HasPrefix(r.blockLeg, "R1") {
-			totalStable := solUSDC + baseUSDC + arbUSDT
+			totalStable := solUSDC + baseUSDC + arbUSDC
 			if totalStable < r.blockNeed {
 				grid.WriteString(fmt.Sprintf("  ⚠️ total stable pool $%.2f < $%.2f required — tier not viable without external top-up of $%.0f\n",
 					totalStable, r.blockNeed, r.blockNeed-totalStable))
 			} else {
-				grid.WriteString(fmt.Sprintf("  → pull from Base USDC ($%.0f) or Arb USDT ($%.0f) to Sol USDC\n", baseUSDC, arbUSDT))
+				grid.WriteString(fmt.Sprintf("  → pull from Base USDC ($%.0f) or Arb USDC ($%.0f) to Sol USDC\n", baseUSDC, arbUSDC))
 			}
 		}
 	}

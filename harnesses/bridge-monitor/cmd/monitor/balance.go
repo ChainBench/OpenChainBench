@@ -194,11 +194,11 @@ func (bc *BalanceChecker) fillEVMFromChain(result map[string]map[string]float64,
 	case "Base":
 		reads = []tokenRead{{baseUSDCAddr, []string{"USDC"}}}
 	case "Arbitrum":
-		// Both USDT0 and USDT symbols: cycle_sim reads "USDT0" (Mobula naming)
-		// while route helpers fall back to "USDT".
+		// Triangle is all-USDC now; USDC is the home leg. USDT0 kept as a
+		// read only to monitor any leftover after the USDT->USDC migration.
 		reads = []tokenRead{
-			{arbUSDTAddr, []string{"USDT0", "USDT"}},
 			{arbUSDCAddr, []string{"USDC"}},
+			{arbUSDTAddr, []string{"USDT0", "USDT"}},
 		}
 	default:
 		return false

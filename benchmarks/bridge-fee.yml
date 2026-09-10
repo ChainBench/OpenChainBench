@@ -63,7 +63,7 @@ methodology:
   - "Reference notional: $300 USDC. Smaller sizes ($5, $50) are captured by the harness but excluded from this report."
   - "Cost: `bridge_cost_percent{amount_usd=\"300\"}`, in percent of notional. Includes fees + slippage + destination gas."
   - "Cadence: full sweep every 5 minutes for 24 hours."
-  - "Aggregation: the headline number is the average of per-corridor 24h medians over the corridors a provider actually quotes. The TRUMP to BRETT calibration route is excluded. Near Intents has no USDT legs, so its aggregate covers the Solana to Base and Arbitrum to HyperCore corridors only. deBridge does not quote the Arbitrum to HyperCore corridor, so its aggregate covers the remaining three. Across also skips Arbitrum to HyperCore, so its aggregate covers the same three corridors as deBridge."
+  - "Aggregation: the headline number is the average of per-corridor 24h medians over the corridors a provider actually quotes. The TRUMP to BRETT calibration route is excluded. deBridge does not quote the Arbitrum to HyperCore corridor, so its aggregate covers the remaining three. Across also skips Arbitrum to HyperCore, so its aggregate covers the same three corridors as deBridge."
   - "Normalization: cost is quoted USD in minus quoted USD delivered, the same all-in definition for every provider. Near Intents bundles the destination chain withdrawal fee into its quoted amountOut (the 1Click API documents withdrawFee as already deducted), so no extra gas term is added on top."
   - "Regions: eu-west only at present. The us-east and sgp probes are temporarily paused, so the live figures reflect the EU-West (Paris) origin; the other two tabs return when those probes resume."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
@@ -85,7 +85,7 @@ findings:
   - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). Intent layers compress fees, slippage and destination gas into a single spread, so the effective number reads lower than aggregators that route through a paid underlying bridge."
   - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators pay the underlying bridge plus a thin markup, so their effective cost trails intent layers on liquid corridors where multiple solvers compete on the same route."
   - "{{name:debridge}} clocks {{p50:debridge}} (p50, 24 h). Direct protocols front-load cost into a native-token fee, which dominates on $300 trades because the fixed component does not scale with notional."
-  - "{{name:across}} posts {{p50:across}} (p50, 24 h). Optimistic relayer fills price mostly relayer capital plus destination gas, so the number stays tight on same-asset USDC corridors and widens on the cross-asset USDT legs, where the quote wraps a DEX swap around the bridge and swap impact enters the all-in cost."
+  - "{{name:across}} posts {{p50:across}} (p50, 24 h). Optimistic relayer fills price mostly relayer capital plus destination gas, so the number stays tight across the same-asset USDC corridors of the triangle."
   - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h). On a $300 trade the gap between leader and laggard is mostly the fixed-fee floor of the slower path, not relative spread efficiency, and the laggard on one corridor can be the leader on another once corridor dimensions are surfaced."
 
 faq:

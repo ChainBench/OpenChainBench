@@ -78,8 +78,8 @@ type RelayStepData struct {
 	Data  string `json:"data"`
 	Value string `json:"value"`
 	// Solana fields
-	Instructions                 []RelaySolanaInstruction `json:"instructions"`
-	AddressLookupTableAddresses  []string                 `json:"addressLookupTableAddresses"`
+	Instructions                []RelaySolanaInstruction `json:"instructions"`
+	AddressLookupTableAddresses []string                 `json:"addressLookupTableAddresses"`
 }
 
 type RelayQuoteResponse struct {
@@ -96,9 +96,15 @@ type RelayQuoteResponse struct {
 		TimeEstimate float64 `json:"timeEstimate"`
 	} `json:"details"`
 	Fees struct {
-		Gas            struct{ AmountUsd string `json:"amountUsd"` } `json:"gas"`
-		RelayerGas     struct{ AmountUsd string `json:"amountUsd"` } `json:"relayerGas"`
-		RelayerService struct{ AmountUsd string `json:"amountUsd"` } `json:"relayerService"`
+		Gas struct {
+			AmountUsd string `json:"amountUsd"`
+		} `json:"gas"`
+		RelayerGas struct {
+			AmountUsd string `json:"amountUsd"`
+		} `json:"relayerGas"`
+		RelayerService struct {
+			AmountUsd string `json:"amountUsd"`
+		} `json:"relayerService"`
 	} `json:"fees"`
 	// Transaction steps for execution (EVM or Solana)
 	Steps []struct {
