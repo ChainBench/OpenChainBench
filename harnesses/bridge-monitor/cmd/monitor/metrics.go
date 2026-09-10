@@ -65,6 +65,25 @@ var (
 		Help: "Bridge transactions the provider refunded (capital returned to source)",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Stuck: a deposit broadcast whose bridge status never resolved to a fill
+	// OR a refund within our poll window. On a real user's swap these are the
+	// ones that need a manual claim / support ticket — the "not automatically
+	// handled" rate, distinct from clean fills and clean refunds. Cross-chain
+	// is fundamentally asynchronous, so this is the honest reliability tail.
+	bridgeStuck = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_stuck_total",
+		Help: "Broadcasts whose status never resolved to a fill or refund in the poll window (funds in limbo, manual intervention needed)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Refund latency: time from deposit broadcast to the provider returning
+	// capital to source (status "refunded"). A failed swap is only half the
+	// story; how fast you get your money back is the other half of the UX.
+	bridgeRefundLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "bridge_refund_latency_ms",
+		Help:    "Latency from deposit broadcast to refund settlement in milliseconds",
+		Buckets: []float64{5000, 10000, 30000, 60000, 120000, 300000, 600000},
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
 	// Realized output that actually landed on the destination (on-chain fill).
 	bridgeRealizedOutputUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_realized_output_usd",
@@ -220,4 +239,36 @@ func initSelfHealingMetrics() {
 		}
 	}
 	bridgeBalanceReadDegraded.Set(0)
+}
+
+// preseedExecutionMetrics creates the execution counter + histogram series at
+// zero for every corridor we actually execute, so Prometheus has a 0 baseline
+// BEFORE the first run. Without it, a counter that first appears already
+// incremented (the run finishes between two scrapes, or it is the very first
+// run) is invisible to rate()/increase(): the 24h window sees a flat series
+// and returns 0 / NaN. The pre-seed turns the first real increment into a
+// visible 0 -> N step so the latency and success/refund/stuck headlines
+// populate from the very first execution instead of only from day two.
+func preseedExecutionMetrics(region string) {
+	if region == "" {
+		return
+	}
+	bridges := []string{"mobula", "relay", "lifi"}
+	amounts := []string{"3", "30"}
+	for _, route := range GetTriangleRoutes() {
+		for _, bridge := range bridges {
+			for _, amt := range amounts {
+				labels := []string{bridge, route.FromChain, route.ToChain, route.FromToken, route.ToToken, amt, region, route.ToChain}
+				bridgeSuccess.WithLabelValues(labels...).Add(0)
+				bridgeReverts.WithLabelValues(labels...).Add(0)
+				bridgeRefunds.WithLabelValues(labels...).Add(0)
+				bridgeStuck.WithLabelValues(labels...).Add(0)
+				// Instantiate the histogram children so their _bucket / _sum /
+				// _count series exist at 0 before the first Observe.
+				bridgeExecutionLatency.WithLabelValues(labels...)
+				bridgeE2ELatency.WithLabelValues(labels...)
+				bridgeRefundLatency.WithLabelValues(labels...)
+			}
+		}
+	}
 }
