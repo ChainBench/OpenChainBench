@@ -23,8 +23,6 @@ dimensions:
   amount_usd:
     - { value: "3",  label: "$3" }
     - { value: "30", label: "$30" }
-  region:
-    - { value: eu-west, label: EU-West }
 
 seo_intro: |
   Every bridge quotes a cost. This benchmark measures whether that quote
@@ -93,10 +91,6 @@ metric_panels:
 prometheus:
   window: 24h
   expected_freshness_seconds: 90000
-
-# rank_matrix_query required when dimensions.region is declared.
-# label_replace maps bridge= -> provider= so badge scoping works per region.
-rank_matrix_query: avg by (provider, region) (label_replace(quantile_over_time(0.50, bridge_quote_slippage_usd[24h]), "provider", "$1", "bridge", "(.+)"))
 
 providers:
   - slug: mobula
