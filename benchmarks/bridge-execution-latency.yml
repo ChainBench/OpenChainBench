@@ -88,14 +88,14 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-
 metric_panels:
   - id: slippage
     label: Slippage vs quote
-    metric: avg by (bridge) (bridge_quote_slippage_usd{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_quote_slippage_usd:mean_24h{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
     description: "Realized fee minus quote-projected fee, in USD. The gap between what the quote promised and what actually settled."
   - id: gas
     label: All-in gas we paid
-    metric: avg by (bridge) (bridge_exec_gas_usd{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_24h{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
@@ -111,49 +111,49 @@ providers:
     tag: Aggregator + intent layer
     formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through Mobula from EU-West, at the selected ticket size and corridor."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_exec_latency_ms{bridge="mobula", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_exec_latency_ms{bridge="mobula", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_exec_latency_ms{bridge="mobula", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_exec_latency_ms{bridge="mobula", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="mobula", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="mobula", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="mobula", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="mobula", region="eu-west"})
       success: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h])), 1)
       sample_size: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_exec_latency_ms{bridge="mobula", region="eu-west"}[1h])
+      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="mobula", region="eu-west"}
 
   - slug: relay
     name: Relay
     tag: Cross-chain relay
     formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through Relay from EU-West, at the selected ticket size and corridor."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_exec_latency_ms{bridge="relay", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_exec_latency_ms{bridge="relay", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_exec_latency_ms{bridge="relay", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_exec_latency_ms{bridge="relay", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="relay", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="relay", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="relay", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="relay", region="eu-west"})
       success: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h])), 1)
       sample_size: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_exec_latency_ms{bridge="relay", region="eu-west"}[1h])
+      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="relay", region="eu-west"}
 
   - slug: lifi
     name: LI.FI
     tag: Aggregator
     formula: "p50 over 24h of on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, at the selected ticket size and corridor."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_exec_latency_ms{bridge="lifi", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_exec_latency_ms{bridge="lifi", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_exec_latency_ms{bridge="lifi", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_exec_latency_ms{bridge="lifi", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="lifi", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="lifi", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="lifi", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="lifi", region="eu-west"})
       success: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h])), 1)
       sample_size: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_exec_latency_ms{bridge="lifi", region="eu-west"}[1h])
+      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="lifi", region="eu-west"}
 
   - slug: near-intents
     name: Near Intents
     tag: Intent layer (NEAR)
     formula: "p50 over 24h of exact on-chain execution latency (broadcast to funds received, ms) for real USDC-triangle transfers executed through the Near Intents 1Click flow from EU-West, at the selected ticket size and corridor."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_exec_latency_ms{bridge="near-intents", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_exec_latency_ms{bridge="near-intents", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_exec_latency_ms{bridge="near-intents", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_exec_latency_ms{bridge="near-intents", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="near-intents", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="near-intents", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="near-intents", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="near-intents", region="eu-west"})
       success: sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[24h])), 1)
       sample_size: sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_exec_latency_ms{bridge="near-intents", region="eu-west"}[1h])
+      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="near-intents", region="eu-west"}
