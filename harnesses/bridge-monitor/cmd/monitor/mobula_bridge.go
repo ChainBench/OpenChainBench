@@ -460,6 +460,22 @@ func GetTestRoutes() []TestRoute {
 			IsSolanaSrc: true,
 			QuoteOnly:   true,
 		},
+		// SOL→Robinhood Chain (Arbitrum Orbit, chainId 4663). No native USDC on
+		// Robinhood Chain: bridges take USDC in and deliver USDG (Global Dollar),
+		// so this is a cross-asset corridor. Supported by Relay / LI.FI / deBridge
+		// / Across; Mobula has data coverage but no bridge here, so it will read
+		// unsupported on this tab until Mobula ships a Robinhood bridge route.
+		{
+			Name:      "USDC_SOL_ROBINHOOD",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			ToChain:   "Robinhood", ToChainAPI: "evm:4663",
+			ToToken:     "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", // USDG on Robinhood Chain
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			QuoteOnly:   true,
+		},
 	}
 }
 
