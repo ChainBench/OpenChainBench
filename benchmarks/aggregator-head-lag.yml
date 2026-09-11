@@ -2,10 +2,10 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal, Serialized
+title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
 seo_title: "Fastest crypto price API 2026"
-seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST, Serialized WebSocket live across Base, BNB, Solana, Robinhood."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal and Serialized on Base, BNB Chain, Solana and Robinhood Chain.
+seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana, Robinhood."
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -37,7 +37,7 @@ seo_intro: |
   chain and the same event appearing on the provider's feed. Marketing
   pages quote "real-time" without a number; this page quotes the
   number. Mobula's WebSocket, Codex's GraphQL feed, GeckoTerminal's
-  REST endpoint and Serialized's WebSocket trades stream are watched
+  REST endpoint are watched
   from three regions (us-east, eu-west, sgp). On Base the zero point is
   the sequencer's flashblock preconfirmation stream, which we hold
   ourselves; on BNB Chain, Solana and Robinhood Chain it is the
@@ -63,7 +63,7 @@ abstract: |
   same event.
 
 methodology:
-  - "Aggregators measured: Mobula, Codex, GeckoTerminal, Serialized."
+  - "Aggregators measured: Mobula, Codex, GeckoTerminal."
   - "Chains: Base, BNB Chain, Solana, Robinhood Chain."
   - "Reference on BNB Chain, Solana and Robinhood Chain: archive nodes per chain, validated against block hashes. These carry no preconfirmation layer a provider consumes, and their chain-supplied timestamps sit within roughly 60 ms of the moment a trade is observable, so they keep the on-chain timestamp as the zero point."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
@@ -82,7 +82,7 @@ findings:
   - "On Base, what a provider reads matters more than how fast its pipeline is. A provider emitting from flashblock preconfirmations delivers a trade about 1.6 s (median over 21,538 transactions) before the sealed block carrying it becomes queryable, so a sealed-block reader carries that floor before any pipeline work. A preconfirmation is not final and can be reordered."
   - "The Base spread is therefore mostly that floor: the providers' own pipelines sit within a few hundred milliseconds of each other. Read the Base column as a latency versus finality choice, not as a pure speed ranking."
   - "{{name:geckoterminal}} trails on every chain. REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
-  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:serialized}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
+  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
