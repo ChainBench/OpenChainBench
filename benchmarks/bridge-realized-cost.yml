@@ -75,14 +75,14 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-
 metric_panels:
   - id: gas
     label: All-in gas we paid
-    metric: avg by (bridge) (bridge_exec_gas_usd{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_24h{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
     description: "Our own on-chain gas (approve plus deposit), measured as the source-chain native balance delta. The cost the user bears on top of the bridge fee."
   - id: realized
     label: Realized output on-chain
-    metric: avg by (bridge) (bridge_realized_output_usd{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_realized_output_usd:avg_24h{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: true
@@ -99,12 +99,12 @@ providers:
     type: intent
     formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Mobula from EU-West, at the selected corridor and ticket size."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="mobula", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="mobula", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="mobula", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="mobula", region="eu-west"})
       sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[1h])
+      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="mobula", region="eu-west"}
 
   - slug: relay
     name: Relay
@@ -112,12 +112,12 @@ providers:
     type: relay
     formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Relay from EU-West, at the selected corridor and ticket size."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="relay", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="relay", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="relay", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="relay", region="eu-west"})
       sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[1h])
+      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="relay", region="eu-west"}
 
   - slug: lifi
     name: LI.FI
@@ -125,12 +125,12 @@ providers:
     type: aggregator
     formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through LI.FI from EU-West, at the selected corridor and ticket size."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="lifi", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="lifi", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="lifi", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="lifi", region="eu-west"})
       sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[1h])
+      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="lifi", region="eu-west"}
 
   - slug: near-intents
     name: Near Intents
@@ -138,9 +138,9 @@ providers:
     type: intent
     formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through the Near Intents 1Click flow from EU-West, at the selected corridor and ticket size."
     queries:
-      p50: avg(quantile_over_time(0.50, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
-      mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="near-intents", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="near-intents", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="near-intents", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="near-intents", region="eu-west"})
       sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
-      series: avg_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[1h])
+      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="near-intents", region="eu-west"}
