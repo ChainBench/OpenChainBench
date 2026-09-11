@@ -422,6 +422,44 @@ func GetTestRoutes() []TestRoute {
 			WeeklyOnly:  false,
 			QuoteOnly:   true,
 		},
+		// SOL→X quote-only corridors for the dedicated Solana quote-latency
+		// bench (Solana as source to several destinations). Quote-only: the
+		// 5min loop measures quote latency per bridge, no execution / no funds.
+		// USDC on each destination; decimals differ (BNB 18, others 6) but that
+		// only affects the output amount, not the quote-latency we measure.
+		{
+			Name:      "USDC_SOL_ARB",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
+			ToToken:     "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			QuoteOnly:   true,
+		},
+		{
+			Name:      "USDC_SOL_BNB",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			ToChain:   "BNB", ToChainAPI: "evm:56",
+			ToToken:     "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			QuoteOnly:   true,
+		},
+		{
+			Name:      "USDC_SOL_ETH",
+			FromChain: "Solana", FromChainAPI: "solana:solana",
+			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+			ToChain:   "Ethereum", ToChainAPI: "evm:1",
+			ToToken:     "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+			Amounts:     []float64{5, 50, 300},
+			UsdAmounts:  []float64{5, 50, 300},
+			IsSolanaSrc: true,
+			QuoteOnly:   true,
+		},
 	}
 }
 
