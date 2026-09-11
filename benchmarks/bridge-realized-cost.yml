@@ -131,3 +131,16 @@ providers:
       mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
       sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
       series: avg_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[1h])
+
+  - slug: near-intents
+    name: Near Intents
+    tag: Intent layer (NEAR)
+    type: intent
+    formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through the Near Intents 1Click flow from EU-West, at the selected corridor and ticket size."
+    queries:
+      p50: avg(quantile_over_time(0.50, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      mean: avg(avg_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
+      series: avg_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[1h])
