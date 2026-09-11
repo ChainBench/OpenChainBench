@@ -1,0 +1,18 @@
+# Recording rules for the dedicated Solana quote-latency bench (SOL as source
+# to several destinations). The general quote rules aggregate away from_chain,
+# so these re-derive the same shapes SCOPED to from_chain="Solana", keeping
+# the destination in the chain label so the per-destination tabs work.
+groups:
+  - name: ocb_bridge_quote_solana
+    interval: 30s
+    rules:
+      - record: ocb:bridge_quote_latency_ms_bucket:sol_rate24h
+        expr: sum by (bridge, region, chain, amount_usd, le) (rate(bridge_quote_latency_ms_bucket{from_chain="Solana"}[24h]))
+      - record: ocb:bridge_quote_success:sol_avg24h
+        expr: avg by (bridge, region, chain, amount_usd) (avg_over_time(bridge_quote_success{from_chain="Solana"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_count:sol_increase24h
+        expr: sum by (bridge, region, chain, amount_usd) (increase(bridge_quote_latency_ms_count{from_chain="Solana"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_sum:sol_rate24h
+        expr: sum by (bridge, region, chain, amount_usd) (rate(bridge_quote_latency_ms_sum{from_chain="Solana"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_count:sol_rate24h
+        expr: sum by (bridge, region, chain, amount_usd) (rate(bridge_quote_latency_ms_count{from_chain="Solana"}[24h]))
