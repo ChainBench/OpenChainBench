@@ -28,6 +28,12 @@ func debridgeChainID(chain string) int64 {
 		return 8453
 	case "arbitrum":
 		return 42161
+	case "bnb", "bsc":
+		return 56
+	case "ethereum", "eth":
+		return 1
+	case "robinhood":
+		return 4663
 	}
 	return 0
 }
