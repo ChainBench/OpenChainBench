@@ -2373,6 +2373,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TON Center provides the official HTTP API v2 for the TON/Gram blockchain, operated by the TON Foundation. Keyless access is available at 1 request per second; higher rates require an API key.",
     twitter: "@toncenter",
   },
+  "lukso-official": {
+    url: "https://lukso.network",
+    description:
+      "The LUKSO Foundation's official mainnet RPC endpoint for the LUKSO EVM chain (chain ID 42), served with no API key.",
+    twitter: "@lukso_io",
+  },
   nownodes: {
     url: "https://nownodes.io",
     description:
