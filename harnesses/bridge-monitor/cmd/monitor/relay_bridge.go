@@ -32,6 +32,12 @@ func relayChainID(chain string) int64 {
 		return 42161
 	case "hypercore", "hyperliquid":
 		return 1337
+	case "bnb", "bsc":
+		return 56
+	case "ethereum", "eth":
+		return 1
+	case "robinhood":
+		return 4663
 	}
 	return 0
 }
