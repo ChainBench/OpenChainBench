@@ -1,0 +1,162 @@
+# OpenChainBench. Bench № 262
+
+slug: fiat-onramp-cost
+number: "262"
+title: Fiat on-ramp all-in cost, EUR to USDC premium over exchange mid
+seo_title: "Fiat on-ramp cost 2026: MoonPay vs Transak vs Ramp, all-in premium in bps"
+seo_description: "Live all-in cost of buying USDC with EUR by SEPA on MoonPay, Transak, Ramp and via Onramper and Meld. Declared fee plus hidden spread over the Kraken mid, quoted every 5 minutes from France."
+subtitle: What a French retail buyer actually pays per USDC, in basis points over the Kraken EUR mid, once the declared fee, the network fee and the spread hidden in the provider's rate are folded into one number. 500 EUR by SEPA, quoted every 5 minutes. Lower is better.
+category: On-ramps
+status: draft
+metric: All-in premium over spot
+unit: bps
+higher_is_better: false
+expected_n: 288
+
+disclaimer: |
+  Quotes, not executions. The harness asks each provider's quote API what a 500 EUR SEPA purchase would return and compares that to an exchange mid sampled in the same cycle. A real purchase can differ by KYC tier, first-order promotions, card issuer surcharges and settlement timing. No card is charged and no bank transfer is sent.
+
+seo_intro: |
+  Every on-ramp advertises a fee. Almost none of them tells you the
+  rate they apply that fee to. This benchmark folds both into one
+  number: the all-in premium, in basis points, between the effective
+  price you pay per unit of crypto and the Kraken EUR mid at the same
+  moment. A provider quoting a 1 percent fee on a rate that already
+  sits 1.5 percent above the market costs 250 bps, not 100. The bench
+  publishes the all-in number, the declared fee and the difference
+  between the two (the hidden spread) for every quote, so a reader can
+  see where the cost actually lives. One persona: a retail buyer in
+  France paying EUR, 500 EUR by SEPA into USDC on Base, quoted every
+  five minutes from an EU vantage. Direct providers (MoonPay, Transak,
+  Ramp) and aggregators (Onramper, Meld) are two cohorts and are never
+  ranked against each other: an aggregator's row is the best member
+  ramp it returned, which is a different product from a single
+  provider's own price. Lower is better.
+
+abstract: |
+  The harness quotes each provider on a fixed grid every five minutes:
+  three assets (BTC on Bitcoin, USDC on Base with Arbitrum as fallback,
+  ETH on Ethereum), two notionals (100 and 500 EUR), two payment
+  methods (card and SEPA). Each answer is normalized into fiat_in (what
+  the buyer pays), crypto_out (what lands in the wallet) and the fees
+  the provider declares. The headline value is the 24 hour median of
+  all_in_premium_bps = (fiat_in / crypto_out minus spot) / spot times
+  10 000 on the USDC, SEPA, 500 EUR cell, with spot the Kraken EUR mid
+  (best bid plus best ask over two) fetched in the same cycle. A Pyth
+  Hermes cross-reference (USD feeds divided by EUR/USD) is recorded on
+  every quote under a separate label and the divergence between the two
+  references is published so the reader can judge how much the choice
+  of reference moves the result. The declared fee (provider fee plus
+  network fee plus partner fee, over fiat_in) and the hidden spread
+  (all-in minus declared) are emitted alongside. Aggregators are
+  scored on the best member ramp they return and tagged as a separate
+  cohort.
+
+methodology:
+  - "Persona. One buyer profile: country France, fiat EUR, region eu-west. Providers whose API takes a country code receive FR (Transak, Ramp, Onramper, Meld); providers that geolocate the request are quoted from an EU vantage (MoonPay, Mercuryo). The country_source label on every sample says which."
+  - "Headline cell. USDC on Base (Arbitrum when a provider does not list Base; the network label records which), SEPA bank transfer, 500 EUR, premium measured against the Kraken EUR mid. The other grid cells (BTC, ETH, card, 100 EUR) are emitted with their own labels and will become drill-down tabs once the site renders non-chain dimensions."
+  - "Metric. all_in_premium_bps = (fiat_in / crypto_out minus spot) / spot times 10 000. fiat_in is the total the buyer pays including every fee the provider adds; crypto_out is the amount the provider says will be delivered. Positive means the buyer pays above the exchange mid. A value near zero means the provider's rate plus fees matched the mid."
+  - "Spot reference. Kraken public Ticker, EUR pairs, mid of best bid and ask, fetched in the same cycle as the quotes (within two seconds). A second reference from Pyth Hermes (BTC/USD, ETH/USD, USDC/USD divided by EUR/USD) is recorded on every quote under spot_ref=pyth and the gap between the two is published as spot_reference_divergence_bps. Kraken is the headline because it has no FX leg."
+  - "Declared versus hidden. declared_fee_bps = (provider fee plus network fee plus partner fee) / fiat_in times 10 000 as the provider itemizes them. hidden_spread_bps = all_in minus declared, the part of the cost that lives in the rate rather than in the fee line."
+  - "Cohorts. Direct providers (MoonPay, Transak, Ramp; Mercuryo quoted for card only) are one cohort. Aggregators (Onramper, Meld) are another: one request returns one quote per member ramp, each member sample is labelled provider=member and via=aggregator, and the aggregator's row is the minimum across its members. The two cohorts are not ranked against each other."
+  - "Cadence. Every 5 minutes with a plus or minus 10 percent jitter, 12 cells per provider per cycle, at most 2 requests in flight per provider. Ramp documents 100 requests per minute per IP; the harness stays two orders of magnitude below that. A 4xx is never retried; a 5xx or timeout is retried once."
+  - "Failures. A provider that answers without a usable quote counts as success 0 on that cell and its gauges are deleted rather than frozen. A provider whose key is not configured is skipped, not failed. Errors are counted by reason: no_quote, http_4xx, http_5xx, rate_limited, timeout, network, parse."
+  - "Sample size. The harness increments a counter per usable quote; the table reads increase() over 24h so the count is quote events, not Prometheus scrapes of a gauge. Expected 288 per cell per day."
+  - "Reproducibility. Every sample carries the SHA-256 of the raw provider response in the harness log. The adapters are written against each provider's documented schema; the parameters not yet exercised with a live key are listed in harnesses/fiat-onramp-cost/CHECKLIST.md and stay marked UNVERIFIED until they are."
+  - "Not measured. Coinbase Onramp is excluded pending a read of the CDP terms on benchmarking. Apple Pay and Google Pay cells need a wallet session and are not quotable server-side. ATM operators publish no quote API. Banxa and Alchemy Pay reach the bench only through the aggregators in this version."
+
+findings:
+  - "{{best_name}} currently quotes the lowest all-in premium on the headline cell at {{best_p50}} over the Kraken EUR mid (24h median, 500 EUR by SEPA into USDC)."
+  - "{{name:moonpay}} sits at {{p50:moonpay}}. MoonPay prices by request IP, so the number is what an EU vantage sees, not a country parameter."
+  - "{{name:transak}} sits at {{p50:transak}}. Transak takes the country as a parameter and itemizes the network fee separately from its own fee."
+  - "{{name:ramp}} sits at {{p50:ramp}}. Ramp returns every payment method in one answer, so its card and SEPA cells come from the same quote."
+  - "Read the hidden spread next to the declared fee: a provider whose declared fee looks low can still sit high on the all-in number when its rate carries the margin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/fiat-onramp-cost
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 900
+
+faq:
+  - q: "What is the all-in premium?"
+    a: "The gap, in basis points, between the effective price you pay per unit of crypto (fiat paid divided by crypto received) and the exchange mid at the same moment. It folds the declared fee, the network fee and whatever margin sits in the provider's rate into one number. 100 bps means you paid 1 percent above the mid."
+  - q: "Why compare against Kraken and not the provider's own market rate?"
+    a: "The provider's market rate is the thing being tested. Some on-ramps quote a fair mid and charge a visible fee; others quote a rate already above the market and charge a small fee. Only an external reference sampled at the same time shows the total. Kraken's EUR pairs are keyless, deep and have no FX leg. Pyth is recorded as a second reference so the reader can check the choice does not drive the result."
+  - q: "Why is the headline SEPA and not card?"
+    a: "SEPA is the cheapest method most European on-ramps offer and the one a cost-sensitive buyer would pick for 500 EUR. Card cells are emitted with their own labels for the same providers and will get a tab once the site renders them; for now they are readable directly in the Prometheus series."
+  - q: "Why are aggregators a separate cohort?"
+    a: "An aggregator's answer is the best of several member ramps, sometimes including the direct providers in the other cohort at a different partner fee. Ranking the best member of five against a single provider's own price would compare two different products. The aggregator row shows what the aggregator would route you to; the direct rows show what each provider quotes on its own."
+  - q: "Is this a real purchase?"
+    a: "No. The harness calls each provider's quote endpoint with a fixed notional and reads the answer. No payment is made. Real orders can differ by KYC tier, promotions, issuer surcharges and settlement timing, which is why the disclaimer sits above the table."
+  - q: "Why does a provider show no data?"
+    a: "Three reasons. The provider's key is not configured on the harness, so it is skipped. The provider does not list the headline cell (for example no SEPA on Mercuryo's quote endpoint). Or the provider answered without a usable quote, in which case its success rate drops and the cell is purged rather than left at a stale value."
+
+dimensions: {}
+
+providers:
+  - slug: moonpay
+    name: MoonPay
+    tag: Direct on-ramp, card and SEPA, pricing by request IP
+    type: protocol
+    formula: "24h median of the all-in premium over Kraken EUR mid on the headline cell (USDC, SEPA, 500 EUR, France), quoted directly through MoonPay's own API."
+    queries:
+      p50: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p90: quantile_over_time(0.90, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p99: quantile_over_time(0.99, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      mean: avg_over_time(onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      success: avg_over_time(onramp_quote_success{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: increase(onramp_quote_samples_total{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      series: onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}
+  - slug: transak
+    name: Transak
+    tag: Direct on-ramp, card and SEPA, country passed as a parameter
+    type: protocol
+    formula: "24h median of the all-in premium over Kraken EUR mid on the headline cell (USDC, SEPA, 500 EUR, France), quoted directly through Transak's own API."
+    queries:
+      p50: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p90: quantile_over_time(0.90, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p99: quantile_over_time(0.99, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      mean: avg_over_time(onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      success: avg_over_time(onramp_quote_success{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: increase(onramp_quote_samples_total{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      series: onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}
+  - slug: ramp
+    name: Ramp
+    tag: Direct on-ramp, card and SEPA, quote returns every payment method at once
+    type: protocol
+    formula: "24h median of the all-in premium over Kraken EUR mid on the headline cell (USDC, SEPA, 500 EUR, France), quoted directly through Ramp's own API."
+    queries:
+      p50: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p90: quantile_over_time(0.90, onramp_quote_all_in_premium_bps{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p99: quantile_over_time(0.99, onramp_quote_all_in_premium_bps{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      mean: avg_over_time(onramp_quote_all_in_premium_bps{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      success: avg_over_time(onramp_quote_success{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: increase(onramp_quote_samples_total{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      series: onramp_quote_all_in_premium_bps{provider="ramp",via="direct",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}
+  - slug: onramper
+    name: Onramper
+    tag: Aggregator, one call returns a quote per member ramp
+    type: aggregator
+    formula: "Best member ramp Onramper returns on the headline cell: 24h median of each member's all-in premium over Kraken EUR mid, then the minimum across members. Aggregator cohort, not ranked against direct rows."
+    queries:
+      p50: min(quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      p90: min(quantile_over_time(0.90, onramp_quote_all_in_premium_bps{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      p99: min(quantile_over_time(0.99, onramp_quote_all_in_premium_bps{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      mean: min(avg_over_time(onramp_quote_all_in_premium_bps{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      success: avg_over_time(onramp_quote_success{provider="onramper",via="onramper",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: max(increase(onramp_quote_samples_total{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h]))
+      series: min(onramp_quote_all_in_premium_bps{via="onramper",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"})
+  - slug: meld
+    name: Meld
+    tag: Aggregator, one call returns a quote per member ramp
+    type: aggregator
+    formula: "Best member ramp Meld returns on the headline cell: 24h median of each member's all-in premium over Kraken EUR mid, then the minimum across members. Aggregator cohort, not ranked against direct rows."
+    queries:
+      p50: min(quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      p90: min(quantile_over_time(0.90, onramp_quote_all_in_premium_bps{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      p99: min(quantile_over_time(0.99, onramp_quote_all_in_premium_bps{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      mean: min(avg_over_time(onramp_quote_all_in_premium_bps{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h]))
+      success: avg_over_time(onramp_quote_success{provider="meld",via="meld",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: max(increase(onramp_quote_samples_total{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h]))
+      series: min(onramp_quote_all_in_premium_bps{via="meld",cohort="aggregator",asset="usdc",network=~"base|arbitrum",payment_method="sepa",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"})

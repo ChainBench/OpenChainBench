@@ -12,6 +12,17 @@
  */
 
 const RAW: Record<string, string> = {
+  // ─── Fiat on-ramps (bench 262) ───
+  // Official brand assets: MoonPay mark from dev.moonpay.com, Transak widget
+  // logo from assets.transak.com, Ramp sign from ramp.network, Mercuryo
+  // wordmark from the press brand kit, Onramper mark from onramper.com,
+  // Meld mark from docs.meld.io.
+  moonpay: "/logos/moonpay.svg",
+  transak: "/logos/transak.svg",
+  ramp: "/logos/ramp.svg",
+  mercuryo: "/logos/mercuryo.svg",
+  onramper: "/logos/onramper.svg",
+  meld: "/logos/meld.svg",
   // ─── L1 chains ───
   ethereum: "/logos/ethereum.png",
   bitcoin: "/logos/bitcoin.png",

@@ -1,0 +1,1 @@
+{"asset":{"symbol":"BTC_BTC","name":"Bitcoin","decimals":8,"type":"NATIVE","price":{"EUR":64480.5,"USD":70500}},"CARD_PAYMENT":{"cryptoAmount":"744000","fiatCurrency":"EUR","fiatValue":500,"appliedFee":14.5,"baseRampFee":14.5},"MANUAL_BANK_TRANSFER":{"cryptoAmount":"760000","fiatCurrency":"EUR","fiatValue":500,"appliedFee":9.9,"baseRampFee":9.9}}
