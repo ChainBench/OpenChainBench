@@ -144,6 +144,20 @@ scrape_configs:
           benchmark: pm-rate-limits
           host: openchainbench
 
+  # ─ Fiat on-ramp all-in cost (bench 262) ───────────────────────────────
+  # One EU vantage (persona FR/EUR), container ocb-fiat-onramp-cost on the
+  # Paris VPS next to Prom. Harness quotes every 5 min; the scrape only
+  # refreshes gauges, sample counts come from onramp_quote_samples_total.
+  - job_name: fiat-onramp-cost
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-fiat-onramp-cost:2113
+        labels:
+          benchmark: fiat-onramp-cost
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.

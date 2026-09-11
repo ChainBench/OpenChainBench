@@ -1560,6 +1560,71 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Fiat to crypto P2P onramp covering 40+ local payment rails with a gasless non custodial wallet and Hyperliquid perps integration.",
     twitter: "@Unigox_global",
   },
+  // ─── Fiat on-ramps (bench 262 fiat-onramp-cost) ─────────────
+  moonpay: {
+    url: "https://www.moonpay.com",
+    description:
+      "Fiat to crypto on-ramp with card, bank transfer, Apple Pay and Google Pay rails. Quotes through a publishable-key buy_quote API; pricing is resolved from the request's IP rather than a country parameter.",
+    longDescription:
+      "MoonPay sells crypto to retail buyers through a hosted widget and an API used by wallets and dapps. The buy quote endpoint (GET /v3/currencies/{code}/buy_quote) takes a fiat amount, a payment method and a flag for whether fees are included, and returns the crypto amount, the applied price, the MoonPay fee, the network fee and any partner fee, with a short expiry. There is no country parameter on the quote: the price a caller sees depends on where the request comes from, which is why OpenChainBench labels MoonPay samples country_source=ip. Network-qualified stablecoins use codes such as usdc_base. In the on-ramp cost benchmark MoonPay is quoted directly, as one of the direct-provider cohort, and also appears inside aggregator answers as a member ramp.",
+    twitter: "@moonpay",
+    docs: "https://dev.moonpay.com",
+    founded: 2019,
+    features: ["Card, SEPA, Apple Pay, Google Pay", "buy_quote API with itemized fees", "Widget and SDK integrations"],
+  },
+  transak: {
+    url: "https://transak.com",
+    description:
+      "Fiat to crypto on-ramp and off-ramp used by wallets and dapps. Public pricing endpoint takes the buyer's country as a parameter and returns an itemized fee breakdown next to the crypto amount.",
+    longDescription:
+      "Transak is a developer integration for buying and selling crypto with local payment methods. Its public quote endpoint (GET /api/v1/pricing/public/quotes) takes the fiat currency, the crypto and network, the amount, the payment method and a quoteCountryCode, and returns the crypto amount, the market conversion price, a total fee and a feeBreakdown array that separates Transak's own fee from the network fee. Because the country is a parameter, OpenChainBench labels Transak samples country_source=param. A staging host (api-stg.transak.com) mirrors the production API for integration tests. In the on-ramp cost benchmark Transak is quoted directly as a direct-provider row and also shows up as a member ramp inside Onramper and Meld answers.",
+    twitter: "@Transak",
+    docs: "https://docs.transak.com",
+    founded: 2019,
+    features: ["Country passed as a parameter", "Itemized feeBreakdown", "Staging host for integration tests"],
+  },
+  ramp: {
+    url: "https://ramp.network",
+    description:
+      "Fiat to crypto on-ramp and off-ramp with a host API. One quote call returns the crypto amount and applied fee for every payment method at once, with the asset price alongside.",
+    longDescription:
+      "Ramp Network provides a hosted purchase flow and a host API for wallets and applications. The quote endpoint (POST /api/host-api/v3/onramp/quote/all) takes the asset symbol in CHAIN_TOKEN form, the fiat currency and amount and the user's country code, and answers with one block per payment method (card, bank transfer, and others) containing the crypto amount in base units, the fiat value and the applied fee, plus the asset's decimals and current price. Ramp documents a rate limit of 100 requests per minute and 1000 per 15 minutes per source IP. In the on-ramp cost benchmark Ramp is a direct-provider row; its card and SEPA cells come from the same quote response.",
+    twitter: "@RampNetwork",
+    docs: "https://docs.rampnetwork.com",
+    founded: 2018,
+    features: ["All payment methods in one quote", "Asset price returned with the quote", "Documented per-IP rate limits"],
+  },
+  mercuryo: {
+    url: "https://mercuryo.io",
+    description:
+      "Fiat to crypto on-ramp and payments provider with a widget rate endpoint keyed by widget id. Quotes are card-priced and resolved from the request's location.",
+    longDescription:
+      "Mercuryo runs a card-first on-ramp and a set of crypto payment products (spend cards, off-ramp, business payments). Its widget rate endpoint (GET /v1.6/widget/buy/rate) takes the fiat and crypto currencies, the amount, the network and a widget id, and returns the crypto amount, the rate and the fee. There is no payment-method parameter on that endpoint, so OpenChainBench records Mercuryo on the card cell only and reports the SEPA cell as no quote rather than reusing the card number. Pricing is resolved from where the request comes from (country_source=ip). Mercuryo is part of the on-ramp cost harness and appears as a member ramp inside aggregator answers; it is not a row on the SEPA headline table because it has no SEPA quote to compare.",
+    twitter: "@mercuryo_io",
+    founded: 2018,
+    features: ["Card-first on-ramp", "Widget rate endpoint", "Spend card and off-ramp products"],
+  },
+  onramper: {
+    url: "https://www.onramper.com",
+    description:
+      "Fiat on-ramp aggregator. One quote request returns a price from every member ramp (MoonPay, Transak, Banxa, Alchemy Pay and others) for the requested country and payment method.",
+    longDescription:
+      "Onramper sits in front of a set of on-ramp providers and returns their quotes side by side. The quotes endpoint (GET /quotes/{fiat}/{crypto}) takes the amount, the payment method and the buyer's country, and answers with an array of member quotes, each carrying the ramp name, the rate, the payout in crypto, the network fee and the transaction fee, or an error when that ramp cannot serve the request. OpenChainBench treats Onramper as the aggregator cohort: every member quote becomes a sample labelled provider=<member> and via=onramper, and Onramper's own row is the best member on the headline cell. That row is not ranked against the direct-provider rows, because the best of several ramps is a different product from one provider's own price.",
+    twitter: "@Onramper",
+    docs: "https://docs.onramper.com",
+    founded: 2019,
+    features: ["One call, every member ramp", "Country and payment method as parameters", "Per-ramp errors returned inline"],
+  },
+  meld: {
+    url: "https://www.meld.io",
+    description:
+      "Fiat on-ramp and off-ramp aggregator with a single API over MoonPay, Transak, Banxa, Paybis, Coinbase and other service providers. Quotes are returned per provider for a country and payment method.",
+    longDescription:
+      "Meld aggregates crypto on-ramps and off-ramps behind one integration and one API key. A quote request names the buyer's country, the source fiat currency and amount, the destination crypto currency (network-qualified codes such as USDC_BASE) and the payment method type, and returns one quote per service provider with the destination amount, the exchange rate and the fee split into network, transaction and partner fees. A sandbox host (api-sb.meld.io) mirrors production. OpenChainBench scores Meld as the aggregator cohort: each provider quote becomes a sample labelled via=meld, and Meld's row on the headline cell is the best member it returned. Aggregator rows are not ranked against direct-provider rows.",
+    twitter: "@realMeld",
+    docs: "https://docs.meld.io",
+    features: ["One API over many on-ramps", "Per-provider quotes with fee split", "Sandbox host"],
+  },
   uxuy: {
     url: "https://www.uxuy.com",
     description:

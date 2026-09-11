@@ -398,7 +398,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
   // v57: drop rpc-keyed-latency bench.
   // v63: score_scope contested_chains on bench 008 changes its provider values.
-  ["bench-unfiltered-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v64: add bench 262 fiat-onramp-cost + On-ramps category. Bench SET grew.
+  ["bench-unfiltered-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -611,7 +612,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
   // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
-  ["all-benchmarks-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v59: lockstep with bench-unfiltered-v64 (add bench 262 fiat-onramp-cost).
+  ["all-benchmarks-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
