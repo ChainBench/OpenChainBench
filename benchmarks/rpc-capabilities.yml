@@ -187,29 +187,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="sgp"}[1h])
 
-  - slug: nownodes
-    name: NOWNodes
-    tag: Public node, 110+ chains, 5 RPS free tier
-    formula: "Mean over its measured chains (Ethereum, BNB, Bitcoin, LUKSO, Coreum) and 3 regions of per-cell 24h p50 round-trip latency (ms) to NOWNodes public no-key endpoints. Successful calls only; failures show in the Success column."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nownodes"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nownodes"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nownodes"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="nownodes"}) / sum(ocb:rpc_call:rate_24h{provider="nownodes"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="nownodes"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nownodes"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", region="sgp"}[1h])
-
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
