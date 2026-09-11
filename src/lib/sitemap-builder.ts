@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { DEV_ONLY_BENCH_SLUGS } from "@/lib/removed-benches";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { getSpecs } from "@/lib/spec";
@@ -246,7 +247,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Benchmark routes. Blob benches are already filtered to live+live by
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
-    if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    // REMOVED_BENCH_SLUGS: 410'd, gone for good. DEV_ONLY_BENCH_SLUGS: live on
+    // dev but not on prod (the blob is dev-based and lists them, but the prod
+    // page 404s), so drop them here or the prod sitemap smoke 404s.
+    if (REMOVED_BENCH_SLUGS.has(b.slug) || DEV_ONLY_BENCH_SLUGS.has(b.slug)) return [];
     const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
     const entries: MetadataRoute.Sitemap = [
       {
@@ -382,7 +386,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Category hub pages. Filter to categories that have live benches.
   // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
   // prod) don't keep their category hub alive in the sitemap.
-  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug));
+  const activeBlobBenches = blobBenches.filter(
+    (b) => !REMOVED_BENCH_SLUGS.has(b.slug) && !DEV_ONLY_BENCH_SLUGS.has(b.slug),
+  );
   const liveCategoryLabels = new Set(activeBlobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))
