@@ -105,6 +105,18 @@ var (
 		Help: "On-chain gas we paid (approve + deposit), source-chain native balance delta in USD",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Exact execution latency as a gauge (last value per corridor). The
+	// histogram above can only place a value in a bucket, so with a handful of
+	// samples all landing in the same (5s,10s] bucket histogram_quantile
+	// interpolates every bridge to the 7.5s midpoint. This gauge lets the bench
+	// take quantile_over_time / avg_over_time over the REAL observed latencies
+	// (same pattern as the gauge-backed fee + realized-cost benches), so the
+	// numbers are exact instead of bucketed.
+	bridgeExecLatencyMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_latency_ms",
+		Help: "Exact execution latency (broadcast to funds received) in ms, last value per corridor",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_errors_total",
@@ -253,21 +265,32 @@ func preseedExecutionMetrics(region string) {
 	if region == "" {
 		return
 	}
-	bridges := []string{"mobula", "relay", "lifi"}
 	amounts := []string{"3", "30"}
-	for _, route := range GetTriangleRoutes() {
-		for _, bridge := range bridges {
-			for _, amt := range amounts {
-				labels := []string{bridge, route.FromChain, route.ToChain, route.FromToken, route.ToToken, amt, region, route.ToChain}
-				bridgeSuccess.WithLabelValues(labels...).Add(0)
-				bridgeReverts.WithLabelValues(labels...).Add(0)
-				bridgeRefunds.WithLabelValues(labels...).Add(0)
-				bridgeStuck.WithLabelValues(labels...).Add(0)
-				// Instantiate the histogram children so their _bucket / _sum /
-				// _count series exist at 0 before the first Observe.
-				bridgeExecutionLatency.WithLabelValues(labels...)
-				bridgeE2ELatency.WithLabelValues(labels...)
-				bridgeRefundLatency.WithLabelValues(labels...)
+	// mobula/relay/lifi run the stable triangle; near-intents runs its OWN
+	// USDC triangle (separate route set), so seed each on the routes it
+	// actually executes or the labels won't match the real increments.
+	seedSets := []struct {
+		bridges []string
+		routes  []TestRoute
+	}{
+		{[]string{"mobula", "relay", "lifi"}, GetTriangleRoutes()},
+		{[]string{"near-intents"}, GetNearIntentsTriangle()},
+	}
+	for _, ss := range seedSets {
+		for _, route := range ss.routes {
+			for _, bridge := range ss.bridges {
+				for _, amt := range amounts {
+					labels := []string{bridge, route.FromChain, route.ToChain, route.FromToken, route.ToToken, amt, region, route.ToChain}
+					bridgeSuccess.WithLabelValues(labels...).Add(0)
+					bridgeReverts.WithLabelValues(labels...).Add(0)
+					bridgeRefunds.WithLabelValues(labels...).Add(0)
+					bridgeStuck.WithLabelValues(labels...).Add(0)
+					// Instantiate the histogram children so their _bucket / _sum /
+					// _count series exist at 0 before the first Observe.
+					bridgeExecutionLatency.WithLabelValues(labels...)
+					bridgeE2ELatency.WithLabelValues(labels...)
+					bridgeRefundLatency.WithLabelValues(labels...)
+				}
 			}
 		}
 	}

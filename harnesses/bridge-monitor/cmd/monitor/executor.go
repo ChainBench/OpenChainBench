@@ -938,6 +938,11 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(result.QuoteLatencyMs))
 	bridgeExecutionLatency.WithLabelValues(labels...).Observe(float64(result.ExecutionLatencyMs))
 	bridgeE2ELatency.WithLabelValues(labels...).Observe(float64(result.E2ELatencyMs))
+	// Exact latency gauge (only on a real fill): lets the bench read the true
+	// observed value via quantile_over_time instead of a coarse bucket midpoint.
+	if result.Success && result.ExecutionLatencyMs > 0 {
+		bridgeExecLatencyMs.WithLabelValues(labels...).Set(float64(result.ExecutionLatencyMs))
+	}
 
 	// Record success/revert + consecutive-failure streak (used for paging alerts).
 	if result.Success {
