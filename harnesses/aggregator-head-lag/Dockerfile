@@ -21,12 +21,8 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install runtime dependencies + Chromium for in-process JWE scraping
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    chromium \
-    chromium-sandbox \
-    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
