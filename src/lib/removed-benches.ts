@@ -56,6 +56,18 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   "which-prediction-market-data-api-is-the-freshest",
 ]);
 
+// Benches that are LIVE on dev/staging but deliberately held out of prod:
+// their spec is not on main, so the page 404s on prod. They must NOT be
+// 410'd (they render fine on staging), so this set is SEPARATE from
+// REMOVED_BENCH_SLUGS and the middleware never reads it. It exists only to
+// keep these dev-only URLs out of the sitemap so the prod indexability smoke
+// test doesn't 404 on a URL that legitimately does not exist on prod.
+export const DEV_ONLY_BENCH_SLUGS = new Set([
+  "bridge-execution-latency",
+  "bridge-realized-cost",
+  "bridge-quote-latency-solana",
+]);
+
 export const REMOVED_BENCH_SLUGS = new Set([
   // retired for good
   "bridge-revenue",
