@@ -53,7 +53,7 @@ abstract: |
 methodology:
   - "Origin: Solana only. Every corridor in this bench starts from Solana USDC; the destination is the per-tab chain."
   - "Destinations: Base, Arbitrum, BNB, Ethereum and Robinhood Chain. A provider that does not quote a given destination simply does not appear on that tab."
-  - "Robinhood Chain has no native USDC, so bridges take USDC in and deliver USDG (Global Dollar) on the destination; the Robinhood tab is therefore a cross-asset USDC to USDG corridor. Relay, LI.FI, deBridge and Across route to it; a provider that does not (currently Mobula, which covers the chain in data but does not bridge to it) simply does not appear on that tab."
+  - "Robinhood Chain (Arbitrum Orbit, chainId 4663) has no native USDC, so it is a cross-asset USDC to USDG (Global Dollar) corridor. On the live probe only Mobula returns a usable SOL to Robinhood quote; Relay, LI.FI and deBridge reject the USDC-to-USDG pair on this chain (invalid input/output currency), so they do not appear on the Robinhood tab."
   - "Latency: wall-clock from request to a usable quote, in milliseconds. p50, p90 and p99 over a rolling 24h window via histogram_quantile on a from_chain=Solana-scoped recording rule."
   - "Cadence: every five minutes, at $5, $50 and $300 notional."
   - "Region: EU-West only at present. The us-east and sgp probes are paused, so the figures reflect the EU-West (Paris) origin."
