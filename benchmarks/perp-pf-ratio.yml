@@ -1,0 +1,396 @@
+# OpenChainBench. Bench 265
+
+slug: perp-pf-ratio
+number: "265"
+title: "Perp DEX price to fees ratio 2026: Hyperliquid, Aster, Lighter, GMX, GNS live"
+seo_title: "Perp DEX P/F ratio 2026: Hyperliquid vs Lighter vs Aster vs GMX vs GNS"
+seo_description: "{{best_name}} trades at {{best_p50}}x annualized fees, the cheapest perp DEX token. Market cap and FDV against trailing fees and revenue for {{count}} perpetual DEXes, live from DeFiLlama and CoinGecko."
+subtitle: Market cap divided by annualized trading fees (trailing 30 days) for every perp DEX with a listed token, alongside FDV, protocol revenue, float and open interest. Lower means the market pays less per dollar of fees. Same convention as the DeFiLlama P/F ranking, updated hourly.
+
+category: Trading
+status: live
+metric: P/F ratio
+unit: x
+higher_is_better: false
+
+disclaimer: |
+  P/F = circulating market cap (CoinGecko) / annualized fees (DeFiLlama dailyFees, trailing 30d x 365/30), on the DeFiLlama parent the token accrues from. Fees include the share paid to liquidity providers; P/S uses protocol revenue only. Low-float tokens show a much higher FDV/F than P/F. Venues without a token publish fees and OI, no ratio. A low multiple is not a recommendation.
+
+seo_intro: |
+  The price to fees ratio for perp DEX tokens measures how many years of current trading fees
+  the market is paying for. It is the on-chain cousin of a price to sales multiple: market cap on
+  top, annualized fees at the bottom. A low P/F means the token is cheap relative to the fees
+  its venue generates; a high P/F prices in growth, or a token that does not capture the fees.
+  Hyperliquid, Aster and Lighter generate the most absolute fees but carry multi-billion
+  valuations with a quarter of supply in circulation, so their FDV/F runs far above their P/F.
+  GMX and Gains are fully circulating with real fee flow and trade at low single-digit
+  multiples. dYdX and Derive sit at the expensive end on today's fee run rate. This benchmark
+  tracks the whole table live from DeFiLlama (fees, revenue, open interest) and CoinGecko
+  (market cap, FDV, supply), the same inputs as defillama.com/pf, cut identically for every
+  protocol and refreshed every hour.
+
+abstract: |
+  The perp-token-metrics harness polls DeFiLlama /summary/fees/[slug] for dailyFees and
+  dailyRevenue every hour and cuts the trailing 30, 60 and 365 day windows itself from
+  totalDataChart, so every protocol is annualized the same way (30d sum x 365/30) regardless
+  of which convenience fields its adapter fills. It fetches market cap, fully diluted valuation
+  and circulating vs total supply from CoinGecko /coins/markets in one batch, and open interest
+  from the DeFiLlama open-interest overview. P/F = mcap / annualized fees, FDV/F = FDV / annualized
+  fees, P/S = mcap / annualized revenue. Ratios whose denominator is zero or whose token has no
+  listing are not published, so a missing value never reads as a zero valuation. Gauges are
+  perp_protocol_pf_ratio, perp_protocol_pf_fdv_ratio, perp_protocol_ps_ratio,
+  perp_protocol_fees_30d_usd, perp_protocol_rev_30d_usd, perp_protocol_mcap_usd,
+  perp_protocol_fdv_usd, perp_protocol_float_pct and perp_protocol_oi_usd, one series per protocol.
+
+methodology:
+  - "Fees source: DeFiLlama dailyFees for the token's parent entity (all products the token accrues from), so market cap and fees share one scope. Perps-only fees are published separately as perp_protocol_perp_fees_30d_usd."
+  - "Annualized fees: sum of the last 30 daily points x 365/30. Zero days inside the window count; the current partial day is included, as in DeFiLlama's own 30d figure."
+  - "Market cap and FDV: CoinGecko /coins/markets circulating market cap and fully_diluted_valuation (market cap when FDV is null). Float = circulating / total supply."
+  - "P/F = market cap / annualized fees (DeFiLlama P/F convention). FDV/F = FDV / annualized fees. P/S = market cap / annualized protocol revenue (DeFiLlama dailyRevenue). Bench 234 keeps P/E = FDV / annualized revenue."
+  - "Revenue share = 30d revenue / 30d fees. Adapters that publish no revenue series, or a flat zero, leave P/S and revenue share undefined rather than zero."
+  - "Open interest: DeFiLlama open-interest overview, perps product only. Fees to OI = annualized fees / open interest."
+  - "Drift's DeFiLlama perps adapter (drift-trade) currently reports zero fees; the row stays in the cohort with every ratio undefined until the source recovers."
+  - "Rows without a P/F (no token, or no fees) read their success from the P/F gauge itself, so they rank as unavailable on the headline and are excluded from the best / median / worst strip while still appearing in the fees and open interest tabs."
+  - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
+
+findings:
+  - "{{best_name}} is the cheapest perp DEX token at {{best_p50}}x annualized fees."
+  - "Hyperliquid, Aster and Lighter earn the most fees in absolute terms but trade at a large multiple, and their FDV/F is three to four times their P/F because most supply is not circulating."
+  - "GMX and Gains are fully circulating, so their P/F and FDV/F coincide; both sit in low single digits."
+  - "{{worst_name}} is the most expensive token in the cohort at {{worst_p50}}x on today's fee run rate."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-token-metrics
+
+prometheus:
+  window: 24h
+  freshness_metric: perp_protocol_health
+
+metric_panels:
+  - id: pf_fdv
+    label: FDV / fees
+    label_key: protocol
+    metric: perp_protocol_pf_fdv_ratio
+    unit: x
+    description: "Fully diluted valuation divided by annualized fees. The conservative multiple: it prices unvested supply as if it were circulating."
+  - id: ps
+    label: P/S
+    label_key: protocol
+    metric: perp_protocol_ps_ratio
+    unit: x
+    description: "Market cap divided by annualized protocol revenue (the share of fees that reaches the protocol, treasury or token holders)."
+  - id: fees_30d
+    label: Fees 30d
+    label_key: protocol
+    metric: perp_protocol_fees_30d_usd
+    unit: usd
+    higher_is_better: true
+    description: "Trailing 30 day fees paid by traders, token scope (parent protocol). Includes venues without a token."
+  - id: rev_30d
+    label: Revenue 30d
+    label_key: protocol
+    metric: perp_protocol_rev_30d_usd
+    unit: usd
+    higher_is_better: true
+    description: "Trailing 30 day protocol revenue per DeFiLlama dailyRevenue. Absent when the adapter publishes fees only."
+  - id: rev_share
+    label: Revenue share
+    label_key: protocol
+    metric: perp_protocol_rev_share_pct
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of 30 day fees retained as protocol revenue."
+  - id: mcap
+    label: Market cap
+    label_key: protocol
+    metric: perp_protocol_mcap_usd
+    unit: usd
+    tab: false
+    description: "Circulating market cap from CoinGecko."
+  - id: fdv
+    label: FDV
+    label_key: protocol
+    metric: perp_protocol_fdv_usd
+    unit: usd
+    tab: false
+    description: "Fully diluted valuation from CoinGecko."
+  - id: float_pct
+    label: Float
+    label_key: protocol
+    metric: perp_protocol_float_pct
+    unit: pct
+    higher_is_better: true
+    description: "Circulating supply as a percent of total supply. The gap between P/F and FDV/F is this number."
+  - id: oi
+    label: Open interest
+    label_key: protocol
+    metric: perp_protocol_oi_usd
+    unit: usd
+    higher_is_better: true
+    description: "Open interest on the perps product from the DeFiLlama open-interest overview."
+  - id: fees_to_oi
+    label: Fees / OI
+    label_key: protocol
+    metric: perp_protocol_fees_to_oi_ratio
+    unit: x
+    higher_is_better: true
+    description: "Annualized fees divided by open interest: how much fee the venue extracts per dollar of positions held. High values flag either high take rates or churned, possibly incentivized, volume."
+
+ledger_columns:
+  - { label: "P/F", slot: p50 }
+  - { label: "FDV / fees", panel: pf_fdv }
+  - { label: "P/S", panel: ps }
+  - { label: "Fees 30d", panel: fees_30d }
+  - { label: "Market cap", panel: mcap }
+  - { label: "Float", panel: float_pct }
+
+faq:
+  - q: "What is the price to fees ratio of a perp DEX?"
+    a: "Market cap divided by the fees the venue generates in a year, using the trailing 30 days annualized. It answers how many years of current fee flow the market is paying for. It is the same P/F that defillama.com/pf ranks, computed here per protocol with identical windows and published as a Prometheus series you can query."
+  - q: "Why show both P/F and FDV/F?"
+    a: "P/F uses circulating market cap, so a token with 25 percent of supply in circulation looks four times cheaper than the same token valued on fully diluted supply. FDV/F prices unvested allocations as if they were already trading. Neither is wrong; the float column tells you how far apart they are for each token."
+  - q: "How do fees differ from revenue here?"
+    a: "Fees are everything traders paid, including the share that goes to liquidity providers, vaults or referrers. Revenue is the part that reaches the protocol, its treasury or token holders. Hyperliquid routes almost all fees to HYPE buybacks so its P/F and P/S are close; GMX passes most fees to GLP and GM depositors, so its P/S is well above its P/F."
+  - q: "Why does Jupiter's fee number include more than perps?"
+    a: "JUP is one token for the aggregator, the perps exchange, lending and launchpad. Comparing its market cap against perps fees alone would overstate the multiple. The bench measures every token against the fees of the DeFiLlama parent it accrues from and publishes the perps-only figure separately."
+  - q: "Why are Ostium, Pacifica, Extended, edgeX and Paradex in the table without a ratio?"
+    a: "They have no listed token, so there is no market cap to divide. Their fees and open interest are published so the cohort shows the whole perp DEX fee landscape, not only the venues with a token."
+  - q: "Is a low P/F a buy signal?"
+    a: "No. It can mean the market expects fees to fall, that fees were inflated by incentivized or wash volume, or that the token has no claim on the fees. Read it with the float, the revenue share and the month over month fee trend, then with your own research."
+  - q: "How is this different from bench 234, the perp DEX P/E ratio?"
+    a: "Bench 234 divides FDV by protocol revenue: the strictest multiple, on the money that actually reaches holders. This bench divides market cap by total fees, the broader and more common convention. The same harness computes both from the same inputs every hour."
+
+providers:
+  - slug: hyperliquid
+    name: HYPE
+    tag: "Hyperliquid, parent scope: perps, spot, HLP"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="hyperliquid"}
+      p90: perp_protocol_pf_ratio{protocol="hyperliquid"}
+      p99: perp_protocol_pf_ratio{protocol="hyperliquid"}
+      mean: perp_protocol_pf_ratio{protocol="hyperliquid"}
+      success: perp_protocol_health{protocol="hyperliquid"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="hyperliquid"}
+      series: perp_protocol_pf_ratio{protocol="hyperliquid"}
+
+  - slug: aster
+    name: ASTER
+    tag: "Aster, BNB Chain perps"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="aster"}
+      p90: perp_protocol_pf_ratio{protocol="aster"}
+      p99: perp_protocol_pf_ratio{protocol="aster"}
+      mean: perp_protocol_pf_ratio{protocol="aster"}
+      success: perp_protocol_health{protocol="aster"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="aster"}
+      series: perp_protocol_pf_ratio{protocol="aster"}
+
+  - slug: lighter
+    name: LIT
+    tag: "Lighter, parent scope: Lighter and Robinhood perps"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="lighter"}
+      p90: perp_protocol_pf_ratio{protocol="lighter"}
+      p99: perp_protocol_pf_ratio{protocol="lighter"}
+      mean: perp_protocol_pf_ratio{protocol="lighter"}
+      success: perp_protocol_health{protocol="lighter"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="lighter"}
+      series: perp_protocol_pf_ratio{protocol="lighter"}
+
+  - slug: jupiter
+    name: JUP
+    tag: "Jupiter, parent scope: all Jupiter products"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="jupiter"}
+      p90: perp_protocol_pf_ratio{protocol="jupiter"}
+      p99: perp_protocol_pf_ratio{protocol="jupiter"}
+      mean: perp_protocol_pf_ratio{protocol="jupiter"}
+      success: perp_protocol_health{protocol="jupiter"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="jupiter"}
+      series: perp_protocol_pf_ratio{protocol="jupiter"}
+
+  - slug: gmx
+    name: GMX
+    tag: "GMX, parent scope: GMX v1 and v2"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="gmx"}
+      p90: perp_protocol_pf_ratio{protocol="gmx"}
+      p99: perp_protocol_pf_ratio{protocol="gmx"}
+      mean: perp_protocol_pf_ratio{protocol="gmx"}
+      success: perp_protocol_health{protocol="gmx"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="gmx"}
+      series: perp_protocol_pf_ratio{protocol="gmx"}
+
+  - slug: gains
+    name: GNS
+    tag: "Gains Network, gTrade, multi-chain"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="gains"}
+      p90: perp_protocol_pf_ratio{protocol="gains"}
+      p99: perp_protocol_pf_ratio{protocol="gains"}
+      mean: perp_protocol_pf_ratio{protocol="gains"}
+      success: perp_protocol_health{protocol="gains"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="gains"}
+      series: perp_protocol_pf_ratio{protocol="gains"}
+
+  - slug: dydx
+    name: DYDX
+    tag: "dYdX, dYdX chain"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="dydx"}
+      p90: perp_protocol_pf_ratio{protocol="dydx"}
+      p99: perp_protocol_pf_ratio{protocol="dydx"}
+      mean: perp_protocol_pf_ratio{protocol="dydx"}
+      success: perp_protocol_health{protocol="dydx"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="dydx"}
+      series: perp_protocol_pf_ratio{protocol="dydx"}
+
+  - slug: drift
+    name: DRIFT
+    tag: "Drift, Solana; DeFiLlama perps adapter reports zero"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="drift"}
+      p90: perp_protocol_pf_ratio{protocol="drift"}
+      p99: perp_protocol_pf_ratio{protocol="drift"}
+      mean: perp_protocol_pf_ratio{protocol="drift"}
+      success: perp_protocol_pf_ratio{protocol="drift"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="drift"}
+      series: perp_protocol_pf_ratio{protocol="drift"}
+
+  - slug: avantis
+    name: AVNT
+    tag: "Avantis, Base perps"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="avantis"}
+      p90: perp_protocol_pf_ratio{protocol="avantis"}
+      p99: perp_protocol_pf_ratio{protocol="avantis"}
+      mean: perp_protocol_pf_ratio{protocol="avantis"}
+      success: perp_protocol_health{protocol="avantis"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="avantis"}
+      series: perp_protocol_pf_ratio{protocol="avantis"}
+
+  - slug: apex
+    name: APEX
+    tag: "ApeX, parent scope: ApeX Omni and Pro"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="apex"}
+      p90: perp_protocol_pf_ratio{protocol="apex"}
+      p99: perp_protocol_pf_ratio{protocol="apex"}
+      mean: perp_protocol_pf_ratio{protocol="apex"}
+      success: perp_protocol_health{protocol="apex"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="apex"}
+      series: perp_protocol_pf_ratio{protocol="apex"}
+
+  - slug: orderly
+    name: ORDER
+    tag: "Orderly, omnichain perps"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="orderly"}
+      p90: perp_protocol_pf_ratio{protocol="orderly"}
+      p99: perp_protocol_pf_ratio{protocol="orderly"}
+      mean: perp_protocol_pf_ratio{protocol="orderly"}
+      success: perp_protocol_health{protocol="orderly"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="orderly"}
+      series: perp_protocol_pf_ratio{protocol="orderly"}
+
+  - slug: synfutures
+    name: F
+    tag: "SynFutures, parent scope: v3"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="synfutures"}
+      p90: perp_protocol_pf_ratio{protocol="synfutures"}
+      p99: perp_protocol_pf_ratio{protocol="synfutures"}
+      mean: perp_protocol_pf_ratio{protocol="synfutures"}
+      success: perp_protocol_health{protocol="synfutures"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="synfutures"}
+      series: perp_protocol_pf_ratio{protocol="synfutures"}
+
+  - slug: derive
+    name: DRV
+    tag: "Derive, parent scope: perps and options"
+    formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="derive"}
+      p90: perp_protocol_pf_ratio{protocol="derive"}
+      p99: perp_protocol_pf_ratio{protocol="derive"}
+      mean: perp_protocol_pf_ratio{protocol="derive"}
+      success: perp_protocol_health{protocol="derive"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="derive"}
+      series: perp_protocol_pf_ratio{protocol="derive"}
+
+  - slug: ostium
+    name: Ostium
+    tag: "Ostium, no token: fees and OI only"
+    formula: "No listed token; fees and open interest published, no ratio"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="ostium"}
+      p90: perp_protocol_pf_ratio{protocol="ostium"}
+      p99: perp_protocol_pf_ratio{protocol="ostium"}
+      mean: perp_protocol_pf_ratio{protocol="ostium"}
+      success: perp_protocol_pf_ratio{protocol="ostium"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="ostium"}
+      series: perp_protocol_pf_ratio{protocol="ostium"}
+
+  - slug: pacifica
+    name: Pacifica
+    tag: "Pacifica, no token: fees and OI only"
+    formula: "No listed token; fees and open interest published, no ratio"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="pacifica"}
+      p90: perp_protocol_pf_ratio{protocol="pacifica"}
+      p99: perp_protocol_pf_ratio{protocol="pacifica"}
+      mean: perp_protocol_pf_ratio{protocol="pacifica"}
+      success: perp_protocol_pf_ratio{protocol="pacifica"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="pacifica"}
+      series: perp_protocol_pf_ratio{protocol="pacifica"}
+
+  - slug: extended
+    name: Extended
+    tag: "Extended, no token: fees and OI only"
+    formula: "No listed token; fees and open interest published, no ratio"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="extended"}
+      p90: perp_protocol_pf_ratio{protocol="extended"}
+      p99: perp_protocol_pf_ratio{protocol="extended"}
+      mean: perp_protocol_pf_ratio{protocol="extended"}
+      success: perp_protocol_pf_ratio{protocol="extended"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="extended"}
+      series: perp_protocol_pf_ratio{protocol="extended"}
+
+  - slug: edgex
+    name: edgeX
+    tag: "edgeX, no token: fees and OI only"
+    formula: "No listed token; fees and open interest published, no ratio"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="edgex"}
+      p90: perp_protocol_pf_ratio{protocol="edgex"}
+      p99: perp_protocol_pf_ratio{protocol="edgex"}
+      mean: perp_protocol_pf_ratio{protocol="edgex"}
+      success: perp_protocol_pf_ratio{protocol="edgex"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="edgex"}
+      series: perp_protocol_pf_ratio{protocol="edgex"}
+
+  - slug: paradex
+    name: Paradex
+    tag: "Paradex, no token: fees and OI only"
+    formula: "No listed token; fees and open interest published, no ratio"
+    queries:
+      p50: perp_protocol_pf_ratio{protocol="paradex"}
+      p90: perp_protocol_pf_ratio{protocol="paradex"}
+      p99: perp_protocol_pf_ratio{protocol="paradex"}
+      mean: perp_protocol_pf_ratio{protocol="paradex"}
+      success: perp_protocol_pf_ratio{protocol="paradex"}
+      sample_size: perp_protocol_fees_30d_usd{protocol="paradex"}
+      series: perp_protocol_pf_ratio{protocol="paradex"}
