@@ -399,7 +399,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v57: drop rpc-keyed-latency bench.
   // v63: score_scope contested_chains on bench 008 changes its provider values.
   // v64: add bench 262 fiat-onramp-cost + On-ramps category. Bench SET grew.
-  ["bench-unfiltered-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v65: add bench 265 perp-pf-ratio (dev-only) + 5 providers on bench 234. Bench SET grew.
+  ["bench-unfiltered-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -613,7 +614,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
   // v59: lockstep with bench-unfiltered-v64 (add bench 262 fiat-onramp-cost).
-  ["all-benchmarks-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v60: lockstep with bench-unfiltered-v65 (add bench 265 perp-pf-ratio).
+  ["all-benchmarks-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

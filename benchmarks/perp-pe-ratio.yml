@@ -2,9 +2,9 @@
 
 slug: perp-pe-ratio
 number: "234"
-title: "Perp DEX token P/E ratio 2026: Hyperliquid, GMX, dYdX, GNS live"
+title: "Perp DEX token P/E ratio 2026: Hyperliquid, Lighter, GMX, dYdX, GNS live"
 seo_title: "Perp DEX token P/E ratio 2026: Hyperliquid vs GMX vs dYdX vs GNS"
-seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, GMX, Gains, dYdX, Drift, Ostium. Live from DeFiLlama and CoinGecko, updated hourly."
+seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}}x among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, Lighter, Jupiter, GMX, Gains, dYdX, ApeX, SynFutures, Derive, Drift. Live from DeFiLlama and CoinGecko, updated hourly."
 subtitle: FDV divided by annualized protocol revenue (30-day trailing average) for the major perp DEX tokens. Lower is cheaper relative to earnings. Updated hourly from DeFiLlama and CoinGecko.
 
 category: Trading
@@ -36,10 +36,11 @@ abstract: |
 
 methodology:
   - "Revenue source: DeFiLlama dailyRevenue (protocol revenue accruing to treasury/holders, not total user fees)."
-  - "30-day trailing average: last 30 data points from totalDataChart, filtered for non-zero values."
-  - "Annual revenue: 30d avg x 365."
-  - "FDV source: CoinGecko /coins/markets fully_diluted_valuation (falls back to market_cap if FDV null)."
+  - "Annual revenue: sum of the last 30 daily points of totalDataChart x 365/30. Zero days inside the window count, so an adapter gap lowers the run rate instead of hiding it."
+  - "Revenue scope: the DeFiLlama parent the token accrues from (Jupiter, Hyperliquid, GMX, Lighter, ApeX, Derive span several products), so FDV and revenue share one scope."
+  - "FDV source: CoinGecko /coins/markets fully_diluted_valuation (falls back to market_cap if FDV null). dYdX is priced on the dYdX Chain token (CoinGecko dydx-chain)."
   - "P/E = FDV / annual_revenue. Null if FDV or revenue unavailable."
+  - "Protocols whose adapter publishes no revenue series (Aster, Avantis, Orderly) or reports zero (Drift perps) have no P/E; see bench 265 for their price to fees."
   - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
 
 findings:
@@ -129,3 +130,68 @@ providers:
       success: perp_protocol_health{protocol="drift"}
       sample_size: perp_protocol_pe_ratio{protocol="drift"}
       series: perp_protocol_pe_ratio{protocol="drift"}
+
+  - slug: lighter
+    name: LIT
+    tag: "Lighter, parent scope"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d revenue x 365/30)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="lighter"}
+      p90: perp_protocol_pe_ratio{protocol="lighter"}
+      p99: perp_protocol_pe_ratio{protocol="lighter"}
+      mean: perp_protocol_pe_ratio{protocol="lighter"}
+      success: perp_protocol_health{protocol="lighter"}
+      sample_size: perp_protocol_pe_ratio{protocol="lighter"}
+      series: perp_protocol_pe_ratio{protocol="lighter"}
+
+  - slug: jupiter
+    name: JUP
+    tag: "Jupiter, parent scope: all products"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d revenue x 365/30)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="jupiter"}
+      p90: perp_protocol_pe_ratio{protocol="jupiter"}
+      p99: perp_protocol_pe_ratio{protocol="jupiter"}
+      mean: perp_protocol_pe_ratio{protocol="jupiter"}
+      success: perp_protocol_health{protocol="jupiter"}
+      sample_size: perp_protocol_pe_ratio{protocol="jupiter"}
+      series: perp_protocol_pe_ratio{protocol="jupiter"}
+
+  - slug: apex
+    name: APEX
+    tag: "ApeX, parent scope"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d revenue x 365/30)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="apex"}
+      p90: perp_protocol_pe_ratio{protocol="apex"}
+      p99: perp_protocol_pe_ratio{protocol="apex"}
+      mean: perp_protocol_pe_ratio{protocol="apex"}
+      success: perp_protocol_health{protocol="apex"}
+      sample_size: perp_protocol_pe_ratio{protocol="apex"}
+      series: perp_protocol_pe_ratio{protocol="apex"}
+
+  - slug: synfutures
+    name: F
+    tag: "SynFutures"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d revenue x 365/30)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="synfutures"}
+      p90: perp_protocol_pe_ratio{protocol="synfutures"}
+      p99: perp_protocol_pe_ratio{protocol="synfutures"}
+      mean: perp_protocol_pe_ratio{protocol="synfutures"}
+      success: perp_protocol_health{protocol="synfutures"}
+      sample_size: perp_protocol_pe_ratio{protocol="synfutures"}
+      series: perp_protocol_pe_ratio{protocol="synfutures"}
+
+  - slug: derive
+    name: DRV
+    tag: "Derive, parent scope: perps and options"
+    formula: "P/E = CoinGecko FDV / (DeFiLlama 30d revenue x 365/30)"
+    queries:
+      p50: perp_protocol_pe_ratio{protocol="derive"}
+      p90: perp_protocol_pe_ratio{protocol="derive"}
+      p99: perp_protocol_pe_ratio{protocol="derive"}
+      mean: perp_protocol_pe_ratio{protocol="derive"}
+      success: perp_protocol_health{protocol="derive"}
+      sample_size: perp_protocol_pe_ratio{protocol="derive"}
+      series: perp_protocol_pe_ratio{protocol="derive"}

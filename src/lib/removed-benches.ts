@@ -136,6 +136,12 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // removal; a 3-provider bench is not strong enough signal for a
   // standalone page. Spec kept for carry-forward; 410 on prod.
   "indexing-freshness",
+  // perp-pf-ratio (265) held on dev until the perp-token-metrics Railway
+  // service is redeployed with the valuation gauges (perp_protocol_pf_*,
+  // mcap, float, OI). Until then the prod Prom has no series and the
+  // page would render an empty leaderboard. Remove here + bump the
+  // bench-set cache keys once the harness is live.
+  "perp-pf-ratio",
 ]);
 
 /**
