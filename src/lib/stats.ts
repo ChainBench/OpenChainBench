@@ -18,7 +18,17 @@ export function computeFieldStats(results: ProviderResult[]): {
   // placeholder values are 0 and would otherwise drag the Best stat to
   // 0 ms, the Spread tailMin to 0 (which kills the ratio), and the
   // Median toward the lower half of the field.
-  const live = results.filter((r) => r.availability !== "unavailable");
+  // Also drop all-zero rows: the load path promotes a provider with
+  // companion-panel data but no headline value to "live" with p50=0
+  // (a token-less venue on a valuation bench), and the ledger already
+  // prunes such rows, so the strip must not report Best = 0 for a
+  // provider the table does not rank. Signed benches keep negative
+  // rows because the check is "not all zero", not "> 0".
+  const live = results.filter(
+    (r) =>
+      r.availability !== "unavailable" &&
+      (r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0),
+  );
   const p50s = live.map((r) => r.ms.p50);
   const p99s = live.map((r) => r.ms.p99);
 
