@@ -117,7 +117,6 @@ export const config = {
     "/benchmarks/pm-geographic-access",
     "/benchmarks/polymarket-resolution-delay",
     "/benchmarks/indexing-freshness",
-    "/benchmarks/perp-pf-ratio",
     "/answers/which-evm-aggregator-has-the-fastest-quote",
     "/answers/which-solana-rpc-lands-the-most-transactions",
     "/answers/which-solana-dex-aggregator-is-the-fastest",
