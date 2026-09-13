@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
 
@@ -91,6 +92,8 @@ const computeFreshness = unstable_cache(
 );
 
 export async function GET(req: Request) {
+  const canonical = stripQueryRedirect(req);
+  if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "freshness"), 120, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 

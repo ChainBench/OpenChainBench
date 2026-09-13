@@ -44,7 +44,7 @@ export const revalidate = 3600;
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair
 // with multiple dimension-shape benches.
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 type Params = { slug: string };
 

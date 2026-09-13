@@ -11,7 +11,8 @@ import yaml from "js-yaml";
 import { cache } from "react";
 import { leader } from "@/lib/citation";
 import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
+import { loadBenchIndexFromBlob } from "@/lib/bench-blob";
 import {
   loadAllBenchmarks,
   loadAllBenchmarksSafe,
@@ -122,6 +123,36 @@ export const getBenchmarks = cache(loadAllBenchmarks);
  * or any UI surface that must always produce HTML.
  */
 export const getBenchmarksSafe = cache(loadAllBenchmarksSafe);
+
+/** Projects a full bench onto its index row. Shared by the worker (which
+ *  publishes index.json) and the in-site fallback so both agree. */
+export function toBenchIndexEntry(b: Benchmark): BenchIndexEntry {
+  return {
+    slug: b.slug,
+    number: b.number,
+    title: b.title,
+    subtitle: b.subtitle,
+    category: b.category,
+    metric: b.metric,
+    unit: b.unit,
+    status: b.status,
+    higherIsBetter: b.higherIsBetter,
+    lastRunAt: b.lastRunAt,
+  };
+}
+
+/**
+ * Light index of every bench for navigation surfaces (related benches,
+ * category rails). Reads the ~100 KB index.json blob when the worker
+ * has published it; otherwise projects the full aggregate, which is
+ * what every caller used to load anyway. Never throws.
+ */
+export const getBenchIndexSafe = cache(async (): Promise<BenchIndexEntry[]> => {
+  const fromBlob = await loadBenchIndexFromBlob().catch(() => null);
+  if (fromBlob && fromBlob.length >= 40) return fromBlob;
+  const all = await loadAllBenchmarksSafe();
+  return all.map(toBenchIndexEntry);
+});
 
 export async function getBenchmark(
   slug: string,

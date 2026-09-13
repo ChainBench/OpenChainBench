@@ -2,6 +2,10 @@ import { ImageResponse } from "next/og";
 import { getReport } from "@/lib/reports/loader";
 
 export const runtime = "nodejs";
+// Share cards change slowly (title, leader, headline value); crawlers
+// and link unfurlers fetch them constantly. Without a revalidate the
+// image was regenerated (satori, ~1-2 s of CPU) on every request.
+export const revalidate = 86400;
 export const alt = "OpenChainBench Research Report";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -114,6 +118,6 @@ export default async function OG({
         </div>
       </div>
     ),
-    { ...size, headers: { "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400" } }
+    { ...size, headers: { "cache-control": "public, s-maxage=86400, stale-while-revalidate=604800" } }
   );
 }
