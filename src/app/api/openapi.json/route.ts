@@ -3,6 +3,9 @@ import { SITE } from "@/data/site";
 
 export const runtime = "nodejs";
 export const revalidate = 3600;
+// No query-string canonicalisation here (the other canonical API routes
+// do it in-handler): reading `request.url` would opt this route out of
+// ISR, and a 3600 s static response is worth more than the 308.
 
 /**
  * Minimal OpenAPI 3.1 description so agent frameworks (LangChain,

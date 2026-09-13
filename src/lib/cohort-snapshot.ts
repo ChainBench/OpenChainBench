@@ -48,7 +48,9 @@ function blobKey(key: string): string {
   return `${KEY_PREFIX}${key}${KEY_SUFFIX}`;
 }
 
-async function redisCommand(
+/** Exported for the revalidate throttle, which needs one SET NX on the
+ *  same Upstash instance. Not a general-purpose client. */
+export async function redisCommand(
   cmd: (string | number)[],
   timeoutMs = 4_000,
 ): Promise<unknown> {

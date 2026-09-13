@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
-import { getBenchmark, getBenchmarksSafe } from "@/data/benchmarks";
+import { getBenchmark, getBenchIndexSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
@@ -60,7 +60,13 @@ import type { Benchmark } from "@/types/benchmark";
 // using useSearchParams (BenchmarkBody, wrapped in Suspense) won't
 // flip the route to fully dynamic because they're behind Suspense, so
 // the route still prerenders cleanly.
-export const revalidate = 3600;
+//
+// 600 s, not 3600: the worker's revalidate hook is now throttled to one
+// tag purge per REVALIDATE_MIN_INTERVAL_SEC (default 600), so this is
+// the real ceiling on how stale a bench page's SSR numbers can be. It
+// used to be purged every minute, which made the 3600 here meaningless
+// and re-rendered the page on every crawler hit.
+export const revalidate = 600;
 
 // Cold start render does thousands of Prom calls on the heaviest benches
 // (hyperliquid-frontends: 75 providers × 7 queries + 11 panels × values +
@@ -68,9 +74,12 @@ export const revalidate = 3600;
 // the ISR regeneration itself was killed ("Vercel Runtime Timeout Error:
 // Task timed out after 60 seconds"), so the cache could NEVER replace a
 // build-time render that had failed its panel queries — staging served
-// empty panel values for hours (2026-06-11). 300s gives the regeneration
+// empty panel values for hours (2026-06-11). 300s gave the regeneration
 // room to finish; the hot path is CDN-cached and stays sub-second.
-export const maxDuration = 300;
+// Since the materialize worker, the page reads one 66 KB blob plus the
+// CDN-cached aggregate (cold 18-49 s), so 120 is ample and bounds the
+// wall time Vercel bills as provisioned memory on a stuck upstream.
+export const maxDuration = 120;
 
 type Params = { slug: string };
 
@@ -261,7 +270,9 @@ export default async function BenchmarkPage({
   // /api/bench/[slug]/variant when a tab is flipped (per-variant
   // unstable_cache keeps that at one cheap Prom roundtrip per 60 s
   // across all users), and renders the aggregate while it loads.
-  const all = await getBenchmarksSafe();
+  // Light index (slug/title/category), not the 8 MB aggregate: the
+  // related-benches rail below only needs titles. See getBenchIndexSafe.
+  const all = await getBenchIndexSafe();
   // Seed ONLY the unfiltered key. Seeding the initially-selected
   // chain/region/kind combo with the aggregate made the client believe
   // it already had that variant, so it never fetched the real one: the

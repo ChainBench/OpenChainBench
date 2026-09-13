@@ -21,7 +21,11 @@ const UPSTREAM = "https://kv.openchainbench.com/aggregate/latest.json";
 // Paris VPS → IAD1 with 7.3 MB payload: measured 37-49 s uncompressed.
 // With Accept-Encoding:gzip Caddy compresses to ~2.3 MB in ~18 s. Set
 // the timeout to 70 s so cold-cache first requests always complete.
-const UPSTREAM_TIMEOUT_MS = 70_000;
+// 40 s: gzip transfer measured at ~18 s, so this still covers a slow
+// Paris -> IAD1 hop while halving the worst case (two attempts) from
+// 140 s to 80 s of billed wall time when the VPS is down.
+const UPSTREAM_TIMEOUT_MS = 40_000;
+export const maxDuration = 90;
 
 export async function GET() {
   // Retry once: some Vercel function instances can't reach the Paris VPS
