@@ -12,13 +12,21 @@ import {
 export { REMOVED_BENCH_SLUGS };
 
 /**
- * Two jobs, both keyed so the matcher only admits the requests that
- * need them: 308 for mixed-case URLs, 410 Gone for retired URLs on
- * production. The matcher is a regex for the former and the literal
- * list of dead paths for the latter, so canonical lowercase traffic to
- * live pages never invokes the middleware (edge middleware invocations
- * are billed per call; before this change roughly half of all site
- * requests paid for one).
+ * 410 Gone for retired URLs on production. That is all this middleware
+ * does, and its matcher is the literal list of those URLs, so it is
+ * invoked only on hits to dead pages instead of on every bench, product,
+ * answer and compare request (edge middleware invocations are billed
+ * per call; before this change roughly half of all site requests paid
+ * for one).
+ *
+ * Mixed-case URLs (`/products/Alchemy`) are no longer 308'd. A regex
+ * matcher admitting only uppercase letters worked under `next start`
+ * but Vercel's router evaluates matchers case-insensitively, so it
+ * fired on every lowercase request too (seen in prod logs after
+ * #2343). Next serves the cached lowercase page for a mixed-case URL
+ * and the HTML carries the lowercase `<link rel="canonical">`, which
+ * is what Google consolidates on; a page-level redirect cannot help
+ * because the ISR cache is resolved before the page runs.
  *
  * Everything else that used to live here moved to where it is free or
  * already paid for:
@@ -52,19 +60,6 @@ function gone(body: string): NextResponse {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Case normalisation. `/products/Alchemy` used to serve 200 with the
-  // mixed-case URL while the canonical pointed at the lowercase form,
-  // and Google indexed both. It has to happen here: Next resolves the
-  // ISR cache case-insensitively, so a redirect inside the page never
-  // runs for a URL whose lowercase twin is already cached. The matcher
-  // below only admits paths containing an uppercase letter, so the
-  // lowercase (canonical) traffic never invokes the middleware.
-  if (pathname !== pathname.toLowerCase()) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.toLowerCase();
-    return NextResponse.redirect(url, 308);
-  }
-
   // Only fires on production so staging keeps rendering held-back
   // benches for review (REMOVED_BENCH_SLUGS doubles as the staging
   // pipeline). Direct URL hits on prod get the SEO-correct 410.
@@ -89,18 +84,6 @@ export function middleware(req: NextRequest) {
 // src/middleware.test.ts. Keep sorted by section, one path per line.
 export const config = {
   matcher: [
-    // Mixed-case URLs under the four canonical sections (see the case
-    // block above). The custom regex admits a segment only when it
-    // contains an uppercase letter; the (?-i) is not available, so the
-    // test in middleware.test.ts pins that lowercase paths do not match.
-    "/benchmarks/:slug([^/]*[A-Z][^/]*)",
-    "/products/:slug([^/]*[A-Z][^/]*)",
-    "/answers/:slug([^/]*[A-Z][^/]*)",
-    "/compare/:slug([^/]*[A-Z][^/]*)",
-    "/Benchmarks/:path*",
-    "/Products/:path*",
-    "/Answers/:path*",
-    "/Compare/:path*",
     "/benchmarks/bridge-revenue",
     "/benchmarks/solana-tx-landing-latency",
     "/benchmarks/indexer-latency",
