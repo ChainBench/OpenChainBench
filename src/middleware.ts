@@ -1,49 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Edge middleware. Four jobs:
- *
- * 1. **Cache-key normalisation** on public read-only API routes that
- *    don't use query params. Vercel keys the edge cache on the full URL,
- *    so `?cb=1`, `?cb=2`, … each create a new cache entry and bypass
- *    the s-maxage coalescing. Without this, an attacker hitting unique
- *    query strings forces every request to hit the origin function and
- *    fan out to Prom. We redirect (308) such requests to the canonical
- *    path so the edge cache key never includes the query string.
- *
- * 2. **410 Gone for benches removed from production.** Some benches live
- *    on dev / staging only (bridge-revenue, evm-quote-latency, etc.).
- *    On prod they hit `notFound()` and return a 404. Sustained 404 on
- *    previously-indexed URLs gets read as a soft-404 signal that bleeds
- *    into surrounding bench rankings, likely the dominant driver of the
- *    recent brand-search collapse. Returning 410 explicitly tells Google
- *    "this URL is gone for good", and the cluster recovers.
- *
- *    Only fires on production (`VERCEL_ENV === "production"`) so that
- *    staging / preview / local dev still render the bench pages from
- *    their YAML files normally.
- *
- * 3. **Canonical-order redirect on /compare/<a>-vs-<b>.** Pair pages
- *    have a single canonical URL: the alphabetical ordering of the two
- *    provider slugs. Without this, `/compare/base-vs-arbitrum` and
- *    `/compare/arbitrum-vs-base` both 200 with separate streamed
- *    Suspense fallbacks, which Google indexes as two empty shells of
- *    the same comparison. The page component also calls `redirect()`
- *    on non-canonical slugs but that fires after the loading.tsx
- *    boundary has streamed its skeleton, so the response goes out as
- *    200 with the skeleton HTML and the homepage metadata. Doing it at
- *    the edge here short-circuits before any render starts.
- *
- * 4. **(future)** any cross-route concerns. Kept lightweight.
- */
-
-const CANONICAL_NO_QUERY = new Set([
-  "/api/citable",
-  "/api/llm-context",
-  "/api/freshness",
-  "/api/openapi.json",
-]);
-
 // Single source of truth for prod-excluded bench slugs. Lives in its
 // own module (not here) so the spec loader and the materialize worker
 // can import it without pulling next/server. Re-exported for the
@@ -52,104 +8,122 @@ import {
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
   REMOVED_PRODUCT_SLUGS,
-  RENAMED_BENCH_SLUGS,
 } from "@/lib/removed-benches";
 export { REMOVED_BENCH_SLUGS };
 
+/**
+ * Two jobs, both keyed so the matcher only admits the requests that
+ * need them: 308 for mixed-case URLs, 410 Gone for retired URLs on
+ * production. The matcher is a regex for the former and the literal
+ * list of dead paths for the latter, so canonical lowercase traffic to
+ * live pages never invokes the middleware (edge middleware invocations
+ * are billed per call; before this change roughly half of all site
+ * requests paid for one).
+ *
+ * Everything else that used to live here moved to where it is free or
+ * already paid for:
+ *   - renamed benches (301): `redirects()` in next.config.ts, served
+ *     from the routing layer without a function;
+ *   - `/compare/<a>-vs-<b>` alphabetical canonical: the compare page
+ *     already redirected non-canonical pairs, the middleware copy was
+ *     redundant;
+ *   - query stripping on the canonical API routes: inside those
+ *     route handlers (they run a function anyway).
+ *
+ * The matcher must be a literal (Next evaluates it statically), so the
+ * list below is generated from the sets in removed-benches.ts and
+ * pinned by src/middleware.test.ts: adding a slug to a set without
+ * adding its path here fails the test.
+ */
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 const ANSWER_PATH = /^\/answers\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 const PRODUCT_PATH = /^\/products\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
-// `/compare/<a>-vs-<b>` with both sides as standard provider slug
-// shapes (lowercase alphanumeric + hyphens). The `-vs-` delimiter is
-// matched literally; provider slugs themselves can contain hyphens
-// (e.g. `helius-sender`, `phantom-perps`), so split on the first
-// occurrence at parse time, not on every `-`.
-const COMPARE_PATH = /^\/compare\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
+
+const GONE_BENCH = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This benchmark has been retired. See the <a href="/benchmarks">current catalog</a>.</p></body></html>`;
+const GONE_PRODUCT = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This product page has been retired because the provider is no longer measured in any active benchmark. See the <a href="/products">current catalog</a>.</p></body></html>`;
+
+function gone(body: string): NextResponse {
+  return new NextResponse(body, {
+    status: 410,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
 
 export function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
-  // Case normalisation. `/products/Alchemy` and `/Benchmarks/foo` used
-  // to serve 200 with the mixed-case URL while the HTML canonical
-  // pointed at the lowercase form — Google indexed the mixed-case URL
-  // as a valid variant and burned crawl budget on both. Force lowercase
-  // via 308 so only the canonical shape reaches origin.
+  // Case normalisation. `/products/Alchemy` used to serve 200 with the
+  // mixed-case URL while the canonical pointed at the lowercase form,
+  // and Google indexed both. It has to happen here: Next resolves the
+  // ISR cache case-insensitively, so a redirect inside the page never
+  // runs for a URL whose lowercase twin is already cached. The matcher
+  // below only admits paths containing an uppercase letter, so the
+  // lowercase (canonical) traffic never invokes the middleware.
   if (pathname !== pathname.toLowerCase()) {
     const url = req.nextUrl.clone();
     url.pathname = pathname.toLowerCase();
     return NextResponse.redirect(url, 308);
   }
 
-  if (search && CANONICAL_NO_QUERY.has(pathname)) {
-    const canonical = req.nextUrl.clone();
-    canonical.search = "";
-    return NextResponse.redirect(canonical, 308);
-  }
+  // Only fires on production so staging keeps rendering held-back
+  // benches for review (REMOVED_BENCH_SLUGS doubles as the staging
+  // pipeline). Direct URL hits on prod get the SEO-correct 410.
+  if (process.env.VERCEL_ENV !== "production") return NextResponse.next();
 
-  if (process.env.VERCEL_ENV === "production") {
-    const m = pathname.match(BENCH_PATH);
-    const a = pathname.match(ANSWER_PATH);
-    // Renamed / split bench: 301 to the successor before the 410 check
-    // fires. Preserves external backlink PageRank + keeps human visitors
-    // landing on the current bench instead of a Gone page.
-    if (m && RENAMED_BENCH_SLUGS[m[1]]) {
-      const url = req.nextUrl.clone();
-      url.pathname = `/benchmarks/${RENAMED_BENCH_SLUGS[m[1]]}`;
-      return NextResponse.redirect(url, 301);
-    }
-    if (
-      (m && REMOVED_BENCH_SLUGS.has(m[1])) ||
-      (a && REMOVED_ANSWER_SLUGS.has(a[1]))
-    ) {
-      return new NextResponse(
-        `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This benchmark has been retired. See the <a href="/benchmarks">current catalog</a>.</p></body></html>`,
-        { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } },
-      );
-    }
-    const p = pathname.match(PRODUCT_PATH);
-    if (p && REMOVED_PRODUCT_SLUGS.has(p[1])) {
-      return new NextResponse(
-        `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This product page has been retired because the provider is no longer measured in any active benchmark. See the <a href="/products">current catalog</a>.</p></body></html>`,
-        { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } },
-      );
-    }
+  const m = pathname.match(BENCH_PATH);
+  const a = pathname.match(ANSWER_PATH);
+  if (
+    (m && REMOVED_BENCH_SLUGS.has(m[1])) ||
+    (a && REMOVED_ANSWER_SLUGS.has(a[1]))
+  ) {
+    return gone(GONE_BENCH);
   }
-
-  const compareMatch = pathname.match(COMPARE_PATH);
-  if (compareMatch) {
-    const canonical = canonicalComparePath(compareMatch[1]);
-    if (canonical && canonical !== compareMatch[1]) {
-      const url = req.nextUrl.clone();
-      url.pathname = `/compare/${canonical}`;
-      return NextResponse.redirect(url, 308);
-    }
+  const p = pathname.match(PRODUCT_PATH);
+  if (p && REMOVED_PRODUCT_SLUGS.has(p[1])) {
+    return gone(GONE_PRODUCT);
   }
-
   return NextResponse.next();
 }
 
-/** Returns the alphabetical canonical form of a `<a>-vs-<b>` slug, or
- *  null when the slug isn't a valid pair shape. When the slug is already
- *  canonical the return value equals the input. */
-function canonicalComparePath(slug: string): string | null {
-  const idx = slug.indexOf("-vs-");
-  if (idx <= 0) return null;
-  const a = slug.slice(0, idx);
-  const b = slug.slice(idx + "-vs-".length);
-  if (!a || !b || a === b) return null;
-  const [first, second] = [a, b].sort();
-  return `${first}-vs-${second}`;
-}
-
+// Generated from removed-benches.ts; see the header comment and
+// src/middleware.test.ts. Keep sorted by section, one path per line.
 export const config = {
   matcher: [
-    "/api/citable",
-    "/api/llm-context",
-    "/api/freshness",
-    "/api/openapi.json",
-    "/benchmarks/:slug*",
-    "/answers/:slug*",
-    "/compare/:slug*",
-    "/products/:slug*",
+    // Mixed-case URLs under the four canonical sections (see the case
+    // block above). The custom regex admits a segment only when it
+    // contains an uppercase letter; the (?-i) is not available, so the
+    // test in middleware.test.ts pins that lowercase paths do not match.
+    "/benchmarks/:slug([^/]*[A-Z][^/]*)",
+    "/products/:slug([^/]*[A-Z][^/]*)",
+    "/answers/:slug([^/]*[A-Z][^/]*)",
+    "/compare/:slug([^/]*[A-Z][^/]*)",
+    "/Benchmarks/:path*",
+    "/Products/:path*",
+    "/Answers/:path*",
+    "/Compare/:path*",
+    "/benchmarks/bridge-revenue",
+    "/benchmarks/solana-tx-landing-latency",
+    "/benchmarks/indexer-latency",
+    "/benchmarks/oracle-freshness",
+    "/benchmarks/tokenized-stock-arb-latency",
+    "/benchmarks/token-trade-coverage",
+    "/benchmarks/cross-chain-messaging-latency",
+    "/benchmarks/solana-dex-quote-latency",
+    "/benchmarks/explorer-chain-coverage",
+    "/benchmarks/portfolio-chain-coverage",
+    "/benchmarks/pm-data-freshness",
+    "/benchmarks/perp-open-interest",
+    "/benchmarks/pm-fee-comparison",
+    "/benchmarks/pm-geographic-access",
+    "/benchmarks/polymarket-resolution-delay",
+    "/benchmarks/indexing-freshness",
+    "/answers/which-evm-aggregator-has-the-fastest-quote",
+    "/answers/which-solana-rpc-lands-the-most-transactions",
+    "/answers/which-solana-dex-aggregator-is-the-fastest",
+    "/answers/which-prediction-market-data-api-is-the-freshest",
+    "/products/bitquery",
+    "/products/goldrush",
+    "/products/zerion",
+    "/products/routescan",
   ],
 };

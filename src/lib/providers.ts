@@ -11,6 +11,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
+import { loadProvidersFromBlob } from "@/lib/bench-blob";
 import { liveResults } from "@/lib/provider-filters";
 import { citationCandidates } from "@/lib/citation";
 import { readBestPerChain } from "@/lib/per-chain-contract";
@@ -305,6 +306,16 @@ function rankPerChainForBench(
 
 async function buildProviders(): Promise<ProviderProfile[]> {
   const benches = await getBenchmarksSafe();
+  return buildProvidersFromBenches(benches);
+}
+
+/**
+ * Pure index build: every provider profile derived from a bench list.
+ * Exported so the materialize worker can publish the same index as a
+ * blob (providers.json) and the site can read it instead of re-ranking
+ * 224 benches on every render. Keep this free of request-scoped state.
+ */
+export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile[] {
   const byKey = new Map<string, ProviderProfile>();
 
   for (const b of benches) {
@@ -598,9 +609,40 @@ const buildProvidersCached = unstable_cache(
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
-export const getProviders = cache(
-  async (): Promise<ProviderProfile[]> => buildProvidersCached(),
-);
+/**
+ * Process-local memo in front of the cache layers.
+ *
+ * The unstable_cache above silently fails to store its result on Vercel
+ * ("items over 2MB can not be cached": the profile list is ~2.2 MB), so
+ * every render was rebuilding the whole index (rank 224 benches, per
+ * chain) from scratch. Fluid compute keeps a function instance alive
+ * across many requests, so a 60 s in-memory memo removes nearly all of
+ * that CPU even when the data cache cannot hold the value. The blob
+ * published by the worker (providers.json, normalized to ~1 MB so the
+ * data cache does hold it) is preferred when present: then the instance
+ * does no ranking at all, only a parse.
+ */
+const PROVIDERS_MEMO_TTL_MS = 60_000;
+let providersMemo: { at: number; value: Promise<ProviderProfile[]> } | null = null;
+
+async function loadProvidersMemoized(): Promise<ProviderProfile[]> {
+  const now = Date.now();
+  if (providersMemo && now - providersMemo.at < PROVIDERS_MEMO_TTL_MS) {
+    return providersMemo.value;
+  }
+  const value = (async () => {
+    const fromBlob = await loadProvidersFromBlob().catch(() => null);
+    if (fromBlob && fromBlob.length > 0) return fromBlob;
+    return buildProvidersCached();
+  })();
+  providersMemo = { at: now, value };
+  value.catch(() => {
+    providersMemo = null;
+  });
+  return value;
+}
+
+export const getProviders = cache(loadProvidersMemoized);
 
 export async function getProviderSlugs(): Promise<string[]> {
   const profiles = await getProviders();

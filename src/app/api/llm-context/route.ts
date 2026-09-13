@@ -10,6 +10,7 @@ import {
   rankedCandidates,
 } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,8 @@ export const dynamic = "force-dynamic";
  *    per-region breakdown) but covers all 8 benches in one round-trip.
  */
 export async function GET(req: Request) {
+  const canonical = stripQueryRedirect(req);
+  if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "llm-context"), 30, 60, req);
   if (!r.ok) {
     const tooMany = tooManyRequests(r.retryAfterSec);

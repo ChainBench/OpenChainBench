@@ -28,7 +28,7 @@ export const revalidate = 3600;
 
 // Same budget as /products/[slug]: on-demand renders span the whole bench
 // catalog and the 60s default killed them mid-flight.
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 type Params = { slug: string };
 

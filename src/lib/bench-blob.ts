@@ -16,7 +16,8 @@
  * path. Never throws.
  */
 
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
+import type { ProviderAppearance, ProviderProfile } from "@/lib/providers";
 import {
   MAT_SCHEMA_VERSION,
   type MaterializedSnapshot,
@@ -124,4 +125,78 @@ export async function loadSnapshotFromBlob(
     bench: raw.bench,
     state: { providers: {}, rings: {} },
   };
+}
+
+/**
+ * Provider index published by the worker (`providers.json`).
+ *
+ * Wire format v2 is normalized: each bench descriptor appears once under
+ * `benches` and every appearance references it by slug. The denormalized
+ * profile list repeats the descriptor per provider and weighs ~2.1 MB,
+ * above the Next data-cache ceiling; normalized it is ~1 MB, so the
+ * fetch is cached like any other blob and the page stays static. Both
+ * the worker (`toProvidersWire`) and this reader own the format.
+ */
+export type ProvidersWire = {
+  v: 2;
+  builtAt: number;
+  benches: Record<string, ProviderAppearance["benchmark"]>;
+  providers: Array<
+    Omit<ProviderProfile, "appearances"> & {
+      appearances: Array<Omit<ProviderAppearance, "benchmark"> & { b: string }>;
+    }
+  >;
+};
+
+export function toProvidersWire(
+  providers: ProviderProfile[],
+  builtAt: number,
+): ProvidersWire {
+  const benches: ProvidersWire["benches"] = {};
+  const compact = providers.map((p) => ({
+    ...p,
+    appearances: p.appearances.map((a) => {
+      benches[a.benchmark.slug] ??= a.benchmark;
+      const { benchmark, ...rest } = a;
+      return { b: benchmark.slug, ...rest };
+    }),
+  }));
+  return { v: 2, builtAt, benches, providers: compact };
+}
+
+export function fromProvidersWire(wire: ProvidersWire): ProviderProfile[] {
+  return wire.providers.map((p) => ({
+    ...p,
+    appearances: p.appearances
+      .map(({ b, ...rest }) => {
+        const benchmark = wire.benches[b];
+        return benchmark ? { ...rest, benchmark } : null;
+      })
+      .filter((a): a is ProviderAppearance => a !== null),
+  }));
+}
+
+/** Returns null when the worker has not published the index yet (older
+ *  worker build) or the envelope is not v2; the site then builds the
+ *  index itself from the aggregate. */
+export async function loadProvidersFromBlob(): Promise<ProviderProfile[] | null> {
+  const raw = (await fetchJson(`${baseUrl()}/providers.json`)) as Partial<ProvidersWire> | null;
+  if (!raw || raw.v !== 2 || typeof raw.benches !== "object" || !Array.isArray(raw.providers)) {
+    return null;
+  }
+  return fromProvidersWire(raw as ProvidersWire);
+}
+
+/**
+ * Light bench index published by the worker (`index.json`): one small
+ * row per bench, enough for navigation surfaces (related benches,
+ * category rails) that used to load the full 8 MB aggregate for a
+ * handful of titles. Cached through the data cache: it is ~100 KB.
+ */
+export async function loadBenchIndexFromBlob(): Promise<BenchIndexEntry[] | null> {
+  const raw = (await fetchJson(`${baseUrl()}/index.json`)) as
+    | { v?: number; benches?: unknown }
+    | null;
+  if (!raw || raw.v !== 1 || !Array.isArray(raw.benches)) return null;
+  return raw.benches as BenchIndexEntry[];
 }

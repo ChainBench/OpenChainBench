@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { acquireRevalidateSlot, minIntervalSec } from "@/lib/revalidate-throttle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,14 @@ export async function POST(req: Request): Promise<NextResponse> {
   // Next 16's revalidateTag takes a required cache-profile argument.
   // "default" applies the standard purge semantics for the CDN + ISR
   // cache layers this route is meant to invalidate.
+  // The worker calls this after every 60 s publish. Purging the
+  // `benchmarks` tag that often invalidated every ISR page each minute
+  // (see revalidate-throttle.ts); the data caches refresh on their own
+  // timers, so one purge per interval is enough for the pages.
+  const interval = minIntervalSec();
+  if (!(await acquireRevalidateSlot(interval))) {
+    return NextResponse.json({ revalidated: false, throttled: true, intervalSec: interval });
+  }
   revalidateTag("bench-aggregate", "default");
   // Also invalidate per-bench caches so answer detail pages (/answers/[slug])
   // and benchmark pages refresh from the same generation as the aggregate

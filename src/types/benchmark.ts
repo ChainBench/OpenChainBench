@@ -186,6 +186,26 @@ export type ResultExtras = {
   venuesForChain?: Record<string, string[]>;
 };
 
+/**
+ * One row of the light bench index (`index.json`, published by the
+ * materialize worker). Navigation surfaces that only need titles and
+ * categories read this instead of the full aggregate. Keep it to
+ * scalar editorial fields: no results, no series.
+ */
+export type BenchIndexEntry = Pick<
+  Benchmark,
+  | "slug"
+  | "number"
+  | "title"
+  | "subtitle"
+  | "category"
+  | "metric"
+  | "unit"
+  | "status"
+  | "higherIsBetter"
+  | "lastRunAt"
+>;
+
 export type Benchmark = {
   slug: string;
   number: string;

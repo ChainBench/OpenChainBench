@@ -13,6 +13,12 @@
  *   variants/<slug>/<sig>.json              One filtered variant
  *                                           (per-chain, per-region,
  *                                           per-kind, per-venue pages).
+ *   providers.json                          Provider profile index,
+ *                                           normalized (products,
+ *                                           compare, answers; ~1 MB).
+ *   index.json                              Light bench index, one row
+ *                                           per bench (related-bench
+ *                                           rails; ~100 KB).
  *
  * Every write is atomic (`.tmp` → `rename`) so a Caddy `file_server` GET
  * never observes a torn read.
@@ -39,6 +45,9 @@ import {
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
+import { buildProvidersFromBenches } from "@/lib/providers";
+import { toProvidersWire } from "@/lib/bench-blob";
+import { toBenchIndexEntry } from "@/data/benchmarks";
 
 export type PublishResult = {
   ok: boolean;
@@ -63,6 +72,12 @@ export type VariantsPublishResult = {
 };
 
 const AGGREGATE_FILENAME = "latest.json";
+// Derived indexes the site reads instead of the aggregate: the provider
+// profile list (products, compare, answers) and the light bench index
+// (related-bench rails). Both are pure projections of `benches`, built
+// here once per sweep instead of on every page render.
+const PROVIDERS_FILENAME = "providers.json";
+const INDEX_FILENAME = "index.json";
 const BENCHES_SUBDIR = "benches";
 const VARIANTS_SUBDIR = "variants";
 
@@ -167,6 +182,24 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
         `[publish-aggregate] per-bench ${bench.slug} write failed: ${err instanceof Error ? err.message : err}`,
       );
     }
+  }
+
+  // Derived indexes. Failures here are logged, not fatal: the site falls
+  // back to building them itself from the aggregate.
+  try {
+    const providers = buildProvidersFromBenches(benches);
+    await atomicWrite(
+      path.join(outputDir, PROVIDERS_FILENAME),
+      JSON.stringify(toProvidersWire(providers, builtAt)),
+    );
+    await atomicWrite(
+      path.join(outputDir, INDEX_FILENAME),
+      JSON.stringify({ v: 1, builtAt, benches: benches.map(toBenchIndexEntry) }),
+    );
+  } catch (err) {
+    console.warn(
+      `[publish-aggregate] derived index write failed: ${err instanceof Error ? err.message : err}`,
+    );
   }
 
   let revalidated = false;
