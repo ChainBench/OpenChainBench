@@ -27,7 +27,7 @@ import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 
 export const revalidate = 3600;
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 type Params = { slug: string };
 

@@ -44,7 +44,12 @@ export const revalidate = 3600;
 // mid-flight, freezing stale caches (observed on /benchmarks 2026-06-11:
 // "Vercel Runtime Timeout Error: Task timed out after 60 seconds" on
 // every regeneration, page stuck on build-time data for hours).
-export const maxDuration = 300;
+// Was 300 while pages queried Prometheus directly; they now read
+// pre-materialized blobs (66 KB per bench, aggregate through the CDN,
+// cold fetch 18-49 s), so 120 bounds a runaway render without
+// starving a legitimately cold one. Provisioned memory is billed for
+// the whole wall time, so the cap is a cost control too.
+export const maxDuration = 120;
 
 type Params = { slug: string };
 

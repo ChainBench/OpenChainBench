@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { RENAMED_BENCH_SLUGS } from "./src/lib/removed-benches";
 
 // Content-Security-Policy. `'unsafe-inline'` for scripts is needed because
 // three pages emit JSON-LD via `dangerouslySetInnerHTML` (layout.tsx,
@@ -313,6 +314,14 @@ const nextConfig: NextConfig = {
       },
       ...chainRedirects,
       ...rpcClusterRedirects,
+      // Renamed / split benches: 308 the legacy URL to its successor so
+      // backlinks keep their PageRank. Used to be a 301 in middleware;
+      // a routing-layer redirect costs no function or edge invocation.
+      ...Object.entries(RENAMED_BENCH_SLUGS).map(([from, to]) => ({
+        source: `/benchmarks/${from}`,
+        destination: `/benchmarks/${to}`,
+        permanent: true,
+      })),
     ];
   },
 };

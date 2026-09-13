@@ -5,6 +5,7 @@ import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citableAsOf, citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { stripQueryRedirect } from "@/lib/canonical-query";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ function unavailable(): NextResponse {
  * cite without needing to read the footer of every page.
  */
 export async function GET(req: Request) {
+  const canonical = stripQueryRedirect(req);
+  if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "citable"), 60, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
