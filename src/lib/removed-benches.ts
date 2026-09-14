@@ -66,6 +66,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   "bridge-execution-latency",
   "bridge-realized-cost",
   "bridge-quote-latency-solana",
+  // perp-daily-volume (266) shipped to dev on 2026-09-14 (#2357), not on
+  // main yet; its sitemap entry 404'd the prod smoke gate and rolled back
+  // the bench 265 deploy (#2375). Remove when 266 ships to prod.
+  "perp-daily-volume",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
