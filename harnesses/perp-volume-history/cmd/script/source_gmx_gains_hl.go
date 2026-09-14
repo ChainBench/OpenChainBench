@@ -104,7 +104,7 @@ func scale1e30(s string) float64 {
 }
 
 // ---------------------------------------------------------------------
-// Gains Network (dimension-adapters/dexs/gains-network/index.ts)
+// Gains (dimension-adapters/dexs/gains-network/index.ts)
 // ---------------------------------------------------------------------
 
 // gainsSource has two upstreams for the same number:

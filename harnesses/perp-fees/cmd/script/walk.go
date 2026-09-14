@@ -125,7 +125,7 @@ func applyBookTiersCapped(s *PerpSample, levels []bookLevel, mid, maxFillRatio f
 }
 
 // applyFlatTiers publishes the same all-in figure at every tier. Used by the
-// oracle-priced venues (GMX v2, gains.trade) where the harness-read cost is
+// oracle-priced venues (GMX v2, Gains) where the harness-read cost is
 // a fixed fraction of position size, so the bps figure does not change with
 // notional. Callers document per venue why that is correct.
 func applyFlatTiers(s *PerpSample) {

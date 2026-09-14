@@ -51,7 +51,7 @@ var cohort = []venueMeta{
 	{"hyperliquid", "Hyperliquid", "hyperliquid-perps", day("2023-06-13")},
 	{"hyperliquid-hip3", "Hyperliquid HIP-3", "hyperliquid-perps", day("2025-10-01")},
 	{"gmx", "GMX V2", "gmx-v2-perps", day("2023-08-01")},
-	{"gains", "Gains Network", "gains-network", day("2023-05-25")},
+	{"gains", "Gains", "gains-network", day("2023-05-25")},
 	{"aster", "Aster", "aster-perps", day("2024-10-01")},
 	{"lighter", "Lighter", "lighter-perps", day("2025-01-17")},
 	{"dydx", "dYdX v4", "dydx-v4", day("2023-10-26")},
