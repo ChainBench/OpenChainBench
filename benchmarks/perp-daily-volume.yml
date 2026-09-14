@@ -127,6 +127,14 @@ ledger_columns:
 
 stacked_share: true
 
+# Gauges move once per UTC day: sub-day chart ranges would show one point
+# at "now", so the chart opens on 30 days and the ledger's base window is
+# the last closed day rather than "24h".
+chart:
+  min_range: 7d
+  default_range: 30d
+  window_label: last closed day
+
 faq:
   - q: "How is this different from bench 041, perp DEX volume share?"
     a: "Bench 041 polls each venue's live rolling 24 hour figure every five minutes and ranks the time average. This bench counts closed UTC days, which is what DeFiLlama, weekly reports and flip claims use, and keeps a year of daily history per venue. The two agree on quiet days and disagree whenever a big hour sits on one side of a midnight boundary."

@@ -20,6 +20,7 @@ import type { Spec } from "@/lib/spec-schema";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import {
+  chartFromSpec,
   draftPlaceholderForSpec,
   filterSig,
   loadSpecsUncached,
@@ -137,6 +138,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // worker running a divergent branch (keyed-rpc-robinhood: main is
     // Singapore-only while dev/worker carries the region dims).
     dimensions: spec.dimensions,
+    chart: chartFromSpec(spec) ?? stored.chart,
     // Same source-of-truth rule as dimensions: the live YAML decides
     // the aggregate pin, never the snapshot.
     aggregateFilters: spec.aggregate_filters,
