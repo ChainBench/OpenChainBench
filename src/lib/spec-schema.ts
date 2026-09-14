@@ -146,6 +146,18 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  /** Declares a cohort member that has no headline value by design
+   *  (a perp DEX with no token yet on a valuation bench). The ledger
+   *  lists it in an "Unranked · <label>" block below the field with
+   *  its companion-panel values, instead of dropping it or badging it
+   *  unresponsive. Never ranked, never a leader. Short label, e.g.
+   *  "Pre-TGE". */
+  unranked: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
+    .optional(),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })

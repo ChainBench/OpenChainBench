@@ -255,6 +255,27 @@ export async function specToBenchmark(
           if (hasPanelData) r.availability = "live";
         }
       }
+      // Spec-declared unranked members (provider.unranked, e.g. a perp
+      // DEX with no token yet on a valuation bench). They have no
+      // headline value by design, so leave ms at zero (every ranking
+      // helper skips zero rows) but carry the label so the ledger can
+      // list them in their own block instead of dropping them, and
+      // never let them read as unresponsive: the absence is intended.
+      const unrankedBySlug = new Map(
+        spec.providers
+          .filter((p) => p.unranked)
+          .map((p) => [p.slug.toLowerCase(), p.unranked as string]),
+      );
+      if (unrankedBySlug.size > 0) {
+        for (const r of live.results) {
+          const label = unrankedBySlug.get(r.slug.toLowerCase());
+          if (!label) continue;
+          r.unrankedLabel = label;
+          r.unresponsive = undefined;
+          r.availability = "live";
+          r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
+        }
+      }
     }
     // Per-chain leaders/trailers: computed only on the unfiltered "All"
     // view of benches that declare `dimensions.chain`. Fan out one extra
