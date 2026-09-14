@@ -606,7 +606,10 @@ const buildProvidersCached = unstable_cache(
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
   ["providers-v6"],
-  { revalidate: 300, tags: ["benchmarks"] },
+  // 900 s: the provider index feeds products / compare / answers, whose
+  // numbers move slowly, and this revalidate is also the effective ISR
+  // period of those ~500 pages (Next takes the min across a route's caches).
+  { revalidate: 900, tags: ["benchmarks"] },
 );
 
 /**
@@ -622,7 +625,7 @@ const buildProvidersCached = unstable_cache(
  * data cache does hold it) is preferred when present: then the instance
  * does no ranking at all, only a parse.
  */
-const PROVIDERS_MEMO_TTL_MS = 60_000;
+const PROVIDERS_MEMO_TTL_MS = 300_000;
 let providersMemo: { at: number; value: Promise<ProviderProfile[]> } | null = null;
 
 async function loadProvidersMemoized(): Promise<ProviderProfile[]> {
