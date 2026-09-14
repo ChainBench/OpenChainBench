@@ -148,10 +148,10 @@ export default async function PerpVenuePage({
   ]);
 
   // Bench 266 keeps a perps-only daily series per venue on closed UTC
-  // days. When the venue is in that cohort it replaces the external
-  // volume chart: the external fetchers fall back to DeFiLlama's dexs
-  // summary for GMX and Hyperliquid, which is spot swap volume, not
-  // perps. Cohort key for GMX is gmx-v2, history slug is gmx.
+  // days. When the venue is in that cohort it becomes the volume chart,
+  // which also brings the chart back for GMX, Hyperliquid and Orderly
+  // (#2355 dropped their DeFiLlama dexs series, which was spot swap
+  // volume). Cohort key for GMX is gmx-v2, history slug is gmx.
   const historyVenue = volumeHistory
     ? findVenue(volumeHistory, cohortSlug === "gmx-v2" ? "gmx" : cohortSlug)
     : null;
