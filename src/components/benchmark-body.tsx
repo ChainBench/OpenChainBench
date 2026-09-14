@@ -523,7 +523,11 @@ export function BenchmarkBody({
   // short ranges keep the existing visual exactly. When the bench has
   // long-window archive history, this state is also passed to the
   // leaderboard below so chart pills + ledger source stay in sync.
-  const [chartRange, setChartRange] = useState<ChartRange>("24h");
+  // A daily-cadence bench (spec `chart.default_range`) opens on its own
+  // window instead; the chart hides the sub-day pills in that case.
+  const [chartRange, setChartRange] = useState<ChartRange>(
+    (benchmark.chart?.defaultRange as ChartRange | undefined) ?? "24h",
+  );
 
   // Per-window cache of the long-window archive payload. Populated lazily
   // when the user clicks a 90d/180d/1y/all pill, and used both to feed
