@@ -30,7 +30,7 @@ abstract: |
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   GMX V2 stats API (hourly buckets summed across Arbitrum and Avalanche),
-  Gains backend API (Arbitrum and Polygon), Aster fapi 24h ticker
+  Gains backend volume-mix API (auto + direct notional, DefiLlama perimeter), Aster fapi 24h ticker
   per instrument, Lighter public stats endpoint, GRVT public markets,
   Extended API, Pacifica onchain reads, Vertex indexer, dYdX v4 indexer
   perpetualMarkets, Aevo public markets, Paradex markets summary. Each
@@ -41,7 +41,7 @@ methodology:
   - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
   - "Hyperliquid: info dayNtlVlm summed across all assets, published as the trailing 24 hour taker notional in USD."
   - "GMX V2: stats.gmx.io hourly-volume API (groupPeriod=3600) for Arbitrum and Avalanche; last 24 hourly buckets summed for the rolling 24h notional in USD."
-  - "Gains: backend-arbitrum and backend-polygon REST APIs, lastDayVolume summed across both chains in USD."
+  - "Gains: Gains backend volume-mix API (backend-global.gains.trade), auto + direct notional per UTC day (opens and closes at full notional, resizes at traded delta, the same perimeter as DefiLlama and bench 266) over Arbitrum, Base, Polygon and MegaETH; rolling 24h = today so far plus the remaining share of yesterday."
   - "Aster: fapi 24h ticker per instrument, quoteVolume summed across all USDT perps."
   - "Lighter: public stats endpoint, 24h volume per market summed across markets in USD."
   - "GRVT: public markets endpoint, 24h volume per instrument summed in USD."
@@ -60,7 +60,7 @@ findings:
   - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 15 measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM AMM perp DEX on Arbitrum and Avalanche."
-  - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum and Polygon."
+  - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum, Base, Polygon and MegaETH."
   - "{{name:aster}} sits at {{p50:aster}} of 24h notional. BNB Chain perps DEX with a Binance-compatible API."
   - "{{name:lighter}} clocks {{p50:lighter}} of 24h notional. Zero taker fee plus a fully onchain orderbook on zkSync."
   - "{{name:grvt}} sits at {{p50:grvt}} of 24h notional. Hybrid CEX/DEX perps on ZK Stack."
@@ -250,7 +250,7 @@ providers:
   - slug: gains
     name: Gains
     tag: Synthetic leveraged trading on Arbitrum and Polygon
-    formula: "lastDayVolume summed across Arbitrum and Polygon from the Gains backend REST API, in USD; headline is the 24h time average."
+    formula: "auto + direct notional from the Gains backend volume-mix API (DefiLlama perimeter), today plus the remaining share of yesterday as rolling 24h USD, Arbitrum, Base, Polygon and MegaETH summed; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gains"}[24h])
