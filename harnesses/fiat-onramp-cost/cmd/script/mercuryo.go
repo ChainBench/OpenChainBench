@@ -12,11 +12,12 @@ import (
 // Mercuryo. GET https://api.mercuryo.io/v1.6/widget/buy/rate
 // Doc: github.com/mercuryoio/api-migration-docs, Widget_API_Mercuryo_v1.6.md
 // (fetched 2026-09-10, no date on page). widget_id identifies the partner.
-// v1.6 "responses now contain information about commission". The exact
-// response field names were not captured from an official page, so the
-// parser accepts the documented shape {data:{amount, rate, fee, fiat_amount}}
-// and is marked UNVERIFIED against live in CHECKLIST.md. No country
-// parameter: country_source="ip".
+// v1.6 "responses now contain information about commission". Shape
+// VERIFIED live 2026-09-14 (testdata/mercuryo_rate.json is a real
+// response): every money field is a {crypto, fiat} pair keyed by
+// currency code, e.g. "fee": {"BTC": "0.00013906", "EUR": "9.59"}, and
+// fee = mercuryo_fee + network_fee. "partner_fee" is null for a widget
+// without a partner markup. No country parameter: country_source="ip".
 
 type mercuryoAdapter struct{ widgetID string }
 
@@ -26,13 +27,25 @@ func (m *mercuryoAdapter) Enabled() bool  { return m.widgetID != "" }
 
 var mercuryoNetwork = map[string]string{"bitcoin": "BITCOIN", "ethereum": "ETHEREUM", "base": "BASE", "arbitrum": "ARBITRUM"}
 
+// mercuryoMoney is a {"BTC": "0.001", "EUR": "9.59"} pair; only the
+// fiat leg is used. Null (partner_fee) decodes to an empty map.
+type mercuryoMoney map[string]json.Number
+
+func (m mercuryoMoney) eur() float64 {
+	v, _ := strconv.ParseFloat(string(m["EUR"]), 64)
+	return v
+}
+
 type mercuryoResp struct {
 	Status int `json:"status"`
 	Data   struct {
-		Amount     json.Number `json:"amount"`      // crypto out
-		Rate       json.Number `json:"rate"`        // fiat per unit
-		Fee        json.Number `json:"fee"`         // provider fee, fiat
-		FiatAmount json.Number `json:"fiat_amount"` // total fiat
+		Amount      json.Number   `json:"amount"`       // crypto out
+		Rate        json.Number   `json:"rate"`         // fiat per unit
+		Fee         mercuryoMoney `json:"fee"`          // total fee = mercuryo_fee + network_fee
+		MercuryoFee mercuryoMoney `json:"mercuryo_fee"` // provider share
+		NetworkFee  mercuryoMoney `json:"network_fee"`  // chain fee
+		PartnerFee  mercuryoMoney `json:"partner_fee"`  // widget owner markup, null here
+		FiatAmount  json.Number   `json:"fiat_amount"`  // total fiat
 	} `json:"data"`
 	Message string `json:"message"`
 }
@@ -71,15 +84,22 @@ func (m *mercuryoAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normal
 		return nil, res.Latency, ErrNoQuote
 	}
 	rate, _ := strconv.ParseFloat(string(r.Data.Rate), 64)
-	fee, _ := strconv.ParseFloat(string(r.Data.Fee), 64)
 	fiatIn, _ := strconv.ParseFloat(string(r.Data.FiatAmount), 64)
 	if fiatIn <= 0 {
 		fiatIn = req.Notional
 	}
+	// Split the fee the way the other adapters do. When the breakdown is
+	// absent, the total goes to the provider column.
+	feeProvider := r.Data.MercuryoFee.eur()
+	feeNetwork := r.Data.NetworkFee.eur()
+	if feeProvider == 0 && feeNetwork == 0 {
+		feeProvider = r.Data.Fee.eur()
+	}
 	return []NormalizedQuote{{
 		Provider: "mercuryo", Cohort: "onramp", Via: "direct", Asset: req.Asset.Asset, Network: req.Network,
 		PaymentMethod: req.PaymentMethod, Notional: req.Notional, CountrySource: "ip",
-		FiatIn: fiatIn, CryptoOut: out, FeeProvider: fee, ProviderMarketRate: rate,
+		FiatIn: fiatIn, CryptoOut: out, FeeProvider: feeProvider, FeeNetwork: feeNetwork,
+		FeePartner: r.Data.PartnerFee.eur(), ProviderMarketRate: rate,
 		RawJSONHash: hashBody(res.Body),
 	}}, res.Latency, nil
 }
