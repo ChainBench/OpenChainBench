@@ -20,6 +20,12 @@ type Store struct {
 	path   string
 	dirty  bool
 	Venues map[string]map[string]Point `json:"venues"`
+	// BackfilledFrom is the oldest day each venue's backfill has already
+	// walked to. A source whose history stops short of the horizon
+	// (Hyperliquid candles reach back about 340 days) would otherwise be
+	// re-walked in full on every sweep because its oldest stored day
+	// stays younger than the horizon.
+	BackfilledFrom map[string]string `json:"backfilled_from,omitempty"`
 }
 
 // Point is one UTC day of one venue. Source names which upstream wrote
@@ -31,7 +37,7 @@ type Point struct {
 }
 
 func openStore(path string) (*Store, error) {
-	s := &Store{path: path, Venues: map[string]map[string]Point{}}
+	s := &Store{path: path, Venues: map[string]map[string]Point{}, BackfilledFrom: map[string]string{}}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -48,7 +54,30 @@ func openStore(path string) (*Store, error) {
 	if s.Venues == nil {
 		s.Venues = map[string]map[string]Point{}
 	}
+	if s.BackfilledFrom == nil {
+		s.BackfilledFrom = map[string]string{}
+	}
 	return s, nil
+}
+
+// backfilledTo reports whether venue has already been walked back to
+// horizon (or earlier).
+func (s *Store) backfilledTo(venue string, horizon time.Time) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	k, ok := s.BackfilledFrom[venue]
+	return ok && k <= fmtDay(horizon)
+}
+
+func (s *Store) markBackfilled(venue string, horizon time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := fmtDay(horizon)
+	if cur, ok := s.BackfilledFrom[venue]; ok && cur <= k {
+		return
+	}
+	s.BackfilledFrom[venue] = k
+	s.dirty = true
 }
 
 func (s *Store) set(venue string, day time.Time, usd float64, source string) {
