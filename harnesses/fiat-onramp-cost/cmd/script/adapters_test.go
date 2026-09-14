@@ -115,10 +115,11 @@ func TestTransakAdapter(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := qs[0]
-	if q.CryptoOut != 0.00738 || q.FiatIn != 500 || q.CountrySource != "param" {
+	// Fixture is a real 2026-09-14 production response (card, 500 EUR).
+	if q.CryptoOut != 0.00700952 || q.FiatIn != 500 || q.CountrySource != "param" {
 		t.Errorf("%+v", q)
 	}
-	if q.FeeProvider != 4.9 || q.FeeNetwork != 1 {
+	if q.FeeProvider != 18.5 || q.FeeNetwork != 0.36 {
 		t.Errorf("fee split provider=%v network=%v", q.FeeProvider, q.FeeNetwork)
 	}
 }
