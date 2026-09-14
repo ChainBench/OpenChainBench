@@ -12,7 +12,7 @@ Exposes Prometheus metrics on `:2112/metrics`.
 | dYdX v4 | indexer orderbook + perpetualMarkets funding + Cosmos REST fee tier |
 | GMX v2 (Arbitrum) | Subsquid GraphQL `positionFeeFactorForNegativeImpact` + gmxinfra REST funding |
 | Lighter | `/orderBookDetails` taker fee + `/orderBookOrders` orderbook walk |
-| gains.trade (v8 on Base) | `eth_call` on the on-chain fee oracle |
+| Gains (v8 on Base) | `eth_call` on the on-chain fee oracle |
 
 Cadence: every 5 minutes, in parallel across all venues. Failed scrapes leave the previous gauge in place and increment `perp_fees_fetch_errors_total`.
 

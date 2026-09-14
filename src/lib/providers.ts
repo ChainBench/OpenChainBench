@@ -108,6 +108,10 @@ const CANONICAL_NAMES: Record<string, string> = {
   // brand casing.
   gram: "Gram",
   tonapi: "TonAPI",
+  // Gains (formerly gains.trade / Gains Network, rebranded 2026-09).
+  // Blobs materialized before the rename still carry the old name on
+  // some appearances; the override wins over every one of them.
+  gains: "Gains",
   // Brand casings the title-case fallback butchers ("Drpc", "Usdc",
   // "Meowrpc" — SEO audit 2026-07-08). Profiles built from bench specs
   // now inherit the spec's provider `name` field, but canonicalize() is

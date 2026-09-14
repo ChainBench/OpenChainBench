@@ -50,13 +50,13 @@ func init() {
 
 	epochNumberGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_exit_epoch_number",
-		Help: "Current gToken epoch number from gains.trade gDAI vault (live RPC).",
+		Help: "Current gToken epoch number from the Gains gDAI vault (live RPC).",
 	}, []string{"venue"})
 	prometheus.MustRegister(epochNumberGauge)
 
 	epochAgeHrsGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_exit_epoch_age_hours",
-		Help: "Hours since the current gains.trade epoch started (live RPC).",
+		Help: "Hours since the current Gains epoch started (live RPC).",
 	}, []string{"venue"})
 	prometheus.MustRegister(epochAgeHrsGauge)
 }

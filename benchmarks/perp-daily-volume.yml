@@ -22,7 +22,7 @@ seo_intro: |
   large hour moves it twice. Daily volume on closed UTC days is the convention DeFiLlama, Dune
   dashboards and the venues' own weekly reports use, and it is what "X flipped Y in volume"
   claims are made on. This benchmark rebuilds that series for Hyperliquid, Aster, Lighter,
-  GMX V2, Gains Network, dYdX v4, Paradex, Extended, Orderly and Aevo, from the same sources
+  GMX V2, Gains, dYdX v4, Paradex, Extended, Orderly and Aevo, from the same sources
   DeFiLlama's open-source adapters read (squids, exchange statistics endpoints, per-market
   daily candles), so the numbers line up with defillama.com on closed days while the full
   history stays free to reproduce. Each venue gets its last closed day, its 7 and 30 day totals,
@@ -31,7 +31,7 @@ seo_intro: |
 abstract: |
   The perp-volume-history harness keeps one number per venue per UTC day. For each venue it
   reads the upstream DeFiLlama's dimension-adapters read for that venue: the GMX V2 synthetics
-  squids (marginVolumeUsd, perps only), the Gains Network backend volume-mix endpoint (trade
+  squids (marginVolumeUsd, perps only), the Gains backend volume-mix endpoint (trade
   notional, resizes at their traded delta; the Dune view DeFiLlama reads when a Dune key is
   configured), Hyperliquid info 1h candles per perp market (base volume times hourly mean price;
   the main dex and the HIP-3 dexs are published as two rows), Aster fapi 1d klines quote volume,
@@ -49,7 +49,7 @@ methodology:
   - "Day bucket: UTC midnight to midnight, the DeFiLlama convention. The headline is the last fully closed UTC day (D-1); the current day is never shown."
   - "One side per trade: every source counts taker notional once. Extended reports both sides per market, halved here as in the DeFiLlama adapter."
   - "GMX V2: gmx.squids.live volumeInfos period 1d, marginVolumeUsd scaled by 1e-30, summed over Arbitrum, Avalanche, Botanix and MegaETH. Swap volume is excluded, so this is the GMX V2 Perps line, not the GMX parent."
-  - "Gains Network: backend-global.gains.trade /api/volume-mix per day, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, position resizes at the traded delta, governance-only rows excluded), Arbitrum, Polygon, Base and MegaETH. ApeChain is not reported by that endpoint. With DUNE_API_KEY set the harness reads the Dune view dune.gains.result_g_trade_stats_defi_llama instead (the DeFiLlama adapter's source) and publishes the gap between the two as a divergence gauge."
+  - "Gains: backend-global.gains.trade /api/volume-mix per day, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, position resizes at the traded delta, governance-only rows excluded), Arbitrum, Polygon, Base and MegaETH. ApeChain is not reported by that endpoint. With DUNE_API_KEY set the harness reads the Dune view dune.gains.result_g_trade_stats_defi_llama instead (the DeFiLlama adapter's source) and publishes the gap between the two as a divergence gauge."
   - "Hyperliquid: info candleSnapshot 1h per market; hourly notional = base volume x (open + high + low + close) / 4, summed per day. Checked against the exchange's own dayNtlVlm at UTC midnight on 2026-09-13: 3.361B from candles vs 3.359B native."
   - "Hyperliquid rows: the main dex is the Hyperliquid row; the HIP-3 dexs listed by perpDexs (xyz, io, mkts, para, km, flx...) are builder-deployed markets and get their own row, Hyperliquid HIP-3. DeFiLlama's single hyperliquid-perps figure sits between the two because its private indexer covers HIP-3 only partially."
   - "Aster: fapi.asterdex.com 1d klines quoteVolume summed over TRADING perpetual symbols. Lighter: 1d candles quote volume summed over perp markets (market_id below 2048) on zkLighter mainnet and on the Robinhood chain deployment (api.rh.lighter.xyz), the two DeFiLlama's Lighter parent adds. dYdX v4: indexer 1DAY candles usdVolume summed over all perpetual markets."
@@ -139,7 +139,7 @@ faq:
   - q: "How is this different from bench 041, perp DEX volume share?"
     a: "Bench 041 polls each venue's live rolling 24 hour figure every five minutes and ranks the time average. This bench counts closed UTC days, which is what DeFiLlama, weekly reports and flip claims use, and keeps a year of daily history per venue. The two agree on quiet days and disagree whenever a big hour sits on one side of a midnight boundary."
   - q: "Are these the DeFiLlama numbers?"
-    a: "Same day buckets, same upstream sources. Checked on 2026-09-13: GMX V2, Extended, Orderly, Aevo and Paradex match DeFiLlama's page to the last digit, Aster and dYdX within one percent, Lighter once both deployments are summed. Gains Network is read from the same Dune view DeFiLlama reads, but re-read hourly: DeFiLlama freezes what it read at day close and Gains' view keeps restating for a day or two, so DeFiLlama's page runs 8 to 20 percent under the view on recent days. Hyperliquid is the one deliberate split: the main dex row matches the exchange's own figure and HIP-3 dexs are a separate row, while DeFiLlama's single line covers HIP-3 only partially and lands between the two. With a DeFiLlama Pro key every venue switches to DeFiLlama's own series."
+    a: "Same day buckets, same upstream sources. Checked on 2026-09-13: GMX V2, Extended, Orderly, Aevo and Paradex match DeFiLlama's page to the last digit, Aster and dYdX within one percent, Lighter once both deployments are summed. Gains is read from the same Dune view DeFiLlama reads, but re-read hourly: DeFiLlama freezes what it read at day close and Gains' view keeps restating for a day or two, so DeFiLlama's page runs 8 to 20 percent under the view on recent days. Hyperliquid is the one deliberate split: the main dex row matches the exchange's own figure and HIP-3 dexs are a separate row, while DeFiLlama's single line covers HIP-3 only partially and lands between the two. With a DeFiLlama Pro key every venue switches to DeFiLlama's own series."
   - q: "Why is the headline yesterday and not today?"
     a: "Today's figure is a partial day and would rank a venue by the hour of reading. The last closed UTC day is the first number every source agrees on. The 7d and 30d columns end on the same day."
   - q: "Why can a 7d or 30d cell be empty?"
@@ -218,7 +218,7 @@ providers:
       series: perp_daily_volume_usd{venue="gmx",window="1d"}
 
   - slug: gains
-    name: Gains Network
+    name: Gains
     tag: gTrade synthetic perps on Arbitrum, Polygon, Base, MegaETH
     formula: "Backend volume-mix auto + direct notional per UTC day (Dune view dune.gains.result_g_trade_stats_defi_llama when keyed)."
     queries:

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// GainsNativeSource derives Gains Network's trailing 24h trading volume
+// GainsNativeSource derives Gains' trailing 24h trading volume
 // from the stats backend's per-day volume mix, all chains summed.
 //
 // Endpoint (one call per UTC day):

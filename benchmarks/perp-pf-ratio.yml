@@ -229,7 +229,7 @@ providers:
 
   - slug: gains
     name: GNS
-    tag: "Gains Network, gTrade, multi-chain"
+    tag: "Gains, gTrade, multi-chain"
     formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
     queries:
       p50: perp_protocol_pf_ratio{protocol="gains"}
