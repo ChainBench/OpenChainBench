@@ -63,5 +63,5 @@ async function fetchSitemapBlob(): Promise<SitemapBlob | null> {
 export const loadSitemapBlob = unstable_cache(
   fetchSitemapBlob,
   ["sitemap-blob-v1"],
-  { revalidate: 60, tags: ["bench-aggregate", "benchmarks"] },
+  { revalidate: 300, tags: ["bench-aggregate", "benchmarks"] },
 );

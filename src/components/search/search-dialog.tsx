@@ -114,7 +114,7 @@ function fmtUnit(value: number | null | undefined, unit: string): string {
 }
 
 export default function SearchDialog() {
-  const { items, close: onClose, featured: featuredBlob } = useSearch();
+  const { items, indexStatus, close: onClose, featured: featuredBlob } = useSearch();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isClosing, setIsClosing] = useState(false);
@@ -498,7 +498,20 @@ export default function SearchDialog() {
             {/* SEARCH RESULTS STATE */}
             {isSearching && (
               <>
-                {showEmpty && (
+                {/* The corpus is fetched on first intent, not shipped with
+                    the page; a fast typist can outrun it. Show that, not
+                    a false "no results". */}
+                {showEmpty && indexStatus !== "ready" && (
+                  <Command.Empty className="px-4 py-12 text-center">
+                    <Search size={28} className="mx-auto text-ink-faint mb-3" />
+                    <p className="text-sm text-ink-muted">
+                      {indexStatus === "error"
+                        ? "Search index could not be loaded. Try again."
+                        : "Loading the search index\u2026"}
+                    </p>
+                  </Command.Empty>
+                )}
+                {showEmpty && indexStatus === "ready" && (
                   <Command.Empty className="px-4 py-12 text-center">
                     <Search size={28} className="mx-auto text-ink-faint mb-3" />
                     <p className="text-sm text-ink-muted">

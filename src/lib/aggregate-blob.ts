@@ -162,5 +162,5 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
 export const loadAggregateFromBlob = unstable_cache(
   fetchAndProject,
   ["aggregate-blob-v3"],
-  { revalidate: 60, tags: ["bench-aggregate", "benchmarks"] },
+  { revalidate: 300, tags: ["bench-aggregate", "benchmarks"] },
 );

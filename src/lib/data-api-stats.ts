@@ -558,5 +558,5 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
 export const fetchDataApiSnapshot = unstable_cache(
   buildSnapshot,
   ["data-api-cohort"],
-  { revalidate: 60, tags: ["data-api-cohort"] },
+  { revalidate: 300, tags: ["data-api-cohort"] },
 );

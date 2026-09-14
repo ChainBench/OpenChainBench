@@ -188,7 +188,7 @@ export class Prometheus {
         // Refuse to follow redirects. blocks 3xx into a private host.
         redirect: "manual",
         // Cache at the platform level. pages call us through ISR.
-        next: { revalidate: 60 },
+        next: { revalidate: 300 },
       });
       if (res.status >= 300 && res.status < 400) {
         throw new Error(`prometheus: refused redirect (${res.status})`);
