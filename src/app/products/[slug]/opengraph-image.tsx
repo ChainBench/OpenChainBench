@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getProvider } from "@/lib/providers";
+import { OgHighlight } from "@/lib/og-claim";
 
 export const runtime = "nodejs";
 // Share cards change slowly (title, leader, headline value); crawlers
@@ -90,18 +91,14 @@ export default async function OG({
           >
             {p.name}
           </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 28,
-              fontStyle: "italic",
-              color: "#4a443c",
-              marginTop: 18,
-              maxWidth: 1080,
-            }}
-          >
-            {appearancesLine} on OpenChainBench
-          </div>
+          <OgHighlight
+            lead={
+              p.wins > 0
+                ? `#1 on ${p.wins} of ${p.appearances.length} benchmark${p.appearances.length === 1 ? "" : "s"}`
+                : appearancesLine
+            }
+            rest={p.wins > 0 ? "measured live on OpenChainBench" : "on OpenChainBench"}
+          />
         </div>
 
         <div
