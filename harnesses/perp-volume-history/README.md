@@ -19,11 +19,12 @@ restatement window, and the whole history stays free to reproduce.
 
 | Venue | Upstream (what the DeFiLlama adapter reads) | Backfill |
 |---|---|---|
-| hyperliquid | `api.hyperliquid.xyz/info` candleSnapshot 1h for every market of every perp dex (perpDexs, HIP-3 included), base volume x hourly mean price. DeFiLlama's own fill indexer is private and the public `daily_usd_volume` feed stopped on 2026-04-03. | 400 d, paged 200 d |
+| hyperliquid | `api.hyperliquid.xyz/info` candleSnapshot 1h for every market of the main dex, base volume x hourly mean price (3.361B vs the exchange's own 3.359B dayNtlVlm on 2026-09-13). DeFiLlama's fill indexer is private and the public `daily_usd_volume` feed stopped on 2026-04-03. | 400 d, paged 200 d |
+| hyperliquid-hip3 | same, over every HIP-3 dex from `perpDexs` (xyz, io, mkts, para...). Builder-deployed markets, kept apart from the exchange's own row; DeFiLlama's single line covers them only partially. | 400 d |
 | gmx | `gmx.squids.live/gmx-synthetics-{arbitrum,avalanche,botanix,megaeth}` volumeInfos 1d marginVolumeUsd x 1e-30 (perps only). Arbitrum required, others additive. | full |
 | gains | `backend-global.gains.trade/api/volume-mix?from=D&to=D`, autoVolumeUsd + directVolumeUsd (opens/closes at notional, resizes at traded delta). With `DUNE_API_KEY`: the Dune view `dune.gains.result_g_trade_stats_defi_llama` (the adapter's source) is published and the backend figure feeds `perp_daily_volume_divergence_pct`. ApeChain is in neither. | 400 d at 24 req/min |
 | aster | `fapi.asterdex.com/fapi/v1/klines` 1d quoteVolume per TRADING PERPETUAL symbol | 400 d |
-| lighter | `mainnet.zklighter.elliot.ai/api/v1/candles` 1d `V` per perp market (market_id < 2048) | 400 d |
+| lighter | `/api/v1/candles` 1d `V` per perp market (market_id < 2048) on `mainnet.zklighter.elliot.ai` and `api.rh.lighter.xyz` (Robinhood chain, DeFiLlama's Lighter RH child) | 400 d |
 | dydx | `indexer.dydx.trade/v4/candles/perpetualMarkets/<t>` 1DAY usdVolume per market | 400 d, 100 candles per page |
 | paradex | public Metabase card 21187, `PERP_VOLUME` per `TRADE_DATE` | full |
 | extended | `api.starknet.extended.exchange/api/v1/exchange/stats/trading?fromDate=D&toDate=D` (+ `api.extended.exchange` before 2025-12-29), both sides halved | 400 d |

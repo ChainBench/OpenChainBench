@@ -301,64 +301,93 @@ func (s *dydxSource) Daily(ctx context.Context, from, to time.Time) (map[time.Ti
 }
 
 // ---------------------------------------------------------------------
-// Lighter (dimension-adapters/dexs/lighterv2)
+// Lighter (dimension-adapters/dexs/lighterv2 + dexs/lighter-rh)
 // ---------------------------------------------------------------------
 
 // lighterSource sums 1d candles (V, quote volume in USD) across every
-// perp market (market_id < 2048, the adapter's filter that drops spot).
+// perp market (market_id < 2048, the adapters' filter that drops spot)
+// on both deployments: zkLighter mainnet and the Robinhood chain one
+// (api.rh.lighter.xyz, live since 2026-06-26). DeFiLlama's Lighter
+// parent adds the two the same way (Lighter Perps + Lighter RH);
+// mainnet alone read 23% under its page on 2026-09-13.
+//
+// count_back returns the latest N candles regardless of end_timestamp
+// on mainnet, so N covers the window plus the running day and the
+// range filter drops the rest. The RH API rejects end == start.
 type lighterSource struct{ meta venueMeta }
+
+var lighterAPIs = []struct{ name, api string }{
+	{"mainnet", "https://mainnet.zklighter.elliot.ai/api/v1"},
+	{"robinhood", "https://api.rh.lighter.xyz/api/v1"},
+}
 
 func (s *lighterSource) Slug() string        { return s.meta.slug }
 func (s *lighterSource) DisplayName() string { return s.meta.name }
 func (s *lighterSource) Name() string        { return "lighter-candles" }
 func (s *lighterSource) Note() string {
-	return "Lighter mainnet 1d candles quote volume summed over perp markets (market_id < 2048)"
+	return "Lighter 1d candles quote volume summed over perp markets (market_id < 2048), zkLighter mainnet + Robinhood chain deployment"
 }
 func (s *lighterSource) Start() time.Time { return s.meta.start }
 
 func (s *lighterSource) Daily(ctx context.Context, from, to time.Time) (map[time.Time]float64, error) {
-	const api = "https://mainnet.zklighter.elliot.ai/api/v1"
-	var books struct {
-		OrderBooks []struct {
-			MarketID int `json:"market_id"`
-		} `json:"order_books"`
-	}
-	if err := getJSON(ctx, api+"/orderBooks?market_id=255", &books); err != nil {
-		return nil, err
-	}
 	out := map[time.Time]float64{}
 	th := newThrottle(240)
-	failed, total := 0, 0
-	days := int(to.Sub(from).Hours()/24) + 1
-	for _, b := range books.OrderBooks {
-		if b.MarketID >= 2048 {
+	days := int(to.Sub(from).Hours()/24) + 2
+	gotMainnet := false
+	for _, dep := range lighterAPIs {
+		var books struct {
+			OrderBooks []struct {
+				MarketID int `json:"market_id"`
+			} `json:"order_books"`
+		}
+		if err := getJSON(ctx, dep.api+"/orderBooks?market_id=255", &books); err != nil {
+			if dep.name == "mainnet" {
+				return nil, fmt.Errorf("mainnet orderBooks: %w", err)
+			}
+			fmt.Printf("[lighter][%s] skipped: %v\n", dep.name, err)
 			continue
 		}
-		total++
-		if err := th.wait(ctx); err != nil {
-			return out, err
-		}
-		var resp struct {
-			Candles []struct {
-				T int64   `json:"t"`
-				V float64 `json:"V"`
-			} `json:"c"`
-		}
-		u := fmt.Sprintf("%s/candles?market_id=%d&resolution=1d&start_timestamp=%d&end_timestamp=%d&count_back=%d",
-			api, b.MarketID, from.Unix(), to.AddDate(0, 0, 1).Unix(), days)
-		if err := getJSON(ctx, u, &resp); err != nil {
-			failed++
-			continue
-		}
-		for _, c := range resp.Candles {
-			d := utcDay(time.UnixMilli(c.T))
-			if inRange(d, from, to) {
-				out[d] += c.V
+		failed, total := 0, 0
+		for _, b := range books.OrderBooks {
+			if b.MarketID >= 2048 {
+				continue
+			}
+			total++
+			if err := th.wait(ctx); err != nil {
+				return out, err
+			}
+			var resp struct {
+				Candles []struct {
+					T int64   `json:"t"`
+					V float64 `json:"V"`
+				} `json:"c"`
+			}
+			u := fmt.Sprintf("%s/candles?market_id=%d&resolution=1d&start_timestamp=%d&end_timestamp=%d&count_back=%d",
+				dep.api, b.MarketID, from.Unix(), to.AddDate(0, 0, 1).Unix(), days)
+			if err := getJSON(ctx, u, &resp); err != nil {
+				failed++
+				continue
+			}
+			for _, c := range resp.Candles {
+				d := utcDay(time.UnixMilli(c.T))
+				if inRange(d, from, to) {
+					out[d] += c.V
+				}
 			}
 		}
+		if total > 0 && failed > total/2 {
+			if dep.name == "mainnet" {
+				return nil, fmt.Errorf("%d of %d mainnet markets failed", failed, total)
+			}
+			fmt.Printf("[lighter][%s] %d of %d markets failed\n", dep.name, failed, total)
+			continue
+		}
+		if dep.name == "mainnet" {
+			gotMainnet = true
+		}
 	}
-	if total > 0 && failed > total/2 {
-		return nil, fmt.Errorf("%d of %d markets failed", failed, total)
+	if !gotMainnet {
+		return nil, fmt.Errorf("mainnet returned nothing")
 	}
 	return out, nil
 }

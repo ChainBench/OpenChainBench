@@ -18,6 +18,7 @@ const DEFAULT_URL = "https://kv.openchainbench.com/aggregate/perp-volume/history
  *  network read at metadata time. */
 export const PERP_VOLUME_COHORT: ReadonlySet<string> = new Set([
   "hyperliquid",
+  "hyperliquid-hip3",
   "gmx",
   "gains",
   "aster",

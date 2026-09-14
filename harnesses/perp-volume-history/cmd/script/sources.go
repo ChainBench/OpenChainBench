@@ -49,6 +49,7 @@ func day(s string) time.Time {
 // the adapters' own start fields.
 var cohort = []venueMeta{
 	{"hyperliquid", "Hyperliquid", "hyperliquid-perps", day("2023-06-13")},
+	{"hyperliquid-hip3", "Hyperliquid HIP-3", "hyperliquid-perps", day("2025-10-01")},
 	{"gmx", "GMX V2", "gmx-v2-perps", day("2023-08-01")},
 	{"gains", "Gains Network", "gains-network", day("2023-05-25")},
 	{"aster", "Aster", "aster-perps", day("2024-10-01")},
@@ -75,6 +76,8 @@ func buildSources(llamaKey string) []Source {
 		switch v.slug {
 		case "hyperliquid":
 			out = append(out, &hyperliquidSource{meta: v})
+		case "hyperliquid-hip3":
+			out = append(out, &hyperliquidSource{meta: v, hip3: true})
 		case "gmx":
 			out = append(out, &gmxSource{meta: v})
 		case "gains":

@@ -343,55 +343,90 @@ func toFloat(v any) (float64, bool) {
 // ---------------------------------------------------------------------
 
 // hyperliquidSource rebuilds daily perp notional from the public info
-// API: candleSnapshot 1h for every perp market on every perp dex (the
-// main dex plus HIP-3 dexs from perpDexs), notional per hour = base
-// volume x hourly mean price (o+h+l+c)/4, summed per UTC day. DeFiLlama
-// reads its own fill indexer for this series and its old public stats
-// feed (cloudfront daily_usd_volume) stopped on 2026-04-03; hourly
-// candles keep the price approximation well under one percent on the
-// day. candleSnapshot returns at most 5000 candles, so a long backfill
-// pages by 200 days.
-type hyperliquidSource struct{ meta venueMeta }
+// API: candleSnapshot 1h for every market of one perp dex, notional per
+// hour = base volume x hourly mean price (o+h+l+c)/4, summed per UTC
+// day. Verified against Hyperliquid's own dayNtlVlm at UTC midnight on
+// 2026-09-13: 3.361B from candles vs 3.359B native (0.06%).
+//
+// The venue is split in two rows on purpose:
+//   - hyperliquid: the main dex (dex ""), Hyperliquid's own markets,
+//     the figure the exchange reports as its 24h notional.
+//   - hyperliquid-hip3: every HIP-3 dex from perpDexs (xyz, flx, km,
+//     io...), markets deployed by third parties on the same chain.
+//     xyz alone printed 1.2B on a Sunday in 2026-09.
+//
+// DeFiLlama's hyperliquid-perps line sits between the two (4.245B vs
+// 3.36B main and 4.58B main + HIP-3 on 2026-09-13): its private indexer
+// covers HIP-3 only partially, so neither row will match it exactly;
+// the main row matches Hyperliquid itself.
+//
+// candleSnapshot returns at most 5000 candles, so a long backfill pages
+// by 200 days. DeFiLlama's old public feed (cloudfront daily_usd_volume)
+// stopped on 2026-04-03 and is not used.
+type hyperliquidSource struct {
+	meta venueMeta
+	hip3 bool
+}
 
 func (s *hyperliquidSource) Slug() string        { return s.meta.slug }
 func (s *hyperliquidSource) DisplayName() string { return s.meta.name }
 func (s *hyperliquidSource) Name() string        { return "hl-info-candles" }
 func (s *hyperliquidSource) Note() string {
-	return "Hyperliquid info candleSnapshot 1h, base volume x hourly mean price, all perp markets including HIP-3 dexs"
+	if s.hip3 {
+		return "Hyperliquid info candleSnapshot 1h over every HIP-3 dex (perpDexs), base volume x hourly mean price; builder-deployed markets, not Hyperliquid's own"
+	}
+	return "Hyperliquid info candleSnapshot 1h over the main dex, base volume x hourly mean price; matches the exchange's own dayNtlVlm, HIP-3 dexs published as a separate row"
 }
 func (s *hyperliquidSource) Start() time.Time { return s.meta.start }
 
 const hlInfo = "https://api.hyperliquid.xyz/info"
 
-func (s *hyperliquidSource) Daily(ctx context.Context, from, to time.Time) (map[time.Time]float64, error) {
+func (s *hyperliquidSource) coins(ctx context.Context) ([]string, error) {
+	var out []string
+	if !s.hip3 {
+		var meta struct {
+			Universe []struct {
+				Name string `json:"name"`
+			} `json:"universe"`
+		}
+		if err := postJSON(ctx, hlInfo, map[string]string{"type": "meta"}, &meta); err != nil {
+			return nil, fmt.Errorf("meta: %w", err)
+		}
+		for _, u := range meta.Universe {
+			out = append(out, u.Name)
+		}
+		return out, nil
+	}
 	var dexs []*struct {
 		Name string `json:"name"`
 	}
 	if err := postJSON(ctx, hlInfo, map[string]string{"type": "perpDexs"}, &dexs); err != nil {
 		return nil, fmt.Errorf("perpDexs: %w", err)
 	}
-	type coin struct{ name string }
-	var coins []coin
 	for _, dx := range dexs {
-		req := map[string]string{"type": "meta"}
-		if dx != nil && dx.Name != "" {
-			req["dex"] = dx.Name
+		if dx == nil || dx.Name == "" {
+			continue
 		}
 		var meta struct {
 			Universe []struct {
 				Name string `json:"name"`
 			} `json:"universe"`
 		}
-		if err := postJSON(ctx, hlInfo, req, &meta); err != nil {
-			if dx == nil {
-				return nil, fmt.Errorf("meta: %w", err)
-			}
-			fmt.Printf("[hyperliquid] dex %s meta skipped: %v\n", dx.Name, err)
+		if err := postJSON(ctx, hlInfo, map[string]string{"type": "meta", "dex": dx.Name}, &meta); err != nil {
+			fmt.Printf("[hyperliquid-hip3] dex %s meta skipped: %v\n", dx.Name, err)
 			continue
 		}
 		for _, u := range meta.Universe {
-			coins = append(coins, coin{u.Name})
+			out = append(out, u.Name)
 		}
+	}
+	return out, nil
+}
+
+func (s *hyperliquidSource) Daily(ctx context.Context, from, to time.Time) (map[time.Time]float64, error) {
+	coins, err := s.coins(ctx)
+	if err != nil {
+		return nil, err
 	}
 	out := map[time.Time]float64{}
 	th := newThrottle(90)
@@ -415,7 +450,7 @@ func (s *hyperliquidSource) Daily(ctx context.Context, from, to time.Time) (map[
 				V string `json:"v"`
 			}
 			req := map[string]any{"type": "candleSnapshot", "req": map[string]any{
-				"coin": c.name, "interval": "1h",
+				"coin": c, "interval": "1h",
 				"startTime": pageStart.UnixMilli(), "endTime": pageEnd.UnixMilli() - 1,
 			}}
 			if err := postJSON(ctx, hlInfo, req, &candles); err != nil {

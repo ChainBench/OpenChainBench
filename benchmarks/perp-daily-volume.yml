@@ -5,7 +5,7 @@ number: "266"
 title: "Perp DEX daily volume 2026: Hyperliquid, Aster, Lighter, GMX, Gains, dYdX by UTC day, backfilled"
 seo_title: "Perp DEX daily volume 2026: Hyperliquid vs Aster vs Lighter vs GMX vs Gains vs dYdX"
 seo_description: "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional. Daily perpetual DEX volume for {{count}} venues, DeFiLlama day buckets rebuilt from each venue's own data, with 7 and 30 day totals and a year of history."
-subtitle: Perpetual futures notional per closed UTC day for 10 decentralized venues, the same day buckets DeFiLlama's derivatives page uses, read from the sources its adapters read. Headline is the last closed day; 7 day and 30 day totals and cohort share sit next to it. History backfilled over a year and refreshed hourly.
+subtitle: Perpetual futures notional per closed UTC day for 11 rows across 10 decentralized venues (Hyperliquid's HIP-3 dexs are their own row), the same day buckets DeFiLlama's derivatives page uses, read from the sources its adapters read. Headline is the last closed day; 7 day and 30 day totals and cohort share sit next to it. History backfilled over a year and refreshed hourly.
 
 category: Trading
 status: live
@@ -33,9 +33,10 @@ abstract: |
   reads the upstream DeFiLlama's dimension-adapters read for that venue: the GMX V2 synthetics
   squids (marginVolumeUsd, perps only), the Gains Network backend volume-mix endpoint (trade
   notional, resizes at their traded delta; the Dune view DeFiLlama reads when a Dune key is
-  configured), Hyperliquid info 1h candles across every perp market including HIP-3 dexs
-  (base volume times hourly mean price), Aster fapi 1d klines quote volume, Lighter 1d candles
-  per perp market, dYdX v4 indexer 1DAY candles per market, Paradex's public daily volume card,
+  configured), Hyperliquid info 1h candles per perp market (base volume times hourly mean price;
+  the main dex and the HIP-3 dexs are published as two rows), Aster fapi 1d klines quote volume,
+  Lighter 1d candles per perp market on both its deployments (zkLighter and Robinhood chain),
+  dYdX v4 indexer 1DAY candles per market, Paradex's public daily volume card,
   Extended's per-day exchange statistics, Orderly's daily_stats and Aevo's statistics endpoint.
   With a DeFiLlama Pro key configured, every venue switches to DeFiLlama's own dailyVolume
   series. On boot the harness backfills 400 days where the source allows it, then every hour it
@@ -49,8 +50,9 @@ methodology:
   - "One side per trade: every source counts taker notional once. Extended reports both sides per market, halved here as in the DeFiLlama adapter."
   - "GMX V2: gmx.squids.live volumeInfos period 1d, marginVolumeUsd scaled by 1e-30, summed over Arbitrum, Avalanche, Botanix and MegaETH. Swap volume is excluded, so this is the GMX V2 Perps line, not the GMX parent."
   - "Gains Network: backend-global.gains.trade /api/volume-mix per day, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, position resizes at the traded delta, governance-only rows excluded), Arbitrum, Polygon, Base and MegaETH. ApeChain is not reported by that endpoint. With DUNE_API_KEY set the harness reads the Dune view dune.gains.result_g_trade_stats_defi_llama instead (the DeFiLlama adapter's source) and publishes the gap between the two as a divergence gauge."
-  - "Hyperliquid: info candleSnapshot 1h for every market of every perp dex (perpDexs, HIP-3 included); hourly notional = base volume x (open + high + low + close) / 4, summed per day. Hyperliquid's public daily_usd_volume feed stopped updating on 2026-04-03 and DeFiLlama's own indexer is private, so hourly candles are the closest public reconstruction."
-  - "Aster: fapi.asterdex.com 1d klines quoteVolume summed over TRADING perpetual symbols. Lighter: mainnet 1d candles quote volume summed over perp markets (market_id below 2048). dYdX v4: indexer 1DAY candles usdVolume summed over all perpetual markets."
+  - "Hyperliquid: info candleSnapshot 1h per market; hourly notional = base volume x (open + high + low + close) / 4, summed per day. Checked against the exchange's own dayNtlVlm at UTC midnight on 2026-09-13: 3.361B from candles vs 3.359B native."
+  - "Hyperliquid rows: the main dex is the Hyperliquid row; the HIP-3 dexs listed by perpDexs (xyz, io, mkts, para, km, flx...) are builder-deployed markets and get their own row, Hyperliquid HIP-3. DeFiLlama's single hyperliquid-perps figure sits between the two because its private indexer covers HIP-3 only partially."
+  - "Aster: fapi.asterdex.com 1d klines quoteVolume summed over TRADING perpetual symbols. Lighter: 1d candles quote volume summed over perp markets (market_id below 2048) on zkLighter mainnet and on the Robinhood chain deployment (api.rh.lighter.xyz), the two DeFiLlama's Lighter parent adds. dYdX v4: indexer 1DAY candles usdVolume summed over all perpetual markets."
   - "Paradex: the public Metabase daily card, PERP_VOLUME column (options and spot excluded). Extended: exchange/stats/trading per day on Starknet, plus the Ethereum deployment until 2025-12-29. Orderly: md/volume/daily_stats. Aevo: statistics with instrument_type PERPETUAL per day."
   - "Windows: 7d and 30d are sums of closed days ending on D-1 and are published only when every day in the window is present, so a partial backfill never reads as a low week. Share is the venue's window total over the sum of the cohort on the same window."
   - "Refresh: full backfill on first boot (400 days, bounded by each source's start date), then every hour the last three closed days are re-read so restated days converge. Prometheus scrapes :2112/metrics every 60s."
@@ -60,6 +62,7 @@ findings:
   - "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional across {{count}} measured venues."
   - "{{name:gains}} printed {{p50:gains}} and {{name:gmx}} {{p50:gmx}} on the last closed day. The 7d and 30d columns show whether that ordering holds beyond a single day."
   - "{{name:hyperliquid}} at {{p50:hyperliquid}}, {{name:aster}} at {{p50:aster}} and {{name:lighter}} at {{p50:lighter}} carry most of the cohort's notional; their share columns add up to the bulk of the field."
+  - "{{name:hyperliquid-hip3}} printed {{p50:hyperliquid-hip3}} on the last closed day: builder-deployed markets on Hyperliquid, mostly stocks, indices and commodities on the xyz dex, counted apart from the exchange's own book."
   - "{{name:dydx}} sits at {{p50:dydx}}, {{name:paradex}} at {{p50:paradex}}, {{name:extended}} at {{p50:extended}}, {{name:orderly}} at {{p50:orderly}} and {{name:aevo}} at {{p50:aevo}} on the last closed day."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-volume-history
@@ -128,21 +131,23 @@ faq:
   - q: "How is this different from bench 041, perp DEX volume share?"
     a: "Bench 041 polls each venue's live rolling 24 hour figure every five minutes and ranks the time average. This bench counts closed UTC days, which is what DeFiLlama, weekly reports and flip claims use, and keeps a year of daily history per venue. The two agree on quiet days and disagree whenever a big hour sits on one side of a midnight boundary."
   - q: "Are these the DeFiLlama numbers?"
-    a: "Same day buckets, same upstream sources, so on closed days they match DeFiLlama's derivatives page within the restatement window of each venue. DeFiLlama's derivatives API is paid, so the harness reads what its open-source adapters read. Two venues differ by construction: Hyperliquid is reconstructed from hourly candles rather than DeFiLlama's private fill indexer, and Gains Network reads the backend trade endpoint rather than the Dune view unless a Dune key is configured. With a DeFiLlama Pro key every venue switches to DeFiLlama's own series."
+    a: "Same day buckets, same upstream sources. Checked on 2026-09-13: GMX V2, Extended, Orderly, Aevo and Paradex match DeFiLlama's page to the last digit, Aster and dYdX within one percent, Lighter once both deployments are summed. Gains Network is read from the same Dune view DeFiLlama reads, but re-read hourly: DeFiLlama freezes what it read at day close and Gains' view keeps restating for a day or two, so DeFiLlama's page runs 8 to 20 percent under the view on recent days. Hyperliquid is the one deliberate split: the main dex row matches the exchange's own figure and HIP-3 dexs are a separate row, while DeFiLlama's single line covers HIP-3 only partially and lands between the two. With a DeFiLlama Pro key every venue switches to DeFiLlama's own series."
   - q: "Why is the headline yesterday and not today?"
     a: "Today's figure is a partial day and would rank a venue by the hour of reading. The last closed UTC day is the first number every source agrees on. The 7d and 30d columns end on the same day."
   - q: "Why can a 7d or 30d cell be empty?"
     a: "A window is published only when every day in it is present. A venue that just joined the cohort, or whose source missed a day, shows its daily figure and no window total rather than a short sum that reads as a bad week."
   - q: "Does Gains flipping GMX on one day mean anything?"
     a: "One day is noise: weekend volume on GMX regularly drops below half its weekday level. The 7d and 30d columns and the share chart show whether a lead persists. The compare page for the pair puts both series on one chart with the day-by-day lead."
+  - q: "Why is Hyperliquid split in two rows?"
+    a: "HIP-3 lets third parties deploy their own perp markets on Hyperliquid: xyz (stocks, indices, commodities), io, mkts, para and others. They settle on the same chain but are not the exchange's own book, and on a weekday they add a third to Hyperliquid's notional. Publishing them apart keeps the Hyperliquid row equal to what the exchange reports and makes the builder-deployed volume visible on its own."
   - q: "Which venues are missing?"
     a: "edgeX, GRVT and Pacifica expose per-market daily candles and are queued. Vertex, Backpack, Jupiter, Drift and Ostium either have no public daily history endpoint or exist on DeFiLlama only through paid Dune queries."
 
 providers:
   - slug: hyperliquid
     name: Hyperliquid
-    tag: HyperBFT L1 orderbook perps, HIP-3 dexs included
-    formula: "Sum over all perp markets of 1h candle base volume x hourly mean price, per UTC day."
+    tag: HyperBFT L1 orderbook perps, main dex
+    formula: "Sum over the main dex's perp markets of 1h candle base volume x hourly mean price, per UTC day."
     queries:
       p50: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
       p90: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
@@ -151,6 +156,19 @@ providers:
       success: perp_daily_volume_health{venue="hyperliquid"}
       sample_size: perp_daily_volume_history_days{venue="hyperliquid"}
       series: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+
+  - slug: hyperliquid-hip3
+    name: Hyperliquid HIP-3
+    tag: Builder-deployed perp dexs on Hyperliquid (xyz, io, mkts, para...)
+    formula: "Sum over every HIP-3 dex's perp markets of 1h candle base volume x hourly mean price, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="hyperliquid-hip3",window="1d"}
+      p90: perp_daily_volume_usd{venue="hyperliquid-hip3",window="1d"}
+      p99: perp_daily_volume_usd{venue="hyperliquid-hip3",window="1d"}
+      mean: perp_daily_volume_usd{venue="hyperliquid-hip3",window="1d"}
+      success: perp_daily_volume_health{venue="hyperliquid-hip3"}
+      sample_size: perp_daily_volume_history_days{venue="hyperliquid-hip3"}
+      series: perp_daily_volume_usd{venue="hyperliquid-hip3",window="1d"}
 
   - slug: aster
     name: Aster
@@ -167,8 +185,8 @@ providers:
 
   - slug: lighter
     name: Lighter
-    tag: zkSync orderbook perps, zero taker fee
-    formula: "Sum over perp markets of 1d candle quote volume, per UTC day."
+    tag: zkLighter + Robinhood chain orderbook perps
+    formula: "Sum over perp markets of 1d candle quote volume on both deployments, per UTC day."
     queries:
       p50: perp_daily_volume_usd{venue="lighter",window="1d"}
       p90: perp_daily_volume_usd{venue="lighter",window="1d"}
