@@ -19,6 +19,8 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { CompareBenchCard } from "@/components/compare-bench-card";
+import { PerpVolumeHeadToHead } from "@/components/perp-volume-head-to-head-section";
+import { PERP_VOLUME_COHORT } from "@/lib/perp-volume-history";
 import type { CompareBench } from "@/components/compare-bench-card";
 import {
   computeInputsHash,
@@ -978,6 +980,16 @@ export default async function ComparePage({
           description={regB?.description}
         />
       </section>
+
+      {(pair.hero === "perp-volume" ||
+        (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug))) && (
+        <PerpVolumeHeadToHead
+          aSlug={a.slug}
+          bSlug={b.slug}
+          aName={a.name}
+          bName={b.name}
+        />
+      )}
 
       <section className="mt-10">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
