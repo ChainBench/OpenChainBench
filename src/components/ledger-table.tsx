@@ -261,10 +261,29 @@ export function LedgerTable({
     .filter((r) => r.unresponsive)
     .sort((a, b) => b.successRate - a.successRate);
 
+  // Spec-declared unranked members (provider.unranked, e.g. "Pre-TGE" on
+  // a valuation bench): no headline value by design. Listed below the
+  // ranked field with their companion-panel values, ordered by the
+  // first panel-backed column so the block reads like a mini ledger.
+  const unrankedRows = (() => {
+    const rows = results.filter((r) => !!r.unrankedLabel && !r.unresponsive);
+    // Sort key: the first panel-backed column that actually has a value
+    // for these rows (ratio columns are empty for them by definition; the
+    // fees column is the one that carries their story).
+    const col = customCols?.find(
+      (c) => c.panel && rows.some((r) => colValueW(r, c) != null),
+    );
+    return rows.sort((a, b) => {
+      const av = col ? (colValueW(a, col) ?? -Infinity) : 0;
+      const bv = col ? (colValueW(b, col) ?? -Infinity) : 0;
+      return bv - av;
+    });
+  })();
+
   const sortedAll = [...results]
     .filter((r) => {
-      // Unresponsive rows render in their own unranked block below.
-      if (r.unresponsive) return false;
+      // Unresponsive and unranked rows render in their own blocks below.
+      if (r.unresponsive || r.unrankedLabel) return false;
       // Sample-health gate. Rows tagged "insufficient" by the load path
       // (sampleSize < 0.1 × expectedN) drop out of the ranking entirely
       // so the leaderboard cannot assert a position from a wildly
@@ -620,6 +639,35 @@ export function LedgerTable({
               embedKind={embedKind}
             />
           ))}
+          {unrankedRows.map((r) => (
+            <Row
+              key={r.slug}
+              r={r}
+              i={-1}
+              unit={unit}
+              value={0}
+              fieldValue={fieldValue}
+              maxValue={maxValue}
+              panelActive={panelActive}
+              singleValueColumn={singleValueColumn}
+              hasSecondary={!!secondary}
+              hasSlots={hasSlots}
+              // Headline stays empty (that is the point); the panel-backed
+              // columns carry the row's real numbers (fees, OI, ...).
+              customCells={customCols?.map((c, idx) => ({
+                v: idx === 0 ? null : colValueW(r, c),
+                unit: colUnit(c),
+              }))}
+              series={[]}
+              sparkMin={sparkMin}
+              sparkMax={sparkMax}
+              color={colors.get(r.slug) ?? "var(--color-ink-soft)"}
+              benchmark={benchmark}
+              embedChain={embedChain}
+              embedRegion={embedRegion}
+              embedKind={embedKind}
+            />
+          ))}
           {unresponsiveRows.map((r) => (
             <Row
               key={r.slug}
@@ -701,7 +749,11 @@ function Row({
   // Distinct from isOffline ("no data at all this cycle"): the counters
   // still prove the endpoint is being measured, so we show that story.
   const isUnresponsive = !!r.unresponsive;
-  const isOffline = !isUnresponsive && r.availability === "unavailable";
+  // Unranked by design (spec provider.unranked, e.g. "Pre-TGE"): a real
+  // cohort member with real panel numbers, just no headline. Not muted:
+  // muting reads as "broken", and nothing is broken here.
+  const isUnranked = !isUnresponsive && !!r.unrankedLabel;
+  const isOffline = !isUnresponsive && !isUnranked && r.availability === "unavailable";
   const isMuted = isOffline || isUnresponsive;
   const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
@@ -724,7 +776,7 @@ function Row({
         {/* Unresponsive rows never take a rank number: best/worst SEO
             copy and badge claims are computed from healthy rows only,
             and a numbered dead row would contradict them. */}
-        {isUnresponsive ? "—" : String(i + 1).padStart(2, "0")}
+        {isUnresponsive || isUnranked ? "—" : String(i + 1).padStart(2, "0")}
       </td>
       {/* itemScope/itemType marks each row as a named entity so Google's
           knowledge graph can link the leaderboard back to that provider.
@@ -808,6 +860,14 @@ function Row({
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
                   Currently unavailable
+                </span>
+              </Hint>
+            )}
+            {isUnranked && (
+              <Hint label="Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader.">
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink-faint" aria-hidden />
+                  {r.unrankedLabel}
                 </span>
               </Hint>
             )}
@@ -984,13 +1044,13 @@ function Row({
             </>
           )}
           <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
-            {fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
+            {isUnranked ? "—" : fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {r.successRate.toFixed(2)}%
+            {isUnranked ? "—" : `${r.successRate.toFixed(2)}%`}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
-            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
+            {isUnranked ? "—" : (errorCount(r)?.toLocaleString("en-US") ?? "—")}
           </td>
           <td className="py-2.5 pl-3 text-right">
             <span className="inline-flex items-center justify-end">
