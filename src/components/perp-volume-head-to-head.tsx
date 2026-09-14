@@ -82,7 +82,7 @@ export function PerpVolumeHeadToHeadChart({
                 key={s}
                 type="button"
                 onClick={() => setSpan(s)}
-                className={`px-2 py-0.5 ${span === s ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}
+                className={`px-2 py-0.5 ${span === s ? "bg-accent text-white" : "text-ink-soft hover:text-ink"}`}
               >
                 {s}d
               </button>
