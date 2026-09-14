@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment } from "react";
-import { CompareTrendChart } from "@/components/compare-trend-chart";
 import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
@@ -72,16 +71,10 @@ export function CompareBenchCard({
   bench,
   aName,
   bName,
-  aSlug,
-  bSlug,
 }: {
   bench: CompareBench;
   aName: string;
   bName: string;
-  /** Provider slugs, for the trend chart's /api/series filter. Optional
-   *  so older call sites keep working without the chart. */
-  aSlug?: string;
-  bSlug?: string;
 }) {
   const hasScopes = bench.panelScopes.length > 0;
 
@@ -151,17 +144,6 @@ export function CompareBenchCard({
             </>
           )}
         </>
-      )}
-
-      {aSlug && bSlug && (
-        <CompareTrendChart
-          benchSlug={bench.slug}
-          unit={bench.unit}
-          aSlug={aSlug}
-          bSlug={bSlug}
-          aName={aName}
-          bName={bName}
-        />
       )}
 
       {bench.note && (

@@ -1004,11 +1004,6 @@ export default async function ComparePage({
               bench={s}
               aName={a.name}
               bName={b.name}
-              // Per-card trend charts only for perp venue pairs, where the
-              // benches are daily or slow-moving series worth a history.
-              // Latency / fee benches on other pairs read as flat lines.
-              aSlug={perpPair ? a.slug : undefined}
-              bSlug={perpPair ? b.slug : undefined}
             />
           ))}
         </div>
