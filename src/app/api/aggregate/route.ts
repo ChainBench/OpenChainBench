@@ -4,7 +4,7 @@
 // (no CDN). Vercel functions run in IAD1 (US East) and were timing out
 // on the 7.5 MB payload at the old 8 s limit. This route re-exposes the
 // blob through Vercel's own CDN: the first request fetches from VPS
-// (slow), Vercel caches the response at IAD1's edge for 60 s, all
+// (slow), Vercel caches the response at IAD1's edge for 300 s, all
 // subsequent calls within that window cost ~1 ms instead of ~4 s.
 //
 // aggregate-blob.ts can point AGGREGATE_BLOB_URL at this route instead
@@ -13,7 +13,7 @@
 export const runtime = "nodejs";
 // force-dynamic + explicit Cache-Control: CDN caches via s-maxage without
 // generating ISR write entries. revalidateTag("bench-aggregate") from the
-// worker has no effect here (route is not ISR), but the CDN's own 60s TTL
+// worker has no effect here (route is not ISR), but the CDN's own 300 s TTL
 // keeps the blob fresh.
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export async function GET() {
   // Retry once: some Vercel function instances can't reach the Paris VPS
   // (connection refused / reset). A second attempt uses a different
   // outbound connection and typically succeeds. Without retry, a single
-  // bad instance poisons the 60s unstable_cache window for loadAggregateFromBlob,
+  // bad instance poisons the 900 s unstable_cache window for loadAggregateFromBlob,
   // forcing all benchmark loads onto the slow Redis fan-out path.
   let lastErr: string = "unknown";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -60,10 +60,10 @@ export async function GET() {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        // Vercel CDN caches 60 s + 5 min SWR — aligns with the materialize
+        // Vercel CDN caches 300 s + 15 min SWR, aligned with the data caches
         // worker's publish cadence (~60 s). The sitemap and homepage get a
         // warm edge hit after the first request.
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900",
       },
     });
   }

@@ -72,6 +72,13 @@ function compareLabel(b: Benchmark, delta: number): string {
 export const runtime = "nodejs";
 
 const SIZE = { width: 1200, height: 630 };
+// Successful renders are keyed by the full URL (template, dims, theme,
+// providers) and the data behind them refreshes every 5 min, so the CDN
+// can hold each variant for an hour. Without this header every preview
+// in the share modal was a fresh satori render (~66 KB, ~1 s of CPU).
+const CARD_HEADERS = {
+  "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
+};
 
 // Palette is mutable so the GET handler can swap between light and dark
 // per ?theme= query param. Render helpers below reference these by closure
@@ -859,7 +866,7 @@ async function renderRanking(
         </div>
       </CardShell>
     ),
-    { ...SIZE }
+    { ...SIZE, headers: CARD_HEADERS }
   );
 }
 
@@ -1060,7 +1067,7 @@ async function renderLeaderboard(
         </div>
       </CardShell>
     ),
-    { ...SIZE }
+    { ...SIZE, headers: CARD_HEADERS }
   );
 }
 
@@ -1296,7 +1303,7 @@ async function renderSnapshot(
         </div>
       </CardShell>
     ),
-    { ...SIZE }
+    { ...SIZE, headers: CARD_HEADERS }
   );
 }
 
@@ -1413,7 +1420,7 @@ async function renderHeadline(
         </div>
       </CardShell>
     ),
-    { ...SIZE }
+    { ...SIZE, headers: CARD_HEADERS }
   );
 }
 
@@ -1565,7 +1572,7 @@ async function renderCompare(
         </div>
       </CardShell>
     ),
-    { ...SIZE }
+    { ...SIZE, headers: CARD_HEADERS }
   );
 }
 

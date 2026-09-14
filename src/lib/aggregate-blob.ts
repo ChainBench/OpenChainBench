@@ -97,7 +97,7 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
   let raw: unknown;
   // Throw (not return null) on network errors so unstable_cache does not
   // cache the failure for the full revalidate window. A cached null poisons
-  // every loadAllBenchmarksSafe() call for 60 s, forcing them all onto the
+  // every loadAllBenchmarksSafe() call for 900 s, forcing them all onto the
   // slow Redis fan-out path until the window expires. Throwing causes
   // unstable_cache to skip caching and lets the next caller retry, which
   // will typically hit a different Vercel function instance that can reach
@@ -162,5 +162,5 @@ async function fetchAndProject(): Promise<Benchmark[] | null> {
 export const loadAggregateFromBlob = unstable_cache(
   fetchAndProject,
   ["aggregate-blob-v3"],
-  { revalidate: 300, tags: ["bench-aggregate", "benchmarks"] },
+  { revalidate: 900, tags: ["bench-aggregate", "benchmarks"] },
 );

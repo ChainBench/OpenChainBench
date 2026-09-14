@@ -51,11 +51,11 @@ function isBenchEnvelope(x: unknown): x is BenchEnvelope {
   );
 }
 
-async function fetchJson(url: string): Promise<unknown | null> {
+async function fetchJson(url: string, revalidateSec = 300): Promise<unknown | null> {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: revalidateSec },
     });
     if (!res.ok) return null;
     return await res.json();
@@ -180,7 +180,7 @@ export function fromProvidersWire(wire: ProvidersWire): ProviderProfile[] {
  *  worker build) or the envelope is not v2; the site then builds the
  *  index itself from the aggregate. */
 export async function loadProvidersFromBlob(): Promise<ProviderProfile[] | null> {
-  const raw = (await fetchJson(`${baseUrl()}/providers.json`)) as Partial<ProvidersWire> | null;
+  const raw = (await fetchJson(`${baseUrl()}/providers.json`, 900)) as Partial<ProvidersWire> | null;
   if (!raw || raw.v !== 2 || typeof raw.benches !== "object" || !Array.isArray(raw.providers)) {
     return null;
   }

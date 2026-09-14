@@ -157,7 +157,7 @@ const buildAlternativesReverseMapCached = unstable_cache(
     return Array.from(map.entries());
   },
   ["alternatives-reverse-map-v1"],
-  { revalidate: 300, tags: ["benchmarks"] },
+  { revalidate: 900, tags: ["benchmarks"] },
 );
 
 /**
