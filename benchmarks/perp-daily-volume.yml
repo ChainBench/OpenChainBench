@@ -21,12 +21,14 @@ seo_intro: |
   across venues or across days: every venue's window ends at a different second and a single
   large hour moves it twice. Daily volume on closed UTC days is the convention DeFiLlama, Dune
   dashboards and the venues' own weekly reports use, and it is what "X flipped Y in volume"
-  claims are made on. This benchmark rebuilds that series for Hyperliquid, Aster, Lighter,
-  GMX V2, Gains, dYdX v4, Paradex, Extended, Orderly and Aevo, from the same sources
-  DeFiLlama's open-source adapters read (squids, exchange statistics endpoints, per-market
-  daily candles), so the numbers line up with defillama.com on closed days while the full
-  history stays free to reproduce. Each venue gets its last closed day, its 7 and 30 day totals,
-  its share of the cohort, and a year of daily points you can chart or download.
+  claims are made on. This benchmark rebuilds that series for Hyperliquid (main dex and HIP-3
+  dexs as two rows), Aster, Lighter, GMX V2, Gains, dYdX v4, Paradex, Extended, Orderly and
+  Aevo, from the same sources DeFiLlama's open-source adapters read (squids, exchange
+  statistics endpoints, per-market daily candles, the Gains Dune view), so the numbers line up
+  with defillama.com on closed days while the full history stays free to reproduce. On 13
+  September 2026 nine of the ten venues matched DeFiLlama's page within one percent; the
+  exceptions are documented in the FAQ. Each venue gets its last closed day, its 7 and 30 day
+  totals, its share of the cohort, and a year of daily points you can chart or download.
 
 abstract: |
   The perp-volume-history harness keeps one number per venue per UTC day. For each venue it
@@ -49,13 +51,14 @@ methodology:
   - "Day bucket: UTC midnight to midnight, the DeFiLlama convention. The headline is the last fully closed UTC day (D-1); the current day is never shown."
   - "One side per trade: every source counts taker notional once. Extended reports both sides per market, halved here as in the DeFiLlama adapter."
   - "GMX V2: gmx.squids.live volumeInfos period 1d, marginVolumeUsd scaled by 1e-30, summed over Arbitrum, Avalanche, Botanix and MegaETH. Swap volume is excluded, so this is the GMX V2 Perps line, not the GMX parent."
-  - "Gains: backend-global.gains.trade /api/volume-mix per day, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, position resizes at the traded delta, governance-only rows excluded), Arbitrum, Polygon, Base and MegaETH. ApeChain is not reported by that endpoint. With DUNE_API_KEY set the harness reads the Dune view dune.gains.result_g_trade_stats_defi_llama instead (the DeFiLlama adapter's source) and publishes the gap between the two as a divergence gauge."
+  - "Gains: the published series is the Dune view dune.gains.result_g_trade_stats_defi_llama, the source DeFiLlama's own adapter reads (Arbitrum, Polygon, Base, MegaETH; ApeChain is not in the view), queried at most every 12 hours."
+  - "Gains between two Dune runs: the newest day comes from backend-global.gains.trade /api/volume-mix, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, resizes at the traded delta, governance-only rows excluded). It matched the view within 0.1 percent over the 60 days checked; the gap between the two is published as a divergence gauge."
   - "Hyperliquid: info candleSnapshot 1h per market; hourly notional = base volume x (open + high + low + close) / 4, summed per day. Checked against the exchange's own dayNtlVlm at UTC midnight on 2026-09-13: 3.361B from candles vs 3.359B native."
   - "Hyperliquid rows: the main dex is the Hyperliquid row; the HIP-3 dexs listed by perpDexs (xyz, io, mkts, para, km, flx...) are builder-deployed markets and get their own row, Hyperliquid HIP-3. DeFiLlama's single hyperliquid-perps figure sits between the two because its private indexer covers HIP-3 only partially."
   - "Aster: fapi.asterdex.com 1d klines quoteVolume summed over TRADING perpetual symbols. Lighter: 1d candles quote volume summed over perp markets (market_id below 2048) on zkLighter mainnet and on the Robinhood chain deployment (api.rh.lighter.xyz), the two DeFiLlama's Lighter parent adds. dYdX v4: indexer 1DAY candles usdVolume summed over all perpetual markets."
   - "Paradex: the public Metabase daily card, PERP_VOLUME column (options and spot excluded). Extended: exchange/stats/trading per day on Starknet, plus the Ethereum deployment until 2025-12-29. Orderly: md/volume/daily_stats. Aevo: statistics with instrument_type PERPETUAL per day."
   - "Windows: 7d and 30d are sums of closed days ending on D-1 and are published only when every day in the window is present, so a partial backfill never reads as a low week. Share is the venue's window total over the sum of the cohort on the same window."
-  - "Refresh: full backfill on first boot (400 days, bounded by each source's start date), then every hour the last three closed days are re-read so restated days converge. Prometheus scrapes :2112/metrics every 60s."
+  - "Refresh: full backfill on first boot (400 days, bounded by each source's start date; Hyperliquid candles reach back about 340 days), then every hour every venue re-reads its last three closed days in parallel so restated days converge. A venue whose source rate-limits (dYdX's indexer) or whose host is down (Extended's retired Ethereum deployment) is skipped for that sweep and keeps its stored days. Prometheus scrapes :2112/metrics every 60s."
   - "Not covered yet: edgeX, GRVT, Pacifica, Vertex, Backpack, Jupiter, Drift and Ostium. The first three follow the same per-market candle pattern and are next; Drift and Ostium exist on DeFiLlama only through Dune queries."
 
 findings:
