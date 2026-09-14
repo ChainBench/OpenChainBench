@@ -9,6 +9,7 @@
  */
 
 import { unstable_cache } from "next/cache";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
 
 export type DailyBar = { date: string; valueUsd: number };
 
@@ -18,6 +19,9 @@ export type PerpVenueExternalStats = {
   totalFeesUsd?: number;
   /** 25–30 daily bars for the volume bar chart. */
   dailyVolumeChart?: DailyBar[];
+  /** Where dailyVolumeChart came from: the venue's own daily history, or
+   *  OCB's perp-volume-share cohort ring (24h notional sampled daily). */
+  dailyVolumeSource?: "native" | "cohort";
   dailyFeesChart?: DailyBar[];
   vaultTvlUsd?: number;
   stakingAprPct?: number;
@@ -653,7 +657,79 @@ async function fetchEdgexStats(): Promise<PerpVenueExternalStats> {
 // Dispatch
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Daily volume from OCB's own cohort bench (perp-volume-share)
+// ---------------------------------------------------------------------------
+
+/** 30d ring cadence of the materialized bench series: 12 h per point,
+ *  the last point at the bench's lastRunAt. Mirrors RING_CADENCE["30d"]
+ *  in materialize/schema.ts. */
+const VOLUME_SERIES_STEP_SEC = 43_200;
+
+/**
+ * One bar per finished UTC day from a 12 h-cadence series of a trailing
+ * 24 h gauge: for each day take the last non-null sample (the one closest
+ * to midnight), so the bar reads "24 h volume at the end of that day".
+ * The current, unfinished day is dropped. Exported for tests.
+ */
+export function dailyBarsFromRing(
+  points: (number | null)[],
+  endIso: string,
+  stepSec = VOLUME_SERIES_STEP_SEC,
+): DailyBar[] {
+  const end = Date.parse(endIso);
+  if (!Number.isFinite(end) || points.length === 0) return [];
+  const today = new Date(end).toISOString().split("T")[0];
+  const byDay = new Map<string, number>();
+  for (let i = 0; i < points.length; i++) {
+    const v = points[i];
+    if (v == null || !(v > 0)) continue;
+    const t = end - (points.length - 1 - i) * stepSec * 1000;
+    const day = new Date(t).toISOString().split("T")[0];
+    if (day === today) continue;
+    byDay.set(day, v); // later samples overwrite: last sample of the day wins
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, valueUsd]) => ({ date, valueUsd }));
+}
+
+/**
+ * Daily perp volume for a venue from the perp-volume-share bench blob
+ * (perp_venue_volume_24h_usd, OCB's own harness reading each venue's
+ * native API). This is the series the venue pages show, so every venue
+ * is measured the same way; venue-specific fetchers only fill in when
+ * the cohort has no series for that slug.
+ */
+async function fetchCohortDailyVolume(cohortSlug: string): Promise<DailyBar[] | null> {
+  const bench = await loadBenchFromBlob("perp-volume-share").catch(() => null);
+  const points = bench?.extras?.series30d?.[cohortSlug];
+  if (!bench || !points || points.length === 0) return null;
+  const bars = dailyBarsFromRing(points, bench.lastRunAt);
+  return bars.length >= 3 ? bars : null;
+}
+
 async function fetchExternalRaw(
+  cohortSlug: string,
+): Promise<PerpVenueExternalStats> {
+  const [venue, cohortBars] = await Promise.all([
+    fetchVenueRaw(cohortSlug),
+    fetchCohortDailyVolume(cohortSlug),
+  ]);
+  // A venue's own daily history (Gains' stats API, Lighter's
+  // exchangeMetrics) is exact per day; the cohort ring is a 12 h sampling
+  // of a rolling gauge and inherits any stretch where a source was down
+  // (Gains' upstream was dead 09-10..09-14 and the gauge sat frozen). So
+  // native history wins when the venue has one; the cohort fills the rest.
+  if ((venue.dailyVolumeChart?.length ?? 0) >= 3) {
+    return { ...venue, dailyVolumeSource: "native" };
+  }
+  return cohortBars
+    ? { ...venue, dailyVolumeChart: cohortBars, dailyVolumeSource: "cohort" }
+    : venue;
+}
+
+async function fetchVenueRaw(
   cohortSlug: string,
 ): Promise<PerpVenueExternalStats> {
   try {
@@ -704,6 +780,6 @@ async function fetchExternalRaw(
 
 export const fetchPerpVenueExternalStats = unstable_cache(
   fetchExternalRaw,
-  ["perp-venue-external-v1"],
+  ["perp-venue-external-v2"],
   { revalidate: 300, tags: ["perp-venue"] },
 );

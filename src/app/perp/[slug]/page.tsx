@@ -151,22 +151,26 @@ export default async function PerpVenuePage({
   // days. When the venue is in that cohort it becomes the volume chart,
   // which also brings the chart back for GMX, Hyperliquid and Orderly
   // (#2355 dropped their DeFiLlama dexs series, which was spot swap
-  // volume). Cohort key for GMX is gmx-v2, history slug is gmx.
+  // volume). Cohort key for GMX is gmx-v2, history slug is gmx. Venues
+  // not in bench 266 fall back to the perp-volume-share 30d ring
+  // (dailyVolumeSource === "cohort"), then to the venue's own API.
   const historyVenue = volumeHistory
     ? findVenue(volumeHistory, cohortSlug === "gmx-v2" ? "gmx" : cohortSlug)
     : null;
-  const ext =
-    historyVenue && historyVenue.days.length >= 3
-      ? {
-          ...extRaw,
-          dailyVolumeChart: historyVenue.days
-            .slice(-30)
-            .map((p) => ({ date: p.day, valueUsd: p.usd })),
-        }
-      : extRaw;
-  const volumeChartTitle = historyVenue
+  const useHistory = !!historyVenue && historyVenue.days.length >= 3;
+  const ext = useHistory
+    ? {
+        ...extRaw,
+        dailyVolumeChart: historyVenue!.days
+          .slice(-30)
+          .map((p) => ({ date: p.day, valueUsd: p.usd })),
+      }
+    : extRaw;
+  const volumeChartTitle = useHistory
     ? "Daily perp volume (UTC days, bench 266)"
-    : "Daily Volume";
+    : ext.dailyVolumeSource === "cohort"
+      ? "Daily Volume (24h notional, OCB cohort)"
+      : "Daily Volume";
 
   const rankings = buildRankings(benchBlobs as (Benchmark | null)[], cohortSlug);
 
