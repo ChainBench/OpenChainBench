@@ -124,19 +124,30 @@ func scale1e30(s string) float64 {
 // With the key set, the Dune figure is published and the backend figure
 // is kept for the divergence gauge; without it the backend figure is
 // published.
+//
+// Dune executions cost credits (about 10 per run on the free tier's
+// 2,500 a month), so the view is queried at most every
+// DUNE_MIN_INTERVAL_HOURS (default 12, about 60 runs a month). In
+// between, the backend fills only the days the view has not produced
+// yet (a fresh D-1), so a day never flips between the two conventions.
 type gainsSource struct {
-	meta     venueMeta
-	duneKey  string
-	duneQID  string
-	throttle *throttle
+	meta         venueMeta
+	duneKey      string
+	duneQID      string
+	duneInterval time.Duration
+	lastDune     time.Time
+	duneDays     map[time.Time]bool
+	throttle     *throttle
 }
 
 func newGainsSource(v venueMeta) *gainsSource {
 	return &gainsSource{
-		meta:     v,
-		duneKey:  os.Getenv("DUNE_API_KEY"),
-		duneQID:  env("DUNE_SQL_QUERY_ID", "3996608"),
-		throttle: newThrottle(24),
+		meta:         v,
+		duneKey:      os.Getenv("DUNE_API_KEY"),
+		duneQID:      env("DUNE_SQL_QUERY_ID", "3996608"),
+		duneInterval: time.Duration(envInt("DUNE_MIN_INTERVAL_HOURS", 12)) * time.Hour,
+		duneDays:     map[time.Time]bool{},
+		throttle:     newThrottle(24),
 	}
 }
 
@@ -161,10 +172,25 @@ func (s *gainsSource) Daily(ctx context.Context, from, to time.Time) (map[time.T
 	if s.duneKey == "" {
 		return backend, backendErr
 	}
+	if !s.lastDune.IsZero() && time.Since(s.lastDune) < s.duneInterval {
+		// Dune not due: publish the backend figure only for days the
+		// view has not covered yet.
+		out := map[time.Time]float64{}
+		for d, v := range backend {
+			if !s.duneDays[d] {
+				out[d] = v
+			}
+		}
+		return out, backendErr
+	}
 	dune, err := s.dailyDune(ctx, from, to)
 	if err != nil {
 		fmt.Printf("[gains][dune] err: %v (publishing backend figure)\n", err)
 		return backend, backendErr
+	}
+	s.lastDune = time.Now()
+	for d := range dune {
+		s.duneDays[d] = true
 	}
 	if backendErr == nil {
 		var sumD, sumB float64

@@ -121,6 +121,11 @@ func runLoop(ctx context.Context, store *Store, sources []Source, backfillDays, 
 				from = horizon
 			}
 			runSource(ctx, store, src, from, lastClosed)
+			// Flush after every source: the first sweep runs for the better
+			// part of an hour and a restart must not redo finished venues.
+			if err := store.flush(); err != nil {
+				fmt.Fprintf(os.Stderr, "store flush: %v\n", err)
+			}
 		}
 
 		publish(store, sources)
