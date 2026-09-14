@@ -7,6 +7,9 @@ import { lineColor } from "@/lib/series-colors";
 
 type Range = "7d" | "30d" | "90d";
 const RANGES: Range[] = ["7d", "30d", "90d"];
+/** Selected view / range pill: the site accent, so the active choice
+ *  reads at a glance against the ink pills of the surrounding card. */
+const ACTIVE_PILL = "bg-accent text-white shadow-sm";
 
 /** One selectable view: the bench headline metric or one of its panels. */
 export type TrendView = {
@@ -95,7 +98,9 @@ export function CompareTrendChart({
     const b = pick(bSlug);
     const n = Math.max(a.length, b.length, payload.timestamps.length);
     if (n === 0) return null;
-    if (!a.some((v) => v !== null) && !b.some((v) => v !== null)) return null;
+    // Both sides must have at least one point: a one-sided chart reads
+    // as a comparison with a missing opponent, so the card hides it.
+    if (!a.some((v) => v !== null) || !b.some((v) => v !== null)) return null;
     return { a, b, ts: payload.timestamps, n };
   }, [payload, aSlug, bSlug]);
 
@@ -184,6 +189,12 @@ export function CompareTrendChart({
     return idx.map((i) => ({ i, label: fmtTs(series.ts[i], range) }));
   }, [series, range]);
 
+  // Confirmed empty for the initial view/range: hide the block rather than
+  // show an empty frame. Once the user has interacted we keep the frame so
+  // the tabs stay reachable and say so inline.
+  const [touched, setTouched] = useState(false);
+  if (payload !== undefined && !series && !touched) return <div ref={rootRef} />;
+
   return (
     <div ref={rootRef} className="mt-5 rounded-lg border border-rule bg-paper p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -194,10 +205,13 @@ export function CompareTrendChart({
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setViewId(v.id)}
+                onClick={() => {
+                  setTouched(true);
+                  setViewId(v.id);
+                }}
                 className={[
                   "rounded px-2.5 py-1 text-[11px] font-sans uppercase tracking-[0.1em] font-medium transition-colors",
-                  v.id === viewId ? "bg-ink text-paper" : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                  v.id === viewId ? ACTIVE_PILL : "text-ink-muted hover:text-ink hover:bg-paper-soft",
                 ].join(" ")}
               >
                 {v.label}
@@ -214,10 +228,13 @@ export function CompareTrendChart({
             <button
               key={r}
               type="button"
-              onClick={() => setRange(r)}
+              onClick={() => {
+                setTouched(true);
+                setRange(r);
+              }}
               className={[
                 "rounded px-2.5 py-1 text-[11px] font-sans uppercase tracking-[0.1em] font-medium transition-colors",
-                r === range ? "bg-ink text-paper" : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                r === range ? ACTIVE_PILL : "text-ink-muted hover:text-ink hover:bg-paper-soft",
               ].join(" ")}
             >
               {r}
@@ -300,6 +317,12 @@ export function CompareTrendChart({
           <path d={areaPath(series.b)} fill={`url(#gb-${benchSlug}-${viewId})`} />
           <path d={linePath(series.a)} fill="none" stroke={aColor} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           <path d={linePath(series.b)} fill="none" stroke={bColor} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {isolated(series.a).map((i) => (
+            <circle key={`ia-${i}`} cx={x(i)} cy={y(series.a[i] as number)} r={3} fill={aColor} />
+          ))}
+          {isolated(series.b).map((i) => (
+            <circle key={`ib-${i}`} cx={x(i)} cy={y(series.b[i] as number)} r={3} fill={bColor} />
+          ))}
           {shownIdx >= 0 && (
             <g>
               <line
@@ -348,6 +371,18 @@ export function CompareTrendChart({
       )}
     </div>
   );
+}
+
+/** Indices of points with no non-null neighbour: a line cannot show them. */
+function isolated(arr: (number | null)[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] === null) continue;
+    const prev = i > 0 ? arr[i - 1] : null;
+    const next = i < arr.length - 1 ? arr[i + 1] : null;
+    if (prev === null && next === null) out.push(i);
+  }
+  return out;
 }
 
 function niceCeil(v: number): number {
