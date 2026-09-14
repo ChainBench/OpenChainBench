@@ -117,10 +117,14 @@ func runLoop(ctx context.Context, store *Store, sources []Source, backfillDays, 
 			if s := src.Start(); s.After(horizon) {
 				horizon = s
 			}
-			if oldest, ok := store.oldest(src.Slug()); !ok || oldest.After(horizon) {
+			backfill := false
+			if oldest, ok := store.oldest(src.Slug()); (!ok || oldest.After(horizon)) && !store.backfilledTo(src.Slug(), horizon) {
 				from = horizon
+				backfill = true
 			}
-			runSource(ctx, store, src, from, lastClosed)
+			if runSource(ctx, store, src, from, lastClosed) && backfill {
+				store.markBackfilled(src.Slug(), horizon)
+			}
 			// Flush and publish after every source: the first sweep runs
 			// for the better part of an hour, a restart must not redo
 			// finished venues, and the bench should light up venue by
@@ -151,13 +155,16 @@ func runLoop(ctx context.Context, store *Store, sources []Source, backfillDays, 
 	}
 }
 
-func runSource(ctx context.Context, store *Store, src Source, from, to time.Time) {
+// runSource fetches one venue over [from, to] and stores what came
+// back. It reports whether the fetch succeeded (a zero-day success still
+// counts: the source simply has no history that far back).
+func runSource(ctx context.Context, store *Store, src Source, from, to time.Time) bool {
 	t0 := time.Now()
 	points, err := src.Daily(ctx, from, to)
 	if err != nil {
 		fetchErrors.WithLabelValues(src.Slug(), src.Name()).Inc()
 		fmt.Printf("[%s][%s] %s..%s err: %v\n", src.Slug(), src.Name(), fmtDay(from), fmtDay(to), err)
-		return
+		return false
 	}
 	n := 0
 	for day, usd := range points {
@@ -169,6 +176,7 @@ func runSource(ctx context.Context, store *Store, src Source, from, to time.Time
 	}
 	lastRefresh.WithLabelValues(src.Slug(), src.Name()).Set(float64(time.Now().Unix()))
 	fmt.Printf("[%s][%s] %s..%s ok: %d days in %s\n", src.Slug(), src.Name(), fmtDay(from), fmtDay(to), n, time.Since(t0).Round(time.Millisecond))
+	return true
 }
 
 // publish derives the bench gauges from the store: last closed UTC day,
