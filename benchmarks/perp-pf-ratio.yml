@@ -50,7 +50,7 @@ methodology:
   - "Revenue share = 30d revenue / 30d fees. Adapters that publish no revenue series, or a flat zero, leave P/S and revenue share undefined rather than zero."
   - "Open interest: DeFiLlama open-interest overview, perps product only. Fees to OI = annualized fees / open interest."
   - "Drift's DeFiLlama perps adapter (drift-trade) currently reports zero fees; the row stays in the cohort with every ratio undefined until the source recovers."
-  - "Rows without a P/F (no token, or no fees) read their success from the P/F gauge itself, so they rank as unavailable on the headline and are excluded from the best / median / worst strip while still appearing in the fees and open interest tabs."
+  - "Rows without a P/F (no token, or no fees) have no headline value: they are left out of the ranked ledger and the best / median / worst strip, and appear in the fees and open interest tabs only. Their harness health is still reported so they never read as unresponsive."
   - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
 
 findings:
@@ -261,7 +261,7 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="drift"}
       p99: perp_protocol_pf_ratio{protocol="drift"}
       mean: perp_protocol_pf_ratio{protocol="drift"}
-      success: perp_protocol_pf_ratio{protocol="drift"}
+      success: perp_protocol_health{protocol="drift"}
       sample_size: perp_protocol_fees_30d_usd{protocol="drift"}
       series: perp_protocol_pf_ratio{protocol="drift"}
 
@@ -339,7 +339,7 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="ostium"}
       p99: perp_protocol_pf_ratio{protocol="ostium"}
       mean: perp_protocol_pf_ratio{protocol="ostium"}
-      success: perp_protocol_pf_ratio{protocol="ostium"}
+      success: perp_protocol_health{protocol="ostium"}
       sample_size: perp_protocol_fees_30d_usd{protocol="ostium"}
       series: perp_protocol_pf_ratio{protocol="ostium"}
 
@@ -352,7 +352,7 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="pacifica"}
       p99: perp_protocol_pf_ratio{protocol="pacifica"}
       mean: perp_protocol_pf_ratio{protocol="pacifica"}
-      success: perp_protocol_pf_ratio{protocol="pacifica"}
+      success: perp_protocol_health{protocol="pacifica"}
       sample_size: perp_protocol_fees_30d_usd{protocol="pacifica"}
       series: perp_protocol_pf_ratio{protocol="pacifica"}
 
@@ -365,7 +365,7 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="extended"}
       p99: perp_protocol_pf_ratio{protocol="extended"}
       mean: perp_protocol_pf_ratio{protocol="extended"}
-      success: perp_protocol_pf_ratio{protocol="extended"}
+      success: perp_protocol_health{protocol="extended"}
       sample_size: perp_protocol_fees_30d_usd{protocol="extended"}
       series: perp_protocol_pf_ratio{protocol="extended"}
 
@@ -378,7 +378,7 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="edgex"}
       p99: perp_protocol_pf_ratio{protocol="edgex"}
       mean: perp_protocol_pf_ratio{protocol="edgex"}
-      success: perp_protocol_pf_ratio{protocol="edgex"}
+      success: perp_protocol_health{protocol="edgex"}
       sample_size: perp_protocol_fees_30d_usd{protocol="edgex"}
       series: perp_protocol_pf_ratio{protocol="edgex"}
 
@@ -391,6 +391,6 @@ providers:
       p90: perp_protocol_pf_ratio{protocol="paradex"}
       p99: perp_protocol_pf_ratio{protocol="paradex"}
       mean: perp_protocol_pf_ratio{protocol="paradex"}
-      success: perp_protocol_pf_ratio{protocol="paradex"}
+      success: perp_protocol_health{protocol="paradex"}
       sample_size: perp_protocol_fees_30d_usd{protocol="paradex"}
       series: perp_protocol_pf_ratio{protocol="paradex"}
