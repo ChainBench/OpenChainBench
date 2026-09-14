@@ -486,6 +486,22 @@ export const SpecSchema = z
      *  where the relative contribution of each venue over time is the
      *  primary signal. */
     stacked_share: z.boolean().optional(),
+    /**
+     * Chart cadence for benches whose gauges move once a day (closed
+     * UTC-day series such as perp-daily-volume). Sub-day ranges (1h, 6h,
+     * 24h) would render a single point at "now", so `min_range` hides
+     * them and `default_range` opens the chart on a window that holds
+     * data. `window_label` replaces the "24h" suffix on the ledger's
+     * headline columns ("last closed day").
+     */
+    chart: z
+      .object({
+        min_range: z.enum(["24h", "7d", "30d"]).optional(),
+        default_range: z.enum(["24h", "7d", "30d", "90d", "1y"]).optional(),
+        window_label: z.string().min(1).max(24).optional(),
+      })
+      .strict()
+      .optional(),
     metric_panels: z
       .array(
         z.object({

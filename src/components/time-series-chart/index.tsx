@@ -119,7 +119,14 @@ export function TimeSeriesChart({
   longRangeDisabledTitle,
   onAvailableRangesChange,
 }: Props) {
-  const [rangeLocal, setRangeLocal] = useState<Range>("24h");
+  // Daily-cadence benches (spec `chart` block) hide sub-day ranges,
+  // which would show one point at "now", and open on a longer window.
+  const minRange: Range = benchmark.chart?.minRange ?? "1h";
+  const rangeOrder: Range[] = ["1h", "6h", "24h", "7d", "30d", "90d", "180d", "1y", "all"];
+  const rangeAllowed = (r: Range) => rangeOrder.indexOf(r) >= rangeOrder.indexOf(minRange);
+  const [rangeLocal, setRangeLocal] = useState<Range>(
+    benchmark.chart?.defaultRange ?? (rangeAllowed("24h") ? "24h" : minRange),
+  );
   const range = rangeProp ?? rangeLocal;
   const setRange = (next: Range) => {
     if (onRangeChange) onRangeChange(next);
@@ -413,12 +420,14 @@ export function TimeSeriesChart({
   useEffect(() => {
     if (panelActive) return;
     /* eslint-disable react-hooks/set-state-in-effect */
-    if (range === "7d" && lazySeries7d !== null && !seriesHasData(lazySeries7d)) setRange("24h");
-    if (range === "30d" && lazySeries30d !== null && !seriesHasData(lazySeries30d)) setRange("24h");
+    const base: Range = rangeAllowed("24h") ? "24h" : minRange;
+    if (range === "7d" && lazySeries7d !== null && !seriesHasData(lazySeries7d) && base !== "7d") setRange(base);
+    if (range === "30d" && lazySeries30d !== null && !seriesHasData(lazySeries30d) && base !== "30d")
+      setRange(has7d && rangeAllowed("7d") ? "7d" : base);
     if (range === "90d" && lazySeries90d !== null && Object.keys(lazySeries90d).length === 0)
-      setRange(has30d ? "30d" : "24h");
+      setRange(has30d ? "30d" : base);
     if (range === "1y" && lazySeries1y !== null && Object.keys(lazySeries1y).length === 0)
-      setRange(has90d ? "90d" : "24h");
+      setRange(has90d ? "90d" : base);
     /* eslint-enable react-hooks/set-state-in-effect */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, panelActive, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y]);
@@ -621,6 +630,7 @@ export function TimeSeriesChart({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-chart-export-omit="true">
         <div className="flex flex-wrap items-center gap-1">
           {RANGES.map((r) => {
+            if (!rangeAllowed(r)) return null;
             // Hide entirely once we have confirmed there's no data for this range.
             if (r === "7d" && lazySeries7d !== null && !has7d) return null;
             if (r === "30d" && lazySeries30d !== null && !has30d) return null;

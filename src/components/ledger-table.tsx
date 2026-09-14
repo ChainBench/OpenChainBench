@@ -157,9 +157,12 @@ export function LedgerTable({
     }
     return colValue(r, col);
   };
+  // A daily-cadence bench relabels the base window ("last closed day"
+  // instead of "24h") via the spec's chart.window_label.
+  const baseWindowLabel = benchmark.chart?.windowLabel ?? "24h";
   const colLabel = (col: LedgerColumn): string => {
     if (!hasWindows) return col.label;
-    const w = windowKey !== "24h" && col.windows?.[windowKey] ? windowKey : "24h";
+    const w = windowKey !== "24h" && col.windows?.[windowKey] ? windowKey : baseWindowLabel;
     return `${col.label} (${w})`;
   };
 
@@ -361,6 +364,7 @@ export function LedgerTable({
             <button
               key={w}
               type="button"
+              title={w === "24h" && baseWindowLabel !== "24h" ? baseWindowLabel : undefined}
               onClick={() => setWindowKey(w)}
               className={[
                 "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
@@ -369,7 +373,7 @@ export function LedgerTable({
                   : "text-ink-muted hover:text-ink hover:bg-paper-soft",
               ].join(" ")}
             >
-              {w}
+              {w === "24h" && baseWindowLabel !== "24h" ? baseWindowLabel : w}
             </button>
           ))}
         </div>
