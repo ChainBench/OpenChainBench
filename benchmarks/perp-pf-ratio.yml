@@ -4,7 +4,7 @@ slug: perp-pf-ratio
 number: "265"
 title: "Perp DEX price to fees ratio 2026: Hyperliquid, Aster, Lighter, GMX, GNS live"
 seo_title: "Perp DEX P/F ratio 2026: Hyperliquid vs Lighter vs Aster vs GMX vs GNS"
-seo_description: "{{best_name}} trades at {{best_p50}}x annualized fees, the cheapest perp DEX token. Market cap and FDV against trailing fees and revenue for {{count}} perpetual DEXes, plus the fee base of pre-TGE venues, live from DeFiLlama and CoinGecko."
+seo_description: "{{best_name}} is the cheapest perp DEX token at {{best_p50}} annualized fees. P/F, FDV/F, P/S, float and open interest for {{count}} perp DEXes, live from DeFiLlama and CoinGecko."
 subtitle: Market cap divided by annualized trading fees (trailing 30 days) for every perp DEX with a listed token, alongside FDV, protocol revenue, float and open interest. Lower means the market pays less per dollar of fees. Same convention as the DeFiLlama P/F ranking, updated hourly.
 
 category: Trading
@@ -22,12 +22,12 @@ seo_intro: |
   top, annualized fees at the bottom. A low P/F means the token is cheap relative to the fees
   its venue generates; a high P/F prices in growth, or a token that does not capture the fees.
   Hyperliquid, Aster and Lighter generate the most absolute fees but carry multi-billion
-  valuations with a quarter of supply in circulation, so their FDV/F runs far above their P/F.
-  GMX and Gains are fully circulating with real fee flow and trade at low single-digit
-  multiples. dYdX and Derive sit at the expensive end on today's fee run rate. This benchmark
-  tracks the whole table live from DeFiLlama (fees, revenue, open interest) and CoinGecko
-  (market cap, FDV, supply), the same inputs as defillama.com/pf, cut identically for every
-  protocol and refreshed every hour.
+  valuations with a quarter to a third of supply in circulation, so their FDV/F runs far above
+  their P/F. GMX and Gains are fully circulating with real fee flow and trade at low single-digit
+  multiples. dYdX and Aster sit at the expensive end on today's fee run rate; Paradex's multiple
+  is inflated by an incomplete DeFiLlama fee adapter. This benchmark tracks the whole table live
+  from DeFiLlama (fees, revenue, open interest) and CoinGecko (market cap, FDV, supply), the same
+  inputs as defillama.com/pf, cut identically for every protocol and refreshed every hour.
 
 abstract: |
   The perp-token-metrics harness polls DeFiLlama /summary/fees/[slug] for dailyFees and
@@ -55,10 +55,10 @@ methodology:
   - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
 
 findings:
-  - "{{best_name}} is the cheapest perp DEX token at {{best_p50}}x annualized fees."
+  - "{{best_name}} is the cheapest perp DEX token at {{best_p50}} annualized fees."
   - "Hyperliquid, Aster and Lighter earn the most fees in absolute terms but trade at a large multiple, and their FDV/F is three to four times their P/F because most supply is not circulating."
   - "GMX and Gains are fully circulating, so their P/F and FDV/F coincide; both sit in low single digits."
-  - "{{worst_name}} is the most expensive token in the cohort at {{worst_p50}}x on today's fee run rate."
+  - "{{worst_name}} is the most expensive token in the cohort at {{worst_p50}} on today's fee run rate."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-token-metrics
 
@@ -308,7 +308,7 @@ providers:
       series: perp_protocol_pf_ratio{protocol="orderly"}
 
   - slug: synfutures
-    name: F
+    name: F (SynFutures)
     tag: "SynFutures, parent scope: v3"
     formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
     queries:
