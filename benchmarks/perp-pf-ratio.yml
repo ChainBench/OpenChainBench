@@ -66,6 +66,8 @@ prometheus:
   window: 24h
   freshness_metric: perp_protocol_health
 
+panel_main_description: "Circulating market cap divided by annualized fees (trailing 30 days x 365/30), the DeFiLlama P/F convention. Lower means the market pays less per dollar of fees the venue generates."
+
 metric_panels:
   - id: pf_fdv
     label: FDV / fees
