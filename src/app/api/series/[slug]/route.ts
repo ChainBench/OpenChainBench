@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasSeriesHistory, loadSeriesHistory } from "@/lib/series-history";
 import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
 import { filterSig, loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
@@ -38,6 +39,23 @@ const getSeriesMapCached = unstable_cache(
     venue: string | undefined,
     panelId: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
+    // ── Harness-backfilled history (bench 266 and friends) ──────────────
+    // Prom only holds samples since the first scrape; a bench whose
+    // harness keeps a year of daily points serves every range from that
+    // history instead (main series only, panels stay on Prom).
+    if (!panelId && hasSeriesHistory(slug)) {
+      const specs = await loadSpecsUncached();
+      const spec = specs.find((s) => s.slug === slug);
+      if (spec) {
+        const fromHistory = await loadSeriesHistory(
+          slug,
+          range,
+          spec.providers.map((p) => p.slug),
+        );
+        if (fromHistory) return fromHistory;
+      }
+    }
+
     // ── Standard ranges (7d / 30d): blob → Redis → live build ──────────
     if (range === "7d" || range === "30d") {
       const sig = filterSig({ chain, region, kind, venue });
@@ -139,7 +157,7 @@ const getSeriesMapCached = unstable_cache(
     return Object.keys(result).length > 0 ? result : null;
   },
   // v8: denser 90d/1y resolution (6h / 18h step) so young benches render at full fidelity.
-  ["series-by-range-v8"],
+  ["series-by-range-v9"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
