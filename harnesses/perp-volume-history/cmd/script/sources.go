@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -107,6 +109,9 @@ func buildSources(llamaKey string) []Source {
 
 var httpClient = &http.Client{Timeout: 45 * time.Second}
 
+// ErrRateLimited is returned after a 429 survived the retry ladder.
+var ErrRateLimited = errors.New("rate_limited")
+
 const userAgent = "OpenChainBench-PerpVolumeHistory/1.0 contact@openchainbench.com"
 
 func getJSON(ctx context.Context, url string, out any) error {
@@ -162,7 +167,27 @@ func doJSON(ctx context.Context, method, url string, body []byte, headers map[st
 		}
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 		resp.Body.Close()
-		if resp.StatusCode == 429 || resp.StatusCode >= 500 {
+		if resp.StatusCode == 429 {
+			// Honour Retry-After (capped) so a rate-limited host is not
+			// hammered through the backoff ladder; ErrRateLimited lets
+			// per-market sources stop the sweep early instead of burning
+			// an hour on retries.
+			lastErr = ErrRateLimited
+			wait := 5 * time.Second
+			if ra, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && ra > 0 {
+				wait = time.Duration(ra) * time.Second
+			}
+			if wait > 30*time.Second {
+				wait = 30 * time.Second
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(wait):
+			}
+			continue
+		}
+		if resp.StatusCode >= 500 {
 			lastErr = fmt.Errorf("status_%d", resp.StatusCode)
 			continue
 		}
