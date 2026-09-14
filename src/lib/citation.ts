@@ -107,14 +107,27 @@ function windowSuffix(unit: string): string {
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
 export function headlineSentence(b: Benchmark): string {
+  const parts = headlineParts(b);
+  return parts.claim ? `${parts.claim} ${parts.rest}` : parts.rest;
+}
+
+/** The headline sentence split in two: the leader claim ("GNS posts the
+ *  lowest p/f ratio at 1.559x"), which the social cards highlight, and
+ *  the qualifier that follows ("(p50, 24h) on <title>."). `claim` is
+ *  empty when there is no leader to assert. Joined with one space they
+ *  are exactly `headlineSentence`. */
+export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   if (b.dataConfidence === "insufficient") {
-    return `${b.title}. Insufficient data to assert a leader.`;
+    return { claim: "", rest: `${b.title}. Insufficient data to assert a leader.` };
   }
   const top = leader(b);
-  if (!top) return `${b.title}. Awaiting first run.`;
+  if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
   const value = fmtUnit(top.value, b.unit);
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
-  return `${top.name} ${verb} ${b.metric.toLowerCase()} at ${value} ${windowSuffix(b.unit)} on ${b.title}.`;
+  return {
+    claim: `${top.name} ${verb} ${b.metric.toLowerCase()} at ${value}`,
+    rest: `${windowSuffix(b.unit)} on ${b.title}.`,
+  };
 }
 
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */

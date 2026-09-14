@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getReport } from "@/lib/reports/loader";
+import { OgHighlight, splitLead } from "@/lib/og-claim";
 
 export const runtime = "nodejs";
 // Share cards change slowly (title, leader, headline value); crawlers
@@ -24,6 +25,16 @@ export default async function OG({
   if (!report) return new ImageResponse(<div />, { ...size });
 
   const title = report.title;
+  // Lead clause of the hero finding is the card's highlighted line; the
+  // remainder keeps the previous ~140 character budget.
+  const finding = (() => {
+    const { lead, rest } = splitLead(report.heroFinding);
+    const room = Math.max(0, 140 - lead.length);
+    return {
+      lead,
+      rest: rest.length > room ? rest.slice(0, Math.max(0, room - 3)).trimEnd() + "..." : rest,
+    };
+  })();
   const fontSize = title.length > 60 ? 58 : title.length > 40 ? 68 : 80;
 
   return new ImageResponse(
@@ -83,21 +94,7 @@ export default async function OG({
           >
             {title}
           </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 26,
-              fontStyle: "italic",
-              color: "#4a443c",
-              marginTop: 20,
-              maxWidth: 1080,
-              lineHeight: 1.4,
-            }}
-          >
-            {report.heroFinding.length > 140
-              ? report.heroFinding.slice(0, 137) + "..."
-              : report.heroFinding}
-          </div>
+          <OgHighlight lead={finding.lead} rest={finding.rest} />
         </div>
 
         <div
