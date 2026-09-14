@@ -11,7 +11,6 @@ import { brandColor } from "@/lib/brand";
 import { lineColor } from "@/lib/series-colors";
 import { PerpVolumeHeadToHeadChart } from "@/components/perp-volume-head-to-head";
 import { PerpVolumeRatioChart } from "@/components/perp-volume-ratio-chart";
-import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * Compare-page hero for two perp venues: daily perp volume head to head
@@ -70,17 +69,7 @@ export async function PerpVolumeHeadToHead({
           <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
             Daily perp volume, head to head
           </h2>
-          <div className="mt-2 flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-base font-medium text-ink">
-              <ProviderLogo slug={aSlug} name={aName} size={26} />
-              {aName}
-            </span>
-            <span className="text-sm text-ink-faint">vs</span>
-            <span className="inline-flex items-center gap-2 text-base font-medium text-ink">
-              <ProviderLogo slug={bSlug} name={bName} size={26} />
-              {bName}
-            </span>
-          </div>
+
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
             Perpetual notional per closed UTC day, the DeFiLlama day buckets, read from each
             venue&apos;s own data. Ribbon under the bars marks which venue printed more that day.

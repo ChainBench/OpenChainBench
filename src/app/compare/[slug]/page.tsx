@@ -1002,6 +1002,8 @@ export default async function ComparePage({
               bench={s}
               aName={a.name}
               bName={b.name}
+              aSlug={a.slug}
+              bSlug={b.slug}
             />
           ))}
         </div>
