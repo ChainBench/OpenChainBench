@@ -168,7 +168,9 @@ func TestMercuryoAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if qs[0].CryptoOut != 0.00741 || qs[0].FeeProvider != 20.5 || qs[0].FiatIn != 500 {
+	// Fixture is a real 2026-09-14 response: fee {BTC, EUR} objects with a
+	// mercuryo_fee + network_fee breakdown and a null partner_fee.
+	if qs[0].CryptoOut != 0.00711045 || qs[0].FeeProvider != 9.32 || qs[0].FeeNetwork != 0.27 || qs[0].FeePartner != 0 || qs[0].FiatIn != 500 || qs[0].ProviderMarketRate != 68970.31 {
 		t.Errorf("%+v", qs[0])
 	}
 	// sepa is not a documented parameter: honest no_quote, no HTTP call.

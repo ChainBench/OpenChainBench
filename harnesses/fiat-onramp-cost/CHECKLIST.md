@@ -18,8 +18,8 @@ Rule from the spec: never invent an endpoint or parameter. Everything below is e
 | Response fields `quoteCurrencyAmount`, `quoteCurrencyPrice`, `feeAmount`, `extraFeeAmount`, `networkFeeAmount`, `totalAmount`, `expiresIn` | VERIFIED in docs |
 | No country parameter; pricing by request IP (`country_source=ip`) | VERIFIED in docs |
 | Payment method values `credit_debit_card`, `sepa_bank_transfer` | VERIFIED in widget design guide |
-| Currency codes `usdc_base`, `usdc_arbitrum` | UNVERIFIED against live (documented pattern for network-qualified stablecoins; exact codes to confirm on `/v3/currencies` with a key) |
-| Live call | UNVERIFIED, no publishable key issued |
+| Currency codes `usdc_base`, `usdc_arbitrum` | UNVERIFIED on live: with a `pk_test_` key the API answers `Currency not supported in test mode` (test-mode restriction, not a code error). `btc`, `eth`, `usdc` VERIFIED live 2026-09-14 |
+| Live call | VERIFIED 2026-09-14 with a `pk_test_` key: `quoteCurrencyAmount`, `quoteCurrencyPrice`, `feeAmount` (3.99 minimum), `extraFeeAmount`, `networkFeeAmount`, `totalAmount` all present for card and sepa; test-mode prices track Kraken mid within ~4 % (MoonPay spread) |
 
 ## Transak (direct)
 
@@ -47,10 +47,10 @@ Rule from the spec: never invent an endpoint or parameter. Everything below is e
 | Item | Status |
 |---|---|
 | `GET /v1.6/widget/buy/rate?from=EUR&to=&amount=&network=&widget_id=` | VERIFIED in docs 2026-09-10 (path and params) |
-| Response shape `{status, data:{amount, rate, fee, fiat_amount}}` | UNVERIFIED against live (documented sample, field set may be wider) |
+| Response shape | VERIFIED live 2026-09-14: `{status, data:{amount, rate, fee:{BTC,EUR}, mercuryo_fee:{..}, network_fee:{..}, partner_fee:null, fiat_amount, subtotal:{..}, total:{..}, kyc_limits, ...}}`. Money fields are `{crypto, fiat}` pairs, not scalars; parser rewritten, `testdata/mercuryo_rate.json` is a real response |
 | No payment-method parameter: only the `card` cell is recorded, `sepa` is `no_quote` | VERIFIED in docs (absence of parameter) |
-| Network values `BITCOIN`, `ETHEREUM`, `BASE`, `ARBITRUM` | UNVERIFIED against live |
-| Live call | UNVERIFIED, no widget id |
+| Network values `BITCOIN`, `ETHEREUM`, `BASE`, `ARBITRUM` | VERIFIED live 2026-09-14, all four quote |
+| Live call | VERIFIED 2026-09-14 using the public `widget_id` Mercuryo embeds on its own homepage; an OCB-issued id from dashboard.mercuryo.io is still to be requested |
 
 ## Onramper (aggregator)
 
