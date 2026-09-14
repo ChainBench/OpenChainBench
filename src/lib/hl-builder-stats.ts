@@ -241,7 +241,7 @@ async function fetchHlBuilderStatsRaw(
 const fetchHlBuilderStatsCached = unstable_cache(
   fetchHlBuilderStatsRaw,
   ["hl-builder-stats-v1"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 
 export async function fetchHlBuilderStats(
@@ -600,7 +600,7 @@ async function fetchHlCohortRaw(): Promise<HlCohortSummary | null> {
 const fetchHlCohortCached = unstable_cache(
   fetchHlCohortRaw,
   ["hl-frontends-cohort-v1"],
-  { revalidate: 60, tags: ["hl-cohort"] },
+  { revalidate: 300, tags: ["hl-cohort"] },
 );
 
 export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
@@ -631,7 +631,7 @@ async function fetchHlHip3CohortRaw(): Promise<HlHip3Summary | null> {
 const fetchHlHip3CohortCached = unstable_cache(
   fetchHlHip3CohortRaw,
   ["hl-hip3-cohort-v1"],
-  { revalidate: 60, tags: ["hl-cohort"] },
+  { revalidate: 300, tags: ["hl-cohort"] },
 );
 
 export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {

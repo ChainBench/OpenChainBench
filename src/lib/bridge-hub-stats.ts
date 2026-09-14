@@ -149,5 +149,5 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
 export const fetchBridgeHub = unstable_cache(
   _fetchBridgeHub,
   ["bridge-hub"],
-  { revalidate: 60 }
+  { revalidate: 300 }
 );

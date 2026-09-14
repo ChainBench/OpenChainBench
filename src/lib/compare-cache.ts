@@ -162,7 +162,7 @@ export async function readPairCache<T>(
       {
         method: "GET",
         headers: authHeader(),
-        next: { revalidate: 60 },
+        next: { revalidate: 300 },
         signal: AbortSignal.timeout(2_000),
       },
     );

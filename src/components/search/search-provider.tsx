@@ -9,7 +9,10 @@ type Ctx = {
   open: () => void;
   close: () => void;
   isOpen: boolean;
+  /** Search corpus. Empty until `/api/search/index` resolves; the
+   *  dialog shows a loading state while `indexStatus` is "loading". */
   items: SearchItem[];
+  indexStatus: "idle" | "loading" | "ready" | "error";
   /** Warmed featured + trending blob (cron-fed). `null` until the first
    *  fetch resolves; consumers should skeleton-out their cards. */
   featured: FeaturedLeadersBlob | null;
@@ -25,21 +28,50 @@ const SearchDialog = dynamic(() => import("@/components/search/search-dialog"), 
 });
 
 type ProviderProps = {
-  items: SearchItem[];
   children: React.ReactNode;
 };
 
-export function SearchProvider({ items, children }: ProviderProps) {
+export function SearchProvider({ children }: ProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [featured, setFeatured] = useState<FeaturedLeadersBlob | null>(null);
+  // The corpus is NOT shipped with the page anymore (it was 278 KB of
+  // every HTML response, see /api/search/index). It is fetched once,
+  // on the first hover / focus / open, and kept for the session.
+  const [items, setItems] = useState<SearchItem[]>([]);
+  const [indexStatus, setIndexStatus] = useState<Ctx["indexStatus"]>("idle");
+  const indexRef = useRef<Promise<void> | null>(null);
   // De-dupe in-flight + completed fetches: hover, mount effect, and
   // first dialog open shouldn't fire three parallel calls.
   const fetchRef = useRef<Promise<void> | null>(null);
 
-  const open = useCallback(() => setIsOpen(true), []);
+  const loadIndex = useCallback(() => {
+    if (indexRef.current) return;
+    setIndexStatus("loading");
+    indexRef.current = fetch("/api/search/index")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const arr = Array.isArray(j?.items) ? (j.items as SearchItem[]) : null;
+        if (!arr) throw new Error("bad index payload");
+        setItems(arr);
+        setIndexStatus("ready");
+      })
+      .catch(() => {
+        // Let the next hover / open retry.
+        indexRef.current = null;
+        setIndexStatus("error");
+      });
+  }, []);
+
+  const open = useCallback(() => {
+    loadIndex();
+    setIsOpen(true);
+  }, [loadIndex]);
   const close = useCallback(() => setIsOpen(false), []);
 
   const prefetchFeatured = useCallback(() => {
+    // Hover / focus on the trigger is the earliest intent signal we
+    // get; start the corpus download alongside the featured blob.
+    loadIndex();
     if (fetchRef.current) return;
     // Use the default cache mode so the browser honours the endpoint's
     // Cache-Control headers (s-maxage=60, swr=300) instead of pinning a
@@ -65,18 +97,16 @@ export function SearchProvider({ items, children }: ProviderProps) {
       });
   }, []);
 
-  // Idle prefetch at mount. Most users open the dialog seconds after
-  // landing; firing the request immediately means the data is sitting in
-  // memory by the time they hit Cmd+K. Edge cache (s-maxage=60) makes
-  // this nearly free across the site.
-  useEffect(() => {
-    prefetchFeatured();
-  }, [prefetchFeatured]);
+  // No prefetch at mount anymore: a fetch per page view is exactly the
+  // per-request transfer this change removes. Hover, focus, Cmd+K and
+  // "/" all trigger the load, and the CDN serves it in well under the
+  // time it takes the dialog to animate in.
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        loadIndex();
         setIsOpen((v) => !v);
         return;
       }
@@ -86,16 +116,17 @@ export function SearchProvider({ items, children }: ProviderProps) {
         const editable = t?.isContentEditable;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || editable) return;
         e.preventDefault();
+        loadIndex();
         setIsOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen]);
+  }, [isOpen, loadIndex]);
 
   const value = useMemo<Ctx>(
-    () => ({ open, close, isOpen, items, featured, prefetchFeatured }),
-    [open, close, isOpen, items, featured, prefetchFeatured],
+    () => ({ open, close, isOpen, items, indexStatus, featured, prefetchFeatured }),
+    [open, close, isOpen, items, indexStatus, featured, prefetchFeatured],
   );
 
   return (
@@ -114,6 +145,7 @@ export function useSearch(): Ctx {
       close: () => {},
       isOpen: false,
       items: [],
+      indexStatus: "idle",
       featured: null,
       prefetchFeatured: () => {},
     };
