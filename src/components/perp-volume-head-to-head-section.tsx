@@ -5,10 +5,13 @@ import {
   findVenue,
   getPerpVolumeHistory,
   headToHead,
+  weeklyRatio,
 } from "@/lib/perp-volume-history";
 import { brandColor } from "@/lib/brand";
 import { lineColor } from "@/lib/series-colors";
 import { PerpVolumeHeadToHeadChart } from "@/components/perp-volume-head-to-head";
+import { PerpVolumeRatioChart } from "@/components/perp-volume-ratio-chart";
+import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * Compare-page hero for two perp venues: daily perp volume head to head
@@ -34,6 +37,7 @@ export async function PerpVolumeHeadToHead({
   if (!a || !b || a.days.length < 7 || b.days.length < 7) return null;
   const h2h = headToHead(a, b, 90);
   if (!h2h) return null;
+  const ratio = weeklyRatio(a, b, h2h.asOf, 16);
 
   const aColor = brandColor(aSlug) ?? lineColor(0);
   const bColor = brandColor(bSlug) ?? lineColor(1);
@@ -66,6 +70,17 @@ export async function PerpVolumeHeadToHead({
           <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
             Daily perp volume, head to head
           </h2>
+          <div className="mt-2 flex items-center gap-3">
+            <span className="inline-flex items-center gap-2 text-base font-medium text-ink">
+              <ProviderLogo slug={aSlug} name={aName} size={26} />
+              {aName}
+            </span>
+            <span className="text-sm text-ink-faint">vs</span>
+            <span className="inline-flex items-center gap-2 text-base font-medium text-ink">
+              <ProviderLogo slug={bSlug} name={bName} size={26} />
+              {bName}
+            </span>
+          </div>
           <p className="mt-1 max-w-2xl text-sm text-ink-soft">
             Perpetual notional per closed UTC day, the DeFiLlama day buckets, read from each
             venue&apos;s own data. Ribbon under the bars marks which venue printed more that day.
@@ -120,6 +135,24 @@ export async function PerpVolumeHeadToHead({
           bName={bName}
           aColor={aColor}
           bColor={bColor}
+        />
+      </div>
+
+      <div className="mt-5 rounded border border-rule bg-paper p-4">
+        <p className="text-sm font-medium text-ink">
+          {aName} volume ÷ {bName} volume, week by week
+        </p>
+        <p className="mb-3 mt-1 text-xs text-ink-muted">
+          The ratio of the two venues&apos; seven-day perp volume, in percent; a window is shown only
+          when both sides have every day closed. 100% is parity. The dashed line is the median of the
+          weeks shown; the last window is the 7d tile above.
+        </p>
+        <PerpVolumeRatioChart
+          points={ratio.points}
+          medianPct={ratio.medianPct}
+          aName={aName}
+          bName={bName}
+          color={aColor}
         />
       </div>
 

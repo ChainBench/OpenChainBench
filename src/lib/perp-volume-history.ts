@@ -230,3 +230,60 @@ export function fmtUsdCompact(v: number | null): string {
   if (abs >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
   return `$${v.toFixed(0)}`;
 }
+
+export type WeeklyRatioPoint = {
+  /** First and last day of the 7-day window. */
+  start: string;
+  end: string;
+  a: number | null;
+  b: number | null;
+  /** a / b in percent, null when either window is incomplete or b is 0. */
+  ratioPct: number | null;
+};
+
+export type WeeklyRatio = {
+  points: WeeklyRatioPoint[];
+  /** Median of the non-null ratios shown. */
+  medianPct: number | null;
+};
+
+/**
+ * A ÷ B on seven-day windows ending on asOf, tiled back with no gap
+ * (oldest first). The last window is exactly the compare hero's 7d
+ * figure, so the chart and the tiles never name two different weeks.
+ * Calendar weeks are deliberately not used: the latest point must end
+ * on the last closed day, not on the previous Sunday.
+ */
+export function weeklyRatio(
+  a: PerpVolumeVenue,
+  b: PerpVolumeVenue,
+  asOf: string,
+  count = 16,
+): WeeklyRatio {
+  const points: WeeklyRatioPoint[] = [];
+  let end = asOf;
+  for (let i = 0; i < count; i++) {
+    const start = shiftDay(end, -6);
+    const va = windowSum(a, end, 7);
+    const vb = windowSum(b, end, 7);
+    points.push({
+      start,
+      end,
+      a: va,
+      b: vb,
+      ratioPct: va !== null && vb !== null && vb > 0 ? (va / vb) * 100 : null,
+    });
+    end = shiftDay(end, -7);
+  }
+  points.reverse();
+  const ratios = points
+    .map((p) => p.ratioPct)
+    .filter((r): r is number => r !== null)
+    .sort((x, y) => x - y);
+  let medianPct: number | null = null;
+  if (ratios.length > 0) {
+    const mid = Math.floor(ratios.length / 2);
+    medianPct = ratios.length % 2 === 1 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2;
+  }
+  return { points, medianPct };
+}

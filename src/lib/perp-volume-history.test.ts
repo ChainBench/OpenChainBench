@@ -61,3 +61,22 @@ describe("headToHead", () => {
     expect(headToHead(venue("a", {}), venue("b", { "2026-09-10": 1 }))).toBeNull();
   });
 });
+
+import { weeklyRatio } from "./perp-volume-history";
+
+describe("weeklyRatio", () => {
+  test("tiles complete seven-day windows back from asOf and takes the median", () => {
+    const series = (v: (d: number) => number) =>
+      Object.fromEntries(
+        Array.from({ length: 21 }, (_, i) => [shiftDay("2026-09-13", -i), v(i)]),
+      );
+    const a = venue("a", series(() => 10));
+    // b halves every week going back: latest week 20/day, then 10, then 5.
+    const b = venue("b", series((i) => (i < 7 ? 20 : i < 14 ? 10 : 5)));
+    const r = weeklyRatio(a, b, "2026-09-13", 4);
+    expect(r.points.map((p) => p.end)).toEqual(["2026-08-23", "2026-08-30", "2026-09-06", "2026-09-13"]);
+    expect(r.points.map((p) => p.ratioPct)).toEqual([null, 200, 100, 50]);
+    expect(r.points.at(-1)).toMatchObject({ start: "2026-09-07", a: 70, b: 140 });
+    expect(r.medianPct).toBe(100);
+  });
+});

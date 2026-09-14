@@ -163,6 +163,27 @@ export const COMPARE_PAIRS: ComparePair[] = [
     hero: "perp-volume",
   },
   {
+    slug: "aster-vs-hyperliquid",
+    providerA: "aster",
+    providerB: "hyperliquid",
+    publishedAt: "2026-09-15",
+    hero: "perp-volume",
+  },
+  {
+    slug: "aster-vs-lighter",
+    providerA: "aster",
+    providerB: "lighter",
+    publishedAt: "2026-09-15",
+    hero: "perp-volume",
+  },
+  {
+    slug: "dydx-vs-gmx",
+    providerA: "dydx",
+    providerB: "gmx",
+    publishedAt: "2026-09-15",
+    hero: "perp-volume",
+  },
+  {
     slug: "gmx-vs-hyperliquid",
     providerA: "gmx",
     providerB: "hyperliquid",
