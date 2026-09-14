@@ -341,6 +341,8 @@ export type Benchmark = {
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
   panelMainLabel?: string;
+  /** Tooltip of the headline tab in the panel switcher. */
+  panelMainDescription?: string;
   /** Chart cadence hints from the spec's `chart` block: hide sub-day
    *  ranges, open on a longer window, relabel the "24h" ledger suffix.
    *  Set for benches whose gauges move once per UTC day. */
