@@ -842,6 +842,7 @@ export function BenchmarkBody({
                       <MetricViewTabs
                         panels={tabPanels}
                         mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
+                        mainDescription={benchmark.panelMainDescription}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
                       />
@@ -889,6 +890,7 @@ export function BenchmarkBody({
                       <MetricViewTabs
                         panels={tabPanels}
                         mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
+                        mainDescription={benchmark.panelMainDescription}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
                       />

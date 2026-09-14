@@ -22,7 +22,7 @@ var Registry = []Venue{
 	{Slug: "hyperliquid", Name: "Hyperliquid", Type: "perp", Chain: "hyperliquid"},
 	{Slug: "lighter", Name: "Lighter", Type: "perp", Chain: "zksync"},
 	{Slug: "gmx-v2", Name: "GMX V2", Type: "perp", Chain: "arbitrum"},
-	{Slug: "gains", Name: "Gains Network", Type: "perp", Chain: "arbitrum"},
+	{Slug: "gains", Name: "Gains", Type: "perp", Chain: "arbitrum"},
 	{Slug: "dydx", Name: "dYdX v4", Type: "perp", Chain: "dydx"},
 	{Slug: "paradex", Name: "Paradex", Type: "perp", Chain: "paradex"},
 	{Slug: "edgex", Name: "edgeX", Type: "perp", Chain: "edgex"},

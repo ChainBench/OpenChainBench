@@ -137,6 +137,7 @@ export function buildEditorial(
     editorialStatus: spec.status,
     metric: spec.metric,
     panelMainLabel: spec.panel_main_label,
+    panelMainDescription: spec.panel_main_description,
     stackedShare: spec.stacked_share,
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
@@ -253,6 +254,27 @@ export async function specToBenchmark(
             return Array.isArray(series) && series.length > 0;
           });
           if (hasPanelData) r.availability = "live";
+        }
+      }
+      // Spec-declared unranked members (provider.unranked, e.g. a perp
+      // DEX with no token yet on a valuation bench). They have no
+      // headline value by design, so leave ms at zero (every ranking
+      // helper skips zero rows) but carry the label so the ledger can
+      // list them in their own block instead of dropping them, and
+      // never let them read as unresponsive: the absence is intended.
+      const unrankedBySlug = new Map(
+        spec.providers
+          .filter((p) => p.unranked)
+          .map((p) => [p.slug.toLowerCase(), p.unranked as string]),
+      );
+      if (unrankedBySlug.size > 0) {
+        for (const r of live.results) {
+          const label = unrankedBySlug.get(r.slug.toLowerCase());
+          if (!label) continue;
+          r.unrankedLabel = label;
+          r.unresponsive = undefined;
+          r.availability = "live";
+          r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
         }
       }
     }

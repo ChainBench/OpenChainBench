@@ -146,6 +146,18 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  /** Declares a cohort member that has no headline value by design
+   *  (a perp DEX with no token yet on a valuation bench). The ledger
+   *  lists it in an "Unranked · <label>" block below the field with
+   *  its companion-panel values, instead of dropping it or badging it
+   *  unresponsive. Never ranked, never a leader. Short label, e.g.
+   *  "Pre-TGE". */
+  unranked: z
+    .string()
+    .min(1)
+    .max(20)
+    .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
+    .optional(),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })
@@ -447,6 +459,9 @@ export const SpecSchema = z
      * to `metric`; set it when the panels are size/window variants and
      * the headline needs its variant spelled out (e.g. "All-in at $1k"). */
     panel_main_label: z.string().min(1).max(80).optional(),
+    /* One-line definition of the headline metric, shown as the tooltip
+     * of the headline tab (panels carry their own `description`). */
+    panel_main_description: z.string().min(1).max(300).optional(),
     /** When true, renders a stacked bar chart (absolute + % share) below
      *  the main chart on the bench page. Intended for volume-share benches
      *  where the relative contribution of each venue over time is the

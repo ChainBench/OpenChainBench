@@ -89,6 +89,13 @@ export type ProviderResult = {
    *  so every ranking surface (liveResults, hub best/fastest, best_name
    *  placeholders) keeps excluding it from winner claims. */
   unresponsive?: boolean;
+  /** Spec-declared unranked cohort member (provider.unranked in the
+   *  YAML), e.g. "Pre-TGE" on a valuation bench: no headline value by
+   *  design, so ms.p50 is 0 and every ranking helper (liveResults,
+   *  leader, field stats) already skips it. The ledger renders it in a
+   *  labelled block under the ranked field with its companion-panel
+   *  values instead of dropping or badging it. */
+  unrankedLabel?: string;
   /** Carry-forward bookkeeping written by the materialization worker:
    *  observedAt = epoch ms of the last successful Prom read behind these
    *  numbers; staleSince = first failed cycle after it. Absent on data
@@ -326,6 +333,8 @@ export type Benchmark = {
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
   panelMainLabel?: string;
+  /** Tooltip of the headline tab in the panel switcher. */
+  panelMainDescription?: string;
   /** When true the bench page renders a stacked bar chart (absolute + %
    *  share over time) below the main chart. Set via `stacked_share: true`
    *  in the bench YAML. Meaningful only for volume-share benches. */

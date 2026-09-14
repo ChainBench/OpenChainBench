@@ -1753,6 +1753,37 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "SynFutures is an oAMM-based (Oyster AMM) perpetuals DEX on Base and Arbitrum. Traders open positions against a concentrated liquidity pool rather than a matching engine; any ERC-20 can be listed permissionlessly.",
     twitter: "@SynFuturesDefi",
   },
+  // ─── Perp DEX valuation (bench 265 perp-pf-ratio) ─────────────
+  avantis: {
+    url: "https://avantisfi.com",
+    description:
+      "Avantis is a synthetic perpetuals DEX on Base covering crypto, forex and commodities. Trades settle against a USDC vault with oracle pricing; AVNT is the protocol token.",
+    twitter: "@avantisfi",
+  },
+  apex: {
+    url: "https://apex.exchange",
+    description:
+      "ApeX is an orderbook perpetuals exchange (ApeX Omni, formerly ApeX Pro) with omnichain deposits and off-chain matching. APEX is the protocol token.",
+    twitter: "@OfficialApeXdex",
+  },
+  derive: {
+    url: "https://derive.xyz",
+    description:
+      "Derive (formerly Lyra) is an options and perpetuals exchange on its own OP Stack rollup with an off-chain orderbook and on-chain settlement. DRV is the protocol token.",
+    twitter: "@derivexyz",
+  },
+  nado: {
+    url: "https://nado.xyz",
+    description:
+      "Nado is an orderbook perpetuals DEX on Ink, the Kraken-backed L2, with a central limit orderbook and cross-margin. No token has launched yet.",
+    twitter: "@nadoHQ",
+  },
+  decibel: {
+    url: "https://decibel.trade",
+    description:
+      "Decibel is a perpetuals DEX on Aptos with an on-chain central limit orderbook. No token has launched yet.",
+    twitter: "@DecibelTrade",
+  },
   kiloex: {
     url: "https://kiloex.io",
     description:

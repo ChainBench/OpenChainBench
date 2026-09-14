@@ -1,6 +1,6 @@
 package main
 
-// source_gains.go — Gains Network (gTrade) on Base mainnet.
+// source_gains.go — Gains (gTrade) on Base mainnet.
 //
 // Liquidations: eth_getLogs on the diamond for TradeClosed events, keeping
 // only those whose cancelReason (last uint8 word of the event data) == 1.
