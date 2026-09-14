@@ -139,13 +139,15 @@ metric_panels:
     higher_is_better: true
     description: "Annualized fees divided by open interest: how much fee the venue extracts per dollar of positions held. High values flag either high take rates or churned, possibly incentivized, volume."
 
+# Six columns max. Fees 30d and Open interest are the two a pre-TGE row can
+# fill; every other column needs a listed token. Float stays a chart tab.
 ledger_columns:
   - { label: "P/F", slot: p50 }
   - { label: "FDV / fees", panel: pf_fdv }
   - { label: "P/S", panel: ps }
   - { label: "Fees 30d", panel: fees_30d }
+  - { label: "Open interest", panel: oi }
   - { label: "Market cap", panel: mcap }
-  - { label: "Float", panel: float_pct }
 
 faq:
   - q: "What is the price to fees ratio of a perp DEX?"
