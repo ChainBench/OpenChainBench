@@ -158,6 +158,21 @@ scrape_configs:
           benchmark: fiat-onramp-cost
           host: openchainbench
 
+  # ─ Perp DEX daily volume (bench 266) ──────────────────────────────────
+  # Container ocb-perp-volume-history on the Paris VPS. One number per
+  # venue per closed UTC day, backfilled 400 days; the scrape refreshes
+  # the last-day / 7d / 30d gauges, the full series is served as JSON by
+  # Caddy at kv.openchainbench.com/aggregate/perp-volume/history.json.
+  - job_name: perp-volume-history
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-perp-volume-history:2112
+        labels:
+          benchmark: perp-daily-volume
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.

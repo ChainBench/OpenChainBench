@@ -53,6 +53,10 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // than a synthetic "Polkadot Foundation RPC" entry (there is no such
   // separate operator).
   "polkadot-official": "parity",
+  // Bench 041 and the perp AMM share bench label the GMX V2 venue
+  // "gmx-v2"; every other perp bench and the product page use "gmx".
+  // One brand, one product page, one compare entry.
+  "gmx-v2": "gmx",
   // Oracle pair → underlying chain / asset
   "eth-usd": "ethereum",
   "sol-usd": "solana",

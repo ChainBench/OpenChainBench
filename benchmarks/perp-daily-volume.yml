@@ -1,0 +1,270 @@
+# OpenChainBench. Bench 266
+
+slug: perp-daily-volume
+number: "266"
+title: "Perp DEX daily volume 2026: Hyperliquid, Aster, Lighter, GMX, Gains, dYdX by UTC day, backfilled"
+seo_title: "Perp DEX daily volume 2026: Hyperliquid vs Aster vs Lighter vs GMX vs Gains vs dYdX"
+seo_description: "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional. Daily perpetual DEX volume for {{count}} venues, DeFiLlama day buckets rebuilt from each venue's own data, with 7 and 30 day totals and a year of history."
+subtitle: Perpetual futures notional per closed UTC day for 10 decentralized venues, the same day buckets DeFiLlama's derivatives page uses, read from the sources its adapters read. Headline is the last closed day; 7 day and 30 day totals and cohort share sit next to it. History backfilled over a year and refreshed hourly.
+
+category: Trading
+status: live
+metric: Daily perp volume
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Volume is self-reported by each venue's public data surface and counted per UTC day, one side of each trade. Perimeters differ slightly per venue and are stated in the ledger notes. A closed day can be restated by a venue for one to two days; the harness re-reads the last three days every hour. Not a measure of organic flow: incentive programs and wash trading inflate notional on every venue.
+
+seo_intro: |
+  Rolling 24 hour volume, the number most venues put on their landing page, cannot be compared
+  across venues or across days: every venue's window ends at a different second and a single
+  large hour moves it twice. Daily volume on closed UTC days is the convention DeFiLlama, Dune
+  dashboards and the venues' own weekly reports use, and it is what "X flipped Y in volume"
+  claims are made on. This benchmark rebuilds that series for Hyperliquid, Aster, Lighter,
+  GMX V2, Gains Network, dYdX v4, Paradex, Extended, Orderly and Aevo, from the same sources
+  DeFiLlama's open-source adapters read (squids, exchange statistics endpoints, per-market
+  daily candles), so the numbers line up with defillama.com on closed days while the full
+  history stays free to reproduce. Each venue gets its last closed day, its 7 and 30 day totals,
+  its share of the cohort, and a year of daily points you can chart or download.
+
+abstract: |
+  The perp-volume-history harness keeps one number per venue per UTC day. For each venue it
+  reads the upstream DeFiLlama's dimension-adapters read for that venue: the GMX V2 synthetics
+  squids (marginVolumeUsd, perps only), the Gains Network backend volume-mix endpoint (trade
+  notional, resizes at their traded delta; the Dune view DeFiLlama reads when a Dune key is
+  configured), Hyperliquid info 1h candles across every perp market including HIP-3 dexs
+  (base volume times hourly mean price), Aster fapi 1d klines quote volume, Lighter 1d candles
+  per perp market, dYdX v4 indexer 1DAY candles per market, Paradex's public daily volume card,
+  Extended's per-day exchange statistics, Orderly's daily_stats and Aevo's statistics endpoint.
+  With a DeFiLlama Pro key configured, every venue switches to DeFiLlama's own dailyVolume
+  series. On boot the harness backfills 400 days where the source allows it, then every hour it
+  re-reads the last three closed days and publishes the last closed day, the 7 day and 30 day
+  sums (only when every day of the window is present), the venue's share of the cohort on each
+  window, and the depth of stored history. The full daily series is served as JSON to the site's
+  compare and venue pages.
+
+methodology:
+  - "Day bucket: UTC midnight to midnight, the DeFiLlama convention. The headline is the last fully closed UTC day (D-1); the current day is never shown."
+  - "One side per trade: every source counts taker notional once. Extended reports both sides per market, halved here as in the DeFiLlama adapter."
+  - "GMX V2: gmx.squids.live volumeInfos period 1d, marginVolumeUsd scaled by 1e-30, summed over Arbitrum, Avalanche, Botanix and MegaETH. Swap volume is excluded, so this is the GMX V2 Perps line, not the GMX parent."
+  - "Gains Network: backend-global.gains.trade /api/volume-mix per day, autoVolumeUsd + directVolumeUsd (opens and closes at full notional, position resizes at the traded delta, governance-only rows excluded), Arbitrum, Polygon, Base and MegaETH. ApeChain is not reported by that endpoint. With DUNE_API_KEY set the harness reads the Dune view dune.gains.result_g_trade_stats_defi_llama instead (the DeFiLlama adapter's source) and publishes the gap between the two as a divergence gauge."
+  - "Hyperliquid: info candleSnapshot 1h for every market of every perp dex (perpDexs, HIP-3 included); hourly notional = base volume x (open + high + low + close) / 4, summed per day. Hyperliquid's public daily_usd_volume feed stopped updating on 2026-04-03 and DeFiLlama's own indexer is private, so hourly candles are the closest public reconstruction."
+  - "Aster: fapi.asterdex.com 1d klines quoteVolume summed over TRADING perpetual symbols. Lighter: mainnet 1d candles quote volume summed over perp markets (market_id below 2048). dYdX v4: indexer 1DAY candles usdVolume summed over all perpetual markets."
+  - "Paradex: the public Metabase daily card, PERP_VOLUME column (options and spot excluded). Extended: exchange/stats/trading per day on Starknet, plus the Ethereum deployment until 2025-12-29. Orderly: md/volume/daily_stats. Aevo: statistics with instrument_type PERPETUAL per day."
+  - "Windows: 7d and 30d are sums of closed days ending on D-1 and are published only when every day in the window is present, so a partial backfill never reads as a low week. Share is the venue's window total over the sum of the cohort on the same window."
+  - "Refresh: full backfill on first boot (400 days, bounded by each source's start date), then every hour the last three closed days are re-read so restated days converge. Prometheus scrapes :2112/metrics every 60s."
+  - "Not covered yet: edgeX, GRVT, Pacifica, Vertex, Backpack, Jupiter, Drift and Ostium. The first three follow the same per-market candle pattern and are next; Drift and Ostium exist on DeFiLlama only through Dune queries."
+
+findings:
+  - "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional across {{count}} measured venues."
+  - "{{name:gains}} printed {{p50:gains}} and {{name:gmx}} {{p50:gmx}} on the last closed day. The 7d and 30d columns show whether that ordering holds beyond a single day."
+  - "{{name:hyperliquid}} at {{p50:hyperliquid}}, {{name:aster}} at {{p50:aster}} and {{name:lighter}} at {{p50:lighter}} carry most of the cohort's notional; their share columns add up to the bulk of the field."
+  - "{{name:dydx}} sits at {{p50:dydx}}, {{name:paradex}} at {{p50:paradex}}, {{name:extended}} at {{p50:extended}}, {{name:orderly}} at {{p50:orderly}} and {{name:aevo}} at {{p50:aevo}} on the last closed day."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-volume-history
+
+prometheus:
+  window: 24h
+  freshness_metric: perp_daily_volume_health
+  expected_freshness_seconds: 7200
+
+metric_panels:
+  - id: vol_7d
+    label: Volume 7d
+    label_key: venue
+    metric: perp_daily_volume_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Sum of the last 7 closed UTC days."
+  - id: vol_30d
+    label: Volume 30d
+    label_key: venue
+    metric: perp_daily_volume_usd{window="30d"}
+    unit: usd
+    higher_is_better: true
+    description: "Sum of the last 30 closed UTC days."
+  - id: share_1d
+    label: Share (day)
+    label_key: venue
+    metric: perp_daily_volume_share_pct{window="1d"}
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of the cohort's notional on the last closed day."
+  - id: share_7d
+    label: Share 7d
+    label_key: venue
+    metric: perp_daily_volume_share_pct{window="7d"}
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of the cohort's notional over the last 7 closed days."
+  - id: share_30d
+    label: Share 30d
+    label_key: venue
+    metric: perp_daily_volume_share_pct{window="30d"}
+    unit: pct
+    higher_is_better: true
+    description: "Share of the cohort's notional over the last 30 closed days."
+  - id: history_days
+    label: Days of history
+    label_key: venue
+    metric: perp_daily_volume_history_days
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "How many UTC days the harness holds for the venue."
+
+ledger_columns:
+  - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }
+  - { label: "Share", panel: share_1d, windows: { 7d: share_7d, 30d: share_30d } }
+  - { label: "Days of history", panel: history_days }
+
+stacked_share: true
+
+faq:
+  - q: "How is this different from bench 041, perp DEX volume share?"
+    a: "Bench 041 polls each venue's live rolling 24 hour figure every five minutes and ranks the time average. This bench counts closed UTC days, which is what DeFiLlama, weekly reports and flip claims use, and keeps a year of daily history per venue. The two agree on quiet days and disagree whenever a big hour sits on one side of a midnight boundary."
+  - q: "Are these the DeFiLlama numbers?"
+    a: "Same day buckets, same upstream sources, so on closed days they match DeFiLlama's derivatives page within the restatement window of each venue. DeFiLlama's derivatives API is paid, so the harness reads what its open-source adapters read. Two venues differ by construction: Hyperliquid is reconstructed from hourly candles rather than DeFiLlama's private fill indexer, and Gains Network reads the backend trade endpoint rather than the Dune view unless a Dune key is configured. With a DeFiLlama Pro key every venue switches to DeFiLlama's own series."
+  - q: "Why is the headline yesterday and not today?"
+    a: "Today's figure is a partial day and would rank a venue by the hour of reading. The last closed UTC day is the first number every source agrees on. The 7d and 30d columns end on the same day."
+  - q: "Why can a 7d or 30d cell be empty?"
+    a: "A window is published only when every day in it is present. A venue that just joined the cohort, or whose source missed a day, shows its daily figure and no window total rather than a short sum that reads as a bad week."
+  - q: "Does Gains flipping GMX on one day mean anything?"
+    a: "One day is noise: weekend volume on GMX regularly drops below half its weekday level. The 7d and 30d columns and the share chart show whether a lead persists. The compare page for the pair puts both series on one chart with the day-by-day lead."
+  - q: "Which venues are missing?"
+    a: "edgeX, GRVT and Pacifica expose per-market daily candles and are queued. Vertex, Backpack, Jupiter, Drift and Ostium either have no public daily history endpoint or exist on DeFiLlama only through paid Dune queries."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 orderbook perps, HIP-3 dexs included
+    formula: "Sum over all perp markets of 1h candle base volume x hourly mean price, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+      p90: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+      p99: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+      mean: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+      success: perp_daily_volume_health{venue="hyperliquid"}
+      sample_size: perp_daily_volume_history_days{venue="hyperliquid"}
+      series: perp_daily_volume_usd{venue="hyperliquid",window="1d"}
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain perps, Binance-compatible API
+    formula: "Sum over TRADING perpetual symbols of fapi 1d kline quoteVolume, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="aster",window="1d"}
+      p90: perp_daily_volume_usd{venue="aster",window="1d"}
+      p99: perp_daily_volume_usd{venue="aster",window="1d"}
+      mean: perp_daily_volume_usd{venue="aster",window="1d"}
+      success: perp_daily_volume_health{venue="aster"}
+      sample_size: perp_daily_volume_history_days{venue="aster"}
+      series: perp_daily_volume_usd{venue="aster",window="1d"}
+
+  - slug: lighter
+    name: Lighter
+    tag: zkSync orderbook perps, zero taker fee
+    formula: "Sum over perp markets of 1d candle quote volume, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="lighter",window="1d"}
+      p90: perp_daily_volume_usd{venue="lighter",window="1d"}
+      p99: perp_daily_volume_usd{venue="lighter",window="1d"}
+      mean: perp_daily_volume_usd{venue="lighter",window="1d"}
+      success: perp_daily_volume_health{venue="lighter"}
+      sample_size: perp_daily_volume_history_days{venue="lighter"}
+      series: perp_daily_volume_usd{venue="lighter",window="1d"}
+
+  - slug: gmx
+    name: GMX V2
+    tag: GM pool perps on Arbitrum, Avalanche, Botanix, MegaETH
+    formula: "Sum over chains of squid volumeInfos 1d marginVolumeUsd (perps only), per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="gmx",window="1d"}
+      p90: perp_daily_volume_usd{venue="gmx",window="1d"}
+      p99: perp_daily_volume_usd{venue="gmx",window="1d"}
+      mean: perp_daily_volume_usd{venue="gmx",window="1d"}
+      success: perp_daily_volume_health{venue="gmx"}
+      sample_size: perp_daily_volume_history_days{venue="gmx"}
+      series: perp_daily_volume_usd{venue="gmx",window="1d"}
+
+  - slug: gains
+    name: Gains Network
+    tag: gTrade synthetic perps on Arbitrum, Polygon, Base, MegaETH
+    formula: "Backend volume-mix auto + direct notional per UTC day (Dune view dune.gains.result_g_trade_stats_defi_llama when keyed)."
+    queries:
+      p50: perp_daily_volume_usd{venue="gains",window="1d"}
+      p90: perp_daily_volume_usd{venue="gains",window="1d"}
+      p99: perp_daily_volume_usd{venue="gains",window="1d"}
+      mean: perp_daily_volume_usd{venue="gains",window="1d"}
+      success: perp_daily_volume_health{venue="gains"}
+      sample_size: perp_daily_volume_history_days{venue="gains"}
+      series: perp_daily_volume_usd{venue="gains",window="1d"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain orderbook
+    formula: "Sum over perpetual markets of indexer 1DAY candle usdVolume, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="dydx",window="1d"}
+      p90: perp_daily_volume_usd{venue="dydx",window="1d"}
+      p99: perp_daily_volume_usd{venue="dydx",window="1d"}
+      mean: perp_daily_volume_usd{venue="dydx",window="1d"}
+      success: perp_daily_volume_health{venue="dydx"}
+      sample_size: perp_daily_volume_history_days{venue="dydx"}
+      series: perp_daily_volume_usd{venue="dydx",window="1d"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain perps
+    formula: "Public Metabase daily card, PERP_VOLUME column, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="paradex",window="1d"}
+      p90: perp_daily_volume_usd{venue="paradex",window="1d"}
+      p99: perp_daily_volume_usd{venue="paradex",window="1d"}
+      mean: perp_daily_volume_usd{venue="paradex",window="1d"}
+      success: perp_daily_volume_health{venue="paradex"}
+      sample_size: perp_daily_volume_history_days{venue="paradex"}
+      series: perp_daily_volume_usd{venue="paradex",window="1d"}
+
+  - slug: extended
+    name: Extended
+    tag: Starknet perps (StarkEx until 2025-12)
+    formula: "exchange/stats/trading per day summed over markets, both sides halved, per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="extended",window="1d"}
+      p90: perp_daily_volume_usd{venue="extended",window="1d"}
+      p99: perp_daily_volume_usd{venue="extended",window="1d"}
+      mean: perp_daily_volume_usd{venue="extended",window="1d"}
+      success: perp_daily_volume_health{venue="extended"}
+      sample_size: perp_daily_volume_history_days{venue="extended"}
+      series: perp_daily_volume_usd{venue="extended",window="1d"}
+
+  - slug: orderly
+    name: Orderly
+    tag: Omnichain orderbook infrastructure
+    formula: "md/volume/daily_stats volume per UTC day, all chains."
+    queries:
+      p50: perp_daily_volume_usd{venue="orderly",window="1d"}
+      p90: perp_daily_volume_usd{venue="orderly",window="1d"}
+      p99: perp_daily_volume_usd{venue="orderly",window="1d"}
+      mean: perp_daily_volume_usd{venue="orderly",window="1d"}
+      success: perp_daily_volume_health{venue="orderly"}
+      sample_size: perp_daily_volume_history_days{venue="orderly"}
+      series: perp_daily_volume_usd{venue="orderly",window="1d"}
+
+  - slug: aevo
+    name: Aevo
+    tag: OP Stack L2 orderbook perps
+    formula: "statistics instrument_type PERPETUAL daily_volume per UTC day."
+    queries:
+      p50: perp_daily_volume_usd{venue="aevo",window="1d"}
+      p90: perp_daily_volume_usd{venue="aevo",window="1d"}
+      p99: perp_daily_volume_usd{venue="aevo",window="1d"}
+      mean: perp_daily_volume_usd{venue="aevo",window="1d"}
+      success: perp_daily_volume_health{venue="aevo"}
+      sample_size: perp_daily_volume_history_days{venue="aevo"}
+      series: perp_daily_volume_usd{venue="aevo",window="1d"}

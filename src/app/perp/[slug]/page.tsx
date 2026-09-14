@@ -8,6 +8,7 @@ import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
+import { findVenue, getPerpVolumeHistory } from "@/lib/perp-volume-history";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { fmtUnit } from "@/lib/format";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
@@ -138,12 +139,34 @@ export default async function PerpVenuePage({
 
   const { seed, meta, cohortSlug } = v;
 
-  const [, kpis, ext, ...benchBlobs] = await Promise.all([
+  const [, kpis, extRaw, volumeHistory, ...benchBlobs] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpVenueKpis(cohortSlug),
     fetchPerpVenueExternalStats(cohortSlug),
+    getPerpVolumeHistory(),
     ...LIVE_PERP_BENCH_SLUGS.map((s) => loadBenchFromBlob(s)),
   ]);
+
+  // Bench 266 keeps a perps-only daily series per venue on closed UTC
+  // days. When the venue is in that cohort it replaces the external
+  // volume chart: the external fetchers fall back to DeFiLlama's dexs
+  // summary for GMX and Hyperliquid, which is spot swap volume, not
+  // perps. Cohort key for GMX is gmx-v2, history slug is gmx.
+  const historyVenue = volumeHistory
+    ? findVenue(volumeHistory, cohortSlug === "gmx-v2" ? "gmx" : cohortSlug)
+    : null;
+  const ext =
+    historyVenue && historyVenue.days.length >= 3
+      ? {
+          ...extRaw,
+          dailyVolumeChart: historyVenue.days
+            .slice(-30)
+            .map((p) => ({ date: p.day, valueUsd: p.usd })),
+        }
+      : extRaw;
+  const volumeChartTitle = historyVenue
+    ? "Daily perp volume (UTC days, bench 266)"
+    : "Daily Volume";
 
   const rankings = buildRankings(benchBlobs as (Benchmark | null)[], cohortSlug);
 
@@ -311,7 +334,7 @@ export default async function PerpVenuePage({
               <div className="card-soft rounded-lg p-4 border border-ink/15">
                 <PerpBarChart
                   bars={ext.dailyVolumeChart!}
-                  title="Daily Volume"
+                  title={volumeChartTitle}
                   color="teal"
                 />
               </div>

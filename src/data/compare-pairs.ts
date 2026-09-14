@@ -65,6 +65,15 @@ export type ComparePair = {
   excludeBenchmarks?: string[];
   /** ISO date the pair first cleared the gating criteria. */
   publishedAt: string;
+  /**
+   * Optional hero module rendered above the shared bench cards.
+   * `perp-volume` puts bench 266's daily perp volume head to head
+   * (closed UTC days, backfilled) at the top: the number flip claims
+   * between two perp venues are made on. Both providers must be venues
+   * of the perp-volume-history cohort; the module hides itself
+   * otherwise.
+   */
+  hero?: "perp-volume";
 };
 
 export const COMPARE_PAIRS: ComparePair[] = [
@@ -132,6 +141,7 @@ export const COMPARE_PAIRS: ComparePair[] = [
     providerA: "dydx",
     providerB: "hyperliquid",
     publishedAt: "2026-06-17",
+    hero: "perp-volume",
   },
   {
     slug: "ethereum-vs-solana",
@@ -146,16 +156,25 @@ export const COMPARE_PAIRS: ComparePair[] = [
     publishedAt: "2026-08-12",
   },
   {
+    slug: "gains-vs-gmx",
+    providerA: "gains",
+    providerB: "gmx",
+    publishedAt: "2026-09-14",
+    hero: "perp-volume",
+  },
+  {
     slug: "gmx-vs-hyperliquid",
     providerA: "gmx",
     providerB: "hyperliquid",
     publishedAt: "2026-06-17",
+    hero: "perp-volume",
   },
   {
     slug: "hyperliquid-vs-lighter",
     providerA: "hyperliquid",
     providerB: "lighter",
     publishedAt: "2026-06-17",
+    hero: "perp-volume",
   },
   {
     slug: "jupiter-vs-mobula",
