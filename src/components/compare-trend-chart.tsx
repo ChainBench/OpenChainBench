@@ -106,8 +106,8 @@ export function CompareTrendChart({
   }
 
   const W = 800;
-  const H = 150;
-  const PAD_L = 8;
+  const H = 170;
+  const PAD_L = 54;
   const PAD_R = 8;
   const PAD_T = 10;
   const PAD_B = 20;
@@ -179,7 +179,32 @@ export function CompareTrendChart({
         aria-label={`${aName} vs ${bName}, last ${range}`}
         onMouseLeave={() => setHover(null)}
       >
-        <line x1={PAD_L} x2={W - PAD_R} y1={PAD_T + plotH} y2={PAD_T + plotH} stroke="currentColor" strokeOpacity={0.2} />
+        {[0, 0.5, 1].map((f) => {
+          const v = min + f * span;
+          return (
+            <g key={f}>
+              <line
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={y(v)}
+                y2={y(v)}
+                stroke="currentColor"
+                strokeOpacity={f === 0 ? 0.25 : 0.08}
+              />
+              <text
+                x={PAD_L - 6}
+                y={y(v) + 3}
+                textAnchor="end"
+                fontSize={9}
+                fill="currentColor"
+                fillOpacity={0.55}
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              >
+                {fmtUnit(v, unit)}
+              </text>
+            </g>
+          );
+        })}
         <path d={path(series.a)} fill="none" stroke={aColor} strokeWidth={1.8} strokeLinejoin="round" />
         <path d={path(series.b)} fill="none" stroke={bColor} strokeWidth={1.8} strokeLinejoin="round" />
         {hover !== null && (

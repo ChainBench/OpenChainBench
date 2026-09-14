@@ -897,6 +897,9 @@ export default async function ComparePage({
   };
 
   const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+  const perpPair =
+    pair.hero === "perp-volume" ||
+    (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
 
   return (
     <main className="mx-auto max-w-5xl px-6 pt-10 pb-16 sm:pt-14">
@@ -981,8 +984,7 @@ export default async function ComparePage({
         />
       </section>
 
-      {(pair.hero === "perp-volume" ||
-        (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug))) && (
+      {perpPair && (
         <PerpVolumeHeadToHead
           aSlug={a.slug}
           bSlug={b.slug}
@@ -1002,8 +1004,11 @@ export default async function ComparePage({
               bench={s}
               aName={a.name}
               bName={b.name}
-              aSlug={a.slug}
-              bSlug={b.slug}
+              // Per-card trend charts only for perp venue pairs, where the
+              // benches are daily or slow-moving series worth a history.
+              // Latency / fee benches on other pairs read as flat lines.
+              aSlug={perpPair ? a.slug : undefined}
+              bSlug={perpPair ? b.slug : undefined}
             />
           ))}
         </div>
