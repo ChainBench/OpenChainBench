@@ -333,6 +333,8 @@ export type Benchmark = {
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
   panelMainLabel?: string;
+  /** Tooltip of the headline tab in the panel switcher. */
+  panelMainDescription?: string;
   /** When true the bench page renders a stacked bar chart (absolute + %
    *  share over time) below the main chart. Set via `stacked_share: true`
    *  in the bench YAML. Meaningful only for volume-share benches. */
