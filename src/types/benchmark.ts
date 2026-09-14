@@ -335,6 +335,14 @@ export type Benchmark = {
   panelMainLabel?: string;
   /** Tooltip of the headline tab in the panel switcher. */
   panelMainDescription?: string;
+  /** Chart cadence hints from the spec's `chart` block: hide sub-day
+   *  ranges, open on a longer window, relabel the "24h" ledger suffix.
+   *  Set for benches whose gauges move once per UTC day. */
+  chart?: {
+    minRange?: "24h" | "7d" | "30d";
+    defaultRange?: "24h" | "7d" | "30d" | "90d" | "1y";
+    windowLabel?: string;
+  };
   /** When true the bench page renders a stacked bar chart (absolute + %
    *  share over time) below the main chart. Set via `stacked_share: true`
    *  in the bench YAML. Meaningful only for volume-share benches. */
