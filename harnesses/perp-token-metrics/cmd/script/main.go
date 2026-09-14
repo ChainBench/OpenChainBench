@@ -43,12 +43,16 @@ var protocols = []protocol{
 	{slug: "orderly", llamaSlug: "orderly-perps", cgID: "orderly-network"},
 	{slug: "synfutures", llamaSlug: "synfutures", llamaPerpSlug: "synfutures-v3", cgID: "synfutures"},
 	{slug: "derive", llamaSlug: "derive", llamaPerpSlug: "derive-v2", cgID: "derive"},
-	// Token-less venues: fees and open interest only.
+	// edgeX (EDGE) and Paradex (DIME) listed on CoinGecko; verified 2026-09-14.
+	{slug: "edgex", llamaSlug: "edgex", llamaPerpSlug: "edgex-v2", cgID: "edgex"},
+	{slug: "paradex", llamaSlug: "paradex-perps", cgID: "paradex"},
+	// Pre-TGE venues: fees and open interest only, shown unranked on the
+	// bench so the fee base of a future token is visible before it lists.
 	{slug: "ostium", llamaSlug: "ostium"},
 	{slug: "pacifica", llamaSlug: "pacifica", llamaPerpSlug: "pacifica-perps"},
 	{slug: "extended", llamaSlug: "extended", llamaPerpSlug: "extended-perps"},
-	{slug: "edgex", llamaSlug: "edgex", llamaPerpSlug: "edgex-v2"},
-	{slug: "paradex", llamaSlug: "paradex-perps"},
+	{slug: "nado", llamaSlug: "nado", llamaPerpSlug: "nado-perps"},
+	{slug: "decibel", llamaSlug: "decibel"},
 }
 
 func (p protocol) perpSlug() string {

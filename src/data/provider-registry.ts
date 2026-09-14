@@ -1772,6 +1772,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Derive (formerly Lyra) is an options and perpetuals exchange on its own OP Stack rollup with an off-chain orderbook and on-chain settlement. DRV is the protocol token.",
     twitter: "@derivexyz",
   },
+  nado: {
+    url: "https://nado.xyz",
+    description:
+      "Nado is an orderbook perpetuals DEX on Ink, the Kraken-backed L2, with a central limit orderbook and cross-margin. No token has launched yet.",
+    twitter: "@nadoHQ",
+  },
+  decibel: {
+    url: "https://decibel.trade",
+    description:
+      "Decibel is a perpetuals DEX on Aptos with an on-chain central limit orderbook. No token has launched yet.",
+    twitter: "@DecibelTrade",
+  },
   kiloex: {
     url: "https://kiloex.io",
     description:

@@ -118,6 +118,9 @@ const RAW: Record<string, string> = {
   avantis: "/logos/avantis.svg",
   apex: "/logos/apex.svg",
   derive: "/logos/derive.svg",
+  // Pre-TGE rows on the same bench; marks from each site, on a white tile.
+  nado: "/logos/nado.svg",
+  decibel: "/logos/decibel.svg",
   drift: "/logos/drift.png",
   vertex: "/logos/vertex.png",
   edgex: "/logos/edgex.jpg",
