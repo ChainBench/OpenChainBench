@@ -123,6 +123,10 @@ func (s *paradexSource) Daily(ctx context.Context, from, to time.Time) (map[time
 // on the Starknet deployment (and the Ethereum one until it went dead
 // on 2025-12-29). Rows are per market and count both sides of each
 // trade, hence the /2, as in the adapter.
+//
+// The Ethereum host answers 504 since the deployment shut down: a host
+// that fails three days in a row is skipped for the rest of the sweep,
+// so a dead deployment costs seconds, not a retry ladder per day.
 type extendedSource struct{ meta venueMeta }
 
 var extendedEthDeadFrom = day("2025-12-29")
@@ -138,6 +142,7 @@ func (s *extendedSource) Start() time.Time { return s.meta.start }
 func (s *extendedSource) Daily(ctx context.Context, from, to time.Time) (map[time.Time]float64, error) {
 	out := map[time.Time]float64{}
 	var firstErr error
+	consecutive := map[string]int{}
 	err := eachDay(ctx, from, to, func(d time.Time) error {
 		hosts := []string{"https://api.starknet.extended.exchange"}
 		if d.Before(extendedEthDeadFrom) {
@@ -146,6 +151,9 @@ func (s *extendedSource) Daily(ctx context.Context, from, to time.Time) (map[tim
 		var total float64
 		got := false
 		for _, h := range hosts {
+			if consecutive[h] >= 3 {
+				continue
+			}
 			var resp struct {
 				Data []struct {
 					TradingVolume string `json:"tradingVolume"`
@@ -156,8 +164,13 @@ func (s *extendedSource) Daily(ctx context.Context, from, to time.Time) (map[tim
 				if firstErr == nil {
 					firstErr = err
 				}
+				consecutive[h]++
+				if consecutive[h] == 3 {
+					fmt.Printf("[extended] %s failed 3 days in a row, skipped for this sweep: %v\n", h, err)
+				}
 				continue
 			}
+			consecutive[h] = 0
 			got = true
 			for _, r := range resp.Data {
 				v, _ := strconv.ParseFloat(r.TradingVolume, 64)
