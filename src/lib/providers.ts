@@ -604,7 +604,7 @@ const buildProvidersCached = unstable_cache(
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
   ["providers-v6"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 
 /**

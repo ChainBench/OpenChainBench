@@ -151,7 +151,7 @@ async function getArchiveRaw(): Promise<ArchiveSnapshot | null> {
 const getArchiveCached = unstable_cache(
   getArchiveRaw,
   ["hl-archive-v2-users"],
-  { revalidate: 60, tags: ["hl-archive"] },
+  { revalidate: 300, tags: ["hl-archive"] },
 );
 
 export async function getArchive(): Promise<ArchiveSnapshot | null> {

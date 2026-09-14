@@ -13,17 +13,19 @@ export const revalidate = 3600;
 /**
  * Seed the live ticker with a real snapshot at ISR-regeneration time so
  * the numbers exist in the cached HTML (most AI crawlers don't run JS
- * and used to see dashes). Cost-neutral on Vercel: the fetch runs once
- * per Data-Cache window (60s) shared across ALL visitors, never
- * per-request — the page stays fully static/ISR. The client WebSocket
- * takes over within seconds of hydration.
+ * and used to see dashes). The fetch runs once per Data-Cache window
+ * shared across ALL visitors, never per-request, and the page stays
+ * fully static/ISR. The client WebSocket takes over within seconds of
+ * hydration. Note the window is also the homepage's effective ISR
+ * revalidate (Next takes the smallest revalidate of any fetch on the
+ * route), so 60 here meant a homepage regeneration every minute.
  */
 async function fetchRelayStats(): Promise<
   import("@/lib/live/types").GlobalView | null
 > {
   try {
     const res = await fetch("https://stream.openchainbench.com/stats", {
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(3_000),
     });
     if (!res.ok) return null;

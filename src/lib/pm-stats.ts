@@ -285,7 +285,7 @@ async function fetchPmCohortRaw(): Promise<PmCohortSummary | null> {
 const fetchPmCohortCached = unstable_cache(
   fetchPmCohortRaw,
   ["pm-hub-cohort-v1"],
-  { revalidate: 60, tags: ["pm-cohort"] },
+  { revalidate: 300, tags: ["pm-cohort"] },
 );
 
 export async function fetchPmCohort(): Promise<PmCohortSummary | null> {

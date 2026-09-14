@@ -362,7 +362,7 @@ const fetchPerpCohortCached = unstable_cache(
     return data;
   },
   ["perp-cohort-v1"],
-  { revalidate: 60, tags: ["perp-cohort"] },
+  { revalidate: 300, tags: ["perp-cohort"] },
 );
 
 export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
@@ -501,7 +501,7 @@ const fetchPerpByAssetMatrixCached = unstable_cache(
     return data;
   },
   ["perp-by-asset-matrix-v2"],
-  { revalidate: 120, tags: ["perp-by-asset"] },
+  { revalidate: 300, tags: ["perp-by-asset"] },
 );
 
 export async function fetchPerpByAssetMatrix(): Promise<PerpAssetRow[]> {

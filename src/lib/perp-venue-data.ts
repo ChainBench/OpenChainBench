@@ -153,7 +153,7 @@ const fetchPerpVenueKpisCached = unstable_cache(
   fetchPerpVenueKpisRaw,
   // v2: snapshot-first (perp-cohort blob) with Prom fallback.
   ["perp-venue-kpis-v2"],
-  { revalidate: 120, tags: ["perp-venue"] },
+  { revalidate: 300, tags: ["perp-venue"] },
 );
 
 export async function fetchPerpVenueKpis(

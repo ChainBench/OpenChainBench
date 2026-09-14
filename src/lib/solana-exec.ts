@@ -25,7 +25,7 @@ const EXEC_API = "https://exec.openchainbench.com";
 export async function fetchExecLeaderboard(): Promise<ExecLeaderboardResponse | null> {
   try {
     const res = await fetch(`${EXEC_API}/api/exec-leaderboard`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     return res.json();

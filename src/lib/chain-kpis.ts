@@ -150,7 +150,7 @@ async function fetchChainKpisRaw(slug: string): Promise<ChainKpis | null> {
 const fetchChainKpisCached = unstable_cache(
   fetchChainKpisRaw,
   ["chain-kpis-v1"],
-  { revalidate: 60, tags: ["chain-kpis"] },
+  { revalidate: 300, tags: ["chain-kpis"] },
 );
 
 export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
