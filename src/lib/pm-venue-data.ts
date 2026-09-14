@@ -367,7 +367,7 @@ const fetchPmVenueKpisCached = unstable_cache(
   fetchPmVenueKpisRaw,
   // v2: snapshot-first (pm-hub cohort blob) with Prom fallback.
   ["pm-venue-kpis-v2"],
-  { revalidate: 120, tags: ["pm-venue"] },
+  { revalidate: 300, tags: ["pm-venue"] },
 );
 
 export async function fetchPmVenueKpis(
@@ -433,7 +433,7 @@ async function fetchPmDataFeedKpisRaw(
 const fetchPmDataFeedKpisCached = unstable_cache(
   fetchPmDataFeedKpisRaw,
   ["pm-feed-kpis-v1"],
-  { revalidate: 120, tags: ["pm-feed"] },
+  { revalidate: 300, tags: ["pm-feed"] },
 );
 
 export async function fetchPmDataFeedKpis(

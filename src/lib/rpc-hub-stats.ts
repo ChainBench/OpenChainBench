@@ -511,7 +511,7 @@ const fetchRpcHubCached = unstable_cache(
   //   null on every /chains/<slug> render (Fastest public RPC on <chain> text
   //   missing prod-wide). Bump busts the stuck v4 entry.
   ["rpc-hub-cohort-v6", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
-  { revalidate: 60, tags: ["rpc-cohort"] },
+  { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
 export async function fetchRpcHub(): Promise<RpcHubSnapshot | null> {

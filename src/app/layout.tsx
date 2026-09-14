@@ -5,7 +5,6 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SearchProvider } from "@/components/search/search-provider";
-import { buildSearchIndex } from "@/lib/search/buildIndex";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
@@ -177,9 +176,9 @@ const ORG_JSONLD = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // Index is built once per server runtime (memoised via React `cache`),
-  // shipped as JSON to the client provider. ~400 docs, ~25-40 KB raw.
-  const searchItems = await buildSearchIndex();
+  // The search corpus is no longer built here: it had grown to ~880
+  // docs / 278 KB and was serialized into every page. The client fetches
+  // /api/search/index on first intent instead.
   return (
     <html
       lang="en"
@@ -258,7 +257,7 @@ export default async function RootLayout({
           Skip to main content
         </a>
         <PHProvider>
-          <SearchProvider items={searchItems}>
+          <SearchProvider>
             <SiteHeader />
             <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
             <SiteFooter />
