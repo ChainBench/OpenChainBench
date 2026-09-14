@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/url"
@@ -80,6 +81,13 @@ func (t *transakAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normali
 	if err != nil {
 		return nil, res.Latency, err
 	}
+	if res.Status == 400 && bytes.Contains(res.Body, []byte("Invalid payment method")) {
+		// VERIFIED live 2026-09-14: EUR on this partner account lists
+		// card, Apple Pay and Google Pay only; SEPA comes with bank-transfer
+		// enablement after KYB. Until then the cell is "no offer", not
+		// "provider failed".
+		return nil, res.Latency, ErrNoQuote
+	}
 	if res.Status != 200 {
 		return nil, res.Latency, statusErr("transak", res)
 	}
@@ -95,7 +103,9 @@ func (t *transakAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normali
 		Provider: "transak", Cohort: "onramp", Via: "direct", Asset: req.Asset.Asset, Network: req.Network,
 		PaymentMethod: req.PaymentMethod, Notional: req.Notional, CountrySource: "param",
 		FiatIn: rp.FiatAmount, CryptoOut: rp.CryptoAmount,
-		ProviderMarketRate: rp.MarketConversionPrice, RawJSONHash: hashBody(res.Body),
+		// marketConversionPrice is crypto per fiat unit (VERIFIED live
+		// 2026-09-14: 1.46e-5 BTC per EUR); invert to EUR per unit.
+		ProviderMarketRate: invert(rp.MarketConversionPrice), RawJSONHash: hashBody(res.Body),
 	}
 	// feeBreakdown ids are matched by substring so a rename on their side
 	// ("transak_fee" vs "transakFee") degrades to "unclassified", which is
@@ -120,3 +130,10 @@ func (t *transakAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normali
 }
 
 func (t *transakAdapter) CountrySource() string { return "param" }
+
+func invert(x float64) float64 {
+	if x <= 0 {
+		return 0
+	}
+	return 1 / x
+}

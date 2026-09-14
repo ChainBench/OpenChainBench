@@ -28,9 +28,9 @@ Rule from the spec: never invent an endpoint or parameter. Everything below is e
 | `GET /api/v1/pricing/public/quotes` with `x-api-key` header and `partnerApiKey` param | VERIFIED in docs 2026-09-10 |
 | Params `fiatCurrency`, `cryptoCurrency`, `network`, `isBuyOrSell=BUY`, `fiatAmount`, `paymentMethod`, `quoteCountryCode` | VERIFIED in docs |
 | Response `response.{fiatAmount,cryptoAmount,marketConversionPrice,totalFee,feeBreakdown[]}` | VERIFIED in docs |
-| Network value for Bitcoin (`mainnet`) | UNVERIFIED against live |
-| `feeBreakdown[].id` values (matched by substring `network` / `partner`, else provider) | UNVERIFIED against live |
-| Live call | UNVERIFIED, no partner key |
+| Network value for Bitcoin (`mainnet`) | VERIFIED live 2026-09-14 (also `ethereum`, `base`, `arbitrum`) |
+| `feeBreakdown[].id` values | VERIFIED live 2026-09-14: `transak_fee`, `network_fee` (substring match holds). `marketConversionPrice` is crypto per EUR (inverted in the adapter) |
+| Live call | VERIFIED 2026-09-14 on `api.transak.com` (production key). EUR payment methods on this account: card, Apple Pay, Google Pay; `sepa_bank_transfer` answers 400 "Invalid payment method" and is recorded as no_quote until bank transfers are enabled (KYB) |
 
 ## Ramp (direct)
 
