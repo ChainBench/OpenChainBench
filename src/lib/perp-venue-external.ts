@@ -92,6 +92,31 @@ type GainsStatsRow = {
 
 type GainsApiResp = { stats: GainsStatsRow[] };
 
+/**
+ * Daily bars from a cumulative counter (e.g. Gains' all-time
+ * `leveraged_volume`), one snapshot per day, ascending.
+ *
+ * A cumulative counter can jump when the upstream re-indexes its history
+ * (Gains added ~$29B on 2026-09-03 and ~$27B on 2026-09-07 while real days
+ * are $30-500M; the chart showed $30B bars). Those jumps are not volume:
+ * any delta above `outlierFactor` times the median of the positive deltas
+ * is dropped, as are non-positive deltas. Exported for tests.
+ */
+export function deltaBarsFromCumulative(
+  rows: { date: string; value: number }[],
+  outlierFactor = 8,
+): DailyBar[] {
+  const deltas: DailyBar[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const v = rows[i].value - rows[i - 1].value;
+    if (v > 0) deltas.push({ date: rows[i].date.split("T")[0], valueUsd: v });
+  }
+  if (deltas.length < 3) return deltas;
+  const sorted = deltas.map((d) => d.valueUsd).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  return deltas.filter((d) => d.valueUsd <= median * outlierFactor);
+}
+
 async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
   const [arbResp, baseResp] = await Promise.all([
     jf<GainsApiResp>("https://backend-global.gains.trade/api/stats?chainId=42161"),
@@ -116,13 +141,12 @@ async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
   const totalTradeCount = newest.trades_count || undefined;
   const vaultTvlUsd = newest.vault_tvl || undefined;
 
-  // Daily volume bars from last 30 days of cumulative deltas
+  // Daily volume bars from last 30 days of cumulative deltas, re-index
+  // jumps dropped (see deltaBarsFromCumulative).
   const last31 = sorted.slice(-31);
-  const dailyVolumeChart: DailyBar[] = [];
-  for (let i = 1; i < last31.length; i++) {
-    const vol = last31[i].leveraged_volume - last31[i - 1].leveraged_volume;
-    if (vol > 0) dailyVolumeChart.push({ date: last31[i].date.split("T")[0], valueUsd: vol });
-  }
+  const dailyVolumeChart = deltaBarsFromCumulative(
+    last31.map((r) => ({ date: r.date, value: r.leveraged_volume })),
+  );
 
   // Add Base chain on top
   let combinedTotal = totalVolumeUsd ?? 0;
@@ -136,9 +160,10 @@ async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
     const baseSorted = [...baseByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     const baseLast31 = baseSorted.slice(-31);
     const baseDailyMap = new Map<string, number>();
-    for (let i = 1; i < baseLast31.length; i++) {
-      const vol = baseLast31[i].leveraged_volume - baseLast31[i - 1].leveraged_volume;
-      if (vol > 0) baseDailyMap.set(baseLast31[i].date.split("T")[0], vol);
+    for (const bar of deltaBarsFromCumulative(
+      baseLast31.map((r) => ({ date: r.date, value: r.leveraged_volume })),
+    )) {
+      baseDailyMap.set(bar.date, bar.valueUsd);
     }
     for (const bar of dailyVolumeChart) bar.valueUsd += baseDailyMap.get(bar.date) ?? 0;
     const baseNewest = baseSorted[baseSorted.length - 1];
@@ -219,21 +244,20 @@ type LlamaChartResp = {
   totalDataChart?: [number, number][];
 };
 
+// DeFiLlama's free `/summary/dexs/<slug>` is SPOT swap volume, not perps
+// (GMX swaps ~$1M/day vs ~$50M/day of perps; Hyperliquid spot ~$85M/day
+// vs ~$14B/day of perps; edgeX and Drift likewise). It used to feed the
+// "Daily volume" chart and the "Total volume" card on these venue pages,
+// understating them by up to 100x. Perp volume history is behind
+// DeFiLlama's paid tier (402 on /summary/derivatives); bench 266
+// (harnesses/perp-volume-history) rebuilds it from each venue's own
+// upstream and will feed these pages. Until then the chart is omitted
+// rather than wrong; fees (protocol-wide) stay.
+
 async function fetchGmxStats(): Promise<PerpVenueExternalStats> {
-  const [fees, vol] = await Promise.all([
-    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/gmx"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/gmx"),
-  ]);
+  const fees = await jf<LlamaChartResp>("https://api.llama.fi/summary/fees/gmx");
 
   const totalFeesUsd = fees?.totalAllTime;
-  const totalVolumeUsd = vol?.totalAllTime;
-
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({
-      date: new Date(ts * 1000).toISOString().split("T")[0],
-      valueUsd: v,
-    }));
 
   const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
     .slice(-30)
@@ -242,7 +266,7 @@ async function fetchGmxStats(): Promise<PerpVenueExternalStats> {
       valueUsd: v,
     }));
 
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+  return { totalFeesUsd, dailyFeesChart };
 }
 
 // ---------------------------------------------------------------------------
@@ -256,13 +280,12 @@ type HlAssetCtx = {
 };
 
 async function fetchHyperliquidStats(): Promise<PerpVenueExternalStats> {
-  const [data, feesLlama, volLlama] = await Promise.all([
+  const [data, feesLlama] = await Promise.all([
     jfPost<[{ universe: { name: string }[] }, HlAssetCtx[]]>(
       "https://api.hyperliquid.xyz/info",
       { type: "metaAndAssetCtxs" },
     ),
     jf<LlamaChartResp>("https://api.llama.fi/summary/fees/hyperliquid"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/hyperliquid"),
   ]);
 
   const extraKpis: { label: string; value: string }[] = [];
@@ -276,17 +299,14 @@ async function fetchHyperliquidStats(): Promise<PerpVenueExternalStats> {
   }
 
   const totalFeesUsd = feesLlama?.totalAllTime;
-  const totalVolumeUsd = volLlama?.totalAllTime;
 
   const dailyFeesChart: DailyBar[] = (feesLlama?.totalDataChart ?? [])
     .slice(-30)
     .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
 
-  const dailyVolumeChart: DailyBar[] = (volLlama?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart, extraKpis };
+  // Perp volume 24h comes from the native API above (extraKpis); the daily
+  // history waits for bench 266, see the note above fetchGmxStats.
+  return { totalFeesUsd, dailyFeesChart, extraKpis };
 }
 
 // ---------------------------------------------------------------------------
@@ -540,47 +560,33 @@ async function fetchPolymarketStats(): Promise<PerpVenueExternalStats> {
 }
 
 // ---------------------------------------------------------------------------
-// SynFutures — DeFiLlama dexs + fees
+// SynFutures — DeFiLlama fees
 // ---------------------------------------------------------------------------
 
 async function fetchSynFuturesStats(): Promise<PerpVenueExternalStats> {
-  const [fees, vol] = await Promise.all([
-    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/synfutures"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/synfutures"),
-  ]);
+  const fees = await jf<LlamaChartResp>("https://api.llama.fi/summary/fees/synfutures");
   const totalFeesUsd = fees?.totalAllTime;
-  const totalVolumeUsd = vol?.totalAllTime;
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
   const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
     .slice(-30)
     .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+  return { totalFeesUsd, dailyFeesChart };
 }
 
 // ---------------------------------------------------------------------------
-// KiloEx — DeFiLlama dexs + fees
+// KiloEx — DeFiLlama fees
 // ---------------------------------------------------------------------------
 
 async function fetchKiloExStats(): Promise<PerpVenueExternalStats> {
-  const [fees, vol] = await Promise.all([
-    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/kiloex"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/kiloex"),
-  ]);
+  const fees = await jf<LlamaChartResp>("https://api.llama.fi/summary/fees/kiloex");
   const totalFeesUsd = fees?.totalAllTime;
-  const totalVolumeUsd = vol?.totalAllTime;
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
   const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
     .slice(-30)
     .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+  return { totalFeesUsd, dailyFeesChart };
 }
 
 // ---------------------------------------------------------------------------
-// Orderly — direct API + DeFiLlama
+// Orderly — direct API
 // ---------------------------------------------------------------------------
 
 type OrderlyVolumeResp = {
@@ -589,32 +595,22 @@ type OrderlyVolumeResp = {
 };
 
 async function fetchOrderlyStats(): Promise<PerpVenueExternalStats> {
-  const [stats, vol] = await Promise.all([
-    jf<OrderlyVolumeResp>("https://api-evm.orderly.org/v1/public/volume/stats"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/orderly-network"),
-  ]);
+  const stats = await jf<OrderlyVolumeResp>("https://api-evm.orderly.org/v1/public/volume/stats");
   const extraKpis: { label: string; value: string }[] = [];
   if (stats?.success && stats.data.perp_volume_last_1_day) {
     extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(stats.data.perp_volume_last_1_day) });
   }
-  const totalVolumeUsd = vol?.totalAllTime;
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-  return { totalVolumeUsd, dailyVolumeChart, extraKpis };
+  return { extraKpis };
 }
 
 // ---------------------------------------------------------------------------
-// Backpack — direct tickers API + DeFiLlama
+// Backpack — direct tickers API
 // ---------------------------------------------------------------------------
 
 type BackpackTicker = { symbol: string; quoteVolume: string };
 
 async function fetchBackpackStats(): Promise<PerpVenueExternalStats> {
-  const [tickers, vol] = await Promise.all([
-    jf<BackpackTicker[]>("https://api.backpack.exchange/api/v1/tickers"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/backpack-exchange"),
-  ]);
+  const tickers = await jf<BackpackTicker[]>("https://api.backpack.exchange/api/v1/tickers");
   const extraKpis: { label: string; value: string }[] = [];
   if (Array.isArray(tickers)) {
     const vol24h = tickers
@@ -624,59 +620,33 @@ async function fetchBackpackStats(): Promise<PerpVenueExternalStats> {
     const perpCount = tickers.filter((t) => t.symbol.endsWith("_PERP")).length;
     if (perpCount > 0) extraKpis.push({ label: "Perp markets", value: String(perpCount) });
   }
-  const totalVolumeUsd = vol?.totalAllTime;
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-  return { totalVolumeUsd, dailyVolumeChart, extraKpis };
+  return { extraKpis };
 }
 
 // ---------------------------------------------------------------------------
-// Drift — DeFiLlama fees + volume
+// Drift — DeFiLlama fees
 // ---------------------------------------------------------------------------
 
 async function fetchDriftStats(): Promise<PerpVenueExternalStats> {
-  const [fees, vol] = await Promise.all([
-    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/drift"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/drift"),
-  ]);
-
+  const fees = await jf<LlamaChartResp>("https://api.llama.fi/summary/fees/drift");
   const totalFeesUsd = fees?.totalAllTime;
-  const totalVolumeUsd = vol?.totalAllTime;
-
   const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
     .slice(-30)
     .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+  return { totalFeesUsd, dailyFeesChart };
 }
 
 // ---------------------------------------------------------------------------
-// EdgeX — DeFiLlama fees + volume
+// EdgeX — DeFiLlama fees
 // ---------------------------------------------------------------------------
 
 async function fetchEdgexStats(): Promise<PerpVenueExternalStats> {
-  const [fees, vol] = await Promise.all([
-    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/edgex"),
-    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/edgex"),
-  ]);
-
+  const fees = await jf<LlamaChartResp>("https://api.llama.fi/summary/fees/edgex");
   const totalFeesUsd = fees?.totalAllTime;
-  const totalVolumeUsd = vol?.totalAllTime;
-
   const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
     .slice(-30)
     .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-
-  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
-    .slice(-30)
-    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
-
-  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+  return { totalFeesUsd, dailyFeesChart };
 }
 
 // ---------------------------------------------------------------------------
