@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getBenchmark } from "@/data/benchmarks";
-import { headlineSentence, leader } from "@/lib/citation";
+import { leader } from "@/lib/citation";
+import { OgClaimSentence } from "@/lib/og-claim";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { matchesChainSlug } from "@/lib/chain-aliases";
@@ -57,7 +58,6 @@ export default async function OG({
 
   const top = leader(b);
   const headline = top ? `${top.name} leads at ${fmtUnit(top.value, b.unit)}` : "Awaiting first run";
-  const sentence = headlineSentence(b);
   const catColor = CATEGORY_COLOR[b.category] ?? "#7a2e1f";
   const chainLabel = chainId
     ? b.dimensions?.chain?.find((c) => matchesChainSlug(c.value, chainId))
@@ -123,18 +123,7 @@ export default async function OG({
           >
             {titleText}
           </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 28,
-              fontStyle: "italic",
-              color: "#4a443c",
-              marginTop: 18,
-              maxWidth: 1080,
-            }}
-          >
-            {top ? sentence : b.subtitle}
-          </div>
+          <OgClaimSentence benchmark={b} fallback={b.subtitle} />
         </div>
 
         <div
