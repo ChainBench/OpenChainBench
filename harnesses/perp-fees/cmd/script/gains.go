@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// Gains Network v8 on Base. We read fees and spread directly from the
+// Gains (gTrade) v8 on Base. We read fees and spread directly from the
 // PairsStorage facet on the Diamond contract via Base public RPC. No
 // hardcoded fee schedule — everything comes from on-chain.
 //
@@ -136,7 +136,7 @@ func gainsReadPair(client *http.Client, pairIndex int) (*gainsPair, error) {
 	// to the start of the struct content.
 	from := extractAsciiString(res, fromOff+32)
 	to := extractAsciiString(res, toOff+32)
-	// Pair struct slot layout (re-verified against the gains.trade backend
+	// Pair struct slot layout (re-verified against the Gains backend
 	// /trading-variables on 2026-07-08):
 	//   slot 7 → spreadP    (full bid-ask spread, 1e10 precision)
 	//   slot 8 → groupIndex
@@ -313,7 +313,7 @@ func fetchGains(v VenueConfig, _ string) PerpSample {
 	// 350_000_000 means 0.035% = 3.5 bps. bps = raw / 1e8.
 	openFeeF, _ := new(big.Float).Quo(new(big.Float).SetInt(openFeeP), big.NewFloat(1e8)).Float64()
 	// spreadP is the FULL bid-ask spread; the taker only crosses half of
-	// it, so half-spread = spreadP / (2 × 1e8). gains.trade UI displays
+	// it, so half-spread = spreadP / (2 × 1e8). the Gains UI displays
 	// this same half-spread (e.g. spreadP=1e8 → 0.005% = 0.5 bps).
 	spreadF, _ := new(big.Float).Quo(new(big.Float).SetInt(pair.SpreadP), big.NewFloat(2e8)).Float64()
 

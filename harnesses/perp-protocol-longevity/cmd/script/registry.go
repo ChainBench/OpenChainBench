@@ -29,7 +29,7 @@ type venueRecord struct {
 var registry = []venueRecord{
 	{
 		Slug:     "gains",
-		Name:     "gains.trade",
+		Name:     "Gains",
 		Launched: time.Date(2021, 12, 1, 0, 0, 0, 0, time.UTC),
 		// No incidents recorded in DeFiLlama or public post-mortems as of 2026-08-03.
 		Incidents:      []incidentRecord{},
