@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -232,6 +233,11 @@ func (s *aevoSource) Daily(ctx context.Context, from, to time.Time) (map[time.Ti
 // at run time; the candles are the same fills bucketed on UTC days,
 // which is what a backfill needs. Candles are paged 100 per call from
 // the most recent, so a 400-day backfill is four pages per market.
+//
+// The indexer rate-limits per IP and, once tripped, answers 429 for a
+// while: the throttle stays at one request a second and the sweep gives
+// up after a run of rate-limited calls rather than retrying every
+// market through the backoff ladder (that took an hour on 2026-09-14).
 type dydxSource struct{ meta venueMeta }
 
 func (s *dydxSource) Slug() string        { return s.meta.slug }
@@ -252,11 +258,15 @@ func (s *dydxSource) Daily(ctx context.Context, from, to time.Time) (map[time.Ti
 		return nil, err
 	}
 	out := map[time.Time]float64{}
-	th := newThrottle(300)
+	th := newThrottle(60)
 	failed := 0
+	limited := 0
 	for ticker := range markets.Markets {
 		toISO := to.AddDate(0, 0, 1).Format(time.RFC3339)
 		for page := 0; page < 8; page++ {
+			if limited >= 6 {
+				return nil, fmt.Errorf("indexer rate limited, giving up this sweep (%d markets done)", len(markets.Markets)-failed)
+			}
 			if err := th.wait(ctx); err != nil {
 				return out, err
 			}
@@ -270,8 +280,12 @@ func (s *dydxSource) Daily(ctx context.Context, from, to time.Time) (map[time.Ti
 				url.PathEscape(ticker), url.QueryEscape(toISO))
 			if err := getJSON(ctx, u, &resp); err != nil {
 				failed++
+				if errors.Is(err, ErrRateLimited) {
+					limited++
+				}
 				break
 			}
+			limited = 0
 			if len(resp.Candles) == 0 {
 				break
 			}

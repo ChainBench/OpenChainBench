@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -105,6 +106,12 @@ func runLoop(ctx context.Context, store *Store, sources []Source, backfillDays, 
 		today := utcDay(time.Now())
 		lastClosed := today.AddDate(0, 0, -1)
 
+		// Every source runs in its own goroutine: they are independent
+		// HTTP fan-outs and one slow or rate-limited venue (dYdX on
+		// 2026-09-14) must not hold the others back. The store and the
+		// gauges are mutex-safe; each venue flushes and publishes as soon
+		// as it lands.
+		var wg sync.WaitGroup
 		for _, src := range sources {
 			if ctx.Err() != nil {
 				return
@@ -122,18 +129,19 @@ func runLoop(ctx context.Context, store *Store, sources []Source, backfillDays, 
 				from = horizon
 				backfill = true
 			}
-			if runSource(ctx, store, src, from, lastClosed) && backfill {
-				store.markBackfilled(src.Slug(), horizon)
-			}
-			// Flush and publish after every source: the first sweep runs
-			// for the better part of an hour, a restart must not redo
-			// finished venues, and the bench should light up venue by
-			// venue rather than all at once at the end.
-			if err := store.flush(); err != nil {
-				fmt.Fprintf(os.Stderr, "store flush: %v\n", err)
-			}
-			publish(store, sources)
+			wg.Add(1)
+			go func(src Source, from, horizon time.Time, backfill bool) {
+				defer wg.Done()
+				if runSource(ctx, store, src, from, lastClosed) && backfill {
+					store.markBackfilled(src.Slug(), horizon)
+				}
+				if err := store.flush(); err != nil {
+					fmt.Fprintf(os.Stderr, "store flush: %v\n", err)
+				}
+				publish(store, sources)
+			}(src, from, horizon, backfill)
 		}
+		wg.Wait()
 
 		publish(store, sources)
 		if err := store.flush(); err != nil {
