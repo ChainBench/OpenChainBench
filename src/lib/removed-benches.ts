@@ -70,6 +70,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // main yet; its sitemap entry 404'd the prod smoke gate and rolled back
   // the bench 265 deploy (#2375). Remove when 266 ships to prod.
   "perp-daily-volume",
+  // fiat-onramp-cost (262) goes live on dev on 2026-09-15 (#2317 + headline
+  // switch); not on main until the cohort has more than two keyed
+  // providers. Remove when 262 ships to prod.
+  "fiat-onramp-cost",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
