@@ -93,6 +93,63 @@ faq:
   - q: "Why does a provider show no data?"
     a: "Three reasons. The provider's key is not configured on the harness, so it is skipped. The provider does not list the headline cell. Or the provider answered without a usable quote, in which case its success rate drops and the cell is purged rather than left at a stale value."
 
+panel_main_description: "All-in premium over the Kraken EUR mid for 500 EUR of BTC by card: declared fee, network fee and the spread hidden in the rate, folded into one number. 24h median. Lower is better."
+
+# One panel per grid cell (24h median of the same all-in premium) plus the
+# fee split of the headline cell. Cells a provider does not quote (Transak
+# has no SEPA, MoonPay's test key has no USDC) render as no data.
+metric_panels:
+  - id: declared_fee
+    label: Declared fee
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_declared_fee_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500"}[24h])
+    unit: bps
+    description: "The part of the headline cost the provider itemizes: its own fee plus network fee plus partner fee, over the fiat paid. What the checkout screen shows."
+  - id: hidden_spread
+    label: Hidden spread
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_hidden_spread_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "All-in premium minus declared fee: the margin that lives in the provider's exchange rate rather than on the fee line."
+  - id: btc_sepa_500
+    label: BTC, SEPA, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="btc",network="bitcoin",payment_method="sepa",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "Same buyer, same 500 EUR of BTC, paid by SEPA bank transfer instead of card. Transak's quote endpoint does not offer SEPA."
+  - id: btc_card_100
+    label: BTC, card, 100 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="100",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "The headline cell at a 100 EUR ticket: fixed minimum fees weigh more on small orders."
+  - id: eth_card_500
+    label: ETH, card, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="eth",network="ethereum",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of ETH on Ethereum mainnet by card, premium over the Kraken ETH/EUR mid."
+  - id: eth_sepa_500
+    label: ETH, SEPA, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="eth",network="ethereum",payment_method="sepa",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of ETH on Ethereum mainnet by SEPA. MoonPay only, for now."
+  - id: usdc_card_500
+    label: USDC, card, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="usdc",network="base",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of USDC on Base by card, premium over the Kraken USDC/EUR mid. Transak only until MoonPay is quoted with a production key."
+
+ledger_columns:
+  - { label: "All-in", slot: p50 }
+  - { label: "Declared fee", panel: declared_fee }
+  - { label: "Hidden spread", panel: hidden_spread }
+  - { label: "BTC SEPA", panel: btc_sepa_500 }
+  - { label: "ETH card", panel: eth_card_500 }
+  - { label: "USDC card", panel: usdc_card_500 }
+
 dimensions: {}
 
 providers:
