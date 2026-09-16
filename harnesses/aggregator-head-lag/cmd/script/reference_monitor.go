@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	neturl "net/url"
 	"os"
 	"strings"
 	"sync"
@@ -217,7 +218,7 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 	if err := conn.WriteJSON(sub); err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
-	fmt.Printf("[HEAD-LAG][REF][%s] subscribed to %s on %s\n", p.ChainName, p.Address, url)
+	fmt.Printf("[HEAD-LAG][REF][%s] subscribed to %s on %s\n", p.ChainName, p.Address, redactURL(url))
 
 	go func() {
 		t := time.NewTicker(25 * time.Second)
@@ -289,4 +290,26 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 		}
 		reference.observe(p.ChainName, r.TransactionHash, now)
 	}
+}
+
+// redactURL hides the query string and any path segment that looks like
+// a key: keyed reference endpoints (Helius, Alchemy) carry the credential
+// in the URL, and the subscription log is read by more people than hold
+// the key.
+func redactURL(raw string) string {
+	u, err := neturl.Parse(raw)
+	if err != nil {
+		return "<unparseable url>"
+	}
+	if u.RawQuery != "" {
+		u.RawQuery = "<redacted>"
+	}
+	parts := strings.Split(u.Path, "/")
+	for i, seg := range parts {
+		if len(seg) >= 20 {
+			parts[i] = "<redacted>"
+		}
+	}
+	u.Path = strings.Join(parts, "/")
+	return u.String()
 }
