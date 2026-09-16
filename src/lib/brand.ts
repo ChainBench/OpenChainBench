@@ -58,6 +58,8 @@ const BRANDS: Record<string, Brand> = {
 
   // ─── Aggregators / providers (bright, saturated - read on both modes) ───
   mobula: { color: "#FF6B35" },        // vivid orange
+  serialized: { color: "#3D74FF" },    // serialized logo blue - was falling back to the
+                                       //   palette and drew the same orange as mobula
   codex: { color: "#84cc16" },         // saturated lime - readable on white + dark
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
   jupiter: { color: "#C7F284" },       // jupiter matrix green (secondary brand) - keeps it
