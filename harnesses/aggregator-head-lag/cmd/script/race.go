@@ -17,11 +17,12 @@ import (
 // the first arrival, and publishes
 //
 //   - head_lag_first_total{aggregator,chain,region}: how often each feed
-//     (the node reference included, as aggregator="reference") reported
-//     the trade first. Arrivals within raceTie of the earliest count as
-//     first for every feed involved: below that, the order is network
-//     jitter between our probe and two servers, not a property of the
-//     feeds.
+//     reported the trade before every other feed. Arrivals within raceTie
+//     of the earliest feed count as first for every feed involved: below
+//     that, the order is network jitter between our probe and two
+//     servers, not a property of the feeds. The node reference is scored
+//     apart (aggregator="reference": trades where it beat every feed) and
+//     is not a competitor in the share.
 //   - head_lag_races_total{chain,region}: races closed.
 //   - head_lag_first_share_pct{aggregator,chain,region}: the share over a
 //     rolling 24 h, computed in-process so the bench can read it as a
@@ -179,9 +180,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	// Our own node takes part when it saw the trade. It also validates
 	// that the hash is real; a race nobody but a single provider saw is
 	// still closed, but carries no reference lag.
-	refSeen := false
 	if refAt, ok := reference.lookup(e.chain, hash); ok {
-		refSeen = true
 		if refAt.Before(e.t0) {
 			e.t0 = refAt
 		}
@@ -197,24 +196,55 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		e.closedAt = time.Now()
 		return
 	}
+	providers := 0
+	for _, o := range e.obs {
+		if o.aggregator != "reference" {
+			providers++
+		}
+	}
+	// The share is a race between feeds: the earliest PROVIDER arrival is
+	// the line, and every provider within raceTie of it is first. Our
+	// node still sets t0 for the lag figures and is counted on its own
+	// (head_lag_first_total{aggregator="reference"}) when it beat every
+	// feed, but it is not a competitor in the share: on Base and BNB the
+	// flashblock / node reference precedes every feed on nearly every
+	// trade, and a share where the reference took 95 % told readers
+	// nothing about the feeds they choose between.
+	providerT0 := time.Time{}
+	for _, o := range e.obs {
+		if o.aggregator == "reference" {
+			continue
+		}
+		if providerT0.IsZero() || o.at.Before(providerT0) {
+			providerT0 = o.at
+		}
+	}
 	winners := []string{}
 	for _, o := range e.obs {
-		b.note(e.chain, e.region, o.aggregator)
 		delta := o.at.Sub(e.t0)
-		if delta <= raceTie {
+		if o.aggregator == "reference" {
+			if !providerT0.IsZero() && providerT0.Sub(o.at) > raceTie {
+				headLagFirst.WithLabelValues("reference", e.chain, e.region).Inc()
+			}
+			continue
+		}
+		b.note(e.chain, e.region, o.aggregator)
+		if o.at.Sub(providerT0) <= raceTie {
 			winners = append(winners, o.aggregator)
 			headLagFirst.WithLabelValues(o.aggregator, e.chain, e.region).Inc()
 		}
-		if o.aggregator != "reference" && raceChains[e.chain] {
+		if raceChains[e.chain] {
 			RecordHeadLag(o.aggregator, e.chain, o.lagBlocks, raceLagSeconds(delta), e.region, hash)
 		}
 	}
-	if !refSeen {
-		b.note(e.chain, e.region, "reference")
-	}
-	headLagRaces.WithLabelValues(e.chain, e.region).Inc()
 	e.closed = true
 	e.closedAt = time.Now()
+	if providers < 2 {
+		// One feed against our node only: lags are recorded above, but
+		// there was no race between feeds to score.
+		return
+	}
+	headLagRaces.WithLabelValues(e.chain, e.region).Inc()
 
 	// Rolling 24 h share.
 	pk := e.chain + "|" + e.region

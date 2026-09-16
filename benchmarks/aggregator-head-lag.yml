@@ -68,7 +68,8 @@ methodology:
   - "Reference on BNB Chain and Robinhood Chain: archive nodes per chain, validated against block hashes. These carry no preconfirmation layer a provider consumes, and their chain-supplied timestamps sit within roughly 60 ms of the moment a trade is observable, so they keep the on-chain timestamp as the zero point."
   - "Solana (since 2026-09-16): the headline is the lag behind the first feed to report the trade, our own node subscription included in the race. Solana has no on-chain timestamp with sub-second precision, so the timestamps providers send compare conventions: Mobula's `date` (its ingestion time) read as a constant 0.10 s, Serialized's `at` (blockTime, whole seconds) as 0.75 s, while against a common clock the two feeds are 10 to 30 ms apart."
   - "Solana zero point: no RPC WebSocket we hold, public or keyed (mainnet-beta, Helius, Alchemy), precedes the providers' geyser feeds, so an absolute zero point is not available and the first observation is the ruler. Our node stays in the race: it validates the hash on chain and bounds the field whenever a feed is slower than a plain RPC subscription."
-  - "Solana race: every feed's arrival for a transaction is compared to the earliest one (ties within 5 ms count as first for each feed involved). Published as `head_lag_first_share_pct` (share of the last 24 h of trades a feed reported first, the First to report view) and as `head_lag_seconds` (lag behind the first, 0 for the leader). GeckoTerminal polls and lands 15 to 100 s later; it is measured against the same first arrival."
+  - "Race: every feed's arrival for a transaction is compared to the earliest feed's (ties within 5 ms count as first for each feed involved; trades only one feed reported are not scored). Published on every chain as `head_lag_first_share_pct`, the First to report view: the share of the last 24 h of trades a feed reported before every other feed."
+  - "Solana headline: `head_lag_seconds` is the lag behind the first observation of the trade, our node included, floored at 1 ms. GeckoTerminal polls and lands 15 to 100 s later; it is measured against the same first arrival."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference on Base: the sequencer's flashblock preconfirmation stream, held by us in every region. A Base block becomes queryable about 0.36 s after the timestamp it carries, while flashblocks publish every 200 ms inside the 2 s interval, so that timestamp is not the moment a trade becomes knowable."
   - "Base emissions we cannot match to a flashblock are dropped rather than measured against a different ruler. Measuring against the block timestamp charged a provider reading preconfirmations with a negative lag, and described the chain's stamping convention rather than the provider's pipeline."
@@ -106,7 +107,7 @@ metric_panels:
     metric: avg by (aggregator) (head_lag_first_share_pct{})
     unit: pct
     higher_is_better: true
-    description: "Share of the last 24 hours of trades this feed delivered before every other feed (ties within 5 ms count for both). Our own node subscription runs in the same race; on Solana it wins a few percent, which is the gap between a plain RPC subscription and a geyser feed."
+    description: "Share of the last 24 hours of trades this feed delivered before every other feed (ties within 5 ms count for both, so the shares can add up to a little more than 100). Trades only one feed reported are not scored. Our own node is not a competitor here; it sets the zero point of the lag views."
 
 prometheus:
   window: 24h
