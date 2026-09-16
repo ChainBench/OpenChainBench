@@ -52,7 +52,7 @@ methodology:
   - "Drift's DeFiLlama perps adapter (drift-trade) currently reports zero fees; the row stays in the cohort with every ratio undefined until the source recovers."
   - "Pre-TGE venues (Ostium, Pacifica, Extended, Nado, Decibel) are declared `unranked` in the spec: they sit under the ranked field with their fees and open interest, are excluded from ranks, leader claims and the best / median / worst strip, and gain a ratio the day a token lists."
   - "edgeX (EDGE) and Paradex (DIME) have listed tokens and are ranked. DeFiLlama's fee adapter reports very low fees for Paradex, which inflates its multiple; treat that row with caution until the adapter is fixed upstream."
-  - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s. The sample count per row is the number of scrapes in the 24h window (about 1,440), not a count of trades; p50, p90 and p99 read the same instant gauge, so they are equal by construction."
+  - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 30 seconds. The sample count per row is the number of scrapes in the 24h window (about 2,880), not a count of trades; p50, p90 and p99 read the same instant gauge, so they are equal by construction."
 
 findings:
   - "{{best_name}} is the cheapest perp DEX token at {{best_p50}} annualized fees."
