@@ -32,6 +32,18 @@ function sortByP50(b: Benchmark): ProviderResult[] {
     );
 }
 
+/** True when every ranked row reads one instant gauge (p50 = p90 = p99):
+ * valuation multiples, market shares, daily totals. The cards then drop
+ * the "by p50" wording and the p99 captions, which would repeat the
+ * headline number under every bar. */
+function isGaugeBench(b: Benchmark): boolean {
+  const rows = sortByP50(b);
+  return (
+    rows.length > 0 &&
+    rows.every((r) => r.ms.p99 === r.ms.p50 && r.ms.p90 === r.ms.p50)
+  );
+}
+
 /** Compact label for the share-card bar chart. Long multi-word names
  * (e.g. "BNB Smart Chain", "Avalanche C-Chain") wrap to two lines,
  * which breaks the bottom-aligned bar layout - the wrapped column gets
@@ -45,7 +57,12 @@ function compactProviderName(name: string): string {
     StellarExpert: "Stellar Exp.",
     WalletExplorer: "Wallet Exp.",
   };
-  return map[name] ?? name;
+  if (map[name]) return map[name];
+  // "F (SynFutures)": a one- or two-letter ticker with the project in
+  // brackets. The bracket is the readable part; the full string clips
+  // to "F (SynFu" in a 12-bar column.
+  const ticker = name.match(/^(\S{1,2}) \((.+)\)$/);
+  return ticker ? ticker[2] : name;
 }
 
 /** Direction-aware comparison label for the Compare card centre cell.
@@ -723,6 +740,7 @@ async function renderRanking(
   const sorted = sortByP50(benchmark).slice(0, MAX_BARS);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const count = sorted.length;
+  const gauge = isGaugeBench(benchmark);
   // Scale type sizes down when the bench has many providers, otherwise
   // the long names (StellarExpert, WalletExplorer, …) collide.
   const dense = count >= 7;
@@ -768,7 +786,7 @@ async function renderRanking(
               maxWidth: 980,
             }}
           >
-            Product ranking by p50 · {benchmark.metric}.
+            {gauge ? "Product ranking" : "Product ranking by p50"} · {benchmark.metric}.
           </div>
 
           <div
@@ -782,6 +800,9 @@ async function renderRanking(
             }}
           >
             {sorted.map((r) => {
+              // Dense rosters give each column ~80 px; a name past
+              // 7 characters (SynFutures) clipped mid-word.
+              const longName = dense && compactProviderName(r.name).length > 7;
               const heightPx = Math.max(28, (r.ms.p50 / maxP50) * chartHeight);
               const color = colors.get(r.slug) ?? INK_SOFT;
               return (
@@ -832,12 +853,14 @@ async function renderRanking(
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
-                      fontSize: nameSize,
+                      // Dense rosters give each column ~80 px; a name
+                      // past 7 characters (SynFutures) clipped mid-word.
+                      fontSize: longName ? Math.round(nameSize * 0.75) : nameSize,
                       fontWeight: 600,
                       color: INK,
                       marginTop: 6,
                       whiteSpace: "nowrap",
-                      maxWidth: "100%",
+                      maxWidth: longName ? "125%" : "100%",
                       overflow: "hidden",
                     }}
                   >
@@ -857,7 +880,7 @@ async function renderRanking(
                       letterSpacing: "0.08em",
                     }}
                   >
-                    p99 {fmtUnit(r.ms.p99, benchmark.unit)}
+                    {gauge ? "" : `p99 ${fmtUnit(r.ms.p99, benchmark.unit)}`}
                   </div>
                 </div>
               );
@@ -886,7 +909,7 @@ async function renderLeaderboard(
   const sorted = allSorted.slice(0, MAX_ROWS);
   const truncatedCount = Math.max(0, allSorted.length - sorted.length);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
+  const subtitleLB = `${isGaugeBench(benchmark) ? "Ranked" : "Ranked by p50"} · ${benchmark.metric}.`;
   // Scale down type + spacing when the roster is dense OR the title is
   // long, otherwise a 2-line 50pt title collides with the row list in
   // the 630px canvas (weekend-drift 11 rows + long title case).
@@ -1415,7 +1438,7 @@ async function renderHeadline(
             {isFastest
               ? `ahead of ${Math.max(0, sorted.length - 1)} other product${sorted.length === 2 ? "" : "s"}`
               : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "-"}`}
-            {winner && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
+            {winner && !isGaugeBench(benchmark) && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
           </div>
         </div>
       </CardShell>
@@ -1491,8 +1514,9 @@ async function renderCompare(
               color={aColor}
               p50={fmtValue(a.ms.p50, benchmark.unit)}
               unit={unitSuffix(benchmark.unit, a.ms.p50).trim()}
-              p99={fmtUnit(a.ms.p99, benchmark.unit)}
+              p99={isGaugeBench(benchmark) ? null : fmtUnit(a.ms.p99, benchmark.unit)}
               n={a.sampleSize ?? 0}
+              valueLabel={isGaugeBench(benchmark) ? benchmark.metric : "p50"}
             />
             {/* Center divider */}
             <div
@@ -1565,8 +1589,9 @@ async function renderCompare(
               color={bColor}
               p50={fmtValue(b.ms.p50, benchmark.unit)}
               unit={unitSuffix(benchmark.unit, b.ms.p50).trim()}
-              p99={fmtUnit(b.ms.p99, benchmark.unit)}
+              p99={isGaugeBench(benchmark) ? null : fmtUnit(b.ms.p99, benchmark.unit)}
               n={b.sampleSize ?? 0}
+              valueLabel={isGaugeBench(benchmark) ? benchmark.metric : "p50"}
             />
           </div>
         </div>
@@ -1585,6 +1610,7 @@ function ComparePane({
   unit,
   p99,
   n,
+  valueLabel = "p50",
 }: {
   rank: number;
   slug: string;
@@ -1592,8 +1618,11 @@ function ComparePane({
   color: string;
   p50: string;
   unit: string;
-  p99: string;
+  p99: string | null;
   n: number;
+  /** Caption under the big number: "p50" on latency benches, the metric
+   *  name on gauge benches where p50 is not a percentile of anything. */
+  valueLabel?: string;
 }) {
   return (
     <div
@@ -1666,7 +1695,7 @@ function ComparePane({
           fontWeight: 600,
         }}
       >
-        p50
+        {valueLabel}
       </div>
 
       <div
@@ -1679,19 +1708,21 @@ function ComparePane({
           color: INK_SOFT,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span
-            style={{
-              color: INK_FAINT,
-              fontSize: 10,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-            }}
-          >
-            P99
-          </span>
-          <span>{p99}</span>
-        </div>
+        {p99 !== null && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span
+              style={{
+                color: INK_FAINT,
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+              }}
+            >
+              P99
+            </span>
+            <span>{p99}</span>
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span
             style={{
