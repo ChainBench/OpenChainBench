@@ -68,6 +68,7 @@ type raceEntry struct {
 	t0            time.Time // earliest observation, reference included once closed
 	obs           []raceObs
 	closed        bool
+	void          bool // closed with a single participant: nothing recorded
 	closedAt      time.Time
 }
 
@@ -115,6 +116,9 @@ func (b *raceBook) observe(aggregator, chain, region, hash string, at time.Time,
 		b.entries[k] = e
 	}
 	if e.closed {
+		if e.void {
+			return // single-feed race: no ruler to measure against
+		}
 		// Late arrival: it lost, and its lag is against the recorded first.
 		b.note(chain, region, aggregator)
 		if raceChains[chain] {
@@ -172,6 +176,16 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 			e.t0 = refAt
 		}
 		e.obs = append(e.obs, raceObs{aggregator: "reference", at: refAt})
+	}
+	// A race needs two participants to say anything about order. A trade
+	// only one feed reported (GeckoTerminal lists pool trades the push
+	// feeds filter out, and our node can miss one) would otherwise hand
+	// that feed a "first" and a zero lag it did not earn.
+	if len(e.obs) < 2 {
+		e.closed = true
+		e.void = true
+		e.closedAt = time.Now()
+		return
 	}
 	winners := []string{}
 	for _, o := range e.obs {
