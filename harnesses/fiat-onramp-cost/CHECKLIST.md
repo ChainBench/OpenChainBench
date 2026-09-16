@@ -66,13 +66,17 @@ Rule from the spec: never invent an endpoint or parameter. Everything below is e
 
 | Item | Status |
 |---|---|
-| Base hosts `api.meld.io` / `api-sb.meld.io` | VERIFIED in docs |
-| Auth `Authorization: BASIC <base64(key:)>` | UNVERIFIED (docs describe BASIC auth with the API key; exact encoding not exercised) |
-| Quote path `/payments/crypto/quote` | UNVERIFIED (the reference page returned 404 on 2026-09-10; a search summary names `/payments/virtual-account/quote` for the virtual-account flavour) |
-| Params `countryCode`, `sourceCurrencyCode`, `destinationCurrencyCode`, `paymentMethodType`, `sourceAmount` | UNVERIFIED |
-| Response `quotes[]{serviceProvider, sourceAmount, destinationAmount, exchangeRate, totalFee, networkFee, transactionFee, partnerFee}` | UNVERIFIED |
-| Currency codes `USDC_BASE`, `USDC_ARBITRUM` | UNVERIFIED |
-| Live call | UNVERIFIED, no key |
+| Base hosts `api.meld.io` / `api-sb.meld.io` | VERIFIED live 2026-09-16 (sandbox key: 200 on `api-sb`, 403 on `api`) |
+| Auth `Authorization: BASIC base64(<key>)` | VERIFIED live 2026-09-16. The dashboard key is already `<id>:<secret>`; `base64(key + ":")` gives 403. Adapter fixed. |
+| Method / path `POST /payments/crypto/quote` (JSON body) | VERIFIED live 2026-09-16. GET gives 405 METHOD_NOT_ALLOWED. Adapter fixed (was GET with query params). |
+| Header `Meld-Version: 2025-03-04` | VERIFIED live (accepted; sent to pin the shape) |
+| Body `countryCode`, `sourceCurrencyCode`, `sourceAmount` (number), `destinationCurrencyCode`, `paymentMethodType` | VERIFIED live |
+| Response `quotes[]{serviceProvider, sourceAmount, destinationAmount, exchangeRate, totalFee, networkFee, transactionFee, partnerFee (null), paymentMethodType, customerScore, ...}` | VERIFIED live; `partnerFee` is null, parsed as pointer. `testdata` not stored: sandbox numbers are synthetic. |
+| Currency codes `BTC`, `ETH`, `USDC_BASE` | VERIFIED live (sandbox lists BANXA only) |
+| Errors | VERIFIED: 400 `INVALID_AMOUNT_TOO_HIGH` ("maximum allowed 95.00 EUR for BANXA" on SEPA in sandbox), 408 `QUOTE_TIMEOUT` when a member is slow. 400/404 map to `ErrNoQuote`. |
+| Full harness cycle | VERIFIED 2026-09-16 with `MELD_SANDBOX=true`: 6 quotes, labels `via="meld"`, `provider="banxa"`, `cohort="aggregator"`. |
+| Sandbox pricing | NOT USABLE for published numbers: BTC quoted at 90,274 EUR vs 65,676 Kraken mid (+3,749 bps), ETH +3,981 bps. Production key required before Meld enters the bench. |
+| Production key | PENDING (asked Meld on 2026-09-15; the key received on 2026-09-16 is sandbox-scoped) |
 
 ## Excluded from v1 and why
 
