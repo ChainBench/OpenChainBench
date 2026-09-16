@@ -97,6 +97,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggrega
 chart:
   default_panel_by_chain:
     solana: first_share
+  hide_headline_by_chain: [solana]
 
 metric_panels:
   - id: first_share
