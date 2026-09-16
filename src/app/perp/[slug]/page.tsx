@@ -8,6 +8,7 @@ import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
+import { findVenue, getPerpVolumeHistory } from "@/lib/perp-volume-history";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { fmtUnit } from "@/lib/format";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
@@ -138,12 +139,35 @@ export default async function PerpVenuePage({
 
   const { seed, meta, cohortSlug } = v;
 
-  const [, kpis, ext, ...benchBlobs] = await Promise.all([
+  const [, kpis, extRaw, volumeHistory, ...benchBlobs] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpVenueKpis(cohortSlug),
     fetchPerpVenueExternalStats(cohortSlug),
+    getPerpVolumeHistory(),
     ...LIVE_PERP_BENCH_SLUGS.map((s) => loadBenchFromBlob(s)),
   ]);
+
+  // The perp-volume-history harness keeps a perps-only daily series per
+  // venue on closed UTC days (traded notional, same perimeter as
+  // DeFiLlama's derivatives page). When the venue is in that cohort it
+  // becomes the volume chart: the venues' own counters mix perimeters
+  // (Gains' leveraged_volume adds resizes at full notional plus an
+  // "other" bucket, up to 13x the traded figure on 2026-09-14). Cohort
+  // key for GMX is gmx-v2, history slug is gmx. Venues not in the history
+  // fall back to the venue's own API.
+  const historyVenue = volumeHistory
+    ? findVenue(volumeHistory, cohortSlug === "gmx-v2" ? "gmx" : cohortSlug)
+    : null;
+  const useHistory = !!historyVenue && historyVenue.days.length >= 3;
+  const ext = useHistory
+    ? {
+        ...extRaw,
+        dailyVolumeChart: historyVenue!.days
+          .slice(-30)
+          .map((p) => ({ date: p.day, valueUsd: p.usd })),
+      }
+    : extRaw;
+  const volumeChartTitle = useHistory ? "Daily perp volume (UTC days)" : "Daily Volume";
 
   const rankings = buildRankings(benchBlobs as (Benchmark | null)[], cohortSlug);
 
@@ -311,7 +335,7 @@ export default async function PerpVenuePage({
               <div className="card-soft rounded-lg p-4 border border-ink/15">
                 <PerpBarChart
                   bars={ext.dailyVolumeChart!}
-                  title="Daily Volume"
+                  title={volumeChartTitle}
                   color="teal"
                 />
               </div>
