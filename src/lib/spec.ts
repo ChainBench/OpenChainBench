@@ -394,7 +394,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
   // v57: drop rpc-keyed-latency bench.
   // v63: add bench 265 perp-pf-ratio + 5 providers on bench 234. Bench SET grew.
-  ["bench-unfiltered-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v64: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
+  // objects without it kept the Head lag tab on Solana after the deploy.
+  ["bench-unfiltered-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -608,7 +610,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
   // v58: lockstep with bench-unfiltered-v63 (add bench 265 perp-pf-ratio).
-  ["all-benchmarks-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v59: lockstep with bench-unfiltered-v64 (Benchmark.chart).
+  ["all-benchmarks-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -706,7 +709,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
-  ["bench-filters-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
+  ["bench-filters-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
