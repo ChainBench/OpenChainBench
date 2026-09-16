@@ -402,7 +402,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v63: score_scope contested_chains on bench 008 changes its provider values.
   // v64: add bench 262 fiat-onramp-cost + On-ramps category. Bench SET grew.
   // v65: add bench 265 perp-pf-ratio (dev-only) + 5 providers on bench 234. Bench SET grew.
-  ["bench-unfiltered-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v66: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
+  // objects without it kept the Head lag tab on Solana after the deploy.
+  ["bench-unfiltered-v66", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -617,7 +619,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
   // v59: lockstep with bench-unfiltered-v64 (add bench 262 fiat-onramp-cost).
   // v60: lockstep with bench-unfiltered-v65 (add bench 265 perp-pf-ratio).
-  ["all-benchmarks-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v61: lockstep with bench-unfiltered-v66 (Benchmark.chart).
+  ["all-benchmarks-v61", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -715,7 +718,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v21: bumped with bench-unfiltered-v46 (network-coverage split).
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
-  ["bench-filters-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
+  ["bench-filters-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
