@@ -41,7 +41,7 @@ methodology:
   - "FDV source: CoinGecko /coins/markets fully_diluted_valuation (falls back to market_cap if FDV null). dYdX is priced on the dYdX Chain token (CoinGecko dydx-chain)."
   - "P/E = FDV / annual_revenue. Null if FDV or revenue unavailable."
   - "Protocols whose adapter publishes no revenue series (Aster, Avantis, Orderly) or reports zero (Drift perps) have no P/E; see bench 265 for their price to fees."
-  - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
+  - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s. The sample count per row is the number of scrapes in the 24h window, not a count of trades."
 
 findings:
   - "{{best_name}} has the lowest P/E at {{best_p50}}x; cheapest perp DEX token relative to protocol earnings."
@@ -76,7 +76,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="hyperliquid"}
       mean: perp_protocol_pe_ratio{protocol="hyperliquid"}
       success: perp_protocol_health{protocol="hyperliquid"}
-      sample_size: perp_protocol_pe_ratio{protocol="hyperliquid"}
+      sample_size: count_over_time(perp_protocol_health{protocol="hyperliquid"}[24h])
       series: perp_protocol_pe_ratio{protocol="hyperliquid"}
 
   - slug: gmx
@@ -89,7 +89,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="gmx"}
       mean: perp_protocol_pe_ratio{protocol="gmx"}
       success: perp_protocol_health{protocol="gmx"}
-      sample_size: perp_protocol_pe_ratio{protocol="gmx"}
+      sample_size: count_over_time(perp_protocol_health{protocol="gmx"}[24h])
       series: perp_protocol_pe_ratio{protocol="gmx"}
 
   - slug: gains
@@ -102,7 +102,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="gains"}
       mean: perp_protocol_pe_ratio{protocol="gains"}
       success: perp_protocol_health{protocol="gains"}
-      sample_size: perp_protocol_pe_ratio{protocol="gains"}
+      sample_size: count_over_time(perp_protocol_health{protocol="gains"}[24h])
       series: perp_protocol_pe_ratio{protocol="gains"}
 
   - slug: dydx
@@ -115,7 +115,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="dydx"}
       mean: perp_protocol_pe_ratio{protocol="dydx"}
       success: perp_protocol_health{protocol="dydx"}
-      sample_size: perp_protocol_pe_ratio{protocol="dydx"}
+      sample_size: count_over_time(perp_protocol_health{protocol="dydx"}[24h])
       series: perp_protocol_pe_ratio{protocol="dydx"}
 
   - slug: drift
@@ -128,7 +128,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="drift"}
       mean: perp_protocol_pe_ratio{protocol="drift"}
       success: perp_protocol_health{protocol="drift"}
-      sample_size: perp_protocol_pe_ratio{protocol="drift"}
+      sample_size: count_over_time(perp_protocol_health{protocol="drift"}[24h])
       series: perp_protocol_pe_ratio{protocol="drift"}
 
   - slug: lighter
@@ -141,7 +141,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="lighter"}
       mean: perp_protocol_pe_ratio{protocol="lighter"}
       success: perp_protocol_health{protocol="lighter"}
-      sample_size: perp_protocol_pe_ratio{protocol="lighter"}
+      sample_size: count_over_time(perp_protocol_health{protocol="lighter"}[24h])
       series: perp_protocol_pe_ratio{protocol="lighter"}
 
   - slug: jupiter
@@ -154,7 +154,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="jupiter"}
       mean: perp_protocol_pe_ratio{protocol="jupiter"}
       success: perp_protocol_health{protocol="jupiter"}
-      sample_size: perp_protocol_pe_ratio{protocol="jupiter"}
+      sample_size: count_over_time(perp_protocol_health{protocol="jupiter"}[24h])
       series: perp_protocol_pe_ratio{protocol="jupiter"}
 
   - slug: apex
@@ -167,7 +167,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="apex"}
       mean: perp_protocol_pe_ratio{protocol="apex"}
       success: perp_protocol_health{protocol="apex"}
-      sample_size: perp_protocol_pe_ratio{protocol="apex"}
+      sample_size: count_over_time(perp_protocol_health{protocol="apex"}[24h])
       series: perp_protocol_pe_ratio{protocol="apex"}
 
   - slug: synfutures
@@ -180,7 +180,7 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="synfutures"}
       mean: perp_protocol_pe_ratio{protocol="synfutures"}
       success: perp_protocol_health{protocol="synfutures"}
-      sample_size: perp_protocol_pe_ratio{protocol="synfutures"}
+      sample_size: count_over_time(perp_protocol_health{protocol="synfutures"}[24h])
       series: perp_protocol_pe_ratio{protocol="synfutures"}
 
   - slug: derive
@@ -193,5 +193,5 @@ providers:
       p99: perp_protocol_pe_ratio{protocol="derive"}
       mean: perp_protocol_pe_ratio{protocol="derive"}
       success: perp_protocol_health{protocol="derive"}
-      sample_size: perp_protocol_pe_ratio{protocol="derive"}
+      sample_size: count_over_time(perp_protocol_health{protocol="derive"}[24h])
       series: perp_protocol_pe_ratio{protocol="derive"}
