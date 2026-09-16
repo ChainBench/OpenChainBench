@@ -52,7 +52,7 @@ methodology:
   - "Drift's DeFiLlama perps adapter (drift-trade) currently reports zero fees; the row stays in the cohort with every ratio undefined until the source recovers."
   - "Pre-TGE venues (Ostium, Pacifica, Extended, Nado, Decibel) are declared `unranked` in the spec: they sit under the ranked field with their fees and open interest, are excluded from ranks, leader claims and the best / median / worst strip, and gain a ratio the day a token lists."
   - "edgeX (EDGE) and Paradex (DIME) have listed tokens and are ranked. DeFiLlama's fee adapter reports very low fees for Paradex, which inflates its multiple; treat that row with caution until the adapter is fixed upstream."
-  - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s."
+  - "Poll cadence: DeFiLlama and CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s. The sample count per row is the number of scrapes in the 24h window (about 1,440), not a count of trades; p50, p90 and p99 read the same instant gauge, so they are equal by construction."
 
 findings:
   - "{{best_name}} is the cheapest perp DEX token at {{best_p50}} annualized fees."
@@ -176,7 +176,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="hyperliquid"}
       mean: perp_protocol_pf_ratio{protocol="hyperliquid"}
       success: perp_protocol_health{protocol="hyperliquid"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="hyperliquid"}
+      sample_size: count_over_time(perp_protocol_health{protocol="hyperliquid"}[24h])
       series: perp_protocol_pf_ratio{protocol="hyperliquid"}
 
   - slug: aster
@@ -189,7 +189,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="aster"}
       mean: perp_protocol_pf_ratio{protocol="aster"}
       success: perp_protocol_health{protocol="aster"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="aster"}
+      sample_size: count_over_time(perp_protocol_health{protocol="aster"}[24h])
       series: perp_protocol_pf_ratio{protocol="aster"}
 
   - slug: lighter
@@ -202,7 +202,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="lighter"}
       mean: perp_protocol_pf_ratio{protocol="lighter"}
       success: perp_protocol_health{protocol="lighter"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="lighter"}
+      sample_size: count_over_time(perp_protocol_health{protocol="lighter"}[24h])
       series: perp_protocol_pf_ratio{protocol="lighter"}
 
   - slug: jupiter
@@ -215,7 +215,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="jupiter"}
       mean: perp_protocol_pf_ratio{protocol="jupiter"}
       success: perp_protocol_health{protocol="jupiter"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="jupiter"}
+      sample_size: count_over_time(perp_protocol_health{protocol="jupiter"}[24h])
       series: perp_protocol_pf_ratio{protocol="jupiter"}
 
   - slug: gmx
@@ -228,7 +228,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="gmx"}
       mean: perp_protocol_pf_ratio{protocol="gmx"}
       success: perp_protocol_health{protocol="gmx"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="gmx"}
+      sample_size: count_over_time(perp_protocol_health{protocol="gmx"}[24h])
       series: perp_protocol_pf_ratio{protocol="gmx"}
 
   - slug: gains
@@ -241,7 +241,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="gains"}
       mean: perp_protocol_pf_ratio{protocol="gains"}
       success: perp_protocol_health{protocol="gains"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="gains"}
+      sample_size: count_over_time(perp_protocol_health{protocol="gains"}[24h])
       series: perp_protocol_pf_ratio{protocol="gains"}
 
   - slug: dydx
@@ -254,7 +254,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="dydx"}
       mean: perp_protocol_pf_ratio{protocol="dydx"}
       success: perp_protocol_health{protocol="dydx"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="dydx"}
+      sample_size: count_over_time(perp_protocol_health{protocol="dydx"}[24h])
       series: perp_protocol_pf_ratio{protocol="dydx"}
 
   - slug: drift
@@ -267,7 +267,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="drift"}
       mean: perp_protocol_pf_ratio{protocol="drift"}
       success: perp_protocol_health{protocol="drift"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="drift"}
+      sample_size: count_over_time(perp_protocol_health{protocol="drift"}[24h])
       series: perp_protocol_pf_ratio{protocol="drift"}
 
   - slug: avantis
@@ -280,7 +280,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="avantis"}
       mean: perp_protocol_pf_ratio{protocol="avantis"}
       success: perp_protocol_health{protocol="avantis"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="avantis"}
+      sample_size: count_over_time(perp_protocol_health{protocol="avantis"}[24h])
       series: perp_protocol_pf_ratio{protocol="avantis"}
 
   - slug: apex
@@ -293,7 +293,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="apex"}
       mean: perp_protocol_pf_ratio{protocol="apex"}
       success: perp_protocol_health{protocol="apex"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="apex"}
+      sample_size: count_over_time(perp_protocol_health{protocol="apex"}[24h])
       series: perp_protocol_pf_ratio{protocol="apex"}
 
   - slug: orderly
@@ -306,7 +306,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="orderly"}
       mean: perp_protocol_pf_ratio{protocol="orderly"}
       success: perp_protocol_health{protocol="orderly"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="orderly"}
+      sample_size: count_over_time(perp_protocol_health{protocol="orderly"}[24h])
       series: perp_protocol_pf_ratio{protocol="orderly"}
 
   - slug: synfutures
@@ -319,7 +319,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="synfutures"}
       mean: perp_protocol_pf_ratio{protocol="synfutures"}
       success: perp_protocol_health{protocol="synfutures"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="synfutures"}
+      sample_size: count_over_time(perp_protocol_health{protocol="synfutures"}[24h])
       series: perp_protocol_pf_ratio{protocol="synfutures"}
 
   - slug: derive
@@ -332,7 +332,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="derive"}
       mean: perp_protocol_pf_ratio{protocol="derive"}
       success: perp_protocol_health{protocol="derive"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="derive"}
+      sample_size: count_over_time(perp_protocol_health{protocol="derive"}[24h])
       series: perp_protocol_pf_ratio{protocol="derive"}
 
   - slug: ostium
@@ -346,7 +346,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="ostium"}
       mean: perp_protocol_pf_ratio{protocol="ostium"}
       success: perp_protocol_health{protocol="ostium"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="ostium"}
+      sample_size: count_over_time(perp_protocol_health{protocol="ostium"}[24h])
       series: perp_protocol_pf_ratio{protocol="ostium"}
 
   - slug: pacifica
@@ -360,7 +360,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="pacifica"}
       mean: perp_protocol_pf_ratio{protocol="pacifica"}
       success: perp_protocol_health{protocol="pacifica"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="pacifica"}
+      sample_size: count_over_time(perp_protocol_health{protocol="pacifica"}[24h])
       series: perp_protocol_pf_ratio{protocol="pacifica"}
 
   - slug: extended
@@ -374,7 +374,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="extended"}
       mean: perp_protocol_pf_ratio{protocol="extended"}
       success: perp_protocol_health{protocol="extended"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="extended"}
+      sample_size: count_over_time(perp_protocol_health{protocol="extended"}[24h])
       series: perp_protocol_pf_ratio{protocol="extended"}
 
   - slug: edgex
@@ -387,7 +387,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="edgex"}
       mean: perp_protocol_pf_ratio{protocol="edgex"}
       success: perp_protocol_health{protocol="edgex"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="edgex"}
+      sample_size: count_over_time(perp_protocol_health{protocol="edgex"}[24h])
       series: perp_protocol_pf_ratio{protocol="edgex"}
 
   - slug: paradex
@@ -400,7 +400,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="paradex"}
       mean: perp_protocol_pf_ratio{protocol="paradex"}
       success: perp_protocol_health{protocol="paradex"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="paradex"}
+      sample_size: count_over_time(perp_protocol_health{protocol="paradex"}[24h])
       series: perp_protocol_pf_ratio{protocol="paradex"}
 
   - slug: nado
@@ -414,7 +414,7 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="nado"}
       mean: perp_protocol_pf_ratio{protocol="nado"}
       success: perp_protocol_health{protocol="nado"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="nado"}
+      sample_size: count_over_time(perp_protocol_health{protocol="nado"}[24h])
       series: perp_protocol_pf_ratio{protocol="nado"}
 
   - slug: decibel
@@ -428,5 +428,5 @@ providers:
       p99: perp_protocol_pf_ratio{protocol="decibel"}
       mean: perp_protocol_pf_ratio{protocol="decibel"}
       success: perp_protocol_health{protocol="decibel"}
-      sample_size: perp_protocol_fees_30d_usd{protocol="decibel"}
+      sample_size: count_over_time(perp_protocol_health{protocol="decibel"}[24h])
       series: perp_protocol_pf_ratio{protocol="decibel"}
