@@ -676,6 +676,10 @@ export function BenchmarkBody({
       ...viewBenchmark,
       metric: activePanel.label,
       unit: activePanel.unit ?? viewBenchmark.unit,
+      // A panel carries its own direction (First to report: higher is
+      // better on a lower-is-better latency bench); without this the
+      // ranked chart put 0 % rows first.
+      higherIsBetter: activePanel.higherIsBetter ?? viewBenchmark.higherIsBetter,
       results: viewBenchmark.results
         .filter((r) => vals[r.slug] != null && Number.isFinite(vals[r.slug]))
         .map((r) => ({ ...r, ms: { ...r.ms, p50: vals[r.slug] } })),
