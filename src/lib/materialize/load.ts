@@ -32,12 +32,20 @@ const SPECS_DIR =
   process.env.OCB_SPECS_DIR ?? path.join(process.cwd(), "benchmarks");
 
 /** Camel-cased copy of the spec's optional `chart` block. */
-export function chartFromSpec(spec: { chart?: { min_range?: "24h" | "7d" | "30d"; default_range?: "24h" | "7d" | "30d" | "90d" | "1y"; window_label?: string } }): Benchmark["chart"] {
+export function chartFromSpec(spec: {
+  chart?: {
+    min_range?: "24h" | "7d" | "30d";
+    default_range?: "24h" | "7d" | "30d" | "90d" | "1y";
+    window_label?: string;
+    default_panel_by_chain?: Record<string, string>;
+  };
+}): Benchmark["chart"] {
   if (!spec.chart) return undefined;
   return {
     minRange: spec.chart.min_range,
     defaultRange: spec.chart.default_range,
     windowLabel: spec.chart.window_label,
+    defaultPanelByChain: spec.chart.default_panel_by_chain,
   };
 }
 
