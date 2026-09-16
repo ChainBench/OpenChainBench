@@ -88,7 +88,9 @@ async function fetchHistoryRaw(): Promise<PerpVolumeHistory | null> {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(6_000),
-      cache: "no-store",
+      // Data-cache entry like the bench blobs: a no-store fetch inside an
+      // ISR page can flip the whole route dynamic (see #2343).
+      next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     return parseHistory(await res.json());
