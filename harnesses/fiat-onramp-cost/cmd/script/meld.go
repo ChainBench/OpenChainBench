@@ -4,19 +4,28 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"net/url"
 	"strings"
 	"time"
 )
 
-// Meld, aggregator. GET {base}/payments/crypto/quote
-// Doc: docs.meld.io (fetched 2026-09-10; the reference page for this
-// endpoint returned 404 on the path I tried, and the search summary names
-// /payments/virtual-account/quote for the virtual-account flavour). Path
-// and auth scheme (BASIC with the API key) are UNVERIFIED against live,
-// see CHECKLIST.md. countryCode=FR is a documented parameter:
-// country_source="param". One quote per member onramp; each becomes a
-// sample with via="meld", cohort="aggregator".
+// Meld, aggregator. POST {base}/payments/crypto/quote with a JSON body.
+// Verified live against api-sb.meld.io on 2026-09-16 (see CHECKLIST.md):
+//   - Authorization: BASIC base64(<api key>). The key from the dashboard is
+//     already "<id>:<secret>"; appending ":" before encoding gives 403, and
+//     GET gives 405 (POST only).
+//   - Meld-Version: 2025-03-04 pins the response shape.
+//   - Body: countryCode, sourceCurrencyCode, sourceAmount (number),
+//     destinationCurrencyCode (network-qualified: BTC, ETH, USDC_BASE),
+//     paymentMethodType (CREDIT_DEBIT_CARD, SEPA).
+//   - Response: {quotes:[{serviceProvider, sourceAmount, destinationAmount,
+//     exchangeRate, totalFee, networkFee, transactionFee, partnerFee|null,
+//     paymentMethodType, ...}]}; errors are {code, message} with a 4xx
+//     (INVALID_AMOUNT_TOO_HIGH, QUOTE_TIMEOUT on 408).
+// countryCode=FR is a body parameter: country_source="param". One quote per
+// member onramp; each becomes a sample with via="meld", cohort="aggregator".
+// Sandbox keys work only on api-sb.meld.io and return synthetic rates (BTC
+// quoted 37% above spot on 2026-09-16), so MELD_SANDBOX=true is for wiring
+// tests, never for published numbers.
 
 type meldAdapter struct {
 	key     string
@@ -34,8 +43,7 @@ func (m *meldAdapter) base() string {
 	return baseFor("meld", "https://api.meld.io")
 }
 
-// Destination currency codes: Meld qualifies by network in the code
-// (UNVERIFIED exact strings).
+// Destination currency codes: Meld qualifies by network in the code.
 var meldCrypto = map[string]string{
 	"btc/bitcoin": "BTC", "eth/ethereum": "ETH",
 	"usdc/base": "USDC_BASE", "usdc/arbitrum": "USDC_ARBITRUM",
@@ -43,19 +51,29 @@ var meldCrypto = map[string]string{
 var meldMethod = map[string]string{"card": "CREDIT_DEBIT_CARD", "sepa": "SEPA"}
 
 type meldQuote struct {
-	ServiceProvider   string  `json:"serviceProvider"`
-	SourceAmount      float64 `json:"sourceAmount"`
-	DestinationAmount float64 `json:"destinationAmount"`
-	ExchangeRate      float64 `json:"exchangeRate"`
-	TotalFee          float64 `json:"totalFee"`
-	NetworkFee        float64 `json:"networkFee"`
-	TransactionFee    float64 `json:"transactionFee"`
-	PartnerFee        float64 `json:"partnerFee"`
-	PaymentMethodType string  `json:"paymentMethodType"`
+	ServiceProvider   string   `json:"serviceProvider"`
+	SourceAmount      float64  `json:"sourceAmount"`
+	DestinationAmount float64  `json:"destinationAmount"`
+	ExchangeRate      float64  `json:"exchangeRate"`
+	TotalFee          float64  `json:"totalFee"`
+	NetworkFee        float64  `json:"networkFee"`
+	TransactionFee    float64  `json:"transactionFee"`
+	PartnerFee        *float64 `json:"partnerFee"` // null when the partner adds no markup
+	PaymentMethodType string   `json:"paymentMethodType"`
 }
 
 type meldResp struct {
-	Quotes []meldQuote `json:"quotes"`
+	Quotes  []meldQuote `json:"quotes"`
+	Code    string      `json:"code"`    // set on error bodies
+	Message string      `json:"message"` // set on error bodies
+}
+
+type meldReq struct {
+	CountryCode             string  `json:"countryCode"`
+	SourceCurrencyCode      string  `json:"sourceCurrencyCode"`
+	SourceAmount            float64 `json:"sourceAmount"`
+	DestinationCurrencyCode string  `json:"destinationCurrencyCode"`
+	PaymentMethodType       string  `json:"paymentMethodType"`
 }
 
 var meldProviderSlug = map[string]string{
@@ -74,17 +92,20 @@ func (m *meldAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normalized
 	if !ok {
 		return nil, 0, ErrNoQuote
 	}
-	q := url.Values{}
-	q.Set("countryCode", PersonaCountry)
-	q.Set("sourceCurrencyCode", "EUR")
-	q.Set("destinationCurrencyCode", dest)
-	q.Set("paymentMethodType", method)
-	q.Set("sourceAmount", trimFloat(req.Notional))
-	u := m.base() + "/payments/crypto/quote?" + q.Encode()
-	auth := "BASIC " + base64.StdEncoding.EncodeToString([]byte(m.key+":"))
-	res, err := doJSON(ctx, "GET", u, map[string]string{"Authorization": auth}, nil)
+	body, _ := json.Marshal(meldReq{
+		CountryCode: PersonaCountry, SourceCurrencyCode: "EUR", SourceAmount: req.Notional,
+		DestinationCurrencyCode: dest, PaymentMethodType: method,
+	})
+	u := m.base() + "/payments/crypto/quote"
+	auth := "BASIC " + base64.StdEncoding.EncodeToString([]byte(m.key))
+	res, err := doJSON(ctx, "POST", u, map[string]string{"Authorization": auth, "Meld-Version": "2025-03-04"}, body)
 	if err != nil {
 		return nil, res.Latency, err
+	}
+	if res.Status == 400 || res.Status == 404 {
+		// INVALID_AMOUNT_TOO_HIGH, no provider for the cell, unsupported
+		// currency: a cell the aggregator cannot serve, not an outage.
+		return nil, res.Latency, ErrNoQuote
 	}
 	if res.Status != 200 {
 		return nil, res.Latency, statusErr("meld", res)
@@ -117,7 +138,7 @@ func (m *meldAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normalized
 			Asset: req.Asset.Asset, Network: req.Network, PaymentMethod: req.PaymentMethod,
 			Notional: req.Notional, CountrySource: "param",
 			FiatIn: fiatIn, CryptoOut: mq.DestinationAmount,
-			FeeProvider: mq.TransactionFee, FeeNetwork: mq.NetworkFee, FeePartner: mq.PartnerFee,
+			FeeProvider: mq.TransactionFee, FeeNetwork: mq.NetworkFee, FeePartner: derefFloat(mq.PartnerFee),
 			ProviderMarketRate: mq.ExchangeRate, RawJSONHash: h,
 		})
 	}
@@ -128,3 +149,10 @@ func (m *meldAdapter) Quote(ctx context.Context, req QuoteRequest) ([]Normalized
 }
 
 func (m *meldAdapter) CountrySource() string { return "param" }
+
+func derefFloat(p *float64) float64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
