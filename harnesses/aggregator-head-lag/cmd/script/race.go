@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -94,6 +95,15 @@ var race = &raceBook{
 	participants: map[string]map[string]bool{},
 }
 
+// raceLagSeconds floors the published lag at 1 ms. The first feed is 0 by
+// definition, but the site drops rows whose headline reads exactly zero
+// (a zero p50 means "no measurement" everywhere else), which hid the
+// leader on the Singapore tab where Mobula won every race. One
+// millisecond is below the tie window and reads as "first".
+func raceLagSeconds(d time.Duration) float64 {
+	return math.Max(d.Seconds(), 0.001)
+}
+
 func raceKey(chain, region, hash string) string {
 	return chain + "|" + region + "|" + hash
 }
@@ -122,7 +132,7 @@ func (b *raceBook) observe(aggregator, chain, region, hash string, at time.Time,
 		// Late arrival: it lost, and its lag is against the recorded first.
 		b.note(chain, region, aggregator)
 		if raceChains[chain] {
-			RecordHeadLag(aggregator, chain, lagBlocks, at.Sub(e.t0).Seconds(), region, hash)
+			RecordHeadLag(aggregator, chain, lagBlocks, raceLagSeconds(at.Sub(e.t0)), region, hash)
 		}
 		return
 	}
@@ -196,7 +206,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 			headLagFirst.WithLabelValues(o.aggregator, e.chain, e.region).Inc()
 		}
 		if o.aggregator != "reference" && raceChains[e.chain] {
-			RecordHeadLag(o.aggregator, e.chain, o.lagBlocks, delta.Seconds(), e.region, hash)
+			RecordHeadLag(o.aggregator, e.chain, o.lagBlocks, raceLagSeconds(delta), e.region, hash)
 		}
 	}
 	if !refSeen {

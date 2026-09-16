@@ -350,6 +350,8 @@ export type Benchmark = {
     minRange?: "24h" | "7d" | "30d";
     defaultRange?: "24h" | "7d" | "30d" | "90d" | "1y";
     windowLabel?: string;
+    /** Chain dimension value -> metric panel id to open on. */
+    defaultPanelByChain?: Record<string, string>;
   };
   /** When true the bench page renders a stacked bar chart (absolute + %
    *  share over time) below the main chart. Set via `stacked_share: true`
