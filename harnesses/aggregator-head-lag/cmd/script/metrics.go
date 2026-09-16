@@ -36,6 +36,9 @@ var (
 	aggregatorHead     *prometheus.GaugeVec
 	headLagErrors      *prometheus.CounterVec
 	headLagRefSeconds  *prometheus.GaugeVec
+	headLagFirst       *prometheus.CounterVec
+	headLagRaces       *prometheus.CounterVec
+	headLagFirstShare  *prometheus.GaugeVec
 	headLagRefMatches  *prometheus.CounterVec
 	refClockEntries    prometheus.Gauge
 
@@ -224,6 +227,33 @@ func init() {
 		[]string{"aggregator", "chain", "region", "outcome"},
 	)
 	prometheus.MustRegister(headLagRefMatches)
+
+	// Per-transaction race (race.go): who reported the trade first, and
+	// how often, our node reference included as aggregator="reference".
+	headLagFirst = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_first_total",
+			Help: "Trades a feed reported first (ties within 5 ms count for every feed involved).",
+		},
+		[]string{"aggregator", "chain", "region"},
+	)
+	prometheus.MustRegister(headLagFirst)
+	headLagRaces = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_races_total",
+			Help: "Per-transaction races closed (trades seen by at least one feed).",
+		},
+		[]string{"chain", "region"},
+	)
+	prometheus.MustRegister(headLagRaces)
+	headLagFirstShare = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "head_lag_first_share_pct",
+			Help: "Share of the last 24 h of trades a feed reported first, in percent (in-process rolling window).",
+		},
+		[]string{"aggregator", "chain", "region"},
+	)
+	prometheus.MustRegister(headLagFirstShare)
 
 	refClockEntries = prometheus.NewGauge(
 		prometheus.GaugeOpts{
