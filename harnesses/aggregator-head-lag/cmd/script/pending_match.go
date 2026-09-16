@@ -54,16 +54,11 @@ var pending = &pendingQueue{}
 // own reference clock. Base: the flashblock stream, which precedes the
 // sealed block by ~1.6 s.
 //
-// Solana is next, and deliberately not yet. Mobula and Serialized report
-// on-chain timestamps that differ by ~0.56 s for the same transaction, so
-// measuring each against its own timestamp compares conventions rather than
-// delivery, and the headline must move to the reference. But the reference
-// subscription on the free public endpoint matched 0-5% of emissions before
-// this change, and flipping the headline onto a series that thin would
-// blank Solana on the bench. Order of operations: ship the deferred
-// matcher, point REF_WS_URL_SOLANA at an endpoint that delivers, confirm
-// the match rate per region on head_lag_ref_matches_total, then add
-// "solana" here.
+// Solana is handled by race.go instead (raceChains): no RPC WebSocket we
+// can hold precedes the providers' geyser feeds, so its headline is the
+// lag behind the first observation of the trade rather than behind our
+// node. Add a chain here only once its reference is measured to arrive
+// before every provider (head_lag_ref_seconds positive for all of them).
 var referenceChains = map[string]bool{"base": true}
 
 // emitHeadLag is the single entry point for a provider emission.
@@ -72,12 +67,16 @@ var referenceChains = map[string]bool{"base": true}
 // figure immediately, exactly as before. Every chain enqueues for the
 // reference match, so head_lag_ref_seconds is populated everywhere.
 func emitHeadLag(aggregator, chain, region, hash string, receiveTime time.Time, lagBlocks int64, providerLag float64) {
-	if !referenceChains[chain] {
+	// raceChains publish the lag behind the first observation instead
+	// (race.go); referenceChains publish the lag behind our node once the
+	// match resolves. Everything else keeps the provider-timestamp figure.
+	if !referenceChains[chain] && !raceChains[chain] {
 		RecordHeadLag(aggregator, chain, lagBlocks, providerLag, region, hash)
 	}
 	if hash == "" {
 		return
 	}
+	race.observe(aggregator, chain, region, hash, receiveTime, lagBlocks)
 	pending.mu.Lock()
 	pending.items = append(pending.items, pendingEmission{
 		aggregator: aggregator, chain: chain, region: region, hash: hash,
@@ -108,6 +107,7 @@ func runPendingResolver(stopChan <-chan struct{}) {
 		case <-t.C:
 		}
 		now := time.Now()
+		race.resolve(now)
 		pending.mu.Lock()
 		keep := pending.items[:0]
 		for _, e := range pending.items {

@@ -65,17 +65,21 @@ abstract: |
 methodology:
   - "Aggregators measured: Mobula, Codex, GeckoTerminal."
   - "Chains: Base, BNB Chain, Solana, Robinhood Chain."
-  - "Reference on BNB Chain, Solana and Robinhood Chain: archive nodes per chain, validated against block hashes. These carry no preconfirmation layer a provider consumes, and their chain-supplied timestamps sit within roughly 60 ms of the moment a trade is observable, so they keep the on-chain timestamp as the zero point."
+  - "Reference on BNB Chain and Robinhood Chain: archive nodes per chain, validated against block hashes. These carry no preconfirmation layer a provider consumes, and their chain-supplied timestamps sit within roughly 60 ms of the moment a trade is observable, so they keep the on-chain timestamp as the zero point."
+  - "Solana (since 2026-09-16): the headline is the lag behind the first feed to report the trade, our own node subscription included in the race. Solana has no on-chain timestamp with sub-second precision, so the timestamps providers send compare conventions: Mobula's `date` (its ingestion time) read as a constant 0.10 s, Serialized's `at` (blockTime, whole seconds) as 0.75 s, while against a common clock the two feeds are 10 to 30 ms apart."
+  - "Solana zero point: no RPC WebSocket we hold, public or keyed (mainnet-beta, Helius, Alchemy), precedes the providers' geyser feeds, so an absolute zero point is not available and the first observation is the ruler. Our node stays in the race: it validates the hash on chain and bounds the field whenever a feed is slower than a plain RPC subscription."
+  - "Solana race: every feed's arrival for a transaction is compared to the earliest one (ties within 5 ms count as first for each feed involved). Published as `head_lag_first_share_pct` (share of the last 24 h of trades a feed reported first, the First to report view) and as `head_lag_seconds` (lag behind the first, 0 for the leader). GeckoTerminal polls and lands 15 to 100 s later; it is measured against the same first arrival."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference on Base: the sequencer's flashblock preconfirmation stream, held by us in every region. A Base block becomes queryable about 0.36 s after the timestamp it carries, while flashblocks publish every 200 ms inside the 2 s interval, so that timestamp is not the moment a trade becomes knowable."
   - "Base emissions we cannot match to a flashblock are dropped rather than measured against a different ruler. Measuring against the block timestamp charged a provider reading preconfirmations with a negative lag, and described the chain's stamping convention rather than the provider's pipeline."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
   - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
   - "Cardinality: 4 aggregators × 4 chains × 3 regions = 48 active series."
+  - "Probe placement: the three probes run in their named regions on Railway (europe-west4, us-east4, asia-southeast1). Until 2026-09-15 all three ran in asia-southeast1 under regional labels; region columns before that date are three Singapore vantage points."
 
 findings:
   - "Cross-chain average puts {{best_name}} on top at {{best_p50}} (p50, 24h) across {{count}} providers. Per-chain leaders differ: Base {{best_name:chain:base}} at {{best_p50:chain:base}}, Solana {{best_name:chain:solana}} at {{best_p50:chain:solana}}, BNB {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Robinhood {{best_name:chain:robinhood}} at {{best_p50:chain:robinhood}}. Chains differ in block cadence (Solana 400ms vs Base/BNB 2-3s), which shifts the floor independently of provider speed."
-  - "On Solana the leader is {{best_name:chain:solana}} at {{best_p50:chain:solana}} (p50, 24 h); the trailer is {{worst_name:chain:solana}} at {{worst_p50:chain:solana}}. Slot cadence is sub-second, so any second-scale aggregate latency is on the provider's pipeline, not the chain."
+  - "On Solana the leader is {{best_name:chain:solana}} at {{best_p50:chain:solana}} (p50, 24 h) behind the first feed to report each trade; the trailer is {{worst_name:chain:solana}} at {{worst_p50:chain:solana}}. The First to report view gives the share of trades each feed delivered first; the leader's lag reads near zero by construction and the spread between push feeds is tens of milliseconds."
   - "On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); the trailer is {{worst_name:chain:base}} at {{worst_p50:chain:base}}. Measured against the flashblock preconfirmation stream, so the number is how long after a trade became public the provider delivered it, whichever layer it reads."
   - "On BNB Chain the leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (p50, 24 h); the trailer is {{worst_name:chain:bnb}} at {{worst_p50:chain:bnb}}. BNB's ~3 s blocks set the floor; the spread between leader and trailer is the provider-side delta."
   - "Push feeds (WebSocket, GraphQL subscription) compress latency by emitting the moment the provider's indexer has the event rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST. Which push feed leads shifts by chain, see the per-chain lines above."
@@ -85,6 +89,19 @@ findings:
   - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
+
+# Per-transaction race (harness race.go): share of trades each feed
+# reported first over the last 24 h, our node reference included as a
+# competitor. The avg by (aggregator) collapses chain x region series the
+# way the headline queries do; the chain filter narrows it per chain.
+metric_panels:
+  - id: first_share
+    label: First to report
+    label_key: aggregator
+    metric: avg by (aggregator) (head_lag_first_share_pct{})
+    unit: pct
+    higher_is_better: true
+    description: "Share of the last 24 hours of trades this feed delivered before every other feed (ties within 5 ms count for both). Our own node subscription runs in the same race; on Solana it wins a few percent, which is the gap between a plain RPC subscription and a geyser feed."
 
 prometheus:
   window: 24h
@@ -106,6 +123,8 @@ faq:
     a: "Yes, structurally. A WebSocket connection pushes events the moment the provider's indexer has them, so latency tracks the publisher's indexer speed and the network path. REST polling adds the poll interval to every read: a one-second poll cadence puts a floor of one second on top of whatever the indexer adds. The leaderboard shows the difference live, with Mobula on a WebSocket feed, Codex on GraphQL subscriptions and GeckoTerminal on REST."
   - q: "How fast does GeckoTerminal update prices?"
     a: "{{name:geckoterminal}} currently sits at {{p50:geckoterminal}} (p50, 24 h) head lag on this benchmark. REST endpoints update at the publisher's chosen cadence rather than the moment a swap lands, which is the architectural reason REST polling reads slower than WebSocket feeds for the same underlying chain data."
+  - q: "Why does the Solana leader show a lag near zero?"
+    a: "Because on Solana the ruler is the first feed to report the trade, not the chain. Solana's blockTime has one-second resolution and nothing on chain marks the millisecond a trade became observable, so measuring each provider against the timestamp it sends compared clock conventions: one provider's field was its own ingestion time (a constant 0.10 s), another's the blockTime (0.75 s on average). Against a common clock the two are 10 to 30 ms apart. The First to report view answers the question directly: the share of trades each feed delivered first. Our own node runs in the race and only wins on a small share of trades, which tells you these push feeds beat a plain RPC subscription; an absolute number needs a geyser-grade reference, which no RPC WebSocket we tested provides."
   - q: "How is head lag measured on OpenChainBench?"
     a: "On Base the harness holds the sequencer's flashblock preconfirmation stream in every region and timestamps each transaction the first time it appears there; on BNB Chain, Solana and Robinhood Chain it holds canonical-tip archive nodes and uses the on-chain timestamp. Every swap is timestamped with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
   - q: "Which data provider should I pick for a real-time trading interface?"
