@@ -491,6 +491,13 @@ export const SpecSchema = z
             z.string().regex(/^[a-z][a-z0-9_]*$/),
           )
           .optional(),
+        /** Chains whose headline view is removed from the view switcher
+         *  (the chain must have a default_panel_by_chain entry). Solana on
+         *  aggregator-head-lag: the headline is a relative lag whose leader
+         *  reads 1 ms by construction, so only the panels are offered. */
+        hide_headline_by_chain: z
+          .array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/))
+          .optional(),
       })
       .strict()
       .optional(),
