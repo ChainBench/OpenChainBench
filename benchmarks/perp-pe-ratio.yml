@@ -41,7 +41,7 @@ methodology:
   - "FDV source: CoinGecko /coins/markets fully_diluted_valuation (falls back to market_cap if FDV null). dYdX is priced on the dYdX Chain token (CoinGecko dydx-chain)."
   - "P/E = FDV / annual_revenue. Null if FDV or revenue unavailable."
   - "Protocols whose adapter publishes no revenue series (Aster, Avantis, Orderly) or reports zero (Drift perps) have no P/E; see bench 265 for their price to fees."
-  - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 60s. The sample count per row is the number of scrapes in the 24h window, not a count of trades."
+  - "Poll cadence: harness fetches DeFiLlama + CoinGecko every 60 minutes. Prometheus scrapes :2112/metrics every 30 seconds. The sample count per row is the number of scrapes in the 24h window (about 2,880), not a count of trades."
 
 findings:
   - "{{best_name}} has the lowest P/E at {{best_p50}}x; cheapest perp DEX token relative to protocol earnings."
