@@ -480,6 +480,17 @@ export const SpecSchema = z
         min_range: z.enum(["24h", "7d", "30d"]).optional(),
         default_range: z.enum(["24h", "7d", "30d", "90d", "1y"]).optional(),
         window_label: z.string().min(1).max(24).optional(),
+        /** Metric panel to open on by chain (dimension value -> panel id).
+         *  aggregator-head-lag opens Solana on "first_share": the headline
+         *  there is the lag behind the first feed, so the leader reads 0 and
+         *  the share of trades each feed reported first is the view that
+         *  answers the question. Ignored when the URL carries ?view=. */
+        default_panel_by_chain: z
+          .record(
+            z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+            z.string().regex(/^[a-z][a-z0-9_]*$/),
+          )
+          .optional(),
       })
       .strict()
       .optional(),

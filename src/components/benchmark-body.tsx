@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
@@ -304,6 +304,27 @@ export function BenchmarkBody({
   const fallbackKind = kindOptions[0]?.value ?? null;
   const fallbackVenue = venueOptions[0]?.value ?? null;
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
+
+  // Per-chain default view (spec chart.default_panel_by_chain). Applied
+  // when the reader lands without ?view= and each time the chain tab
+  // changes, so Solana on aggregator-head-lag opens on First to report
+  // while Base keeps the head lag headline. A ?view= in the URL wins on
+  // first paint; after that the chain tab drives it like a fresh visit.
+  const defaultPanelByChain = Object.values(variants)[0]?.chart?.defaultPanelByChain;
+  const urlViewPinned = useRef(Boolean(urlView));
+  useEffect(() => {
+    if (!defaultPanelByChain) return;
+    if (urlViewPinned.current) {
+      urlViewPinned.current = false;
+      return;
+    }
+    const want = effectiveChain ? defaultPanelByChain[effectiveChain] ?? null : null;
+    const seedPanels = Object.values(variants)[0]?.metricPanels ?? [];
+    const valid = want && seedPanels.some((p) => p.id === want) ? want : null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActivePanelId(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveChain]);
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;

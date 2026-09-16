@@ -72,8 +72,8 @@ methodology:
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference on Base: the sequencer's flashblock preconfirmation stream, held by us in every region. A Base block becomes queryable about 0.36 s after the timestamp it carries, while flashblocks publish every 200 ms inside the 2 s interval, so that timestamp is not the moment a trade becomes knowable."
   - "Base emissions we cannot match to a flashblock are dropped rather than measured against a different ruler. Measuring against the block timestamp charged a provider reading preconfirmations with a negative lag, and described the chain's stamping convention rather than the provider's pipeline."
-  - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
-  - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
+  - "Metric: gauge `head_lag_seconds`, scraped every 30 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
+  - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (2,880 expected per provider per day at the 30 s scrape). 100% means the aggregator's feed was reachable for the full window."
   - "Cardinality: 4 aggregators × 4 chains × 3 regions = 48 active series."
   - "Probe placement: the three probes run in their named regions on Railway (europe-west4, us-east4, asia-southeast1). Until 2026-09-15 all three ran in asia-southeast1 under regional labels; region columns before that date are three Singapore vantage points."
 
@@ -94,6 +94,10 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggrega
 # reported first over the last 24 h, our node reference included as a
 # competitor. The avg by (aggregator) collapses chain x region series the
 # way the headline queries do; the chain filter narrows it per chain.
+chart:
+  default_panel_by_chain:
+    solana: first_share
+
 metric_panels:
   - id: first_share
     label: First to report
@@ -188,7 +192,7 @@ providers:
       p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h])) * 1000
       p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h])) * 1000
       mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="mobula"}[24h])) * 1000
-      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760), 1)
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 2880), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]))
       # Hybrid `unless` guard: drop the sample when the gauge saw no
       # fresh event in the last 15 min AND we have enough scrapes in
@@ -226,7 +230,7 @@ providers:
       p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h])) * 1000
       p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h])) * 1000
       mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="codex"}[24h])) * 1000
-      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760), 1)
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 2880), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="codex"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", chain=""}[15m]) > 0.8)
       live_activity: sum(changes(head_lag_seconds{aggregator="codex"}[15m]))
@@ -250,7 +254,7 @@ providers:
       p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
       p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
       mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
-      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760), 1)
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 2880), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5)
       live_activity: sum(changes(head_lag_seconds{aggregator="geckoterminal"}[15m]))
