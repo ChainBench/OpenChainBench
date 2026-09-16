@@ -310,10 +310,13 @@ export function BenchmarkBody({
   // changes, so Solana on aggregator-head-lag opens on First to report
   // while Base keeps the head lag headline. A ?view= in the URL wins on
   // first paint; after that the chain tab drives it like a fresh visit.
-  const defaultPanelByChain = Object.values(variants)[0]?.chart?.defaultPanelByChain;
+  // The chart block is editorial and rides on whichever variant went
+  // through overlayEditorial; a URL-seeded filtered variant may not carry
+  // it, so look across every seeded variant rather than the first one.
+  const chartConfig = Object.values(variants).find((v) => v.chart)?.chart;
+  const defaultPanelByChain = chartConfig?.defaultPanelByChain;
   const hideHeadline = Boolean(
-    effectiveChain &&
-      Object.values(variants)[0]?.chart?.hideHeadlineByChain?.includes(effectiveChain),
+    effectiveChain && chartConfig?.hideHeadlineByChain?.includes(effectiveChain),
   );
   const urlViewPinned = useRef(Boolean(urlView));
   useEffect(() => {
