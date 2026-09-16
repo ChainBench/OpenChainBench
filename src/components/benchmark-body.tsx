@@ -311,6 +311,10 @@ export function BenchmarkBody({
   // while Base keeps the head lag headline. A ?view= in the URL wins on
   // first paint; after that the chain tab drives it like a fresh visit.
   const defaultPanelByChain = Object.values(variants)[0]?.chart?.defaultPanelByChain;
+  const hideHeadline = Boolean(
+    effectiveChain &&
+      Object.values(variants)[0]?.chart?.hideHeadlineByChain?.includes(effectiveChain),
+  );
   const urlViewPinned = useRef(Boolean(urlView));
   useEffect(() => {
     if (!defaultPanelByChain) return;
@@ -870,6 +874,7 @@ export function BenchmarkBody({
                         mainDescription={benchmark.panelMainDescription}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
+                        hideMain={hideHeadline}
                       />
                     ) : null;
                   })()}
@@ -918,6 +923,7 @@ export function BenchmarkBody({
                         mainDescription={benchmark.panelMainDescription}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
+                        hideMain={hideHeadline}
                       />
                     ) : null;
                   })()}

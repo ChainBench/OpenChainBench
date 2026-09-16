@@ -23,12 +23,15 @@ export function MetricViewTabs({
   mainDescription,
   activeId,
   onSelect,
+  hideMain = false,
 }: {
   panels: MetricPanel[];
   mainLabel: string;
   mainDescription?: string;
   activeId: string | null;
   onSelect: (id: string | null) => void;
+  /** Drop the headline tab (spec chart.hide_headline_by_chain). */
+  hideMain?: boolean;
 }) {
   const active = activeId == null ? null : panels.find((p) => p.id === activeId);
   const activeDescription =
@@ -40,12 +43,14 @@ export function MetricViewTabs({
         <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
           View
         </span>
-        <Tab
-          label={mainLabel}
-          description={mainDescription}
-          active={activeId == null}
-          onClick={() => onSelect(null)}
-        />
+        {!hideMain && (
+          <Tab
+            label={mainLabel}
+            description={mainDescription}
+            active={activeId == null}
+            onClick={() => onSelect(null)}
+          />
+        )}
         {panels.map((p) => (
           <Tab
             key={p.id}

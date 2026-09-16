@@ -38,6 +38,7 @@ export function chartFromSpec(spec: {
     default_range?: "24h" | "7d" | "30d" | "90d" | "1y";
     window_label?: string;
     default_panel_by_chain?: Record<string, string>;
+    hide_headline_by_chain?: string[];
   };
 }): Benchmark["chart"] {
   if (!spec.chart) return undefined;
@@ -46,6 +47,7 @@ export function chartFromSpec(spec: {
     defaultRange: spec.chart.default_range,
     windowLabel: spec.chart.window_label,
     defaultPanelByChain: spec.chart.default_panel_by_chain,
+    hideHeadlineByChain: spec.chart.hide_headline_by_chain,
   };
 }
 
