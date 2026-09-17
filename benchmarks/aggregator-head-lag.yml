@@ -2,10 +2,10 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
+title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal, Serialized
 seo_title: "Fastest crypto price API 2026"
-seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana, Robinhood."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
+seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST, Serialized WebSocket live across Base, BNB, Solana, Robinhood."
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal and Serialized on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -37,7 +37,7 @@ seo_intro: |
   chain and the same event appearing on the provider's feed. Marketing
   pages quote "real-time" without a number; this page quotes the
   number. Mobula's WebSocket, Codex's GraphQL feed, GeckoTerminal's
-  REST endpoint are watched
+  REST endpoint and Serialized's WebSocket trades stream are watched
   from three regions (us-east, eu-west, sgp). On Base the zero point is
   the sequencer's flashblock preconfirmation stream, which we hold
   ourselves; on BNB Chain, Solana and Robinhood Chain it is the
@@ -63,7 +63,7 @@ abstract: |
   same event.
 
 methodology:
-  - "Aggregators measured: Mobula, Codex, GeckoTerminal."
+  - "Aggregators measured: Mobula, Codex, GeckoTerminal, Serialized."
   - "Chains: Base, BNB Chain, Solana, Robinhood Chain."
   - "Reference on BNB Chain and Robinhood Chain: archive nodes per chain, validated against block hashes. These carry no preconfirmation layer a provider consumes, and their chain-supplied timestamps sit within roughly 60 ms of the moment a trade is observable, so they keep the on-chain timestamp as the zero point."
   - "Solana (since 2026-09-16): the headline is the lag behind the first feed to report the trade, our own node subscription included in the race. Solana has no on-chain timestamp with sub-second precision, so the timestamps providers send compare conventions: Mobula's `date` (its ingestion time) read as a constant 0.10 s, Serialized's `at` (blockTime, whole seconds) as 0.75 s, while against a common clock the two feeds are 10 to 30 ms apart."
@@ -87,7 +87,7 @@ findings:
   - "On Base, what a provider reads matters more than how fast its pipeline is. A provider emitting from flashblock preconfirmations delivers a trade about 1.6 s (median over 21,538 transactions) before the sealed block carrying it becomes queryable, so a sealed-block reader carries that floor before any pipeline work. A preconfirmation is not final and can be reordered."
   - "The Base spread is therefore mostly that floor: the providers' own pipelines sit within a few hundred milliseconds of each other. Read the Base column as a latency versus finality choice, not as a pure speed ranking."
   - "{{name:geckoterminal}} trails on every chain. REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
-  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
+  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:serialized}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
@@ -246,6 +246,32 @@ providers:
         - region: ap-southeast
           p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="sgp", chain=""}[15m]) > 0.8)
+
+
+
+  - slug: serialized
+    name: Serialized
+    tag: WebSocket trades stream
+    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on Serialized's WebSocket trades stream (subscribed per pool by its token side), sampled every 15s over 24h."
+    queries:
+      p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="serialized"}[24h])) * 1000
+      p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="serialized"}[24h])) * 1000
+      p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="serialized"}[24h])) * 1000
+      mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="serialized"}[24h])) * 1000
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="serialized"}[24h]) / 2880), 1)
+      sample_size: sum(count_over_time(head_lag_seconds{aggregator="serialized"}[24h]))
+      series: avg_over_time(head_lag_seconds{aggregator="serialized"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="serialized"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="serialized"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="serialized", chain=""}[15m]) > 0.8)
+      live_activity: sum(changes(head_lag_seconds{aggregator="serialized"}[15m]))
+      regions:
+        - region: us-east
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="serialized", region="us-east"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="serialized", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="serialized", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="serialized", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="serialized", region="us-east", chain=""}[15m]) > 0.8)
+        - region: eu-west
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="serialized", region="eu-west"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="serialized", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="serialized", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="serialized", region="eu-west"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="eu-west"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="serialized", region="eu-west", chain=""}[15m]) > 0.8)
+        - region: ap-southeast
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="serialized", region="sgp"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="serialized", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="serialized", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="serialized", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="serialized", region="sgp", chain=""}[15m]) > 0.8)
 
   - slug: geckoterminal
     name: GeckoTerminal

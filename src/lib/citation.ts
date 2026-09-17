@@ -53,7 +53,13 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
  *  full field. Applies the same reliability + insufficient-sample
  *  filters as `leader()` so a document that names X as leader ranks X
  *  first in its own list. Sort direction honors the bench's
- *  `higherIsBetter` flag. */
+ *  `higherIsBetter` flag.
+ *
+ *  Ranks on the value alone, deliberately. A bench whose cross-chain
+ *  aggregate would otherwise reward an uncontested chain fixes that by
+ *  declaring `score_scope: contested_chains` in its spec, which narrows
+ *  the value itself (see materialize/load.ts) rather than sorting on a
+ *  key the reader cannot see in the column. */
 export function rankedCandidates(b: Benchmark): ProviderResult[] {
   return [...citationCandidates(b)].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,

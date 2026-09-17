@@ -396,7 +396,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v63: add bench 265 perp-pf-ratio + 5 providers on bench 234. Bench SET grew.
   // v64: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
   // objects without it kept the Head lag tab on Solana after the deploy.
-  ["bench-unfiltered-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v65: score_scope contested_chains on bench 008 changes its provider values;
+  // Serialized joins benches 001, 004, 005, 008, 090.
+  ["bench-unfiltered-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -611,7 +613,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
   // v58: lockstep with bench-unfiltered-v63 (add bench 265 perp-pf-ratio).
   // v59: lockstep with bench-unfiltered-v64 (Benchmark.chart).
-  ["all-benchmarks-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v60: lockstep with bench-unfiltered-v65 (contested scope, Serialized).
+  ["all-benchmarks-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

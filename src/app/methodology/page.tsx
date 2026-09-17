@@ -61,6 +61,10 @@ const CONVENTIONS = [
     body: "Share of requests returning a usable result within the published timeout. The only metric that includes failures.",
   },
   {
+    term: "Contested-chain scoring",
+    body: "A cross-chain average is a mix rather than a comparison: it credits a provider for the chains it happens to be measured on. Benchmarks that declare score_scope: contested_chains in their spec are therefore scored only on chains where at least two providers reported data, and a provider with no such chain is left out of the ranking while staying visible on its own chain tab. The figure shown is the unweighted mean across those chains, so each chain counts once regardless of sample count. This narrows the number rather than the sort order, so the published value is always the one the ranking follows. It does not equalise chain mix entirely: providers are still averaged over the different subsets of contested chains they cover.",
+  },
+  {
     term: "Region normalisation",
     body: "Where a benchmark is multi-region, the headline figure is the cross-region median. Per-region figures appear on every benchmark page.",
   },
