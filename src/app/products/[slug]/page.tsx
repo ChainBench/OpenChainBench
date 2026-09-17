@@ -142,7 +142,10 @@ export async function generateMetadata({
   // canonical straight to the final 200 surface. Otherwise Ahrefs + GSC
   // flag "canonical points to redirect" and Google may split rank between
   // source + final instead of consolidating.
-  const isChain = CHAIN_BY_SLUG.has(p.slug);
+  // Hyperliquid and dYdX are chains AND perp venues with 14-17 benches
+  // of their own; their product page (Perpetuals view) is a distinct
+  // entity from the chain page and keeps its own canonical.
+  const isChain = CHAIN_BY_SLUG.has(p.slug) && !PERP_PRODUCT_PILL_SLUGS.has(p.slug);
   const canonicalUrl = isChain
     ? `${SITE.url}/chains/${p.slug}`
     : `${SITE.url}/products/${p.slug}`;
