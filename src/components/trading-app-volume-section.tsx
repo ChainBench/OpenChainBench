@@ -49,7 +49,8 @@ export async function TradingAppVolumeSection({
   // itself is always in and drawn on top.
   const topSlugs = stats.slice(0, 6).map((s) => s.app.slug);
   const lineSlugs = focus && !topSlugs.includes(focus) ? [...topSlugs.slice(0, 5), focus] : topSlugs;
-  const aligned = alignedSeries(h, 365, lineSlugs);
+  const maxDays = Math.max(365, ...stats.map((s) => s.app.days.length));
+  const aligned = alignedSeries(h, maxDays, lineSlugs);
   const lines: TradingAppLine[] = aligned.series.map((s, i) => ({
     slug: s.slug,
     name: s.name,
@@ -57,7 +58,7 @@ export async function TradingAppVolumeSection({
     values: s.values,
   }));
   // Every app, for the share-of-cohort view of the chart.
-  const cohortAligned = alignedSeries(h, 365, stats.map((s) => s.app.slug));
+  const cohortAligned = alignedSeries(h, maxDays, stats.map((s) => s.app.slug));
   const cohortLines: TradingAppLine[] = cohortAligned.series.map((s, i) => ({
     slug: s.slug,
     name: s.name,
@@ -100,6 +101,9 @@ export async function TradingAppVolumeSection({
           Daily volume, every chain summed · closed UTC days
         </p>
         <TradingAppVolumeChart days={aligned.days} lines={lines} cohort={cohortLines} highlight={focus} />
+        <p className="mt-3 text-[11px] text-ink-faint leading-relaxed">
+          {coverageCaption(stats)}
+        </p>
       </div>
 
       <div className="overflow-x-auto border-y border-rule mb-6">
@@ -140,7 +144,7 @@ export async function TradingAppVolumeSection({
                     </span>
                   </td>
                   <td className="py-2.5 pr-4">
-                    <ChainBar split={s.chainSplit} />
+                    <ChainBar split={s.chainSplit} label={s.app.chainLabel} />
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{fmtUsd(s.d1)}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums">
@@ -226,6 +230,37 @@ function Kpi({ label, value, sub, tone, logo }: { label: string; value: string; 
       )}
     </div>
   );
+}
+
+/**
+ * Where each series starts on DeFiLlama. Most trading-app adapters were
+ * added in May–June 2026 and DeFiLlama did not backfill them, so the 1y
+ * view is mostly GMGN; say so under the chart instead of letting the
+ * reader think the apps did not exist.
+ */
+function coverageCaption(stats: TradingAppStats[]): string {
+  const firsts = stats
+    .map((s) => ({ name: s.app.name, first: s.app.days[0]?.day ?? "" }))
+    .filter((x) => x.first)
+    .sort((a, b) => a.first.localeCompare(b.first));
+  if (firsts.length === 0) return "";
+  const cutoff = "2026-05-01";
+  const early = firsts.filter((x) => x.first < cutoff);
+  const late = firsts.filter((x) => x.first >= cutoff);
+  const parts: string[] = [];
+  for (const x of early) parts.push(`${x.name} since ${fmtDay(x.first)}`);
+  if (late.length > 0) {
+    parts.push(
+      `${late.length} others since ${fmtDay(late[0].first)}–${fmtDay(late[late.length - 1].first)}, when DeFiLlama added their adapters (not backfilled)`,
+    );
+  }
+  return `Series start where DeFiLlama's data starts: ${parts.join("; ")}. Earlier years are not published for these apps.`;
+}
+
+function fmtDay(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
 /** Chart colour when the app is on the chart, brand colour, else palette. */

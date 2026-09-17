@@ -21,6 +21,8 @@ export type TradingAppSeries = {
   llamaSlug: string;
   kind: "app" | "bot";
   note?: string;
+  /** Replaces the chain-split text when DeFiLlama's chain attribution is not where the trades happen. */
+  chainLabel?: string;
   chains: string[];
   days: TradingAppDay[];
   fetchedAt: string;
@@ -60,6 +62,7 @@ function parse(raw: unknown): TradingAppHistory | null {
       llamaSlug: typeof a.llama_slug === "string" ? a.llama_slug : "",
       kind: a.kind === "bot" ? "bot" : "app",
       ...(typeof a.note === "string" && a.note ? { note: a.note } : {}),
+      ...(typeof a.chain_label === "string" && a.chain_label ? { chainLabel: a.chain_label } : {}),
       chains: Array.isArray(a.chains) ? a.chains.filter((c): c is string => typeof c === "string") : [],
       days,
       fetchedAt: typeof a.fetched_at === "string" ? a.fetched_at : "",

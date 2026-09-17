@@ -72,7 +72,7 @@ Caddy already serves as `/aggregate/`), read by the site at
 | Var | Default | Meaning |
 |---|---|---|
 | `HISTORY_FILE_PUBLIC` | unset | where to mirror the public JSON |
-| `HISTORY_DAYS` | `400` | closed days kept per app |
+| `HISTORY_DAYS` | `1500` | closed days kept per app (GMGN's series starts Sep 2023; most adapters only start May–Jun 2026, DeFiLlama did not backfill them) |
 | `TICK_MINUTES` | `60` | sweep cadence |
 | `METRICS_ADDR` | `:2112` | |
 | `DEFILLAMA_BASE` | `https://api.llama.fi` | |

@@ -46,6 +46,10 @@ type App struct {
 	Llama string `json:"llama_slug"`
 	Kind  string `json:"kind"` // "app" (web / mobile terminal) or "bot" (Telegram)
 	Note  string `json:"note,omitempty"`
+	// ChainLabel replaces the chain split's text when DeFiLlama's chain
+	// attribution is not where the trades happen (FOMO books every trade,
+	// cross-chain ones included, on Solana).
+	ChainLabel string `json:"chain_label,omitempty"`
 }
 
 // cohort: every DeFiLlama dexs protocol in the Trading App / Telegram Bot
@@ -55,7 +59,7 @@ type App struct {
 var cohort = []App{
 	{Slug: "gmgn", Name: "GMGN", Llama: "gmgn", Kind: "app"},
 	{Slug: "axiom", Name: "Axiom", Llama: "axiom", Kind: "app"},
-	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "Measured on Solana, where FOMO holds user balances; cross-chain buys and sells executed through Relay are included and counted once, so this is FOMO's total, not its Solana-native share."},
+	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "Measured on Solana, where FOMO holds user balances; cross-chain buys and sells executed through Relay are included and counted once, so this is FOMO's total, not its Solana-native share.", ChainLabel: "Settled on Solana · cross-chain via Relay"},
 	{Slug: "padre", Name: "Terminal", Llama: "terminal", Kind: "bot", Note: "pump.fun's own trading app, formerly Padre."},
 	{Slug: "pump-fun", Name: "pump.fun app", Llama: "pump.fun-mobile-app", Kind: "app", Note: "The pump.fun mobile app only, not the launchpad's bonding-curve volume."},
 	{Slug: "photon", Name: "Photon", Llama: "photon", Kind: "app"},
@@ -150,7 +154,7 @@ func envInt(k string, def int) int {
 
 func main() {
 	tick := time.Duration(envInt("TICK_MINUTES", 60)) * time.Minute
-	historyDays := envInt("HISTORY_DAYS", 400)
+	historyDays := envInt("HISTORY_DAYS", 1500) // GMGN's DeFiLlama series starts Sep 2023
 	addr := os.Getenv("METRICS_ADDR")
 	if addr == "" {
 		addr = ":2112"

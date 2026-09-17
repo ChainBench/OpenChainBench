@@ -9,14 +9,18 @@ import { chainColor } from "@/lib/trading-app-history";
 export function ChainBar({
   split,
   width = 64,
+  label: labelOverride,
 }: {
   split: { chain: string; usd: number; pct: number }[];
   width?: number;
+  /** Text instead of the computed chain summary (e.g. FOMO's Relay note). */
+  label?: string;
 }) {
   if (split.length === 0) return <span className="text-ink-faint">—</span>;
   const lead = split[0];
-  const label =
-    split.length === 1
+  const label = labelOverride
+    ? labelOverride
+    : split.length === 1
       ? lead.chain
       : `${lead.chain} ${lead.pct.toFixed(0)}% · ${split[1].chain} ${split[1].pct >= 1 ? `${split[1].pct.toFixed(0)}%` : "<1%"}${split.length > 2 ? ` · +${split.length - 2}` : ""}`;
   return (
