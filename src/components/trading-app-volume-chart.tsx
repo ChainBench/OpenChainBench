@@ -9,6 +9,10 @@ import { ChartWatermarkHtml } from "@/components/chart-watermark";
  * that day. Pure SVG, no library. The parent decides which apps are in
  * (the hub passes the top ones by last-day volume, a product page passes
  * itself plus the leaders).
+ *
+ * "Share" mode stacks the same apps as 100 % areas of the whole cohort
+ * (`cohort`, every app), the rest folded into "Others". A missing day
+ * counts as zero for that app, which is what the data says.
  */
 export type TradingAppLine = {
   slug: string;
@@ -20,12 +24,15 @@ export type TradingAppLine = {
 export function TradingAppVolumeChart({
   days,
   lines,
+  cohort,
   highlight,
   logScale = false,
 }: {
   /** ISO days, oldest first, aligned with every line's values. */
   days: string[];
   lines: TradingAppLine[];
+  /** Every app in the cohort (same day alignment); enables the share view. */
+  cohort?: TradingAppLine[];
   /** Slug drawn on top with full opacity; others dimmed when set. */
   highlight?: string;
   logScale?: boolean;
@@ -33,6 +40,8 @@ export function TradingAppVolumeChart({
   const [hover, setHover] = useState<number | null>(null);
   const [span, setSpan] = useState<30 | 90 | 365>(90);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<"volume" | "share">("volume");
+  const share = mode === "share" && !!cohort;
 
   const shownDays = useMemo(() => days.slice(-span), [days, span]);
   const shown = useMemo(
@@ -40,6 +49,29 @@ export function TradingAppVolumeChart({
     [lines, span],
   );
   const visible = shown.filter((l) => !hidden.has(l.slug));
+  const OTHERS = "#8a8a94";
+  // Share view: per day, each visible app's share of the cohort total and
+  // the cumulative stack (bottom..top), "Others" last.
+  const stack = useMemo(() => {
+    if (!share || !cohort) return null;
+    const nDays = shownDays.length;
+    const totals = new Array<number>(nDays).fill(0);
+    for (const l of cohort) {
+      const vals = l.values.slice(-span);
+      for (let i = 0; i < nDays; i++) totals[i] += vals[i] ?? 0;
+    }
+    const bands: { slug: string; name: string; color: string; lo: number[]; hi: number[]; pct: number[] }[] = [];
+    const cum = new Array<number>(nDays).fill(0);
+    for (const l of visible) {
+      const lo = [...cum];
+      const pct = l.values.map((v, i) => (totals[i] > 0 ? ((v ?? 0) / totals[i]) * 100 : 0));
+      for (let i = 0; i < nDays; i++) cum[i] += pct[i];
+      bands.push({ slug: l.slug, name: l.name, color: l.color, lo, hi: [...cum], pct });
+    }
+    const restPct = cum.map((c, i) => (totals[i] > 0 ? Math.max(0, 100 - c) : 0));
+    bands.push({ slug: "__others", name: "Others", color: OTHERS, lo: [...cum], hi: cum.map((c, i) => c + restPct[i]), pct: restPct });
+    return { bands, totals };
+  }, [share, cohort, visible, shownDays.length, span]);
   const max = useMemo(
     () => Math.max(1, ...visible.flatMap((l) => l.values.map((v) => v ?? 0))),
     [visible],
@@ -49,8 +81,8 @@ export function TradingAppVolumeChart({
     const vals = visible.flatMap((l) => l.values.filter((v): v is number => v != null && v > 0));
     return vals.length ? Math.min(...vals) : 1;
   }, [visible, logScale]);
-  const top = niceMax(max);
-  const bottom = logScale ? Math.pow(10, Math.floor(Math.log10(Math.max(1, min)))) : 0;
+  const top = share ? 100 : niceMax(max);
+  const bottom = logScale && !share ? Math.pow(10, Math.floor(Math.log10(Math.max(1, min)))) : 0;
 
   const W = 1100;
   const H = 320;
@@ -63,7 +95,7 @@ export function TradingAppVolumeChart({
   const n = shownDays.length;
   const x = (i: number) => PAD_L + (n <= 1 ? 0 : (i / (n - 1)) * plotW);
   const y = (v: number) => {
-    if (logScale) {
+    if (logScale && !share) {
       const lo = Math.log10(bottom);
       const hi = Math.log10(top);
       const t = (Math.log10(Math.max(v, bottom)) - lo) / Math.max(hi - lo, 1e-9);
@@ -72,7 +104,7 @@ export function TradingAppVolumeChart({
     return PAD_T + plotH - (v / top) * plotH;
   };
 
-  const ticks = logScale
+  const ticks = logScale && !share
     ? logTicks(bottom, top)
     : [0, 0.25, 0.5, 0.75, 1].map((f) => f * top);
   const hovered = hover !== null ? shownDays[hover] : null;
@@ -138,6 +170,15 @@ export function TradingAppVolumeChart({
     return d;
   };
 
+  const bandPath = (lo: number[], hi: number[]) => {
+    let d = "";
+    hi.forEach((v, i) => {
+      d += `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
+    });
+    for (let i = lo.length - 1; i >= 0; i--) d += `L${x(i).toFixed(1)},${y(lo[i]).toFixed(1)} `;
+    return d + "Z";
+  };
+
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * W;
@@ -174,6 +215,21 @@ export function TradingAppVolumeChart({
           <p className="text-[11px] text-ink-faint">
             {hovered ? fmtDate(hovered) : "UTC days, every chain summed"}
           </p>
+          {cohort && (
+            <div className="inline-flex overflow-hidden rounded border border-rule text-[11px]">
+              {(["volume", "share"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`px-2 py-0.5 ${mode === m ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}
+                  title={m === "share" ? "Each app's share of the cohort's daily volume, stacked to 100 %" : "Daily volume in USD"}
+                >
+                  {m === "volume" ? "Volume" : "Share"}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="inline-flex overflow-hidden rounded border border-rule text-[11px]">
             {([30, 90, 365] as const).map((s) => (
               <button
@@ -201,7 +257,7 @@ export function TradingAppVolumeChart({
           <g key={t}>
             <line x1={PAD_L} x2={W - PAD_R} y1={y(t)} y2={y(t)} stroke="currentColor" strokeOpacity={t === 0 ? 0.2 : 0.07} />
             <text x={PAD_L - 8} y={y(t) + 3} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5} style={{ fontFamily: "var(--font-mono, monospace)" }}>
-              {t === 0 ? "0" : `$${fmtAxis(t)}`}
+              {share ? `${t}%` : t === 0 ? "0" : `$${fmtAxis(t)}`}
             </text>
           </g>
         ))}
@@ -213,32 +269,49 @@ export function TradingAppVolumeChart({
             </text>
           </g>
         ))}
-        {visible.map((l) => {
-          const dim = highlight && highlight !== l.slug;
-          return (
-            <path
-              key={l.slug}
-              d={pathOf(l.values)}
-              fill="none"
-              stroke={l.color}
-              strokeWidth={highlight === l.slug ? 2.4 : 1.6}
-              strokeOpacity={dim ? 0.35 : 0.95}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          );
-        })}
+        {stack
+          ? stack.bands.map((b) => {
+              const dim = highlight && highlight !== b.slug;
+              return (
+                <path
+                  key={b.slug}
+                  d={bandPath(b.lo, b.hi)}
+                  fill={b.color}
+                  fillOpacity={b.slug === "__others" ? 0.18 : dim ? 0.3 : 0.6}
+                  stroke={b.color}
+                  strokeOpacity={b.slug === "__others" ? 0.3 : 0.9}
+                  strokeWidth={0.8}
+                />
+              );
+            })
+          : visible.map((l) => {
+              const dim = highlight && highlight !== l.slug;
+              return (
+                <path
+                  key={l.slug}
+                  d={pathOf(l.values)}
+                  fill="none"
+                  stroke={l.color}
+                  strokeWidth={highlight === l.slug ? 2.4 : 1.6}
+                  strokeOpacity={dim ? 0.35 : 0.95}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              );
+            })}
         {hover !== null && (
           <g>
             <line x1={x(hover)} x2={x(hover)} y1={PAD_T} y2={PAD_T + plotH} stroke="currentColor" strokeOpacity={0.25} strokeDasharray="3 3" />
-            {visible.map((l) => {
-              const v = l.values[hover];
-              if (v == null) return null;
-              return <circle key={l.slug} cx={x(hover)} cy={y(v)} r={3} fill={l.color} />;
-            })}
+            {!stack &&
+              visible.map((l) => {
+                const v = l.values[hover];
+                if (v == null) return null;
+                return <circle key={l.slug} cx={x(hover)} cy={y(v)} r={3} fill={l.color} />;
+              })}
           </g>
         )}
         {hover === null &&
+          !stack &&
           endLabels.map((e) => (
             <g key={e.slug}>
               <rect x={W - PAD_R + 6} y={e.y - 7} width={PAD_R - 10} height={14} rx={3} fill={e.color} fillOpacity={0.14} />
@@ -247,6 +320,18 @@ export function TradingAppVolumeChart({
               </text>
             </g>
           ))}
+        {hover === null &&
+          stack &&
+          stack.bands
+            .filter((b) => b.pct[n - 1] >= 3)
+            .map((b) => {
+              const mid = (b.lo[n - 1] + b.hi[n - 1]) / 2;
+              return (
+                <text key={b.slug} x={W - PAD_R + 8} y={y(mid) + 3.5} fontSize={10} fill={b.color} style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                  {b.pct[n - 1].toFixed(0)}% {b.name === "Others" ? "others" : ""}
+                </text>
+              );
+            })}
         <text x={W - PAD_R} y={H - 8} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5} style={{ fontFamily: "var(--font-mono, monospace)" }}>
           {fmtDate(shownDays.at(-1) ?? "")}
         </text>
@@ -255,18 +340,38 @@ export function TradingAppVolumeChart({
       {hover !== null && (
         <div className="pointer-events-none absolute right-2 top-9 rounded-md border border-rule bg-paper px-3 py-2 shadow-xl text-[11px] tabular-nums">
           <p className="mb-1 text-ink-faint">{fmtDate(shownDays[hover])}</p>
-          {[...visible]
-            .map((l) => ({ l, v: l.values[hover] }))
-            .sort((a, b) => (b.v ?? -1) - (a.v ?? -1))
-            .map(({ l, v }) => (
-              <p key={l.slug} className="flex items-center justify-between gap-4">
-                <span className="inline-flex items-center gap-1.5 text-ink-soft">
-                  <i className="inline-block h-2 w-2 rounded-sm" style={{ background: l.color }} />
-                  {l.name}
-                </span>
-                <span className="text-ink">{fmtUsd(v)}</span>
+          {stack ? (
+            <>
+              {[...stack.bands]
+                .sort((a, b) => b.pct[hover] - a.pct[hover])
+                .map((b) => (
+                  <p key={b.slug} className="flex items-center justify-between gap-4">
+                    <span className="inline-flex items-center gap-1.5 text-ink-soft">
+                      <i className="inline-block h-2 w-2 rounded-sm" style={{ background: b.color }} />
+                      {b.name}
+                    </span>
+                    <span className="text-ink">{b.pct[hover].toFixed(1)}%</span>
+                  </p>
+                ))}
+              <p className="mt-1 border-t border-rule pt-1 flex items-center justify-between gap-4 text-ink-faint">
+                <span>Cohort</span>
+                <span>{fmtUsd(stack.totals[hover])}</span>
               </p>
-            ))}
+            </>
+          ) : (
+            [...visible]
+              .map((l) => ({ l, v: l.values[hover] }))
+              .sort((a, b) => (b.v ?? -1) - (a.v ?? -1))
+              .map(({ l, v }) => (
+                <p key={l.slug} className="flex items-center justify-between gap-4">
+                  <span className="inline-flex items-center gap-1.5 text-ink-soft">
+                    <i className="inline-block h-2 w-2 rounded-sm" style={{ background: l.color }} />
+                    {l.name}
+                  </span>
+                  <span className="text-ink">{fmtUsd(v)}</span>
+                </p>
+              ))
+          )}
         </div>
       )}
       <ChartWatermarkHtml />

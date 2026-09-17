@@ -3,6 +3,8 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
 import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
+import { ChainBar } from "@/components/chain-bar";
+import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-history";
 import {
   TRADING_APP_PLATFORMS as PLATFORMS,
   TRADING_APP_COLUMNS as COLUMNS,
@@ -71,7 +73,7 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench] =
+  const [volBench, tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench, history] =
     await Promise.all([
       getBenchmark("solana-trading-platform-wars"),
       getBenchmark("solana-unique-traders"),
@@ -79,7 +81,12 @@ export default async function TradingAppsHubPage() {
       getBenchmark("trading-platform-wallets"),
       getBenchmark("memecoin-platforms"),
       getBenchmark("app-store-ratings"),
+      getTradingAppHistory(),
     ]);
+  // Last-day chain split per app from bench 267, for the chains column of
+  // the Dune table (apps DeFiLlama does not track show a dash).
+  const chainSplitOf = new Map<string, { chain: string; usd: number; pct: number }[]>();
+  if (history) for (const s of computeTradingAppStats(history)) chainSplitOf.set(s.app.slug, s.chainSplit);
 
   // Per-platform formula per column (spec provider.formula): the chain
   // scope differs per platform, so each cell carries its own source.
@@ -258,6 +265,12 @@ export default async function TradingAppsHubPage() {
                 <th className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap w-[160px]">
                   Platform
                 </th>
+                <th
+                  className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap cursor-help"
+                  title="Where the app's volume settled on the last closed UTC day (DeFiLlama, bench 267). Dash: not tracked by DeFiLlama."
+                >
+                  Chains
+                </th>
                 {COLUMNS.map((col) => (
                   <th
                     key={col.key}
@@ -300,6 +313,9 @@ export default async function TradingAppsHubPage() {
                       </span>
                     </Link>
                   </td>
+                  <td className="px-4 py-3">
+                    <ChainBar split={chainSplitOf.get(row.slug) ?? []} width={56} />
+                  </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
                     const isBest = val !== null && val === bests[col.key];
@@ -331,6 +347,7 @@ export default async function TradingAppsHubPage() {
         </div>
         <p className="mt-2 text-[11px] text-ink-faint">
           Best value per column highlighted in green. Sorted by 24h volume.
+          Chains from bench 267 (last closed UTC day); SOL marks a Dune dataset that covers Solana only.
           Hover column headers for methodology notes. Data refreshes every 60 s.
         </p>
       </section>
