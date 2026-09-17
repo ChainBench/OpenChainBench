@@ -2,6 +2,12 @@ import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
+import {
+  TRADING_APP_PLATFORMS as PLATFORMS,
+  TRADING_APP_COLUMNS as COLUMNS,
+  fmtUSD,
+  type TradingAppColKey as ColKey,
+} from "@/lib/trading-apps";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -28,107 +34,12 @@ const BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 
-// Volume source: Dune community datasets (dataset_*_daily).
-// Each platform is a separate dataset with cross-chain breakdown (blockchain col).
-// pump.fun = pumpapp Solana + relay swaps, shown with proper attribution now.
-// Terminal (slug: padre) = pump.fun's own trading app (formerly Padre, acq Apr 2025).
-// BasedBot is a multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM).
-const PLATFORMS = [
-  { slug: "pump-fun", name: "pump.fun" },
-  { slug: "padre", name: "Terminal" },
-  { slug: "gmgn", name: "GMGN" },
-  { slug: "axiom", name: "Axiom" },
-  { slug: "fomo", name: "FOMO" },
-  { slug: "trojan", name: "Trojan" },
-  { slug: "photon", name: "Photon" },
-  { slug: "maestro", name: "Maestro" },
-  { slug: "basedbot", name: "BasedBot" },
-] as const;
-
-const COLUMNS = [
-  {
-    key: "volume" as const,
-    label: "24h Volume",
-    bench: "solana-trading-platform-wars",
-    fmt: fmtUSD,
-    tip: "Cross-chain 24h volume from Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
-    higherBetter: true,
-  },
-  {
-    key: "traders" as const,
-    label: "Swap Tx",
-    bench: "solana-unique-traders",
-    fmt: fmtCount,
-    tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
-    higherBetter: true,
-  },
-  {
-    key: "tradeSize" as const,
-    label: "Avg Trade",
-    bench: "solana-avg-trade-size",
-    fmt: fmtUSD,
-    tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
-    higherBetter: true,
-  },
-  {
-    key: "wallets" as const,
-    label: "Active Wallets",
-    bench: "trading-platform-wallets",
-    fmt: fmtCount,
-    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal. Better signal of real user base than raw tx count.",
-    higherBetter: true,
-  },
-  {
-    key: "feeRate" as const,
-    label: "Fee Rate",
-    bench: "memecoin-platforms",
-    fmt: fmtPct,
-    tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
-    higherBetter: false,
-  },
-  {
-    key: "rating" as const,
-    label: "App Rating",
-    bench: "app-store-ratings",
-    fmt: fmtRating,
-    tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app — they show —.",
-    higherBetter: true,
-  },
-] as const;
-
-type ColKey = (typeof COLUMNS)[number]["key"];
-
 function indexBySlug(results: ProviderResult[] | undefined): Record<string, number> {
   const out: Record<string, number> = {};
   for (const r of results ?? []) {
     out[r.slug] = r.ms.p50;
   }
   return out;
-}
-
-function fmtUSD(v: number | null): string {
-  if (v === null) return "—";
-  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(0)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
-  return `$${v.toFixed(0)}`;
-}
-
-function fmtCount(v: number | null): string {
-  if (v === null) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-  return v.toFixed(0);
-}
-
-function fmtPct(v: number | null): string {
-  if (v === null) return "—";
-  return `${v.toFixed(2)}%`;
-}
-
-function fmtRating(v: number | null): string {
-  if (v === null) return "—";
-  return `${v.toFixed(1)} / 5`;
 }
 
 const GROUPS = [
