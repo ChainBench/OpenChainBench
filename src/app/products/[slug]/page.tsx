@@ -38,6 +38,7 @@ import { DataApiProviderSection } from "@/components/data-api-provider-section";
 import { BridgeProviderSection } from "@/components/bridge-provider-section";
 import { loadTradingAppMatrix, TRADING_APP_SLUGS, TRADING_APP_COLUMNS } from "@/lib/trading-apps";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
+import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 
 export const revalidate = 3600;
@@ -250,12 +251,14 @@ export default async function ProviderPage({
   const hasRpcData = await hasRpcProviderData(p.slug);
   // Trading app / data API / bridge views: same hide-if-empty rule, each
   // check reads the cached snapshot its section reads.
-  const tradingAppHasData = TRADING_APP_SLUGS.has(p.slug)
-    ? await loadTradingAppMatrix().then((m) => {
-        const me = m.rows.find((r) => r.slug === p.slug);
-        return !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
-      })
-    : false;
+  const tradingAppHasData =
+    (await getTradingAppHistory().then((h) => !!h?.apps.some((a) => a.slug === p.slug))) ||
+    (TRADING_APP_SLUGS.has(p.slug)
+      ? await loadTradingAppMatrix().then((m) => {
+          const me = m.rows.find((r) => r.slug === p.slug);
+          return !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+        })
+      : false);
   const dataApiHasData = await fetchDataApiSnapshot().then(
     (s) => !!s?.providers.find((r) => r.slug === p.slug && r.cells.length > 0),
   );

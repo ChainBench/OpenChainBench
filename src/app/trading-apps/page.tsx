@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
+import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
 import {
   TRADING_APP_PLATFORMS as PLATFORMS,
   TRADING_APP_COLUMNS as COLUMNS,
@@ -14,17 +15,18 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live benchmarks for Solana trading platforms and Telegram bots — volume, swap transactions, average trade size, and app store ratings.";
+  "Cross-chain daily volume for trading apps and Telegram bots (GMGN, Axiom, FOMO, Terminal, Photon, Trojan and more) on closed UTC days with per-chain split and trends, plus on-chain activity, fee rates and app store ratings.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Best Solana Trading Apps 2026, ranked by benchmark",
+  title: "Trading app volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, cross-chain daily",
   description: DESCRIPTION,
 });
 
 export const revalidate = 3600;
 
 const BENCH_SLUGS = [
+  "trading-app-daily-volume",
   "solana-trading-platform-wars",
   "solana-dex-volume",
   "solana-unique-traders",
@@ -184,18 +186,44 @@ export default async function TradingAppsHubPage() {
           Trading Apps
         </p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Solana trading app benchmarks
+          Trading app benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          {PLATFORMS.length} platforms measured across {BENCH_SLUGS.length}{" "}
-          independent benchmarks: volume, swap transactions, average trade size,
-          fee rates, and app store ratings. Live data, no marketing claims.
+          Swap volume routed through each trading app and Telegram bot, every
+          chain summed, per closed UTC day, with the per-chain split and 7 / 30
+          day trends. Below it, on-chain activity, fee rates and app store
+          ratings. Live data, no marketing claims.
         </p>
       </header>
 
+      <section className="mb-14">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          Cross-chain daily volume · bench 267
+        </p>
+        <TradingAppVolumeSection />
+      </section>
+
+      <section className="mb-6">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          On-chain activity · Dune datasets, per platform
+        </p>
+        <p className="text-sm text-ink-soft max-w-2xl mb-6">
+          Swap transactions, average trade size, active wallets and fee rates
+          from each platform&apos;s Dune community dataset. Scope follows the
+          dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot, Solana
+          only where marked SOL.
+        </p>
+      </section>
+
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
         <KpiCard
-          label="Top volume platform"
+          label="Top volume platform (Dune)"
           value={
             topVolumeRow?.volume != null
               ? `${topVolumeRow.name} · ${fmtUSD(topVolumeRow.volume)}`
