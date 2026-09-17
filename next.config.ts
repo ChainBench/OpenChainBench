@@ -247,7 +247,13 @@ const nextConfig: NextConfig = {
       // routes under /hyperliquid and /perp folded into /products/<slug>
       // as views behind the pill bar; the hash opens the matching view.
       // The /hyperliquid and /perps hubs (no slug) are untouched.
-      { source: "/hyperliquid/:slug", destination: "/products/:slug#hl", permanent: true },
+      // The hub's own image routes (/hyperliquid/opengraph-image) must
+      // not match: a bare :slug would 308 them to a 404.
+      {
+        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon).*)",
+        destination: "/products/:slug#hl",
+        permanent: true,
+      },
       { source: "/perp/:slug", destination: "/products/:slug#perp", permanent: true },
       {
         source: "/benchmarks/rpc-latency",
