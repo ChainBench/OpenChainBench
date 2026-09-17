@@ -295,7 +295,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;
-    if (CHAIN_BY_SLUG.has(slug)) return false;
+    // Chains canonicalize to /chains/<slug>, except the perp venues that
+    // are also chains (hyperliquid, dydx): their product page is its own
+    // entity and self-canonical.
+    if (CHAIN_BY_SLUG.has(slug) && !PERP_PRODUCT_PILL_SLUGS.has(slug)) return false;
     if (REMOVED_PRODUCT_SLUGS.has(slug)) return false;
     return true;
   });
