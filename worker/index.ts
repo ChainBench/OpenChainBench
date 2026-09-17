@@ -445,9 +445,9 @@ async function sweep(iteration: number): Promise<void> {
 
     if (process.env.AGGREGATE_OUTPUT_PATH && publishedBenches.length > 0) {
       // Augment hlBuilders (Prom cohort, active builders only) with every
-      // slug from the hyperliquid-frontends spec so builders without recent
-      // Prom data aren't emitted as /products/<slug> (which 308-redirects
-      // to /hyperliquid/<slug> and fails the smoke gate with non-200).
+      // slug from the hyperliquid-frontends spec. Since 2026-09-17 the
+      // sitemap lists all of them as /products/<slug> (the one page per
+      // product); the list is still passed so the builder can union it.
       const hlFrontendSpec = specs.find((s) => s.slug === "hyperliquid-frontends");
       const hlFrontendSpecSlugs = (hlFrontendSpec?.providers ?? []).map(
         (p: { slug: string }) => p.slug,
