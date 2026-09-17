@@ -52,7 +52,7 @@ export const TRADING_APP_COLUMNS: readonly {
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "Cross-chain 24h volume from Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
+    tip: "24h volume from each platform's Dune community dataset. Scope follows the dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad...), Solana only for FOMO, Trojan and Photon (marked SOL). pump.fun = pumpapp Solana swaps + cross-chain relay swaps, not all bonding-curve. Terminal = pump.fun's own app (formerly Padre, acq. Apr 2025).",
     higherBetter: true,
   },
   {
@@ -76,7 +76,7 @@ export const TRADING_APP_COLUMNS: readonly {
     label: "Active Wallets",
     bench: "trading-platform-wallets",
     fmt: fmtCount,
-    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal. Better signal of real user base than raw tx count.",
+    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal, Solana only for FOMO/Trojan/Photon (marked SOL). Better signal of real user base than raw tx count.",
     higherBetter: true,
   },
   {
@@ -103,6 +103,14 @@ export type TradingAppRow = {
   values: Record<TradingAppColKey, number | null>;
   /** 1-based rank per column among platforms with a value; null when absent. */
   ranks: Record<TradingAppColKey, { rank: number; of: number } | null>;
+  /** The bench's own per-platform formula for each column (spec
+   *  provider.formula): says which chains and which dataset the figure
+   *  covers. FOMO's volume is Solana-only while GMGN's is cross-chain;
+   *  the column tip alone would misstate that. */
+  formulas: Record<TradingAppColKey, string | null>;
+  /** Short chain scope per column derived from the formula: "Solana only",
+   *  "cross-chain", or null when the formula does not say. */
+  scopes: Record<TradingAppColKey, string | null>;
 };
 
 export type TradingAppMatrix = {
@@ -118,14 +126,36 @@ function indexBySlug(results: ProviderResult[] | undefined): Record<string, numb
   return out;
 }
 
+function formulaBySlug(results: ProviderResult[] | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of results ?? []) if (r.formula) out[r.slug] = r.formula;
+  return out;
+}
+
+/** "Solana only" / "cross-chain" from a spec formula, else null. */
+export function scopeFromFormula(formula: string | null): string | null {
+  if (!formula) return null;
+  const f = formula.toLowerCase();
+  if (f.includes("cross-chain") || f.includes("multi-chain") || f.includes("all blockchains")) return "cross-chain";
+  if (/\bsolana\b/.test(f) && !f.includes("+")) return "Solana only";
+  return null;
+}
+
 /** Every platform's six figures with per-column ranks, sorted by 24h volume. */
 export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   const benches = await Promise.all(TRADING_APP_COLUMNS.map((c) => getBenchmark(c.bench)));
   const idx = TRADING_APP_COLUMNS.map((c, i) => [c.key, indexBySlug(benches[i]?.results)] as const);
+  const fidx = TRADING_APP_COLUMNS.map((c, i) => [c.key, formulaBySlug(benches[i]?.results)] as const);
   const rows: TradingAppRow[] = TRADING_APP_PLATFORMS.map((p) => {
     const values = {} as Record<TradingAppColKey, number | null>;
     for (const [key, map] of idx) values[key] = map[p.slug] ?? null;
-    return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"] };
+    const formulas = {} as Record<TradingAppColKey, string | null>;
+    const scopes = {} as Record<TradingAppColKey, string | null>;
+    for (const [key, map] of fidx) {
+      formulas[key] = map[p.slug] ?? null;
+      scopes[key] = scopeFromFormula(formulas[key]);
+    }
+    return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas, scopes };
   });
   for (const col of TRADING_APP_COLUMNS) {
     const ranked = rows
