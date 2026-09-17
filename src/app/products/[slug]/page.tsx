@@ -33,6 +33,12 @@ import { PerpVenueSection } from "@/components/perp-venue-section";
 import { VenueKpiToggle } from "@/components/venue-kpi-toggle";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 import { RpcProviderChainsSection } from "@/components/rpc-provider-chains-section";
+import { TradingAppSection } from "@/components/trading-app-section";
+import { DataApiProviderSection } from "@/components/data-api-provider-section";
+import { BridgeProviderSection } from "@/components/bridge-provider-section";
+import { loadTradingAppMatrix, TRADING_APP_SLUGS, TRADING_APP_COLUMNS } from "@/lib/trading-apps";
+import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
+import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 
 export const revalidate = 3600;
 
@@ -244,6 +250,21 @@ export default async function ProviderPage({
         (await fetchPmDataFeedKpis(pmContext.slug)) !== null
       : false;
   const hasRpcData = await hasRpcProviderData(p.slug);
+  // Trading app / data API / bridge views: same hide-if-empty rule, each
+  // check reads the cached snapshot its section reads.
+  const tradingAppHasData = TRADING_APP_SLUGS.has(p.slug)
+    ? await loadTradingAppMatrix().then((m) => {
+        const me = m.rows.find((r) => r.slug === p.slug);
+        return !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+      })
+    : false;
+  const dataApiHasData = await fetchDataApiSnapshot().then(
+    (s) => !!s?.providers.find((r) => r.slug === p.slug && r.cells.length > 0),
+  );
+  const bridgeHasData = await fetchBridgeHub().then((h) => {
+    const r = h?.providers.find((x) => x.slug === p.slug);
+    return !!r && (r.feep50 != null || r.quotep50 != null);
+  });
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -618,9 +639,9 @@ export default async function ProviderPage({
       })()}
 
       {(() => {
-        // Category views. A product can belong to up to five categories
+        // Category views. A product can belong to several categories
         // (perp venue, PM venue, PM data feed, Hyperliquid frontend, RPC
-        // provider); every one with data joins ONE pill bar so all stay
+        // provider, trading app, data API, bridge); every one with data joins ONE pill bar so all stay
         // reachable on the same page, and the URL hash (#perp, #hl, ...)
         // deep-links a view. The bar renders even for a single view so
         // the section is always labeled with its family. Availability is
@@ -691,6 +712,27 @@ export default async function ProviderPage({
                 providerName={p.name}
               />
             ),
+          });
+        }
+        if (tradingAppHasData) {
+          sections.push({
+            id: "trading-app",
+            label: "Trading app",
+            content: <TradingAppSection slug={p.slug} name={p.name} />,
+          });
+        }
+        if (dataApiHasData) {
+          sections.push({
+            id: "data-api",
+            label: "Data API",
+            content: <DataApiProviderSection slug={p.slug} name={p.name} />,
+          });
+        }
+        if (bridgeHasData) {
+          sections.push({
+            id: "bridge",
+            label: "Bridge",
+            content: <BridgeProviderSection slug={p.slug} name={p.name} />,
           });
         }
         return <VenueKpiToggle sections={sections} />;
