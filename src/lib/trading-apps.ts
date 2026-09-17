@@ -52,7 +52,7 @@ export const TRADING_APP_COLUMNS: readonly {
     label: "24h Volume",
     bench: "solana-trading-platform-wars",
     fmt: fmtUSD,
-    tip: "24h volume from each platform's Dune community dataset. Scope follows the dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad...), Solana only for FOMO, Trojan and Photon (marked SOL). pump.fun = pumpapp Solana swaps + cross-chain relay swaps, not all bonding-curve. Terminal = pump.fun's own app (formerly Padre, acq. Apr 2025).",
+    tip: "24h volume from each platform's Dune community dataset. Scope follows the dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad...), Solana-native swaps only for FOMO, Trojan and Photon (marked SOL; FOMO's cross-chain trades via Relay are not in this dataset, see bench 267 for its total). pump.fun = pumpapp Solana swaps + cross-chain relay swaps, not all bonding-curve. Terminal = pump.fun's own app (formerly Padre, acq. Apr 2025).",
     higherBetter: true,
   },
   {

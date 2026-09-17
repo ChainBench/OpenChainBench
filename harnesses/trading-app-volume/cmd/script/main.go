@@ -55,7 +55,7 @@ type App struct {
 var cohort = []App{
 	{Slug: "gmgn", Name: "GMGN", Llama: "gmgn", Kind: "app"},
 	{Slug: "axiom", Name: "Axiom", Llama: "axiom", Kind: "app"},
-	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "DeFiLlama lists FOMO on Solana only."},
+	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "Measured on Solana, where FOMO holds user balances; cross-chain buys and sells executed through Relay are included and counted once, so this is FOMO's total, not its Solana-native share."},
 	{Slug: "padre", Name: "Terminal", Llama: "terminal", Kind: "bot", Note: "pump.fun's own trading app, formerly Padre."},
 	{Slug: "pump-fun", Name: "pump.fun app", Llama: "pump.fun-mobile-app", Kind: "app", Note: "The pump.fun mobile app only, not the launchpad's bonding-curve volume."},
 	{Slug: "photon", Name: "Photon", Llama: "photon", Kind: "app"},
