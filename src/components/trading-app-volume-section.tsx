@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import { TrendSparkline } from "@/components/trend-sparkline";
+import { ChainBar } from "@/components/chain-bar";
 import { TradingAppVolumeChart, type TradingAppLine } from "@/components/trading-app-volume-chart";
 import { brandColor } from "@/lib/brand";
 import { lineColor } from "@/lib/series-colors";
@@ -55,6 +56,14 @@ export async function TradingAppVolumeSection({
     color: brandColor(s.slug) ?? lineColor(i),
     values: s.values,
   }));
+  // Every app, for the share-of-cohort view of the chart.
+  const cohortAligned = alignedSeries(h, 365, stats.map((s) => s.app.slug));
+  const cohortLines: TradingAppLine[] = cohortAligned.series.map((s, i) => ({
+    slug: s.slug,
+    name: s.name,
+    color: lines.find((l) => l.slug === s.slug)?.color ?? brandColor(s.slug) ?? lineColor(i),
+    values: s.values,
+  }));
   const chainSplit = cohortChainSplit(h);
   const rows = compact ? stats.slice(0, 8) : stats;
   const meRank = me ? stats.findIndex((s) => s.app.slug === me.app.slug) + 1 : null;
@@ -90,7 +99,7 @@ export async function TradingAppVolumeSection({
         >
           Daily volume, every chain summed · closed UTC days
         </p>
-        <TradingAppVolumeChart days={aligned.days} lines={lines} highlight={focus} />
+        <TradingAppVolumeChart days={aligned.days} lines={lines} cohort={cohortLines} highlight={focus} />
       </div>
 
       <div className="overflow-x-auto border-y border-rule mb-6">
@@ -241,30 +250,6 @@ function Th({ children, right, title }: { children: React.ReactNode; right?: boo
     >
       {children}
     </th>
-  );
-}
-
-/**
- * Stacked bar of the app's last-day volume per chain, chain colours shared
- * with the cohort bar, plus the dominant chain as text. One glance says
- * "all Solana" vs "Robinhood-led, three chains".
- */
-function ChainBar({ split }: { split: { chain: string; usd: number; pct: number }[] }) {
-  if (split.length === 0) return <span className="text-ink-faint">—</span>;
-  const lead = split[0];
-  const label =
-    split.length === 1
-      ? lead.chain
-      : `${lead.chain} ${lead.pct.toFixed(0)}% · ${split[1].chain} ${split[1].pct >= 1 ? `${split[1].pct.toFixed(0)}%` : "<1%"}${split.length > 2 ? ` · +${split.length - 2}` : ""}`;
-  return (
-    <span className="inline-flex items-center gap-2.5" title={split.map((c) => `${c.chain}: ${fmtUsd(c.usd)} (${c.pct.toFixed(1)}%)`).join("\n")}>
-      <span className="flex h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-paper-soft">
-        {split.map((c, i) => (
-          <span key={c.chain} style={{ width: `${c.pct}%`, background: chainColor(c.chain, i) }} />
-        ))}
-      </span>
-      <span className="text-[11px] text-ink-soft whitespace-nowrap">{label}</span>
-    </span>
   );
 }
 
