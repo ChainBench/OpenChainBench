@@ -114,12 +114,11 @@ export function HlCohortLeaderboard({
           <tbody>
             {filtered.map((r, i) => {
               const hist = historyBySlug?.get(r.slug);
-              // Only builders that have a `hist` entry actually have a
-              // detail page at /hyperliquid/<slug> (the page component
-              // 404s when the history blob has no matching frontend, see
-              // hyperliquid/[slug]/page.tsx). Skip the link so Ahrefs +
-              // Bing don't queue up crawl paths that dead-end at 404.
-              const hasDetailPage = historyBySlug ? !!hist : true;
+              // Every cohort builder is a provider on the
+              // hyperliquid-frontends bench, so /products/<slug>#hl exists
+              // for all of them (the Hyperliquid view degrades gracefully
+              // when the history blob lacks the frontend).
+              const hasDetailPage = true;
               return (
                 <tr
                   key={r.slug}
@@ -131,7 +130,7 @@ export function HlCohortLeaderboard({
                   <Td>
                     {hasDetailPage ? (
                       <Link
-                        href={`/hyperliquid/${r.slug}`}
+                        href={`/products/${r.slug}#hl`}
                         className="flex items-center gap-2 min-w-0 hover:underline"
                       >
                         <ProviderLogo slug={r.slug} name={r.name} size={18} />
@@ -169,7 +168,7 @@ export function HlCohortLeaderboard({
                   <Td>
                     {hasDetailPage ? (
                       <Link
-                        href={`/hyperliquid/${r.slug}`}
+                        href={`/products/${r.slug}#hl`}
                         className="text-[11px] text-ink-faint hover:text-ink"
                       >
                         Open →

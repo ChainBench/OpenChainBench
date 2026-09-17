@@ -243,6 +243,12 @@ const nextConfig: NextConfig = {
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },
       { source: "/providers/:slug", destination: "/products/:slug", permanent: true },
+      // 2026-09-17: one canonical page per product. The per-entity detail
+      // routes under /hyperliquid and /perp folded into /products/<slug>
+      // as views behind the pill bar; the hash opens the matching view.
+      // The /hyperliquid and /perps hubs (no slug) are untouched.
+      { source: "/hyperliquid/:slug", destination: "/products/:slug#hl", permanent: true },
+      { source: "/perp/:slug", destination: "/products/:slug#perp", permanent: true },
       {
         source: "/benchmarks/rpc-latency",
         destination: "/benchmarks/rpc-capabilities",

@@ -1,5 +1,5 @@
 /**
- * External per-venue stats fetchers for /perp/[slug] pages.
+ * External per-venue stats fetchers for the perp view on /products/<slug>.
  * Each venue has its own API surface; this module dispatches to the
  * right source and returns a normalized shape the page can render.
  *

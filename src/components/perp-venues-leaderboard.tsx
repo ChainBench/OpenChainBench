@@ -157,7 +157,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
             {filtered.map((r, i) => {
               // GMX v2's product slug is "gmx"; all others match cohort slug.
               const productHref =
-                r.slug === "gmx-v2" ? "/perp/gmx" : `/perp/${r.slug}`;
+                r.slug === "gmx-v2" ? "/products/gmx#perp" : `/products/${r.slug}#perp`;
               const vor = ratio(r);
               return (
                 <tr

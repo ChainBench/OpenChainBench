@@ -17,11 +17,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import {
-  fetchHlBuilderStats,
-  isHlBuilderSlug,
-} from "@/lib/hl-builder-stats";
-import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { HlFrontendSection } from "@/components/hl-frontend-section";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
@@ -82,18 +79,11 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
-  if (await isHlBuilderSlug(slug)) {
-    const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
-    return {
-      alternates: { canonical: canonicalUrl },
-    };
-  }
-  // Perp venue pages have a richer dedicated route at /perp/<slug>.
-  // Polymarket is excluded because it also carries a PM venue section
-  // on the products page that the perp route does not cover.
-  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
-    return { alternates: { canonical: `${SITE.url}/perp/${slug}` } };
-  }
+  // /products/<slug> is the one canonical page per product since
+  // 2026-09-17. The former /hyperliquid/<slug> and /perp/<slug> detail
+  // routes 308 here (next.config redirects) and their content is a view
+  // behind the pill bar below: a product belongs to several categories,
+  // so no category may own its page.
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
@@ -172,19 +162,6 @@ export default async function ProviderPage({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
-  // /hyperliquid/<slug> is the canonical detail surface for tracked HL
-  // frontends (12-month focus chart + peer group + KPI strip). Redirect
-  // /products/<hl-slug> straight there so backlinks + old SERP entries
-  // land on the richer hub without splitting rank signal across two URLs.
-  if (await isHlBuilderSlug(slug)) {
-    permanentRedirect(`/hyperliquid/${slug}`);
-  }
-  // Perp venue pages have a dedicated /perp/<slug> route with richer
-  // stats (charts, all-time totals, vault breakdown). Polymarket is
-  // excluded here because it also carries a PM venue section on this page.
-  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
-    permanentRedirect(`/perp/${slug}`);
-  }
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
@@ -230,14 +207,11 @@ export default async function ProviderPage({
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
   }
 
-  // HyperTracker-parity dashboard for the 104 Hyperliquid frontends. The
-  // strip renders inline between the product header and the bench
-  // appearances list, only when the slug actually maps to a builder the
-  // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
-  // gracefully degrades to a hidden section when Prom is unreachable or
-  // the slug isn't an HL builder.
+  // Hyperliquid frontend view (the former /hyperliquid/<slug> page) for
+  // every builder on the hyperliquid-frontends bench. The section itself
+  // degrades when Prom or the history blob is unavailable, so membership
+  // is the only gate.
   const isHlBuilder = await isHlBuilderSlug(p.slug);
-  const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   // Prediction-market deep-dive: if the slug is a tracked PM venue or
   // data feed, getPmVenueContext returns the per-venue / per-feed
@@ -644,14 +618,14 @@ export default async function ProviderPage({
       })()}
 
       {(() => {
-        // KPI domain sections. A product can belong to up to five KPI
-        // domains (perp venue, PM venue, PM data feed, HL builder, RPC
-        // provider). Every domain with data joins ONE pill bar so all
-        // stay reachable on the same page; the bar renders even for a
-        // single domain so the section is always labeled with its KPI
-        // family. Availability is resolved before render:
-        // perpContext / pmContext / hlStats above, hasRpcData for the
-        // rpc-hub snapshot.
+        // Category views. A product can belong to up to five categories
+        // (perp venue, PM venue, PM data feed, Hyperliquid frontend, RPC
+        // provider); every one with data joins ONE pill bar so all stay
+        // reachable on the same page, and the URL hash (#perp, #hl, ...)
+        // deep-links a view. The bar renders even for a single view so
+        // the section is always labeled with its family. Availability is
+        // resolved before render: perpContext / pmContext / isHlBuilder
+        // above, hasRpcData for the rpc-hub snapshot.
         const sections: { id: string; label: string; content: React.ReactNode }[] = [];
         if (perpContext && perpHasData) {
           sections.push({
@@ -700,11 +674,11 @@ export default async function ProviderPage({
             ),
           });
         }
-        if (hlStats) {
+        if (isHlBuilder) {
           sections.push({
             id: "hl",
             label: "Hyperliquid",
-            content: <HlBuilderDashboard stats={hlStats} name={p.name} />,
+            content: <HlFrontendSection slug={p.slug} name={p.name} />,
           });
         }
         if (hasRpcData) {

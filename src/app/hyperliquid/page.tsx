@@ -22,7 +22,7 @@ import { safeJsonLd } from "@/lib/jsonld";
  *      ...) collecting a deployer fee on every fill on their namespaced
  *      markets
  *
- * Per-frontend detail pages live at `/hyperliquid/<slug>` (12-month
+ * Per-frontend detail lives on `/products/<slug>#hl` (12-month
  * history + focus chart + KPIs). HIP-3 dexes have no per-dex page yet;
  * the leaderboard is the canonical surface. `/products/<slug>` for a
  * tracked HL builder 308-redirects into the /hyperliquid subtree so the
