@@ -86,7 +86,12 @@ export default async function TradingAppsHubPage() {
   // Last-day chain split per app from bench 267, for the chains column of
   // the Dune table (apps DeFiLlama does not track show a dash).
   const chainSplitOf = new Map<string, { chain: string; usd: number; pct: number }[]>();
-  if (history) for (const s of computeTradingAppStats(history)) chainSplitOf.set(s.app.slug, s.chainSplit);
+  const chainLabelOf = new Map<string, string>();
+  if (history)
+    for (const s of computeTradingAppStats(history)) {
+      chainSplitOf.set(s.app.slug, s.chainSplit);
+      if (s.app.chainLabel) chainLabelOf.set(s.app.slug, s.app.chainLabel);
+    }
 
   // Per-platform formula per column (spec provider.formula): the chain
   // scope differs per platform, so each cell carries its own source.
@@ -314,7 +319,7 @@ export default async function TradingAppsHubPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <ChainBar split={chainSplitOf.get(row.slug) ?? []} width={56} />
+                    <ChainBar split={chainSplitOf.get(row.slug) ?? []} width={56} label={chainLabelOf.get(row.slug)} />
                   </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];

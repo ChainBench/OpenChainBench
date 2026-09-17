@@ -38,7 +38,8 @@ export function TradingAppVolumeChart({
   logScale?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const [span, setSpan] = useState<30 | 90 | 365>(90);
+  const [span, setSpan] = useState<30 | 90 | 365 | 100000>(90);
+  const hasMoreThanYear = days.length > 365;
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"volume" | "share">("volume");
   const share = mode === "share" && !!cohort;
@@ -116,8 +117,11 @@ export function TradingAppVolumeChart({
       for (let i = 0; i < n; i += 7) out.push({ i, label: fmtDate(shownDays[i]) });
       return out;
     }
+    const quarterly = n > 400;
     shownDays.forEach((d, i) => {
-      if (d.endsWith("-01")) out.push({ i, label: fmtMonth(d) });
+      if (!d.endsWith("-01")) return;
+      if (quarterly && !/-(01|04|07|10)-01$/.test(d)) return;
+      out.push({ i, label: fmtMonth(d) });
     });
     return out;
   }, [shownDays, span, n]);
@@ -231,16 +235,18 @@ export function TradingAppVolumeChart({
             </div>
           )}
           <div className="inline-flex overflow-hidden rounded border border-rule text-[11px]">
-            {([30, 90, 365] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSpan(s)}
-                className={`px-2 py-0.5 ${span === s ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}
-              >
-                {s === 365 ? "1y" : `${s}d`}
-              </button>
-            ))}
+            {([30, 90, 365, 100000] as const)
+              .filter((s) => s !== 100000 || hasMoreThanYear)
+              .map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSpan(s)}
+                  className={`px-2 py-0.5 ${span === s ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}
+                >
+                  {s === 100000 ? "All" : s === 365 ? "1y" : `${s}d`}
+                </button>
+              ))}
           </div>
         </div>
       </div>
