@@ -55,7 +55,7 @@ export function TradingAppVolumeChart({
   const W = 1100;
   const H = 320;
   const PAD_L = 56;
-  const PAD_R = 12;
+  const PAD_R = 64; // room for the end-of-line value labels
   const PAD_T = 16;
   const PAD_B = 30;
   const plotW = W - PAD_L - PAD_R;
@@ -76,6 +76,53 @@ export function TradingAppVolumeChart({
     ? logTicks(bottom, top)
     : [0, 0.25, 0.5, 0.75, 1].map((f) => f * top);
   const hovered = hover !== null ? shownDays[hover] : null;
+  // One tick per month boundary inside the span (first-of-month), or every
+  // ~week on the 30-day view.
+  const xTicks = useMemo(() => {
+    const out: { i: number; label: string }[] = [];
+    if (span === 30) {
+      for (let i = 0; i < n; i += 7) out.push({ i, label: fmtDate(shownDays[i]) });
+      return out;
+    }
+    shownDays.forEach((d, i) => {
+      if (d.endsWith("-01")) out.push({ i, label: fmtMonth(d) });
+    });
+    return out;
+  }, [shownDays, span, n]);
+  // Last value per visible line, laid out so the labels don't overlap.
+  const endLabels = useMemo(() => {
+    const items = visible
+      .map((l) => {
+        let v: number | null = null;
+        for (let i = l.values.length - 1; i >= 0; i--) {
+          if (l.values[i] != null) {
+            v = l.values[i];
+            break;
+          }
+        }
+        return v == null ? null : { slug: l.slug, color: l.color, v, y: y(v) };
+      })
+      .filter((x): x is { slug: string; color: string; v: number; y: number } => x !== null)
+      .sort((a, b) => a.y - b.y);
+    const MIN_GAP = 12;
+    const lo = PAD_T + 7;
+    const hi = PAD_T + plotH - 7;
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].y - items[i - 1].y < MIN_GAP) items[i].y = items[i - 1].y + MIN_GAP;
+    }
+    // Keep the stack inside the plot: shift the tail up, then re-separate
+    // upwards so nothing overlaps.
+    for (let i = items.length - 1; i >= 0; i--) {
+      const cap = i === items.length - 1 ? hi : items[i + 1].y - MIN_GAP;
+      if (items[i].y > cap) items[i].y = cap;
+    }
+    for (let i = 0; i < items.length; i++) {
+      const floor = i === 0 ? lo : items[i - 1].y + MIN_GAP;
+      if (items[i].y < floor) items[i].y = floor;
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, top, bottom, logScale]);
 
   const pathOf = (values: (number | null)[]) => {
     let d = "";
@@ -152,9 +199,17 @@ export function TradingAppVolumeChart({
       >
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD_L} x2={W - PAD_R} y1={y(t)} y2={y(t)} stroke="currentColor" strokeOpacity={0.08} />
-            <text x={PAD_L - 6} y={y(t) + 3} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5}>
-              {fmtAxis(t)}
+            <line x1={PAD_L} x2={W - PAD_R} y1={y(t)} y2={y(t)} stroke="currentColor" strokeOpacity={t === 0 ? 0.2 : 0.07} />
+            <text x={PAD_L - 8} y={y(t) + 3} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5} style={{ fontFamily: "var(--font-mono, monospace)" }}>
+              {t === 0 ? "0" : `$${fmtAxis(t)}`}
+            </text>
+          </g>
+        ))}
+        {xTicks.map((t) => (
+          <g key={t.i}>
+            <line x1={x(t.i)} x2={x(t.i)} y1={PAD_T} y2={PAD_T + plotH} stroke="currentColor" strokeOpacity={0.05} />
+            <text x={x(t.i)} y={H - 8} fontSize={10} textAnchor={t.i === 0 ? "start" : "middle"} fill="currentColor" fillOpacity={0.5} style={{ fontFamily: "var(--font-mono, monospace)" }}>
+              {t.label}
             </text>
           </g>
         ))}
@@ -183,10 +238,16 @@ export function TradingAppVolumeChart({
             })}
           </g>
         )}
-        <text x={PAD_L} y={H - 8} fontSize={10} fill="currentColor" fillOpacity={0.5}>
-          {fmtDate(shownDays[0] ?? "")}
-        </text>
-        <text x={W - PAD_R} y={H - 8} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5}>
+        {hover === null &&
+          endLabels.map((e) => (
+            <g key={e.slug}>
+              <rect x={W - PAD_R + 6} y={e.y - 7} width={PAD_R - 10} height={14} rx={3} fill={e.color} fillOpacity={0.14} />
+              <text x={W - PAD_R + 10} y={e.y + 3.5} fontSize={10} fill={e.color} style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                {fmtUsdShort(e.v)}
+              </text>
+            </g>
+          ))}
+        <text x={W - PAD_R} y={H - 8} fontSize={10} textAnchor="end" fill="currentColor" fillOpacity={0.5} style={{ fontFamily: "var(--font-mono, monospace)" }}>
           {fmtDate(shownDays.at(-1) ?? "")}
         </text>
       </svg>
@@ -240,6 +301,20 @@ function fmtUsd(v: number | null): string {
   if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
   return `$${v.toFixed(0)}`;
+}
+
+function fmtUsdShort(v: number): string {
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function fmtMonth(iso: string): string {
+  const [y, m] = iso.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const mo = months[parseInt(m, 10) - 1];
+  return m === "01" ? `${mo} ${y}` : mo;
 }
 
 function fmtDate(iso: string): string {

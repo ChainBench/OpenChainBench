@@ -8,6 +8,9 @@
  * reads it; nothing here touches Prometheus.
  */
 
+import { brandColor } from "./brand";
+import { lineColor } from "./series-colors";
+
 const DEFAULT_URL = "https://kv.openchainbench.com/aggregate/trading-apps/history.json";
 
 export type TradingAppDay = { day: string; usd: number; chains?: Record<string, number> };
@@ -172,6 +175,43 @@ export function cohortTotals(stats: TradingAppStats[]): { d1: number; d7: number
     d7: stats.reduce((s, x) => s + (x.d7 ?? 0), 0),
     d30: stats.reduce((s, x) => s + (x.d30 ?? 0), 0),
   };
+}
+
+/**
+ * Colour for a DeFiLlama chain label, shared by the cohort bar and the
+ * per-row chain bars so Solana is the same violet everywhere. Chains with
+ * no brand colour fall back to the palette by position.
+ */
+const CHAIN_BRAND: Record<string, string> = {
+  Solana: "solana",
+  "Robinhood Chain": "robinhood",
+  BSC: "bnb",
+  Base: "base",
+  Ethereum: "ethereum",
+  Arbitrum: "arbitrum",
+  "Hyperliquid L1": "hyperliquid",
+  Monad: "monad",
+  Sonic: "sonic",
+  Polygon: "polygon",
+  Avalanche: "avalanche",
+  Optimism: "optimism",
+  Blast: "blast",
+  Tron: "tron",
+  Sui: "sui",
+};
+const CHAIN_FIXED: Record<string, string> = {
+  "X Layer": "#B0B0B8",
+  Abstract: "#3BD08A",
+  Berachain: "#B5703A",
+  Linea: "#61DFFF",
+};
+export function chainColor(chain: string, i: number): string {
+  const b = CHAIN_BRAND[chain];
+  if (b) {
+    const c = brandColor(b);
+    if (c) return c;
+  }
+  return CHAIN_FIXED[chain] ?? lineColor(i);
 }
 
 /** Chain totals of the cohort on the last closed day, largest first. */
