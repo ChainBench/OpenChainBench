@@ -55,13 +55,16 @@ export async function TradingAppSection({
               key={col.key}
               className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15 flex flex-col"
               style={{ minHeight: 96 }}
-              title={col.tip}
+              title={me.formulas[col.key] ?? col.tip}
             >
               <p
                 className="text-[10px] text-ink-faint uppercase tracking-wide leading-snug"
                 style={{ fontFamily: "var(--font-mono, monospace)" }}
               >
                 {col.label}
+                {me.scopes[col.key] && (
+                  <span className="ml-1.5 normal-case tracking-normal text-ink-muted">· {me.scopes[col.key]}</span>
+                )}
               </p>
               <p
                 className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight"
@@ -122,13 +125,18 @@ export async function TradingAppSection({
                   {TRADING_APP_COLUMNS.map((c) => {
                     const v = row.values[c.key];
                     const best = v !== null && matrix.bests[c.key] === v;
+                    const scope = row.scopes[c.key];
                     return (
                       <td
                         key={c.key}
                         className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap"
                         style={{ color: best ? "var(--color-good)" : v === null ? "var(--color-ink-faint)" : undefined }}
+                        title={row.formulas[c.key] ?? undefined}
                       >
                         {c.fmt(v)}
+                        {v !== null && scope === "Solana only" && (
+                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint" title="Solana only">SOL</span>
+                        )}
                       </td>
                     );
                   })}
@@ -140,7 +148,8 @@ export async function TradingAppSection({
       </div>
       {matrix.updatedAt && (
         <p className="mt-3 text-[11px] text-ink-faint">
-          Data as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Each column links to its
+          Data as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Scope differs per
+          platform: cross-chain where the Dune dataset covers every chain the platform runs on, <span className="uppercase tracking-[0.12em]">SOL</span> where it covers Solana only (hover a figure for the exact source). Each column links to its
           benchmark on{" "}
           <Link href="/trading-apps" className="underline hover:no-underline">
             /trading-apps

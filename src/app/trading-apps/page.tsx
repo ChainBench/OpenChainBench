@@ -6,6 +6,7 @@ import {
   TRADING_APP_PLATFORMS as PLATFORMS,
   TRADING_APP_COLUMNS as COLUMNS,
   fmtUSD,
+  scopeFromFormula,
   type TradingAppColKey as ColKey,
 } from "@/lib/trading-apps";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -78,6 +79,14 @@ export default async function TradingAppsHubPage() {
       getBenchmark("app-store-ratings"),
     ]);
 
+  // Per-platform formula per column (spec provider.formula): the chain
+  // scope differs per platform, so each cell carries its own source.
+  const benchByKey: Record<ColKey, typeof volBench> = {
+    volume: volBench, traders: tradersBench, tradeSize: tradeSizeBench,
+    wallets: walletsBench, feeRate: feeBench, rating: ratingsBench,
+  };
+  const formulaOf = (key: ColKey, slug: string): string | null =>
+    benchByKey[key]?.results.find((r) => r.slug === slug)?.formula ?? null;
   const volIdx = indexBySlug(volBench?.results);
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
@@ -266,6 +275,8 @@ export default async function TradingAppsHubPage() {
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
                     const isBest = val !== null && val === bests[col.key];
+                    const formula = formulaOf(col.key, row.slug);
+                    const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";
                     return (
                       <td
                         key={col.key}
@@ -276,8 +287,12 @@ export default async function TradingAppsHubPage() {
                               ? "font-semibold text-emerald-600 dark:text-emerald-400"
                               : "text-ink"
                         }`}
+                        title={formula ?? undefined}
                       >
                         {col.fmt(val)}
+                        {solOnly && (
+                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint font-normal" title="Solana only">SOL</span>
+                        )}
                       </td>
                     );
                   })}
@@ -349,10 +364,12 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume from Dune community datasets: cross-chain
-          totals per platform (Solana + BNB + Base + Robinhood node + HyperEVM
-          + Monad). pump.fun = pumpapp frontend + relay swaps only, not all
-          bonding-curve activity. Terminal = pump.fun's own app (formerly Padre,
+          Volume from Dune community datasets, one per platform, with the
+          dataset&apos;s own scope: cross-chain totals for GMGN, Axiom, Terminal and
+          BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad),
+          Solana only for FOMO, Trojan and Photon (cells marked SOL; hover a
+          figure for the exact source). pump.fun = pumpapp frontend + relay swaps only, not all
+          bonding-curve activity. Terminal = pump.fun&apos;s own app (formerly Padre,
           acq. Apr 2025). Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.
