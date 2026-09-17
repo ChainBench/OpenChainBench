@@ -5,6 +5,8 @@ import {
   TRADING_APP_COLUMNS,
   TRADING_APP_SLUGS,
 } from "@/lib/trading-apps";
+import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
+import { getTradingAppHistory } from "@/lib/trading-app-history";
 
 /**
  * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors
@@ -23,10 +25,11 @@ export async function TradingAppSection({
   slug: string;
   name: string;
 }) {
-  if (!TRADING_APP_SLUGS.has(slug)) return null;
-  const matrix = await loadTradingAppMatrix();
-  const me = matrix.rows.find((r) => r.slug === slug);
-  if (!me || TRADING_APP_COLUMNS.every((c) => me.values[c.key] === null)) return null;
+  const [matrix, history] = await Promise.all([loadTradingAppMatrix(), getTradingAppHistory()]);
+  const inVolumeCohort = !!history?.apps.some((a) => a.slug === slug);
+  const me = TRADING_APP_SLUGS.has(slug) ? matrix.rows.find((r) => r.slug === slug) : undefined;
+  const hasDune = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+  if (!inVolumeCohort && !hasDune) return null;
 
   return (
     <section id="trading-app" className="scroll-mt-24 py-10 border-t border-ink/8 first:border-0">
@@ -45,6 +48,26 @@ export async function TradingAppSection({
         </Link>
       </header>
 
+      {inVolumeCohort && (
+        <div className="mb-10">
+          <p
+            className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            Cross-chain daily volume · bench 267
+          </p>
+          <TradingAppVolumeSection focus={slug} compact />
+        </div>
+      )}
+
+      {hasDune && me && (
+      <>
+      <p
+        className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        On-chain activity · Dune dataset
+      </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         {TRADING_APP_COLUMNS.map((col) => {
           const v = me.values[col.key];
@@ -148,7 +171,7 @@ export async function TradingAppSection({
       </div>
       {matrix.updatedAt && (
         <p className="mt-3 text-[11px] text-ink-faint">
-          Data as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Scope differs per
+          Dune figures as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Scope differs per
           platform: cross-chain where the Dune dataset covers every chain the platform runs on, <span className="uppercase tracking-[0.12em]">SOL</span> where it covers Solana only (hover a figure for the exact source). Each column links to its
           benchmark on{" "}
           <Link href="/trading-apps" className="underline hover:no-underline">
@@ -156,6 +179,8 @@ export async function TradingAppSection({
           </Link>
           .
         </p>
+      )}
+      </>
       )}
     </section>
   );
