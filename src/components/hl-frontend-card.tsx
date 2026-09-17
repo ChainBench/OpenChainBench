@@ -5,7 +5,7 @@ import type { HlHistoryFrontendCompact } from "@/lib/hl-builder-stats";
  * Compact per-frontend card for the `/hyperliquid` grid overview. Displays
  * a single-metric log-scale sparkline over the last 12 months plus the
  * current rolling-30d fees KPI, a 30-day delta and the frontend's first
- * active day. Whole card is a `<Link>` to `/hyperliquid/[slug]` so the
+ * active day. Whole card is a `<Link>` to `/products/[slug]#hl` so the
  * detail page is one click away.
  *
  * The parent chart (`HlHistoryChart`) uses log10(v+1) on Y; we mirror that
@@ -54,7 +54,7 @@ export function HlFrontendCard({ frontend, rank, t0, step }: Props) {
 
   return (
     <Link
-      href={`/hyperliquid/${slug}`}
+      href={`/products/${slug}#hl`}
       className="group flex flex-col rounded-lg border border-ink/10 bg-paper p-3 transition-colors hover:border-ink/30 hover:bg-paper-soft/40"
     >
       <div className="flex items-start justify-between gap-2">

@@ -5,7 +5,6 @@ import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { getSpecs } from "@/lib/spec";
 import { PROVIDER_REGISTRY } from "@/data/provider-registry";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
@@ -273,12 +272,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return entries;
   });
 
-  // Provider routes. The worker pre-filters providerSlugs to exclude chain
-  // slugs, HL builder slugs, perp venue slugs, and removed slugs. Apply the
-  // same checks here as a safety net. isHlBuilderSlug reads the spec (not
-  // Prom) so it's safe async — no OOM risk (unlike the old getProvider fan-out).
-  // It also catches dormant HL frontends missing from the Prom cohort that
-  // the worker couldn't filter without the spec provider list.
+  // Provider routes. Since 2026-09-17 /products/<slug> is the one page per
+  // product, so HL builders and perp venues are listed here (their old
+  // /hyperliquid/<slug> and /perp/<slug> URLs 308 to it and must not be
+  // in the sitemap). Older worker blobs pre-filtered those slugs out of
+  // providerSlugs; union them back in from hlBuilderSlugs and the perp
+  // pill set so the sitemap does not depend on the worker's build.
   // Only list product pages this build can actually serve. The blob is
   // produced by the worker from its own checkout, so it can name providers
   // that a spec on THIS branch does not declare yet; /products/<slug> then
@@ -291,19 +290,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   for (const entry of Object.values(PROVIDER_REGISTRY)) {
     if (entry.parent) declaredProviderSlugs.add(entry.parent);
   }
-  const validatedSlugs = (
-    await Promise.all(
-      providerSlugs.map(async (slug) => {
-        if (!declaredProviderSlugs.has(slug)) return null;
-        if (CHAIN_BY_SLUG.has(slug)) return null;
-        if (hlBuilderSlugSet.has(slug)) return null;
-        if (await isHlBuilderSlug(slug)) return null;
-        if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
-        if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
-        return slug;
-      }),
-    )
-  ).filter((s): s is string => s !== null);
+  const candidateSlugs = [
+    ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS]),
+  ];
+  const validatedSlugs = candidateSlugs.filter((slug) => {
+    if (!declaredProviderSlugs.has(slug)) return false;
+    if (CHAIN_BY_SLUG.has(slug)) return false;
+    if (REMOVED_PRODUCT_SLUGS.has(slug)) return false;
+    return true;
+  });
 
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
@@ -311,17 +306,6 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "daily",
     priority: 0.85,
   }));
-
-  // Hyperliquid builder routes. The worker pre-filters to builders with
-  // history so we don't need isHlBuilderWithHistory here.
-  const hlBuilderRoutes: MetadataRoute.Sitemap = sitemapBlob.hlBuilderSlugs.map(
-    (slug) => ({
-      url: `${SITE.url}/hyperliquid/${slug}`,
-      lastModified: catalogTs,
-      changeFrequency: "daily",
-      priority: 0.7,
-    }),
-  );
 
   const alternativeRoutes: MetadataRoute.Sitemap = alternatives
     .filter((alt) => benchBySlug.has(alt.benchmark))
@@ -408,7 +392,6 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...reportsRoutes(),
     ...benchmarkRoutes,
     ...providerRoutes,
-    ...hlBuilderRoutes,
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,
