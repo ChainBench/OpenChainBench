@@ -32,7 +32,6 @@ export const TRADING_APP_SLUGS: ReadonlySet<string> = new Set(
 );
 
 export type TradingAppColKey =
-  | "volume"
   | "traders"
   | "tradeSize"
   | "wallets"
@@ -47,14 +46,6 @@ export const TRADING_APP_COLUMNS: readonly {
   tip: string;
   higherBetter: boolean;
 }[] = [
-  {
-    key: "volume",
-    label: "24h Volume",
-    bench: "solana-trading-platform-wars",
-    fmt: fmtUSD,
-    tip: "24h volume from each platform's Dune community dataset. Scope follows the dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad...), Solana-native swaps only for FOMO, Trojan and Photon (marked SOL; FOMO's cross-chain trades via Relay are not in this dataset, see bench 267 for its total). pump.fun = pumpapp Solana swaps + cross-chain relay swaps, not all bonding-curve. Terminal = pump.fun's own app (formerly Padre, acq. Apr 2025).",
-    higherBetter: true,
-  },
   {
     key: "traders",
     label: "Swap Tx",
@@ -141,7 +132,9 @@ export function scopeFromFormula(formula: string | null): string | null {
   return null;
 }
 
-/** Every platform's six figures with per-column ranks, sorted by 24h volume. */
+/** Every platform's five Dune figures with per-column ranks, sorted by swap
+ *  transactions. Volume is not here: it lives in bench 267 (DeFiLlama,
+ *  cross-chain), so one app has one volume figure per page. */
 export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   const benches = await Promise.all(TRADING_APP_COLUMNS.map((c) => getBenchmark(c.bench)));
   const idx = TRADING_APP_COLUMNS.map((c, i) => [c.key, indexBySlug(benches[i]?.results)] as const);
@@ -170,7 +163,7 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
       r.ranks[col.key] = i >= 0 ? { rank: i + 1, of: ranked.length } : null;
     });
   }
-  rows.sort((a, b) => (b.values.volume ?? -1) - (a.values.volume ?? -1));
+  rows.sort((a, b) => (b.values.traders ?? -1) - (a.values.traders ?? -1));
   const bests: TradingAppMatrix["bests"] = {};
   for (const col of TRADING_APP_COLUMNS) {
     const vals = rows.map((r) => r.values[col.key]).filter((v): v is number => v !== null);

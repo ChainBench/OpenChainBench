@@ -8,7 +8,7 @@ import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-
 import {
   TRADING_APP_PLATFORMS as PLATFORMS,
   TRADING_APP_COLUMNS as COLUMNS,
-  fmtUSD,
+  fmtCount,
   scopeFromFormula,
   type TradingAppColKey as ColKey,
 } from "@/lib/trading-apps";
@@ -73,9 +73,8 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench, history] =
+  const [tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench, history] =
     await Promise.all([
-      getBenchmark("solana-trading-platform-wars"),
       getBenchmark("solana-unique-traders"),
       getBenchmark("solana-avg-trade-size"),
       getBenchmark("trading-platform-wallets"),
@@ -95,13 +94,12 @@ export default async function TradingAppsHubPage() {
 
   // Per-platform formula per column (spec provider.formula): the chain
   // scope differs per platform, so each cell carries its own source.
-  const benchByKey: Record<ColKey, typeof volBench> = {
-    volume: volBench, traders: tradersBench, tradeSize: tradeSizeBench,
+  const benchByKey: Record<ColKey, typeof tradersBench> = {
+    traders: tradersBench, tradeSize: tradeSizeBench,
     wallets: walletsBench, feeRate: feeBench, rating: ratingsBench,
   };
   const formulaOf = (key: ColKey, slug: string): string | null =>
     benchByKey[key]?.results.find((r) => r.slug === slug)?.formula ?? null;
-  const volIdx = indexBySlug(volBench?.results);
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
   const walletsIdx = indexBySlug(walletsBench?.results);
@@ -111,7 +109,6 @@ export default async function TradingAppsHubPage() {
   type Row = {
     slug: string;
     name: string;
-    volume: number | null;
     traders: number | null;
     tradeSize: number | null;
     wallets: number | null;
@@ -122,13 +119,12 @@ export default async function TradingAppsHubPage() {
   const matrix: Row[] = PLATFORMS.map((p) => ({
     slug: p.slug,
     name: p.name,
-    volume: volIdx[p.slug] ?? null,
     traders: tradersIdx[p.slug] ?? null,
     tradeSize: tradeSizeIdx[p.slug] ?? null,
     wallets: walletsIdx[p.slug] ?? null,
     feeRate: feeIdx[p.slug] ?? null,
     rating: ratingIdx[p.slug] ?? null,
-  })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
+  })).sort((a, b) => (b.traders ?? -1) - (a.traders ?? -1));
 
   function best(key: ColKey, higherBetter: boolean): number | null {
     const vals = matrix.map((r) => r[key]).filter((v): v is number => v !== null);
@@ -141,8 +137,8 @@ export default async function TradingAppsHubPage() {
     bests[col.key] = best(col.key, col.higherBetter);
   }
 
-  const topVolumeRow = matrix.reduce(
-    (b, row) => ((row.volume ?? -1) > (b.volume ?? -1) ? row : b),
+  const topTxRow = matrix.reduce(
+    (b, row) => ((row.traders ?? -1) > (b.traders ?? -1) ? row : b),
     matrix[0],
   );
   const topRating = ratingsBench?.results.find((r: ProviderResult) =>
@@ -235,10 +231,10 @@ export default async function TradingAppsHubPage() {
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
         <KpiCard
-          label="Top volume platform (Dune)"
+          label="Most swaps, 24h (Dune)"
           value={
-            topVolumeRow?.volume != null
-              ? `${topVolumeRow.name} · ${fmtUSD(topVolumeRow.volume)}`
+            topTxRow?.traders != null
+              ? `${topTxRow.name} · ${fmtCount(topTxRow.traders)}`
               : "Awaiting data"
           }
           accent="#10b981"
@@ -351,7 +347,8 @@ export default async function TradingAppsHubPage() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-ink-faint">
-          Best value per column highlighted in green. Sorted by 24h volume.
+          Best value per column highlighted in green. Sorted by swap transactions.
+          Volume is in the bench 267 table above (one figure per app, cross-chain).
           Chains from bench 267 (last closed UTC day); SOL marks a Dune dataset that covers Solana only.
           Hover column headers for methodology notes. Data refreshes every 60 s.
         </p>

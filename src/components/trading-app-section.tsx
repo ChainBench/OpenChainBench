@@ -11,7 +11,7 @@ import { getTradingAppHistory } from "@/lib/trading-app-history";
 /**
  * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors
  * one row of the /trading-apps matrix for this platform: the six KPIs
- * (24h volume, swap tx, average trade, active wallets, fee rate, app
+ * (swap tx, average trade, active wallets, fee rate, app
  * rating) with the platform's rank among the cohort on each, then the
  * cohort table so the reader sees where it sits.
  *
@@ -113,7 +113,7 @@ export async function TradingAppSection({
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
-        Cohort · sorted by 24h volume
+        Cohort · sorted by swap transactions
       </p>
       <div className="overflow-x-auto border-y border-rule">
         <table className="w-full text-[12.5px]">
