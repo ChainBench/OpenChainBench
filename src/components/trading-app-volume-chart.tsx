@@ -123,7 +123,9 @@ export function TradingAppVolumeChart({
       if (quarterly && !/-(01|04|07|10)-01$/.test(d)) return;
       out.push({ i, label: fmtMonth(d) });
     });
-    return out;
+    // The last-day label sits at the right edge; drop a month tick that
+    // would collide with it (within ~4 % of the width).
+    return out.filter((t) => (n - 1 - t.i) / Math.max(n - 1, 1) > 0.04);
   }, [shownDays, span, n]);
   // Last value per visible line, laid out so the labels don't overlap.
   const endLabels = useMemo(() => {
