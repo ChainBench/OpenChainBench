@@ -2,7 +2,7 @@
 
 Daily perp DEX volume per venue on closed UTC days, backfilled over a
 year and refreshed hourly. Feeds bench 266 (`perp-daily-volume`), the
-`/compare/<a>-vs-<b>` daily volume hero and the `/perp/<venue>` volume
+`/compare/<a>-vs-<b>` daily volume hero and the Perpetuals view on `/products/<venue>` volume
 charts.
 
 ## Why it exists

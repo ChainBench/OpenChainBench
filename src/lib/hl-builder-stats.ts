@@ -72,12 +72,10 @@ export async function isHlBuilderSlug(slug: string): Promise<boolean> {
 
 /**
  * Same as `isHlBuilderSlug` but ALSO requires the slug to be present in
- * the current history blob. Used before redirecting /products/<slug> to
- * /hyperliquid/<slug> so we never send crawlers or users into a 404: a
- * builder that's in the spec but not in the last-12-months history blob
- * (dormant, new, or paused) would otherwise 404 at the redirect target.
- * The 12-month history is the source of truth for what /hyperliquid/<slug>
- * used to render (the detail view now lives on /products/<slug>#hl).
+ * the current history blob (a builder in the spec but absent from the
+ * last-12-months history is dormant, new, or paused). The Hyperliquid
+ * view on /products/<slug>#hl degrades gracefully without history, so
+ * this is only a hint for callers that want the full dashboard.
  */
 export async function isHlBuilderWithHistory(slug: string): Promise<boolean> {
   if (!(await isHlBuilderSlug(slug))) return false;

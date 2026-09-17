@@ -73,11 +73,6 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  // Tracked Hyperliquid frontends live under /hyperliquid/<slug> now. The
-  // page component 308-redirects, but generateMetadata runs first for the
-  // <head> injection — return the canonical + redirect-safe metadata so
-  // crawlers that peek at the response before the 308 fires still see the
-  // right canonical target.
   // Merkle rebranded to Blink Labs and went keyed-only; the provider was
   // fully delisted 2026-07-10 from the keyless RPC benches; bench 074
   // (mev-protect-rpc) lists them under the new name, so the old URL's
@@ -738,6 +733,11 @@ export default async function ProviderPage({
             content: <BridgeProviderSection slug={p.slug} name={p.name} />,
           });
         }
+        // Pill order: what the product IS first (trading app, perp venue,
+        // prediction market, data API, bridge, RPC), the Hyperliquid
+        // frontend numbers last. FOMO reads "Trading app | Hyperliquid".
+        const ORDER = ["trading-app", "perp", "pm", "pm-feed", "data-api", "bridge", "rpc", "hl"];
+        sections.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
         return <VenueKpiToggle sections={sections} />;
       })()}
 
