@@ -395,8 +395,9 @@ export default async function TradingAppsHubPage() {
           Volume from Dune community datasets, one per platform, with the
           dataset&apos;s own scope: cross-chain totals for GMGN, Axiom, Terminal and
           BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad),
-          Solana only for FOMO, Trojan and Photon (cells marked SOL; hover a
-          figure for the exact source). pump.fun = pumpapp frontend + relay swaps only, not all
+          Solana-native swaps only for FOMO, Trojan and Photon (cells marked SOL; hover a
+          figure for the exact source). FOMO&apos;s cross-chain trades go through Relay and are
+          not in its Dune dataset; the bench above counts them. pump.fun = pumpapp frontend + relay swaps only, not all
           bonding-curve activity. Terminal = pump.fun&apos;s own app (formerly Padre,
           acq. Apr 2025). Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).

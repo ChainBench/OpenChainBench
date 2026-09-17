@@ -56,13 +56,13 @@ findings:
   - "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}} of routed swap volume."
   - "GMGN's volume is mostly outside Solana now: Robinhood Chain and BSC carry more than half of its daily figure."
   - "Axiom routes about a fifth of its volume through Robinhood Chain; Terminal spreads over Solana, BSC, Base and Ethereum."
-  - "FOMO leads on Solana, where DeFiLlama scopes it; a Solana-only table understates every multi-chain app next to it."
+  - "FOMO's figure is its total: DeFiLlama measures it on Solana, where balances are held, and includes the cross-chain trades routed through Relay. The Dune dataset behind bench 208 counts native Solana swaps only, about a fifth of it."
 
 faq:
   - q: "Why does this differ from the Dune-based trading platform bench?"
     a: "Bench 208 reads one Dune community dataset per platform, and those datasets cover Solana only for FOMO, Trojan and Photon but every chain for GMGN, Axiom and Terminal, so its rows are not on the same footing. This bench reads DeFiLlama's dexs adapters, which are cross-chain by construction and expose the per-chain split, so every row is the app's total. The two also attribute swaps differently (fee-wallet detection on Dune, adapter logic on DeFiLlama), so day-level figures do not match."
   - q: "Is FOMO really Solana only?"
-    a: "On DeFiLlama, yes: the fomo-wallet adapter tracks Solana. If FOMO's EVM activity is attributed elsewhere it is not in this row, and the row says so. When DeFiLlama extends the adapter the extra chains appear here automatically."
+    a: "No, and the chain label is the misleading part. FOMO holds user balances on Solana and routes trades on other chains through Relay, so DeFiLlama's adapter measures everything on Solana: native swaps (FOMO fee transfers in FOMO-sponsored transactions) plus cross-chain buys (sponsored USDC deposits into the Relay depository) and sells (USDC fills from Relay solvers), each trade counted once. The row is FOMO's total; the per-chain split cannot show destination chains because the adapter does not label them. The Dune dataset behind bench 208 counts native Solana swaps only, which is why it reads about five times lower."
   - q: "Why closed UTC days and not the last 24 hours?"
     a: "A rolling window ends at a different second for every app, so two apps' 24h figures never cover the same period. Closed UTC days are the convention DeFiLlama, Dune dashboards and the apps' own reports use, and the unit flip claims are made in."
   - q: "How current is it?"
@@ -178,8 +178,8 @@ providers:
 
   - slug: fomo
     name: FOMO
-    tag: "Trading app, Solana (DeFiLlama scope)"
-    formula: "DeFiLlama dexs adapter fomo-wallet, per UTC day. DeFiLlama tracks FOMO on Solana; its EVM activity is not in this row."
+    tag: "Trading app, settled on Solana, cross-chain via Relay"
+    formula: "DeFiLlama dexs adapter fomo (Allium), per UTC day: native Solana swaps in FOMO-sponsored transactions plus cross-chain buys and sells executed through Relay, each trade counted once. Chain label is Solana because balances live there; destination chains are inside the figure."
     queries:
       p50: trading_app_volume_usd{app="fomo",window="1d"}
       p90: trading_app_volume_usd{app="fomo",window="1d"}
