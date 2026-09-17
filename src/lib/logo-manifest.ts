@@ -415,6 +415,14 @@ const RAW: Record<string, string> = {
   bullx: "/logos/bullx.png",
   photon: "/logos/photon.webp",
   "banana-gun": "/logos/banana-gun.png",
+  // ─── Trading apps cohort (bench № 267), icons from DeFiLlama / the apps ───
+  padre: "/logos/padre.png",          // Terminal (pump.fun's app, formerly Padre)
+  bloom: "/logos/bloom.png",
+  bonkbot: "/logos/bonkbot.png",
+  soltradingbot: "/logos/soltradingbot.png",
+  "o1-exchange": "/logos/o1-exchange.png",
+  pepeboost: "/logos/pepeboost.png",
+  basedbot: "/logos/based-app.png",
 
   // ─── App Store ratings (bench № 202) ───
   moonshot: "/logos/moonshot.svg",
