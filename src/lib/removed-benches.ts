@@ -74,6 +74,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // switch); not on main until the cohort has more than two keyed
   // providers. Remove when 262 ships to prod.
   "fiat-onramp-cost",
+  // trading-app-daily-volume (267) is dev-only; the blob listed it and the
+  // prod sitemap smoke 404'd, rolling back the Serialized deploy (#2422).
+  "trading-app-daily-volume",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
