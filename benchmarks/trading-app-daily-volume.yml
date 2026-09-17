@@ -179,7 +179,7 @@ providers:
   - slug: fomo
     name: FOMO
     tag: "Trading app, settled on Solana, cross-chain via Relay"
-    formula: "DeFiLlama dexs adapter fomo (Allium), per UTC day: native Solana swaps in FOMO-sponsored transactions plus cross-chain buys and sells executed through Relay, each trade counted once. Chain label is Solana because balances live there; destination chains are inside the figure."
+    formula: "DeFiLlama dexs adapter fomo (Allium), per UTC day: native Solana swaps plus cross-chain buys and sells routed through Relay, each trade counted once. Labelled Solana because balances live there; destination chains are inside the figure."
     queries:
       p50: trading_app_volume_usd{app="fomo",window="1d"}
       p90: trading_app_volume_usd{app="fomo",window="1d"}
