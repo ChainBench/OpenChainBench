@@ -276,6 +276,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `MIN_PRICED` | `50` | priced samples before a terminal is published |
 | `MIN_RANK` | `100` | priced samples before a terminal is ranked |
 | `MIN_TRADE_USD` | `2` | dust threshold |
+| `EVM_RPC_<CHAIN>` | unset | comma-separated endpoints tried before the public ones for that chain (`EVM_RPC_BNB` = Alchemy's free BNB node in production: the public BSC nodes refuse `eth_getBalance` at the previous block, which native sells need; ~11 M compute units a month at 400 swaps a day per row) |
 | `STATE_FILE` | unset | persist the window across restarts |
 | `HISTORY_FILE_PUBLIC` | unset | public JSON mirror |
 

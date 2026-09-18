@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -74,6 +75,29 @@ var originChains = []originChain{
 }
 
 const solanaChainID = 792703809
+
+// applyRPCOverrides prepends the endpoints of EVM_RPC_<CHAIN> (comma
+// separated) to a chain's list, so a keyed endpoint that serves past
+// state (Alchemy's BNB node serves eth_getBalance at any block; the
+// public BSC nodes refuse the previous block) is tried first and the
+// public ones stay as fallback. The router feed stays on whatever is
+// first too; a keyed node that rejects a call falls through.
+func applyRPCOverrides() {
+	for i := range originChains {
+		v := os.Getenv("EVM_RPC_" + strings.ToUpper(originChains[i].slug))
+		if v == "" {
+			continue
+		}
+		var urls []string
+		for _, u := range strings.Split(v, ",") {
+			if u = strings.TrimSpace(u); u != "" {
+				urls = append(urls, u)
+			}
+		}
+		originChains[i].rpc = append(urls, originChains[i].rpc...)
+		log.Printf("[evm] %s: %d endpoint(s) from EVM_RPC_%s ahead of the public ones", originChains[i].slug, len(urls), strings.ToUpper(originChains[i].slug))
+	}
+}
 
 func chainByID(id int64) *originChain {
 	for i := range originChains {
