@@ -71,9 +71,20 @@ transaction is excluded from the user's quote movement.
 Failed transactions are counted from the signature scan (`fail_rate_pct`): the
 user paid the priority fee for nothing, which no fill metric shows.
 
-Not measured yet: sandwiches. The front-run lands before our transaction
-in the same slot, so it is already inside the arrival price; catching it
-needs the whole block (phase 2).
+**Sandwiches**: the block of each sampled swap is read (`getBlock`,
+`SANDWICH_SCAN_PCT` of samples, default all) and scanned for a pair of
+successful transactions by the same signer on the same pool: one before
+ours trading in our direction, one after trading back. `sandwich_pct` per
+terminal (share of scanned swaps), attacker profit in bps of the victim's
+trade, `block_pool_txs` per sample (how many other trades on that pool
+the block held, so an empty result is interpretable). The victim's extra
+cost is already inside `loss_bps` (the front-run precedes us, so it is in
+the arrival price); the scan isolates how often it happens. Multi-block
+sandwiches are not looked for.
+
+**Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
+over $250; median loss and n from 5 samples), so terminals with different
+typical trade sizes can be compared at equal size.
 
 Why not the pool's vault ratio as the mid: PumpSwap's vault balances do not
 follow x·y = k against the executed price (8–50 % off, not constant), so
@@ -101,6 +112,8 @@ Prometheus on `:2112/metrics`, rolling `WINDOW_HOURS`:
 | `tfq_trade_usd` | terminal, stat=median/mean | |
 | `tfq_venue_share_pct` | terminal, venue | |
 | `tfq_buy_share_pct` | terminal | |
+| `tfq_sandwich_pct`, `tfq_sandwich_profit_bps` | terminal | sandwiched share of scanned swaps; median attacker profit |
+| `tfq_loss_bps_size` | terminal, bucket | median loss by trade-size bucket |
 | `tfq_health` | terminal | 1 when priced ≥ `MIN_PRICED` |
 | `tfq_sol_usd`, `tfq_last_refresh_unix`, `tfq_rpc_calls_total`, `tfq_rpc_errors_total` | | |
 
@@ -117,6 +130,7 @@ stats plus the last 200 samples.
 | `SAMPLE_PER_TICK` | `4` | swaps read per terminal per tick |
 | `WINDOW_HOURS` | `24` | rolling window |
 | `MIN_PRICED` | `20` | priced samples before a terminal is published |
+| `SANDWICH_SCAN_PCT` | `100` | share of sampled swaps whose block is read |
 | `STATE_FILE` | unset | persist the window across restarts |
 | `HISTORY_FILE_PUBLIC` | unset | public JSON mirror |
 

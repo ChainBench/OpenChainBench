@@ -29,6 +29,15 @@ export type TerminalFillStats = {
   /** Median cost components, bps: terminal, network, other, pool (when known). */
   components: Partial<Record<"terminal" | "network" | "other" | "pool", number>>;
   tradeUsd?: FillQuantiles;
+  /** Share of priced samples by reference source: reserves (exact mid), pool (previous trade), jupiter. */
+  refSrcPct: Record<string, number>;
+  /** Block scan: swaps whose block was read, sandwiched ones, share (from 20 scanned), attacker profit. */
+  scanned: number;
+  sandwiched: number;
+  sandwichPct?: number;
+  sandwichProfit?: FillQuantiles;
+  /** Median loss by trade-size bucket: under25, 25to250, over250 (from 5 samples). */
+  bySize: Partial<Record<"under25" | "25to250" | "over250", FillQuantiles>>;
   buySharePct: number;
   venueSharePct: Record<string, number>;
   quoteSharePct: Record<string, number>;
@@ -83,6 +92,16 @@ function numMap(x: unknown): Record<string, number> {
   return out;
 }
 
+function sizeMap(x: unknown): TerminalFillStats["bySize"] {
+  const out: TerminalFillStats["bySize"] = {};
+  if (!isRecord(x)) return out;
+  for (const k of ["under25", "25to250", "over250"] as const) {
+    const q = quant(x[k]);
+    if (q) out[k] = q;
+  }
+  return out;
+}
+
 function parse(raw: unknown): TerminalFills | null {
   if (!isRecord(raw) || !Array.isArray(raw.terminals)) return null;
   const terminals: TerminalFillStats[] = [];
@@ -107,6 +126,12 @@ function parse(raw: unknown): TerminalFills | null {
         ...(comps.pool !== undefined ? { pool: comps.pool } : {}),
       },
       ...(quant(t.trade_usd) ? { tradeUsd: quant(t.trade_usd) } : {}),
+      refSrcPct: numMap(t.ref_src_pct),
+      scanned: num(t.scanned) ?? 0,
+      sandwiched: num(t.sandwiched) ?? 0,
+      ...(num(t.sandwich_pct) !== undefined ? { sandwichPct: num(t.sandwich_pct) } : {}),
+      ...(quant(t.sandwich_profit_bps) ? { sandwichProfit: quant(t.sandwich_profit_bps) } : {}),
+      bySize: sizeMap(t.by_size),
       buySharePct: num(t.buy_share_pct) ?? 0,
       venueSharePct: numMap(t.venue_share_pct),
       quoteSharePct: numMap(t.quote_share_pct),
