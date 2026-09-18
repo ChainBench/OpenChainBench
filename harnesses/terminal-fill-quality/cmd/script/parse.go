@@ -827,6 +827,11 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 			}
 		case "sell":
 			trade = value
+			if s.Chain != "" {
+				// A sale on another chain: the gas was paid apart from the
+				// tokens, so what the user gave is the tokens plus that gas.
+				trade += s.NetworkQ
+			}
 			if trade > 0 {
 				loss = 1e4 * (1 - s.UserQ/trade)
 			}
