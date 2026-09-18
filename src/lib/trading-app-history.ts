@@ -154,10 +154,10 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
     const trend7dPct = w7.days === 7 && d7prev != null && d7prev > 0 ? ((w7.sum - d7prev) / d7prev) * 100 : null;
     const last = app.days.find((d) => d.day === h.lastClosedDay);
     const total = last?.usd ?? 0;
-    // DeFiLlama publishes the chain breakdown of the newest day a few
-    // hours after the total; fall back to the latest day that has one.
-    const withChains = [...app.days].reverse().find((d) => d.chains && Object.keys(d.chains).length > 0 && d.day >= fmtDayOffset(h.lastClosedDay, -3));
-    const chainSplit = Object.entries((last?.chains && Object.keys(last.chains).length > 0 ? last.chains : withChains?.chains) ?? {})
+    // DeFiLlama publishes the chain breakdown of the newest day hours
+    // after the total (and partially at first); use the latest day whose
+    // split covers the day's total.
+    const chainSplit = Object.entries(splitDay(app, h.lastClosedDay)?.chains ?? {})
       .map(([chain, usd]) => ({ chain, usd, pct: total > 0 ? (usd / total) * 100 : 0 }))
       .sort((a, b) => b.usd - a.usd);
     const byDay = new Map(app.days.map((d) => [d.day, d.usd]));
@@ -220,12 +220,27 @@ export function chainColor(chain: string, i: number): string {
   return CHAIN_FIXED[chain] ?? lineColor(i);
 }
 
-/** Chain totals of the cohort on the last closed day, largest first. */
+/** The app's latest day (within 3 days of `lastClosedDay`) whose chain
+ *  split covers at least half of the day's total; null when none does. */
+export function splitDay(app: TradingAppSeries, lastClosedDay: string): TradingAppDay | null {
+  const floor = fmtDayOffset(lastClosedDay, -3);
+  for (let i = app.days.length - 1; i >= 0; i--) {
+    const d = app.days[i];
+    if (d.day > lastClosedDay) continue;
+    if (d.day < floor) break;
+    const sum = Object.values(d.chains ?? {}).reduce((s, v) => s + v, 0);
+    if (sum > 0 && (d.usd <= 0 || sum >= 0.5 * d.usd)) return d;
+  }
+  return null;
+}
+
+/** Chain totals of the cohort on the last closed day (each app on its
+ *  latest day with a complete split), largest first. */
 export function cohortChainSplit(h: TradingAppHistory): { chain: string; usd: number; pct: number }[] {
   const acc = new Map<string, number>();
   for (const a of h.apps) {
-    const last = a.days.find((d) => d.day === h.lastClosedDay);
-    for (const [c, v] of Object.entries(last?.chains ?? {})) acc.set(c, (acc.get(c) ?? 0) + v);
+    const d = splitDay(a, h.lastClosedDay);
+    for (const [c, v] of Object.entries(d?.chains ?? {})) acc.set(c, (acc.get(c) ?? 0) + v);
   }
   const total = [...acc.values()].reduce((s, v) => s + v, 0);
   return [...acc.entries()]
