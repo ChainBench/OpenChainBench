@@ -80,6 +80,12 @@ var (
 	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
 	}, []string{"terminal"})
+	gFailCost = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_fail_cost_usd", Help: "Median transaction fee paid on a failed swap attempt, USD (sampled failed attempts, rolling window)",
+	}, []string{"terminal"})
+	gFailOverhead = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_fail_overhead_bps", Help: "Expected fee burnt on failed attempts per successful swap: fail rate / (1 − fail rate) × median failed-attempt fee, basis points of the median trade",
+	}, []string{"terminal"})
 	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	gSol     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
@@ -88,7 +94,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRanked, gRefresh, gFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRanked, gFailCost, gFailOverhead, gRefresh, gFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -117,8 +123,22 @@ type walletCursor struct {
 	NextScan int64  `json:"next"`
 }
 
+// failSample: one failed swap attempt read from the chain, for the cost
+// of failures. A failed transaction executes nothing but still pays its
+// fee (base + priority); tips inside it are not transferred.
+type failSample struct {
+	Terminal  string  `json:"terminal"`
+	Sig       string  `json:"sig"`
+	Time      int64   `json:"time"`
+	FeeSOL    float64 `json:"fee_sol"`
+	FeeUSD    float64 `json:"fee_usd"`
+	Sponsored bool    `json:"sponsored,omitempty"` // the terminal's own signer paid (FOMO)
+	Err       string  `json:"err,omitempty"`
+}
+
 type State struct {
 	Swaps   []Swap                    `json:"swaps"`
+	Fails   []failSample              `json:"fails"`
 	Buckets map[string][]minuteBucket `json:"buckets"` // terminal -> per-minute feed counts
 	Rejects map[string]map[string]int `json:"rejects"` // terminal -> reason -> count (window not enforced; informative)
 	Cursors map[string]*walletCursor  `json:"cursors"` // wallet -> cursor (polling fallback)
@@ -160,9 +180,13 @@ type TerminalStats struct {
 	FailRate    *float64       `json:"fail_rate_pct,omitempty"`
 	FailReasons map[string]int `json:"fail_reasons,omitempty"`
 	NonSwap     int            `json:"non_swap"`
-	Parsed      int            `json:"parsed"`
-	Priced      int            `json:"priced"`
-	Flagged     int            `json:"flagged"` // priced but out of bounds, excluded
+	/** Cost of failures: sampled failed attempts, the median fee they paid, and the expected burn per successful swap in bps of the median trade. */
+	FailsSampled    int        `json:"fails_sampled"`
+	FailCostUSD     *Quantiles `json:"fail_cost_usd,omitempty"`
+	FailOverheadBps *float64   `json:"fail_overhead_bps,omitempty"`
+	Parsed          int        `json:"parsed"`
+	Priced          int        `json:"priced"`
+	Flagged         int        `json:"flagged"` // priced but out of bounds, excluded
 	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
 	Loss        *Quantiles         `json:"loss_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
@@ -227,6 +251,7 @@ func main() {
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
 	dailyTarget := envInt("DAILY_TARGET", 300) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
+	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 50)
 	minRank := envInt("MIN_RANK", 100)
@@ -247,6 +272,7 @@ func main() {
 	st := loadState(stateFile)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
+	failQuota := map[string]float64{}
 	activity := map[string]float64{} // running successful attempts per tick, per terminal
 	var fd *feed
 	if useWS {
@@ -292,7 +318,7 @@ func main() {
 			time.Sleep(30 * time.Second)
 			continue
 		}
-		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, activity, perTick)
+		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, minPriced, minRank)
@@ -338,7 +364,7 @@ func main() {
 // running average, so the sample is uniform over transactions, not over
 // minutes: a burst (a pump, where fills are worst) is represented in
 // proportion to its trades. Nothing accrues on a tick without activity.
-func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, activity map[string]float64, perTick float64) (added, seen int) {
+func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, failQuota, activity map[string]float64, perTick, perTickFail float64) (added, seen int) {
 	now := time.Now().Unix()
 	live := fd != nil && fd.healthy()
 	for _, t := range terminals {
@@ -350,6 +376,7 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 			st.record(t.Slug, now, d.seen, d.failed, d.other, d.errs)
 			ok = d.sample
 			okCount = float64(d.total)
+			sampleFails(ctx, rpc, st, t, d.failedSample, failQuota, perTickFail, solUSD, now)
 		} else {
 			// Polling fallback: newest page per wallet since the last cursor.
 			// Without logs every signature counts as an attempt (approximate).
@@ -438,9 +465,15 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				sw.Time = now
 			}
 			// Reference price: exact pre-trade mid from the pool's reserves
-			// when the route is one constant-product pool.
+			// when the route is one constant-product pool, else from the
+			// venue's own swap event (Launchpad, Meteora DLMM).
 			if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
 				if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
+					sw.finalize(&p, 0, "reserves")
+				}
+			}
+			if sw.RefSrc == "" {
+				if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
 					sw.finalize(&p, 0, "reserves")
 				}
 			}
@@ -489,6 +522,45 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 // refMaxAgeS: a previous trade older than this is no arrival price (the
 // pool may have moved for other reasons); the swap stays unpriced.
 const refMaxAgeS = 60
+
+// sampleFails reads a few of the tick's failed attempts (quota
+// FAIL_DAILY_TARGET per terminal per day) for the fee they paid.
+func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, failed []sigInfo, failQuota map[string]float64, perTickFail, solUSD float64, now int64) {
+	if len(failed) == 0 {
+		return
+	}
+	failQuota[t.Slug] += perTickFail
+	if cap := math.Max(3*perTickFail, 1); failQuota[t.Slug] > cap {
+		failQuota[t.Slug] = cap
+	}
+	n := int(failQuota[t.Slug])
+	if n > len(failed) {
+		n = len(failed)
+	}
+	if n <= 0 {
+		return
+	}
+	failQuota[t.Slug] -= float64(n)
+	internal := set(t.Internal...)
+	rand.Shuffle(len(failed), func(i, j int) { failed[i], failed[j] = failed[j], failed[i] })
+	for _, s := range failed[:n] {
+		tx, err := rpc.transaction(ctx, s.Signature)
+		if err != nil || tx == nil {
+			continue
+		}
+		f := failSample{Terminal: t.Slug, Sig: s.Signature, Time: now, Err: errClass(tx.Meta.Err)}
+		if tx.BlockTime != nil {
+			f.Time = *tx.BlockTime
+		}
+		if payer := tx.Transaction.Message.AccountKeys[0].Pubkey; internal[payer] {
+			f.Sponsored = true
+		} else {
+			f.FeeSOL = float64(tx.Meta.Fee) / 1e9
+			f.FeeUSD = f.FeeSOL * solUSD
+		}
+		st.Fails = append(st.Fails, f)
+	}
+}
 
 // poolParams are the constants a pool needs for its exact mid: the
 // virtual quote offset (PumpSwap migrated pools) and, for the pump.fun
@@ -590,6 +662,13 @@ func prune(st *State, windowHours int) {
 		}
 	}
 	st.Swaps = kept
+	fails := st.Fails[:0]
+	for _, f := range st.Fails {
+		if f.Time >= cut {
+			fails = append(fails, f)
+		}
+	}
+	st.Fails = fails
 	for k, bs := range st.Buckets {
 		out := bs[:0]
 		for _, b := range bs {
@@ -620,6 +699,16 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		if len(errs) > 0 {
 			ts.FailReasons = topN(errs, 6)
+		}
+		var failFees []float64
+		for _, f := range st.Fails {
+			if f.Terminal == t.Slug {
+				failFees = append(failFees, f.FeeUSD) // 0 when sponsored: the user paid nothing
+			}
+		}
+		ts.FailsSampled = len(failFees)
+		if len(failFees) >= 5 {
+			ts.FailCostUSD = quantiles(failFees, false)
 		}
 		var loss, pool, term, net, other, trade, sandProfit []float64
 		bySize := map[string][]float64{}
@@ -701,6 +790,14 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		if len(trade) > 0 {
 			ts.TradeUSD = quantiles(trade, false)
+		}
+		// Expected burn on failed attempts per successful swap: with fail
+		// rate r, a successful swap comes with r / (1 − r) failed ones on
+		// average, each costing its fee.
+		if ts.FailRate != nil && ts.FailCostUSD != nil && ts.TradeUSD != nil && ts.TradeUSD.Median > 0 && *ts.FailRate < 100 {
+			r := *ts.FailRate / 100
+			o := 1e4 * (r / (1 - r)) * ts.FailCostUSD.Median / ts.TradeUSD.Median
+			ts.FailOverheadBps = &o
 		}
 		if ts.Priced > 0 {
 			ts.Loss = quantiles(loss, true)
@@ -828,6 +925,16 @@ func publishGauges(stats []TerminalStats) {
 		gLossSize.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
 		for b, q := range ts.BySize {
 			gLossSize.WithLabelValues(ts.Slug, b).Set(q.Median)
+		}
+		if ts.FailCostUSD != nil {
+			gFailCost.WithLabelValues(ts.Slug).Set(ts.FailCostUSD.Median)
+		} else {
+			gFailCost.DeleteLabelValues(ts.Slug)
+		}
+		if ts.FailOverheadBps != nil {
+			gFailOverhead.WithLabelValues(ts.Slug).Set(*ts.FailOverheadBps)
+		} else {
+			gFailOverhead.DeleteLabelValues(ts.Slug)
 		}
 		gHealth.WithLabelValues(ts.Slug).Set(b2f(ts.Healthy))
 		gRanked.WithLabelValues(ts.Slug).Set(b2f(ts.Ranked))

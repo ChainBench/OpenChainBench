@@ -139,6 +139,7 @@ type instruction struct {
 	ProgramID string          `json:"programId"`
 	Program   string          `json:"program"`
 	Accounts  []string        `json:"accounts"`
+	Data      string          `json:"data"` // base58, program-owned instructions only (Anchor event CPIs carry events here)
 	Parsed    json.RawMessage `json:"parsed"`
 }
 
@@ -166,6 +167,7 @@ type parsedTx struct {
 		InnerInstructions []struct {
 			Instructions []instruction `json:"instructions"`
 		} `json:"innerInstructions"`
+		LogMessages []string `json:"logMessages"` // "Program data: <base64>" lines carry Anchor events emitted with emit!
 	} `json:"meta"`
 }
 

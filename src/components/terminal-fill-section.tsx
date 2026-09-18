@@ -63,7 +63,7 @@ export async function TerminalFillSection({
             }
           />
           <Kpi label="Terminal fee" value={fmtBps(me.components.terminal)} sub={me.components.network !== undefined ? `network ${fmtBps(me.components.network)}` : undefined} />
-          <Kpi label="Failed swaps" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={`${me.seen.toLocaleString("en-US")} attempts seen${topReason(me) ? ` · mostly ${topReason(me)}` : ""}`} />
+          <Kpi label="Failed swaps" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={failSub(me)} />
           <Kpi label="Swaps sampled" value={me.priced.toLocaleString("en-US")} sub={`${me.parsed} read · p90 ${me.healthy ? fmtBps(me.loss?.p90) : "—"}`} />
         </div>
       ) : (
@@ -122,7 +122,7 @@ export async function TerminalFillSection({
                   <td className="py-2.5 pr-4">
                     <CostBar t={t} max={maxBps} />
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.failed.toLocaleString("en-US")} of ${t.seen.toLocaleString("en-US")} attempts${topReason(t) ? ` · mostly ${topReason(t)}` : ""}` : undefined}>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.failed.toLocaleString("en-US")} of ${t.seen.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
@@ -199,6 +199,17 @@ function ciText(t: TerminalFillStats): string {
   if (!l) return "";
   if (l.ciLo === undefined || l.ciHi === undefined) return `${l.n} swaps`;
   return `95 % interval ${Math.round(l.ciLo)} to ${Math.round(l.ciHi)} bps · ${l.n} swaps`;
+}
+
+/** "mostly slippage · $0.01 per failed attempt · burns 3.2 bps per swap" */
+function failSub(t: TerminalFillStats): string {
+  const parts: string[] = [];
+  const r = topReason(t);
+  if (r) parts.push(`mostly ${r}`);
+  if (t.failCostUsd) parts.push(`$${t.failCostUsd.median.toFixed(t.failCostUsd.median < 0.1 ? 3 : 2)} per failed attempt`);
+  if (t.failOverheadBps !== undefined) parts.push(`burns ${fmtBps(t.failOverheadBps)} per swap`);
+  if (parts.length === 0) parts.push(`${t.seen.toLocaleString("en-US")} attempts seen`);
+  return parts.join(" · ");
 }
 
 /** Most frequent failure class, in plain words where known. */

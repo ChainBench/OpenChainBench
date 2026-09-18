@@ -298,6 +298,51 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		}
 	}
 	if best == nil {
+		// Nobody signed for the user: a keeper-executed order (limit, DCA,
+		// auto-sell) where the terminal's keeper signs and the user's token
+		// account moves. The user is then the wallet (on-curve owner, not a
+		// program-derived pool address) with the largest non-quote token
+		// move, whose quote side moved the other way.
+		perOwner := map[string]*userCand{}
+		for _, e := range tok {
+			if isQuoteMint(e.mint) || e.owner == "" || fee[e.owner] || internal[e.owner] || tip(e.owner) {
+				continue
+			}
+			d := e.post - e.pre
+			if d == 0 || !onCurve(e.owner) {
+				continue
+			}
+			c, ok := perOwner[e.owner]
+			if !ok {
+				c = &userCand{pubkey: e.owner, mint: e.mint, dec: e.dec}
+				perOwner[e.owner] = c
+			}
+			if e.mint != c.mint {
+				c.mints = 2
+				continue
+			}
+			c.delta += d
+		}
+		for _, c := range perOwner {
+			if math.Abs(c.delta) < 1 || c.mints > 1 {
+				continue
+			}
+			// Quote moved against the token leg for this wallet?
+			q := float64(lam[c.pubkey])
+			for _, e := range tok {
+				if e.owner == c.pubkey && isQuoteMint(e.mint) {
+					q += e.post - e.pre
+				}
+			}
+			if q == 0 || (q > 0) == (c.delta > 0) {
+				continue
+			}
+			if best == nil || math.Abs(c.delta)*math.Pow10(-c.dec) > math.Abs(best.delta)*math.Pow10(-best.dec) {
+				best = c
+			}
+		}
+	}
+	if best == nil {
 		return nil, rejectNotSwap
 	}
 	if best.mints > 1 {
@@ -670,10 +715,11 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	if len(pools) > 1 {
 		venue = "multi"
 	}
-	// Single constant-product pool, no hop: keep its pre-trade balances so
-	// the exact mid can be computed (see reservePrice).
+	// One constant-product pool on the token leg: keep its pre-trade
+	// balances so the exact mid can be computed (see reservePrice). Hops
+	// before it do not matter for the mid, only for "other".
 	basePre := 0.0
-	singleCP := len(pools) == 1 && hops == 0 && len(main.quoteVaults) == 1 && len(main.xVaults) == 0 && quoteAccounts == 1 && venuePrograms[venueProgram(main.venue)].cp
+	singleCP := len(pools) == 1 && len(main.quoteVaults) == 1 && len(main.xVaults) == 0 && quoteAccounts == 1 && venuePrograms[venueProgram(main.venue)].cp
 	if singleCP {
 		basePre = tok[main.baseIdx].pre * math.Pow10(-tok[main.baseIdx].dec)
 	} else {

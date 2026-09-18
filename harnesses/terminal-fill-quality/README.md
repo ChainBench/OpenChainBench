@@ -60,15 +60,27 @@ The token leg is valued at an **arrival price**, in this order:
    pump.fun carry a virtual quote reserve (about 17.58 SOL, stored at byte
    245 of the pool account, read once per pool); x·y = k holds exactly
    with it and fails without. Raydium v4 / CPMM: vault ratio.
-2. `ref_src: pool`: the effective price of the previous trade on the same
+2. `ref_src: reserves` too, from the venue's own swap event when it
+   carries the state before the trade (`events.go`): Raydium Launchpad's
+   `TradeEvent` (log `Program data:`) gives the virtual and real reserves
+   before, the curve's mid is (virtual_quote + real_quote_before) /
+   (virtual_base − real_base_before); Meteora DLMM's `Swap` event (an
+   `emit_cpi` inner instruction: event-CPI discriminator + event) gives
+   `start_bin_id`, a bin being the constant price (1 + bin_step /
+   1e4)^bin_id read once per pair. Each is accepted only when it
+   reconciles with the transaction (Launchpad: `real_base_after −
+   real_base_before` = the vault delta to the raw unit; DLMM: the event's
+   token amount = the vault delta and the executed price within 30 % of
+   the start bin), so a layout mistake can never price a swap.
+3. `ref_src: pool`: the effective price of the previous trade on the same
    pool (`getSignaturesForAddress` on the pool's token vault, `before` our
    signature; `ref_age_s` = seconds earlier, at most 60). Used for the
    pump.fun curve (its stored virtual reserves no longer predict the
    executed price on 2026 curves: real trades fill 20 to 60 % above
-   virtual_sol / virtual_token), Meteora, CLMM and routed swaps. It
-   carries the previous trader's direction, so terminals priced mostly
-   this way read some tens of bps worse in buy waves.
-3. Nothing else. Swaps with neither keep their exact components and stay
+   virtual_sol / virtual_token), CLMM, DBC and routed swaps. It carries
+   the previous trader's direction, so terminals priced mostly this way
+   read some tens of bps worse in buy waves.
+4. Nothing else. Swaps with neither keep their exact components and stay
    out of the loss figure; `ref_src_pct` says how many were priced and how.
    Jupiter's price API was tried and dropped (29 % negative losses).
 
@@ -94,7 +106,22 @@ JSON so new fee or tip accounts can be spotted and classified.
 **Fail rate** (`fail_rate_pct`): failed over every swap attempt the feed
 saw, exhaustive; `fail_reasons` keeps the top error classes (pump.fun
 `Custom:6002/6003` = slippage, `Custom:1` insufficient lamports, Jupiter
-`Custom:6001`…). A failed swap still costs the priority fee.
+`Custom:6001`…). A failed swap still costs its fee: `FAIL_DAILY_TARGET`
+(40) failed attempts per terminal per day are read for it (a failed
+transaction executes nothing, so only base + priority fee is paid, zero
+when the terminal sponsors gas), giving `fail_cost_usd` (median) and
+`fail_overhead_bps` = fail rate / (1 − fail rate) × median failed fee, in
+bps of the median trade: the burn a successful swap carries on average.
+Published apart (`tfq_fail_cost_usd`, `tfq_fail_overhead_bps`), not added
+to the cost per swap.
+
+**User detection**: the signer whose token balance moved (largest
+non-quote move). When nobody signed for the user, a keeper-executed order
+(limit, DCA, auto-sell: the terminal's keeper signs and the user's token
+account moves), the user is the on-curve owner (a wallet, never a
+program-derived pool address, checked on the ed25519 curve) whose token
+account moved against its SOL / stable balance. Quote assets: SOL, USDC,
+USDT, USD1, USDS, PYUSD.
 
 **Sandwiches**: a sandwich's front-run and back-run both touch the pool,
 so they are the swap's neighbours in the pool vault's signature sequence:
@@ -125,9 +152,10 @@ by median, then published-but-not-ranked, then the rest.
 Axiom (22 wallets: 20 fee wallets plus the two second-leg recipients of
 its 1 %), GMGN (9), FOMO (fee wallet + gas sponsor excluded as user, USDC
 fee legs), Photon, Trojan (6), Bloom, Maestro, Pepeboost, BONKbot, Banana
-Gun, pump.fun's mobile app (by its app program). Wallet lists come from
-DeFiLlama's adapters and Dune's spellbook (`dex_solana.bot_trades`
-platform models), checked live on 2026-09-18. Not in: BullX (trading
+Gun (fee wallet + its Solana router program), Terminal (formerly Padre:
+protocol + cashback wallets), pump.fun's mobile app (by its app program).
+Wallet lists come from DeFiLlama's adapters and Dune's spellbook
+(`dex_solana.bot_trades` platform models), checked live on 2026-09-18. Not in: BullX (trading
 suspended 2026-06-01, its wallets only see 1,000-lamport markers), Nova
 (no live fee wallet), BasedBot (DeFiLlama's `basedbid` addresses belong to
 a launchpad / bid mechanism; the bot's fee wallet is not published).

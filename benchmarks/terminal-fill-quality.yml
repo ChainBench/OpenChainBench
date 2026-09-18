@@ -51,14 +51,16 @@ abstract: |
   terminal; published from 50 priced swaps, ranked from 100.
 
 methodology:
-  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters and Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, FOMO / Photon / Bloom / Maestro / Pepeboost / BONKbot / Banana Gun 1; pump.fun's mobile app by its app program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; 300 successful ones per terminal per day are read, drawn at random with the tick's activity as weight. Rolling 24 h."
+  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters, Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, Terminal 2, the others 1; pump.fun's app and Banana Gun also by program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; 300 successful ones per terminal per day are read, drawn at random with the tick's activity as weight. Rolling 24 h."
+  - "The user is the signer whose token balance moved; when nobody signed for the user (limit, DCA and auto-sell orders executed by the terminal's keeper), the wallet whose token account moved against its SOL / stable balance, never a program-derived pool address. Quote assets: SOL, USDC, USDT, USD1, USDS, PYUSD; token-to-token swaps are not measured."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, the tx fee included when the user paid it, rent of accounts created or closed in the transaction excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets (FOMO: plus its user-signed USDC legs, under 2 % of the trade)."
   - "network_q = tx fee if the user paid it + inclusion tips: Jito, 0slot, bloXroute, Astralane, Nozomi and each terminal's own relay accounts (Axiom, Trojan, Maestro, Photon, Pepeboost, pump.fun app). other_q = user_q minus pool_q, terminal_q and network_q on single-pool routes without hops (pump.fun protocol and creator fees, referral payouts); on routed swaps it stays inside pool."
   - "Pool identity: the token vault that moved against the user and the quote vault of the same swap instruction, both by pubkey. Two pools behind one shared authority (Raydium, Launchpad, Meteora DAMM v2) never merge, so a hop through a sibling pool is never read as pool impact and the previous-trade lookup only sees that pool."
-  - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction when the route is one constant-product pool (PumpSwap, whose migrated pools carry a virtual quote reserve read from the pool account; Raydium v4 / CPMM); else the effective price of the previous trade on the same pool when it is at most 60 s old (pump.fun curve, Meteora, CLMM, routed swaps). No off-chain price. ref_src_pct per terminal says how each was priced."
+  - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction on one constant-product pool (PumpSwap with its migrated pools' virtual quote reserve, Raydium v4 / CPMM); the venue's swap event when it carries the state before the trade (Launchpad reserves, Meteora DLMM start bin), accepted only when it reconciles with the vault deltas; else the previous trade on the same pool at most 60 s old (pump.fun curve, CLMM, DBC, routed swaps). No off-chain price."
   - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = loss minus terminal, network and other; the four sum to the loss. Losses outside −10 % to +50 % are parsing or reference errors and stay out (flagged in the JSON). Median over priced samples with its 95 % bootstrap interval; p90 shown."
   - "A terminal is published from 50 priced swaps in the window and ranked from 100: below that the median's interval is wider than the gaps between terminals. The previous-trade reference carries the previous trader's direction, so terminals priced mostly that way read some tens of bps worse in buy waves than on the exact mid."
-  - "Fail rate: failed over every swap attempt the feed saw on the terminal's wallets in the window, exhaustive; wallet funding, fee sweeps and marker transfers invoke no swap program and are not attempts. Error classes (slippage, insufficient funds, program codes) are in the JSON. A failed swap still costs the priority fee."
+  - "Fail rate: failed over every swap attempt the feed saw on the terminal's wallets in the window, exhaustive; wallet funding, fee sweeps and marker transfers invoke no swap program and are not attempts. Error classes (slippage, insufficient funds, program codes) are in the JSON."
+  - "Cost of failures: 40 failed attempts per terminal per day are read for the fee they paid (a failed transaction executes nothing but pays base + priority fee; zero when the terminal sponsors gas). Failure overhead = fail rate / (1 − fail rate) × median failed fee, in bps of the median trade: what a successful swap carries on average in wasted attempts. Published apart from the cost per swap, not added to it."
   - "PumpSwap's vault ratio alone is not the mid: pools migrated from pump.fun add a virtual quote reserve (about 17.6 SOL) that the pool account stores; with it x·y = k matches executed trades exactly. pump.fun's 2026 bonding curve fills 20 to 60 % above its stored virtual_sol / virtual_token, so the curve gets the previous-trade reference instead."
   - "Sandwiches: each sampled swap's neighbours on its pool are screened (another signer trading our direction in our slot just before, and back just after, closing a comparable position with a take). Kept per swap in the JSON with the attacker and both signatures, not published as a column: how many swaps can be screened depends on pool activity, so terminals are not comparable on it."
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
@@ -138,6 +140,14 @@ metric_panels:
     higher_is_better: true
     tab: false
     description: "Median sampled trade size in USD."
+  - id: fail_overhead
+    label: Failure overhead
+    label_key: terminal
+    metric: tfq_fail_overhead_bps
+    unit: bp
+    higher_is_better: false
+    tab: false
+    description: "Expected fee burnt on failed attempts per successful swap: fail rate / (1 − fail rate) × median failed-attempt fee, bps of the median trade."
   - id: priced
     label: Swaps sampled
     label_key: terminal
@@ -275,6 +285,18 @@ providers:
       success: tfq_health{terminal="banana-gun"}
       sample_size: tfq_sample_size{terminal="banana-gun",kind="priced"}
       series: tfq_loss_bps{terminal="banana-gun",stat="median"}
+
+  - slug: padre
+    name: Terminal
+    tag: "Terminal, Solana, formerly Padre"
+    formula: "Random sample of the swaps paying Terminal's two fee wallets (protocol and cashback shares, DeFiLlama's trading-terminal adapter), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="padre",stat="median"}
+      p90: tfq_loss_bps{terminal="padre",stat="p90"}
+      p99: tfq_loss_bps{terminal="padre",stat="p90"}
+      success: tfq_health{terminal="padre"}
+      sample_size: tfq_sample_size{terminal="padre",kind="priced"}
+      series: tfq_loss_bps{terminal="padre",stat="median"}
 
   - slug: pump-fun
     name: pump.fun app

@@ -44,6 +44,7 @@ type inbox struct {
 	errs                map[string]int
 	reservoir           []sigInfo
 	total               int             // successful attempts this tick, for reservoir sampling
+	failedSample        []sigInfo       // uniform sample of the failed attempts (their cost is read from a few of them)
 	sigs                map[string]bool // signatures already counted this tick (a tx can mention two subscribed addresses)
 }
 
@@ -52,10 +53,14 @@ type drained struct {
 	seen, failed, other int
 	errs                map[string]int
 	sample              []sigInfo
+	failedSample        []sigInfo
 	total               int
 }
 
-const reservoirSize = 32
+const (
+	reservoirSize     = 32
+	failReservoirSize = 8
+)
 
 func newFeed(rpcURL string) *feed {
 	u := rpcURL
@@ -213,6 +218,11 @@ func (f *feed) handle(data []byte) {
 			b.errs = map[string]int{}
 		}
 		b.errs[errClass(v.Err)]++
+		if len(b.failedSample) < failReservoirSize {
+			b.failedSample = append(b.failedSample, s)
+		} else if j := rand.Intn(b.failed); j < failReservoirSize {
+			b.failedSample[j] = s
+		}
 		return
 	}
 	// Reservoir sampling: every successful attempt of the tick has the
@@ -290,7 +300,7 @@ func (f *feed) drain(slug string) drained {
 	if b == nil {
 		return drained{}
 	}
-	d := drained{seen: b.seen, failed: b.failed, other: b.other, errs: b.errs, sample: b.reservoir, total: b.total}
+	d := drained{seen: b.seen, failed: b.failed, other: b.other, errs: b.errs, sample: b.reservoir, failedSample: b.failedSample, total: b.total}
 	f.box[slug] = &inbox{}
 	if f.ok == nil {
 		f.ok = map[string]int{}
