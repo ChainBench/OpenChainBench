@@ -72,6 +72,10 @@ type Swap struct {
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
 	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref (quote received when unpriced)
+	// Block scan for a sandwich around this swap (see sandwich.go).
+	Scanned      bool      `json:"scanned"`
+	BlockPoolTxs int       `json:"block_pool_txs,omitempty"` // other successful trades on the same pool in the block
+	Sandwich     *Sandwich `json:"sandwich,omitempty"`
 	// Basis points of the trade.
 	LossBps     *float64 `json:"loss_bps,omitempty"`
 	PoolBps     *float64 `json:"pool_bps,omitempty"`

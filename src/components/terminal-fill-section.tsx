@@ -50,14 +50,14 @@ export async function TerminalFillSection({
             sub={meRank ? `Rank ${meRank} of ${published.length} · p90 ${fmtBps(me.loss?.p90)}` : me.priced > 0 ? `${me.priced} swaps, not enough yet` : "no priced swap yet"}
           />
           <Kpi label="Terminal fee" value={fmtBps(me.components.terminal)} sub={me.components.network !== undefined ? `network ${fmtBps(me.components.network)}` : undefined} />
-          <Kpi label="Pool + other fees" value={fmtBps(sum(me.components.pool, me.components.other))} sub={me.components.pool !== undefined ? `pool ${fmtBps(me.components.pool)}` : undefined} />
+          <Kpi label="Sandwiched" value={me.sandwichPct !== undefined ? `${me.sandwichPct.toFixed(1)}%` : "—"} sub={me.scanned > 0 ? `${me.sandwiched} of ${me.scanned} scanned blocks${me.sandwichProfit ? ` · attacker ${fmtBps(me.sandwichProfit.median)}` : ""}` : "no block scanned yet"} />
           <Kpi label="Failed transactions" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={`${me.seen.toLocaleString("en-US")} seen · ${me.priced} sampled`} />
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           <Kpi label="Cheapest fill, median" value={cheapest?.name ?? "—"} sub={cheapest ? fmtBps(cheapest.loss?.median) + " per swap" : undefined} logo={cheapest?.slug} />
           <Kpi label="Most expensive, median" value={priciest && priciest !== cheapest ? priciest.name : "—"} sub={priciest && priciest !== cheapest ? fmtBps(priciest.loss?.median) + " per swap" : undefined} logo={priciest && priciest !== cheapest ? priciest.slug : undefined} />
-          <Kpi label="Terminals published" value={`${published.length} of ${f.terminals.length}`} sub={`${f.terminals.reduce((s, t) => s + t.priced, 0).toLocaleString("en-US")} swaps in ${f.windowHours}h`} />
+          <Kpi label="Sandwiched swaps" value={aggregateSandwich(f.terminals)} sub={`${f.terminals.reduce((s, t) => s + t.scanned, 0).toLocaleString("en-US")} blocks scanned · ${published.length} of ${f.terminals.length} terminals published`} />
           <Kpi label="Failed transactions" value={aggregateFail(f.terminals)} sub="all terminals, share of routed tx" />
         </div>
       )}
@@ -71,6 +71,7 @@ export async function TerminalFillSection({
               <Th right title="90th percentile of the same">p90</Th>
               <Th title="Median cost split: terminal fee, network (priority fee + Jito tip), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
               <Th right title="Share of the terminal's transactions that failed on-chain; the priority fee is paid anyway">Failed tx</Th>
+              <Th right title="Share of scanned swaps with a front-run and back-run by the same signer on the same pool in their block">Sandwiched</Th>
               <Th right title="Median sampled trade size">Median trade</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
             </tr>
@@ -109,6 +110,9 @@ export async function TerminalFillSection({
                   <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.sandwichPct !== undefined && t.sandwichPct >= 2 ? "var(--color-bad, #e5484d)" : undefined }} title={t.scanned > 0 ? `${t.sandwiched} of ${t.scanned} scanned` : undefined}>
+                    {t.sandwichPct !== undefined ? `${t.sandwichPct.toFixed(1)}%` : t.scanned > 0 ? <span className="text-ink-faint">{t.sandwiched}/{t.scanned}</span> : "—"}
+                  </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.priced}</td>
                 </tr>
@@ -126,11 +130,33 @@ export async function TerminalFillSection({
         ))}
       </p>
 
+      {me && Object.keys(me.bySize).length > 0 && (
+        <div className="mb-6">
+          <p className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-2" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+            Cost per swap by trade size · {me.name}
+          </p>
+          <div className="grid grid-cols-3 gap-3 max-w-xl">
+            {(["under25", "25to250", "over250"] as const).map((b) => {
+              const q = me.bySize[b];
+              const cohort = sizeCohortMedian(f.terminals, b);
+              return (
+                <div key={b} className="card-soft rounded-lg p-3 border border-ink/15">
+                  <p className="text-[10px] text-ink-faint uppercase tracking-wide" style={{ fontFamily: "var(--font-mono, monospace)" }}>{SIZE_LABELS[b]}</p>
+                  <p className="mt-1 text-lg font-semibold tabular-nums">{q ? fmtBps(q.median) : "—"}</p>
+                  <p className="text-[10px] text-ink-faint uppercase tracking-[0.14em]">{q ? `${q.n} swaps${cohort !== undefined ? ` · cohort ${fmtBps(cohort)}` : ""}` : "under 5 swaps"}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
         Real user swaps read on-chain from each terminal&apos;s fee-wallet transactions (newest first, 4 per terminal every 90 s),
         valued at the pool&apos;s pre-trade mid (exact from its reserves on PumpSwap and Raydium, the previous trade on the same pool
         elsewhere, Jupiter&apos;s price when neither is readable). Loss = 1 − value received /
-        value given, in basis points of the trade; the split is exact from balance deltas. Sandwiches are not isolated yet.
+        value given, in basis points of the trade; the split is exact from balance deltas. Each swap&apos;s block is scanned for a
+        sandwich (front-run and back-run by the same signer on the same pool).
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}
         <Link href="/benchmarks/terminal-fill-quality" className="underline hover:no-underline">
           268
@@ -173,15 +199,25 @@ function CostBar({ t, max }: { t: TerminalFillStats; max: number }) {
   );
 }
 
+const SIZE_LABELS = { under25: "Under $25", "25to250": "$25 to $250", over250: "Over $250" } as const;
+
+/** Median of the terminals' medians for a size bucket, as a cohort yardstick. */
+function sizeCohortMedian(ts: TerminalFillStats[], b: keyof typeof SIZE_LABELS): number | undefined {
+  const v = ts.map((t) => t.bySize[b]?.median).filter((x): x is number => x !== undefined).sort((a, c) => a - c);
+  if (v.length === 0) return undefined;
+  return v[Math.floor(v.length / 2)];
+}
+
+function aggregateSandwich(ts: TerminalFillStats[]): string {
+  const scanned = ts.reduce((s, t) => s + t.scanned, 0);
+  const sand = ts.reduce((s, t) => s + t.sandwiched, 0);
+  return scanned > 0 ? `${((100 * sand) / scanned).toFixed(1)}%` : "—";
+}
+
 function aggregateFail(ts: TerminalFillStats[]): string {
   const seen = ts.reduce((s, t) => s + t.seen, 0);
   const failed = ts.reduce((s, t) => s + t.failed, 0);
   return seen > 0 ? `${((100 * failed) / seen).toFixed(1)}%` : "—";
-}
-
-function sum(a?: number, b?: number): number | undefined {
-  if (a === undefined && b === undefined) return undefined;
-  return (a ?? 0) + (b ?? 0);
 }
 
 function Kpi({ label, value, sub, logo }: { label: string; value: string; sub?: string; logo?: string }) {
