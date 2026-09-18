@@ -3,6 +3,7 @@ module terminal-fill-quality
 go 1.24.0
 
 require (
+	filippo.io/edwards25519 v1.1.0
 	github.com/coder/websocket v1.8.13
 	github.com/prometheus/client_golang v1.23.2
 )

@@ -91,7 +91,13 @@ var terminals = []Terminal{
 	// BONKbot, Banana Gun: fee receivers from Dune's spellbook and
 	// DeFiLlama's fees adapter, the ones with live traffic on 2026-09-18.
 	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
-	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF"}},
+	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF"},
+		Programs: []string{"BANANAjs7FJiPQqJTGFzkZJndT9o7UmKiYYGaJz6frGu"}}, // its Solana router (DeFiLlama's dexs adapter attributes on it)
+	// Terminal (formerly Padre): protocol share to the main fee wallet,
+	// cashback / referral share to the second, both in the same
+	// transaction (DeFiLlama's trading-terminal fees adapter).
+	{Slug: "padre", Name: "Terminal", Kind: "app", Wallets: []string{"J5XGHmzrRmnYWbmw45DbYkdZAU2bwERFZ11qCDXPvFB5", "DoAsxPQgiyAxyaJNvpAAUb2ups6rbJRdYrCPyWxwRxBb"},
+		Note: "Terminal (formerly Padre) splits its fee in the transaction between a protocol wallet and a cashback wallet; both count as terminal fee, the cashback later paid back to users is not netted."},
 	// pump.fun's own mobile app: its swaps invoke the app program in the
 	// same transaction (DeFiLlama's pumpfun-app adapter attributes on it).
 	// The fixed 0.001 SOL it forwards to its pfn… accounts on every swap is
@@ -150,14 +156,16 @@ var pumpFeeRecipients = set(
 )
 
 const (
-	wsolMint = "So11111111111111111111111111111111111111112"
-	usdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-	usdtMint = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
-	usd1Mint = "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+	wsolMint  = "So11111111111111111111111111111111111111112"
+	usdcMint  = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	usdtMint  = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+	usd1Mint  = "USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"
+	usdsMint  = "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA"
+	pyusdMint = "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo"
 )
 
 // Stable quote mints, priced at $1.
-var stableMints = set(usdcMint, usdtMint, usd1Mint)
+var stableMints = set(usdcMint, usdtMint, usd1Mint, usdsMint, pyusdMint)
 
 // DEX programs. `cp` marks constant-product venues whose vault balances
 // give the pre-trade mid price directly (see reservePrice); the pump.fun
@@ -196,6 +204,8 @@ var swapProgramPrefixes = []string{
 	"BSfD6SHZ", "T1TANpTe", // Photon, Titan
 	"proVF4pM", // FOMO (OKX router)
 	"troyXT7T", // Trojan
+	"BANANAjs", // Banana Gun
+	"DF1ow4ts", // DFlow (FOMO's router since 2026-09)
 	"6Vo3245e", // pump.fun app
 }
 

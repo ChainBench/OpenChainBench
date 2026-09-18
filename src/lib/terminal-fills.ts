@@ -27,6 +27,10 @@ export type TerminalFillStats = {
   failRatePct?: number;
   /** Top error classes among failed attempts (slippage, program codes). */
   failReasons: Record<string, number>;
+  /** Cost of failures: sampled failed attempts, median fee they paid (USD), expected burn per successful swap in bps of the median trade. */
+  failsSampled: number;
+  failCostUsd?: FillQuantiles;
+  failOverheadBps?: number;
   parsed: number;
   priced: number;
   /** Priced but outside the plausible loss bounds, excluded from the statistics. */
@@ -139,6 +143,9 @@ function parse(raw: unknown): TerminalFills | null {
       nonSwap: num(t.non_swap) ?? 0,
       ...(num(t.fail_rate_pct) !== undefined ? { failRatePct: num(t.fail_rate_pct) } : {}),
       failReasons: numMap(t.fail_reasons),
+      failsSampled: num(t.fails_sampled) ?? 0,
+      ...(quant(t.fail_cost_usd) ? { failCostUsd: quant(t.fail_cost_usd) } : {}),
+      ...(num(t.fail_overhead_bps) !== undefined ? { failOverheadBps: num(t.fail_overhead_bps) } : {}),
       parsed: num(t.parsed) ?? 0,
       priced: num(t.priced) ?? 0,
       flagged: num(t.flagged) ?? 0,
