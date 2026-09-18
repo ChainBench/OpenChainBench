@@ -49,7 +49,7 @@ abstract: |
   size and venue mix per terminal; a terminal is published from 20 priced swaps.
 
 methodology:
-  - "Sampling: a live WebSocket feed of every transaction touching each terminal's fee wallets (DeFiLlama adapters and Dune's spellbook: Axiom 20, GMGN 9, Trojan 7, Banana Gun 3, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost / BONKbot / Nova 1) counts them all, failed ones included; 300 successful ones per terminal per day are drawn at random and read. Rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
+  - "Sampling: a live WebSocket feed of every transaction touching each terminal's fee wallets (DeFiLlama adapters and Dune's spellbook: Axiom 20, GMGN 9, Trojan 7, Banana Gun 3, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost / BONKbot / Nova 1; pump.fun's mobile app by its app program) counts them all, failed ones included; 300 successful ones per terminal per day are drawn at random and read. Rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, rent for new token accounts and the tx fee excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets."
   - "network_q = tx fee if the user paid it + tips to Jito, 0slot, bloXroute and Nozomi tip accounts (other tip services land in other); other_q = user_q minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts), single-pool routes only. Rent of token accounts created or closed in the transaction is excluded."
   - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction when the route is one constant-product pool (PumpSwap, whose migrated pools carry a virtual quote reserve read from the pool account; Raydium v4 / CPMM); else the effective price of the previous trade on the same pool (pump.fun curve, Meteora, CLMM, multi-pool routes)."
@@ -317,3 +317,16 @@ providers:
       success: tfq_health{terminal="nova"}
       sample_size: tfq_sample_size{terminal="nova",kind="priced"}
       series: tfq_loss_bps{terminal="nova",stat="median"}
+
+  - slug: pump-fun
+    name: pump.fun app
+    tag: "Terminal, Solana, pump.fun's own app"
+    formula: "Swaps whose transaction invokes the pump.fun app program (the mobile app), valued at the pool's pre-trade mid; loss in bps of the trade, median over the rolling 24 h. The app charges no fee of its own."
+    queries:
+      p50: tfq_loss_bps{terminal="pump-fun",stat="median"}
+      p90: tfq_loss_bps{terminal="pump-fun",stat="p90"}
+      p99: tfq_loss_bps{terminal="pump-fun",stat="p90"}
+      mean: tfq_loss_bps{terminal="pump-fun",stat="mean"}
+      success: tfq_health{terminal="pump-fun"}
+      sample_size: tfq_sample_size{terminal="pump-fun",kind="priced"}
+      series: tfq_loss_bps{terminal="pump-fun",stat="median"}

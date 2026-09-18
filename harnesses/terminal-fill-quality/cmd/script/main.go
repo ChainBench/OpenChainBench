@@ -253,7 +253,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, SolUSD: sol,
 			Method:    "Sampled swaps read on-chain from each terminal's fee-wallet transactions; loss = 1 − value received at the pool's pre-trade mid / value given, in basis points; components exact from balance deltas.",
-			Terminals: stats, Recent: recent(st, 200),
+			Terminals: stats, Recent: recent(st, 400),
 		}
 		mu.Lock()
 		pub = p
