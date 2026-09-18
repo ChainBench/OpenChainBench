@@ -272,7 +272,10 @@ func main() {
 	}
 	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d terminals | tick=%s target=%d swaps/terminal/day window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, windowHours, minPriced, minRank, useWS)
 
-	httpc := &http.Client{Timeout: 60 * time.Second}
+	// Redirects are not followed: a public RPC that answers a heavy query
+	// with a redirect to a private address (seen on Robinhood Chain's
+	// eth_getLogs) would otherwise hang every call for the whole timeout.
+	httpc := &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	rps := envInt("RPC_RPS", 8)
 	rpc := &rpcClient{url: rpcURL, http: httpc, calls: cCalls.Inc, errors: cErrors.Inc, minGap: time.Second / time.Duration(max(rps, 1))}
 

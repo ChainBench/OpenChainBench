@@ -104,14 +104,26 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			f.up[c.slug] = true
 			continue
 		}
+		// Ranges of at most 400 blocks, a few per tick: a public RPC may
+		// refuse or redirect a heavier query.
 		var logs []evmLog
-		if err := evmCall(ctx, f.http, c.rpc, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(head).Text(16), "address": routers}}, &logs); err != nil {
-			log.Printf("[native] %s getLogs: %v", c.slug, err)
-			f.up[c.slug] = false
-			continue
+		failed := false
+		for chunk := 0; chunk < 5 && from <= head; chunk++ {
+			to := from + 399
+			if to > head {
+				to = head
+			}
+			var part []evmLog
+			if err := evmCall(ctx, f.http, c.rpc, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
+				log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
+				failed = true
+				break
+			}
+			logs = append(logs, part...)
+			f.cursor[c.slug] = to
+			from = to + 1
 		}
-		f.cursor[c.slug] = head
-		f.up[c.slug] = true
+		f.up[c.slug] = !failed
 		seen := map[string]bool{}
 		for _, l := range logs {
 			slug := byRouter[strings.ToLower(l.Address)]
