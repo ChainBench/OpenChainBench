@@ -95,6 +95,14 @@ type nativeFeed struct {
 	up     map[string]bool
 }
 
+// liquidityTopics: Uniswap v2 Mint, v3 Mint, v4 ModifyLiquidity — a
+// transaction carrying one adds liquidity, it is not a swap.
+var liquidityTopics = set(
+	"0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
+	"0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde",
+	"0xf208f4912782fd25c7f114ca3723a2d5dd6f3bcc3ac8db5af63baa85f711d5ec",
+)
+
 // isNativeEVM: a row read from a terminal's own EVM routers.
 func isNativeEVM(slug string) bool {
 	for _, t := range evmTerminals {
@@ -368,6 +376,13 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return nil
 	}
 	user := strings.ToLower(tx.From)
+	// A liquidity add (Binance Wallet's zap: part of the quote swapped,
+	// the rest minted into the position) is not a swap.
+	for _, l := range rc.Logs {
+		if len(l.Topics) > 0 && liquidityTopics[l.Topics[0]] {
+			return &Swap{Flag: "not_swap"}
+		}
+	}
 	gasPrice, gasOK := gas[c.gas]
 	if c.gas == "" {
 		gasPrice, gasOK = 1, true

@@ -520,9 +520,14 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	for _, p := range pools {
 		u := upr
 		if p.ev != main.ev {
-			if u2, _, ok := usdPerRaw(p.ev, p.quote, 0); ok {
-				u = u2
+			// A split pool must price on its own quote leg: another pool's
+			// unit price (USDC's for a pool quoted in ETH) would be absurd.
+			u2, _, ok := usdPerRaw(p.ev, p.quote, 0)
+			if !ok {
+				out.Unpriced = "no_quote_leg_split"
+				return out, nil
 			}
+			u = u2
 		}
 		out.PoolInUSD += f(p.quote) * u
 	}
@@ -851,9 +856,12 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		q, hook := delivered(p.ev, p.quote)
 		u := upr
 		if p.ev != main.ev {
-			if u2, _, ok := usdPerRaw(p.ev, q, 0); ok {
-				u = u2
+			u2, _, ok := usdPerRaw(p.ev, q, 0)
+			if !ok {
+				out.Unpriced = "no_quote_leg_split"
+				return out, nil
 			}
+			u = u2
 		}
 		out.PoolInUSD += f(q) * u // here: the quote the pools paid out to the route, USD
 		out.HookUSD += f(hook) * u
