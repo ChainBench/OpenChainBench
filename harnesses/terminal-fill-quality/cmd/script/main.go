@@ -200,7 +200,13 @@ func main() {
 	quota := map[string]float64{}
 	var fd *feed
 	if useWS {
-		fd = newFeed(rpcURL)
+		// WS_URL lets the feed run on another endpoint than the reads (the
+		// public wss://api.mainnet-beta.solana.com is free and keyless).
+		wsURL := os.Getenv("WS_URL")
+		if wsURL == "" {
+			wsURL = rpcURL
+		}
+		fd = newFeed(wsURL)
 		go fd.run(context.Background())
 	}
 	var mu sync.RWMutex
