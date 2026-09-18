@@ -140,6 +140,29 @@ depends on pool activity. The victim's extra cost is already inside
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
 over $250; median loss and n from 5 samples).
 
+**Cross-chain (`xchain.go`)**: FOMO's and BasedBot's users pay on BNB,
+Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana;
+nothing on Solana pays the app's fee wallet, so the WebSocket feed never
+sees these. Relay's public requests feed (`/requests/v2?originChainId=`,
+no key; the `referrer` filter works for BasedBot, FOMO's referrer is
+private but its fee address `0x9fc4e320…` is in every request's
+`appFees`) is polled every tick per origin chain until a known id: every
+final request is counted (`success` vs `refund` / `failure` for the fail
+rate) and successful ones go to a reservoir. A sampled request is read
+on Solana (`outTxs`): when it delivered USDC / SOL (FOMO's case: the
+wallet is funded, the token buy is a native swap in the FOMO row) the
+value received is exact and the row is a bridge leg (venue `relay`,
+`pool` 0): value given = `currencyIn.amountUsd` + origin gas (receipt on
+the chain's public RPC, priced with Coinbase ETH / BNB), terminal = the
+app fee the user paid (`feeSponsorship` user-pays when present, else the
+quoted `appFees`), relay = deposit − received − app fee (Relay's fees and
+spread), network = origin gas. When it delivered a token, the settlement
+is parsed as a native swap with the recipient as user and priced at the
+pool's state before it. Requests paid with a token on the origin chain
+are flagged `origin_token` and kept out of the statistics (value in is
+Relay's valuation). `chain`, `relay_bps`, `relay_id`, `in_tx` per row,
+`by_chain` and `components_bps.relay` per app, `tfq_loss_bps_chain`.
+
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
 from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
 from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap

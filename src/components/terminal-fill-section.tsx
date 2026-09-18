@@ -106,12 +106,17 @@ export async function TerminalFillSection({
                           {t.name}
                         </span>
                       ) : (
-                        <Link href={`/products/${t.slug}#trading-app`} className="inline-flex items-center gap-2 group">
-                          <ProviderLogo slug={t.slug} name={t.name} size={18} />
+                        <Link href={`/products/${productOf(t.slug)}#trading-app`} className="inline-flex items-center gap-2 group">
+                          <ProviderLogo slug={productOf(t.slug)} name={t.name} size={18} />
                           <span className="font-medium text-ink group-hover:underline underline-offset-2">{t.name}</span>
                         </Link>
                       )}
-                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{t.kind}</span>
+                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? "bridge leg" : t.kind}</span>
+                      {isXchain(t.slug) && Object.keys(t.byChain).length > 0 ? (
+                        <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help" title={chainText(t)}>
+                          by origin chain
+                        </span>
+                      ) : null}
                       {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
                     </span>
                   </td>
@@ -134,7 +139,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-        {(["terminal", "network", "other", "pool"] as const).map((c) => (
+        {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />
             {LABELS[c]}
@@ -186,11 +191,27 @@ export async function TerminalFillSection({
   );
 }
 
-const COLORS = { terminal: "#FF6B35", network: "#FFC857", other: "#8B5CF6", pool: "#5B89FF" } as const;
-const LABELS = { terminal: "Terminal fee", network: "Network (tx fee + tips)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
+const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
+const LABELS = { terminal: "Terminal fee", network: "Network (tx fee + tips, origin gas)", relay: "Relay (bridge fees + spread)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
+const PARTS = ["terminal", "network", "relay", "other", "pool"] as const;
+const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood Chain", base: "Base", ethereum: "Ethereum", arc: "Arc" };
+
+/** Cross-chain rows (slug ending in -xchain) belong to the product of the native slug. */
+function productOf(slug: string): string {
+  return slug.replace(/-xchain$/, "");
+}
+function isXchain(slug: string): boolean {
+  return slug.endsWith("-xchain");
+}
+function chainText(t: TerminalFillStats): string {
+  return Object.entries(t.byChain)
+    .sort((a, b) => b[1].n - a[1].n)
+    .map(([c, q]) => `${CHAIN_NAMES[c] ?? c} ${Math.round(q.median)} bps (${q.n})`)
+    .join(" · ");
+}
 
 function stackTotal(t: TerminalFillStats): number {
-  return (["terminal", "network", "other", "pool"] as const).reduce((s, c) => s + Math.max(0, t.components[c] ?? 0), 0);
+  return PARTS.reduce((s, c) => s + Math.max(0, t.components[c] ?? 0), 0);
 }
 
 /** "95 % interval 210 to 260 bps · n swaps" for a published terminal. */
@@ -225,8 +246,7 @@ function topReason(t: TerminalFillStats): string | undefined {
 
 /** Stacked bar of the median cost components, on a shared scale. */
 function CostBar({ t, max }: { t: TerminalFillStats; max: number }) {
-  const parts = (["terminal", "network", "other", "pool"] as const)
-    .map((c) => ({ c, v: Math.max(0, t.components[c] ?? 0) }))
+  const parts = PARTS.map((c) => ({ c, v: Math.max(0, t.components[c] ?? 0) }))
     .filter((p) => p.v > 0);
   if (parts.length === 0) return <span className="text-ink-faint">—</span>;
   const total = parts.reduce((s, p) => s + p.v, 0);
@@ -242,7 +262,8 @@ function CostBar({ t, max }: { t: TerminalFillStats; max: number }) {
       <span className="text-[11px] text-ink-soft whitespace-nowrap tabular-nums">
         {t.components.terminal !== undefined ? `fee ${Math.round(t.components.terminal)}` : ""}
         {t.components.network !== undefined ? ` · net ${Math.round(t.components.network)}` : ""}
-        {t.components.pool !== undefined ? ` · pool ${Math.round(t.components.pool)}` : ""}
+        {t.components.relay !== undefined ? ` · relay ${Math.round(t.components.relay)}` : ""}
+        {t.components.pool !== undefined && !isXchain(t.slug) ? ` · pool ${Math.round(t.components.pool)}` : ""}
       </span>
     </span>
   );

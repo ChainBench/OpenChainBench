@@ -72,7 +72,15 @@ type Swap struct {
 	TerminalQ float64  `json:"terminal_q"`
 	NetworkQ  float64  `json:"network_q"`
 	OtherQ    *float64 `json:"other_q,omitempty"`
-	QuoteUSD  float64  `json:"quote_usd"` // quote unit price used for sizing
+	// Cross-chain settlements (see xchain.go): the origin chain, Relay's
+	// own fees the user paid (quote units), the Relay request id and the
+	// origin deposit hash. UserQ is then the origin deposit in quote units,
+	// NetworkQ the origin gas.
+	Chain    string  `json:"chain,omitempty"`
+	RelayQ   float64 `json:"relay_q,omitempty"`
+	RelayID  string  `json:"relay_id,omitempty"`
+	InTx     string  `json:"in_tx,omitempty"`
+	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
 	// tip, by pubkey (token accounts keyed by owner): what "other" is made
 	// of, aggregated per terminal for audit.
@@ -97,6 +105,7 @@ type Swap struct {
 	PoolBps     *float64 `json:"pool_bps,omitempty"`
 	TerminalBps float64  `json:"terminal_bps"`
 	NetworkBps  float64  `json:"network_bps"`
+	RelayBps    float64  `json:"relay_bps,omitempty"`
 	OtherBps    *float64 `json:"other_bps,omitempty"`
 }
 
@@ -136,7 +145,9 @@ type tokenAcct struct {
 func (e *tokenAcct) delta() float64 { return (e.post - e.pre) * math.Pow10(-e.dec) }
 
 // parseSwap reduces a jsonParsed transaction to a Swap (unpriced).
-func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, parseReject) {
+// forceUser names the user when the transaction does not (a Relay
+// settlement: the solver signs and pays, the recipient gets the tokens).
+func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser string) (*Swap, parseReject) {
 	msg := tx.Transaction.Message
 	n := len(msg.AccountKeys)
 	if n == 0 || len(tx.Meta.PreBalances) != n || len(tx.Meta.PostBalances) != n {
@@ -267,7 +278,16 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		mints  int
 	}
 	var best *userCand
-	for _, k := range msg.AccountKeys {
+	signers := msg.AccountKeys
+	if forceUser != "" {
+		// The named wallet, whether it signed or not (its token account is
+		// enough): pretend it is the only signer.
+		signers = []struct {
+			Pubkey string `json:"pubkey"`
+			Signer bool   `json:"signer"`
+		}{{Pubkey: forceUser, Signer: true}}
+	}
+	for _, k := range signers {
 		if !k.Signer || fee[k.Pubkey] || internal[k.Pubkey] {
 			continue
 		}
@@ -297,7 +317,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 			}
 		}
 	}
-	if best == nil {
+	if best == nil && forceUser == "" {
 		// Nobody signed for the user: a keeper-executed order (limit, DCA,
 		// auto-sell) where the terminal's keeper signs and the user's token
 		// account moves. The user is then the wallet (on-curve owner, not a
@@ -823,7 +843,7 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 			if s.OtherQ != nil {
 				other = *s.OtherQ
 			}
-			pool := loss - 1e4*(s.TerminalQ+s.NetworkQ+other)/trade
+			pool := loss - 1e4*(s.TerminalQ+s.NetworkQ+s.RelayQ+other)/trade
 			s.PoolBps = &pool
 			if loss < lossMinBps || loss > lossMaxBps {
 				s.Flag = "out_of_bounds"
@@ -850,6 +870,7 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	}
 	s.TerminalBps = 1e4 * s.TerminalQ / trade
 	s.NetworkBps = 1e4 * s.NetworkQ / trade
+	s.RelayBps = 1e4 * s.RelayQ / trade
 	if s.OtherQ != nil {
 		o := 1e4 * *s.OtherQ / trade
 		s.OtherBps = &o
