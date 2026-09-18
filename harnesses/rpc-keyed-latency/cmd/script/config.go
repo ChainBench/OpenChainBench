@@ -42,15 +42,36 @@ func intervalMultFor(provider string) int {
 // hyperliquid-rpc bench); "arc" is Circle's Arc L1.
 var chainsEVM = []string{"ethereum", "base", "arbitrum", "bnb", "polygon", "robinhood", "hyperliquid", "arc"}
 
+// chainAllowed applies RPC_KEYED_CHAINS, a comma-separated allowlist of
+// chain slugs. Unset means every chain with a URL is probed. Set it to
+// pause the rest of the matrix while keeping every URL variable in place
+// (2026-09-18: "robinhood" while the other eight pages wait for their
+// third provider).
+func chainAllowed(chain string) bool {
+	raw := strings.TrimSpace(os.Getenv("RPC_KEYED_CHAINS"))
+	if raw == "" {
+		return true
+	}
+	for _, c := range strings.Split(raw, ",") {
+		if strings.EqualFold(strings.TrimSpace(c), chain) {
+			return true
+		}
+	}
+	return false
+}
+
 func endpoints() []Endpoint {
 	var out []Endpoint
 	for _, p := range providers {
 		for _, c := range chainsEVM {
+			if !chainAllowed(c) {
+				continue
+			}
 			if url := envURL(p, c); url != "" {
 				out = append(out, Endpoint{Provider: p, Chain: c, Kind: "evm", URL: url})
 			}
 		}
-		if url := envURL(p, "solana"); url != "" {
+		if url := envURL(p, "solana"); url != "" && chainAllowed("solana") {
 			out = append(out, Endpoint{Provider: p, Chain: "solana", Kind: "solana", URL: url})
 		}
 	}
