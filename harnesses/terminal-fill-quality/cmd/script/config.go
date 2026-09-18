@@ -73,10 +73,19 @@ var tipAccounts = set(
 	"7toBU3inhmrARGngC7z6SjyP85HgGMmCTEwGNRAcYnEK", "6fQaVhYZA4w3MBSXjJ81Vf6W1EDYrrwyGVUhmpm2LuLb", "4HiwLEP2Bzqj3hM2ENxJuzhcPCdsafwiet3oGkMkuQY4",
 	// bloXroute
 	"HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY",
+	// Astralane (seen as Maestro's largest "other" recipients; Mobula
+	// reports the same amounts as mevFeesUSD on those swaps)
+	"AStrAJv2RN2hKCHxwUMtqmSxgdcNZbihCwc1mCSnG83W", "Astran35aiQUF57XZsmkWMtNCtXGLzs8upfiqXxth2bz",
 )
 
+// isTip: listed accounts, plus the vanity prefixes Nozomi ("noz") and
+// Astralane ("astra", any case) use for their tip accounts; a random
+// base58 key starts with a given 5-letter prefix once in ~6e8.
 func isTip(pubkey string) bool {
-	return tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz")
+	if tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz") {
+		return true
+	}
+	return len(pubkey) > 5 && strings.EqualFold(pubkey[:5], "astra")
 }
 
 const (
