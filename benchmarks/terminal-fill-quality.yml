@@ -61,7 +61,8 @@ methodology:
   - "The sandwich victim's extra cost is already inside the loss (the front-run precedes us, so the arrival price includes it). Multi-block sandwiches are not looked for."
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
   - "Not measured: cross-chain trades (FOMO via Relay), perps."
-  - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; fees are taken in USDC. BullX's DeFiLlama fee wallets see almost no fee on sampled swaps; its terminal figure is a floor. BasedBot's swaps do not expose a signer token leg, so it stays unpublished."
+  - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; fees are taken in USDC. BullX's DeFiLlama fee wallets see almost no fee on sampled swaps; its terminal figure is a floor."
+  - "Not in the table: BasedBot (its swaps go through its own program and the user's tokens never sit on an account the user signs for, so no swap can be read until that program is decoded; the harness keeps listening), BONKbot and Banana Gun (no public fee wallet)."
   - "Dust: swaps under $1 are dropped (basis points of nothing are noise)."
 
 findings:
@@ -277,16 +278,3 @@ providers:
       success: tfq_health{terminal="pepeboost"}
       sample_size: tfq_sample_size{terminal="pepeboost",kind="priced"}
       series: tfq_loss_bps{terminal="pepeboost",stat="median"}
-
-  - slug: basedbot
-    name: BasedBot
-    tag: "Telegram bot, Solana"
-    formula: "Transactions on BasedBot's own program; its swaps do not expose a signer token leg, so no priced sample yet and the row stays unpublished."
-    queries:
-      p50: tfq_loss_bps{terminal="basedbot",stat="median"}
-      p90: tfq_loss_bps{terminal="basedbot",stat="p90"}
-      p99: tfq_loss_bps{terminal="basedbot",stat="p90"}
-      mean: tfq_loss_bps{terminal="basedbot",stat="mean"}
-      success: tfq_health{terminal="basedbot"}
-      sample_size: tfq_sample_size{terminal="basedbot",kind="priced"}
-      series: tfq_loss_bps{terminal="basedbot",stat="median"}

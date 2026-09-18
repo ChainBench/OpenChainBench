@@ -30,7 +30,10 @@ export async function TerminalFillSection({
 }) {
   const f = await getTerminalFills();
   if (!f || f.terminals.length === 0) return null;
-  const ranked = rankTerminals(f);
+  // Terminals the harness listens to but cannot read yet (BasedBot: custodial
+  // program, no user token leg) stay out of the table rather than showing an
+  // "unresponsive" row that reads as an outage.
+  const ranked = rankTerminals(f).filter((t) => t.parsed > 0 || t.seen > 0);
   const published = ranked.filter((t) => t.healthy && t.loss);
   const me = focus ? f.terminals.find((t) => t.slug === focus) : null;
   if (focus && !me) return null;
@@ -57,7 +60,7 @@ export async function TerminalFillSection({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           <Kpi label="Cheapest fill, median" value={cheapest?.name ?? "—"} sub={cheapest ? fmtBps(cheapest.loss?.median) + " per swap" : undefined} logo={cheapest?.slug} />
           <Kpi label="Most expensive, median" value={priciest && priciest !== cheapest ? priciest.name : "—"} sub={priciest && priciest !== cheapest ? fmtBps(priciest.loss?.median) + " per swap" : undefined} logo={priciest && priciest !== cheapest ? priciest.slug : undefined} />
-          <Kpi label="Sandwiched swaps" value={aggregateSandwich(f.terminals)} sub={`${f.terminals.reduce((s, t) => s + t.scanned, 0).toLocaleString("en-US")} blocks scanned · ${published.length} of ${f.terminals.length} terminals published`} />
+          <Kpi label="Sandwiched swaps" value={aggregateSandwich(f.terminals)} sub={`${f.terminals.reduce((s, t) => s + t.scanned, 0).toLocaleString("en-US")} swaps screened · ${published.length} of ${ranked.length} terminals published`} />
           <Kpi label="Failed transactions" value={aggregateFail(f.terminals)} sub="all terminals, share of routed tx" />
         </div>
       )}
