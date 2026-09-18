@@ -6,6 +6,8 @@ import {
   TRADING_APP_SLUGS,
 } from "@/lib/trading-apps";
 import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
+import { TerminalFillSection } from "@/components/terminal-fill-section";
+import { getTerminalFills } from "@/lib/terminal-fills";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 
 /**
@@ -25,11 +27,12 @@ export async function TradingAppSection({
   slug: string;
   name: string;
 }) {
-  const [matrix, history] = await Promise.all([loadTradingAppMatrix(), getTradingAppHistory()]);
+  const [matrix, history, fills] = await Promise.all([loadTradingAppMatrix(), getTradingAppHistory(), getTerminalFills()]);
   const inVolumeCohort = !!history?.apps.some((a) => a.slug === slug);
+  const inFillCohort = !!fills?.terminals.some((t) => t.slug === slug && t.priced > 0);
   const me = TRADING_APP_SLUGS.has(slug) ? matrix.rows.find((r) => r.slug === slug) : undefined;
   const hasDune = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
-  if (!inVolumeCohort && !hasDune) return null;
+  if (!inVolumeCohort && !hasDune && !inFillCohort) return null;
 
   return (
     <section id="trading-app" className="scroll-mt-24 py-10 border-t border-ink/8 first:border-0">
@@ -57,6 +60,18 @@ export async function TradingAppSection({
             Cross-chain daily volume · bench 267
           </p>
           <TradingAppVolumeSection focus={slug} compact />
+        </div>
+      )}
+
+      {inFillCohort && (
+        <div className="mb-10">
+          <p
+            className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            Fill quality · bench 268
+          </p>
+          <TerminalFillSection focus={slug} compact />
         </div>
       )}
 

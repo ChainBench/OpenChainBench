@@ -189,6 +189,20 @@ scrape_configs:
           benchmark: trading-app-daily-volume
           host: openchainbench
 
+  # Container ocb-terminal-fill-quality on the Paris VPS. Cost per swap on
+  # each Solana trading terminal from sampled user transactions read
+  # on-chain (bench 268); per-terminal stats and recent samples served by
+  # Caddy at kv.openchainbench.com/aggregate/terminal-fills/fills.json.
+  - job_name: terminal-fill-quality
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-terminal-fill-quality:2112
+        labels:
+          benchmark: terminal-fill-quality
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.

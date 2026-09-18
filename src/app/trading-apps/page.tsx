@@ -3,6 +3,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
 import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
+import { TerminalFillSection } from "@/components/terminal-fill-section";
 import { ChainBar } from "@/components/chain-bar";
 import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-history";
 import {
@@ -29,6 +30,7 @@ export const revalidate = 3600;
 
 const BENCH_SLUGS = [
   "trading-app-daily-volume",
+  "terminal-fill-quality",
   "solana-trading-platform-wars",
   "solana-dex-volume",
   "solana-unique-traders",
@@ -212,6 +214,20 @@ export default async function TradingAppsHubPage() {
           Cross-chain daily volume · bench 267
         </p>
         <TradingAppVolumeSection />
+      </section>
+
+      <section className="mb-14">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          Fill quality · bench 268
+        </p>
+        <p className="text-sm text-ink-soft max-w-2xl mb-4">
+          What a swap really costs on each terminal: real user transactions read on-chain, valued at the pool&apos;s
+          arrival price, split into terminal fee, network, pump.fun and pool costs, plus the share of transactions that fail.
+        </p>
+        <TerminalFillSection />
       </section>
 
       <section className="mb-6">
