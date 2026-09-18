@@ -25,11 +25,28 @@ amounts (SOL or a $1 stable), see `parse.go`:
 | `network_q` | tx fee when the user is the fee payer (0 when the terminal sponsors gas, FOMO) + Jito tips |
 | `other_q` | quote that left the user and reached neither pool, terminal nor network: pump.fun protocol / creator fees, referral payouts, hop costs |
 
-The token leg is valued at an **arrival price**: the effective price of the
-previous trade on the same pool (`getSignaturesForAddress` on the pool's
-token vault, `before` our signature; `ref_src: pool`, `ref_age_s` = how
-many seconds earlier). When no earlier trade is readable within 30 min,
-Jupiter's price API is read right after the sample (`ref_src: jupiter`).
+The token leg is valued at an **arrival price**, in this order:
+
+1. `ref_src: reserves`: the pool's exact mid before the swap, from the
+   pool's pre-trade balances in the transaction, when the route is one
+   constant-product pool. PumpSwap pools migrated from pump.fun carry a
+   virtual quote reserve (about 17.58 SOL, stored at byte 245 of the pool
+   account, read once per pool); x·y = k holds exactly with it and fails
+   without. Raydium v4 / CPMM: vault ratio.
+2. `ref_src: pool`: the effective price of the previous trade on the same
+   pool (`getSignaturesForAddress` on the pool's token vault, `before` our
+   signature; `ref_age_s` = seconds earlier). Used for the pump.fun curve
+   (its stored virtual reserves no longer predict the executed price on
+   2026 curves: real trades fill 20 to 60 % above virtual_sol /
+   virtual_token, so the account cannot be trusted for a mid), Meteora,
+   CLMM and multi-pool routes.
+3. `ref_src: jupiter`: Jupiter's price API right after the sample, when no
+   earlier trade is readable within 30 min.
+
+On PumpSwap with the reserve mid the per-swap loss distribution is tight
+(p10 to p90 roughly 140 to 800 bps, none negative); the previous-trade
+reference carries the previous trader's impact and direction, so it is
+noisier and slightly biased in buy or sell waves.
 
 ```
 buy : loss = 1 − tokens × ref / user_q

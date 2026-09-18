@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -259,4 +260,29 @@ func tokenPrices(ctx context.Context, client *http.Client, mints []string) (map[
 		}
 	}
 	return out, nil
+}
+
+type accountInfo struct {
+	Lamports uint64
+	Data     []byte
+}
+
+func (c *rpcClient) account(ctx context.Context, pubkey string) (*accountInfo, error) {
+	var out struct {
+		Value *struct {
+			Lamports uint64   `json:"lamports"`
+			Data     []string `json:"data"`
+		} `json:"value"`
+	}
+	if err := c.call(ctx, "getAccountInfo", []any{pubkey, map[string]any{"encoding": "base64", "commitment": "confirmed"}}, &out); err != nil {
+		return nil, err
+	}
+	if out.Value == nil || len(out.Value.Data) == 0 {
+		return nil, nil
+	}
+	b, err := base64.StdEncoding.DecodeString(out.Value.Data[0])
+	if err != nil {
+		return nil, err
+	}
+	return &accountInfo{Lamports: out.Value.Lamports, Data: b}, nil
 }
