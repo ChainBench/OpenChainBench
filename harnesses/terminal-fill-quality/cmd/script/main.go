@@ -5,19 +5,20 @@
 // "Trading app" view on /products/<slug>.
 //
 // Method. Every terminal takes its fee through known wallets (the lists
-// DeFiLlama's adapters match on). getSignaturesForAddress on those
-// wallets yields every transaction the terminal routed, failed ones
-// included; a sample of the successful ones is read with getTransaction.
-// A Solana transaction carries the pre/post SOL and token balances of
-// every account it touches, so for each sampled swap we know exactly what
-// the user paid, what the pool received, what the terminal, the network
-// (priority fee + Jito tip) and everyone else took, and what the user got.
-// The received tokens are valued at the pool's own mid price before the
-// swap, read from the pool's vault balances in the same transaction
-// (arrival price), so the figure is what a TCA desk would compute:
-// implementation shortfall, not marketing slippage. See parse.go.
+// DeFiLlama's adapters and Dune's spellbook match on). A WebSocket feed
+// of every transaction mentioning those wallets yields every swap the
+// terminal routed, failed ones included; a random sample of the
+// successful ones is read with getTransaction. A Solana transaction
+// carries the pre/post SOL and token balances of every account it
+// touches, so for each sampled swap we know exactly what the user paid,
+// what the pool received, what the terminal, the network (tx fee +
+// inclusion tips) and everyone else took, and what the user got. The
+// received tokens are valued at the pool's own state before the swap
+// (its reserves, or the previous trade on it), so the figure is what a
+// TCA desk would compute: implementation shortfall, not marketing
+// slippage. See parse.go.
 //
-// Failed transactions are counted from the signature scan: the user paid
+// Failed swap attempts are counted from the feed's logs: the user paid
 // the priority fee for nothing, which no fill metric shows otherwise.
 //
 // Rolling window (WINDOW_HOURS) of samples; state persisted to disk so a
@@ -44,16 +45,16 @@ import (
 
 var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade mid, basis points of the trade (priced samples, rolling window)",
+		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|ci_lo|ci_hi",
 	}, []string{"terminal", "stat"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Median cost component per swap, basis points of the trade",
 	}, []string{"terminal", "component"})
 	gFail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_fail_rate_pct", Help: "Share of the terminal's transactions that failed on-chain, percent (rolling window, every signature seen)",
+		Name: "tfq_fail_rate_pct", Help: "Share of the terminal's swap attempts that failed on-chain, percent (rolling window, every attempt the feed saw)",
 	}, []string{"terminal"})
 	gSamples = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_sample_size", Help: "Samples in the window: seen (signatures), parsed (swaps), priced (with a loss figure)",
+		Name: "tfq_sample_size", Help: "Samples in the window: seen (swap attempts), parsed (swaps), priced (with a loss figure)",
 	}, []string{"terminal", "kind"})
 	gTrade = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_trade_usd", Help: "Sampled trade size in USD",
@@ -65,7 +66,7 @@ var (
 		Name: "tfq_buy_share_pct", Help: "Share of sampled swaps that are buys",
 	}, []string{"terminal"})
 	gSandwich = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_sandwich_pct", Help: "Share of scanned swaps that were sandwiched in their block (front-run and back-run by the same signer on the same pool)",
+		Name: "tfq_sandwich_pct", Help: "Share of screened swaps with a front-run and a back-run by the same signer on the same pool (informative; coverage depends on pool activity)",
 	}, []string{"terminal"})
 	gSandwichProfit = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_sandwich_profit_bps", Help: "Median attacker profit on sandwiched swaps, basis points of the victim's trade",
@@ -74,16 +75,20 @@ var (
 		Name: "tfq_loss_bps_size", Help: "Median loss per swap by trade-size bucket (under25, 25to250, over250 USD)",
 	}, []string{"terminal", "bucket"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_health", Help: "1 when the terminal has enough priced samples and a recent refresh",
+		Name: "tfq_health", Help: "1 when the terminal has at least MIN_PRICED priced samples in the window",
+	}, []string{"terminal"})
+	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
 	}, []string{"terminal"})
 	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
+	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	gSol     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
 	cCalls   = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_calls_total", Help: "RPC calls"})
 	cErrors  = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_errors_total", Help: "RPC errors and rate limits"})
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRefresh, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRanked, gRefresh, gFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -95,10 +100,15 @@ func envInt(k string, def int) int {
 	return def
 }
 
-// sigEvent is one signature seen on a fee wallet: kept for the fail rate.
-type sigEvent struct {
-	Time   int64 `json:"t"`
-	Failed bool  `json:"f"`
+// minuteBucket: the feed's counts for one terminal over one minute (swap
+// attempts seen and failed, by error class; notifications that were not
+// attempts), kept for the fail rate.
+type minuteBucket struct {
+	T      int64          `json:"t"`
+	Seen   int            `json:"seen"`
+	Failed int            `json:"failed"`
+	Other  int            `json:"other"`
+	Errs   map[string]int `json:"errs,omitempty"`
 }
 
 type walletCursor struct {
@@ -109,21 +119,51 @@ type walletCursor struct {
 
 type State struct {
 	Swaps   []Swap                    `json:"swaps"`
-	Events  map[string][]sigEvent     `json:"events"`  // terminal -> signature events
+	Buckets map[string][]minuteBucket `json:"buckets"` // terminal -> per-minute feed counts
 	Rejects map[string]map[string]int `json:"rejects"` // terminal -> reason -> count (window not enforced; informative)
-	Cursors map[string]*walletCursor  `json:"cursors"` // wallet -> cursor
+	Cursors map[string]*walletCursor  `json:"cursors"` // wallet -> cursor (polling fallback)
+}
+
+// record adds a tick's feed counts to the terminal's current minute.
+func (st *State) record(slug string, now int64, seen, failed, other int, errs map[string]int) {
+	if seen == 0 && other == 0 {
+		return
+	}
+	m := now - now%60
+	b := st.Buckets[slug]
+	if len(b) == 0 || b[len(b)-1].T != m {
+		b = append(b, minuteBucket{T: m})
+	}
+	last := &b[len(b)-1]
+	last.Seen += seen
+	last.Failed += failed
+	last.Other += other
+	if len(errs) > 0 {
+		if last.Errs == nil {
+			last.Errs = map[string]int{}
+		}
+		for k, v := range errs {
+			last.Errs[k] += v
+		}
+	}
+	st.Buckets[slug] = b
 }
 
 type TerminalStats struct {
-	Slug        string             `json:"slug"`
-	Name        string             `json:"name"`
-	Kind        string             `json:"kind"`
-	Note        string             `json:"note,omitempty"`
-	Seen        int                `json:"seen"`
-	Failed      int                `json:"failed"`
-	FailRate    *float64           `json:"fail_rate_pct,omitempty"`
-	Parsed      int                `json:"parsed"`
-	Priced      int                `json:"priced"`
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	Note string `json:"note,omitempty"`
+	/** Feed counts over the window: swap attempts, failed ones, top error classes, non-swap notifications. */
+	Seen        int            `json:"seen"`
+	Failed      int            `json:"failed"`
+	FailRate    *float64       `json:"fail_rate_pct,omitempty"`
+	FailReasons map[string]int `json:"fail_reasons,omitempty"`
+	NonSwap     int            `json:"non_swap"`
+	Parsed      int            `json:"parsed"`
+	Priced      int            `json:"priced"`
+	Flagged     int            `json:"flagged"` // priced but out of bounds, excluded
+	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
 	Loss        *Quantiles         `json:"loss_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
 	TradeUSD    *Quantiles         `json:"trade_usd,omitempty"`
@@ -131,41 +171,48 @@ type TerminalStats struct {
 	Venues      map[string]float64 `json:"venue_share_pct"`
 	Quotes      map[string]float64 `json:"quote_share_pct"`
 	Rejects     map[string]int     `json:"rejects,omitempty"`
-	/** Share of priced samples by reference source: reserves (exact mid), pool (previous trade), jupiter. */
+	/** Share of priced samples by reference source: reserves (exact mid), pool (previous trade). */
 	RefPoolPct float64            `json:"ref_pool_pct"`
 	RefSrcPct  map[string]float64 `json:"ref_src_pct"`
-	/** Sandwich scan: swaps whose block was read, how many were sandwiched, attacker profit. */
+	/** Sandwich screen: swaps whose neighbourhood was read, how many were sandwiched, attacker profit. Informative. */
 	Scanned        int        `json:"scanned"`
 	Sandwiched     int        `json:"sandwiched"`
 	SandwichPct    *float64   `json:"sandwich_pct,omitempty"`
 	SandwichProfit *Quantiles `json:"sandwich_profit_bps,omitempty"`
 	/** Loss by trade-size bucket. */
 	BySize map[string]*Quantiles `json:"by_size,omitempty"`
-	/** Largest "other" recipients over the window, for audit: pubkey, count, share of trade in bps (median). */
+	/** Largest "other" recipients over the window, for audit: pubkey, label when known, count, quote received in USD. */
 	OtherTop []OtherRecipient `json:"other_top,omitempty"`
-	Healthy  bool             `json:"healthy"`
+	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
+	Healthy bool `json:"healthy"`
+	Ranked  bool `json:"ranked"`
 }
 
 type OtherRecipient struct {
 	Pubkey string  `json:"pubkey"`
+	Label  string  `json:"label,omitempty"`
 	Count  int     `json:"count"`
 	Quote  float64 `json:"quote_sum"`
 }
 
 type Quantiles struct {
-	Median float64 `json:"median"`
-	Mean   float64 `json:"mean"`
-	P90    float64 `json:"p90"`
-	N      int     `json:"n"`
+	Median float64  `json:"median"`
+	P90    float64  `json:"p90"`
+	N      int      `json:"n"`
+	CILo   *float64 `json:"ci_lo,omitempty"` // 95 % bootstrap interval of the median
+	CIHi   *float64 `json:"ci_hi,omitempty"`
 }
 
 type Public struct {
-	GeneratedAt string          `json:"generated_at"`
-	WindowHours int             `json:"window_hours"`
-	SolUSD      float64         `json:"sol_usd"`
-	Method      string          `json:"method"`
-	Terminals   []TerminalStats `json:"terminals"`
-	Recent      []Swap          `json:"recent"`
+	GeneratedAt   string          `json:"generated_at"`
+	WindowHours   int             `json:"window_hours"`
+	MethodVersion int             `json:"method_version"`
+	MinPriced     int             `json:"min_priced"`
+	MinRank       int             `json:"min_rank"`
+	SolUSD        float64         `json:"sol_usd"`
+	Method        string          `json:"method"`
+	Terminals     []TerminalStats `json:"terminals"`
+	Recent        []Swap          `json:"recent"`
 }
 
 func main() {
@@ -181,7 +228,8 @@ func main() {
 	dailyTarget := envInt("DAILY_TARGET", 300) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
 	windowHours := envInt("WINDOW_HOURS", 24)
-	minPriced := envInt("MIN_PRICED", 20)
+	minPriced := envInt("MIN_PRICED", 50)
+	minRank := envInt("MIN_RANK", 100)
 	useWS := envInt("WS", 1) == 1
 	minTradeUSD = float64(envInt("MIN_TRADE_USD", 2))
 	stateFile := os.Getenv("STATE_FILE")
@@ -190,7 +238,7 @@ func main() {
 	if addr == "" {
 		addr = ":2112"
 	}
-	log.Printf("OpenChainBench #268: terminal fill quality, %d terminals | tick=%s target=%d swaps/terminal/day window=%dh ws=%v", len(terminals), tick, dailyTarget, windowHours, useWS)
+	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d terminals | tick=%s target=%d swaps/terminal/day window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, windowHours, minPriced, minRank, useWS)
 
 	httpc := &http.Client{Timeout: 60 * time.Second}
 	rps := envInt("RPC_RPS", 8)
@@ -199,7 +247,7 @@ func main() {
 	st := loadState(stateFile)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
-	activity := map[string]float64{} // running successful signatures per tick, per terminal
+	activity := map[string]float64{} // running successful attempts per tick, per terminal
 	var fd *feed
 	if useWS {
 		// WS_URL lets the feed run on another endpoint than the reads (the
@@ -235,7 +283,7 @@ func main() {
 			sol = p
 			gSol.Set(p)
 		} else if sol == 0 {
-			log.Printf("[price] pyth: %v (no SOL price yet, sizing skipped this tick)", err)
+			log.Printf("[price] %v (no SOL price yet, sizing skipped this tick)", err)
 		}
 		start := time.Now()
 		if sol == 0 {
@@ -247,12 +295,18 @@ func main() {
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, activity, perTick)
 		cancel()
 		prune(st, windowHours)
-		stats := compute(st, windowHours, minPriced, start)
+		stats := compute(st, minPriced, minRank)
 		publishGauges(stats)
 		gRefresh.Set(float64(time.Now().Unix()))
+		live := fd != nil && fd.healthy()
+		if live {
+			gFeed.Set(1)
+		} else {
+			gFeed.Set(0)
+		}
 		p := &Public{
-			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, SolUSD: sol,
-			Method:    "Sampled swaps read on-chain from each terminal's fee-wallet transactions; loss = 1 − value received at the pool's pre-trade mid / value given, in basis points; components exact from balance deltas.",
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
+			Method:    "Random sample of the swaps each terminal routed (fee-wallet feed), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool) is exact from balance deltas.",
 			Terminals: stats, Recent: recent(st, 400),
 		}
 		mu.Lock()
@@ -268,37 +322,38 @@ func main() {
 				log.Printf("[public] %v", err)
 			}
 		}
-		live := fd != nil && fd.healthy()
-		log.Printf("[tick] %s: %d signatures seen (%s), %d swaps added, %d in window, %s", start.UTC().Format(time.RFC3339), seen, map[bool]string{true: "ws", false: "poll"}[live], added, len(st.Swaps), time.Since(start).Round(100*time.Millisecond))
+		log.Printf("[tick] %s: %d swap attempts seen (%s), %d swaps added, %d in window, %s", start.UTC().Format(time.RFC3339), seen, map[bool]string{true: "ws", false: "poll"}[live], added, len(st.Swaps), time.Since(start).Round(100*time.Millisecond))
 		time.Sleep(time.Until(start.Add(tick)))
 	}
 }
 
 // sample drains the live feed (or, when the feed is down, polls the fee
-// wallets), records every signature for the fail rate, draws the tick's
-// quota of successful ones at random and reads them.
+// wallets), records every swap attempt for the fail rate, draws the
+// tick's quota of successful ones at random and reads them.
 //
 // Quota: DAILY_TARGET swaps per terminal per day, spread over the ticks
-// (fractional carry), so the sample size follows the precision wanted for
-// a median rather than the tick length. The tick's draw is scaled by the
-// tick's activity against the terminal's running average, so the sample
-// is uniform over transactions, not over minutes: a burst (a pump, where
-// fills are worst) is represented in proportion to its trades.
+// (fractional carry, capped at three ticks' worth), so the sample size
+// follows the precision wanted for a median rather than the tick length.
+// The tick's draw is scaled by the tick's activity against the terminal's
+// running average, so the sample is uniform over transactions, not over
+// minutes: a burst (a pump, where fills are worst) is represented in
+// proportion to its trades. Nothing accrues on a tick without activity.
 func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, activity map[string]float64, perTick float64) (added, seen int) {
 	now := time.Now().Unix()
 	live := fd != nil && fd.healthy()
 	for _, t := range terminals {
-		var fresh []sigInfo
 		var ok []sigInfo
+		okCount := 0.0
 		if live {
-			nSeen, nFailed, reservoir := fd.drain(t.Slug)
-			seen += nSeen
-			for i := 0; i < nSeen; i++ {
-				st.Events[t.Slug] = append(st.Events[t.Slug], sigEvent{Time: now, Failed: i < nFailed})
-			}
-			ok = reservoir
+			d := fd.drain(t.Slug)
+			seen += d.seen
+			st.record(t.Slug, now, d.seen, d.failed, d.other, d.errs)
+			ok = d.sample
+			okCount = float64(d.total)
 		} else {
 			// Polling fallback: newest page per wallet since the last cursor.
+			// Without logs every signature counts as an attempt (approximate).
+			var fresh []sigInfo
 			for _, w := range t.scanAddresses() {
 				cur := st.Cursors[w]
 				if cur == nil {
@@ -327,35 +382,33 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				fresh = append(fresh, sigs...)
 			}
 			seen += len(fresh)
+			failed := 0
 			for _, s := range fresh {
-				ts := now
-				if s.BlockTime != nil {
-					ts = *s.BlockTime
-				}
-				st.Events[t.Slug] = append(st.Events[t.Slug], sigEvent{Time: ts, Failed: s.failed()})
-				if !s.failed() {
+				if s.failed() {
+					failed++
+				} else {
 					ok = append(ok, s)
 				}
 			}
-			rand.Shuffle(len(ok), func(i, j int) { ok[i], ok[j] = ok[j], ok[i] })
+			st.record(t.Slug, now, len(fresh), failed, 0, nil)
+			okCount = float64(len(ok))
 		}
-		// Draw this tick's quota at random, weighted by the tick's activity.
-		okCount := float64(len(ok))
-		if live {
-			okCount = float64(fd.lastOK(t.Slug))
+		if okCount == 0 {
+			continue
 		}
 		w := 1.0
-		if a := activity[t.Slug]; a > 0 && okCount > 0 {
+		if a := activity[t.Slug]; a > 0 {
 			w = okCount / a
 		}
-		if okCount > 0 {
-			if activity[t.Slug] == 0 {
-				activity[t.Slug] = okCount
-			} else {
-				activity[t.Slug] = 0.9*activity[t.Slug] + 0.1*okCount
-			}
+		if activity[t.Slug] == 0 {
+			activity[t.Slug] = okCount
+		} else {
+			activity[t.Slug] = 0.9*activity[t.Slug] + 0.1*okCount
 		}
 		quota[t.Slug] += perTick * w
+		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
+			quota[t.Slug] = cap
+		}
 		n := int(quota[t.Slug])
 		if n > len(ok) {
 			n = len(ok)
@@ -392,7 +445,8 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				}
 			}
 			// Pool neighbourhood: previous trade (reference price when the
-			// reserves did not give one) and the sandwich screen.
+			// reserves did not give one, at most 60 s earlier) and the
+			// sandwich screen.
 			if sw.PoolVault != "" {
 				if nb, err := poolNeighbours(ctx, rpc, sw); err == nil {
 					var prevTx *parsedTx
@@ -404,21 +458,21 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 						if i == 0 {
 							prevTx = ptx
 						}
-						if sw.Priced {
-							break // only the immediate neighbour is needed for the screen
+						if sw.RefSrc != "" {
+							break // reference known; only the immediate neighbour is needed for the screen
 						}
-						if p := poolTradePrice(ptx, sw.PoolOwner, sw.Mint, sw.Quote, sw.QuoteUSD, solUSD, sw.Venue == "pump-curve", sw.XMint, sw.XRate); p > 0 {
+						if p := poolTradePrice(ptx, sw, solUSD); p > 0 {
 							age := int64(0)
 							if ps.BlockTime != nil {
 								age = sw.Time - *ps.BlockTime
 							}
-							if age <= 1800 {
+							if age <= refMaxAgeS {
 								sw.finalize(&p, age, "pool")
 							}
 							break
 						}
 					}
-					if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD); ok {
+					if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD, now); ok {
 						sw.Scanned = true
 						sw.Sandwich = sd
 						sw.BlockPoolTxs = len(nb.prev)
@@ -432,12 +486,16 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 	return added, seen
 }
 
+// refMaxAgeS: a previous trade older than this is no arrival price (the
+// pool may have moved for other reasons); the swap stays unpriced.
+const refMaxAgeS = 60
+
 // poolParams are the constants a pool needs for its exact mid: the
-// virtual quote offset (PumpSwap migrated pools, pump.fun curve) and the
-// virtual token offset plus the non-reserve lamports of the curve account.
-// Stored in raw units (SOL, tokens) and converted to the swap's quote
-// unit at use time: the cache is shared by swaps quoted in SOL and in
-// stables on the same pool.
+// virtual quote offset (PumpSwap migrated pools) and, for the pump.fun
+// curve, the virtual token offset plus the non-reserve lamports of the
+// curve account. Stored in raw units (SOL, tokens) and converted to the
+// swap's quote unit at use time: the cache is shared by swaps quoted in
+// SOL and in stables on the same pool. Bounded: cleared past 20k pools.
 type poolParams struct {
 	quoteOffsetSOL float64 // SOL
 	tokenOffset    float64 // tokens
@@ -449,6 +507,8 @@ type poolCache struct {
 	mu sync.Mutex
 	m  map[string]poolParams
 }
+
+const poolCacheMax = 20000
 
 // reservePrice computes the pool's mid price before the swap from the
 // pre-trade balances in the transaction and the pool's stored constants.
@@ -501,6 +561,9 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 				}
 			}
 			pools.mu.Lock()
+			if len(pools.m) >= poolCacheMax {
+				pools.m = map[string]poolParams{}
+			}
 			pools.m[sw.PoolOwner] = p
 			pools.mu.Unlock()
 		}
@@ -527,30 +590,36 @@ func prune(st *State, windowHours int) {
 		}
 	}
 	st.Swaps = kept
-	for k, evs := range st.Events {
-		out := evs[:0]
-		for _, e := range evs {
-			if e.Time >= cut {
-				out = append(out, e)
+	for k, bs := range st.Buckets {
+		out := bs[:0]
+		for _, b := range bs {
+			if b.T >= cut {
+				out = append(out, b)
 			}
 		}
-		st.Events[k] = out
+		st.Buckets[k] = out
 	}
 }
 
-func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalStats {
+func compute(st *State, minPriced, minRank int) []TerminalStats {
 	out := make([]TerminalStats, 0, len(terminals))
 	for _, t := range terminals {
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: st.Rejects[t.Slug]}
-		for _, e := range st.Events[t.Slug] {
-			ts.Seen++
-			if e.Failed {
-				ts.Failed++
+		errs := map[string]int{}
+		for _, b := range st.Buckets[t.Slug] {
+			ts.Seen += b.Seen
+			ts.Failed += b.Failed
+			ts.NonSwap += b.Other
+			for k, v := range b.Errs {
+				errs[k] += v
 			}
 		}
 		if ts.Seen >= 20 {
 			fr := 100 * float64(ts.Failed) / float64(ts.Seen)
 			ts.FailRate = &fr // percent
+		}
+		if len(errs) > 0 {
+			ts.FailReasons = topN(errs, 6)
 		}
 		var loss, pool, term, net, other, trade, sandProfit []float64
 		bySize := map[string][]float64{}
@@ -561,14 +630,8 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		for _, s := range st.Swaps {
-			if s.Terminal != t.Slug {
+			if s.Terminal != t.Slug || s.Method != methodVersion {
 				continue
-			}
-			if s.RefSrc == "pool" {
-				refPool++
-			}
-			if s.RefSrc != "" && s.RefSrc != "jupiter" {
-				refSrc[s.RefSrc]++
 			}
 			if s.Scanned {
 				ts.Scanned++
@@ -584,6 +647,9 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 				r := otherAgg[k]
 				if r == nil {
 					r = &OtherRecipient{Pubkey: k}
+					if pumpFeeRecipients[k] {
+						r.Label = "pump.fun protocol fee"
+					}
 					otherAgg[k] = r
 				}
 				r.Count++
@@ -603,8 +669,15 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			}
 			venues[s.Venue]++
 			quotes[s.Quote]++
-			if s.Priced && s.LossBps != nil && s.RefSrc != "jupiter" {
+			if s.Flag != "" {
+				ts.Flagged++
+			}
+			if s.Priced && s.LossBps != nil {
 				ts.Priced++
+				if s.RefSrc == "pool" {
+					refPool++
+				}
+				refSrc[s.RefSrc]++
 				loss = append(loss, *s.LossBps)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
 				if s.PoolBps != nil {
@@ -627,10 +700,10 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			}
 		}
 		if len(trade) > 0 {
-			ts.TradeUSD = quantiles(trade)
+			ts.TradeUSD = quantiles(trade, false)
 		}
 		if ts.Priced > 0 {
-			ts.Loss = quantiles(loss)
+			ts.Loss = quantiles(loss, true)
 			if len(pool) > 0 {
 				ts.Components["pool"] = median(pool)
 			}
@@ -642,7 +715,7 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			ts.BySize = map[string]*Quantiles{}
 			for b, v := range bySize {
 				if len(v) >= 5 {
-					ts.BySize[b] = quantiles(v)
+					ts.BySize[b] = quantiles(v, false)
 				}
 			}
 		}
@@ -651,7 +724,7 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			ts.SandwichPct = &p
 		}
 		if len(sandProfit) > 0 {
-			ts.SandwichProfit = quantiles(sandProfit)
+			ts.SandwichProfit = quantiles(sandProfit, false)
 		}
 		top := make([]OtherRecipient, 0, len(otherAgg))
 		for _, r := range otherAgg {
@@ -663,18 +736,50 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 		}
 		ts.OtherTop = top
 		ts.Healthy = ts.Priced >= minPriced
+		ts.Ranked = ts.Priced >= minRank
 		out = append(out, ts)
 	}
+	// Ranked terminals first by median, then published-but-not-ranked by
+	// median, then the rest by sample size.
+	tier := func(ts TerminalStats) int {
+		switch {
+		case ts.Ranked && ts.Loss != nil:
+			return 0
+		case ts.Healthy && ts.Loss != nil:
+			return 1
+		}
+		return 2
+	}
 	sort.SliceStable(out, func(i, j int) bool {
-		li, lj := math.Inf(1), math.Inf(1)
-		if out[i].Loss != nil {
-			li = out[i].Loss.Median
+		ti, tj := tier(out[i]), tier(out[j])
+		if ti != tj {
+			return ti < tj
 		}
-		if out[j].Loss != nil {
-			lj = out[j].Loss.Median
+		if ti == 2 {
+			return out[i].Priced > out[j].Priced
 		}
-		return li < lj
+		return out[i].Loss.Median < out[j].Loss.Median
 	})
+	return out
+}
+
+func topN(m map[string]int, n int) map[string]int {
+	type kv struct {
+		k string
+		v int
+	}
+	all := make([]kv, 0, len(m))
+	for k, v := range m {
+		all = append(all, kv{k, v})
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].v > all[j].v })
+	out := map[string]int{}
+	for i, e := range all {
+		if i >= n {
+			break
+		}
+		out[e.k] = e.v
+	}
 	return out
 }
 
@@ -682,8 +787,11 @@ func publishGauges(stats []TerminalStats) {
 	for _, ts := range stats {
 		if ts.Loss != nil && ts.Healthy {
 			gLoss.WithLabelValues(ts.Slug, "median").Set(ts.Loss.Median)
-			gLoss.WithLabelValues(ts.Slug, "mean").Set(ts.Loss.Mean)
 			gLoss.WithLabelValues(ts.Slug, "p90").Set(ts.Loss.P90)
+			if ts.Loss.CILo != nil && ts.Loss.CIHi != nil {
+				gLoss.WithLabelValues(ts.Slug, "ci_lo").Set(*ts.Loss.CILo)
+				gLoss.WithLabelValues(ts.Slug, "ci_hi").Set(*ts.Loss.CIHi)
+			}
 		} else {
 			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
 		}
@@ -700,7 +808,7 @@ func publishGauges(stats []TerminalStats) {
 		gSamples.WithLabelValues(ts.Slug, "priced").Set(float64(ts.Priced))
 		if ts.TradeUSD != nil {
 			gTrade.WithLabelValues(ts.Slug, "median").Set(ts.TradeUSD.Median)
-			gTrade.WithLabelValues(ts.Slug, "mean").Set(ts.TradeUSD.Mean)
+			gTrade.WithLabelValues(ts.Slug, "p90").Set(ts.TradeUSD.P90)
 		}
 		gVenue.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
 		for v, p := range ts.Venues {
@@ -721,12 +829,16 @@ func publishGauges(stats []TerminalStats) {
 		for b, q := range ts.BySize {
 			gLossSize.WithLabelValues(ts.Slug, b).Set(q.Median)
 		}
-		h := 0.0
-		if ts.Healthy {
-			h = 1
-		}
-		gHealth.WithLabelValues(ts.Slug).Set(h)
+		gHealth.WithLabelValues(ts.Slug).Set(b2f(ts.Healthy))
+		gRanked.WithLabelValues(ts.Slug).Set(b2f(ts.Ranked))
 	}
+}
+
+func b2f(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func sizeBucket(usd float64) string {
@@ -746,17 +858,32 @@ func recent(st *State, n int) []Swap {
 	return append([]Swap(nil), st.Swaps[len(st.Swaps)-n:]...)
 }
 
-func quantiles(v []float64) *Quantiles {
+// quantiles: median and p90; with ci, the 95 % bootstrap interval of the
+// median (300 resamples), so a difference between two terminals can be
+// read against the sampling noise.
+func quantiles(v []float64, ci bool) *Quantiles {
 	if len(v) == 0 {
 		return nil
 	}
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
-	sum := 0.0
-	for _, x := range s {
-		sum += x
+	q := &Quantiles{Median: pct(s, 0.5), P90: pct(s, 0.9), N: len(s)}
+	if ci && len(s) >= 5 {
+		const rounds = 300
+		meds := make([]float64, rounds)
+		tmp := make([]float64, len(s))
+		for r := range meds {
+			for i := range tmp {
+				tmp[i] = s[rand.Intn(len(s))]
+			}
+			sort.Float64s(tmp)
+			meds[r] = pct(tmp, 0.5)
+		}
+		sort.Float64s(meds)
+		lo, hi := pct(meds, 0.025), pct(meds, 0.975)
+		q.CILo, q.CIHi = &lo, &hi
 	}
-	return &Quantiles{Median: pct(s, 0.5), Mean: sum / float64(len(s)), P90: pct(s, 0.9), N: len(s)}
+	return q
 }
 
 func median(v []float64) float64 {
@@ -780,7 +907,10 @@ func pct(s []float64, p float64) float64 {
 }
 
 func loadState(path string) *State {
-	st := &State{Events: map[string][]sigEvent{}, Rejects: map[string]map[string]int{}, Cursors: map[string]*walletCursor{}}
+	empty := func() *State {
+		return &State{Buckets: map[string][]minuteBucket{}, Rejects: map[string]map[string]int{}, Cursors: map[string]*walletCursor{}}
+	}
+	st := empty()
 	if path == "" {
 		return st
 	}
@@ -790,10 +920,10 @@ func loadState(path string) *State {
 	}
 	if err := json.Unmarshal(b, st); err != nil {
 		log.Printf("[state] %s unreadable, starting empty: %v", path, err)
-		return &State{Events: map[string][]sigEvent{}, Rejects: map[string]map[string]int{}, Cursors: map[string]*walletCursor{}}
+		return empty()
 	}
-	if st.Events == nil {
-		st.Events = map[string][]sigEvent{}
+	if st.Buckets == nil {
+		st.Buckets = map[string][]minuteBucket{}
 	}
 	if st.Rejects == nil {
 		st.Rejects = map[string]map[string]int{}
@@ -801,20 +931,19 @@ func loadState(path string) *State {
 	if st.Cursors == nil {
 		st.Cursors = map[string]*walletCursor{}
 	}
-	// A reserve-based reference cannot yield a loss below about −1 %:
-	// such rows come from a bug (a pool cache once stored converted
-	// units); drop them rather than let them sit in the window.
+	// Rows of another method version never enter the statistics; drop
+	// them so the window holds one method only.
 	kept := st.Swaps[:0]
 	dropped := 0
 	for _, s := range st.Swaps {
-		if s.RefSrc == "reserves" && s.LossBps != nil && *s.LossBps < -300 {
+		if s.Method != methodVersion {
 			dropped++
 			continue
 		}
 		kept = append(kept, s)
 	}
 	st.Swaps = kept
-	log.Printf("[state] loaded %d swaps from %s (%d dropped as implausible)", len(st.Swaps), path, dropped)
+	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped)", len(st.Swaps), path, dropped)
 	return st
 }
 

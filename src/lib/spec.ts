@@ -407,7 +407,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v67: add bench 267 trading-app-daily-volume. Bench SET grew.
   // v69: keyed RPC cohort back (237-242 restored, 269 HyperEVM, 270 Arc) and
   // 243 Robinhood opened to 3 regions. Bench SET grew.
-  ["bench-unfiltered-v69", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v70: bench 268 method v3: unit bp, Sandwiched panel and ledger column
+  // removed, BullX and Nova out of the cohort; cached v69 entries keep the
+  // old panels and providers.
+  ["bench-unfiltered-v70", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
