@@ -44,13 +44,24 @@ var terminals = []Terminal{
 		Wallets:  []string{"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX"},
 		Internal: []string{"AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51"},
 		Note:     "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Fees are taken in USDC. Cross-chain trades routed through Relay are not swaps on Solana and are not sampled."},
-	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"8umVV7k9HoVm4yy5DiRtKSH5qbKtw8xWDARGX8QiLfLe"},
-		Programs: []string{"CuodpYRDz4k87K6ZUFxk7X8JkVv5dNVZAcTQX2TEzTef"},
-		Note:     "Swaps go through BasedBot's own program; fees are taken in USD1 and converted to the trade's quote unit at $1."},
+	// BasedBot: DeFiLlama's "basedbid" adapter (wallet 8umVV7…, program
+	// CuodpY…) is a launchpad / bid mechanism that takes half the tokens,
+	// not the 1 % trading bot, so it was removed. The bot's Solana fee
+	// wallet is not published anywhere we could read (Dune's spellbook has
+	// no BasedBot model, Mobula does not attribute it); add it here when
+	// known.
+	// BONKbot, Banana Gun and Nova: fee receivers from Dune's spellbook
+	// (dex_solana.bot_trades platform models).
+	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
+	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{
+		"8r2hZoDfk5hDWJ1sDujAi2Qr45ZyZw5EQxAXiMZWLKh2", "Cj297UauzMX64FU9dKJZRUBWszJ7tEWpVheasq4CfATV", "HKMh8nV3ysSofRi23LsfVGLGQKB415QAEfZT96kCcVj4",
+	}},
+	{Slug: "nova", Name: "Nova", Kind: "bot", Wallets: []string{"noVaE91mUL5jTb8e9Vf6dqJdNPzJpEQ3uAdnQ8h4nVz"}},
 	{Slug: "photon", Name: "Photon", Kind: "app", Wallets: []string{"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH"}},
 	{Slug: "trojan", Name: "Trojan", Kind: "bot", Wallets: []string{
 		"92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH", "2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ", "65gDv7pZQCZELsNpNYSFEBtNFpWZAbxmRFB6BGMqFkHH",
 		"BWgb8wR1FEGiu1jCDSKuHKf752W27b4iN6SvoNCiK4qp", "8jgg7moFJkHyTtAv9M6RBSPMp2oXeXhuiUMKW8YbYCWn", "9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco",
+		"BBYXdwhqbCxVRVtnuMTTxh8biNisz3ZxsnHfr44jXytR", // Dune spellbook fee_receiver_1
 	}},
 	{Slug: "bullx", Name: "BullX", Kind: "app", Wallets: []string{"9RYJ3qr5eU5xAooqVcbmdeusjcViL5Nkiq7Gske3tiKq", "F4hJ3Ee3c5UuaorKAMfELBjYCjiiLH75haZTKqTywRP3"}},
 	{Slug: "bloom", Name: "Bloom", Kind: "bot", Wallets: []string{"7HeD6sLLqAnKVRuSfc1Ko3BSPMNKWgGTiWLKXJF31vKM"}},

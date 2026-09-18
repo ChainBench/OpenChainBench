@@ -105,10 +105,12 @@ every venue.
 ## Cohort
 
 Axiom (20 wallets), GMGN (9), FOMO (fee wallet + gas sponsor excluded as
-user), Photon, Trojan (6), BullX (2), Bloom, Maestro (2), Pepeboost,
-BasedBot (own program scanned; its swaps do not expose a signer token leg
-yet, so it stays unhealthy). BONKbot and Banana Gun have no public fee
-wallet (Dune spellbook / router program only).
+user), Photon, Trojan (7), BullX (2), Bloom, Maestro (2), Pepeboost,
+BONKbot, Banana Gun (3), Nova. Wallet lists come from DeFiLlama's adapters
+and Dune's spellbook (`dex_solana.bot_trades` platform models). BasedBot is
+not in: DeFiLlama's `basedbid` addresses belong to a launchpad / bid
+mechanism, and the trading bot's Solana fee wallet is not published
+anywhere readable.
 
 ## Outputs
 
