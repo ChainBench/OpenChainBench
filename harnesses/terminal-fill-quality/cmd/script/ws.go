@@ -28,6 +28,7 @@ type feed struct {
 	subs map[int64]string // subscription id -> terminal slug
 	reqs map[int64]string // request id -> terminal slug (until confirmed)
 	box  map[string]*inbox
+	ok   map[string]int // successful signatures of the last drained tick
 	up   bool
 	last time.Time
 }
@@ -193,7 +194,8 @@ func (f *feed) handle(data []byte) {
 	}
 }
 
-// drain returns and resets a terminal's inbox.
+// drain returns and resets a terminal's inbox; the successful count of
+// the drained tick stays readable through lastOK.
 func (f *feed) drain(slug string) (seen, failed int, sample []sigInfo) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -203,7 +205,18 @@ func (f *feed) drain(slug string) (seen, failed int, sample []sigInfo) {
 	}
 	seen, failed, sample = b.seen, b.failed, b.reservoir
 	f.box[slug] = &inbox{}
+	if f.ok == nil {
+		f.ok = map[string]int{}
+	}
+	f.ok[slug] = b.total
 	return
+}
+
+// lastOK: successful signatures of the last drained tick for a terminal.
+func (f *feed) lastOK(slug string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ok[slug]
 }
 
 // healthy: connected and something heard in the last two minutes.

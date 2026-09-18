@@ -199,6 +199,7 @@ func main() {
 	st := loadState(stateFile)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
+	activity := map[string]float64{} // running successful signatures per tick, per terminal
 	var fd *feed
 	if useWS {
 		// WS_URL lets the feed run on another endpoint than the reads (the
@@ -243,7 +244,7 @@ func main() {
 			time.Sleep(30 * time.Second)
 			continue
 		}
-		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, perTick)
+		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, activity, perTick)
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, windowHours, minPriced, start)
@@ -279,8 +280,11 @@ func main() {
 //
 // Quota: DAILY_TARGET swaps per terminal per day, spread over the ticks
 // (fractional carry), so the sample size follows the precision wanted for
-// a median rather than the tick length.
-func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota map[string]float64, perTick float64) (added, seen int) {
+// a median rather than the tick length. The tick's draw is scaled by the
+// tick's activity against the terminal's running average, so the sample
+// is uniform over transactions, not over minutes: a burst (a pump, where
+// fills are worst) is represented in proportion to its trades.
+func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, activity map[string]float64, perTick float64) (added, seen int) {
 	now := time.Now().Unix()
 	live := fd != nil && fd.healthy()
 	for _, t := range terminals {
@@ -335,8 +339,23 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 			}
 			rand.Shuffle(len(ok), func(i, j int) { ok[i], ok[j] = ok[j], ok[i] })
 		}
-		// Draw this tick's quota at random.
-		quota[t.Slug] += perTick
+		// Draw this tick's quota at random, weighted by the tick's activity.
+		okCount := float64(len(ok))
+		if live {
+			okCount = float64(fd.lastOK(t.Slug))
+		}
+		w := 1.0
+		if a := activity[t.Slug]; a > 0 && okCount > 0 {
+			w = okCount / a
+		}
+		if okCount > 0 {
+			if activity[t.Slug] == 0 {
+				activity[t.Slug] = okCount
+			} else {
+				activity[t.Slug] = 0.9*activity[t.Slug] + 0.1*okCount
+			}
+		}
+		quota[t.Slug] += perTick * w
 		n := int(quota[t.Slug])
 		if n > len(ok) {
 			n = len(ok)
