@@ -93,8 +93,12 @@ const (
 	rejectTokenSwap  parseReject = "token_token" // neither side is SOL or a stable
 	rejectNoPool     parseReject = "no_pool"     // could not identify the counterparty
 	rejectDegenerate parseReject = "degenerate"  // zero or negative amounts
-	rejectDust       parseReject = "dust"        // under $1, basis points are noise
+	rejectDust       parseReject = "dust"        // under MIN_TRADE_USD, basis points are noise
 )
+
+// minTradeUSD: swaps below it are not measured (fixed fees dwarf the
+// trade and a few cents of price move read as thousands of bps).
+var minTradeUSD = 2.0
 
 // parseSwap reduces a jsonParsed transaction to a Swap (unpriced).
 func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, parseReject) {
@@ -442,7 +446,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		return nil, rejectDegenerate
 	}
 	s.finalize(nil, 0, "")
-	if s.TradeUSD < 1 {
+	if s.TradeUSD < minTradeUSD {
 		return nil, rejectDust
 	}
 	return s, ""
