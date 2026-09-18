@@ -35,7 +35,8 @@ type feed struct {
 type inbox struct {
 	seen, failed int
 	reservoir    []sigInfo
-	total        int // successful seen this tick, for reservoir sampling
+	total        int             // successful seen this tick, for reservoir sampling
+	sigs         map[string]bool // signatures already counted this tick (a tx can mention two subscribed addresses)
 }
 
 const reservoirSize = 32
@@ -106,7 +107,11 @@ func (f *feed) session(ctx context.Context) error {
 	f.mu.Unlock()
 	log.Printf("[ws] connected, %d subscriptions requested", id)
 	for {
-		_, data, err := c.Read(ctx)
+		// A live cohort produces hundreds of notifications a minute; two
+		// silent minutes mean a dead connection, so reconnect.
+		rctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		_, data, err := c.Read(rctx)
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -163,6 +168,13 @@ func (f *feed) handle(data []byte) {
 	if b == nil {
 		return
 	}
+	if b.sigs == nil {
+		b.sigs = map[string]bool{}
+	}
+	if b.sigs[m.Params.Result.Value.Signature] {
+		return
+	}
+	b.sigs[m.Params.Result.Value.Signature] = true
 	s := sigInfo{Signature: m.Params.Result.Value.Signature, Slot: m.Params.Result.Context.Slot, Err: m.Params.Result.Value.Err}
 	now := time.Now().Unix()
 	s.BlockTime = &now

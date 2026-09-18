@@ -183,6 +183,7 @@ func main() {
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 20)
 	useWS := envInt("WS", 1) == 1
+	minTradeUSD = float64(envInt("MIN_TRADE_USD", 2))
 	stateFile := os.Getenv("STATE_FILE")
 	publicFile := os.Getenv("HISTORY_FILE_PUBLIC")
 	addr := os.Getenv("METRICS_ADDR")
@@ -415,11 +416,14 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 // poolParams are the constants a pool needs for its exact mid: the
 // virtual quote offset (PumpSwap migrated pools, pump.fun curve) and the
 // virtual token offset plus the non-reserve lamports of the curve account.
+// Stored in raw units (SOL, tokens) and converted to the swap's quote
+// unit at use time: the cache is shared by swaps quoted in SOL and in
+// stables on the same pool.
 type poolParams struct {
-	quoteOffset        float64 // quote units
-	tokenOffset        float64 // tokens
-	lamportsNonReserve float64 // SOL held on the curve account that is not real_sol (rent)
-	ok                 bool
+	quoteOffsetSOL float64 // SOL
+	tokenOffset    float64 // tokens
+	nonReserveSOL  float64 // SOL held on the curve account that is not real_sol (rent)
+	ok             bool
 }
 
 type poolCache struct {
@@ -459,7 +463,7 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 			switch sw.Venue {
 			case "pumpswap":
 				if len(d) >= pumpSwapQuoteOffsetAt+8 {
-					p = poolParams{quoteOffset: toQuote(float64(binary.LittleEndian.Uint64(d[pumpSwapQuoteOffsetAt:])) / 1e9), ok: true}
+					p = poolParams{quoteOffsetSOL: float64(binary.LittleEndian.Uint64(d[pumpSwapQuoteOffsetAt:])) / 1e9, ok: true}
 				}
 			case "pump-curve":
 				if len(d) >= pumpCurveFieldsAt+40 {
@@ -469,10 +473,10 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 					rSol := float64(binary.LittleEndian.Uint64(d[pumpCurveFieldsAt+24:]))
 					if vTok > rTok && vSol > rSol && float64(acc.Lamports) >= rSol {
 						p = poolParams{
-							quoteOffset:        toQuote((vSol - rSol) / 1e9),
-							tokenOffset:        (vTok - rTok) / 1e6, // pump.fun mints have 6 decimals
-							lamportsNonReserve: toQuote((float64(acc.Lamports) - rSol) / 1e9),
-							ok:                 true,
+							quoteOffsetSOL: (vSol - rSol) / 1e9,
+							tokenOffset:    (vTok - rTok) / 1e6, // pump.fun mints have 6 decimals
+							nonReserveSOL:  (float64(acc.Lamports) - rSol) / 1e9,
+							ok:             true,
 						}
 					}
 				}
@@ -487,7 +491,7 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 	if !p.ok {
 		return 0, false
 	}
-	q := sw.PoolQuotePre - p.lamportsNonReserve + p.quoteOffset
+	q := sw.PoolQuotePre - toQuote(p.nonReserveSOL) + toQuote(p.quoteOffsetSOL)
 	b := sw.PoolBasePre + p.tokenOffset
 	if q <= 0 || b <= 0 {
 		return 0, false
@@ -544,7 +548,7 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			if s.RefSrc == "pool" {
 				refPool++
 			}
-			if s.RefSrc != "" {
+			if s.RefSrc != "" && s.RefSrc != "jupiter" {
 				refSrc[s.RefSrc]++
 			}
 			if s.Scanned {
@@ -778,7 +782,20 @@ func loadState(path string) *State {
 	if st.Cursors == nil {
 		st.Cursors = map[string]*walletCursor{}
 	}
-	log.Printf("[state] loaded %d swaps from %s", len(st.Swaps), path)
+	// A reserve-based reference cannot yield a loss below about −1 %:
+	// such rows come from a bug (a pool cache once stored converted
+	// units); drop them rather than let them sit in the window.
+	kept := st.Swaps[:0]
+	dropped := 0
+	for _, s := range st.Swaps {
+		if s.RefSrc == "reserves" && s.LossBps != nil && *s.LossBps < -300 {
+			dropped++
+			continue
+		}
+		kept = append(kept, s)
+	}
+	st.Swaps = kept
+	log.Printf("[state] loaded %d swaps from %s (%d dropped as implausible)", len(st.Swaps), path, dropped)
 	return st
 }
 
