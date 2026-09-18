@@ -914,10 +914,12 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	if !s.Priced {
 		sw.finalize(nil, 0, "")
 		sw.Flag = "unpriced_" + s.Unpriced
+		log.Printf("[evm] %s %s %s unpriced: %s", t.Slug, sw.Side, x.InTx+"/"+x.OutTx, s.Unpriced)
 		return sw
 	}
 	ref := s.MidUSD / q
 	sw.finalize(&ref, 0, s.RefSrc)
+	implausibleSplit(sw)
 	return sw
 }
 
@@ -971,6 +973,7 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 	if !s.Priced {
 		sw.finalize(nil, 0, "")
 		sw.Flag = "unpriced_" + s.Unpriced
+		log.Printf("[evm] %s %s %s unpriced: %s", t.Slug, sw.Side, x.InTx+"/"+x.OutTx, s.Unpriced)
 		if s.Unpriced == "" {
 			sw.Flag = ""
 		}
@@ -981,7 +984,17 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 	if x.InIsToken {
 		sw.Flag, sw.Priced = "origin_token", false
 	}
+	implausibleSplit(sw)
 	return sw
+}
+
+// implausibleSplit keeps a row out of the statistics when its split
+// cannot be right (a hop or quote matched to the wrong leg): a pool
+// component below −10 % or a Relay component above 30 % of the trade.
+func implausibleSplit(sw *Swap) {
+	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000) {
+		sw.Flag, sw.Priced = "split_implausible", false
+	}
 }
 
 func compute(st *State, minPriced, minRank int) []TerminalStats {

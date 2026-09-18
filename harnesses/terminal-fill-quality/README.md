@@ -187,7 +187,14 @@ Solana) sit in the same per-chain row as sells: tokens sold at the origin
 pool's state before the sale versus what reached the user, relay = quote
 the pool paid out − app fee − received. Uniswap v4's Swap event carries
 the swapper's deltas (positive = received), v3's the pool's (positive =
-paid in); both are normalised in `parseSwapEv`. Public RPCs:
+paid in); both are normalised in `parseSwapEv`. A hop matches the quote
+it paid out when the amounts are equal, within 5 % (a router skimming
+between hops), or equal to the quotes of every token pool together (a hop
+split across pools); a v4 manager's ERC20 flows are aggregates, so a
+priced token covering the quote counts. Not decoded yet (rows stay
+unpriced with the reason in `rejects`): four.meme's bonding curve on BNB
+(`TokenPurchase` / `TokenSale` events, ~10 % of BNB rows) and a few
+one-off routers on Base. Public RPCs:
 Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
 publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
 `rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
