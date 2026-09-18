@@ -1,0 +1,279 @@
+# OpenChainBench. Bench 268
+
+slug: terminal-fill-quality
+number: "268"
+title: "Trading terminal fill quality 2026: what a swap costs on Axiom, GMGN, FOMO, Photon, Trojan, measured on-chain"
+seo_title: "Trading terminal fill quality 2026: Axiom vs GMGN vs FOMO vs Photon vs Trojan, cost per swap on-chain"
+seo_description: "{{best_name}} fills cheapest at a median {{best_p50}} lost per swap against the pool's arrival price. Real Solana swaps read on-chain for {{count}} trading terminals and Telegram bots: terminal fee, priority and Jito tips, pump.fun and pool costs, failed transactions."
+subtitle: Value lost per swap on each Solana trading terminal or Telegram bot, from real user transactions read on-chain and valued at the pool's arrival price. Split into what the terminal takes, what the network takes, what pump.fun and the pool take, plus the share of transactions that fail. Rolling 24 hours, refreshed every 90 seconds.
+
+category: Trading
+status: live
+metric: Cost per swap
+unit: bps
+higher_is_better: false
+
+disclaimer: |
+  Sampled from the transactions that pay each terminal's fee wallets (the same lists DeFiLlama attributes volume with), newest first, a few per terminal every 90 seconds. The reference price is the previous trade on the same pool (or Jupiter's price when none is readable), so the trade's own impact is inside the figure but sandwiches landing earlier in the same slot are not. Per-swap figures are noisy; medians over hundreds of swaps are what to compare.
+
+seo_intro: |
+  Every trading terminal advertises a fee. What a swap actually costs is the
+  fee plus the priority fee and Jito tip the app attaches, plus what pump.fun
+  or the pool keep on the way, plus the price move between the moment the
+  user clicked and the moment the swap landed, plus the transactions that fail
+  and still burn the priority fee. None of that is in the fee schedule, all of
+  it is in the transaction. This benchmark reads real user swaps on Solana for
+  Axiom, GMGN, FOMO, Photon, Trojan, BullX, Bloom, Maestro and Pepeboost, values
+  the tokens received at the pool's arrival price (the previous trade on the
+  same pool, seconds earlier) and publishes the median shortfall in basis
+  points with its split: terminal, network, pool, other. A terminal fee of 1 %
+  is 100 bps; the median swap on most terminals loses three to five times that.
+
+abstract: |
+  Each terminal takes its fee through known wallets. getSignaturesForAddress on
+  those wallets returns every transaction the terminal routed, failed ones
+  included; the harness counts them all (fail rate) and reads the newest
+  successful ones with getTransaction, four per terminal every 90 seconds. From
+  the pre/post balances of every account in the transaction it derives, in quote
+  units (SOL or a $1 stable), what left the user, what the pool received, what
+  reached the terminal's fee wallets, the tx fee and Jito tips, and the rest
+  (pump.fun protocol and creator fees, referral payouts). The token leg is valued
+  at the effective price of the previous trade on the same pool, read from that
+  pool's own transaction just before ours (ref_age_s records the gap; median
+  under a second on active pools); when no earlier trade is readable within 30
+  minutes, Jupiter's price API is used and the sample is flagged. Loss = 1 −
+  value received / value given, in basis points of the trade; the split is exact
+  and independent of the reference. Rolling 24 hour window, medians, p90, trade
+  size and venue mix per terminal; a terminal is published from 20 priced swaps.
+
+methodology:
+  - "Sampling: newest successful transactions on each terminal's fee wallets (Axiom 20, GMGN 9, Trojan 6, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost 1; BasedBot via its own program), 4 per terminal per 90 s tick, rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
+  - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, rent for new token accounts and the tx fee excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets."
+  - "network_q = tx fee if the user paid it + Jito tips; other_q = user_q, minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts, hop costs), only when the pool leg is visible."
+  - "Reference price: effective price of the previous trade on the same pool (|Δquote| / |Δtoken| over the pool's own accounts in the preceding transaction on the pool's token vault); Jupiter price API right after the sample when none is readable within 30 minutes (ref_src flags each sample)."
+  - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = the part the pool kept versus that reference (LP fee + price impact). Median over priced samples; p90 shown."
+  - "Fail rate: failed signatures over all signatures seen on the terminal's wallets in the window. A failed swap still costs the priority fee."
+  - "Why not the vault ratio as the mid: PumpSwap's vault balances do not follow x·y = k against the executed price (8 to 50 % off, not constant), so the previous print is the only pre-trade reference that holds on every venue."
+  - "Not measured: sandwiches (the front-run is in the same slot before our transaction and already in the arrival price; needs block-level analysis), cross-chain trades (FOMO via Relay), perps."
+  - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; fees are taken in USDC. BullX's DeFiLlama fee wallets see almost no fee on sampled swaps; its terminal figure is a floor. BasedBot's swaps do not expose a signer token leg, so it stays unpublished."
+  - "Dust: swaps under $1 are dropped (basis points of nothing are noise)."
+
+findings:
+  - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's arrival price, all costs included."
+  - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 200 bps on curve and PumpSwap trades whichever terminal routes them."
+  - "Network cost separates the Telegram bots: Trojan attaches Jito tips worth tens of basis points on a median swap, Axiom and GMGN a few."
+  - "Failed transactions are a hidden cost: on the busiest terminals several percent of routed transactions fail on-chain and still pay the priority fee."
+
+faq:
+  - q: "What is the reference price and why does it matter?"
+    a: "The token side of a swap has no price of its own; it has to be valued at something. This bench values it at the effective price of the previous trade on the same pool, read from the pool's own transaction just before the user's, usually under a second earlier on active pools. That is the arrival price a TCA desk would use: what the market was when the order arrived. Valuing at the price after the swap would hide the trade's own impact; valuing at the pool's vault ratio is wrong on PumpSwap. When no earlier trade is readable within 30 minutes, Jupiter's price is used and the sample is flagged."
+  - q: "Why is the loss much larger than the terminal's 1 % fee?"
+    a: "Because the fee is one of five costs. On a pump.fun curve or PumpSwap trade the protocol and creator fees add roughly 1 to 2 %, the pool keeps its LP fee and the price impact of the trade, the app attaches a priority fee and often a Jito tip, and the pool's price may already have moved between the arrival trade and ours. The split is published per terminal so the terminal-attributable part is visible on its own."
+  - q: "Is this comparable across terminals?"
+    a: "The explicit components (terminal, network) are exact and terminal-attributable. The pool component depends on what users trade and how much, which differs per app (Photon's median swap is small, FOMO's is hundreds of dollars), so read the total loss together with the trade size column. Medians over hundreds of swaps are stable; single swaps are not."
+  - q: "Why no MEV / sandwich figure?"
+    a: "A sandwich front-run lands in the same slot before the user's transaction, so it is already priced into the arrival trade this bench uses as reference; the shortfall shows up as pool cost, not as a separate line. Isolating it needs every transaction of the block around the sample, which is the next phase."
+  - q: "How is a swap attributed to a terminal?"
+    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. FOMO's gas sponsor signs every transaction and is excluded as user."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
+
+prometheus:
+  window: 24h
+  freshness_metric: tfq_health
+  expected_freshness_seconds: 900
+
+panel_main_description: "Median value lost per swap against the pool's arrival price, all costs included, basis points of the trade. Rolling 24 h of sampled user swaps."
+
+metric_panels:
+  - id: terminal_fee
+    label: Terminal fee
+    label_key: terminal
+    metric: tfq_component_bps{component="terminal"}
+    unit: bps
+    higher_is_better: false
+    description: "Median share of the trade that reached the terminal's fee wallets."
+  - id: network
+    label: Network
+    label_key: terminal
+    metric: tfq_component_bps{component="network"}
+    unit: bps
+    higher_is_better: false
+    description: "Median transaction fee paid by the user plus Jito tips, share of the trade. Zero when the terminal sponsors gas."
+  - id: pool
+    label: Pool
+    label_key: terminal
+    metric: tfq_component_bps{component="pool"}
+    unit: bps
+    higher_is_better: false
+    description: "Median part the pool kept versus the arrival price: LP fee plus price impact."
+  - id: other
+    label: Other fees
+    label_key: terminal
+    metric: tfq_component_bps{component="other"}
+    unit: bps
+    higher_is_better: false
+    tab: false
+    description: "Median quote that reached neither pool, terminal nor network: pump.fun protocol and creator fees, referral payouts, hop costs."
+  - id: fail_rate
+    label: Failed tx
+    label_key: terminal
+    metric: tfq_fail_rate_pct
+    unit: pct
+    higher_is_better: false
+    description: "Share of the terminal's transactions that failed on-chain in the window; the priority fee is paid anyway."
+  - id: trade_usd
+    label: Median trade
+    label_key: terminal
+    metric: tfq_trade_usd{stat="median"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Median sampled trade size in USD."
+  - id: priced
+    label: Swaps sampled
+    label_key: terminal
+    metric: tfq_sample_size{kind="priced"}
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Priced swaps in the rolling window."
+
+ledger_columns:
+  - { label: "Cost per swap", slot: p50 }
+  - { label: "Terminal fee", panel: terminal_fee }
+  - { label: "Network", panel: network }
+  - { label: "Pool", panel: pool }
+  - { label: "Failed tx", panel: fail_rate }
+  - { label: "Median trade", panel: trade_usd }
+
+providers:
+  - slug: axiom
+    name: Axiom
+    tag: "Terminal, Solana"
+    formula: "Newest swaps paying Axiom's 20 fee wallets, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="axiom",stat="median"}
+      p90: tfq_loss_bps{terminal="axiom",stat="p90"}
+      p99: tfq_loss_bps{terminal="axiom",stat="p90"}
+      mean: tfq_loss_bps{terminal="axiom",stat="mean"}
+      success: tfq_health{terminal="axiom"}
+      sample_size: tfq_sample_size{terminal="axiom",kind="priced"}
+      series: tfq_loss_bps{terminal="axiom",stat="median"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "Terminal, Solana"
+    formula: "Newest swaps paying GMGN's 9 fee wallets (wallet-funding markers excluded), valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="gmgn",stat="median"}
+      p90: tfq_loss_bps{terminal="gmgn",stat="p90"}
+      p99: tfq_loss_bps{terminal="gmgn",stat="p90"}
+      mean: tfq_loss_bps{terminal="gmgn",stat="mean"}
+      success: tfq_health{terminal="gmgn"}
+      sample_size: tfq_sample_size{terminal="gmgn",kind="priced"}
+      series: tfq_loss_bps{terminal="gmgn",stat="median"}
+
+  - slug: fomo
+    name: FOMO
+    tag: "Terminal, Solana, gas sponsored"
+    formula: "Newest swaps paying FOMO's USDC fee wallet (gas sponsor excluded as user), valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h. Network cost is zero by construction."
+    queries:
+      p50: tfq_loss_bps{terminal="fomo",stat="median"}
+      p90: tfq_loss_bps{terminal="fomo",stat="p90"}
+      p99: tfq_loss_bps{terminal="fomo",stat="p90"}
+      mean: tfq_loss_bps{terminal="fomo",stat="mean"}
+      success: tfq_health{terminal="fomo"}
+      sample_size: tfq_sample_size{terminal="fomo",kind="priced"}
+      series: tfq_loss_bps{terminal="fomo",stat="median"}
+
+  - slug: photon
+    name: Photon
+    tag: "Terminal, Solana"
+    formula: "Newest swaps paying Photon's fee wallet, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="photon",stat="median"}
+      p90: tfq_loss_bps{terminal="photon",stat="p90"}
+      p99: tfq_loss_bps{terminal="photon",stat="p90"}
+      mean: tfq_loss_bps{terminal="photon",stat="mean"}
+      success: tfq_health{terminal="photon"}
+      sample_size: tfq_sample_size{terminal="photon",kind="priced"}
+      series: tfq_loss_bps{terminal="photon",stat="median"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Trojan's 6 fee wallets, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="trojan",stat="median"}
+      p90: tfq_loss_bps{terminal="trojan",stat="p90"}
+      p99: tfq_loss_bps{terminal="trojan",stat="p90"}
+      mean: tfq_loss_bps{terminal="trojan",stat="mean"}
+      success: tfq_health{terminal="trojan"}
+      sample_size: tfq_sample_size{terminal="trojan",kind="priced"}
+      series: tfq_loss_bps{terminal="trojan",stat="median"}
+
+  - slug: bullx
+    name: BullX
+    tag: "Terminal, Solana"
+    formula: "Newest swaps paying BullX's 2 fee wallets, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h. The fee wallets see almost no fee on sampled swaps, so the terminal column is a floor."
+    queries:
+      p50: tfq_loss_bps{terminal="bullx",stat="median"}
+      p90: tfq_loss_bps{terminal="bullx",stat="p90"}
+      p99: tfq_loss_bps{terminal="bullx",stat="p90"}
+      mean: tfq_loss_bps{terminal="bullx",stat="mean"}
+      success: tfq_health{terminal="bullx"}
+      sample_size: tfq_sample_size{terminal="bullx",kind="priced"}
+      series: tfq_loss_bps{terminal="bullx",stat="median"}
+
+  - slug: bloom
+    name: Bloom
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Bloom's fee wallet, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="bloom",stat="median"}
+      p90: tfq_loss_bps{terminal="bloom",stat="p90"}
+      p99: tfq_loss_bps{terminal="bloom",stat="p90"}
+      mean: tfq_loss_bps{terminal="bloom",stat="mean"}
+      success: tfq_health{terminal="bloom"}
+      sample_size: tfq_sample_size{terminal="bloom",kind="priced"}
+      series: tfq_loss_bps{terminal="bloom",stat="median"}
+
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Maestro's 2 fee wallets, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="maestro",stat="median"}
+      p90: tfq_loss_bps{terminal="maestro",stat="p90"}
+      p99: tfq_loss_bps{terminal="maestro",stat="p90"}
+      mean: tfq_loss_bps{terminal="maestro",stat="mean"}
+      success: tfq_health{terminal="maestro"}
+      sample_size: tfq_sample_size{terminal="maestro",kind="priced"}
+      series: tfq_loss_bps{terminal="maestro",stat="median"}
+
+  - slug: pepeboost
+    name: Pepeboost
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Pepeboost's fee wallet, valued at the previous trade on the same pool; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="pepeboost",stat="median"}
+      p90: tfq_loss_bps{terminal="pepeboost",stat="p90"}
+      p99: tfq_loss_bps{terminal="pepeboost",stat="p90"}
+      mean: tfq_loss_bps{terminal="pepeboost",stat="mean"}
+      success: tfq_health{terminal="pepeboost"}
+      sample_size: tfq_sample_size{terminal="pepeboost",kind="priced"}
+      series: tfq_loss_bps{terminal="pepeboost",stat="median"}
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Telegram bot, Solana"
+    formula: "Transactions on BasedBot's own program; its swaps do not expose a signer token leg, so no priced sample yet and the row stays unpublished."
+    queries:
+      p50: tfq_loss_bps{terminal="basedbot",stat="median"}
+      p90: tfq_loss_bps{terminal="basedbot",stat="p90"}
+      p99: tfq_loss_bps{terminal="basedbot",stat="p90"}
+      mean: tfq_loss_bps{terminal="basedbot",stat="mean"}
+      success: tfq_health{terminal="basedbot"}
+      sample_size: tfq_sample_size{terminal="basedbot",kind="priced"}
+      series: tfq_loss_bps{terminal="basedbot",stat="median"}

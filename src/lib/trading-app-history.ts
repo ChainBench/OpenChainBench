@@ -154,7 +154,10 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
     const trend7dPct = w7.days === 7 && d7prev != null && d7prev > 0 ? ((w7.sum - d7prev) / d7prev) * 100 : null;
     const last = app.days.find((d) => d.day === h.lastClosedDay);
     const total = last?.usd ?? 0;
-    const chainSplit = Object.entries(last?.chains ?? {})
+    // DeFiLlama publishes the chain breakdown of the newest day a few
+    // hours after the total; fall back to the latest day that has one.
+    const withChains = [...app.days].reverse().find((d) => d.chains && Object.keys(d.chains).length > 0 && d.day >= fmtDayOffset(h.lastClosedDay, -3));
+    const chainSplit = Object.entries((last?.chains && Object.keys(last.chains).length > 0 ? last.chains : withChains?.chains) ?? {})
       .map(([chain, usd]) => ({ chain, usd, pct: total > 0 ? (usd / total) * 100 : 0 }))
       .sort((a, b) => b.usd - a.usd);
     const byDay = new Map(app.days.map((d) => [d.day, d.usd]));
@@ -248,4 +251,9 @@ export function alignedSeries(
     return { slug: a.slug, name: a.name, values: days.map((d) => byDay.get(d) ?? null) };
   });
   return { days, series };
+}
+
+function fmtDayOffset(day: string, delta: number): string {
+  const t = new Date(day + "T00:00:00Z");
+  return new Date(t.getTime() + delta * 86400_000).toISOString().slice(0, 10);
 }
