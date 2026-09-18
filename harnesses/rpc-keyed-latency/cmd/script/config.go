@@ -23,13 +23,14 @@ type Endpoint struct {
 
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode"}
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock"}
 
-// Per-provider probe-interval multiplier. Infura's free tier 402s daily
-// at the shared 60s cadence (its real daily credit budget is below the
-// documented 3M); 3x (effective 180s) lands at ~0.69M credits/day,
-// safely under any plausible cap while keeping 480 samples/day/region.
-var intervalMult = map[string]int{"infura": 3}
+// Per-provider probe-interval multiplier. Infura's free tier 402'd daily
+// at the old 60 s cadence (its real daily credit budget is below the
+// documented 3M); at the shared 120 s cadence (RPC_KEYED_PROBE_SECONDS=120
+// since 2026-09-18) six EVM chains from three regions cost ~1.0M
+// credits/day, inside the cap, so Infura runs at the shared cadence.
+var intervalMult = map[string]int{}
 
 func intervalMultFor(provider string) int {
 	if m, ok := intervalMult[provider]; ok && m > 0 {
@@ -37,7 +38,9 @@ func intervalMultFor(provider string) int {
 	}
 	return 1
 }
-var chainsEVM = []string{"ethereum", "base", "arbitrum", "bnb", "polygon", "robinhood"}
+// "hyperliquid" is HyperEVM (chain slug shared with the no-key
+// hyperliquid-rpc bench); "arc" is Circle's Arc L1.
+var chainsEVM = []string{"ethereum", "base", "arbitrum", "bnb", "polygon", "robinhood", "hyperliquid", "arc"}
 
 func endpoints() []Endpoint {
 	var out []Endpoint
@@ -71,16 +74,23 @@ func envURL(provider, chain string) string {
 //   ankr       ~1M/mo         → 300k
 //   helius      1M/mo         → 300k
 // Override per provider with RPC_KEYED_BUDGET_<PROVIDER>.
+// At 120 s a (provider, chain) cell costs 21.6k requests per region per
+// month; nine chains are ~195k per region.
 var defaultBudgets = map[string]int64{
 	"infura":     370_000,
-	"alchemy":    450_000,
-	"chainstack": 900_000,
+	// alchemy / quicknode: Mobula enterprise-tier accounts, metered in
+	// the account's pool. 600k per region = ~28 chains at 120 s, a ceiling
+	// against a runaway loop rather than a free-tier quota.
+	"alchemy":    600_000,
+	"quicknode":  600_000,
+	// chainstack: Growth plan, 20M RU/month shared by three regions.
+	"chainstack": 2_000_000,
+	// getblock: Starter plan, 50M CU/month; eth_getBlockByNumber is 20 CU
+	// on the main EVM chains and 50 on Solana, so ~2.5M requests/month
+	// total is the real ceiling. 600k per region keeps a third in hand.
+	"getblock":   600_000,
 	"ankr":       300_000,
 	"helius":     300_000,
-	// quicknode: paid Mobula account (shared endpoints), budget covers
-	// 2 chains at 60s cadence with ample margin without eating the
-	// production credit pool.
-	"quicknode":  150_000,
 }
 
 func budgetFor(provider string) int64 {
