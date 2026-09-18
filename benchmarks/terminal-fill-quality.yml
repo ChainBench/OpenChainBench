@@ -49,7 +49,7 @@ abstract: |
   size and venue mix per terminal; a terminal is published from 20 priced swaps.
 
 methodology:
-  - "Sampling: a live WebSocket feed of every transaction touching each terminal's fee wallets (Axiom 20, GMGN 9, Trojan 6, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost 1; BasedBot via its own program) counts them all, failed ones included; 300 successful ones per terminal per day are drawn at random and read. Rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
+  - "Sampling: a live WebSocket feed of every transaction touching each terminal's fee wallets (DeFiLlama adapters and Dune's spellbook: Axiom 20, GMGN 9, Trojan 7, Banana Gun 3, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost / BONKbot / Nova 1) counts them all, failed ones included; 300 successful ones per terminal per day are drawn at random and read. Rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, rent for new token accounts and the tx fee excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets."
   - "network_q = tx fee if the user paid it + tips to Jito, 0slot, bloXroute and Nozomi tip accounts (other tip services land in other); other_q = user_q minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts), single-pool routes only. Rent of token accounts created or closed in the transaction is excluded."
   - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction when the route is one constant-product pool (PumpSwap, whose migrated pools carry a virtual quote reserve read from the pool account; Raydium v4 / CPMM); else the effective price of the previous trade on the same pool (pump.fun curve, Meteora, CLMM, multi-pool routes)."
@@ -62,7 +62,7 @@ methodology:
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
   - "Not measured: cross-chain trades (FOMO via Relay), perps."
   - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; fees are taken in USDC. BullX's DeFiLlama fee wallets see almost no fee on sampled swaps; its terminal figure is a floor."
-  - "Not in the table: BasedBot (its swaps go through its own program and the user's tokens never sit on an account the user signs for, so no swap can be read until that program is decoded; the harness keeps listening), BONKbot and Banana Gun (no public fee wallet)."
+  - "Not in the table: BasedBot. The addresses DeFiLlama lists for it belong to a launchpad and bid mechanism that keeps half the tokens, not to the 1 % trading bot, and the bot's Solana fee wallet is not published anywhere readable (no Dune spellbook model, no Mobula attribution). It joins the table the day that wallet is known."
   - "Dust: swaps under $1 are dropped (basis points of nothing are noise)."
 
 findings:
@@ -278,3 +278,42 @@ providers:
       success: tfq_health{terminal="pepeboost"}
       sample_size: tfq_sample_size{terminal="pepeboost",kind="priced"}
       series: tfq_loss_bps{terminal="pepeboost",stat="median"}
+
+  - slug: bonkbot
+    name: BONKbot
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying BONKbot's fee wallet (Dune spellbook), valued at the pool's pre-trade mid; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="bonkbot",stat="median"}
+      p90: tfq_loss_bps{terminal="bonkbot",stat="p90"}
+      p99: tfq_loss_bps{terminal="bonkbot",stat="p90"}
+      mean: tfq_loss_bps{terminal="bonkbot",stat="mean"}
+      success: tfq_health{terminal="bonkbot"}
+      sample_size: tfq_sample_size{terminal="bonkbot",kind="priced"}
+      series: tfq_loss_bps{terminal="bonkbot",stat="median"}
+
+  - slug: banana-gun
+    name: Banana Gun
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Banana Gun's 3 fee wallets (Dune spellbook), valued at the pool's pre-trade mid; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="banana-gun",stat="median"}
+      p90: tfq_loss_bps{terminal="banana-gun",stat="p90"}
+      p99: tfq_loss_bps{terminal="banana-gun",stat="p90"}
+      mean: tfq_loss_bps{terminal="banana-gun",stat="mean"}
+      success: tfq_health{terminal="banana-gun"}
+      sample_size: tfq_sample_size{terminal="banana-gun",kind="priced"}
+      series: tfq_loss_bps{terminal="banana-gun",stat="median"}
+
+  - slug: nova
+    name: Nova
+    tag: "Telegram bot, Solana"
+    formula: "Newest swaps paying Nova's fee wallet (Dune spellbook), valued at the pool's pre-trade mid; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_bps{terminal="nova",stat="median"}
+      p90: tfq_loss_bps{terminal="nova",stat="p90"}
+      p99: tfq_loss_bps{terminal="nova",stat="p90"}
+      mean: tfq_loss_bps{terminal="nova",stat="mean"}
+      success: tfq_health{terminal="nova"}
+      sample_size: tfq_sample_size{terminal="nova",kind="priced"}
+      series: tfq_loss_bps{terminal="nova",stat="median"}
