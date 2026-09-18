@@ -24,6 +24,7 @@ Chains: `ETHEREUM` `BASE` `ARBITRUM` `BNB` `POLYGON` `ROBINHOOD` `HYPERLIQUID` (
 
 Tuning:
 
+- `RPC_KEYED_CHAINS` — optional comma-separated allowlist of chain slugs; unset = every chain with a URL. Used to pause part of the matrix without touching the URL variables.
 - `REGION` — us-east | eu-west | sgp (else derived from `RAILWAY_REPLICA_REGION`)
 - `RPC_KEYED_PROBE_SECONDS` — default 60
 - `RPC_KEYED_BUDGET_<PROVIDER>` — per-REGION monthly request budget override

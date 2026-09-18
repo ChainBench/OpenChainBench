@@ -35,7 +35,7 @@ methodology:
   - "Cadence: every 120 seconds per provider from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore), all on Railway. Headline p50/p90/p99 aggregate across regions via Prometheus avg(quantile_over_time(...)); the region tabs re-scope every figure to one origin."
   - "Payload: eth_getBlockByNumber('latest', false) with a rotating JSON-RPC id. Non-cacheable by design: the rotating id defeats body-keyed edge caches and forces the provider to serve a real chain tip."
   - "Authentication: every key lives in the probe environment (Railway variables), never in the repo; the plan tier of each key is disclosed below."
-  - "Authentication, Alchemy: Alchemy: the Mobula enterprise-tier key; Alchemy states that free and paid keys share the same routing, so the figure reads as the standard Alchemy path."
+  - "Authentication, Alchemy: Alchemy: a Free plan key (30M CU per month, 25 requests per second) obtained by normal signup, the tier any reader gets; Alchemy states that free and paid keys share the same routing."
   - "Authentication, Chainstack: Chainstack: a Global Node on the Growth plan, access sponsored by Chainstack for this benchmark, plan disclosed."
   - "Authentication, QuickNode: QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet, plan disclosed."
   - "Authentication, GetBlock: GetBlock: a shared node on the Starter plan, access sponsored by GetBlock for this benchmark, plan disclosed."
@@ -55,7 +55,7 @@ faq:
   - q: "What is BNB Chain?"
     a: "BNB Smart Chain (chain ID 56) is the BNB Chain EVM network with 0.75 s blocks after the Maxwell hard fork."
   - q: "Which plan of each provider is measured?"
-    a: "Plan tiers are disclosed per row: Alchemy: the Mobula enterprise-tier key; Alchemy states that free and paid keys share the same routing, so the figure reads as the standard Alchemy path. Chainstack: a Global Node on the Growth plan, access sponsored by Chainstack for this benchmark, plan disclosed. QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet, plan disclosed. GetBlock: a shared node on the Starter plan, access sponsored by GetBlock for this benchmark, plan disclosed. Infura: the MetaMask Developer free tier (3M credits per day, 80 credits per eth_getBlockByNumber). Where a provider states that paid and free keys share routing, the figure reads as the standard path for that provider."
+    a: "Plan tiers are disclosed per row: Alchemy: a Free plan key (30M CU per month), the tier any reader gets by signing up; Alchemy states that free and paid keys share the same routing. Chainstack: a Global Node on the Growth plan, access sponsored by Chainstack for this benchmark, plan disclosed. QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet, plan disclosed. GetBlock: a shared node on the Starter plan, access sponsored by GetBlock for this benchmark, plan disclosed. Infura: the MetaMask Developer free tier (3M credits per day, 80 credits per eth_getBlockByNumber). Where a provider states that paid and free keys share routing, the figure reads as the standard path for that provider."
   - q: "Does the probe region change the ranking?"
     a: "Often. Round-trip latency to a keyed RPC depends on where the probe sits relative to the provider's serving node, and providers place edges differently. The headline averages the three origins; each region tab re-scopes every number to a single origin."
 
@@ -77,7 +77,7 @@ dimensions:
 providers:
   - slug: alchemy
     name: Alchemy
-    tag: Enterprise-tier key (Mobula account), plan disclosed
+    tag: Free plan key, 30M CU per month, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Alchemy's keyed BNB Chain endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="bnb",tier="keyed"})
