@@ -3,100 +3,31 @@ package main
 import (
 	"context"
 	"math"
-	"sync"
 )
 
-// Sandwich detection on the block of a sampled swap.
+// Sandwich detection by pool neighbourhood.
 //
 // A sandwich is a pair of transactions by the same signer around the
-// user's, on the same pool: one before it in the block trading in the
-// same direction (the front-run moves the price against the user), one
-// after it trading back (the back-run takes the profit). Jito bundles
-// land the three adjacent; the scan accepts any positions inside the
-// block. Multi-block sandwiches are not looked for.
+// user's, on the same pool: one just before it trading in the same
+// direction (the front-run moves the price against the user), one just
+// after trading back (the back-run takes the profit). Because both must
+// touch the pool, they are the user's immediate neighbours in the pool
+// vault's own signature sequence, which the arrival-price lookup already
+// reads. So the screen costs nothing extra in the common case: the
+// previous trade is read anyway for the reference price, the next one is
+// read only when both neighbours sit in the user's slot (Jito bundles) or
+// the very next one.
 //
 // Attacker profit = quote received on the back-run − quote paid on the
-// front-run, reported in basis points of the victim's trade. The victim's
-// extra cost is already inside loss_bps (the front-run is before us, so
-// the arrival price includes it); this isolates how often it happens and
-// what the attacker took.
+// front-run, in basis points of the victim's trade. The victim's extra
+// cost is already inside loss_bps (the front-run precedes us, so the
+// arrival price includes it); this isolates how often it happens.
 type Sandwich struct {
 	Attacker  string  `json:"attacker"`
 	FrontSig  string  `json:"front_sig"`
 	BackSig   string  `json:"back_sig"`
 	ProfitQ   float64 `json:"profit_q"`   // quote units
 	ProfitBps float64 `json:"profit_bps"` // of the victim's trade
-}
-
-type blockTx struct {
-	parsedTx
-	Signatures []string
-}
-
-// blockCache keeps the blocks read during one tick (several samples can
-// share a slot).
-type blockCache struct {
-	mu sync.Mutex
-	m  map[uint64][]blockTx
-}
-
-func (c *rpcClient) block(ctx context.Context, slot uint64, cache *blockCache) ([]blockTx, error) {
-	cache.mu.Lock()
-	if b, ok := cache.m[slot]; ok {
-		cache.mu.Unlock()
-		return b, nil
-	}
-	cache.mu.Unlock()
-	var out struct {
-		Transactions []struct {
-			Transaction struct {
-				Signatures []string `json:"signatures"`
-				Message    struct {
-					AccountKeys []struct {
-						Pubkey string `json:"pubkey"`
-						Signer bool   `json:"signer"`
-					} `json:"accountKeys"`
-					Instructions []struct {
-						ProgramID string `json:"programId"`
-					} `json:"instructions"`
-				} `json:"message"`
-			} `json:"transaction"`
-			Meta struct {
-				Err               interface{}    `json:"err"`
-				Fee               uint64         `json:"fee"`
-				PreBalances       []uint64       `json:"preBalances"`
-				PostBalances      []uint64       `json:"postBalances"`
-				PreTokenBalances  []tokenBalance `json:"preTokenBalances"`
-				PostTokenBalances []tokenBalance `json:"postTokenBalances"`
-			} `json:"meta"`
-		} `json:"transactions"`
-	}
-	err := c.call(ctx, "getBlock", []any{slot, map[string]any{
-		"encoding": "jsonParsed", "transactionDetails": "full", "maxSupportedTransactionVersion": 1, "rewards": false, "commitment": "confirmed",
-	}}, &out)
-	if err != nil {
-		return nil, err
-	}
-	txs := make([]blockTx, 0, len(out.Transactions))
-	for _, t := range out.Transactions {
-		var p parsedTx
-		p.Slot = slot
-		p.Transaction.Message.AccountKeys = t.Transaction.Message.AccountKeys
-		p.Transaction.Message.Instructions = t.Transaction.Message.Instructions
-		p.Meta.Fee = t.Meta.Fee
-		p.Meta.PreBalances = t.Meta.PreBalances
-		p.Meta.PostBalances = t.Meta.PostBalances
-		p.Meta.PreTokenBalances = t.Meta.PreTokenBalances
-		p.Meta.PostTokenBalances = t.Meta.PostTokenBalances
-		if t.Meta.Err != nil {
-			p.Meta.Err = []byte("1")
-		}
-		txs = append(txs, blockTx{parsedTx: p, Signatures: t.Transaction.Signatures})
-	}
-	cache.mu.Lock()
-	cache.m[slot] = txs
-	cache.mu.Unlock()
-	return txs, nil
 }
 
 // poolLeg returns the pool's token and quote movement in a transaction
@@ -145,96 +76,110 @@ func poolLeg(tx *parsedTx, sw *Swap, solUSD float64) (dTok, dQuote float64) {
 	return dTok, dQuote
 }
 
-// detectSandwich scans the swap's block. ok is false when the block could
-// not be read or the swap was not found in it.
-func detectSandwich(ctx context.Context, rpc *rpcClient, sw *Swap, cache *blockCache, solUSD float64) (*Sandwich, bool) {
-	if sw.PoolOwner == "" || sw.Slot == 0 {
-		return nil, false
+// neighbours is what the pool vault's signature list says about the
+// swap: the previous successful transactions on the pool (newest first)
+// and the next one after ours, when the list reaches it.
+type neighbours struct {
+	prev  []sigInfo // up to 3 before ours, newest first
+	next  *sigInfo  // the first after ours, nil when unknown
+	known bool      // ours was found in the list, so next is authoritative
+}
+
+// poolNeighbours reads the pool vault's newest signatures and locates the
+// swap. When the swap is older than the page (a very busy pool), it falls
+// back to a `before` query for the previous trades only.
+func poolNeighbours(ctx context.Context, rpc *rpcClient, sw *Swap) (neighbours, error) {
+	var page []sigInfo
+	if err := rpc.call(ctx, "getSignaturesForAddress", []any{sw.PoolVault, map[string]any{"limit": 60, "commitment": "confirmed"}}, &page); err != nil {
+		return neighbours{}, err
 	}
-	txs, err := rpc.block(ctx, sw.Slot, cache)
-	if err != nil {
-		return nil, false
+	for i, s := range page {
+		if s.Signature != sw.Sig {
+			continue
+		}
+		n := neighbours{known: true}
+		for j := i + 1; j < len(page) && len(n.prev) < 3; j++ {
+			if !page[j].failed() {
+				n.prev = append(n.prev, page[j])
+			}
+		}
+		for j := i - 1; j >= 0; j-- {
+			if !page[j].failed() {
+				s := page[j]
+				n.next = &s
+				break
+			}
+		}
+		return n, nil
 	}
-	mine := -1
-	for i, t := range txs {
-		if len(t.Signatures) > 0 && t.Signatures[0] == sw.Sig {
-			mine = i
-			break
+	var older []sigInfo
+	if err := rpc.call(ctx, "getSignaturesForAddress", []any{sw.PoolVault, map[string]any{"limit": 3, "before": sw.Sig, "commitment": "confirmed"}}, &older); err != nil {
+		return neighbours{}, err
+	}
+	n := neighbours{}
+	for _, s := range older {
+		if !s.failed() {
+			n.prev = append(n.prev, s)
 		}
 	}
-	if mine < 0 {
+	return n, nil
+}
+
+// screenSandwich decides from the neighbours and the already-read previous
+// transaction whether the swap was sandwiched. prevTx is the transaction
+// of n.prev[0] (nil when not read). ok is false when the screen could not
+// run (ours not located in the vault's list, or a read failed).
+func screenSandwich(ctx context.Context, rpc *rpcClient, sw *Swap, n neighbours, prevTx *parsedTx, solUSD float64) (*Sandwich, bool) {
+	if !n.known {
 		return nil, false
 	}
-	// The user's direction on the pool: buy = pool token balance falls.
+	if len(n.prev) == 0 || n.next == nil || prevTx == nil {
+		return nil, true
+	}
+	front := n.prev[0]
+	// Front-run in our slot; back-run in our slot or the next one.
+	if front.Slot != sw.Slot || n.next.Slot > sw.Slot+1 {
+		return nil, true
+	}
+	if len(prevTx.Transaction.Message.AccountKeys) == 0 {
+		return nil, true
+	}
+	fSigner := prevTx.Transaction.Message.AccountKeys[0].Pubkey
+	fTok, fQuote := poolLeg(prevTx, sw, solUSD)
 	myTok := 1.0
 	if sw.Side == "buy" {
 		myTok = -1
 	}
-	type leg struct {
-		idx    int
-		signer string
-		dTok   float64
-		dQuote float64
+	if fTok == 0 || fQuote == 0 || (fTok < 0) != (myTok < 0) {
+		return nil, true // previous trade is not in our direction
 	}
-	var legs []leg
-	for i, t := range txs {
-		if i == mine || len(t.Meta.Err) > 0 || len(t.Transaction.Message.AccountKeys) == 0 {
-			continue
-		}
-		dTok, dQuote := poolLeg(&t.parsedTx, sw, solUSD)
-		if dTok == 0 || dQuote == 0 {
-			continue
-		}
-		legs = append(legs, leg{idx: i, signer: t.Transaction.Message.AccountKeys[0].Pubkey, dTok: dTok, dQuote: dQuote})
+	backTx, err := rpc.transaction(ctx, n.next.Signature)
+	if err != nil || backTx == nil || len(backTx.Transaction.Message.AccountKeys) == 0 {
+		return nil, false
 	}
-	sw.BlockPoolTxs = len(legs)
-	// Front-run: before us, same direction; back-run: after us, opposite,
-	// same signer. Take the pair closest to us.
-	var best *Sandwich
-	for _, f := range legs {
-		if f.idx > mine || (f.dTok < 0) != (myTok < 0) {
-			continue
-		}
-		for _, b := range legs {
-			if b.idx < mine || b.signer != f.signer || (b.dTok < 0) == (f.dTok < 0) {
-				continue
-			}
-			// The back-run closes the front-run: comparable token amounts
-			// (a market maker quoting both sides at unrelated sizes is not a
-			// sandwich) and a positive take.
-			ratio := math.Abs(b.dTok) / math.Abs(f.dTok)
-			if ratio < 0.5 || ratio > 2 {
-				continue
-			}
-			// Attacker paid |f.dQuote| (pool received it) on the front-run and
-			// received |b.dQuote| (pool paid it) on the back-run.
-			profit := math.Abs(b.dQuote) - math.Abs(f.dQuote)
-			if sw.Side == "sell" {
-				profit = math.Abs(f.dQuote) - math.Abs(b.dQuote) // front-run sold, back-run bought back
-			}
-			if profit <= 0 {
-				continue
-			}
-			trade := sw.TradeUSD / sw.QuoteUSD
-			s := &Sandwich{Attacker: f.signer, FrontSig: first(txs[f.idx].Signatures), BackSig: first(txs[b.idx].Signatures), ProfitQ: profit}
-			if trade > 0 {
-				s.ProfitBps = 1e4 * profit / trade
-			}
-			if best == nil || (b.idx-f.idx) < 0 {
-				best = s
-			}
-			break
-		}
-		if best != nil {
-			break
-		}
+	if backTx.Transaction.Message.AccountKeys[0].Pubkey != fSigner {
+		return nil, true
 	}
-	return best, true
-}
-
-func first(s []string) string {
-	if len(s) == 0 {
-		return ""
+	bTok, bQuote := poolLeg(backTx, sw, solUSD)
+	if bTok == 0 || bQuote == 0 || (bTok < 0) == (fTok < 0) {
+		return nil, true
 	}
-	return s[0]
+	// The back-run closes the front-run: comparable token amounts and a
+	// positive take.
+	ratio := math.Abs(bTok) / math.Abs(fTok)
+	if ratio < 0.5 || ratio > 2 {
+		return nil, true
+	}
+	profit := math.Abs(bQuote) - math.Abs(fQuote)
+	if sw.Side == "sell" {
+		profit = math.Abs(fQuote) - math.Abs(bQuote)
+	}
+	if profit <= 0 {
+		return nil, true
+	}
+	s := &Sandwich{Attacker: fSigner, FrontSig: front.Signature, BackSig: n.next.Signature, ProfitQ: profit}
+	if trade := sw.TradeUSD / sw.QuoteUSD; trade > 0 {
+		s.ProfitBps = 1e4 * profit / trade
+	}
+	return s, true
 }

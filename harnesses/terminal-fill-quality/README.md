@@ -8,10 +8,13 @@ measured on-chain. Feeds bench 268 (`terminal-fill-quality`), the
 
 Every terminal takes its fee through known wallets (the lists DeFiLlama's
 dexs / fees adapters match on, so attribution is identical to benches 201
-and 267). `getSignaturesForAddress` on those wallets yields every
-transaction the terminal routed, failed ones included; the newest
-successful ones are read with `getTransaction` (`SAMPLE_PER_TICK` per
-terminal per tick).
+and 267). A WebSocket `logsSubscribe` on each of those wallets (and on
+BasedBot's program) delivers every transaction the terminal routes, within
+a second of confirmation, with its error status: the fail rate is
+exhaustive and free. Each tick draws `DAILY_TARGET × tick / 86400` of the
+tick's successful signatures per terminal at random (reservoir sample) and
+reads them with `getTransaction`. When the feed is down the harness polls
+the wallets instead (`WS=0` forces polling).
 
 A Solana transaction carries the pre/post SOL and token balances of every
 account it touches, so each sampled swap is reduced to exact quote-side
@@ -76,16 +79,19 @@ transaction is excluded from the user's quote movement.
 Failed transactions are counted from the signature scan (`fail_rate_pct`): the
 user paid the priority fee for nothing, which no fill metric shows.
 
-**Sandwiches**: the block of each sampled swap is read (`getBlock`,
-`SANDWICH_SCAN_PCT` of samples, default all) and scanned for a pair of
-successful transactions by the same signer on the same pool: one before
-ours trading in our direction, one after trading back. `sandwich_pct` per
-terminal (share of scanned swaps), attacker profit in bps of the victim's
-trade, `block_pool_txs` per sample (how many other trades on that pool
-the block held, so an empty result is interpretable). The victim's extra
-cost is already inside `loss_bps` (the front-run precedes us, so it is in
-the arrival price); the scan isolates how often it happens. Multi-block
-sandwiches are not looked for.
+**Sandwiches**: a sandwich's front-run and back-run both touch the pool,
+so they are the swap's immediate neighbours in the pool vault's signature
+sequence, which the arrival-price lookup already reads (one
+`getSignaturesForAddress`, newest 60). The previous trade is read anyway;
+the next one is read only when both neighbours sit in the swap's slot or
+the next one, and it counts as a sandwich when the same signer traded our
+direction before us and back after us, closing a comparable position
+(0.5 to 2× the tokens) with a positive take. Every sampled swap is
+screened (`scanned`), at about 0.05 extra call per swap; `sandwich_pct`
+per terminal, attacker profit in bps of the victim's trade. The victim's
+extra cost is already inside `loss_bps` (the front-run precedes us, so it
+is in the arrival price); the screen isolates how often it happens.
+Multi-block sandwiches are not looked for.
 
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
 over $250; median loss and n from 5 samples), so terminals with different
@@ -131,16 +137,20 @@ stats plus the last 200 samples.
 |---|---|---|
 | `HELIUS_API_KEY` / `SOLANA_RPC` | public RPC | RPC endpoint |
 | `RPC_RPS` | `8` | pacing, calls per second |
-| `TICK_SECONDS` | `90` | sweep interval |
-| `SAMPLE_PER_TICK` | `4` | swaps read per terminal per tick |
+| `TICK_SECONDS` | `60` | sweep interval |
+| `DAILY_TARGET` | `300` | swaps read per terminal per day (random draw from the feed) |
+| `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
 | `WINDOW_HOURS` | `24` | rolling window |
 | `MIN_PRICED` | `20` | priced samples before a terminal is published |
-| `SANDWICH_SCAN_PCT` | `100` | share of sampled swaps whose block is read |
 | `STATE_FILE` | unset | persist the window across restarts |
 | `HISTORY_FILE_PUBLIC` | unset | public JSON mirror |
 
-Budget at defaults: ~4 calls per sample (tx + previous-trade lookup) plus
-wallet scans with backoff on idle wallets, about 60–80k calls a day.
+Budget at defaults: about 2.7 RPC calls per sampled swap (transaction,
+pool neighbourhood, previous trade when the reserves give no mid, pool
+account once per pool, back-run only on a sandwich candidate) and no
+polling, so 300 swaps × 10 terminals ≈ 8–10k calls a day. Fits any free
+RPC tier, the public endpoint included; WebSocket notifications are not
+metered.
 
 ```bash
 docker build -t ocb-terminal-fill-quality .
