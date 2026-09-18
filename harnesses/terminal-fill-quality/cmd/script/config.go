@@ -2,23 +2,40 @@ package main
 
 import "strings"
 
+// methodVersion tags every sampled swap. Statistics are computed only on
+// rows produced by the running method, so a change of accounting or
+// reference never mixes with older rows inside the window; rows of an
+// older version are dropped at load.
+//
+//	3: pools identified by vault pubkeys (not owner), tx fee inside the
+//	   user's cost, terminal tip relays as network, FOMO stable fee legs,
+//	   WSOL / program-account rent, loss bounds, 60 s reference cap.
+const methodVersion = 3
+
 // Terminal is one cohort member: the trading app or Telegram bot whose
 // swaps we sample. Wallets are the Solana accounts that receive the
-// terminal's fee on every routed swap (the same lists DeFiLlama's dexs /
-// fees adapters match on, so attribution is identical to bench 267);
-// Internal accounts are the terminal's own signers that must never be
-// mistaken for the user (FOMO's gas sponsor pays the tx fee and signs).
+// terminal's fee on every routed swap (DeFiLlama's adapter lists and
+// Dune's spellbook models, checked live on 2026-09-18); Internal are the
+// terminal's own signers that must never be mistaken for the user (FOMO's
+// gas sponsor pays the tx fee and signs); Tips are the terminal's own
+// inclusion-tip recipients (fixed-size transfers to a relay that is not
+// Jito), counted as network cost; Programs are extra addresses to
+// subscribe to when swaps do not pass through a fee wallet transfer.
 type Terminal struct {
 	Slug     string   `json:"slug"`
 	Name     string   `json:"name"`
 	Kind     string   `json:"kind"` // app | bot
 	Wallets  []string `json:"wallets"`
 	Internal []string `json:"internal,omitempty"`
-	// Programs: extra addresses to scan for signatures when the terminal's
-	// swaps go through its own on-chain program rather than a fee wallet
-	// transfer (BasedBot). Fee attribution still uses Wallets.
+	Tips     []string `json:"tips,omitempty"`
 	Programs []string `json:"programs,omitempty"`
-	Note     string   `json:"note,omitempty"`
+	// StableLegsAreFee: besides its main fee wallet, the terminal's fee
+	// arrives as user-signed stable transfers to per-trade accounts (FOMO
+	// through the OKX router: commission leg plus one or two transferChecked
+	// legs, about 50 bps in total). Such legs, outside any pool
+	// instruction and under 2 % of the trade, count as terminal fee.
+	StableLegsAreFee bool   `json:"stable_legs_are_fee,omitempty"`
+	Note             string `json:"note,omitempty"`
 }
 
 func (t Terminal) scanAddresses() []string {
@@ -34,52 +51,65 @@ var terminals = []Terminal{
 		"8vFGAKdwpn4hk7kc1cBgfWZzpyW3MEMDATDzVZhddeQb", "86Vh4XGLW2b6nvWbRyDs4ScgMXbuvRCHT7WbUT3RFxKG", "DZfEurFKFtSbdWZsKSDTqpqsQgvXxmESpvRtXkAdgLwM",
 		"5L2QKqDn5ukJSWGyqR4RPvFvwnBabKWqAqMzH4heaQNB", "DYVeNgXGLAhZdeLMMYnCw1nPnMxkBN7fJnNpHmizTrrF", "Hbj6XdxX6eV4nfbYTseysibp4zZJtVRRPn2J3BhGRuK9",
 		"846ah7iBSu9ApuCyEhA5xpnjHHX7d4QJKetWLbwzmJZ8", "5BqYhuD4q1YD3DMAYkc1FeTu9vqQVYYdfBAmkZjamyZg",
+		// second leg of the 1 % taken inside Axiom's router (seen as the
+		// largest "other" recipients on Axiom swaps, fixed share of the trade)
+		"EofHrDmFs6zwoDxXu7pSoSHGtbWSuhc5s3CHWVSRHdCF", "5VfFPJLaFJy86a91T6uov44LYW9Cz31CRKdt5n3diLxh",
+	}, Tips: []string{
+		// fixed-size transfers right after the swap; Mobula reports the same
+		// amounts as mevFeesUSD on those transactions
+		"YYVEwYxUif4zSGdnBxLdHU1ej4kQTgxKrkD5VXDU8RC", "7KKNPiFyi3b3VSM81sNEwHPxUGVZJHCTucqoh7rAABw4", "8d5jPhXwjEa9cPkQG2aFHw5cwE6KjytnPFJbmH1RgN1M",
+		"J4PeVZhx2496eXjAMpbm7nrCxRBgAUfRDwhZ1YSdzTSE", "DU3oUMrzewfvuUN8HNA3rXTvbscCA3krY365mzfFixrT", "H9bSW2VTrRU7LuT5Zo5XEx3uuGhLDTeAJdEUxQX39314",
+		"3rXRVo9hPjtWNJEhsN6WDmxD8ubBjTjHXugRVYyH5gC3",
 	}},
 	{Slug: "gmgn", Name: "GMGN", Kind: "app", Wallets: []string{
 		"BB5dnY55FXS1e1NXqZDwCzgdYJdMCj3B92PU6Q5Fb6DT", "7sHXjs1j7sDJGVSMSPjD1b4v3FD6uRSvRWfhRdfv5BiA", "HeZVpHj9jLwTVtMMbzQRf6mLtFPkWNSg11o68qrbUBa3",
 		"ByRRgnZenY6W2sddo1VJzX9o4sMU4gPDUkcmgrpGBxRy", "DXfkEGoo6WFsdL7x6gLZ7r6Hw2S6HrtrAQVPWYx2A1s9", "3t9EKmRiAUcQUYzTZpNojzeGP1KBAVEEbDNmy6wECQpK",
 		"DymeoWc5WLNiQBaoLuxrxDnDRvLgGZ1QGsEoCAM7Jsrx", "dBhdrmwBkRa66XxBuAK4WZeZnsZ6bHeHCCLXa3a8bTJ", "6TxjC5wJzuuZgTtnTMipwwULEbMPx5JPW3QwWkdTGnrn",
-	}, Note: "GMGN's fee wallets also receive 1-lamport markers on wallet-funding transfers; those are not swaps and are excluded."},
+	}, Note: "GMGN's fee wallets also receive 1-lamport markers on wallet-funding transfers; those invoke no swap program and are excluded from every count, the fail rate included."},
 	{Slug: "fomo", Name: "FOMO", Kind: "app",
-		Wallets:  []string{"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX"},
-		Internal: []string{"AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51"},
-		Note:     "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Fees are taken in USDC. Cross-chain trades routed through Relay are not swaps on Solana and are not sampled."},
-	// BasedBot: DeFiLlama's "basedbid" adapter (wallet 8umVV7…, program
-	// CuodpY…) is a launchpad / bid mechanism that takes half the tokens,
-	// not the 1 % trading bot, so it was removed. The bot's Solana fee
-	// wallet is not published anywhere we could read (Dune's spellbook has
-	// no BasedBot model, Mobula does not attribute it); add it here when
-	// known.
-	// BONKbot, Banana Gun and Nova: fee receivers from Dune's spellbook
-	// (dex_solana.bot_trades platform models).
-	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
-	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{
-		"8r2hZoDfk5hDWJ1sDujAi2Qr45ZyZw5EQxAXiMZWLKh2", "Cj297UauzMX64FU9dKJZRUBWszJ7tEWpVheasq4CfATV", "HKMh8nV3ysSofRi23LsfVGLGQKB415QAEfZT96kCcVj4",
-	}},
-	{Slug: "nova", Name: "Nova", Kind: "bot", Wallets: []string{"noVaE91mUL5jTb8e9Vf6dqJdNPzJpEQ3uAdnQ8h4nVz"}},
-	// pump.fun's own mobile app: its swaps invoke the app program in the
-	// same transaction (DeFiLlama's pumpfun-app adapter attributes on it);
-	// no app fee wallet, the app charges nothing on top of pump.fun's fees.
-	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
-		Note: "pump.fun's mobile app takes no fee of its own; the terminal column is zero by construction and pump.fun's protocol and creator fees sit in other."},
-	{Slug: "photon", Name: "Photon", Kind: "app", Wallets: []string{"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH"}},
+		Wallets:          []string{"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX"},
+		Internal:         []string{"AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51"},
+		StableLegsAreFee: true,
+		Note:             "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Its fee is a router commission plus one or two user-signed USDC legs to per-trade accounts, all counted as terminal fee. Cross-chain trades routed through Relay are not swaps on Solana and are not sampled."},
+	{Slug: "photon", Name: "Photon", Kind: "app", Wallets: []string{"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH"},
+		Tips: []string{"9Y6UXhkaf5vJGhsmdWYitceaEkRDsvVNTgtVp4acu57S", "7J7fe1H9bo1ScWxoUny3raqM1WHqfERvSvEQDU7APKLe"}},
 	{Slug: "trojan", Name: "Trojan", Kind: "bot", Wallets: []string{
 		"92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH", "2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ", "65gDv7pZQCZELsNpNYSFEBtNFpWZAbxmRFB6BGMqFkHH",
 		"BWgb8wR1FEGiu1jCDSKuHKf752W27b4iN6SvoNCiK4qp", "8jgg7moFJkHyTtAv9M6RBSPMp2oXeXhuiUMKW8YbYCWn", "9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco",
-		"BBYXdwhqbCxVRVtnuMTTxh8biNisz3ZxsnHfr44jXytR", // Dune spellbook fee_receiver_1
+	}, Tips: []string{
+		// third account of Trojan's own FeeTransferWithTip instruction
+		"BGT8Vm1u5nyW255LgWjD8wzsRs8g3KxBnB3Pm1FjC9fV", "75amCPfPecHipzFeE7gsBi8rLptXCEQGewon7jePpwHP", "GV4Bt6ehW5x5dqtaWAJBSnz8uum5Z2Rp9P2Tr5iVuQn5",
 	}},
-	{Slug: "bullx", Name: "BullX", Kind: "app", Wallets: []string{"9RYJ3qr5eU5xAooqVcbmdeusjcViL5Nkiq7Gske3tiKq", "F4hJ3Ee3c5UuaorKAMfELBjYCjiiLH75haZTKqTywRP3"}},
 	{Slug: "bloom", Name: "Bloom", Kind: "bot", Wallets: []string{"7HeD6sLLqAnKVRuSfc1Ko3BSPMNKWgGTiWLKXJF31vKM"}},
-	{Slug: "maestro", Name: "Maestro", Kind: "bot", Wallets: []string{"MaestroUL88UBnZr3wfoN7hqmNWFi3ZYCGqZoJJHE36", "FRMxAnZgkW58zbYcE7Bxqsg99VWpJh6sMP5xLzAWNabN"}},
-	{Slug: "pepeboost", Name: "Pepeboost", Kind: "bot", Wallets: []string{"G9PhF9C9H83mAjjkdJz4MDqkufiTPMJkx7TnKE1kFyCp"}},
+	{Slug: "maestro", Name: "Maestro", Kind: "bot", Wallets: []string{"MaestroUL88UBnZr3wfoN7hqmNWFi3ZYCGqZoJJHE36"},
+		Tips: []string{
+			"BBtip8kpHzYPD2hhrcwV6P2stL7GRqxpiVkHBomSMrVB", "BBtipu7iCnY8fiJhXzmRRhs2PvjfgGHFGBjmP2wzFR51", "BBtiphcAHYAYUrurxjtJQaiswFnvrWZU3sRu7X3NGzfU",
+			"BBtipcbK777hEJVrQ9CFPmnsRUM3LuxLxHayVtM7jYv8", "ste11JV3MLMM7x7EJUM2sXcJC1H7F4jBLnP9a9PG8PH",
+		}},
+	{Slug: "pepeboost", Name: "Pepeboost", Kind: "bot", Wallets: []string{"G9PhF9C9H83mAjjkdJz4MDqkufiTPMJkx7TnKE1kFyCp"},
+		Tips: []string{"F7EtfYPC2SdB6TMTXyN6FGFqDEyDeYrgXaNRvzUu1zpT"}},
+	// BONKbot, Banana Gun: fee receivers from Dune's spellbook and
+	// DeFiLlama's fees adapter, the ones with live traffic on 2026-09-18.
+	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
+	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF"}},
+	// pump.fun's own mobile app: its swaps invoke the app program in the
+	// same transaction (DeFiLlama's pumpfun-app adapter attributes on it).
+	// The fixed 0.001 SOL it forwards to its pfn… accounts on every swap is
+	// an inclusion tip (network), like the other terminals' relays.
+	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
+		Note: "pump.fun's mobile app takes no fee of its own; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
+	// Not in the cohort: BullX (trading suspended 2026-06-01; its wallets
+	// only receive 1,000-lamport markers from unrelated snipers), Nova (no
+	// live fee wallet: the spellbook's last saw traffic weeks ago), BasedBot
+	// (DeFiLlama's basedbid addresses are a launchpad; the bot's fee wallet
+	// is not published).
 }
 
-// Tip accounts of the inclusion services: lamports sent here are the
-// priority the user paid to land, a network cost like the priority fee.
-// Jito (8 mainnet tip accounts), 0slot and bloXroute by address, Nozomi /
-// Temporal by its "noz" vanity prefix. Services not listed here end up in
-// "other"; the per-terminal other_top list in the JSON is there to catch
-// them.
+// Inclusion-tip accounts of the relay services: lamports sent here are
+// the priority the user paid to land, a network cost like the priority
+// fee. Jito (8 mainnet tip accounts), 0slot, bloXroute, Astralane,
+// Nozomi / Temporal; the terminal-specific relays are on each
+// Terminal.Tips.
 var tipAccounts = set(
 	// Jito
 	"96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5", "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe", "Cw8CFyvL8HLPxsuYyRZgmL4LLYbXP7WhQXBRcpNhTr8s",
@@ -89,20 +119,35 @@ var tipAccounts = set(
 	"7toBU3inhmrARGngC7z6SjyP85HgGMmCTEwGNRAcYnEK", "6fQaVhYZA4w3MBSXjJ81Vf6W1EDYrrwyGVUhmpm2LuLb", "4HiwLEP2Bzqj3hM2ENxJuzhcPCdsafwiet3oGkMkuQY4",
 	// bloXroute
 	"HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY",
-	// Astralane (seen as Maestro's largest "other" recipients; Mobula
-	// reports the same amounts as mevFeesUSD on those swaps)
+	// Astralane
 	"AStrAJv2RN2hKCHxwUMtqmSxgdcNZbihCwc1mCSnG83W", "Astran35aiQUF57XZsmkWMtNCtXGLzs8upfiqXxth2bz",
+	// Nozomi / Temporal
+	"TEMPaMeCRFAS9EKF53Jd6KpHxgL47uWLcpFArU1Fanq",
 )
 
-// isTip: listed accounts, plus the vanity prefixes Nozomi ("noz") and
-// Astralane ("astra", any case) use for their tip accounts; a random
-// base58 key starts with a given 5-letter prefix once in ~6e8.
+// isTip: listed accounts, plus the vanity prefixes of Nozomi ("noz"),
+// Astralane ("astra", any case), Maestro's relay ("BBtip") and pump.fun's
+// app ("pfn"); a random base58 key starts with a given 5-letter prefix
+// once in ~6e8, with a 3-letter one once in ~2e5.
 func isTip(pubkey string) bool {
-	if tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz") {
+	if tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz") || strings.HasPrefix(pubkey, "BBtip") || strings.HasPrefix(pubkey, "pfn") {
 		return true
 	}
 	return len(pubkey) > 5 && strings.EqualFold(pubkey[:5], "astra")
 }
+
+// pump.fun protocol fee recipients (the recipient arrays of pump.fun's
+// Global and PumpSwap's global_config); every curve / PumpSwap trade pays
+// one of them. Named so the "other" component can be read: protocol fee
+// versus creator vault versus the rest.
+var pumpFeeRecipients = set(
+	"62qc2CNXwrYqQScmEdiZFFAnJR262PxWEuNQtxfafNgV", "7VtfL8fvgNfhz17qKRMjzQEXgbdpnHHHQRh54R9jP2RJ", "7hTckgnGnLQR6sdH7YkqFTAA7VwTfYFaZ6EhEsU3saCX",
+	"9rPYyANsfQZw3DnDmKE3YCQF5E8oD89UXoHn9JFEhJUz", "AVmoTthdrX6tKt4nDjco2D775W2YK3sDhxPcMmzUAmTY", "CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM",
+	"FWsW1xNtWscwNmKv6wVsU1iTzRN6wmmk3MjxRP5tT7hz", "G5UZAVbAf46s7cKWoyKu8kYTip9DGTpbLZ2qa9Aq69dP", "JCRGumoE9Qi5BBgULTgdgTLjSgkCMSbF62ZZfGs84JeU",
+	"5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD", "9M4giFFMxmFGXtc3feFzRai56WbBqehoSeRE5GK7gf7", "GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL",
+	"3BpXnfJaUTiwXnJNe7Ej1rcbzqTTQUvLShZaWazebsVR", "5cjcW9wExnJJiqgLjq7DEG75Pm6JBgE1hNv4B2vHXUW6", "EHAAiTxcdDwQ3U4bU6YcMsQGaekdzLS3B5SmYo46kJtL",
+	"5eHhjP8JaYkz83CWwvGU2uMUXefd3AazWGx4gpcuEEYD",
+)
 
 const (
 	wsolMint = "So11111111111111111111111111111111111111112"
@@ -115,18 +160,16 @@ const (
 var stableMints = set(usdcMint, usdtMint, usd1Mint)
 
 // DEX programs. `cp` marks constant-product venues whose vault balances
-// give the pre-trade mid price directly; the pump.fun curve is handled
-// separately (virtual reserves); everything else is left unpriced.
+// give the pre-trade mid price directly (see reservePrice); the pump.fun
+// curve is not one of them (2026 curves fill 20 to 60 % above their
+// stored virtual reserves), nor are concentrated-liquidity venues.
 type venueInfo struct {
 	name string
 	cp   bool
 }
 
 var venuePrograms = map[string]venueInfo{
-	"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA": {"pumpswap", true},
-	// pump.fun curve: the stored virtual reserves no longer predict the
-	// executed price (2026 curves fill 20 to 60 % above virtual_sol /
-	// virtual_token on real trades), so no reserve mid; previous trade.
+	"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA":  {"pumpswap", true},
 	"6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P":  {"pump-curve", false},
 	"675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": {"raydium-v4", true},
 	"CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": {"raydium-cpmm", true},
@@ -139,17 +182,34 @@ var venuePrograms = map[string]venueInfo{
 	"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4":  {"jupiter", false},
 }
 
+// swapProgramPrefixes: a transaction is a swap attempt when its logs show
+// one of these programs invoked (venues, aggregator, terminal routers).
+// The live feed classifies every notification with it, so the fail rate
+// counts attempts only: wallet funding, fee sweeps and 1-lamport markers
+// never invoke them.
+var swapProgramPrefixes = []string{
+	"pAMMBay6", "6EF8rrec", "675kPX9M", "CPMMoo8L", "CAMMCzo5", "LanMV9sA", "LBUZKhRx", "cpamdpZC", "dbcij3LW", "whirLbMi", "JUP6LkbZ",
+	"FLASHX8D",             // Axiom router
+	"GMgnVFR8", "GMGNreQc", // GMGN
+	"b1oomGGq",             // Bloom
+	"BBRouter", "MaestroA", // Maestro
+	"BSfD6SHZ", "T1TANpTe", // Photon, Titan
+	"proVF4pM", // FOMO (OKX router)
+	"troyXT7T", // Trojan
+	"6Vo3245e", // pump.fun app
+}
+
 // PumpSwap pool account: pools migrated from pump.fun carry a virtual
 // quote reserve (about 17.58 SOL, pool-specific) stored after the
 // coin_creator field; price = (quote vault + offset) / base vault. Verified
-// against executed trades: x·y = k holds exactly with it, and fails
-// without. Non-migrated pools store 0.
+// against executed trades on 8 pools: x·y = k holds exactly with it, and
+// fails without; non-migrated pools store 0.
 const pumpSwapQuoteOffsetAt = 245 // little-endian u64, lamports
 
 // pump.fun bonding curve account: virtual_token, virtual_sol, real_token,
 // real_sol, total_supply as little-endian u64 after the 8-byte
-// discriminator; virtual − real are constants per curve (30 SOL and
-// 279.9M tokens on current curves) and are read once per curve.
+// discriminator (read for the curve's non-reserve lamports; not used as a
+// mid).
 const pumpCurveFieldsAt = 8
 
 func set(keys ...string) map[string]bool {

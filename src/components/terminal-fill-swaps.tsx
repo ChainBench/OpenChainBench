@@ -5,10 +5,12 @@ import type { FillSample } from "@/lib/terminal-fills";
 
 /**
  * Explorable table of the sampled swaps behind bench 268, for QA: every
- * row is one real transaction with a Solscan link, its side, venue,
- * reference source, size and cost split. Filters by terminal, side,
- * venue and reference; sort by any numeric column. Client component over
- * the JSON the section already loads (last few hundred samples).
+ * row is one real transaction with a Solscan link, its side, venue and
+ * route, reference source, size and cost split; flagged rows (loss out of
+ * bounds, excluded from the statistics) and sandwich hits (attacker and
+ * both legs on hover) are shown as such. Filters by terminal, side, venue
+ * and reference; sort by any numeric column. Client component over the
+ * JSON the section already loads (last few hundred samples).
  */
 export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string }) {
   const [terminal, setTerminal] = useState(focus ?? "");
@@ -71,15 +73,15 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th("time", "When")}
               <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left">Terminal</th>
               <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left">Tx</th>
-              <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left">Side · venue</th>
-              {th("trade", "Trade", "buy: quote spent; sell: tokens × reference")}
-              {th("loss", "Loss", "1 − value received / value given, bps")}
+              <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left" title="final pool's venue; +hops = pool instructions of the route that are not on the token; via X = final pool quoted in a third asset">Side · venue</th>
+              {th("trade", "Trade", "buy: quote spent (tx fee included); sell: tokens × reference")}
+              {th("loss", "Loss", "1 − value received / value given, bps; ! = out of bounds, excluded from the statistics")}
               {th("terminal", "Fee", "terminal fee, bps")}
-              {th("network", "Net", "tx fee + tips, bps")}
-              <th className="py-2 px-2 text-right text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium" title="pump.fun / creator / referral fees, bps (single-pool routes)">Other</th>
+              {th("network", "Net", "tx fee + inclusion tips, bps")}
+              <th className="py-2 px-2 text-right text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium" title="pump.fun / creator / referral fees, bps (single-pool swaps without hops)">Other</th>
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
               <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left" title="reserves: exact pre-trade mid; pool: previous trade on the pool, age in seconds">Ref</th>
-              <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left">Sandwich</th>
+              <th className="py-2 px-2 text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-left" title="neighbours on the pool screened; hover a hit for the attacker and both legs">Sandwich</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-rule">
@@ -94,10 +96,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 </td>
                 <td className="py-1.5 px-2 whitespace-nowrap text-ink-soft">
                   <span className={s.side === "buy" ? "text-[var(--color-good)]" : ""}>{s.side}</span> · {s.venue}
+                  {s.hops > 0 ? <span className="text-ink-faint" title={`${s.hops} hop instruction${s.hops > 1 ? "s" : ""} before the final pool`}> +{s.hops}</span> : null}
                   {s.xMint ? <span className="text-ink-faint" title={`route through ${s.xMint}`}> · via X</span> : null}
                 </td>
                 <td className="py-1.5 px-2 text-right whitespace-nowrap">${s.tradeUsd >= 1000 ? (s.tradeUsd / 1000).toFixed(1) + "K" : s.tradeUsd.toFixed(0)}</td>
-                <td className="py-1.5 px-2 text-right whitespace-nowrap font-medium">{s.lossBps === undefined ? <span className="text-ink-faint">—</span> : Math.round(s.lossBps)}</td>
+                <td className={`py-1.5 px-2 text-right whitespace-nowrap font-medium ${s.flag ? "text-ink-faint" : ""}`} title={s.flag ? `excluded: ${s.flag}` : undefined}>
+                  {s.lossBps === undefined ? <span className="text-ink-faint">—</span> : `${Math.round(s.lossBps)}${s.flag ? " !" : ""}`}
+                </td>
                 <td className="py-1.5 px-2 text-right text-ink-soft">{Math.round(s.terminalBps)}</td>
                 <td className="py-1.5 px-2 text-right text-ink-soft">{Math.round(s.networkBps)}</td>
                 <td className="py-1.5 px-2 text-right text-ink-soft">{s.otherBps === undefined ? "—" : Math.round(s.otherBps)}</td>
@@ -106,7 +111,23 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                   {s.refSrc ?? "—"}
                   {s.refSrc === "pool" && s.refAgeS !== undefined ? ` ${s.refAgeS}s` : ""}
                 </td>
-                <td className="py-1.5 px-2 whitespace-nowrap text-ink-faint">{s.sandwiched ? <span className="text-[var(--color-bad,#e5484d)]">yes</span> : s.scanned ? "no" : "—"}</td>
+                <td className="py-1.5 px-2 whitespace-nowrap text-ink-faint">
+                  {s.sandwich ? (
+                    <a
+                      href={`https://solscan.io/tx/${s.sandwich.frontSig}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[var(--color-bad,#e5484d)] underline underline-offset-2 hover:no-underline"
+                      title={`attacker ${s.sandwich.attacker}\nfront ${s.sandwich.frontSig}\nback ${s.sandwich.backSig}\nprofit ${Math.round(s.sandwich.profitBps)} bps of the trade`}
+                    >
+                      yes
+                    </a>
+                  ) : s.scanned ? (
+                    "no"
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

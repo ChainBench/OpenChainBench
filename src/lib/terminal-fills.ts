@@ -2,7 +2,7 @@
  * Reader for the terminal-fill-quality harness output (bench 268): what a
  * swap costs the user on each Solana trading terminal / Telegram bot,
  * from sampled user transactions read on-chain and valued at the pool's
- * arrival price (previous trade on the same pool).
+ * own state before the trade (reserves, or the previous trade on it).
  *
  * JSON written by the harness to the aggregate dir and served by Caddy at
  * kv.openchainbench.com/aggregate/terminal-fills/fills.json. The site
@@ -11,27 +11,34 @@
 
 const DEFAULT_URL = "https://kv.openchainbench.com/aggregate/terminal-fills/fills.json";
 
-export type FillQuantiles = { median: number; mean: number; p90: number; n: number };
+/** Median and p90; ciLo/ciHi = 95 % bootstrap interval of the median (loss only). */
+export type FillQuantiles = { median: number; p90: number; n: number; ciLo?: number; ciHi?: number };
 
 export type TerminalFillStats = {
   slug: string;
   name: string;
   kind: "app" | "bot";
   note?: string;
+  /** Swap attempts the feed saw in the window, failed ones, non-swap notifications (markers, funding). */
   seen: number;
   failed: number;
-  /** Percent of the terminal's transactions that failed on-chain; undefined under 20 seen. */
+  nonSwap: number;
+  /** Percent of the terminal's swap attempts that failed on-chain; undefined under 20 seen. */
   failRatePct?: number;
+  /** Top error classes among failed attempts (slippage, program codes). */
+  failReasons: Record<string, number>;
   parsed: number;
   priced: number;
-  /** Loss vs arrival price, basis points of the trade; undefined without priced samples. */
+  /** Priced but outside the plausible loss bounds, excluded from the statistics. */
+  flagged: number;
+  /** Loss vs the pool's pre-trade state, basis points of the trade; undefined without priced samples. */
   loss?: FillQuantiles;
   /** Median cost components, bps: terminal, network, other, pool (when known). */
   components: Partial<Record<"terminal" | "network" | "other" | "pool", number>>;
   tradeUsd?: FillQuantiles;
-  /** Share of priced samples by reference source: reserves (exact mid), pool (previous trade), jupiter. */
+  /** Share of priced samples by reference source: reserves (exact mid), pool (previous trade). */
   refSrcPct: Record<string, number>;
-  /** Block scan: swaps whose block was read, sandwiched ones, share (from 20 scanned), attacker profit. */
+  /** Sandwich screen (informative, coverage depends on pool activity): screened swaps, hits, share, attacker profit. */
   scanned: number;
   sandwiched: number;
   sandwichPct?: number;
@@ -41,7 +48,9 @@ export type TerminalFillStats = {
   buySharePct: number;
   venueSharePct: Record<string, number>;
   quoteSharePct: Record<string, number>;
+  /** healthy: enough priced swaps to publish (minPriced); ranked: enough to rank (minRank). */
   healthy: boolean;
+  ranked: boolean;
 };
 
 export type FillSample = {
@@ -51,14 +60,18 @@ export type FillSample = {
   side: "buy" | "sell";
   quote: string;
   venue: string;
+  /** Pool instructions of the route that are not on the token (quote → X hops). */
+  hops: number;
   tradeUsd: number;
   priced: boolean;
+  /** Set when the row is kept out of the statistics (loss outside the plausible bounds). */
+  flag?: string;
   refSrc?: string;
   refAgeS?: number;
   /** Route through a third asset (mint) priced from the route's own hop. */
   xMint?: string;
   scanned: boolean;
-  sandwiched: boolean;
+  sandwich?: { attacker: string; frontSig: string; backSig: string; profitBps: number };
   lossBps?: number;
   poolBps?: number;
   terminalBps: number;
@@ -69,6 +82,9 @@ export type FillSample = {
 export type TerminalFills = {
   generatedAt: string;
   windowHours: number;
+  methodVersion: number;
+  minPriced: number;
+  minRank: number;
   solUsd: number;
   method: string;
   terminals: TerminalFillStats[];
@@ -84,11 +100,12 @@ function num(x: unknown): number | undefined {
 function quant(x: unknown): FillQuantiles | undefined {
   if (!isRecord(x)) return undefined;
   const median = num(x.median);
-  const mean = num(x.mean);
   const p90 = num(x.p90);
   const n = num(x.n);
-  if (median === undefined || mean === undefined || p90 === undefined || n === undefined) return undefined;
-  return { median, mean, p90, n };
+  if (median === undefined || p90 === undefined || n === undefined) return undefined;
+  const ciLo = num(x.ci_lo);
+  const ciHi = num(x.ci_hi);
+  return { median, p90, n, ...(ciLo !== undefined && ciHi !== undefined ? { ciLo, ciHi } : {}) };
 }
 function numMap(x: unknown): Record<string, number> {
   const out: Record<string, number> = {};
@@ -119,9 +136,12 @@ function parse(raw: unknown): TerminalFills | null {
       ...(typeof t.note === "string" && t.note ? { note: t.note } : {}),
       seen: num(t.seen) ?? 0,
       failed: num(t.failed) ?? 0,
+      nonSwap: num(t.non_swap) ?? 0,
       ...(num(t.fail_rate_pct) !== undefined ? { failRatePct: num(t.fail_rate_pct) } : {}),
+      failReasons: numMap(t.fail_reasons),
       parsed: num(t.parsed) ?? 0,
       priced: num(t.priced) ?? 0,
+      flagged: num(t.flagged) ?? 0,
       ...(quant(t.loss_bps) ? { loss: quant(t.loss_bps) } : {}),
       components: {
         ...(comps.terminal !== undefined ? { terminal: comps.terminal } : {}),
@@ -140,12 +160,14 @@ function parse(raw: unknown): TerminalFills | null {
       venueSharePct: numMap(t.venue_share_pct),
       quoteSharePct: numMap(t.quote_share_pct),
       healthy: t.healthy === true,
+      ranked: t.ranked === true,
     });
   }
   const recent: FillSample[] = [];
   if (Array.isArray(raw.recent)) {
     for (const s of raw.recent) {
       if (!isRecord(s) || typeof s.sig !== "string" || typeof s.terminal !== "string") continue;
+      const sw = isRecord(s.sandwich) ? s.sandwich : null;
       recent.push({
         sig: s.sig,
         terminal: s.terminal,
@@ -153,13 +175,24 @@ function parse(raw: unknown): TerminalFills | null {
         side: s.side === "sell" ? "sell" : "buy",
         quote: typeof s.quote === "string" ? s.quote : "SOL",
         venue: typeof s.venue === "string" ? s.venue : "unknown",
+        hops: num(s.hops) ?? 0,
         tradeUsd: num(s.trade_usd) ?? 0,
         priced: s.priced === true,
-        ...(typeof s.ref_src === "string" ? { refSrc: s.ref_src } : {}),
+        ...(typeof s.flag === "string" && s.flag ? { flag: s.flag } : {}),
+        ...(typeof s.ref_src === "string" && s.ref_src ? { refSrc: s.ref_src } : {}),
         ...(num(s.ref_age_s) !== undefined ? { refAgeS: num(s.ref_age_s) } : {}),
         ...(typeof s.x_mint === "string" && s.x_mint ? { xMint: s.x_mint } : {}),
         scanned: s.scanned === true,
-        sandwiched: isRecord(s.sandwich),
+        ...(sw && typeof sw.attacker === "string"
+          ? {
+              sandwich: {
+                attacker: sw.attacker,
+                frontSig: typeof sw.front_sig === "string" ? sw.front_sig : "",
+                backSig: typeof sw.back_sig === "string" ? sw.back_sig : "",
+                profitBps: num(sw.profit_bps) ?? 0,
+              },
+            }
+          : {}),
         ...(num(s.loss_bps) !== undefined ? { lossBps: num(s.loss_bps) } : {}),
         ...(num(s.pool_bps) !== undefined ? { poolBps: num(s.pool_bps) } : {}),
         terminalBps: num(s.terminal_bps) ?? 0,
@@ -171,6 +204,9 @@ function parse(raw: unknown): TerminalFills | null {
   return {
     generatedAt: typeof raw.generated_at === "string" ? raw.generated_at : "",
     windowHours: num(raw.window_hours) ?? 24,
+    methodVersion: num(raw.method_version) ?? 0,
+    minPriced: num(raw.min_priced) ?? 50,
+    minRank: num(raw.min_rank) ?? 100,
     solUsd: num(raw.sol_usd) ?? 0,
     method: typeof raw.method === "string" ? raw.method : "",
     terminals,
@@ -190,11 +226,16 @@ export async function getTerminalFills(): Promise<TerminalFills | null> {
   }
 }
 
-/** Terminals with a published figure, cheapest first, then the rest. */
+/** Ranked terminals cheapest first, then published-but-not-ranked by median, then the rest by sample size. */
 export function rankTerminals(f: TerminalFills): TerminalFillStats[] {
-  const pub = f.terminals.filter((t) => t.healthy && t.loss).sort((a, b) => a.loss!.median - b.loss!.median);
-  const rest = f.terminals.filter((t) => !(t.healthy && t.loss)).sort((a, b) => b.priced - a.priced);
-  return [...pub, ...rest];
+  const tier = (t: TerminalFillStats) => (t.ranked && t.loss ? 0 : t.healthy && t.loss ? 1 : 2);
+  return [...f.terminals].sort((a, b) => {
+    const ta = tier(a);
+    const tb = tier(b);
+    if (ta !== tb) return ta - tb;
+    if (ta === 2) return b.priced - a.priced;
+    return a.loss!.median - b.loss!.median;
+  });
 }
 
 export function fmtBps(v: number | undefined): string {

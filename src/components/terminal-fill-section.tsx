@@ -11,15 +11,18 @@ import {
 /**
  * Fill quality block (bench 268) shared by the /trading-apps hub and the
  * "Trading app" view on /products/<slug>:
- *   1. KPIs: cheapest terminal, spread, share of failed transactions
+ *   1. KPIs: cheapest terminal, spread, share of failed swaps, sample
  *      (or, on a product page, the terminal's own cost, rank, split, fails)
- *   2. the table: cost per swap (median, p90) with a stacked cost bar
- *      (terminal / network / other / pool), failed tx, median trade,
- *      sample size
- *   3. method footer
+ *   2. the table: cost per swap (median with its 95 % interval, p90) with
+ *      a stacked cost bar (terminal / network / other / pool), failed
+ *      swaps, median trade, sample size
+ *   3. the explorable table of sampled swaps (QA), method footer
  *
- * Server component reading the harness JSON (5 min revalidate). Returns
- * null when the JSON is unavailable so neither page breaks.
+ * A terminal is published from `minPriced` priced swaps and ranked from
+ * `minRank` (both in the JSON): between the two it is listed with its
+ * figure but no rank. Server component reading the harness JSON (5 min
+ * revalidate). Returns null when the JSON is unavailable so neither page
+ * breaks.
  */
 export async function TerminalFillSection({
   focus,
@@ -31,18 +34,17 @@ export async function TerminalFillSection({
 }) {
   const f = await getTerminalFills();
   if (!f || f.terminals.length === 0) return null;
-  // Terminals the harness listens to but cannot read yet (BasedBot: custodial
-  // program, no user token leg) stay out of the table rather than showing an
-  // "unresponsive" row that reads as an outage.
-  const ranked = rankTerminals(f).filter((t) => t.parsed > 0 || t.seen > 0);
-  const published = ranked.filter((t) => t.healthy && t.loss);
+  const ordered = rankTerminals(f);
+  const ranked = ordered.filter((t) => t.ranked && t.loss);
+  const published = ordered.filter((t) => t.healthy && t.loss);
   const me = focus ? f.terminals.find((t) => t.slug === focus) : null;
   if (focus && !me) return null;
-  const meRank = me && me.healthy && me.loss ? published.findIndex((t) => t.slug === me.slug) + 1 : null;
-  const rows = compact ? ranked.slice(0, 8) : ranked;
-  const maxBps = Math.max(1, ...ranked.map((t) => stackTotal(t)));
-  const cheapest = published[0];
-  const priciest = published[published.length - 1];
+  const meRank = me && me.ranked && me.loss ? ranked.findIndex((t) => t.slug === me.slug) + 1 : null;
+  const rows = compact ? ordered.slice(0, 8) : ordered;
+  const maxBps = Math.max(1, ...ordered.map((t) => stackTotal(t)));
+  const cheapest = ranked[0];
+  const priciest = ranked[ranked.length - 1];
+  const totalPriced = f.terminals.reduce((s, t) => s + t.priced, 0);
 
   return (
     <div>
@@ -50,19 +52,27 @@ export async function TerminalFillSection({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           <Kpi
             label="Cost per swap, median"
-            value={fmtBps(me.loss?.median)}
-            sub={meRank ? `Rank ${meRank} of ${published.length} · p90 ${fmtBps(me.loss?.p90)}` : me.priced > 0 ? `${me.priced} swaps, not enough yet` : "no priced swap yet"}
+            value={me.healthy ? fmtBps(me.loss?.median) : "—"}
+            sub={
+              meRank
+                ? `Rank ${meRank} of ${ranked.length} · ${ciText(me)}`
+                : me.healthy && me.loss
+                  ? `${ciText(me)} · ranked from ${f.minRank} swaps`
+                  : me.priced > 0
+                    ? `${me.priced} priced swaps, ${f.minPriced} needed`
+                    : "no priced swap yet"
+            }
           />
           <Kpi label="Terminal fee" value={fmtBps(me.components.terminal)} sub={me.components.network !== undefined ? `network ${fmtBps(me.components.network)}` : undefined} />
-          <Kpi label="Sandwiched" value={me.sandwichPct !== undefined ? `${me.sandwichPct.toFixed(1)}%` : "—"} sub={me.scanned > 0 ? `${me.sandwiched} of ${me.scanned} scanned blocks${me.sandwichProfit ? ` · attacker ${fmtBps(me.sandwichProfit.median)}` : ""}` : "no block scanned yet"} />
-          <Kpi label="Failed transactions" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={`${me.seen.toLocaleString("en-US")} seen · ${me.priced} sampled`} />
+          <Kpi label="Failed swaps" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={`${me.seen.toLocaleString("en-US")} attempts seen${topReason(me) ? ` · mostly ${topReason(me)}` : ""}`} />
+          <Kpi label="Swaps sampled" value={me.priced.toLocaleString("en-US")} sub={`${me.parsed} read · p90 ${me.healthy ? fmtBps(me.loss?.p90) : "—"}`} />
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          <Kpi label="Cheapest fill, median" value={cheapest?.name ?? "—"} sub={cheapest ? fmtBps(cheapest.loss?.median) + " per swap" : undefined} logo={cheapest?.slug} />
-          <Kpi label="Most expensive, median" value={priciest && priciest !== cheapest ? priciest.name : "—"} sub={priciest && priciest !== cheapest ? fmtBps(priciest.loss?.median) + " per swap" : undefined} logo={priciest && priciest !== cheapest ? priciest.slug : undefined} />
-          <Kpi label="Sandwiched swaps" value={aggregateSandwich(f.terminals)} sub={`${f.terminals.reduce((s, t) => s + t.scanned, 0).toLocaleString("en-US")} swaps screened · ${published.length} of ${ranked.length} terminals published`} />
-          <Kpi label="Failed transactions" value={aggregateFail(f.terminals)} sub="all terminals, share of routed tx" />
+          <Kpi label="Cheapest fill, median" value={cheapest?.name ?? "—"} sub={cheapest ? `${fmtBps(cheapest.loss?.median)} per swap · ${ciText(cheapest)}` : `no terminal at ${f.minRank} swaps yet`} logo={cheapest?.slug} />
+          <Kpi label="Most expensive, median" value={priciest && priciest !== cheapest ? priciest.name : "—"} sub={priciest && priciest !== cheapest ? `${fmtBps(priciest.loss?.median)} per swap · ${ciText(priciest)}` : undefined} logo={priciest && priciest !== cheapest ? priciest.slug : undefined} />
+          <Kpi label="Failed swaps" value={aggregateFail(f.terminals)} sub="all terminals, share of swap attempts" />
+          <Kpi label="Swaps sampled" value={totalPriced.toLocaleString("en-US")} sub={`${ranked.length} ranked · ${published.length} published of ${ordered.length}`} />
         </div>
       )}
 
@@ -71,11 +81,10 @@ export async function TerminalFillSection({
           <thead>
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
-              <Th right title="Median value lost per swap against the pool's arrival price, all costs included, basis points of the trade">Cost per swap</Th>
+              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade; hover for the 95 % interval of the median">Cost per swap</Th>
               <Th right title="90th percentile of the same">p90</Th>
-              <Th title="Median cost split: terminal fee, network (priority fee + Jito tip), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
-              <Th right title="Share of the terminal's transactions that failed on-chain; the priority fee is paid anyway">Failed tx</Th>
-              <Th right title="Share of screened swaps with a front-run and back-run by the same signer around them on the same pool">Sandwiched</Th>
+              <Th title="Median cost split: terminal fee, network (tx fee + inclusion tips), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
+              <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway">Failed swaps</Th>
               <Th right title="Median sampled trade size">Median trade</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
             </tr>
@@ -83,13 +92,15 @@ export async function TerminalFillSection({
           <tbody className="divide-y divide-rule">
             {rows.map((t) => {
               const mine = focus === t.slug;
-              const rank = published.findIndex((p) => p.slug === t.slug) + 1;
+              const rank = ranked.findIndex((p) => p.slug === t.slug) + 1;
               const pub = t.healthy && !!t.loss;
               return (
                 <tr key={t.slug} className={mine ? "bg-paper-soft/70" : "hover:bg-paper-soft/40 transition-colors"}>
                   <td className="py-2.5 pr-3 whitespace-nowrap">
                     <span className="inline-flex items-center gap-2">
-                      <span className="w-5 text-right text-ink-faint tabular-nums text-[11px]">{pub ? rank : "·"}</span>
+                      <span className="w-5 text-right text-ink-faint tabular-nums text-[11px]" title={pub && !rank ? `published, ranked from ${f.minRank} priced swaps` : undefined}>
+                        {rank ? rank : "·"}
+                      </span>
                       {mine ? (
                         <span className="inline-flex items-center gap-2 font-semibold text-ink">
                           <ProviderLogo slug={t.slug} name={t.name} size={18} />
@@ -102,20 +113,18 @@ export async function TerminalFillSection({
                         </Link>
                       )}
                       <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{t.kind}</span>
+                      {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums font-medium">
-                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, 20 needed` : "no priced swap yet"}>—</span>}
+                  <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? ciText(t) : undefined}>
+                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtBps(t.loss!.p90) : "—"}</td>
                   <td className="py-2.5 pr-4">
                     <CostBar t={t} max={maxBps} />
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }}>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.failed.toLocaleString("en-US")} of ${t.seen.toLocaleString("en-US")} attempts${topReason(t) ? ` · mostly ${topReason(t)}` : ""}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.sandwichPct !== undefined && t.sandwichPct >= 2 ? "var(--color-bad, #e5484d)" : undefined }} title={t.scanned > 0 ? `${t.sandwiched} of ${t.scanned} scanned` : undefined}>
-                    {t.sandwichPct !== undefined ? `${t.sandwichPct.toFixed(1)}%` : t.scanned > 0 ? <span className="text-ink-faint">{t.sandwiched}/{t.scanned}</span> : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.priced}</td>
@@ -165,11 +174,11 @@ export async function TerminalFillSection({
       </details>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain from each terminal&apos;s fee-wallet transactions (live feed, 300 drawn at random per terminal per day),
-        valued at the pool&apos;s pre-trade mid (exact from its reserves on PumpSwap and Raydium, the previous trade on the same pool
-        elsewhere; swaps whose pool state is not readable keep their cost split but no loss figure). Loss = 1 − value received /
-        value given, in basis points of the trade; the split is exact from balance deltas. Each swap&apos;s neighbours on its pool are
-        screened for a sandwich (front-run and back-run by the same signer).
+        Real user swaps read on-chain from each terminal&apos;s fee-wallet feed (300 drawn at random per terminal per day, every attempt
+        counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
+        the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
+        Loss = 1 − value received / value given, in basis points of the trade; the split is exact from balance deltas, the tx fee
+        and inclusion tips included. Published from {f.minPriced} priced swaps, ranked from {f.minRank}.
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}
         <Link href="/benchmarks/terminal-fill-quality" className="underline hover:no-underline">
           268
@@ -181,10 +190,29 @@ export async function TerminalFillSection({
 }
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", other: "#8B5CF6", pool: "#5B89FF" } as const;
-const LABELS = { terminal: "Terminal fee", network: "Network (priority + tip)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
+const LABELS = { terminal: "Terminal fee", network: "Network (tx fee + tips)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
 
 function stackTotal(t: TerminalFillStats): number {
   return (["terminal", "network", "other", "pool"] as const).reduce((s, c) => s + Math.max(0, t.components[c] ?? 0), 0);
+}
+
+/** "95 % interval 210 to 260 bps · n swaps" for a published terminal. */
+function ciText(t: TerminalFillStats): string {
+  const l = t.loss;
+  if (!l) return "";
+  if (l.ciLo === undefined || l.ciHi === undefined) return `${l.n} swaps`;
+  return `95 % interval ${Math.round(l.ciLo)} to ${Math.round(l.ciHi)} bps · ${l.n} swaps`;
+}
+
+/** Most frequent failure class, in plain words where known. */
+function topReason(t: TerminalFillStats): string | undefined {
+  const e = Object.entries(t.failReasons).sort((a, b) => b[1] - a[1])[0];
+  if (!e) return undefined;
+  const k = e[0];
+  if (/^custom:(6001|6002|6003)$/i.test(k)) return "slippage";
+  if (/SlippageTolerance/i.test(k)) return "slippage";
+  if (/InsufficientFunds/i.test(k)) return "insufficient funds";
+  return k.replace(/^custom:/, "program error ");
 }
 
 /** Stacked bar of the median cost components, on a shared scale. */
@@ -219,12 +247,6 @@ function sizeCohortMedian(ts: TerminalFillStats[], b: keyof typeof SIZE_LABELS):
   const v = ts.map((t) => t.bySize[b]?.median).filter((x): x is number => x !== undefined).sort((a, c) => a - c);
   if (v.length === 0) return undefined;
   return v[Math.floor(v.length / 2)];
-}
-
-function aggregateSandwich(ts: TerminalFillStats[]): string {
-  const scanned = ts.reduce((s, t) => s + t.scanned, 0);
-  const sand = ts.reduce((s, t) => s + t.sandwiched, 0);
-  return scanned > 0 ? `${((100 * sand) / scanned).toFixed(1)}%` : "—";
 }
 
 function aggregateFail(ts: TerminalFillStats[]): string {

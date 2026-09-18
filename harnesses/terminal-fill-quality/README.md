@@ -4,113 +4,133 @@ What a swap costs the user on each Solana trading terminal / Telegram bot,
 measured on-chain. Feeds bench 268 (`terminal-fill-quality`), the
 `/trading-apps` hub and the "Trading app" view on `/products/<slug>`.
 
+Method version 3 (`methodVersion` in `config.go`). Every sampled swap
+carries it; statistics only use rows of the running version, and rows of
+an older one are dropped at load, so a method change never mixes two
+accountings inside the window.
+
 ## Method
 
-Every terminal takes its fee through known wallets (the lists DeFiLlama's
-dexs / fees adapters match on, so attribution is identical to benches 201
+Every terminal takes its fee through known wallets (DeFiLlama's dexs /
+fees adapters and Dune's spellbook, so attribution matches benches 201
 and 267). A WebSocket `logsSubscribe` on each of those wallets (and on
-BasedBot's program) delivers every transaction the terminal routes, within
-a second of confirmation, with its error status: the fail rate is
-exhaustive and free. Each tick draws `DAILY_TARGET × tick / 86400` of the
-tick's successful signatures per terminal at random (reservoir sample) and
-reads them with `getTransaction`. When the feed is down the harness polls
-the wallets instead (`WS=0` forces polling).
+pump.fun's app program) delivers every transaction the terminal routes,
+within a second of confirmation, with its error status and program logs.
+The logs say whether a swap program was invoked (`swapProgramPrefixes`:
+venues, Jupiter, the terminals' routers): only those are swap attempts;
+wallet funding, fee sweeps and GMGN's 1-lamport markers are counted apart
+and never enter the fail rate. Each tick draws `DAILY_TARGET × tick /
+86400` of the tick's successful attempts per terminal at random
+(reservoir sample, weighted by the tick's activity so bursts are
+represented in proportion to their trades) and reads them with
+`getTransaction`. When the feed is down the harness polls the wallets
+instead (`WS=0` forces polling; without logs every signature counts as an
+attempt).
 
 A Solana transaction carries the pre/post SOL and token balances of every
-account it touches, so each sampled swap is reduced to exact quote-side
-amounts (SOL or a $1 stable), see `parse.go`:
+account it touches and the account list of every instruction, so each
+sampled swap is reduced to exact quote-side amounts (SOL or a $1 stable),
+see `parse.go`:
 
 | Field | Meaning |
 |---|---|
-| `user_q` | what left (buy) or reached (sell) the user's quote balance, rent for new token accounts excluded, tx fee excluded |
-| `pool_q` | what the pool(s) received / paid out; 0 when a multi-hop route hides the quote leg |
-| `terminal_q` | what landed in the terminal's fee wallets (lamports, WSOL or a stable, converted to the quote unit) |
-| `network_q` | tx fee when the user is the fee payer (0 when the terminal sponsors gas, FOMO) + Jito tips |
-| `other_q` | quote that left the user and reached neither pool, terminal nor network: pump.fun protocol / creator fees, referral payouts, hop costs |
+| `user_q` | what left (buy) or reached (sell) the user's quote balance; the tx fee is inside when the user paid it; rent of token accounts created / closed and of program accounts the user funded (pump.fun's volume accumulator) excluded; a created WSOL account counts only its rent, the token delta carries the wrapped amount |
+| `pool_q` | what the pool(s) received / paid out, over the pool's own vaults |
+| `terminal_q` | what landed in the terminal's fee wallets (lamports, WSOL or a stable, converted to the quote unit); FOMO: plus its user-signed USDC legs to per-trade accounts outside every pool instruction, bounded at 2 % of the trade |
+| `network_q` | tx fee when the user is the fee payer (0 when the terminal sponsors gas, FOMO) + inclusion tips: Jito, 0slot, bloXroute, Astralane, Nozomi and each terminal's own relay accounts (`Terminal.Tips`: Axiom, Trojan, Maestro `BBtip…`, Photon, Pepeboost, pump.fun app `pfn…`) |
+| `other_q` | `user_q − pool_q − terminal_q − network_q` on single-pool swaps without hops: pump.fun protocol / creator fees, referral payouts; exact, since the tx fee is no longer added back |
+
+**Pool identity.** The pool is the token vault that moved against the
+user plus the quote vault(s) of the same swap instruction with the same
+owner, all by pubkey (`pool_vault`, `pool_quote_vaults`). Two pools behind
+one shared authority (Raydium v4 `5Q544fKr…`, CPMM `GpMZbSM2…`, Launchpad
+`WLHv2UAZ…`, Meteora DAMM v2 `HLnpSz9h…`) never merge into one, which was
+the source of phantom 9,990 bps rows in version 2. Venue instructions of
+the route that touch no token counterparty but move someone's token
+account are hops (`hops`); Anchor's event self-CPI moves nothing and is
+not one. A final pool quoted in a third asset (FOMO: USDC → NEAR / INJ /
+USO → token) is priced through the route's own hop (`x_mint`, `x_rate` =
+quote paid into the hop pools / X they paid out).
 
 The token leg is valued at an **arrival price**, in this order:
 
 1. `ref_src: reserves`: the pool's exact mid before the swap, from the
    pool's pre-trade balances in the transaction, when the route is one
-   constant-product pool. PumpSwap pools migrated from pump.fun carry a
-   virtual quote reserve (about 17.58 SOL, stored at byte 245 of the pool
-   account, read once per pool); x·y = k holds exactly with it and fails
-   without. Raydium v4 / CPMM: vault ratio.
+   constant-product pool without hops. PumpSwap pools migrated from
+   pump.fun carry a virtual quote reserve (about 17.58 SOL, stored at byte
+   245 of the pool account, read once per pool); x·y = k holds exactly
+   with it and fails without. Raydium v4 / CPMM: vault ratio.
 2. `ref_src: pool`: the effective price of the previous trade on the same
    pool (`getSignaturesForAddress` on the pool's token vault, `before` our
-   signature; `ref_age_s` = seconds earlier). Used for the pump.fun curve
-   (its stored virtual reserves no longer predict the executed price on
-   2026 curves: real trades fill 20 to 60 % above virtual_sol /
-   virtual_token, so the account cannot be trusted for a mid), Meteora,
-   CLMM and multi-pool routes.
-3. (off by default, `JUPITER_FALLBACK=1`) Jupiter's price API right after
-   the sample. Audit on the live window: 29 % of Jupiter-referenced swaps
-   came out with a negative loss (price read after the trade, multi-pool
-   routes), against 1 % for the two on-chain references, so Jupiter-priced
-   samples never enter the loss statistics. Swaps whose pool state is not
-   readable keep their exact components and stay out of the loss figure;
-   `ref_src_pct` says how many were priced and how.
-
-On PumpSwap with the reserve mid the per-swap loss distribution is tight
-(p10 to p90 roughly 140 to 800 bps, none negative); the previous-trade
-reference carries the previous trader's impact and direction, so it is
-noisier and slightly biased in buy or sell waves.
+   signature; `ref_age_s` = seconds earlier, at most 60). Used for the
+   pump.fun curve (its stored virtual reserves no longer predict the
+   executed price on 2026 curves: real trades fill 20 to 60 % above
+   virtual_sol / virtual_token), Meteora, CLMM and routed swaps. It
+   carries the previous trader's direction, so terminals priced mostly
+   this way read some tens of bps worse in buy waves.
+3. Nothing else. Swaps with neither keep their exact components and stay
+   out of the loss figure; `ref_src_pct` says how many were priced and how.
+   Jupiter's price API was tried and dropped (29 % negative losses).
 
 ```
 buy : loss = 1 − tokens × ref / user_q
 sell: loss = 1 − user_q / (tokens × ref)
 ```
 
-`loss_bps` is the whole shortfall the user suffered against that reference;
-`terminal_bps` / `network_bps` are exact; `other_bps` (pump.fun protocol and
-creator fees, referral payouts, tip services not listed) is known on
-single-venue routes only; `pool_bps` = loss − terminal − network − other,
-i.e. LP fee + price impact, plus the hop costs and unattributed fees on
-multi-pool routes. The four components always sum to the loss. All in
-basis points of the trade (buy: quote spent; sell: tokens × ref).
+`loss_bps` is the whole shortfall the user suffered against that
+reference; `terminal_bps` / `network_bps` are exact; `other_bps` is known
+on single-pool swaps without hops; `pool_bps` = loss − terminal − network
+− other, i.e. LP fee + price impact, plus the hop costs and unattributed
+fees on routed swaps. The four components always sum to the loss. All in
+basis points of the trade (buy: quote spent; sell: tokens × ref; unpriced
+sell: the larger of pool_q and what the user got back plus fees). Losses
+outside [−1000, 5000] bps are parsing or reference errors: the row keeps
+its figures with `flag: out_of_bounds` and stays out of the statistics.
 
-Network covers the tx fee and the tip accounts of Jito, 0slot, bloXroute
-and Nozomi (`noz…` vanity prefix); a tip service not listed lands in
-"other". Each terminal's `other_top` (largest "other" recipients over the
-window, single-venue swaps) is in the JSON so new fee or tip accounts can
-be spotted and classified. Rent of token accounts created or closed in the
-transaction is excluded from the user's quote movement.
+Each terminal's `other_top` (largest "other" recipients over the window,
+single-pool swaps, pump.fun's protocol fee recipients labelled) is in the
+JSON so new fee or tip accounts can be spotted and classified.
 
-Failed transactions are counted from the signature scan (`fail_rate_pct`): the
-user paid the priority fee for nothing, which no fill metric shows.
+**Fail rate** (`fail_rate_pct`): failed over every swap attempt the feed
+saw, exhaustive; `fail_reasons` keeps the top error classes (pump.fun
+`Custom:6002/6003` = slippage, `Custom:1` insufficient lamports, Jupiter
+`Custom:6001`…). A failed swap still costs the priority fee.
 
 **Sandwiches**: a sandwich's front-run and back-run both touch the pool,
-so they are the swap's immediate neighbours in the pool vault's signature
-sequence, which the arrival-price lookup already reads (one
-`getSignaturesForAddress`, newest 60). The previous trade is read anyway;
-the next one is read only when both neighbours sit in the swap's slot or
-the next one, and it counts as a sandwich when the same signer traded our
-direction before us and back after us, closing a comparable position
-(0.5 to 2× the tokens) with a positive take. Every sampled swap is
-screened (`scanned`), at about 0.05 extra call per swap; `sandwich_pct`
-per terminal, attacker profit in bps of the victim's trade. The victim's
-extra cost is already inside `loss_bps` (the front-run precedes us, so it
-is in the arrival price); the screen isolates how often it happens.
-Multi-block sandwiches are not looked for.
+so they are the swap's neighbours in the pool vault's signature sequence:
+`before` our signature for the previous trades (read anyway for the
+reference), `until` our signature for the ones after (a 100-entry page,
+then 1,000 on very busy pools; unknown beyond). It counts when another
+signer (never the user) traded our direction in our slot just before us
+and back in our slot or the next, closing a comparable position (0.5 to
+2× the tokens) with a positive take. Kept per swap (`sandwich`: attacker,
+front and back signatures, profit in bps of the victim's trade) and
+summarised per terminal (`scanned`, `sandwiched`, `sandwich_pct`), but not
+published as a ranking column: the share of swaps that can be screened
+depends on pool activity. The victim's extra cost is already inside
+`loss_bps` (the front-run precedes us, so it is in the arrival price).
 
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
-over $250; median loss and n from 5 samples), so terminals with different
-typical trade sizes can be compared at equal size.
+over $250; median loss and n from 5 samples).
 
-Why not the pool's vault ratio as the mid: PumpSwap's vault balances do not
-follow x·y = k against the executed price (8–50 % off, not constant), so
-the previous trade's print is the only pre-trade reference that holds on
-every venue.
+**Publication thresholds**: `healthy` (figure published, `tfq_health`)
+from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
+from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap
+interval (`ci_lo`, `ci_hi`, 300 resamples) so a gap between two terminals
+can be read against the sampling noise; the JSON orders ranked terminals
+by median, then published-but-not-ranked, then the rest.
 
 ## Cohort
 
-Axiom (20 wallets), GMGN (9), FOMO (fee wallet + gas sponsor excluded as
-user), Photon, Trojan (7), BullX (2), Bloom, Maestro (2), Pepeboost,
-BONKbot, Banana Gun (3), Nova. Wallet lists come from DeFiLlama's adapters
-and Dune's spellbook (`dex_solana.bot_trades` platform models). BasedBot is
-not in: DeFiLlama's `basedbid` addresses belong to a launchpad / bid
-mechanism, and the trading bot's Solana fee wallet is not published
-anywhere readable.
+Axiom (22 wallets: 20 fee wallets plus the two second-leg recipients of
+its 1 %), GMGN (9), FOMO (fee wallet + gas sponsor excluded as user, USDC
+fee legs), Photon, Trojan (6), Bloom, Maestro, Pepeboost, BONKbot, Banana
+Gun, pump.fun's mobile app (by its app program). Wallet lists come from
+DeFiLlama's adapters and Dune's spellbook (`dex_solana.bot_trades`
+platform models), checked live on 2026-09-18. Not in: BullX (trading
+suspended 2026-06-01, its wallets only see 1,000-lamport markers), Nova
+(no live fee wallet), BasedBot (DeFiLlama's `basedbid` addresses belong to
+a launchpad / bid mechanism; the bot's fee wallet is not published).
 
 ## Outputs
 
@@ -118,47 +138,51 @@ Prometheus on `:2112/metrics`, rolling `WINDOW_HOURS`:
 
 | Gauge | Labels | Meaning |
 |---|---|---|
-| `tfq_loss_bps` | terminal, stat=median/mean/p90 | loss vs arrival price, priced samples; only when healthy |
+| `tfq_loss_bps` | terminal, stat=median/p90/ci_lo/ci_hi | loss vs the pool's pre-trade state, priced samples; only when healthy |
 | `tfq_component_bps` | terminal, component=terminal/network/other/pool | median per component |
-| `tfq_fail_rate_pct` | terminal | failed / seen signatures, percent |
-| `tfq_sample_size` | terminal, kind=seen/parsed/priced | |
-| `tfq_trade_usd` | terminal, stat=median/mean | |
+| `tfq_fail_rate_pct` | terminal | failed / swap attempts, percent |
+| `tfq_sample_size` | terminal, kind=seen/parsed/priced | seen = swap attempts |
+| `tfq_trade_usd` | terminal, stat=median/p90 | |
 | `tfq_venue_share_pct` | terminal, venue | |
 | `tfq_buy_share_pct` | terminal | |
-| `tfq_sandwich_pct`, `tfq_sandwich_profit_bps` | terminal | sandwiched share of scanned swaps; median attacker profit |
+| `tfq_sandwich_pct`, `tfq_sandwich_profit_bps` | terminal | informative, see above |
 | `tfq_loss_bps_size` | terminal, bucket | median loss by trade-size bucket |
-| `tfq_health` | terminal | 1 when priced ≥ `MIN_PRICED` |
-| `tfq_sol_usd`, `tfq_last_refresh_unix`, `tfq_rpc_calls_total`, `tfq_rpc_errors_total` | | |
+| `tfq_health`, `tfq_ranked` | terminal | priced ≥ `MIN_PRICED` / ≥ `MIN_RANK` |
+| `tfq_feed_up`, `tfq_sol_usd`, `tfq_last_refresh_unix`, `tfq_rpc_calls_total`, `tfq_rpc_errors_total` | | |
 
 JSON on `:2112/v1/fills` and mirrored to `HISTORY_FILE_PUBLIC`: per-terminal
-stats plus the last 200 samples.
+stats plus the last 400 samples (`method_version`, `min_priced`,
+`min_rank` at the top).
 
 ## Env
 
 | Var | Default | Meaning |
 |---|---|---|
-| `HELIUS_API_KEY` / `SOLANA_RPC` | public RPC | RPC endpoint |
+| `HELIUS_API_KEY` / `SOLANA_RPC` | public RPC | RPC endpoint for the reads |
 | `RPC_RPS` | `8` | pacing, calls per second |
 | `TICK_SECONDS` | `60` | sweep interval |
 | `DAILY_TARGET` | `300` | swaps read per terminal per day (random draw from the feed) |
 | `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
-| `WS_URL` | RPC URL | feed endpoint when different from the reads (e.g. the keyless public `wss://api.mainnet-beta.solana.com`) |
+| `WS_URL` | RPC URL | feed endpoint when different from the reads (the keyless public `wss://api.mainnet-beta.solana.com` works) |
 | `WINDOW_HOURS` | `24` | rolling window |
-| `MIN_PRICED` | `20` | priced samples before a terminal is published |
+| `MIN_PRICED` | `50` | priced samples before a terminal is published |
+| `MIN_RANK` | `100` | priced samples before a terminal is ranked |
+| `MIN_TRADE_USD` | `2` | dust threshold |
 | `STATE_FILE` | unset | persist the window across restarts |
 | `HISTORY_FILE_PUBLIC` | unset | public JSON mirror |
 
-Budget at defaults: about 2.7 RPC calls per sampled swap (transaction,
-pool neighbourhood, previous trade when the reserves give no mid, pool
-account once per pool, back-run only on a sandwich candidate) and no
-polling, so 300 swaps × 10 terminals ≈ 8–10k calls a day. Fits any free
-RPC tier, the public endpoint included; WebSocket notifications are not
-metered.
+Budget: about 4 to 5 RPC calls per sampled swap (transaction, two
+signature pages on the pool vault, previous trade when the reserves give
+no mid, pool account once per pool, back-run only on a sandwich
+candidate) and no polling, so 300 swaps × 11 terminals ≈ 15k calls a day.
+Fits Helius's free tier; WebSocket notifications on the public endpoint
+are not metered.
 
 ```bash
 docker build -t ocb-terminal-fill-quality .
 docker run -d --name ocb-terminal-fill-quality --network ocb_web --restart unless-stopped \
   -v /data/state/aggregate/terminal-fills:/data/public -v /data/state/terminal-fills:/data/state \
-  -e HELIUS_API_KEY=… -e STATE_FILE=/data/state/state.json -e HISTORY_FILE_PUBLIC=/data/public/fills.json \
+  -e HELIUS_API_KEY=… -e WS_URL=wss://api.mainnet-beta.solana.com \
+  -e STATE_FILE=/data/state/state.json -e HISTORY_FILE_PUBLIC=/data/public/fills.json \
   ocb-terminal-fill-quality
 ```

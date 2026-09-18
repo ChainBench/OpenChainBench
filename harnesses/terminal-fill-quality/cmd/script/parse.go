@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"sort"
+	"strconv"
 )
 
 // Swap is one sampled, successfully executed swap routed through a
@@ -12,50 +14,56 @@ import (
 // transaction, in quote units (SOL or a $1 stable):
 //
 //	UserQ     what left (buy) or reached (sell) the user's quote balance,
-//	          rent for new token accounts excluded, tx fee excluded
-//	PoolQ     what the pool(s) received (buy) or paid out (sell); 0 when a
-//	          multi-hop route hides the quote leg
-//	TerminalQ what landed in the terminal's fee wallets
+//	          rent of accounts created or closed in the tx excluded; the
+//	          tx fee is inside when the user paid it
+//	PoolQ     what the pool(s) received (buy) or paid out (sell)
+//	TerminalQ what landed in the terminal's fee wallets (and, for FOMO,
+//	          its user-signed stable fee legs)
 //	NetworkQ  tx fee the user paid (0 when the terminal sponsors gas) +
-//	          Jito tips
+//	          inclusion tips (Jito and the other relays, the terminal's own)
 //	OtherQ    quote that left the user and reached neither pool, terminal
 //	          nor network (pump.fun protocol / creator fees, referrals…);
-//	          only when PoolQ is known
+//	          only on single-pool routes without hops, where it is exactly
+//	          UserQ − PoolQ − TerminalQ − NetworkQ
 //
-// The token leg (Tokens of Mint) is valued at a reference price read from
-// Jupiter's price API right after the sample is taken (see priceSwaps),
-// so every venue and route gets the same yardstick:
+// The token leg (Tokens of Mint) is valued at the pool's own state before
+// the swap (reserves, or the previous trade on the pool), see finalize:
 //
-//	buy : loss = 1 − Tokens × ref / (UserQ × quotePrice)
-//	sell: loss = 1 − UserQ × quotePrice / (Tokens × ref)
-//
-// The reference is observed after the trade, so the trade's own price
-// impact is only partly inside the figure; RefAgeS records the delay.
+//	buy : loss = 1 − Tokens × ref / UserQ
+//	sell: loss = 1 − UserQ / (Tokens × ref)
 type Swap struct {
+	Method   int     `json:"method"` // methodVersion that produced the row
 	Sig      string  `json:"sig"`
 	Terminal string  `json:"terminal"`
 	Slot     uint64  `json:"slot"`
 	Time     int64   `json:"time"`
+	User     string  `json:"user"`
 	Side     string  `json:"side"`  // buy | sell
 	Quote    string  `json:"quote"` // SOL | USDC | USDT | USD1
 	Venue    string  `json:"venue"`
 	Mint     string  `json:"mint"`
 	Tokens   float64 `json:"tokens"`
 
-	// Pool identity for the reference-price lookups: the pool's token vault
-	// for the traded mint and its owner (pool PDA / AMM authority / curve).
-	PoolVault string `json:"pool_vault,omitempty"`
-	PoolOwner string `json:"pool_owner,omitempty"`
-	// Pre-trade balances of that pool when the route is a single
-	// constant-product pool (PumpSwap, pump.fun curve, Raydium v4 / CPMM):
-	// token vault in tokens, quote vault in quote units (curve: lamports
-	// of the curve account). Zero otherwise.
+	// Pool identity for the reference-price lookups and the sandwich
+	// screen: the pool's token vault for the traded mint, its owner (pool
+	// PDA / AMM authority / curve account) and its quote-side vaults, all
+	// by pubkey, taken from the swap instruction's own account list so two
+	// pools behind one shared authority (Raydium, Launchpad, DAMM v2)
+	// never merge. Pools counts the token counterparties (split routes),
+	// Hops the pool instructions of the route that are not on the token.
+	PoolVault       string   `json:"pool_vault,omitempty"`
+	PoolOwner       string   `json:"pool_owner,omitempty"`
+	PoolQuoteVaults []string `json:"pool_quote_vaults,omitempty"`
+	Pools           int      `json:"pools"`
+	Hops            int      `json:"hops,omitempty"`
+	// Pre-trade balances when the route is one constant-product pool
+	// (PumpSwap, Raydium v4 / CPMM): token vault in tokens, quote vault in
+	// quote units. Zero otherwise.
 	PoolBasePre  float64 `json:"pool_base_pre,omitempty"`
 	PoolQuotePre float64 `json:"pool_quote_pre,omitempty"`
-	// Multi-hop routes whose final pool is quoted in a third asset (FOMO
-	// routes USDC → NEAR / INJ / USO → token): the asset and its rate in
-	// quote units, read from the route's own first hop in the same
-	// transaction (quote paid into the hop pools / X they paid out).
+	// Routes whose final pool is quoted in a third asset (FOMO: USDC →
+	// NEAR / INJ / USO → token): the asset and its rate in quote units,
+	// read from the route's own hop in the same transaction.
 	XMint string  `json:"x_mint,omitempty"`
 	XRate float64 `json:"x_rate,omitempty"` // quote units per X
 
@@ -71,16 +79,18 @@ type Swap struct {
 	Others map[string]float64 `json:"others,omitempty"`
 
 	// Set by finalize: reference price of the token (quote units per
-	// token), where it came from ("pool": previous trade on the same pool,
-	// "jupiter": Jupiter price API after the fact) and the derived figures.
+	// token), where it came from ("reserves": exact pre-trade mid, "pool":
+	// previous trade on the same pool) and the derived figures. Flag marks
+	// a row kept out of the statistics (loss outside the plausible bounds).
 	RefPrice *float64 `json:"ref_price,omitempty"`
 	RefSrc   string   `json:"ref_src,omitempty"`
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
-	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref (quote received when unpriced)
-	// Block scan for a sandwich around this swap (see sandwich.go).
+	Flag     string   `json:"flag,omitempty"`
+	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref (quote moved when unpriced)
+	// Neighbourhood scan for a sandwich around this swap (see sandwich.go).
 	Scanned      bool      `json:"scanned"`
-	BlockPoolTxs int       `json:"block_pool_txs,omitempty"` // other successful trades on the same pool in the block
+	BlockPoolTxs int       `json:"block_pool_txs,omitempty"`
 	Sandwich     *Sandwich `json:"sandwich,omitempty"`
 	// Basis points of the trade.
 	LossBps     *float64 `json:"loss_bps,omitempty"`
@@ -89,6 +99,15 @@ type Swap struct {
 	NetworkBps  float64  `json:"network_bps"`
 	OtherBps    *float64 `json:"other_bps,omitempty"`
 }
+
+// Plausible loss bounds, basis points: a swap can gain a little against
+// a reference that sits one trade earlier, and lose most of its value on
+// a rug or a thin pool; beyond these the row is a parsing or reference
+// error and stays out of the statistics (kept in the JSON, flagged).
+const (
+	lossMinBps = -1000
+	lossMaxBps = 5000
+)
 
 // parseReject explains why a transaction touching a fee wallet is not a
 // swap we can measure; counted per terminal for the coverage figures.
@@ -100,11 +119,21 @@ const (
 	rejectNoPool     parseReject = "no_pool"     // could not identify the counterparty
 	rejectDegenerate parseReject = "degenerate"  // zero or negative amounts
 	rejectDust       parseReject = "dust"        // under MIN_TRADE_USD, basis points are noise
+	rejectUnparsed   parseReject = "unparsed"    // a balance the RPC returned is not a number
 )
 
 // minTradeUSD: swaps below it are not measured (fixed fees dwarf the
 // trade and a few cents of price move read as thousands of bps).
 var minTradeUSD = 2.0
+
+type tokenAcct struct {
+	owner, mint string
+	dec         int
+	pre, post   float64 // raw units
+	hadPre      bool
+}
+
+func (e *tokenAcct) delta() float64 { return (e.post - e.pre) * math.Pow10(-e.dec) }
 
 // parseSwap reduces a jsonParsed transaction to a Swap (unpriced).
 func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, parseReject) {
@@ -115,7 +144,13 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	}
 	fee := set(t.Wallets...)
 	internal := set(t.Internal...)
+	ownTips := set(t.Tips...)
+	tip := func(k string) bool { return ownTips[k] || isTip(k) }
 	pubkeyAt := func(i int) string { return msg.AccountKeys[i].Pubkey }
+	index := make(map[string]int, n)
+	for i := 0; i < n; i++ {
+		index[pubkeyAt(i)] = i
+	}
 
 	// Lamport deltas per pubkey.
 	lam := make(map[string]int64, n)
@@ -124,28 +159,103 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	}
 
 	// Token balances per account index.
-	type tb struct {
-		owner, mint string
-		dec         int
-		pre, post   float64
-		hadPre      bool
-	}
-	tok := map[int]*tb{}
+	tok := map[int]*tokenAcct{}
 	for _, b := range tx.Meta.PreTokenBalances {
-		tok[b.AccountIndex] = &tb{owner: b.Owner, mint: b.Mint, dec: b.UITokenAmount.Decimals, pre: b.raw(), hadPre: true}
+		v := b.raw()
+		if math.IsNaN(v) {
+			return nil, rejectUnparsed
+		}
+		tok[b.AccountIndex] = &tokenAcct{owner: b.Owner, mint: b.Mint, dec: b.UITokenAmount.Decimals, pre: v, hadPre: true}
 	}
 	for _, b := range tx.Meta.PostTokenBalances {
+		v := b.raw()
+		if math.IsNaN(v) {
+			return nil, rejectUnparsed
+		}
 		e, ok := tok[b.AccountIndex]
 		if !ok {
-			e = &tb{owner: b.Owner, mint: b.Mint, dec: b.UITokenAmount.Decimals}
+			e = &tokenAcct{owner: b.Owner, mint: b.Mint, dec: b.UITokenAmount.Decimals}
 			tok[b.AccountIndex] = e
 		}
 		if e.owner == "" {
 			e.owner = b.Owner
 		}
-		e.post = b.raw()
+		e.post = v
 	}
 	isQuoteMint := func(m string) bool { return m == wsolMint || stableMints[m] }
+
+	// Instructions, top-level then inner: the pool instructions (venue
+	// program with its account list), the system instructions that create
+	// accounts (rent), and the token transfers the user signed.
+	var ixs []instruction
+	ixs = append(ixs, msg.Instructions...)
+	for _, in := range tx.Meta.InnerInstructions {
+		ixs = append(ixs, in.Instructions...)
+	}
+	type venueIx struct {
+		venue string
+		accts map[string]bool
+	}
+	var vixs []venueIx               // known venue programs: pool identity
+	var hixs []venueIx               // every program instruction with an account list: hop detection (venue "" when unknown)
+	rentAccts := map[string]string{} // created account -> funder ("" when unknown)
+	type tokTransfer struct {
+		authority, dest string
+		amount          float64 // raw units
+	}
+	var transfers []tokTransfer
+	for _, ix := range ixs {
+		if v, ok := venuePrograms[ix.ProgramID]; ok && v.name != "jupiter" {
+			a := make(map[string]bool, len(ix.Accounts))
+			for _, k := range ix.Accounts {
+				a[k] = true
+			}
+			vixs = append(vixs, venueIx{v.name, a})
+			hixs = append(hixs, venueIx{v.name, a})
+			continue
+		}
+		if len(ix.Parsed) == 0 {
+			if len(ix.Accounts) > 0 {
+				a := make(map[string]bool, len(ix.Accounts))
+				for _, k := range ix.Accounts {
+					a[k] = true
+				}
+				hixs = append(hixs, venueIx{"", a})
+			}
+			continue
+		}
+		var p struct {
+			Type string         `json:"type"`
+			Info map[string]any `json:"info"`
+		}
+		if json.Unmarshal(ix.Parsed, &p) != nil {
+			continue
+		}
+		str := func(k string) string { s, _ := p.Info[k].(string); return s }
+		switch ix.Program {
+		case "system":
+			switch p.Type {
+			case "createAccount", "createAccountWithSeed":
+				rentAccts[str("newAccount")] = str("source")
+			case "allocate":
+				if _, ok := rentAccts[str("account")]; !ok {
+					rentAccts[str("account")] = ""
+				}
+			}
+		case "spl-token", "spl-token-2022":
+			if p.Type == "transfer" || p.Type == "transferChecked" {
+				amt := 0.0
+				if s := str("amount"); s != "" {
+					amt, _ = strconv.ParseFloat(s, 64)
+				} else if ta, ok := p.Info["tokenAmount"].(map[string]any); ok {
+					if s, ok := ta["amount"].(string); ok {
+						amt, _ = strconv.ParseFloat(s, 64)
+					}
+				}
+				transfers = append(transfers, tokTransfer{str("authority"), str("destination"), amt})
+			}
+		}
+	}
 
 	// The user: the signer with the largest non-quote token move, excluding
 	// the terminal's own accounts.
@@ -167,7 +277,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 				continue
 			}
 			d := e.post - e.pre
-			if math.IsNaN(d) || d == 0 {
+			if d == 0 {
 				continue
 			}
 			c, ok := perMint[e.mint]
@@ -199,41 +309,67 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		side = "sell"
 	}
 
-	// User's quote movements: lamports + WSOL (SOL), and each stable.
-	quoteDelta := map[string]float64{}
-	quoteDelta["SOL"] = float64(lam[user]) / 1e9
+	// Rent: token accounts created in this tx (their lamports left the
+	// user but are not part of the swap; a WSOL account also holds the
+	// wrapped amount, which the token delta already carries) or closed
+	// (rent came back); program accounts the user funded (pump.fun's
+	// per-user volume accumulator on a first trade).
 	rent := 0.0
+	rentPaid := map[string]bool{}
 	for i, e := range tok {
 		if e.owner != user {
 			continue
 		}
-		if !e.hadPre && i < n {
-			// A token account created in this tx: its rent left the user's
-			// balance but is not part of the swap.
-			rent += float64(tx.Meta.PostBalances[i]) / 1e9
-		}
-		if e.hadPre && i < n && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
-			// A token account closed in this tx (sell everything): its rent
-			// came back to the user and is not swap proceeds.
-			rent -= float64(tx.Meta.PreBalances[i]) / 1e9
-		}
+		wsolPre, wsolPost := 0.0, 0.0
 		if e.mint == wsolMint {
-			quoteDelta["SOL"] += (e.post - e.pre) * math.Pow10(-e.dec)
-		} else if stableMints[e.mint] {
-			quoteDelta[quoteName(e.mint)] += (e.post - e.pre) * math.Pow10(-e.dec)
+			wsolPre, wsolPost = e.pre*math.Pow10(-e.dec), e.post*math.Pow10(-e.dec)
+		}
+		if !e.hadPre && tx.Meta.PostBalances[i] > tx.Meta.PreBalances[i] {
+			rent += float64(tx.Meta.PostBalances[i]-tx.Meta.PreBalances[i])/1e9 - wsolPost
+		}
+		if e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
+			rent -= float64(tx.Meta.PreBalances[i])/1e9 - wsolPre
 		}
 	}
-	quoteDelta["SOL"] += rent
+	for k, src := range rentAccts {
+		i, ok := index[k]
+		if !ok {
+			continue
+		}
+		if _, isTok := tok[i]; isTok {
+			continue
+		}
+		if src != user && !(src == "" && pubkeyAt(0) == user) {
+			continue
+		}
+		if tx.Meta.PreBalances[i] == 0 && lam[k] > 0 {
+			rent += float64(lam[k]) / 1e9
+			rentPaid[k] = true
+		}
+	}
+
+	// User's quote movements: lamports + WSOL (SOL), and each stable. The
+	// tx fee stays inside: it is part of what the swap cost.
+	quoteDelta := map[string]float64{}
+	quoteDelta["SOL"] = float64(lam[user])/1e9 + rent
+	for _, e := range tok {
+		if e.owner != user {
+			continue
+		}
+		if e.mint == wsolMint {
+			quoteDelta["SOL"] += e.delta()
+		} else if stableMints[e.mint] {
+			quoteDelta[quoteName(e.mint)] += e.delta()
+		}
+	}
 	// Network cost: tx fee when the user is the fee payer (account 0), plus
-	// Jito tips; the fee is put back into the SOL delta so the swap figure
-	// is separate from it.
+	// inclusion tips.
 	network := 0.0
 	if pubkeyAt(0) == user {
 		network += float64(tx.Meta.Fee) / 1e9
-		quoteDelta["SOL"] += float64(tx.Meta.Fee) / 1e9
 	}
 	for k, v := range lam {
-		if isTip(k) && v > 0 {
+		if tip(k) && v > 0 {
 			network += float64(v) / 1e9
 		}
 	}
@@ -258,14 +394,6 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	if quote == "SOL" {
 		quoteUSD = solUSD
 	}
-	networkQ := network
-	if quote != "SOL" {
-		networkQ = network * solUSD // fee and tips are SOL; express in the stable
-	}
-	userQ := quoteDelta[quote] // negative on a buy, positive on a sell
-
-	// Terminal fee: whatever reached the fee wallets, as lamports, WSOL or a
-	// stable, converted to the trade's quote unit.
 	toQuote := func(asset string, amount float64) float64 {
 		switch {
 		case asset == quote:
@@ -276,6 +404,208 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 			return amount / quoteUSD
 		}
 	}
+	assetOf := func(mint string) string {
+		if mint == wsolMint {
+			return "SOL"
+		}
+		return quoteName(mint)
+	}
+	networkQ := toQuote("SOL", network)
+	userQ := quoteDelta[quote] // negative on a buy, positive on a sell
+
+	// Pools: the counterparties of the token leg, one per token vault
+	// that moved against the user. Each pool's quote vaults are the token
+	// accounts of the same swap instruction with the same owner, in a
+	// quote mint or, when the pool is quoted in a third asset, in that
+	// asset. Without a known swap instruction (a venue we do not list,
+	// inside a Jupiter route) the owner's quote accounts are taken instead.
+	type pool struct {
+		base, owner, venue string
+		baseIdx            int
+		quoteVaults        []string
+		xVaults            []string
+		accts              map[string]bool
+	}
+	var pools []*pool
+	for i, e := range tok {
+		if e.mint != best.mint || e.owner == user || fee[e.owner] || internal[e.owner] {
+			continue
+		}
+		d := e.post - e.pre
+		if d == 0 || (d > 0) == (best.delta > 0) {
+			continue
+		}
+		k := pubkeyAt(i)
+		p := &pool{base: k, owner: e.owner, baseIdx: i, accts: map[string]bool{}}
+		for _, v := range vixs {
+			if v.accts[k] {
+				if p.venue == "" {
+					p.venue = v.venue
+				}
+				for a := range v.accts {
+					p.accts[a] = true
+				}
+			}
+		}
+		if p.venue == "" {
+			p.venue = "unknown"
+		}
+		pools = append(pools, p)
+	}
+	if len(pools) == 0 {
+		return nil, rejectNoPool
+	}
+	sort.Slice(pools, func(a, b int) bool {
+		da, db := math.Abs(tok[pools[a].baseIdx].post-tok[pools[a].baseIdx].pre), math.Abs(tok[pools[b].baseIdx].post-tok[pools[b].baseIdx].pre)
+		if da != db {
+			return da > db
+		}
+		return pools[a].base < pools[b].base
+	})
+	poolAcct := map[string]bool{}
+	for _, p := range pools {
+		poolAcct[p.base] = true
+		if p.venue == "pump-curve" {
+			poolAcct[p.owner] = true // the curve account holds the SOL itself
+		}
+		for i, e := range tok {
+			k := pubkeyAt(i)
+			if k == p.base || e.owner != p.owner || e.mint == best.mint {
+				continue
+			}
+			if p.venue != "unknown" && !p.accts[k] {
+				continue
+			}
+			if isQuoteMint(e.mint) {
+				p.quoteVaults = append(p.quoteVaults, k)
+			} else if p.venue != "unknown" {
+				p.xVaults = append(p.xVaults, k)
+			}
+			poolAcct[k] = true
+		}
+		sort.Strings(p.quoteVaults)
+		sort.Strings(p.xVaults)
+	}
+	main := pools[0]
+
+	// Pool-side quote movement, in the swap's quote unit whatever the pool
+	// is quoted in.
+	poolQ, quotePre := 0.0, 0.0
+	quoteAccounts := 0
+	for _, p := range pools {
+		for _, k := range p.quoteVaults {
+			e := tok[index[k]]
+			poolQ += toQuote(assetOf(e.mint), e.delta())
+			quotePre += toQuote(assetOf(e.mint), e.pre*math.Pow10(-e.dec))
+			quoteAccounts++
+		}
+		if p.venue == "pump-curve" {
+			if i, ok := index[p.owner]; ok {
+				poolQ += toQuote("SOL", float64(lam[p.owner])/1e9)
+				quotePre += toQuote("SOL", float64(tx.Meta.PreBalances[i])/1e9)
+				quoteAccounts++
+			}
+		}
+	}
+	poolQ = math.Abs(poolQ)
+
+	// Third asset: the final pool's other side when it is not a quote
+	// mint; it moves like the user's token leg (on a buy the pool gives
+	// tokens and takes X).
+	xMint, xRate, xAmount := "", 0.0, 0.0
+	if poolQ == 0 {
+		xIn := map[string]float64{}
+		for _, p := range pools {
+			for _, k := range p.xVaults {
+				e := tok[index[k]]
+				d := e.delta()
+				if d != 0 && (d > 0) == (best.delta > 0) {
+					xIn[e.mint] += d
+				}
+			}
+		}
+		for m, d := range xIn {
+			if xMint == "" || math.Abs(d) > math.Abs(xIn[xMint]) {
+				xMint = m
+			}
+		}
+		xAmount = math.Abs(xIn[xMint]) // priced once the hops are read
+	}
+
+	// Hops: pool instructions of the route that do not touch a token
+	// counterparty (quote → X, or quote → USDC → token). Their own vault
+	// movements price X (quote paid in / X paid out) and are excluded
+	// from "other". A venue we list qualifies as soon as it moves one
+	// foreign token account; a program we do not list (SolFi, ZeroFi,
+	// Obric… inside Jupiter routes) needs two, the pair of vaults a pool
+	// moves, so a fee-transfer instruction never passes for a hop.
+	hops := 0
+	hopAccts := map[string]bool{}
+	qIn, xOut := 0.0, 0.0
+	for _, v := range hixs {
+		isFinal := false
+		for _, p := range pools {
+			if v.accts[p.base] {
+				isFinal = true
+				break
+			}
+		}
+		if isFinal {
+			continue
+		}
+		// A hop moves someone else's token account; a venue instruction
+		// that moves none (Anchor's event self-CPI, account extensions) is
+		// not one.
+		moving := 0
+		owners := map[string]bool{} // hop pool owners: moved a non-quote token here (fee recipients only move quote)
+		for k := range v.accts {
+			if i, ok := index[k]; ok {
+				if e, ok := tok[i]; ok && e.owner != user && !fee[e.owner] && !internal[e.owner] && e.post != e.pre {
+					moving++
+					if !isQuoteMint(e.mint) {
+						owners[e.owner] = true
+					}
+				}
+			}
+		}
+		if moving == 0 || (v.venue == "" && moving < 2) {
+			continue
+		}
+		hops++
+		q, x := 0.0, 0.0
+		for k := range v.accts {
+			i, ok := index[k]
+			if !ok {
+				continue
+			}
+			e, ok := tok[i]
+			if !ok || !owners[e.owner] {
+				continue
+			}
+			hopAccts[k] = true
+			switch {
+			case isQuoteMint(e.mint):
+				q += toQuote(assetOf(e.mint), e.delta())
+			case xMint != "" && e.mint == xMint:
+				x += e.delta()
+			}
+		}
+		if (side == "buy" && q > 0 && x < 0) || (side == "sell" && q < 0 && x > 0) {
+			qIn += math.Abs(q)
+			xOut += math.Abs(x)
+		}
+	}
+	if xMint != "" {
+		if xAmount > 0 && qIn > 0 && xOut > 0 {
+			xRate = qIn / xOut
+			poolQ = xAmount * xRate
+		} else {
+			xMint, xRate = "", 0
+		}
+	}
+
+	// Terminal fee: whatever reached the fee wallets, as lamports, WSOL or a
+	// stable, converted to the trade's quote unit.
 	terminalQ := 0.0
 	for w := range fee {
 		if v := lam[w]; v > 0 {
@@ -286,7 +616,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		if !fee[e.owner] {
 			continue
 		}
-		d := (e.post - e.pre) * math.Pow10(-e.dec)
+		d := e.delta()
 		if d <= 0 {
 			continue
 		}
@@ -296,180 +626,73 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 			terminalQ += toQuote(quoteName(e.mint), d)
 		}
 	}
-
-	// Venue from the program ids touched.
-	progs := map[string]bool{}
-	for _, ix := range msg.Instructions {
-		progs[ix.ProgramID] = true
-	}
-	for _, in := range tx.Meta.InnerInstructions {
-		for _, ix := range in.Instructions {
-			progs[ix.ProgramID] = true
-		}
-	}
-	venues := []string{}
-	curve := false
-	for p := range progs {
-		if v, ok := venuePrograms[p]; ok && v.name != "jupiter" {
-			venues = append(venues, v.name)
-			if v.name == "pump-curve" {
-				curve = true
-			}
-		}
-	}
-	sort.Strings(venues)
-	venue := "unknown"
-	if len(venues) == 1 {
-		venue = venues[0]
-	} else if len(venues) > 1 {
-		venue = "multi"
-	}
-
-	// Pool(s): the counterparties of the token leg. Split routes give the
-	// user the same token from two pools; both count. Multi-hop routes
-	// (quote → X → token) put the quote into a pool that is not a token
-	// counterparty, which shows up as PoolQ = 0.
-	poolOwners := map[string]bool{}
-	poolVault, poolOwner := "", ""
-	poolVaultMove := 0.0
-	basePre := 0.0
-	baseAccounts := 0
-	for i, e := range tok {
-		if e.mint != best.mint || e.owner == user || fee[e.owner] || internal[e.owner] {
-			continue
-		}
-		d := e.post - e.pre
-		if d == 0 || (d > 0) == (best.delta > 0) {
-			continue
-		}
-		poolOwners[e.owner] = true
-		baseAccounts++
-		basePre += e.pre * math.Pow10(-e.dec)
-		if math.Abs(d) > poolVaultMove {
-			poolVaultMove = math.Abs(d)
-			poolVault = pubkeyAt(i)
-			poolOwner = e.owner
-		}
-	}
-	if len(poolOwners) == 0 {
-		return nil, rejectNoPool
-	}
-	// Pool-side quote movement, in the swap's quote unit whatever the pool
-	// is quoted in (FOMO pays USDC into SOL-quoted pools via a hop).
-	poolQ := 0.0
-	quotePre := 0.0
-	quoteAccounts := 0
-	for _, e := range tok {
-		if !poolOwners[e.owner] {
-			continue
-		}
-		d := (e.post - e.pre) * math.Pow10(-e.dec)
-		if e.mint == wsolMint {
-			poolQ += toQuote("SOL", d)
-			quotePre += toQuote("SOL", e.pre*math.Pow10(-e.dec))
-			quoteAccounts++
-		} else if stableMints[e.mint] {
-			poolQ += toQuote(quoteName(e.mint), d)
-			quotePre += toQuote(quoteName(e.mint), e.pre*math.Pow10(-e.dec))
-			quoteAccounts++
-		}
-	}
-	if curve {
-		// The bonding curve holds SOL natively on its own account.
-		for o := range poolOwners {
-			poolQ += toQuote("SOL", float64(lam[o])/1e9)
-			quotePre += toQuote("SOL", float64(tx.Meta.PreBalances[indexOf(msg.AccountKeys, o)])/1e9)
-			quoteAccounts++
-		}
-	}
-	poolQ = math.Abs(poolQ)
-	// No quote leg on the final pool: look for a third asset X that moved
-	// against the token there, and price X from the hop pools of this
-	// same transaction (quote in, X out).
-	xMint, xRate := "", 0.0
-	if poolQ == 0 {
-		xIn := map[string]float64{} // X delta on the final pool(s), by mint
-		for _, e := range tok {
-			if !poolOwners[e.owner] || e.mint == best.mint || isQuoteMint(e.mint) {
+	// FOMO: user-signed stable transfers to accounts outside every pool
+	// instruction are fee legs (commission split per trade), bounded at
+	// 2 % of the trade so a routing leg can never pass for a fee.
+	feeLegOwners := map[string]bool{}
+	if t.StableLegsAreFee {
+		legs := 0.0
+		for _, tr := range transfers {
+			if tr.authority != user {
 				continue
 			}
-			d := (e.post - e.pre) * math.Pow10(-e.dec)
-			// The pool's other side moves like the user's token leg: on a
-			// buy the pool gives tokens and takes X.
-			if d != 0 && (d > 0) == (best.delta > 0) {
-				xIn[e.mint] += d
+			i, ok := index[tr.dest]
+			if !ok {
+				continue
 			}
+			e, ok := tok[i]
+			if !ok || !stableMints[e.mint] || e.owner == user || fee[e.owner] || poolAcct[tr.dest] || hopAccts[tr.dest] {
+				continue
+			}
+			inVenue := false
+			for _, v := range vixs {
+				if v.accts[tr.dest] {
+					inVenue = true
+					break
+				}
+			}
+			if inVenue {
+				continue
+			}
+			legs += toQuote(quoteName(e.mint), tr.amount*math.Pow10(-e.dec))
+			feeLegOwners[e.owner] = true
 		}
-		for m, d := range xIn {
-			if math.Abs(d) > math.Abs(xIn[xMint]) || xMint == "" {
-				xMint = m
-			}
-		}
-		if xMint != "" {
-			// Hop pools: owners that are not the user, the terminal, a tip or
-			// the final pool, and that moved X against quote.
-			qIn, xOut := 0.0, 0.0
-			byOwner := map[string]*struct{ q, x float64 }{}
-			for _, e := range tok {
-				if e.owner == user || fee[e.owner] || internal[e.owner] || poolOwners[e.owner] || isTip(e.owner) {
-					continue
-				}
-				d := (e.post - e.pre) * math.Pow10(-e.dec)
-				h := byOwner[e.owner]
-				if h == nil {
-					h = &struct{ q, x float64 }{}
-					byOwner[e.owner] = h
-				}
-				switch {
-				case e.mint == xMint:
-					h.x += d
-				case e.mint == wsolMint:
-					h.q += toQuote("SOL", d)
-				case stableMints[e.mint]:
-					h.q += toQuote(quoteName(e.mint), d)
-				}
-			}
-			for _, h := range byOwner {
-				// A hop pool takes quote and gives X on a buy; the reverse on a sell.
-				if (side == "buy" && h.q > 0 && h.x < 0) || (side == "sell" && h.q < 0 && h.x > 0) {
-					qIn += math.Abs(h.q)
-					xOut += math.Abs(h.x)
-				}
-			}
-			if qIn > 0 && xOut > 0 {
-				xRate = qIn / xOut
-				poolQ = math.Abs(xIn[xMint]) * xRate
-			} else {
-				xMint = ""
-			}
+		if legs > 0 && legs <= 0.02*math.Abs(userQ) {
+			terminalQ += legs
+		} else {
+			feeLegOwners = map[string]bool{}
 		}
 	}
-	// Single constant-product pool: keep its pre-trade balances so the
-	// exact mid can be computed (see reservePrice).
-	singleCP := len(poolOwners) == 1 && baseAccounts == 1 && quoteAccounts == 1 && len(venues) == 1 && venuePrograms[venueProgram(venues[0])].cp
-	if !singleCP {
-		basePre, quotePre = 0, 0
+
+	// Venue label: the final pool's venue; "multi" when the token leg is
+	// split across pools.
+	venue := main.venue
+	if len(pools) > 1 {
+		venue = "multi"
+	}
+	// Single constant-product pool, no hop: keep its pre-trade balances so
+	// the exact mid can be computed (see reservePrice).
+	basePre := 0.0
+	singleCP := len(pools) == 1 && hops == 0 && len(main.quoteVaults) == 1 && len(main.xVaults) == 0 && quoteAccounts == 1 && venuePrograms[venueProgram(main.venue)].cp
+	if singleCP {
+		basePre = tok[main.baseIdx].pre * math.Pow10(-tok[main.baseIdx].dec)
+	} else {
+		quotePre = 0
 	}
 
 	// Everyone else who received quote: pump.fun fee recipients, creator
-	// vaults, referrals, tip services we do not know, hop pools.
+	// vaults, referrals, tip services we do not know.
 	others := map[string]float64{}
-	isUserAcct := map[int]bool{}
-	for i, e := range tok {
-		if e.owner == user {
-			isUserAcct[i] = true
-		}
-	}
 	for i := 0; i < n; i++ {
 		k := pubkeyAt(i)
-		if k == user || fee[k] || internal[k] || isTip(k) || poolOwners[k] || isUserAcct[i] {
+		if k == user || fee[k] || internal[k] || tip(k) || poolAcct[k] || hopAccts[k] || rentPaid[k] {
 			continue
 		}
 		if e, ok := tok[i]; ok {
-			if poolOwners[e.owner] || fee[e.owner] || internal[e.owner] {
+			if e.owner == user || fee[e.owner] || internal[e.owner] || tip(e.owner) || feeLegOwners[e.owner] {
 				continue
 			}
-			d := (e.post - e.pre) * math.Pow10(-e.dec)
+			d := e.delta()
 			if d > 0 {
 				if e.mint == wsolMint {
 					others[e.owner] += toQuote("SOL", d)
@@ -486,18 +709,19 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
-		Sig: sig, Terminal: t.Slug, Slot: tx.Slot, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
-		PoolVault: poolVault, PoolOwner: poolOwner, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
+		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
+		PoolVault: main.base, PoolOwner: main.owner, PoolQuoteVaults: append(append([]string{}, main.quoteVaults...), main.xVaults...),
+		Pools: len(pools), Hops: hops, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
 		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
 		Others: others,
 	}
 	if tx.BlockTime != nil {
 		s.Time = *tx.BlockTime
 	}
-	// "other" is known on single-venue routes (one pool, no hop): what the
-	// user paid minus pool, terminal and network. On multi-hop routes the
-	// hop pools hide it; it stays inside the derived pool figure.
-	if poolQ > 0 && venue != "multi" && len(poolOwners) == 1 {
+	// "other" is exact on single-pool routes without hops: what the user
+	// paid minus pool, terminal and network. Elsewhere the hop pools hide
+	// it; it stays inside the derived pool figure.
+	if poolQ > 0 && len(pools) == 1 && hops == 0 && xMint == "" && main.venue != "unknown" {
 		var o float64
 		if side == "buy" {
 			o = s.UserQ - poolQ - terminalQ - networkQ
@@ -524,6 +748,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	var trade float64 // in quote units
 	s.Priced = false
+	s.Flag = ""
 	s.LossBps, s.PoolBps, s.RefPrice, s.RefAgeS, s.RefSrc = nil, nil, nil, nil, ""
 	if ref != nil && *ref > 0 && s.QuoteUSD > 0 {
 		value := s.Tokens * *ref // token leg in quote units
@@ -541,7 +766,6 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 			}
 		}
 		if trade > 0 {
-			s.Priced = true
 			s.RefPrice = ref
 			s.RefSrc = src
 			s.RefAgeS = &refAge
@@ -555,15 +779,22 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 			}
 			pool := loss - 1e4*(s.TerminalQ+s.NetworkQ+other)/trade
 			s.PoolBps = &pool
+			if loss < lossMinBps || loss > lossMaxBps {
+				s.Flag = "out_of_bounds"
+			} else {
+				s.Priced = true
+			}
 		}
 	}
-	if !s.Priced {
+	if trade <= 0 {
+		other := 0.0
+		if s.OtherQ != nil {
+			other = *s.OtherQ
+		}
 		if s.Side == "buy" {
 			trade = s.UserQ
-		} else if s.PoolQ > 0 {
-			trade = s.PoolQ
 		} else {
-			trade = s.UserQ + s.TerminalQ + s.NetworkQ
+			trade = math.Max(s.PoolQ, s.UserQ+s.TerminalQ+s.NetworkQ+other)
 		}
 	}
 	s.TradeUSD = trade * s.QuoteUSD
@@ -579,75 +810,91 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	}
 }
 
-// poolTradePrice reads the effective price of a trade on one pool from
-// another transaction: |Δquote| / |Δtoken| over the pool's own accounts,
-// in the given quote unit (pool quote converted through SOL/USD when it
-// differs). Zero when the transaction did not move both legs of that pool.
-func poolTradePrice(tx *parsedTx, poolOwner, mint, quote string, quoteUSD, solUSD float64, curve bool, xMint string, xRate float64) float64 {
+// poolTradeLeg returns the pool's token and quote movement in another
+// transaction, over the pool's own vaults (by pubkey), in the swap's
+// quote unit; zero when the transaction did not touch them.
+func poolTradeLeg(tx *parsedTx, sw *Swap, solUSD float64) (dTok, dQuote float64) {
 	toQuote := func(asset string, amount float64) float64 {
 		switch {
-		case asset == quote:
+		case asset == sw.Quote:
 			return amount
 		case asset == "SOL":
-			return amount * solUSD / quoteUSD
+			return amount * solUSD / sw.QuoteUSD
 		default:
-			return amount / quoteUSD
+			return amount / sw.QuoteUSD
 		}
 	}
 	msg := tx.Transaction.Message
 	n := len(msg.AccountKeys)
-	if n == 0 || len(tx.Meta.PreBalances) != n {
-		return 0
+	if n == 0 || len(tx.Meta.PreBalances) != n || len(tx.Meta.PostBalances) != n {
+		return 0, 0
+	}
+	index := make(map[string]int, n)
+	for i, k := range msg.AccountKeys {
+		index[k.Pubkey] = i
 	}
 	pre := map[int]tokenBalance{}
 	for _, b := range tx.Meta.PreTokenBalances {
 		pre[b.AccountIndex] = b
 	}
-	var dTok, dQuote float64
+	post := map[int]tokenBalance{}
 	for _, b := range tx.Meta.PostTokenBalances {
-		if b.Owner != poolOwner {
-			continue
-		}
-		p := pre[b.AccountIndex]
-		d := (b.raw() - p.raw()) * math.Pow10(-b.UITokenAmount.Decimals)
-		if math.IsNaN(d) {
-			continue
-		}
-		switch {
-		case b.Mint == mint:
-			dTok += d
-		case b.Mint == wsolMint:
-			dQuote += toQuote("SOL", d)
-		case stableMints[b.Mint]:
-			dQuote += toQuote(quoteName(b.Mint), d)
-		case xMint != "" && b.Mint == xMint:
-			dQuote += d * xRate
-		}
+		post[b.AccountIndex] = b
 	}
-	if curve {
-		for i, k := range msg.AccountKeys {
-			if k.Pubkey == poolOwner {
-				dQuote += toQuote("SOL", float64(int64(tx.Meta.PostBalances[i])-int64(tx.Meta.PreBalances[i]))/1e9)
+	move := func(pubkey string) (mint string, d float64) {
+		i, ok := index[pubkey]
+		if !ok {
+			return "", 0
+		}
+		b, ok := post[i]
+		if !ok {
+			b, ok = pre[i]
+			if !ok {
+				return "", 0
 			}
 		}
+		p := pre[i].raw()
+		if math.IsNaN(p) {
+			p = 0
+		}
+		q := post[i].raw()
+		if math.IsNaN(q) {
+			q = 0
+		}
+		return b.Mint, (q - p) * math.Pow10(-b.UITokenAmount.Decimals)
 	}
+	if _, d := move(sw.PoolVault); d != 0 {
+		dTok += d
+	}
+	for _, v := range sw.PoolQuoteVaults {
+		mint, d := move(v)
+		switch {
+		case mint == wsolMint:
+			dQuote += toQuote("SOL", d)
+		case stableMints[mint]:
+			dQuote += toQuote(quoteName(mint), d)
+		case sw.XMint != "" && mint == sw.XMint:
+			dQuote += d * sw.XRate
+		}
+	}
+	if sw.Venue == "pump-curve" {
+		if i, ok := index[sw.PoolOwner]; ok {
+			dQuote += toQuote("SOL", float64(int64(tx.Meta.PostBalances[i])-int64(tx.Meta.PreBalances[i]))/1e9)
+		}
+	}
+	return dTok, dQuote
+}
+
+// poolTradePrice reads the effective price of a trade on the swap's pool
+// from another transaction: |Δquote| / |Δtoken| over the pool's own
+// vaults. Zero when the transaction did not move both legs of that pool.
+func poolTradePrice(tx *parsedTx, sw *Swap, solUSD float64) float64 {
+	dTok, dQuote := poolTradeLeg(tx, sw, solUSD)
 	// A trade moves the legs in opposite directions.
 	if dTok == 0 || dQuote == 0 || (dTok > 0) == (dQuote > 0) {
 		return 0
 	}
 	return math.Abs(dQuote) / math.Abs(dTok)
-}
-
-func indexOf(keys []struct {
-	Pubkey string `json:"pubkey"`
-	Signer bool   `json:"signer"`
-}, pubkey string) int {
-	for i, k := range keys {
-		if k.Pubkey == pubkey {
-			return i
-		}
-	}
-	return 0
 }
 
 // venueProgram returns the program id of a venue name (reverse lookup).

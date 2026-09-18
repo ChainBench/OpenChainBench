@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,29 +16,43 @@ import (
 // Live feed of every transaction that mentions a terminal's addresses,
 // through the RPC's logsSubscribe. Replaces the polling scan of every fee
 // wallet: notifications are free on every provider, arrive within a
-// second of confirmation, carry the error status, and cover the whole
-// population, so the fail rate is exhaustive and the sample is a uniform
-// random draw of that population instead of "the newest few".
+// second of confirmation, carry the error status and the program logs,
+// and cover the whole population, so the fail rate is exhaustive and the
+// sample is a uniform random draw of that population instead of "the
+// newest few".
 //
-// Per terminal the feed keeps, for the current tick, a count of seen /
-// failed signatures and a reservoir of successful ones (uniform sample of
-// size reservoirSize); sample() drains it every tick.
+// Each notification is classified from its logs: a swap attempt invokes a
+// venue, the aggregator or the terminal's router (swapProgramPrefixes);
+// anything else (wallet funding, fee sweeps, GMGN's 1-lamport markers) is
+// counted apart and never enters the fail rate. Per terminal the feed
+// keeps, for the current tick, the attempts seen / failed (with the error
+// class) and a reservoir of successful ones (uniform sample of size
+// reservoirSize); sample() drains it every tick.
 type feed struct {
 	url  string
 	mu   sync.Mutex
 	subs map[int64]string // subscription id -> terminal slug
 	reqs map[int64]string // request id -> terminal slug (until confirmed)
 	box  map[string]*inbox
-	ok   map[string]int // successful signatures of the last drained tick
+	ok   map[string]int // successful attempts of the last drained tick
 	up   bool
 	last time.Time
 }
 
 type inbox struct {
-	seen, failed int
-	reservoir    []sigInfo
-	total        int             // successful seen this tick, for reservoir sampling
-	sigs         map[string]bool // signatures already counted this tick (a tx can mention two subscribed addresses)
+	seen, failed, other int
+	errs                map[string]int
+	reservoir           []sigInfo
+	total               int             // successful attempts this tick, for reservoir sampling
+	sigs                map[string]bool // signatures already counted this tick (a tx can mention two subscribed addresses)
+}
+
+// drained is one terminal's inbox at the end of a tick.
+type drained struct {
+	seen, failed, other int
+	errs                map[string]int
+	sample              []sigInfo
+	total               int
 }
 
 const reservoirSize = 32
@@ -57,15 +72,21 @@ func newFeed(rpcURL string) *feed {
 }
 
 // run keeps one connection alive, resubscribing after every reconnect.
+// The backoff grows on repeated failures and resets once a session has
+// held for a minute.
 func (f *feed) run(ctx context.Context) {
 	backoff := time.Second
 	for ctx.Err() == nil {
+		started := time.Now()
 		err := f.session(ctx)
 		f.mu.Lock()
 		f.up = false
 		f.mu.Unlock()
 		if ctx.Err() != nil {
 			return
+		}
+		if time.Since(started) > time.Minute {
+			backoff = time.Second
 		}
 		log.Printf("[ws] disconnected: %v (retry in %s)", err, backoff)
 		time.Sleep(backoff)
@@ -134,6 +155,7 @@ func (f *feed) handle(data []byte) {
 				Value struct {
 					Signature string          `json:"signature"`
 					Err       json.RawMessage `json:"err"`
+					Logs      []string        `json:"logs"`
 				} `json:"value"`
 			} `json:"result"`
 		} `json:"params"`
@@ -172,19 +194,28 @@ func (f *feed) handle(data []byte) {
 	if b.sigs == nil {
 		b.sigs = map[string]bool{}
 	}
-	if b.sigs[m.Params.Result.Value.Signature] {
+	v := m.Params.Result.Value
+	if b.sigs[v.Signature] {
 		return
 	}
-	b.sigs[m.Params.Result.Value.Signature] = true
-	s := sigInfo{Signature: m.Params.Result.Value.Signature, Slot: m.Params.Result.Context.Slot, Err: m.Params.Result.Value.Err}
+	b.sigs[v.Signature] = true
+	if !isSwapAttempt(v.Logs) {
+		b.other++
+		return
+	}
+	s := sigInfo{Signature: v.Signature, Slot: m.Params.Result.Context.Slot, Err: v.Err}
 	now := time.Now().Unix()
 	s.BlockTime = &now
 	b.seen++
 	if s.failed() {
 		b.failed++
+		if b.errs == nil {
+			b.errs = map[string]int{}
+		}
+		b.errs[errClass(v.Err)]++
 		return
 	}
-	// Reservoir sampling: every successful signature of the tick has the
+	// Reservoir sampling: every successful attempt of the tick has the
 	// same chance to be in the sample.
 	b.total++
 	if len(b.reservoir) < reservoirSize {
@@ -194,25 +225,81 @@ func (f *feed) handle(data []byte) {
 	}
 }
 
+// isSwapAttempt: the logs show a swap program being invoked (top-level
+// or CPI). A failed swap logs its invocations up to the failing
+// instruction, and the swap program is what fails, so it is there.
+func isSwapAttempt(logs []string) bool {
+	for _, l := range logs {
+		if !strings.HasPrefix(l, "Program ") {
+			continue
+		}
+		rest := l[len("Program "):]
+		sp := strings.IndexByte(rest, ' ')
+		if sp <= 0 || !strings.HasPrefix(rest[sp:], " invoke [") {
+			continue
+		}
+		id := rest[:sp]
+		for _, p := range swapProgramPrefixes {
+			if strings.HasPrefix(id, p) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// errClass reduces a transaction error to a short label: the program's
+// custom code ("custom:6001", pump.fun's slippage error) or the runtime
+// error name ("InsufficientFunds", "SlippageToleranceExceeded"…).
+func errClass(raw json.RawMessage) string {
+	var m map[string]json.RawMessage
+	if json.Unmarshal(raw, &m) == nil {
+		if ie, ok := m["InstructionError"]; ok {
+			var arr []json.RawMessage
+			if json.Unmarshal(ie, &arr) == nil && len(arr) == 2 {
+				var s string
+				if json.Unmarshal(arr[1], &s) == nil {
+					return s
+				}
+				var c map[string]int
+				if json.Unmarshal(arr[1], &c) == nil {
+					for k, v := range c {
+						return k + ":" + strconv.Itoa(v)
+					}
+				}
+			}
+			return "InstructionError"
+		}
+		for k := range m {
+			return k
+		}
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	return "unknown"
+}
+
 // drain returns and resets a terminal's inbox; the successful count of
 // the drained tick stays readable through lastOK.
-func (f *feed) drain(slug string) (seen, failed int, sample []sigInfo) {
+func (f *feed) drain(slug string) drained {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	b := f.box[slug]
 	if b == nil {
-		return 0, 0, nil
+		return drained{}
 	}
-	seen, failed, sample = b.seen, b.failed, b.reservoir
+	d := drained{seen: b.seen, failed: b.failed, other: b.other, errs: b.errs, sample: b.reservoir, total: b.total}
 	f.box[slug] = &inbox{}
 	if f.ok == nil {
 		f.ok = map[string]int{}
 	}
 	f.ok[slug] = b.total
-	return
+	return d
 }
 
-// lastOK: successful signatures of the last drained tick for a terminal.
+// lastOK: successful attempts of the last drained tick for a terminal.
 func (f *feed) lastOK(slug string) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -11,7 +11,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -48,6 +47,16 @@ type rpcError struct {
 
 var errRateLimited = errors.New("rpc: rate limited")
 
+// sleepCtx waits d or until the context ends.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
+}
+
 func (c *rpcClient) call(ctx context.Context, method string, params []any, out any) error {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
 	for attempt := 0; attempt < 4; attempt++ {
@@ -61,14 +70,18 @@ func (c *rpcClient) call(ctx context.Context, method string, params []any, out a
 		resp, err := c.http.Do(req)
 		if err != nil {
 			c.errors()
-			time.Sleep(time.Duration(attempt+1) * time.Second)
+			if err := sleepCtx(ctx, time.Duration(attempt+1)*time.Second); err != nil {
+				return err
+			}
 			continue
 		}
 		data, _ := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 		resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
 			c.errors()
-			time.Sleep(time.Duration(2*(attempt+1)) * time.Second)
+			if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
+				return err
+			}
 			continue
 		}
 		if resp.StatusCode/100 != 2 {
@@ -85,7 +98,9 @@ func (c *rpcClient) call(ctx context.Context, method string, params []any, out a
 		if env.Error != nil {
 			if env.Error.Code == 429 || env.Error.Code == -32429 {
 				c.errors()
-				time.Sleep(time.Duration(2*(attempt+1)) * time.Second)
+				if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
+					return err
+				}
 				continue
 			}
 			return fmt.Errorf("rpc %s: %d %s", method, env.Error.Code, env.Error.Message)
@@ -117,8 +132,18 @@ func (c *rpcClient) signatures(ctx context.Context, address string, limit int, u
 	return out, err
 }
 
-// Minimal jsonParsed transaction shape: account keys, balances, and the
-// program ids of every top-level and inner instruction.
+// instruction in a jsonParsed transaction: program-owned instructions
+// carry their account list (pubkeys); the ones the RPC decodes (system,
+// spl-token, associated-token…) carry `parsed` instead.
+type instruction struct {
+	ProgramID string          `json:"programId"`
+	Program   string          `json:"program"`
+	Accounts  []string        `json:"accounts"`
+	Parsed    json.RawMessage `json:"parsed"`
+}
+
+// Minimal jsonParsed transaction shape: account keys, balances, and every
+// top-level and inner instruction.
 type parsedTx struct {
 	Slot        uint64 `json:"slot"`
 	BlockTime   *int64 `json:"blockTime"`
@@ -128,9 +153,7 @@ type parsedTx struct {
 				Pubkey string `json:"pubkey"`
 				Signer bool   `json:"signer"`
 			} `json:"accountKeys"`
-			Instructions []struct {
-				ProgramID string `json:"programId"`
-			} `json:"instructions"`
+			Instructions []instruction `json:"instructions"`
 		} `json:"message"`
 	} `json:"transaction"`
 	Meta struct {
@@ -141,9 +164,7 @@ type parsedTx struct {
 		PreTokenBalances  []tokenBalance  `json:"preTokenBalances"`
 		PostTokenBalances []tokenBalance  `json:"postTokenBalances"`
 		InnerInstructions []struct {
-			Instructions []struct {
-				ProgramID string `json:"programId"`
-			} `json:"instructions"`
+			Instructions []instruction `json:"instructions"`
 		} `json:"innerInstructions"`
 	} `json:"meta"`
 }
@@ -158,6 +179,8 @@ type tokenBalance struct {
 	} `json:"uiTokenAmount"`
 }
 
+// raw returns the balance in raw units; NaN when the amount string is
+// not a number, which callers must treat as an unreadable transaction.
 func (b tokenBalance) raw() float64 {
 	v, err := strconv.ParseFloat(b.UITokenAmount.Amount, 64)
 	if err != nil {
@@ -228,38 +251,6 @@ func solPrice(ctx context.Context, client *http.Client) (float64, error) {
 		return p, nil
 	}
 	return 0, errors.New("no SOL price")
-}
-
-// tokenPrices reads USD reference prices for up to 50 mints from Jupiter's
-// lite price API (keyless). Missing mints are absent from the map.
-func tokenPrices(ctx context.Context, client *http.Client, mints []string) (map[string]float64, error) {
-	out := map[string]float64{}
-	for i := 0; i < len(mints); i += 50 {
-		batch := mints[i:min(i+50, len(mints))]
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://lite-api.jup.ag/price/v3?ids="+strings.Join(batch, ","), nil)
-		if err != nil {
-			return out, err
-		}
-		req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
-		resp, err := client.Do(req)
-		if err != nil {
-			return out, err
-		}
-		var body map[string]struct {
-			USDPrice float64 `json:"usdPrice"`
-		}
-		err = json.NewDecoder(resp.Body).Decode(&body)
-		resp.Body.Close()
-		if err != nil {
-			return out, err
-		}
-		for m, v := range body {
-			if v.USDPrice > 0 {
-				out[m] = v.USDPrice
-			}
-		}
-	}
-	return out, nil
 }
 
 type accountInfo struct {
