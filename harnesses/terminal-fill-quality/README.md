@@ -289,6 +289,28 @@ gas coin is USDC, logged as ERC20 transfers of the pseudo-token
 `eth_getLogs` at 50 blocks: the router polling uses 50-block chunks
 there.
 
+**Cohort discovery (`discover.go`)**: the fee wallets and routers are
+learned from the chain, the hardcoded lists being the seed. A terminal's
+fee wallet is a recipient that, across many swaps of distinct payers,
+always takes the same share of the trade (Axiom 1 %, Phantom 0.85 %,
+Jupiter Ultra 10 bps); pool vaults, Jito tips and pump.fun's fees have
+other signatures. Every `DISCOVER_EVERY` ticks (360, 6 h) and at the
+third tick, up to 40 recent transactions per platform come from Mobula's
+`trades/filters` (platform attribution, `MOBULA_API_KEY`; without it
+only the window part runs), are read through the swap parser, and the
+"other" recipients are scored: swaps, distinct payers, share median,
+first / last seen, persisted in the state (`learned`). A candidate is
+adopted at runtime, the feed resubscribing, from 30 swaps of 20 payers
+with a 20–300 bps share whose quartiles sit within 30 % of the median;
+on the EVM rows the transactions' `to` carrying 60 % of the platform's
+transactions becomes a router. Top-level programs are reported, not
+adopted. Independently of Mobula, the window's sampled swaps give the
+**unattributed** fee-like recipients (10 users or more, 5–300 bps) with
+the terminals whose swaps paid them: the terminals nobody listed yet.
+All of it is in the JSON under `discovery`, adoptions are logged
+(`[discover] axiom: fee wallet … adopted (412 swaps, 240 payers, 99 bps
+median)`).
+
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
 from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
 from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap

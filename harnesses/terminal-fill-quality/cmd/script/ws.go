@@ -37,6 +37,18 @@ type feed struct {
 	ok   map[string]int // successful attempts of the last drained tick
 	up   bool
 	last time.Time
+	conn *websocket.Conn // the live session, closed by resubscribe
+}
+
+// resubscribe closes the live session so the next one subscribes to the
+// cohort as it stands (a fee wallet adopted by discovery).
+func (f *feed) resubscribe() {
+	f.mu.Lock()
+	c := f.conn
+	f.mu.Unlock()
+	if c != nil {
+		c.Close(websocket.StatusGoingAway, "cohort changed")
+	}
 }
 
 type inbox struct {
@@ -111,9 +123,19 @@ func (f *feed) session(ctx context.Context) error {
 	f.mu.Lock()
 	f.subs = map[int64]string{}
 	f.reqs = map[int64]string{}
+	f.conn = c
 	f.mu.Unlock()
+	defer func() {
+		f.mu.Lock()
+		f.conn = nil
+		f.mu.Unlock()
+	}()
 	id := int64(0)
-	for _, t := range terminals {
+	cohortMu.RLock()
+	cohort := make([]Terminal, len(terminals))
+	copy(cohort, terminals)
+	cohortMu.RUnlock()
+	for _, t := range cohort {
 		for _, a := range t.scanAddresses() {
 			id++
 			f.mu.Lock()

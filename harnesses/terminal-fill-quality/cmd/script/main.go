@@ -166,6 +166,7 @@ type State struct {
 	Rejects   map[string]map[string]int `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
 	Cursors   map[string]*walletCursor  `json:"cursors"`              // wallet -> cursor (polling fallback)
 	EvmCursor map[string]int64          `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
+	Learned   map[string]*Learned       `json:"learned,omitempty"`    // terminal -> fee wallets / routers learned from the chain (discover.go)
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -266,6 +267,8 @@ type Public struct {
 	Method        string          `json:"method"`
 	Terminals     []TerminalStats `json:"terminals"`
 	Recent        []Swap          `json:"recent"`
+	/** Cohort discovery: fee wallets and routers learned from the chain, evidence per platform, unattributed fee-like recipients. */
+	Discovery *Discovery `json:"discovery,omitempty"`
 }
 
 func main() {
@@ -303,6 +306,7 @@ func main() {
 
 	applyRPCOverrides()
 	st := loadState(stateFile)
+	applyLearned(st)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
 	failQuota := map[string]float64{}
@@ -342,8 +346,14 @@ func main() {
 	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
 
 	sol := 0.0
+	// Cohort discovery every DISCOVER_EVERY ticks (6 h at a 1-minute
+	// tick), first at the third tick; the last result stays in the JSON.
+	discoverEvery := envInt("DISCOVER_EVERY", 360)
+	var disc *Discovery
+	tickN := 0
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		tickN++
 		if p, err := solPrice(ctx, httpc); err == nil && p > 0 {
 			sol = p
 			gSol.Set(p)
@@ -363,6 +373,14 @@ func main() {
 		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTick)
 		added += a2
 		seen += s2
+		if tickN == 3 || (discoverEvery > 0 && tickN%discoverEvery == 0) {
+			d, resub := discover(ctx, rpc, httpc, st, sol, time.Now().Unix())
+			disc = d
+			if resub && fd != nil {
+				fd.resubscribe()
+			}
+			log.Printf("[discover] %s: %d platforms with evidence, %d unattributed fee-like recipients, adopted %v", d.Source, len(d.Platforms), len(d.Unattributed), d.Adopted)
+		}
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, minPriced, minRank)
@@ -377,7 +395,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (fee-wallet feed), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool) is exact from balance deltas.",
-			Terminals: stats, Recent: recent(st, 400),
+			Terminals: stats, Recent: recent(st, 400), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
