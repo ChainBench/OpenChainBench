@@ -379,6 +379,10 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	sort.Slice(pools, func(i, j int) bool { return pools[i].outTk.Cmp(pools[j].outTk) > 0 })
 	main := pools[0]
 	out.Pools = len(pools)
+	quoteSum := new(big.Int) // the token pools' quotes together, for a hop split across them
+	for _, p := range pools {
+		quoteSum.Add(quoteSum, p.quote)
+	}
 	out.Venue, out.Pool = "uniswap-"+main.ev.kind, main.ev.pool
 	if main.ev.kind == "v4" {
 		out.Pool += ":" + main.ev.id
@@ -394,7 +398,7 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 			if !qm.ok || !ok {
 				continue
 			}
-			if amt.Cmp(quoteRaw) == 0 || ev.kind != "v4" {
+			if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
 				return q * math.Pow10(-qm.dec), 0, true
 			}
 		}
@@ -402,14 +406,16 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 			return 0, 0, false
 		}
 		// The hop: an earlier swap that paid exactly the quote out.
-		for _, h := range evs {
-			if h == ev || h.index >= ev.index {
-				continue
-			}
-			for side := 0; side < 2; side++ {
-				if h.out[side].Sign() > 0 && h.out[side].Cmp(quoteRaw) == 0 && h.in[1-side].Sign() > 0 {
-					if u, hops, ok := usdPerRaw(h, h.in[1-side], depth+1); ok {
-						return u * f(h.in[1-side]) / f(quoteRaw), hops + 1, true
+		for pass := 0; pass < 2; pass++ {
+			for _, h := range evs {
+				if h == ev || h.index >= ev.index {
+					continue
+				}
+				for side := 0; side < 2; side++ {
+					if h.out[side].Sign() > 0 && near(h.out[side], quoteRaw, quoteSum, pass == 1) && h.in[1-side].Sign() > 0 {
+						if u, hops, ok := usdPerRaw(h, h.in[1-side], depth+1); ok {
+							return u * f(h.in[1-side]) / f(h.out[side]), hops + 1, true // USD per raw unit of the hop's output
+						}
 					}
 				}
 			}
@@ -584,6 +590,10 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	sort.Slice(pools, func(i, j int) bool { return pools[i].inTk.Cmp(pools[j].inTk) > 0 })
 	main := pools[0]
 	out.Pools = len(pools)
+	quoteSum := new(big.Int) // the token pools' quotes together, for a hop split across them
+	for _, p := range pools {
+		quoteSum.Add(quoteSum, p.quote)
+	}
 	out.Venue, out.Pool = "uniswap-"+main.ev.kind, main.ev.pool
 	if main.ev.kind == "v4" {
 		out.Pool += ":" + main.ev.id
@@ -599,21 +609,23 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 			if !qm.ok || !ok {
 				continue
 			}
-			if amt.Cmp(quoteRaw) == 0 || ev.kind != "v4" {
+			if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
 				return q * math.Pow10(-qm.dec), 0, true
 			}
 		}
 		if depth >= 2 {
 			return 0, 0, false
 		}
-		for _, h := range evs {
-			if h == ev || h.index <= ev.index {
-				continue
-			}
-			for side := 0; side < 2; side++ {
-				if h.in[side].Sign() > 0 && h.in[side].Cmp(quoteRaw) == 0 && h.out[1-side].Sign() > 0 {
-					if u, hops, ok := usdPerRaw(h, h.out[1-side], depth+1); ok {
-						return u * f(h.out[1-side]) / f(quoteRaw), hops + 1, true
+		for pass := 0; pass < 2; pass++ {
+			for _, h := range evs {
+				if h == ev || h.index <= ev.index {
+					continue
+				}
+				for side := 0; side < 2; side++ {
+					if h.in[side].Sign() > 0 && near(h.in[side], quoteRaw, quoteSum, pass == 1) && h.out[1-side].Sign() > 0 {
+						if u, hops, ok := usdPerRaw(h, h.out[1-side], depth+1); ok {
+							return u * f(h.out[1-side]) / f(h.in[side]), hops + 1, true // USD per raw unit of the hop's input
+						}
 					}
 				}
 			}
@@ -685,6 +697,26 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	out.MidUSD = midRaw * math.Pow10(meta.dec) * upr
 	out.Priced = true
 	return out, nil
+}
+
+// near: a hop's amount matches the quote when it equals it, or sits within
+// 1.5 % of it (a router skimming between hops, second pass only), or matches the quotes of
+// every token pool together (a hop split across pools).
+func near(a, quote, quoteSum *big.Int, loose bool) bool {
+	within := func(x, y *big.Int) bool {
+		if y.Sign() == 0 {
+			return false
+		}
+		if x.Cmp(y) == 0 {
+			return true
+		}
+		if !loose {
+			return false
+		}
+		d := new(big.Int).Abs(new(big.Int).Sub(x, y))
+		return d.Mul(d, big.NewInt(66)).Cmp(y) <= 0 // within 1.5 %
+	}
+	return within(a, quote) || within(a, quoteSum)
 }
 
 // prevSqrtPrice: the sqrtPriceX96 left by the last swap on the pool
