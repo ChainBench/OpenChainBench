@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -84,8 +85,6 @@ var (
 func init() {
 	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRefresh, gSol, cCalls, cErrors)
 }
-
-var jupiterFallback bool
 
 func envInt(k string, def int) int {
 	if v := os.Getenv(k); v != "" {
@@ -178,23 +177,19 @@ func main() {
 			rpcURL = "https://api.mainnet-beta.solana.com"
 		}
 	}
-	tick := time.Duration(envInt("TICK_SECONDS", 90)) * time.Second
-	samplePerTick := envInt("SAMPLE_PER_TICK", 4)
+	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
+	dailyTarget := envInt("DAILY_TARGET", 300) // swaps read per terminal per day
+	perTick := float64(dailyTarget) * tick.Seconds() / 86400
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 20)
-	scanPct := envInt("SANDWICH_SCAN_PCT", 100) // share of sampled swaps whose block is read
-	// Jupiter's price is read after the trade and carries the token's move
-	// since; on multi-pool routes it produced 29 % negative losses in
-	// audit. Off by default: unpriceable swaps keep their exact components
-	// and stay out of the loss figure.
-	jupiterFallback = envInt("JUPITER_FALLBACK", 0) == 1
+	useWS := envInt("WS", 1) == 1
 	stateFile := os.Getenv("STATE_FILE")
 	publicFile := os.Getenv("HISTORY_FILE_PUBLIC")
 	addr := os.Getenv("METRICS_ADDR")
 	if addr == "" {
 		addr = ":2112"
 	}
-	log.Printf("OpenChainBench #268: terminal fill quality, %d terminals | tick=%s sample=%d/terminal window=%dh", len(terminals), tick, samplePerTick, windowHours)
+	log.Printf("OpenChainBench #268: terminal fill quality, %d terminals | tick=%s target=%d swaps/terminal/day window=%dh ws=%v", len(terminals), tick, dailyTarget, windowHours, useWS)
 
 	httpc := &http.Client{Timeout: 60 * time.Second}
 	rps := envInt("RPC_RPS", 8)
@@ -202,6 +197,12 @@ func main() {
 
 	st := loadState(stateFile)
 	pools := &poolCache{m: map[string]poolParams{}}
+	quota := map[string]float64{}
+	var fd *feed
+	if useWS {
+		fd = newFeed(rpcURL)
+		go fd.run(context.Background())
+	}
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -235,7 +236,7 @@ func main() {
 			time.Sleep(30 * time.Second)
 			continue
 		}
-		added, seen := sample(ctx, rpc, httpc, st, samplePerTick, sol, pools, scanPct)
+		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, perTick)
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, windowHours, minPriced, start)
@@ -259,67 +260,86 @@ func main() {
 				log.Printf("[public] %v", err)
 			}
 		}
-		log.Printf("[tick] %s: %d signatures seen, %d swaps added, %d in window, %s", start.UTC().Format(time.RFC3339), seen, added, len(st.Swaps), time.Since(start).Round(100*time.Millisecond))
+		live := fd != nil && fd.healthy()
+		log.Printf("[tick] %s: %d signatures seen (%s), %d swaps added, %d in window, %s", start.UTC().Format(time.RFC3339), seen, map[bool]string{true: "ws", false: "poll"}[live], added, len(st.Swaps), time.Since(start).Round(100*time.Millisecond))
 		time.Sleep(time.Until(start.Add(tick)))
 	}
 }
 
-// sample scans every fee wallet for new signatures, records each one for
-// the fail rate, reads the newest successful ones (newest first, so the
-// reference price is read as close to the trade as possible), then prices
-// the whole batch in one Jupiter call.
-func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, perTerminal int, solUSD float64, pools *poolCache, scanPct int) (added, seen int) {
+// sample drains the live feed (or, when the feed is down, polls the fee
+// wallets), records every signature for the fail rate, draws the tick's
+// quota of successful ones at random and reads them.
+//
+// Quota: DAILY_TARGET swaps per terminal per day, spread over the ticks
+// (fractional carry), so the sample size follows the precision wanted for
+// a median rather than the tick length.
+func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota map[string]float64, perTick float64) (added, seen int) {
 	now := time.Now().Unix()
-	blocks := &blockCache{m: map[uint64][]blockTx{}}
-	var batch []*Swap
+	live := fd != nil && fd.healthy()
 	for _, t := range terminals {
 		var fresh []sigInfo
-		for _, w := range t.scanAddresses() {
-			cur := st.Cursors[w]
-			if cur == nil {
-				cur = &walletCursor{}
-				st.Cursors[w] = cur
-			}
-			if cur.NextScan > now {
-				continue
-			}
-			sigs, err := rpc.signatures(ctx, w, 100, cur.Last)
-			if err != nil {
-				log.Printf("[%s] %s: %v", t.Slug, w[:6], err)
-				continue
-			}
-			if len(sigs) == 0 {
-				// Back off on quiet wallets (Axiom rotates 20): 2, 4, 8… ticks, max ~1h.
-				cur.Idle++
-				cur.NextScan = now + int64(math.Min(3600, 180*math.Pow(2, float64(cur.Idle))))
-				continue
-			}
-			cur.Idle = 0
-			cur.NextScan = 0
-			if cur.Last == "" {
-				// First scan: only the newest page; older history is not needed.
-				sigs = sigs[:min(len(sigs), 40)]
-			}
-			cur.Last = sigs[0].Signature
-			fresh = append(fresh, sigs...)
-		}
-		seen += len(fresh)
 		var ok []sigInfo
-		for _, s := range fresh {
-			ts := now
-			if s.BlockTime != nil {
-				ts = *s.BlockTime
+		if live {
+			nSeen, nFailed, reservoir := fd.drain(t.Slug)
+			seen += nSeen
+			for i := 0; i < nSeen; i++ {
+				st.Events[t.Slug] = append(st.Events[t.Slug], sigEvent{Time: now, Failed: i < nFailed})
 			}
-			st.Events[t.Slug] = append(st.Events[t.Slug], sigEvent{Time: ts, Failed: s.failed()})
-			if !s.failed() {
-				ok = append(ok, s)
+			ok = reservoir
+		} else {
+			// Polling fallback: newest page per wallet since the last cursor.
+			for _, w := range t.scanAddresses() {
+				cur := st.Cursors[w]
+				if cur == nil {
+					cur = &walletCursor{}
+					st.Cursors[w] = cur
+				}
+				if cur.NextScan > now {
+					continue
+				}
+				sigs, err := rpc.signatures(ctx, w, 100, cur.Last)
+				if err != nil {
+					log.Printf("[%s] %s: %v", t.Slug, w[:6], err)
+					continue
+				}
+				if len(sigs) == 0 {
+					cur.Idle++
+					cur.NextScan = now + int64(math.Min(3600, 180*math.Pow(2, float64(cur.Idle))))
+					continue
+				}
+				cur.Idle = 0
+				cur.NextScan = 0
+				if cur.Last == "" {
+					sigs = sigs[:min(len(sigs), 40)]
+				}
+				cur.Last = sigs[0].Signature
+				fresh = append(fresh, sigs...)
 			}
+			seen += len(fresh)
+			for _, s := range fresh {
+				ts := now
+				if s.BlockTime != nil {
+					ts = *s.BlockTime
+				}
+				st.Events[t.Slug] = append(st.Events[t.Slug], sigEvent{Time: ts, Failed: s.failed()})
+				if !s.failed() {
+					ok = append(ok, s)
+				}
+			}
+			rand.Shuffle(len(ok), func(i, j int) { ok[i], ok[j] = ok[j], ok[i] })
 		}
-		sort.SliceStable(ok, func(i, j int) bool { return ok[i].Slot > ok[j].Slot })
-		if len(ok) > perTerminal {
-			ok = ok[:perTerminal]
+		// Draw this tick's quota at random.
+		quota[t.Slug] += perTick
+		n := int(quota[t.Slug])
+		if n > len(ok) {
+			n = len(ok)
 		}
-		for _, s := range ok {
+		if n <= 0 {
+			continue
+		}
+		quota[t.Slug] -= float64(n)
+		rand.Shuffle(len(ok), func(i, j int) { ok[i], ok[j] = ok[j], ok[i] })
+		for _, s := range ok[:n] {
 			tx, err := rpc.transaction(ctx, s.Signature)
 			if err != nil || tx == nil {
 				if err != nil {
@@ -338,56 +358,50 @@ func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, 
 			if sw.Time == 0 {
 				sw.Time = now
 			}
-			if scanPct > 0 && (scanPct >= 100 || int(sw.Slot%100) < scanPct) {
-				if sd, ok := detectSandwich(ctx, rpc, sw, blocks, solUSD); ok {
-					sw.Scanned = true
-					sw.Sandwich = sd
-				}
-			}
 			// Reference price: exact pre-trade mid from the pool's reserves
-			// when the route is one constant-product pool, else the
-			// previous trade on the same pool, else Jupiter (below).
+			// when the route is one constant-product pool.
 			if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
 				if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
 					sw.finalize(&p, 0, "reserves")
 				}
 			}
-			if !sw.Priced && sw.PoolVault != "" {
-				if p, age, ok := arrivalPrice(ctx, rpc, sw, solUSD); ok {
-					sw.finalize(&p, age, "pool")
+			// Pool neighbourhood: previous trade (reference price when the
+			// reserves did not give one) and the sandwich screen.
+			if sw.PoolVault != "" {
+				if nb, err := poolNeighbours(ctx, rpc, sw); err == nil {
+					var prevTx *parsedTx
+					for i, ps := range nb.prev {
+						ptx, err := rpc.transaction(ctx, ps.Signature)
+						if err != nil || ptx == nil {
+							continue
+						}
+						if i == 0 {
+							prevTx = ptx
+						}
+						if sw.Priced {
+							break // only the immediate neighbour is needed for the screen
+						}
+						if p := poolTradePrice(ptx, sw.PoolOwner, sw.Mint, sw.Quote, sw.QuoteUSD, solUSD, sw.Venue == "pump-curve"); p > 0 {
+							age := int64(0)
+							if ps.BlockTime != nil {
+								age = sw.Time - *ps.BlockTime
+							}
+							if age <= 1800 {
+								sw.finalize(&p, age, "pool")
+							}
+							break
+						}
+					}
+					if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD); ok {
+						sw.Scanned = true
+						sw.Sandwich = sd
+						sw.BlockPoolTxs = len(nb.prev)
+					}
 				}
 			}
-			batch = append(batch, sw)
+			st.Swaps = append(st.Swaps, *sw)
+			added++
 		}
-	}
-	if len(batch) > 0 && jupiterFallback {
-		mints := map[string]bool{}
-		for _, sw := range batch {
-			mints[sw.Mint] = true
-		}
-		ids := make([]string, 0, len(mints))
-		for m := range mints {
-			ids = append(ids, m)
-		}
-		pctx, pcancel := context.WithTimeout(context.Background(), 20*time.Second)
-		prices, err := tokenPrices(pctx, httpc, ids)
-		pcancel()
-		if err != nil {
-			log.Printf("[price] jupiter: %v (%d of %d mints priced)", err, len(prices), len(ids))
-		}
-		at := time.Now().Unix()
-		for _, sw := range batch {
-			if !sw.Priced {
-				if p, ok := prices[sw.Mint]; ok && sw.QuoteUSD > 0 {
-					q := p / sw.QuoteUSD // USD per token → quote units per token
-					sw.finalize(&q, at-sw.Time, "jupiter")
-				}
-			}
-		}
-	}
-	for _, sw := range batch {
-		st.Swaps = append(st.Swaps, *sw)
-		added++
 	}
 	return added, seen
 }
@@ -473,40 +487,6 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 		return 0, false
 	}
 	return q / b, true
-}
-
-// arrivalPrice returns the effective price (quote per token) of the last
-// trade on the swap's pool before it, and how many seconds earlier that
-// trade was. Up to three preceding transactions on the pool's token vault
-// are read; the first one that moved both legs of the pool is the trade.
-func arrivalPrice(ctx context.Context, rpc *rpcClient, sw *Swap, solUSD float64) (float64, int64, bool) {
-	var out []sigInfo
-	err := rpc.call(ctx, "getSignaturesForAddress", []any{sw.PoolVault, map[string]any{"limit": 3, "before": sw.Sig, "commitment": "confirmed"}}, &out)
-	if err != nil {
-		return 0, 0, false
-	}
-	for _, s := range out {
-		if s.failed() {
-			continue
-		}
-		tx, err := rpc.transaction(ctx, s.Signature)
-		if err != nil || tx == nil {
-			continue
-		}
-		p := poolTradePrice(tx, sw.PoolOwner, sw.Mint, sw.Quote, sw.QuoteUSD, solUSD, sw.Venue == "pump-curve")
-		if p <= 0 {
-			continue
-		}
-		age := int64(0)
-		if s.BlockTime != nil {
-			age = sw.Time - *s.BlockTime
-		}
-		if age > 1800 {
-			return 0, 0, false // a stale print is no reference; Jupiter fallback
-		}
-		return p, age, true
-	}
-	return 0, 0, false
 }
 
 func prune(st *State, windowHours int) {

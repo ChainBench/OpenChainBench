@@ -14,7 +14,7 @@ unit: bps
 higher_is_better: false
 
 disclaimer: |
-  Sampled from the transactions that pay each terminal's fee wallets (the DeFiLlama lists), newest first, a few per terminal every 90 seconds. Reference = the pool's own state before the swap (exact reserves on PumpSwap and Raydium, previous trade on the same pool elsewhere); swaps whose pool state cannot be read keep their cost split but no loss figure. The trade's own impact is inside; a sandwich in the same slot is counted separately. Compare medians, not single swaps.
+  Random sample (300 per terminal per day) of the transactions paying each terminal's fee wallets, all counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, previous trade on the pool elsewhere); swaps without a readable pool state keep their cost split but no loss figure. The trade's own impact is inside; sandwiches are counted separately. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -32,8 +32,8 @@ seo_intro: |
 abstract: |
   Each terminal takes its fee through known wallets. getSignaturesForAddress on
   those wallets returns every transaction the terminal routed, failed ones
-  included; the harness counts them all (fail rate) and reads the newest
-  successful ones with getTransaction, four per terminal every 90 seconds. From
+  included, through a live WebSocket feed; the harness counts them all (fail
+  rate) and reads 300 successful ones per terminal per day, drawn at random. From
   the pre/post balances of every account in the transaction it derives, in quote
   units (SOL or a $1 stable), what left the user, what the pool received, what
   reached the terminal's fee wallets, the tx fee and Jito tips, and the rest
@@ -49,15 +49,16 @@ abstract: |
   size and venue mix per terminal; a terminal is published from 20 priced swaps.
 
 methodology:
-  - "Sampling: newest successful transactions on each terminal's fee wallets (Axiom 20, GMGN 9, Trojan 6, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost 1; BasedBot via its own program), 4 per terminal per 90 s tick, rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
+  - "Sampling: a live WebSocket feed of every transaction touching each terminal's fee wallets (Axiom 20, GMGN 9, Trojan 6, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost 1; BasedBot via its own program) counts them all, failed ones included; 300 successful ones per terminal per day are drawn at random and read. Rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, rent for new token accounts and the tx fee excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets."
   - "network_q = tx fee if the user paid it + tips to Jito, 0slot, bloXroute and Nozomi tip accounts (other tip services land in other); other_q = user_q minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts), single-pool routes only. Rent of token accounts created or closed in the transaction is excluded."
   - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction when the route is one constant-product pool (PumpSwap, whose migrated pools carry a virtual quote reserve read from the pool account; Raydium v4 / CPMM); else the effective price of the previous trade on the same pool (pump.fun curve, Meteora, CLMM, multi-pool routes)."
   - "Swaps with neither reference keep their exact cost components and stay out of the loss figure; no off-chain price is used. ref_src flags each sample and ref_src_pct per terminal says how many were priced and how."
   - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = loss minus terminal, network and other: LP fee and price impact, plus hop costs on multi-pool routes. The four components sum to the loss. Median over priced samples; p90 shown."
-  - "Fail rate: failed signatures over all signatures seen on the terminal's wallets in the window. A failed swap still costs the priority fee."
+  - "Fail rate: failed over all transactions the feed saw on the terminal's wallets in the window, exhaustive. A failed swap still costs the priority fee."
   - "PumpSwap's vault ratio alone is not the mid: pools migrated from pump.fun add a virtual quote reserve (about 17.6 SOL) that the pool account stores; with it x·y = k matches executed trades exactly. pump.fun's 2026 bonding curve fills 20 to 60 % above its stored virtual_sol / virtual_token, so the curve gets the previous-trade reference instead."
-  - "Sandwiches: the block of every sampled swap is read and scanned for a pair of successful transactions by the same signer on the same pool, one before ours in our direction and one after trading back. Published as the share of scanned swaps, with the attacker's profit in bps of the victim's trade. The victim's extra cost is already inside the loss (the front-run precedes us, so the arrival price includes it). Multi-block sandwiches are not looked for."
+  - "Sandwiches: every sampled swap's neighbours in its pool's transaction sequence are checked, since a front-run and a back-run both touch the pool: same signer trading our direction just before us and back just after (same slot or the next), closing a comparable position with a positive take. Published as the share of screened swaps, with the attacker's profit in bps of the victim's trade."
+  - "The sandwich victim's extra cost is already inside the loss (the front-run precedes us, so the arrival price includes it). Multi-block sandwiches are not looked for."
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
   - "Not measured: cross-chain trades (FOMO via Relay), perps."
   - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; fees are taken in USDC. BullX's DeFiLlama fee wallets see almost no fee on sampled swaps; its terminal figure is a floor. BasedBot's swaps do not expose a signer token leg, so it stays unpublished."
@@ -77,7 +78,7 @@ faq:
   - q: "Is this comparable across terminals?"
     a: "The explicit components (terminal, network) are exact and terminal-attributable. The pool component depends on what users trade and how much, which differs per app (Photon's median swap is small, FOMO's is hundreds of dollars), so read the total loss together with the trade size column. Medians over hundreds of swaps are stable; single swaps are not."
   - q: "How are sandwiches found, and is the loss double counted?"
-    a: "The block of each sampled swap is read in full. A sandwich is a transaction before the user's, on the same pool and in the same direction, and one after it trading back, both signed by the same account; Jito bundles land the three adjacent but the scan accepts any positions in the block. The Sandwiched column is how often that happens per terminal; the attacker's profit is in the JSON. The victim's extra cost is not a separate line: the front-run precedes the user's swap, so the arrival price already carries it and it sits inside the pool component of the loss."
+    a: "A sandwich's two legs both touch the pool, so they are the user's neighbours in the pool's own transaction sequence: a transaction just before, on the same pool and in the same direction, and one just after trading back, both signed by the same account, in the same slot or the next. The Sandwiched column is how often that happens per terminal; the attacker's profit is in the JSON. The victim's extra cost is not a separate line: the front-run precedes the user's swap, so the arrival price already carries it and it sits inside the pool component of the loss."
   - q: "How is a swap attributed to a terminal?"
     a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. FOMO's gas sponsor signs every transaction and is excluded as user."
 
@@ -133,7 +134,7 @@ metric_panels:
     metric: tfq_sandwich_pct
     unit: pct
     higher_is_better: false
-    description: "Share of sampled swaps whose block holds a front-run and a back-run by the same signer on the same pool. Published from 20 scanned swaps."
+    description: "Share of sampled swaps with a front-run and a back-run by the same signer on the same pool around them. Published from 20 screened swaps."
   - id: trade_usd
     label: Median trade
     label_key: terminal

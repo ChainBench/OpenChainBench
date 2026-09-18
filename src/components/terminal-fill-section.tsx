@@ -71,7 +71,7 @@ export async function TerminalFillSection({
               <Th right title="90th percentile of the same">p90</Th>
               <Th title="Median cost split: terminal fee, network (priority fee + Jito tip), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
               <Th right title="Share of the terminal's transactions that failed on-chain; the priority fee is paid anyway">Failed tx</Th>
-              <Th right title="Share of scanned swaps with a front-run and back-run by the same signer on the same pool in their block">Sandwiched</Th>
+              <Th right title="Share of screened swaps with a front-run and back-run by the same signer around them on the same pool">Sandwiched</Th>
               <Th right title="Median sampled trade size">Median trade</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
             </tr>
@@ -152,11 +152,11 @@ export async function TerminalFillSection({
       )}
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain from each terminal&apos;s fee-wallet transactions (newest first, 4 per terminal every 90 s),
+        Real user swaps read on-chain from each terminal&apos;s fee-wallet transactions (live feed, 300 drawn at random per terminal per day),
         valued at the pool&apos;s pre-trade mid (exact from its reserves on PumpSwap and Raydium, the previous trade on the same pool
         elsewhere; swaps whose pool state is not readable keep their cost split but no loss figure). Loss = 1 − value received /
-        value given, in basis points of the trade; the split is exact from balance deltas. Each swap&apos;s block is scanned for a
-        sandwich (front-run and back-run by the same signer on the same pool).
+        value given, in basis points of the trade; the split is exact from balance deltas. Each swap&apos;s neighbours on its pool are
+        screened for a sandwich (front-run and back-run by the same signer).
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}
         <Link href="/benchmarks/terminal-fill-quality" className="underline hover:no-underline">
           268
