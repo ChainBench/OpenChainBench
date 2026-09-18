@@ -72,14 +72,97 @@ var evmTerminals = []evmTerminal{
 	{Slug: "banana-gun-bnb", Name: "Banana Gun · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0x461efe0100be0682545972ebfc8b4a13253bd602"}},
 }
 
-const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps only: a failed transaction emits none, so no fail rate here). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas. A fee the pool's own hook keeps (launchpad pools on Robinhood Chain and BNB) is a pool cost; a fixed inclusion tip the terminal adds to every transaction is network cost."
+const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps: a failed transaction emits none, so the fail rate comes from a sample of blocks read in full, every transaction sent to the routers counted, reverted or not). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas. A fee the pool's own hook keeps (launchpad pools on Robinhood Chain and BNB) is a pool cost; a fixed inclusion tip the terminal adds to every transaction is network cost."
 
 // nativeFeed polls the routers' logs per chain since the last block seen.
 type nativeFeed struct {
 	http   *http.Client
 	cursor map[string]int64 // chain -> last block scanned
+	polled map[string][2]int64
 	box    map[string]*xinboxTx
 	up     map[string]bool
+}
+
+// isNativeEVM: a row read from a terminal's own EVM routers.
+func isNativeEVM(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return true
+		}
+	}
+	return false
+}
+
+// failScanBlocks: blocks read in full per chain per tick for the fail
+// rate (BNB makes ~80 a minute, Robinhood Chain ~590, Base ~30, Ethereum
+// ~5), drawn at random from the range the tick polled.
+var failScanBlocks = map[string]int{"bnb": 5, "robinhood": 8, "base": 4, "ethereum": 2}
+
+// failScan reads the sampled blocks in full: every transaction sent to a
+// terminal's routers is an attempt, a reverted one (receipt status 0) a
+// failed attempt, its gas the failed cost. A router emits no event on a
+// revert, so the log feed alone never sees them.
+func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]float64, now int64) {
+	for _, c := range originChains {
+		rng, ok := f.polled[c.slug]
+		k := failScanBlocks[c.slug]
+		if !ok || k == 0 || rng[1] < rng[0] {
+			continue
+		}
+		byRouter := map[string]string{}
+		for _, t := range evmTerminals {
+			if t.Chain != c.slug {
+				continue
+			}
+			for _, r := range t.Routers {
+				byRouter[r] = t.Slug
+			}
+		}
+		if len(byRouter) == 0 {
+			continue
+		}
+		n := int(rng[1] - rng[0] + 1)
+		if k > n {
+			k = n
+		}
+		price := gas[c.gas]
+		if c.gas == "" {
+			price = 1
+		}
+		seen, failed := map[string]int{}, map[string]int{}
+		for _, off := range rand.Perm(n)[:k] {
+			bn := rng[0] + int64(off)
+			var blk struct {
+				Transactions []struct {
+					Hash string `json:"hash"`
+					To   string `json:"to"`
+				} `json:"transactions"`
+			}
+			if err := evmCall(ctx, f.http, c.rpc, "eth_getBlockByNumber", []any{"0x" + big.NewInt(bn).Text(16), true}, &blk); err != nil {
+				log.Printf("[native] %s block %d: %v", c.slug, bn, err)
+				continue
+			}
+			for _, tx := range blk.Transactions {
+				slug := byRouter[strings.ToLower(tx.To)]
+				if slug == "" {
+					continue
+				}
+				var rc evmReceipt
+				if err := evmCall(ctx, f.http, c.rpc, "eth_getTransactionReceipt", []any{tx.Hash}, &rc); err != nil {
+					continue
+				}
+				seen[slug]++
+				if rc.Status != "0x1" {
+					failed[slug]++
+					fee := float64(hexInt(rc.GasUsed)) * float64(hexInt(rc.EffectiveGasPrice)) / 1e18 * price
+					st.Fails = append(st.Fails, failSample{Terminal: slug, Sig: tx.Hash, Time: now, FeeUSD: fee, Err: "reverted"})
+				}
+			}
+		}
+		for slug, s := range seen {
+			st.recordSample(slug, now, s, failed[slug])
+		}
+	}
 }
 
 type xinboxTx struct {
@@ -92,7 +175,7 @@ func newNativeFeed(httpc *http.Client, cursor map[string]int64) *nativeFeed {
 	if cursor == nil {
 		cursor = map[string]int64{}
 	}
-	return &nativeFeed{http: httpc, cursor: cursor, box: map[string]*xinboxTx{}, up: map[string]bool{}}
+	return &nativeFeed{http: httpc, cursor: cursor, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
 }
 
 // poll reads every router log since the cursor (at most 2,000 blocks a
@@ -134,6 +217,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		if c.slug == "ethereum" {
 			span = 50
 		}
+		start := from
 		var logs []evmLog
 		failed := false
 		for chunk := 0; chunk < 5 && from <= head; chunk++ {
@@ -152,6 +236,11 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			from = to + 1
 		}
 		f.up[c.slug] = !failed
+		if f.cursor[c.slug] >= start {
+			f.polled[c.slug] = [2]int64{start, f.cursor[c.slug]}
+		} else {
+			delete(f.polled, c.slug)
+		}
 		seen := map[string]bool{}
 		for _, l := range logs {
 			slug := byRouter[strings.ToLower(l.Address)]
@@ -189,6 +278,7 @@ func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
 func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *nativeFeed, gas map[string]float64, quota map[string]float64, perTick float64) (added, seen int) {
 	nf.poll(ctx)
 	now := time.Now().Unix()
+	nf.failScan(ctx, st, gas, now)
 	for _, t := range evmTerminals {
 		n0, sample, total := nf.drain(t.Slug)
 		seen += n0

@@ -119,6 +119,25 @@ type minuteBucket struct {
 	Failed int            `json:"failed"`
 	Other  int            `json:"other"`
 	Errs   map[string]int `json:"errs,omitempty"`
+	// Native EVM terminals: attempts found in the sampled blocks
+	// (transactions sent to the routers) and the reverted ones among them.
+	SampSeen   int `json:"ss,omitempty"`
+	SampFailed int `json:"sf,omitempty"`
+}
+
+// recordSample adds a block sample's attempts and reverts (native EVM).
+func (st *State) recordSample(slug string, now int64, seen, failed int) {
+	if seen == 0 {
+		return
+	}
+	m := now - now%60
+	b := st.Buckets[slug]
+	if len(b) == 0 || b[len(b)-1].T != m {
+		b = append(b, minuteBucket{T: m})
+	}
+	b[len(b)-1].SampSeen += seen
+	b[len(b)-1].SampFailed += failed
+	st.Buckets[slug] = b
 }
 
 type walletCursor struct {
@@ -185,6 +204,9 @@ type TerminalStats struct {
 	FailRate    *float64       `json:"fail_rate_pct,omitempty"`
 	FailReasons map[string]int `json:"fail_reasons,omitempty"`
 	NonSwap     int            `json:"non_swap"`
+	/** Native EVM terminals: the fail rate comes from a block sample (transactions sent to the routers, reverted or not), these are its counts. */
+	SampSeen   int `json:"sampled_attempts,omitempty"`
+	SampFailed int `json:"sampled_failed,omitempty"`
 	/** Cost of failures: sampled failed attempts, the median fee they paid, and the expected burn per successful swap in bps of the median trade. */
 	FailsSampled    int        `json:"fails_sampled"`
 	FailCostUSD     *Quantiles `json:"fail_cost_usd,omitempty"`
@@ -592,6 +614,13 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				}
 				if sw != nil {
 					if sw.Flag != "" && sw.Flag != "origin_token" {
+						if sw.Flag == "out_of_bounds" || sw.Flag == "split_implausible" {
+							loss := 0.0
+							if sw.LossBps != nil {
+								loss = *sw.LossBps
+							}
+							log.Printf("[evm] %s %s %s %s: loss %.0f bps, given %.2f, pool %.2f, relay %.2f, tokens %.6g, ref %.4g", slug, sw.Side, x.InTx+"/"+x.OutTx, sw.Flag, loss, sw.UserQ*sw.QuoteUSD, sw.PoolQ*sw.QuoteUSD, sw.RelayQ*sw.QuoteUSD, sw.Tokens, refOf(sw))
+						}
 						st.reject(slug, parseReject(sw.Flag))
 						continue
 					}
@@ -866,6 +895,14 @@ func prune(st *State, windowHours int) {
 	}
 }
 
+// refOf: the row's reference price, 0 when unpriced.
+func refOf(sw *Swap) float64 {
+	if sw.RefPrice == nil {
+		return 0
+	}
+	return *sw.RefPrice
+}
+
 // chainNames for the row names.
 var chainNames = map[string]string{"bnb": "BNB", "robinhood": "Robinhood Chain", "base": "Base", "ethereum": "Ethereum", "arc": "Arc", "hyperevm": "HyperEVM"}
 
@@ -1026,11 +1063,20 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			ts.Seen += b.Seen
 			ts.Failed += b.Failed
 			ts.NonSwap += b.Other
+			ts.SampSeen += b.SampSeen
+			ts.SampFailed += b.SampFailed
 			for k, v := range b.Errs {
 				errs[k] += v
 			}
 		}
-		if ts.Seen >= 20 {
+		if isNativeEVM(t.Slug) {
+			// The router logs carry successful swaps only: the fail rate
+			// comes from the block sample.
+			if ts.SampSeen >= 20 {
+				fr := 100 * float64(ts.SampFailed) / float64(ts.SampSeen)
+				ts.FailRate = &fr
+			}
+		} else if ts.Seen >= 20 {
 			fr := 100 * float64(ts.Failed) / float64(ts.Seen)
 			ts.FailRate = &fr // percent
 		}
