@@ -57,10 +57,24 @@ func endpoints() []Endpoint {
 	return out
 }
 
+// envURL returns the endpoint for a (provider, chain) cell, or "" when the
+// variable is unset or holds the "disabled" sentinel. Railway keeps a
+// variable's value around when a cell is paused; without the sentinel the
+// probe posted to the literal string "disabled" every cycle and logged an
+// http_err per cell (2026-09-18).
 func envURL(provider, chain string) string {
 	key := fmt.Sprintf("RPC_KEYED_URL_%s_%s",
 		strings.ToUpper(provider), strings.ToUpper(chain))
-	return strings.TrimSpace(os.Getenv(key))
+	v := strings.TrimSpace(os.Getenv(key))
+	switch strings.ToLower(v) {
+	case "", "disabled", "off", "-":
+		return ""
+	}
+	if !strings.HasPrefix(v, "http://") && !strings.HasPrefix(v, "https://") {
+		fmt.Printf("[config] %s ignored: not an http(s) URL\n", key)
+		return ""
+	}
+	return v
 }
 
 // Per-region monthly request budgets (this service = one region; the
