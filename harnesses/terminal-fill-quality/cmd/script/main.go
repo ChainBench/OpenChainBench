@@ -141,11 +141,12 @@ type failSample struct {
 }
 
 type State struct {
-	Swaps   []Swap                    `json:"swaps"`
-	Fails   []failSample              `json:"fails"`
-	Buckets map[string][]minuteBucket `json:"buckets"` // terminal -> per-minute feed counts
-	Rejects map[string]map[string]int `json:"rejects"` // terminal -> reason -> count (window not enforced; informative)
-	Cursors map[string]*walletCursor  `json:"cursors"` // wallet -> cursor (polling fallback)
+	Swaps     []Swap                    `json:"swaps"`
+	Fails     []failSample              `json:"fails"`
+	Buckets   map[string][]minuteBucket `json:"buckets"`              // terminal -> per-minute feed counts
+	Rejects   map[string]map[string]int `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
+	Cursors   map[string]*walletCursor  `json:"cursors"`              // wallet -> cursor (polling fallback)
+	EvmCursor map[string]int64          `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -291,6 +292,10 @@ func main() {
 		fd = newFeed(wsURL)
 		go fd.run(context.Background())
 	}
+	if st.EvmCursor == nil {
+		st.EvmCursor = map[string]int64{}
+	}
+	nf := newNativeFeed(httpc, st.EvmCursor)
 	xf := newXfeed(httpc)
 	go xf.run(context.Background(), tick)
 	var mu sync.RWMutex
@@ -327,7 +332,11 @@ func main() {
 			continue
 		}
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
-		added += sampleXchain(ctx, rpc, httpc, st, sol, gasPrices(ctx, httpc), xf, pools, quota, perTick)
+		gas := gasPrices(ctx, httpc)
+		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTick)
+		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTick)
+		added += a2
+		seen += s2
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, minPriced, minRank)
@@ -866,6 +875,9 @@ func cohort() []Terminal {
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in SOL on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
 	}
+	for _, t := range evmTerminals {
+		out = append(out, Terminal{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: nativeNote})
+	}
 	return out
 }
 
@@ -1201,6 +1213,11 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 func isXchainRow(slug string) bool {
 	for _, r := range xchainRows() {
 		if r == slug {
+			return true
+		}
+	}
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
 			return true
 		}
 	}

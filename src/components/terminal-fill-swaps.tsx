@@ -284,7 +284,12 @@ const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood"
 const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
 /** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
 function txExplorer(s: FillSample): string {
-  return s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain) ? EXPLORERS[s.chain] : "https://solscan.io/tx/";
+  if (s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain)) {
+    // A Relay sale settles on Solana (sig is the Solana signature); everything else on that chain is native or a Relay buy
+    if (s.side === "sell" && (s.terminal.startsWith("fomo-") || s.terminal.startsWith("basedbot-"))) return "https://solscan.io/tx/";
+    return EXPLORERS[s.chain];
+  }
+  return "https://solscan.io/tx/";
 }
 
 const selectCls = "h-7 rounded-md border border-rule bg-paper px-2 text-[11px] text-ink hover:border-ink/40 focus:outline-none focus:border-ink/60";

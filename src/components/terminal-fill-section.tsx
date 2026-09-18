@@ -207,7 +207,9 @@ function isXchain(slug: string): boolean {
 function xchainLabel(slug: string): string {
   const m = slug.match(XCHAIN_SUFFIX);
   if (!m) return "";
-  return m[1] === "funding" ? "funding leg" : `on ${CHAIN_NAMES[m[1]] ?? m[1]} via Relay`;
+  if (m[1] === "funding") return "funding leg";
+  const viaRelay = slug.startsWith("fomo-") || slug.startsWith("basedbot-");
+  return `on ${CHAIN_NAMES[m[1]] ?? m[1]}${viaRelay ? " via Relay" : ""}`;
 }
 function chainText(t: TerminalFillStats): string {
   return Object.entries(t.byChain)
