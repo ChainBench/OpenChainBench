@@ -276,6 +276,7 @@ func main() {
 	rps := envInt("RPC_RPS", 8)
 	rpc := &rpcClient{url: rpcURL, http: httpc, calls: cCalls.Inc, errors: cErrors.Inc, minGap: time.Second / time.Duration(max(rps, 1))}
 
+	applyRPCOverrides()
 	st := loadState(stateFile)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
