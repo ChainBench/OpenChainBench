@@ -140,6 +140,7 @@ stats plus the last 200 samples.
 | `TICK_SECONDS` | `60` | sweep interval |
 | `DAILY_TARGET` | `300` | swaps read per terminal per day (random draw from the feed) |
 | `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
+| `WS_URL` | RPC URL | feed endpoint when different from the reads (e.g. the keyless public `wss://api.mainnet-beta.solana.com`) |
 | `WINDOW_HOURS` | `24` | rolling window |
 | `MIN_PRICED` | `20` | priced samples before a terminal is published |
 | `STATE_FILE` | unset | persist the window across restarts |
