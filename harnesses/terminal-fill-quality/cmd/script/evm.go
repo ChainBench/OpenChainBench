@@ -162,6 +162,11 @@ type erc20Meta struct {
 }
 
 func erc20(ctx context.Context, httpc *http.Client, c originChain, token string) erc20Meta {
+	// Arc's gas coin is USDC; the chain logs its native moves as ERC20
+	// Transfers of a pseudo-token (18 decimals) with no code to ask.
+	if c.slug == "arc" && token == "0xfffffffffffffffffffffffffffffffffffffffe" {
+		return erc20Meta{dec: 18, symbol: "USDC", ok: true}
+	}
 	key := c.slug + ":" + token
 	erc20Cache.Lock()
 	m, hit := erc20Cache.m[key]
@@ -264,7 +269,10 @@ type evmSettlement struct {
 	Pool      string  // main pool (v4: PoolManager:poolId)
 	Pools     int     // pools that paid the token out (split routes)
 	Hops      int     // hops priced through
-	PoolInUSD float64 // quote paid into the token pools, USD
+	PoolInUSD float64 // quote paid into the token pools, USD (sales: paid out to the route, after any hook fee)
+	HookUSD   float64 // sales: quote the pool's hook kept out of the swap's output (a pool cost)
+	OtherUSD  float64 // a launchpad's protocol fee on the trade (four.meme's 1 %), `other`
+	NativeUSD float64 // USD per wrapped gas coin at the rate this route's own stable ↔ wrapped hop got, 0 if none
 	MidUSD    float64 // main pool's price before our swap, USD per token
 	RefSrc    string
 	GasUSD    float64 // destination gas (paid by the solver)
@@ -301,7 +309,34 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	tokenFrom := map[string]*big.Int{}           // token paid out, by sender (total)
 	tokenOuts := map[string][]*big.Int{}         // token paid out, by sender (each transfer)
 	intoPool := map[string]map[string]*big.Int{} // receiver -> erc20 -> amount
-	for _, l := range rc.Logs {
+	// Only the token flow that reached the recipient counts: to them, or to
+	// whoever forwarded to them (a router). A taxed token swapping its own
+	// tax on the same pool inside our transaction is not our pool.
+	// Walking the transfers backwards from the recipient, an address is
+	// on the way when it forwarded to the way what it had received (its
+	// budget), so a forwarding hop of any depth counts and a side flow
+	// (the token's own tax sale) never does.
+	ours := map[int]bool{}
+	toUser := map[string]*big.Int{recipient: new(big.Int).Lsh(big.NewInt(1), 200)}
+	for i := len(rc.Logs) - 1; i >= 0; i-- {
+		l := &rc.Logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != token {
+			continue
+		}
+		from, to, amt := topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+		b := toUser[to]
+		if b == nil || b.Cmp(amt) < 0 {
+			continue
+		}
+		b.Sub(b, amt)
+		if toUser[from] == nil {
+			toUser[from] = new(big.Int)
+		}
+		toUser[from].Add(toUser[from], amt)
+		ours[i] = true
+	}
+	for i := range rc.Logs {
+		l := &rc.Logs[i]
 		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
 			continue
 		}
@@ -310,11 +345,16 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 			if to == recipient {
 				tokensRaw.Add(tokensRaw, amt)
 			}
+			// The sender's whole outflow (a taxed token's cut to its
+			// treasury is part of the pool's payout) and, one by one, the
+			// transfers on the way to the recipient.
 			if tokenFrom[from] == nil {
 				tokenFrom[from] = new(big.Int)
 			}
 			tokenFrom[from].Add(tokenFrom[from], amt)
-			tokenOuts[from] = append(tokenOuts[from], amt)
+			if ours[i] {
+				tokenOuts[from] = append(tokenOuts[from], amt)
+			}
 			continue
 		}
 		if intoPool[to] == nil {
@@ -373,6 +413,14 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 	}
 	if len(pools) == 0 {
+		// No pool paid the token out: a four.meme curve buy?
+		for _, tr := range fourTrades(rc.Logs, token) {
+			if tr.buy && tokenFrom[tr.manager] != nil {
+				out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
+				return out, nil
+			}
+		}
 		out.Unpriced = "no_pool"
 		return out, nil
 	}
@@ -437,6 +485,7 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 		out.PoolInUSD += f(p.quote) * u
 	}
+	out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
 	// The main pool's price before our swap, raw quote per raw token.
 	var midRaw float64
 	switch main.ev.kind {
@@ -518,8 +567,36 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	tokensRaw := new(big.Int)
 	tokenTo := map[string]*big.Int{}
 	tokenIns := map[string][]*big.Int{}
-	outOfPool := map[string]map[string]*big.Int{} // sender -> erc20 -> amount
-	for _, l := range rc.Logs {
+	outOfPool := map[string]map[string]*big.Int{}         // sender -> erc20 -> amount
+	outTo := map[string]map[string]map[string]*big.Int{}  // sender -> erc20 -> recipient -> amount
+	backTo := map[string]map[string]map[string]*big.Int{} // recipient -> erc20 -> sender -> amount (what came back)
+	// Only the user's own token flow counts: from them, or from whoever
+	// they handed the tokens to (a router); a taxed token selling its own
+	// tax on the same pool inside our transaction is not our sale.
+	// Walking the transfers forward from the user, an address is on the
+	// way when it forwards what it had received from the way (its
+	// budget): a forwarding hop of any depth counts, a side flow never.
+	ours := map[int]bool{}
+	fromUser := map[string]*big.Int{user: new(big.Int).Lsh(big.NewInt(1), 200)}
+	for i := range rc.Logs {
+		l := &rc.Logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != token {
+			continue
+		}
+		from, to, amt := topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+		b := fromUser[from]
+		if b == nil || b.Cmp(amt) < 0 {
+			continue
+		}
+		b.Sub(b, amt)
+		if fromUser[to] == nil {
+			fromUser[to] = new(big.Int)
+		}
+		fromUser[to].Add(fromUser[to], amt)
+		ours[i] = true
+	}
+	for i := range rc.Logs {
+		l := &rc.Logs[i]
 		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
 			continue
 		}
@@ -532,16 +609,89 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 				tokenTo[to] = new(big.Int)
 			}
 			tokenTo[to].Add(tokenTo[to], amt)
-			tokenIns[to] = append(tokenIns[to], amt)
+			if ours[i] {
+				tokenIns[to] = append(tokenIns[to], amt)
+			}
 			continue
 		}
 		if outOfPool[from] == nil {
 			outOfPool[from] = map[string]*big.Int{}
+			outTo[from] = map[string]map[string]*big.Int{}
 		}
 		if outOfPool[from][erc] == nil {
 			outOfPool[from][erc] = new(big.Int)
+			outTo[from][erc] = map[string]*big.Int{}
 		}
 		outOfPool[from][erc].Add(outOfPool[from][erc], amt)
+		if outTo[from][erc][to] == nil {
+			outTo[from][erc][to] = new(big.Int)
+		}
+		outTo[from][erc][to].Add(outTo[from][erc][to], amt)
+		if backTo[to] == nil {
+			backTo[to] = map[string]map[string]*big.Int{}
+		}
+		if backTo[to][erc] == nil {
+			backTo[to][erc] = map[string]*big.Int{}
+		}
+		if backTo[to][erc][from] == nil {
+			backTo[to][erc][from] = new(big.Int)
+		}
+		backTo[to][erc][from].Add(backTo[to][erc][from], amt)
+	}
+	// delivered: the quote that left the pool for the route. A v4 hook may
+	// keep part of the swap's output (its own transfer out of the manager,
+	// next to the one to the router: the launchpad hooks on Robinhood
+	// Chain and BNB take 1 – 4 %): the largest recipient's amount is what
+	// went on, the rest is the hook's fee, a cost of that pool.
+	delivered := func(ev *swapEv, quoteRaw *big.Int) (*big.Int, *big.Int) {
+		if ev.kind != "v4" {
+			return quoteRaw, new(big.Int)
+		}
+		for erc, byTo := range outTo[ev.pool] {
+			if len(byTo) < 2 {
+				continue
+			}
+			// The largest recipient got what went on; the shortfall to the
+			// swap's output is the hook's when one other recipient got
+			// exactly that (or the others together, net of what they sent
+			// straight back: a hook that takes and returns through the
+			// manager). The router's own round trip into the next hop on
+			// the same manager is a gross amount here, never netted.
+			largest, largestTo := new(big.Int), ""
+			for to, a := range byTo {
+				if a.Cmp(largest) > 0 {
+					largest, largestTo = a, to
+				}
+			}
+			if largest.Cmp(quoteRaw) >= 0 {
+				continue
+			}
+			rest := new(big.Int).Sub(quoteRaw, largest)
+			if rest.Cmp(new(big.Int).Div(quoteRaw, big.NewInt(4))) > 0 {
+				continue
+			}
+			others := new(big.Int)
+			exact := false
+			for to, a := range byTo {
+				if to == largestTo {
+					continue
+				}
+				if a.Cmp(rest) == 0 {
+					exact = true
+				}
+				n := new(big.Int).Set(a)
+				if back := backTo[ev.pool][erc][to]; back != nil {
+					n.Sub(n, back)
+				}
+				if n.Sign() > 0 {
+					others.Add(others, n)
+				}
+			}
+			if exact || others.Cmp(rest) == 0 {
+				return largest, rest
+			}
+		}
+		return quoteRaw, new(big.Int)
 	}
 	if tokensRaw.Sign() == 0 {
 		out.Unpriced = "no_token_sent"
@@ -584,6 +734,14 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 	}
 	if len(pools) == 0 {
+		// No pool took the token: a four.meme curve sale?
+		for _, tr := range fourTrades(rc.Logs, token) {
+			if !tr.buy && tokenTo[tr.manager] != nil {
+				out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
+				return out, nil
+			}
+		}
 		out.Unpriced = "no_pool"
 		return out, nil
 	}
@@ -623,8 +781,9 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 				}
 				for side := 0; side < 2; side++ {
 					if h.in[side].Sign() > 0 && near(h.in[side], quoteRaw, quoteSum, pass == 1) && h.out[1-side].Sign() > 0 {
-						if u, hops, ok := usdPerRaw(h, h.out[1-side], depth+1); ok {
-							return u * f(h.out[1-side]) / f(h.in[side]), hops + 1, true // USD per raw unit of the hop's input
+						hq, _ := delivered(h, h.out[1-side])
+						if u, hops, ok := usdPerRaw(h, hq, depth+1); ok {
+							return u * f(hq) / f(h.in[side]), hops + 1, true // USD per raw unit of the hop's input
 						}
 					}
 				}
@@ -632,21 +791,25 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 		return 0, 0, false
 	}
-	upr, hops, ok := usdPerRaw(main.ev, main.quote, 0)
+	mainQuote, _ := delivered(main.ev, main.quote)
+	upr, hops, ok := usdPerRaw(main.ev, mainQuote, 0)
 	if !ok {
 		out.Unpriced = "no_quote_leg"
 		return out, nil
 	}
 	out.Hops = hops
 	for _, p := range pools {
+		q, hook := delivered(p.ev, p.quote)
 		u := upr
 		if p.ev != main.ev {
-			if u2, _, ok := usdPerRaw(p.ev, p.quote, 0); ok {
+			if u2, _, ok := usdPerRaw(p.ev, q, 0); ok {
 				u = u2
 			}
 		}
-		out.PoolInUSD += f(p.quote) * u // here: the quote the pools paid out, USD
+		out.PoolInUSD += f(q) * u // here: the quote the pools paid out to the route, USD
+		out.HookUSD += f(hook) * u
 	}
+	out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
 	var midRaw float64
 	switch main.ev.kind {
 	case "v2":
@@ -697,6 +860,125 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	out.MidUSD = midRaw * math.Pow10(meta.dec) * upr
 	out.Priced = true
 	return out, nil
+}
+
+// valueCall is one internal call that moved gas coins.
+type valueCall struct {
+	From, To string
+	Value    *big.Int
+}
+
+// evmTrace lists the internal value transfers of a transaction
+// (debug_traceTransaction, callTracer) when an endpoint of the chain
+// serves it: QuickNode on Robinhood Chain, drpc's public BSC node; an
+// endpoint without the method is skipped like any other error.
+func evmTrace(ctx context.Context, httpc *http.Client, c originChain, hash string) ([]valueCall, bool) {
+	type call struct {
+		From  string `json:"from"`
+		To    string `json:"to"`
+		Value string `json:"value"`
+		Calls []call `json:"calls"`
+	}
+	var root call
+	if err := evmCall(ctx, httpc, c.rpc, "debug_traceTransaction", []any{hash, map[string]any{"tracer": "callTracer"}}, &root); err != nil {
+		return nil, false
+	}
+	var out []valueCall
+	var walk func(c *call)
+	walk = func(c *call) {
+		if v := hexBig(c.Value); v.Sign() > 0 && c.To != "" {
+			out = append(out, valueCall{From: strings.ToLower(c.From), To: strings.ToLower(c.To), Value: v})
+		}
+		for i := range c.Calls {
+			walk(&c.Calls[i])
+		}
+	}
+	walk(&root)
+	return out, true
+}
+
+// nativeRate: USD per wrapped gas coin at the rate this route itself got on
+// its hop between a stable and the wrapped coin (a pair contract, or a v4
+// manager paying one and taking the other), so a native leg of the user
+// (BNB sent, ETH received) is valued like the pool leg it was swapped
+// against rather than at an exchange's print: the difference between the
+// two is not a cost of anyone. 0 when the route has no such hop, or the
+// rate is more than 5 % away from the exchange's (not a plain hop).
+func nativeRate(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64) float64 {
+	if c.gas == "" {
+		return 0
+	}
+	emit := map[string]bool{}
+	for _, ev := range evs {
+		emit[ev.pool] = true
+	}
+	type flow struct{ stIn, stOut, wIn, wOut float64 } // ui units
+	flows := map[string]*flow{}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			continue
+		}
+		erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+		if !emit[from] && !emit[to] {
+			continue
+		}
+		m := erc20(ctx, httpc, c, erc)
+		if !m.ok {
+			continue
+		}
+		q, ok := quoteUSD(m.symbol, c, gas)
+		stable, wrapped := ok && q == 1, isWrappedGas(m.symbol, c)
+		if !stable && !wrapped {
+			continue
+		}
+		ui := f(amt) * math.Pow10(-m.dec)
+		for _, a := range []string{from, to} {
+			if !emit[a] {
+				continue
+			}
+			fl := flows[a]
+			if fl == nil {
+				fl = &flow{}
+				flows[a] = fl
+			}
+			switch {
+			case stable && a == to:
+				fl.stIn += ui
+			case stable:
+				fl.stOut += ui
+			case a == to:
+				fl.wIn += ui
+			default:
+				fl.wOut += ui
+			}
+		}
+	}
+	ref := gas[c.gas]
+	best, bestStable := 0.0, 0.0
+	for _, fl := range flows {
+		var r, st float64
+		switch {
+		case fl.stIn > 0 && fl.wOut > 0 && fl.stOut == 0 && fl.wIn == 0: // stable in, wrapped out
+			r, st = fl.stIn/fl.wOut, fl.stIn
+		case fl.wIn > 0 && fl.stOut > 0 && fl.stIn == 0 && fl.wOut == 0: // wrapped in, stable out
+			r, st = fl.stOut/fl.wIn, fl.stOut
+		}
+		if r > 0 && (ref <= 0 || math.Abs(r/ref-1) <= 0.05) && st > bestStable {
+			best, bestStable = r, st
+		}
+	}
+	return best
+}
+
+// isWrappedGas: the wrapped gas coin of the chain (WBNB on BNB, WETH on
+// the Ethereum-priced chains, WHYPE on HyperEVM).
+func isWrappedGas(sym string, c originChain) bool {
+	switch sym {
+	case "WETH", "WBNB", "WHYPE":
+		return strings.HasPrefix(c.gas, sym[1:]+"-")
+	}
+	return false
 }
 
 // near: a hop's amount matches the quote when it equals it, or sits within

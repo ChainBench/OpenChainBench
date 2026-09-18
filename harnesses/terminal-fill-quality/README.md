@@ -188,13 +188,23 @@ pool's state before the sale versus what reached the user, relay = quote
 the pool paid out − app fee − received. Uniswap v4's Swap event carries
 the swapper's deltas (positive = received), v3's the pool's (positive =
 paid in); both are normalised in `parseSwapEv`. A hop matches the quote
-it paid out when the amounts are equal, within 5 % (a router skimming
+it paid out when the amounts are equal, within 1.5 % (a router skimming
 between hops), or equal to the quotes of every token pool together (a hop
 split across pools); a v4 manager's ERC20 flows are aggregates, so a
-priced token covering the quote counts. Not decoded yet (rows stay
-unpriced with the reason in `rejects`): four.meme's bonding curve on BNB
-(`TokenPurchase` / `TokenSale` events, ~10 % of BNB rows) and a few
-one-off routers on Base. Public RPCs:
+priced token covering the quote counts. **four.meme's bonding curve on
+BNB** (`fourmeme.go`, venue `four-meme`): a trade on the launchpad's
+TokenManager (V2 `0x5c952063…`, V1 `0xEC4549ca…`) emits `TokenPurchase`
+/ `TokenSale(token, account, price, amount, cost, fee, offers, funds)`;
+the curve is a constant product on virtual reserves (checked on
+consecutive events of one token: (offers + vt) × (vq + funds) holds to
+1e-12), and `_tokenInfos(token)` on the manager gives K = x·y / 1e18 and
+T = offers + vt next to the current offers and the quote token (USDT on
+most curves, zero = BNB), so the mid before the trade is K × 1e18 /
+(offers_after ± amount + vt)², exact; pool = `cost`, the protocol's 1 %
+`fee` is `other` (like pump.fun's on Solana), read once per token. Not
+decoded yet (rows stay unpriced with the reason in `rejects`): RFQ fills
+on Ethereum (a market maker pays from its own balance, no pool and no
+mid) and a few one-off routers on Base and Robinhood Chain. Public RPCs:
 Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
 publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
 `rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
@@ -217,8 +227,44 @@ change across the block plus the gas paid (`eth_getBalance` at N−1 and
 N); pricing through `priceEvmOriginSale`. The terminal's fee is an
 internal native transfer to its collector, invisible in logs: it is the
 residual of given − pool − gas (buy) or pool − received − gas (sell),
-so a venue fee paid the same way would sit in it; rows priced through a
-v2 / v3 / v4 pool carry that fee as the terminal's alone.
+so a venue fee paid the same way would sit in it. Three things are kept
+out of that residual (call traces of 2026-09-18 on both chains):
+a **hook fee**, when a Uniswap v4 pool's hook keeps part of the swap's
+output (a second transfer out of the manager next to the one to the
+router: the launchpad hooks on Robinhood Chain, 1 %, paid in every
+router's transactions, and on BNB, 3.8 %), is a cost of that pool
+(`delivered` in `priceEvmOriginSale`: the largest recipient's amount
+went on, the rest, at most a quarter, is the hook's); a **native leg**
+(BNB sent on a buy, ETH received on a sell) is valued at the rate the
+route itself swapped the gas coin at on its stable ↔ wrapped hop when it
+did (`nativeRate`, within 5 % of Coinbase), so an exchange's print
+against the pool's rate is no longer a "fee"; and Axiom's **inclusion
+tip**, forwarded from the router to its tip account on every
+transaction on top of its 1 % (BNB: a fixed 0.0025 BNB to `0xdd8431ce…`;
+Robinhood Chain: the user's own setting, 0.00005 to 0.001 ETH, to
+`0x56931968…`), is network cost like the Solana terminals' own tip
+relays: on a sale it is the transaction's value (a sale sends nothing
+else), on a buy it is read from the call trace
+(`debug_traceTransaction`, served by QuickNode on Robinhood Chain and by
+drpc's public BSC node) or, without a trace, the fixed amount when the
+tip account's balance rose by at least that much in the block (`Tip` /
+`TipTo` on the terminal). A hook that takes its cut through the manager
+and sends the rest back is netted per recipient before the split. When the
+sender is not the trader (a relayer or a smart account), the trader is
+whoever received the token from a pool (buy) or sent it to one (sell).
+Banana Gun's Ethereum, Base and BNB routers (DeFiLlama's adapter) are
+polled the same way (`banana-gun-<chain>`); on Ethereum its router's fee
+event (`0x72015ace…`, what DeFiLlama sums) reads 0 on the sampled swaps
+and the wallet pays nothing beyond value and gas in the block, so the
+fee is collected outside the swap transaction and the terminal component
+reads 0 there (said in the row's note). A taxed token that swaps its own
+tax on the same pool inside the user's transaction is not the user's
+pool: only the token flow from the user (sell) or to the user (buy),
+directly or through one forwarding address, selects the pools. Arc's
+gas coin is USDC, logged as ERC20 transfers of the pseudo-token
+`0xff…fe` (18 decimals, priced at $1). Ethereum's public nodes cap
+`eth_getLogs` at 50 blocks: the router polling uses 50-block chunks
+there.
 
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
 from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
