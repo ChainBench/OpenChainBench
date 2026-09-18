@@ -74,6 +74,9 @@ var (
 	gLossSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps_size", Help: "Median loss per swap by trade-size bucket (under25, 25to250, over250 USD)",
 	}, []string{"terminal", "bucket"})
+	gLossChain = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_loss_bps_chain", Help: "Cross-chain apps: median loss per swap by origin chain (bnb, robinhood, base, ethereum, arc)",
+	}, []string{"terminal", "chain"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_health", Help: "1 when the terminal has at least MIN_PRICED priced samples in the window",
 	}, []string{"terminal"})
@@ -94,7 +97,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRanked, gFailCost, gFailOverhead, gRefresh, gFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gRefresh, gFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -205,6 +208,8 @@ type TerminalStats struct {
 	SandwichProfit *Quantiles `json:"sandwich_profit_bps,omitempty"`
 	/** Loss by trade-size bucket. */
 	BySize map[string]*Quantiles `json:"by_size,omitempty"`
+	/** Cross-chain apps: loss by origin chain (bnb, robinhood, base, ethereum, arc), with the median's interval. */
+	ByChain map[string]*Quantiles `json:"by_chain,omitempty"`
 	/** Largest "other" recipients over the window, for audit: pubkey, label when known, count, quote received in USD. */
 	OtherTop []OtherRecipient `json:"other_top,omitempty"`
 	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
@@ -285,6 +290,8 @@ func main() {
 		fd = newFeed(wsURL)
 		go fd.run(context.Background())
 	}
+	xf := newXfeed(httpc)
+	go xf.run(context.Background(), tick)
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -319,6 +326,7 @@ func main() {
 			continue
 		}
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
+		added += sampleXchain(ctx, rpc, httpc, st, sol, gasPrices(ctx, httpc), xf, pools, quota, perTick)
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, minPriced, minRank)
@@ -453,70 +461,196 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				}
 				continue
 			}
-			sw, reject := parseSwap(t, s.Signature, tx, solUSD)
+			sw, reject := parseSwap(t, s.Signature, tx, solUSD, "")
 			if reject != "" {
-				if st.Rejects[t.Slug] == nil {
-					st.Rejects[t.Slug] = map[string]int{}
-				}
-				st.Rejects[t.Slug][string(reject)]++
+				st.reject(t.Slug, reject)
 				continue
 			}
 			if sw.Time == 0 {
 				sw.Time = now
 			}
-			// Reference price: exact pre-trade mid from the pool's reserves
-			// when the route is one constant-product pool, else from the
-			// venue's own swap event (Launchpad, Meteora DLMM).
-			if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
-				if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
-					sw.finalize(&p, 0, "reserves")
-				}
-			}
-			if sw.RefSrc == "" {
-				if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-					sw.finalize(&p, 0, "reserves")
-				}
-			}
-			// Pool neighbourhood: previous trade (reference price when the
-			// reserves did not give one, at most 60 s earlier) and the
-			// sandwich screen.
-			if sw.PoolVault != "" {
-				if nb, err := poolNeighbours(ctx, rpc, sw); err == nil {
-					var prevTx *parsedTx
-					for i, ps := range nb.prev {
-						ptx, err := rpc.transaction(ctx, ps.Signature)
-						if err != nil || ptx == nil {
-							continue
-						}
-						if i == 0 {
-							prevTx = ptx
-						}
-						if sw.RefSrc != "" {
-							break // reference known; only the immediate neighbour is needed for the screen
-						}
-						if p := poolTradePrice(ptx, sw, solUSD); p > 0 {
-							age := int64(0)
-							if ps.BlockTime != nil {
-								age = sw.Time - *ps.BlockTime
-							}
-							if age <= refMaxAgeS {
-								sw.finalize(&p, age, "pool")
-							}
-							break
-						}
-					}
-					if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD, now); ok {
-						sw.Scanned = true
-						sw.Sandwich = sd
-						sw.BlockPoolTxs = len(nb.prev)
-					}
-				}
-			}
+			priceSwap(ctx, rpc, sw, tx, pools, solUSD, now)
 			st.Swaps = append(st.Swaps, *sw)
 			added++
 		}
 	}
 	return added, seen
+}
+
+func (st *State) reject(slug string, r parseReject) {
+	if st.Rejects[slug] == nil {
+		st.Rejects[slug] = map[string]int{}
+	}
+	st.Rejects[slug][string(r)]++
+}
+
+// priceSwap sets the swap's reference price and runs the sandwich screen:
+// the exact pre-trade mid from the pool's reserves when the route is one
+// constant-product pool, else from the venue's own swap event (Launchpad,
+// Meteora DLMM), else the previous trade on the pool (at most 60 s
+// earlier); the pool neighbourhood is read anyway for the screen.
+func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pools *poolCache, solUSD float64, now int64) {
+	if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
+		if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
+			sw.finalize(&p, 0, "reserves")
+		}
+	}
+	if sw.RefSrc == "" {
+		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
+			sw.finalize(&p, 0, "reserves")
+		}
+	}
+	if sw.PoolVault == "" {
+		return
+	}
+	nb, err := poolNeighbours(ctx, rpc, sw)
+	if err != nil {
+		return
+	}
+	var prevTx *parsedTx
+	for i, ps := range nb.prev {
+		ptx, err := rpc.transaction(ctx, ps.Signature)
+		if err != nil || ptx == nil {
+			continue
+		}
+		if i == 0 {
+			prevTx = ptx
+		}
+		if sw.RefSrc != "" {
+			break // reference known; only the immediate neighbour is needed for the screen
+		}
+		if p := poolTradePrice(ptx, sw, solUSD); p > 0 {
+			age := int64(0)
+			if ps.BlockTime != nil {
+				age = sw.Time - *ps.BlockTime
+			}
+			if age <= refMaxAgeS {
+				sw.finalize(&p, age, "pool")
+			}
+			break
+		}
+	}
+	if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD, now); ok {
+		sw.Scanned = true
+		sw.Sandwich = sd
+		sw.BlockPoolTxs = len(nb.prev)
+	}
+}
+
+// sampleXchain drains the Relay feed: counts every final request of each
+// cross-chain app for its fail rate, draws the tick's quota of successful
+// token settlements on Solana and measures them (see xchain.go).
+func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, solUSD float64, gas map[string]float64, xf *xfeed, pools *poolCache, quota map[string]float64, perTick float64) (added int) {
+	if xf == nil || !xf.healthy() {
+		return 0
+	}
+	now := time.Now().Unix()
+	for _, a := range xchainApps {
+		seen, failed, errs, sample, total := xf.drain(a.Slug)
+		st.record(a.Slug, now, seen, failed, 0, errs)
+		if total == 0 {
+			continue
+		}
+		quota[a.Slug] += perTick
+		if cap := math.Max(3*perTick, 2); quota[a.Slug] > cap {
+			quota[a.Slug] = cap
+		}
+		n := int(quota[a.Slug])
+		if n > len(sample) {
+			n = len(sample)
+		}
+		if n <= 0 {
+			continue
+		}
+		quota[a.Slug] -= float64(n)
+		rand.Shuffle(len(sample), func(i, j int) { sample[i], sample[j] = sample[j], sample[i] })
+		t := Terminal{Slug: a.Slug, Name: a.Name, Kind: "app"}
+		for _, x := range sample[:n] {
+			if x.UsdIn <= 0 {
+				st.reject(a.Slug, "no_usd_in")
+				continue
+			}
+			tx, err := rpc.transaction(ctx, x.OutTx)
+			if err != nil || tx == nil {
+				continue
+			}
+			gasUSD, gasOK := originGasUSD(ctx, httpc, x.Chain, x.InTx, gas)
+			var sw *Swap
+			if x.OutIsToken {
+				// The settlement bought the token on Solana: value received =
+				// the tokens at the pool's state before the settlement swap.
+				var reject parseReject
+				sw, reject = parseSwap(t, x.OutTx, tx, solUSD, x.Recipient)
+				if reject != "" {
+					st.reject(a.Slug, reject)
+					continue
+				}
+				if sw.Side != "buy" || sw.QuoteUSD <= 0 {
+					st.reject(a.Slug, "not_buy")
+					continue
+				}
+				q := sw.QuoteUSD
+				sw.UserQ = (x.UsdIn + gasUSD) / q // what the user sent on the origin chain, plus its gas
+				sw.TerminalQ = x.AppFeeUsd / q
+				sw.RelayQ = x.RelayFeeUsd / q
+				sw.NetworkQ = gasUSD / q
+				sw.Others, sw.OtherQ = nil, nil
+				if sw.PoolQ > 0 && sw.Pools == 1 {
+					o := sw.UserQ - sw.PoolQ - sw.TerminalQ - sw.RelayQ - sw.NetworkQ
+					if o < 0 {
+						o = 0
+					}
+					sw.OtherQ = &o
+				}
+			} else {
+				// The settlement delivered SOL or a stable to the user (FOMO
+				// funds the Solana wallet this way, the token buy is then a
+				// native swap): value received is exact, the bridge's take is
+				// what is left of the deposit after the app fee and the gas.
+				sw = bridgeRow(t, x, tx, solUSD, gasUSD)
+				if sw == nil {
+					st.reject(a.Slug, "no_quote_received")
+					continue
+				}
+			}
+			if sw.Time == 0 {
+				sw.Time = now
+			}
+			sw.Chain, sw.RelayID, sw.InTx = x.Chain, x.ID, x.InTx
+			if !gasOK {
+				sw.Flag = "gas_unknown"
+			}
+			flag := sw.Flag
+			if x.OutIsToken {
+				sw.finalize(nil, 0, "")
+				if sw.TradeUSD < minTradeUSD {
+					st.reject(a.Slug, rejectDust)
+					continue
+				}
+				priceSwap(ctx, rpc, sw, tx, pools, solUSD, now)
+			} else {
+				one := 1.0
+				sw.finalize(&one, 0, "reserves") // quote per quote: exact by construction
+				if sw.TradeUSD < minTradeUSD {
+					st.reject(a.Slug, rejectDust)
+					continue
+				}
+			}
+			if sw.Flag == "" {
+				sw.Flag = flag
+			}
+			if x.InIsToken {
+				// The user paid with a token on the origin chain: what it was
+				// worth is Relay's own valuation, not an on-chain mid, and the
+				// figure carries that token's sale. Kept, shown, not counted.
+				sw.Flag = "origin_token"
+				sw.Priced = false
+			}
+			st.Swaps = append(st.Swaps, *sw)
+			added++
+		}
+	}
+	return added
 }
 
 // refMaxAgeS: a previous trade older than this is no arrival price (the
@@ -680,9 +814,18 @@ func prune(st *State, windowHours int) {
 	}
 }
 
+// cohort: the native terminals plus the cross-chain apps, as rows.
+func cohort() []Terminal {
+	out := append([]Terminal{}, terminals...)
+	for _, a := range xchainApps {
+		out = append(out, Terminal{Slug: a.Slug, Name: a.Name, Kind: "app", Note: "Cross-chain buys through Relay: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives the token on Solana. Value given = the origin deposit plus its gas; terminal = the app fee the user paid; relay = Relay's own fees the user paid; pool = the settlement swap on Solana. Sells from the origin chain and failed or refunded requests are counted, not priced."})
+	}
+	return out
+}
+
 func compute(st *State, minPriced, minRank int) []TerminalStats {
-	out := make([]TerminalStats, 0, len(terminals))
-	for _, t := range terminals {
+	out := make([]TerminalStats, 0, len(terminals)+len(xchainApps))
+	for _, t := range cohort() {
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: st.Rejects[t.Slug]}
 		errs := map[string]int{}
 		for _, b := range st.Buckets[t.Slug] {
@@ -710,8 +853,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if len(failFees) >= 5 {
 			ts.FailCostUSD = quantiles(failFees, false)
 		}
-		var loss, pool, term, net, other, trade, sandProfit []float64
+		var loss, pool, term, net, relay, other, trade, sandProfit []float64
 		bySize := map[string][]float64{}
+		byChain := map[string][]float64{}
 		refSrc := map[string]int{}
 		buys := 0
 		refPool := 0
@@ -747,6 +891,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			ts.Parsed++
 			term = append(term, s.TerminalBps)
 			net = append(net, s.NetworkBps)
+			if s.Chain != "" {
+				relay = append(relay, s.RelayBps)
+			}
 			if s.OtherBps != nil {
 				other = append(other, *s.OtherBps)
 			}
@@ -769,6 +916,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 				refSrc[s.RefSrc]++
 				loss = append(loss, *s.LossBps)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
+				if s.Chain != "" {
+					byChain[s.Chain] = append(byChain[s.Chain], *s.LossBps)
+				}
 				if s.PoolBps != nil {
 					pool = append(pool, *s.PoolBps)
 				}
@@ -779,6 +929,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			ts.Components["network"] = median(net)
 			if len(other) > 0 {
 				ts.Components["other"] = median(other)
+			}
+			if len(relay) > 0 {
+				ts.Components["relay"] = median(relay)
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
 			for v, c := range venues {
@@ -813,6 +966,14 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			for b, v := range bySize {
 				if len(v) >= 5 {
 					ts.BySize[b] = quantiles(v, false)
+				}
+			}
+			if len(byChain) > 0 {
+				ts.ByChain = map[string]*Quantiles{}
+				for c, v := range byChain {
+					if len(v) >= 5 {
+						ts.ByChain[c] = quantiles(v, true)
+					}
 				}
 			}
 		}
@@ -925,6 +1086,10 @@ func publishGauges(stats []TerminalStats) {
 		gLossSize.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
 		for b, q := range ts.BySize {
 			gLossSize.WithLabelValues(ts.Slug, b).Set(q.Median)
+		}
+		gLossChain.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
+		for c, q := range ts.ByChain {
+			gLossChain.WithLabelValues(ts.Slug, c).Set(q.Median)
 		}
 		if ts.FailCostUSD != nil {
 			gFailCost.WithLabelValues(ts.Slug).Set(ts.FailCostUSD.Median)

@@ -37,8 +37,10 @@ export type TerminalFillStats = {
   flagged: number;
   /** Loss vs the pool's pre-trade state, basis points of the trade; undefined without priced samples. */
   loss?: FillQuantiles;
-  /** Median cost components, bps: terminal, network, other, pool (when known). */
-  components: Partial<Record<"terminal" | "network" | "other" | "pool", number>>;
+  /** Median cost components, bps: terminal, network, other, pool (when known); relay on cross-chain rows. */
+  components: Partial<Record<"terminal" | "network" | "other" | "pool" | "relay", number>>;
+  /** Cross-chain rows: loss by origin chain (bnb, robinhood, base, ethereum, arc). */
+  byChain: Record<string, FillQuantiles>;
   tradeUsd?: FillQuantiles;
   /** Share of priced samples by reference source: reserves (exact mid), pool (previous trade). */
   refSrcPct: Record<string, number>;
@@ -66,6 +68,10 @@ export type FillSample = {
   venue: string;
   /** Pool instructions of the route that are not on the token (quote → X hops). */
   hops: number;
+  /** Cross-chain rows: origin chain, Relay's take in bps, origin deposit hash. */
+  chain?: string;
+  relayBps?: number;
+  inTx?: string;
   tradeUsd: number;
   priced: boolean;
   /** Set when the row is kept out of the statistics (loss outside the plausible bounds). */
@@ -117,6 +123,16 @@ function numMap(x: unknown): Record<string, number> {
   return out;
 }
 
+function quantMap(x: unknown): Record<string, FillQuantiles> {
+  const out: Record<string, FillQuantiles> = {};
+  if (!isRecord(x)) return out;
+  for (const [k, v] of Object.entries(x)) {
+    const q = quant(v);
+    if (q) out[k] = q;
+  }
+  return out;
+}
+
 function sizeMap(x: unknown): TerminalFillStats["bySize"] {
   const out: TerminalFillStats["bySize"] = {};
   if (!isRecord(x)) return out;
@@ -155,7 +171,9 @@ function parse(raw: unknown): TerminalFills | null {
         ...(comps.network !== undefined ? { network: comps.network } : {}),
         ...(comps.other !== undefined ? { other: comps.other } : {}),
         ...(comps.pool !== undefined ? { pool: comps.pool } : {}),
+        ...(comps.relay !== undefined ? { relay: comps.relay } : {}),
       },
+      byChain: quantMap(t.by_chain),
       ...(quant(t.trade_usd) ? { tradeUsd: quant(t.trade_usd) } : {}),
       refSrcPct: numMap(t.ref_src_pct),
       scanned: num(t.scanned) ?? 0,
@@ -183,6 +201,9 @@ function parse(raw: unknown): TerminalFills | null {
         quote: typeof s.quote === "string" ? s.quote : "SOL",
         venue: typeof s.venue === "string" ? s.venue : "unknown",
         hops: num(s.hops) ?? 0,
+        ...(typeof s.chain === "string" && s.chain ? { chain: s.chain } : {}),
+        ...(num(s.relay_bps) !== undefined ? { relayBps: num(s.relay_bps) } : {}),
+        ...(typeof s.in_tx === "string" && s.in_tx ? { inTx: s.in_tx } : {}),
         tradeUsd: num(s.trade_usd) ?? 0,
         priced: s.priced === true,
         ...(typeof s.flag === "string" && s.flag ? { flag: s.flag } : {}),

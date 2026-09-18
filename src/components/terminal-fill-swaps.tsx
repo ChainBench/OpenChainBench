@@ -214,6 +214,21 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                         via X
                       </span>
                     ) : null}
+                    {s.chain ? (
+                      s.inTx && EXPLORERS[s.chain] ? (
+                        <a
+                          href={`${EXPLORERS[s.chain]}${s.inTx}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
+                          title={`paid on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the origin deposit`}
+                        >
+                          from {CHAIN_NAMES[s.chain] ?? s.chain}
+                        </a>
+                      ) : (
+                        <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
+                      )
+                    ) : null}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-right whitespace-nowrap">{fmtUsd(s.tradeUsd)}</td>
@@ -265,8 +280,10 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
 
 type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
 
-const COLORS = { terminal: "#FF6B35", network: "#FFC857", other: "#8B5CF6", pool: "#5B89FF" } as const;
-const LABELS = { terminal: "Terminal fee", network: "Network", other: "Other fees", pool: "Pool" } as const;
+const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
+const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Other fees", pool: "Pool" } as const;
+const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc" };
+const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/" };
 
 const selectCls = "h-7 rounded-md border border-rule bg-paper px-2 text-[11px] text-ink hover:border-ink/40 focus:outline-none focus:border-ink/60";
 
@@ -343,6 +360,7 @@ function SplitBar({ s }: { s: FillSample }) {
     [
       ["terminal", s.terminalBps],
       ["network", s.networkBps],
+      ["relay", s.relayBps ?? 0],
       ["other", s.otherBps ?? 0],
       ["pool", s.poolBps ?? 0],
     ] as const
