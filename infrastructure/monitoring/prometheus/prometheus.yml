@@ -208,7 +208,9 @@ scrape_configs:
     honor_labels: true
     static_configs:
       - targets:
-        - 'rpc-keyed-us.railway.internal:2112'   # us-east only; eu-west+sgp run on VPS
+        - 'rpc-keyed-us.railway.internal:2112'   # us-east (us-east4)
+        - 'rpc-keyed-eu.railway.internal:2112'   # eu-west (europe-west4)
+        - 'rpc-keyed-sgp.railway.internal:2112'  # sgp (asia-southeast1), moved off the OVH box 2026-09-18
         labels:
           benchmark: rpc-keyed-latency
     metrics_path: /metrics
