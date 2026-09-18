@@ -216,8 +216,14 @@ found as the emitters of GMGN's swap-end event `0x8619026a…` on that
 chain; Axiom's trade contracts from DeFiLlama's adapter), which emit an
 event on every swap. Each tick polls `eth_getLogs` on those routers since
 the last block (`evm_cursor` in the state, at most 2,000 blocks a tick):
-every successful routed swap is seen (a failed transaction emits nothing,
-so these rows have no fail rate), a random sample is read. Rows
+every successful routed swap is seen (a failed transaction emits nothing:
+the **fail rate** comes from a sample of blocks read in full each tick,
+`failScan`, BNB 5 of ~80 a minute, Robinhood Chain 8 of ~590, Base 4,
+Ethereum 2, drawn at random from the range polled: every transaction
+sent to a terminal's routers is an attempt, a reverted one a failed
+attempt with its gas as the failed cost, `sampled_attempts` /
+`sampled_failed` in the JSON, published from 20 attempts), a random
+sample is read. Rows
 `gmgn-bnb`, `gmgn-robinhood`, `axiom-bnb`, `axiom-robinhood`, quoted in
 USD. Buy: given = native value or a quote ERC20 from the user, plus gas;
 the token is the ERC20 that reached the user; pricing through

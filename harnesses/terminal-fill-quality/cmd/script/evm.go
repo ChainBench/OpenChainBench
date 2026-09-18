@@ -186,6 +186,14 @@ func erc20(ctx context.Context, httpc *http.Client, c originChain, token string)
 			m.symbol = strings.ToUpper(strings.TrimRight(string(raw[:l]), "\x00"))
 		}
 	}
+	// A stable's name proves nothing (an 18-decimal "USDC" on Arc sold
+	// 2,594 of itself for $3.39): on chains whose stables are listed, only
+	// the listed addresses price at $1, any other "USDC" stays unpriced.
+	if list, known := stableAddrs[c.slug]; known {
+		if q, isStable := quoteUSD(m.symbol, c, nil); isStable && q == 1 && !list[strings.ToLower(token)] {
+			m.symbol = "?" + m.symbol
+		}
+	}
 	erc20Cache.Lock()
 	if len(erc20Cache.m) >= poolCacheMax {
 		erc20Cache.m = map[string]erc20Meta{}
@@ -193,6 +201,17 @@ func erc20(ctx context.Context, httpc *http.Client, c originChain, token string)
 	erc20Cache.m[key] = m
 	erc20Cache.Unlock()
 	return m
+}
+
+// stableAddrs: the stables that price at $1, by chain (Circle / Tether /
+// Maker / Ethena / Paxos / World Liberty / First Digital deployments and
+// Robinhood Chain's USDG, Arc's native USDC and its pseudo-token).
+var stableAddrs = map[string]map[string]bool{
+	"bnb":       set("0x55d398326f99059ff775485246999027b3197955", "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d", "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d", "0xe9e7cea3dedca5984780bafc599bd69add087d56", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409", "0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3"),
+	"ethereum":  set("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xdac17f958d2ee523a2206206994597c13d831ec7", "0x6b175474e89094c44da98b954eedeac495271d0f", "0xdc035d45d973e3ec169d2276ddab16f1e407384f", "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", "0x6c3ea9036406852006290770bedfcaba0e23a0e8"),
+	"base":      set("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca", "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"),
+	"robinhood": set("0x5fc5360d0400a0fd4f2af552add042d716f1d168"),
+	"arc":       set("0x3600000000000000000000000000000000000000", "0xfffffffffffffffffffffffffffffffffffffffe"),
 }
 
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
@@ -307,7 +326,8 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	// (token, receiver), for the quote legs.
 	tokensRaw := new(big.Int)
 	tokenFrom := map[string]*big.Int{}           // token paid out, by sender (total)
-	tokenOuts := map[string][]*big.Int{}         // token paid out, by sender (each transfer)
+	tokenOuts := map[string][]*big.Int{}         // token paid out, by sender (each transfer on the way to the recipient)
+	tokenAll := map[string][]*big.Int{}          // token paid out, by sender (every transfer: a hook's cut among them)
 	intoPool := map[string]map[string]*big.Int{} // receiver -> erc20 -> amount
 	// Only the token flow that reached the recipient counts: to them, or to
 	// whoever forwarded to them (a router). A taxed token swapping its own
@@ -352,6 +372,7 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 				tokenFrom[from] = new(big.Int)
 			}
 			tokenFrom[from].Add(tokenFrom[from], amt)
+			tokenAll[from] = append(tokenAll[from], amt)
 			if ours[i] {
 				tokenOuts[from] = append(tokenOuts[from], amt)
 			}
@@ -405,6 +426,18 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 				if o.Cmp(t) == 0 {
 					match = true
 				}
+				// A v4 hook that keeps part of the output: what went on
+				// is short of the swap's output by exactly another
+				// transfer out of the manager (its cut, at most a
+				// quarter); the recipient's fewer tokens make it a pool
+				// cost.
+				if diff := new(big.Int).Sub(o, t); ev.kind == "v4" && diff.Sign() > 0 && diff.Cmp(new(big.Int).Div(o, big.NewInt(4))) <= 0 {
+					for _, a := range tokenAll[ev.pool] {
+						if a.Cmp(diff) == 0 {
+							match = true
+						}
+					}
+				}
 			}
 			if match {
 				pools = append(pools, tokenPool{ev: ev, side: side, quote: ev.in[1-side], outTk: o})
@@ -440,14 +473,22 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	// that paid the quote out.
 	var usdPerRaw func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool)
 	usdPerRaw = func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool) {
-		for erc, amt := range intoPool[ev.pool] {
-			qm := erc20(ctx, httpc, c, erc)
-			q, ok := quoteUSD(qm.symbol, c, gas)
-			if !qm.ok || !ok {
-				continue
-			}
-			if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
-				return q * math.Pow10(-qm.dec), 0, true
+		// The priced ERC20 whose inflow equals the quote first (Arc logs
+		// the same USDC move twice, as the 6-decimal token and as the
+		// 18-decimal native pseudo-token: only one matches the event).
+		for pass := 0; pass < 2; pass++ {
+			for erc, amt := range intoPool[ev.pool] {
+				qm := erc20(ctx, httpc, c, erc)
+				q, ok := quoteUSD(qm.symbol, c, gas)
+				if !qm.ok || !ok {
+					continue
+				}
+				if pass == 0 && amt.Cmp(quoteRaw) != 0 {
+					continue
+				}
+				if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
+					return q * math.Pow10(-qm.dec), 0, true
+				}
 			}
 		}
 		if depth >= 2 {
@@ -761,14 +802,22 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	// in and paid a priced asset out).
 	var usdPerRaw func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool)
 	usdPerRaw = func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool) {
-		for erc, amt := range outOfPool[ev.pool] {
-			qm := erc20(ctx, httpc, c, erc)
-			q, ok := quoteUSD(qm.symbol, c, gas)
-			if !qm.ok || !ok {
-				continue
-			}
-			if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
-				return q * math.Pow10(-qm.dec), 0, true
+		// The priced ERC20 whose outflow equals the quote first (Arc logs
+		// the same USDC move twice, 6-decimal token and 18-decimal native
+		// pseudo-token: only one matches the event).
+		for pass := 0; pass < 2; pass++ {
+			for erc, amt := range outOfPool[ev.pool] {
+				qm := erc20(ctx, httpc, c, erc)
+				q, ok := quoteUSD(qm.symbol, c, gas)
+				if !qm.ok || !ok {
+					continue
+				}
+				if pass == 0 && amt.Cmp(quoteRaw) != 0 && amt.Cmp(ev.out[0]) != 0 && amt.Cmp(ev.out[1]) != 0 {
+					continue
+				}
+				if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
+					return q * math.Pow10(-qm.dec), 0, true
+				}
 			}
 		}
 		if depth >= 2 {
@@ -1005,18 +1054,33 @@ func near(a, quote, quoteSum *big.Int, loose bool) bool {
 // before ours (same block, lower log index, or an earlier block within
 // the lookback), read from the pool's own logs.
 func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool, topic string, extra []string, block, logIndex int64) (*big.Int, error) {
-	const lookback = 3000
-	from := block - lookback
-	if from < 0 {
-		from = 0
-	}
 	topics := []any{topic}
 	for _, e := range extra {
 		topics = append(topics, e)
 	}
+	// 3,000 blocks back first; a quiet pool (Arc, small v4 pools) gets a
+	// second, ten times wider pass, the filter by pool and id keeping it
+	// light.
 	var logs []evmLog
-	if err := evmCall(ctx, httpc, c.rpc, "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(block).Text(16)}}, &logs); err != nil {
-		return nil, err
+	for _, lookback := range []int64{3000, 30000} {
+		from := block - lookback
+		if from < 0 {
+			from = 0
+		}
+		logs = nil
+		if err := evmCall(ctx, httpc, c.rpc, "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(block).Text(16)}}, &logs); err != nil {
+			return nil, err
+		}
+		found := false
+		for i := range logs {
+			b, ix := hexInt(logs[i].BlockNumber), hexInt(logs[i].LogIndex)
+			if b < block || (b == block && ix < logIndex) {
+				found = true
+			}
+		}
+		if found || from == 0 {
+			break
+		}
 	}
 	sort.Slice(logs, func(i, j int) bool {
 		bi, bj := hexInt(logs[i].BlockNumber), hexInt(logs[j].BlockNumber)
