@@ -77,6 +77,17 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // trading-app-daily-volume (267) is dev-only; the blob listed it and the
   // prod sitemap smoke 404'd, rolling back the Serialized deploy (#2422).
   "trading-app-daily-volume",
+  // keyed RPC cohort (dev #2442, 2026-09-18): pages exist on dev only until
+  // the cohort has data from 3+ providers per chain. Robinhood (243) stays
+  // live on main in its Singapore-only form.
+  "keyed-rpc-ethereum",
+  "keyed-rpc-arbitrum",
+  "keyed-rpc-base",
+  "keyed-rpc-bnb",
+  "keyed-rpc-polygon",
+  "keyed-rpc-solana",
+  "keyed-rpc-hyperliquid",
+  "keyed-rpc-arc",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
