@@ -98,7 +98,10 @@ type venueInfo struct {
 }
 
 var venuePrograms = map[string]venueInfo{
-	"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA":  {"pumpswap", true},
+	"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA": {"pumpswap", true},
+	// pump.fun curve: the stored virtual reserves no longer predict the
+	// executed price (2026 curves fill 20 to 60 % above virtual_sol /
+	// virtual_token on real trades), so no reserve mid; previous trade.
 	"6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P":  {"pump-curve", false},
 	"675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": {"raydium-v4", true},
 	"CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C": {"raydium-cpmm", true},
@@ -111,11 +114,18 @@ var venuePrograms = map[string]venueInfo{
 	"JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4":  {"jupiter", false},
 }
 
-// pump.fun bonding curve: price = virtual reserves, real vault + offsets.
-const (
-	pumpVirtualSolOffset   = 30_000_000_000          // 30 SOL in lamports
-	pumpVirtualTokenOffset = 279_900_000 * 1_000_000 // 1.073e9 virtual − 793.1e6 real, 6 decimals
-)
+// PumpSwap pool account: pools migrated from pump.fun carry a virtual
+// quote reserve (about 17.58 SOL, pool-specific) stored after the
+// coin_creator field; price = (quote vault + offset) / base vault. Verified
+// against executed trades: x·y = k holds exactly with it, and fails
+// without. Non-migrated pools store 0.
+const pumpSwapQuoteOffsetAt = 245 // little-endian u64, lamports
+
+// pump.fun bonding curve account: virtual_token, virtual_sol, real_token,
+// real_sol, total_supply as little-endian u64 after the 8-byte
+// discriminator; virtual − real are constants per curve (30 SOL and
+// 279.9M tokens on current curves) and are read once per curve.
+const pumpCurveFieldsAt = 8
 
 func set(keys ...string) map[string]bool {
 	m := make(map[string]bool, len(keys))

@@ -42,10 +42,16 @@ type Swap struct {
 	Mint     string  `json:"mint"`
 	Tokens   float64 `json:"tokens"`
 
-	// Pool identity for the arrival-price lookup: the pool's token vault
+	// Pool identity for the reference-price lookups: the pool's token vault
 	// for the traded mint and its owner (pool PDA / AMM authority / curve).
 	PoolVault string `json:"pool_vault,omitempty"`
 	PoolOwner string `json:"pool_owner,omitempty"`
+	// Pre-trade balances of that pool when the route is a single
+	// constant-product pool (PumpSwap, pump.fun curve, Raydium v4 / CPMM):
+	// token vault in tokens, quote vault in quote units (curve: lamports
+	// of the curve account). Zero otherwise.
+	PoolBasePre  float64 `json:"pool_base_pre,omitempty"`
+	PoolQuotePre float64 `json:"pool_quote_pre,omitempty"`
 
 	UserQ     float64  `json:"user_q"`
 	PoolQ     float64  `json:"pool_q"`
@@ -312,6 +318,8 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	poolOwners := map[string]bool{}
 	poolVault, poolOwner := "", ""
 	poolVaultMove := 0.0
+	basePre := 0.0
+	baseAccounts := 0
 	for i, e := range tok {
 		if e.mint != best.mint || e.owner == user || fee[e.owner] || internal[e.owner] {
 			continue
@@ -321,6 +329,8 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 			continue
 		}
 		poolOwners[e.owner] = true
+		baseAccounts++
+		basePre += e.pre * math.Pow10(-e.dec)
 		if math.Abs(d) > poolVaultMove {
 			poolVaultMove = math.Abs(d)
 			poolVault = pubkeyAt(i)
@@ -333,6 +343,8 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	// Pool-side quote movement, in the swap's quote unit whatever the pool
 	// is quoted in (FOMO pays USDC into SOL-quoted pools via a hop).
 	poolQ := 0.0
+	quotePre := 0.0
+	quoteAccounts := 0
 	for _, e := range tok {
 		if !poolOwners[e.owner] {
 			continue
@@ -340,17 +352,29 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		d := (e.post - e.pre) * math.Pow10(-e.dec)
 		if e.mint == wsolMint {
 			poolQ += toQuote("SOL", d)
+			quotePre += toQuote("SOL", e.pre*math.Pow10(-e.dec))
+			quoteAccounts++
 		} else if stableMints[e.mint] {
 			poolQ += toQuote(quoteName(e.mint), d)
+			quotePre += toQuote(quoteName(e.mint), e.pre*math.Pow10(-e.dec))
+			quoteAccounts++
 		}
 	}
 	if curve {
 		// The bonding curve holds SOL natively on its own account.
 		for o := range poolOwners {
 			poolQ += toQuote("SOL", float64(lam[o])/1e9)
+			quotePre += toQuote("SOL", float64(tx.Meta.PreBalances[indexOf(msg.AccountKeys, o)])/1e9)
+			quoteAccounts++
 		}
 	}
 	poolQ = math.Abs(poolQ)
+	// Single constant-product pool: keep its pre-trade balances so the
+	// exact mid can be computed (see reservePrice).
+	singleCP := len(poolOwners) == 1 && baseAccounts == 1 && quoteAccounts == 1 && len(venues) == 1 && venuePrograms[venueProgram(venues[0])].cp
+	if !singleCP {
+		basePre, quotePre = 0, 0
+	}
 
 	// Everyone else who received quote: pump.fun fee recipients, creator
 	// vaults, referrals, tip services we do not know, hop pools.
@@ -388,7 +412,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Sig: sig, Terminal: t.Slug, Slot: tx.Slot, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
-		PoolVault: poolVault, PoolOwner: poolOwner,
+		PoolVault: poolVault, PoolOwner: poolOwner, PoolBasePre: basePre, PoolQuotePre: quotePre,
 		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
 		Others: others,
 	}
@@ -535,6 +559,28 @@ func poolTradePrice(tx *parsedTx, poolOwner, mint, quote string, quoteUSD, solUS
 		return 0
 	}
 	return math.Abs(dQuote) / math.Abs(dTok)
+}
+
+func indexOf(keys []struct {
+	Pubkey string `json:"pubkey"`
+	Signer bool   `json:"signer"`
+}, pubkey string) int {
+	for i, k := range keys {
+		if k.Pubkey == pubkey {
+			return i
+		}
+	}
+	return 0
+}
+
+// venueProgram returns the program id of a venue name (reverse lookup).
+func venueProgram(name string) string {
+	for p, v := range venuePrograms {
+		if v.name == name {
+			return p
+		}
+	}
+	return ""
 }
 
 func quoteName(mint string) string {

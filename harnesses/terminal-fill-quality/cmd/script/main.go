@@ -26,6 +26,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"log"
 	"math"
@@ -175,6 +176,7 @@ func main() {
 	rpc := &rpcClient{url: rpcURL, http: httpc, calls: cCalls.Inc, errors: cErrors.Inc, minGap: time.Second / time.Duration(max(rps, 1))}
 
 	st := loadState(stateFile)
+	pools := &poolCache{m: map[string]poolParams{}}
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -208,7 +210,7 @@ func main() {
 			time.Sleep(30 * time.Second)
 			continue
 		}
-		added, seen := sample(ctx, rpc, httpc, st, samplePerTick, sol)
+		added, seen := sample(ctx, rpc, httpc, st, samplePerTick, sol, pools)
 		cancel()
 		prune(st, windowHours)
 		stats := compute(st, windowHours, minPriced, start)
@@ -241,7 +243,7 @@ func main() {
 // the fail rate, reads the newest successful ones (newest first, so the
 // reference price is read as close to the trade as possible), then prices
 // the whole batch in one Jupiter call.
-func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, perTerminal int, solUSD float64) (added, seen int) {
+func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, perTerminal int, solUSD float64, pools *poolCache) (added, seen int) {
 	now := time.Now().Unix()
 	var batch []*Swap
 	for _, t := range terminals {
@@ -310,8 +312,15 @@ func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, 
 			if sw.Time == 0 {
 				sw.Time = now
 			}
-			// Arrival price: the previous trade on the same pool.
-			if sw.PoolVault != "" {
+			// Reference price: exact pre-trade mid from the pool's reserves
+			// when the route is one constant-product pool, else the
+			// previous trade on the same pool, else Jupiter (below).
+			if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
+				if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
+					sw.finalize(&p, 0, "reserves")
+				}
+			}
+			if !sw.Priced && sw.PoolVault != "" {
 				if p, age, ok := arrivalPrice(ctx, rpc, sw, solUSD); ok {
 					sw.finalize(&p, age, "pool")
 				}
@@ -347,6 +356,89 @@ func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, 
 		}
 	}
 	return added, seen
+}
+
+// poolParams are the constants a pool needs for its exact mid: the
+// virtual quote offset (PumpSwap migrated pools, pump.fun curve) and the
+// virtual token offset plus the non-reserve lamports of the curve account.
+type poolParams struct {
+	quoteOffset        float64 // quote units
+	tokenOffset        float64 // tokens
+	lamportsNonReserve float64 // SOL held on the curve account that is not real_sol (rent)
+	ok                 bool
+}
+
+type poolCache struct {
+	mu sync.Mutex
+	m  map[string]poolParams
+}
+
+// reservePrice computes the pool's mid price before the swap from the
+// pre-trade balances in the transaction and the pool's stored constants.
+//
+//	PumpSwap:      (quotePre + offset) / basePre
+//	pump.fun curve: (lamportsPre − nonReserve + offSol) / (tokensPre + offTok)
+//	Raydium v4 / CPMM: quotePre / basePre
+func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCache, solUSD float64) (float64, bool) {
+	toQuote := func(sol float64) float64 {
+		if sw.Quote == "SOL" {
+			return sol
+		}
+		return sol * solUSD / sw.QuoteUSD
+	}
+	var p poolParams
+	switch sw.Venue {
+	case "raydium-v4", "raydium-cpmm":
+		p = poolParams{ok: true}
+	case "pumpswap", "pump-curve":
+		pools.mu.Lock()
+		cached, hit := pools.m[sw.PoolOwner]
+		pools.mu.Unlock()
+		if hit {
+			p = cached
+		} else {
+			acc, err := rpc.account(ctx, sw.PoolOwner)
+			if err != nil || acc == nil {
+				return 0, false
+			}
+			d := acc.Data
+			switch sw.Venue {
+			case "pumpswap":
+				if len(d) >= pumpSwapQuoteOffsetAt+8 {
+					p = poolParams{quoteOffset: toQuote(float64(binary.LittleEndian.Uint64(d[pumpSwapQuoteOffsetAt:])) / 1e9), ok: true}
+				}
+			case "pump-curve":
+				if len(d) >= pumpCurveFieldsAt+40 {
+					vTok := float64(binary.LittleEndian.Uint64(d[pumpCurveFieldsAt:]))
+					vSol := float64(binary.LittleEndian.Uint64(d[pumpCurveFieldsAt+8:]))
+					rTok := float64(binary.LittleEndian.Uint64(d[pumpCurveFieldsAt+16:]))
+					rSol := float64(binary.LittleEndian.Uint64(d[pumpCurveFieldsAt+24:]))
+					if vTok > rTok && vSol > rSol && float64(acc.Lamports) >= rSol {
+						p = poolParams{
+							quoteOffset:        toQuote((vSol - rSol) / 1e9),
+							tokenOffset:        (vTok - rTok) / 1e6, // pump.fun mints have 6 decimals
+							lamportsNonReserve: toQuote((float64(acc.Lamports) - rSol) / 1e9),
+							ok:                 true,
+						}
+					}
+				}
+			}
+			pools.mu.Lock()
+			pools.m[sw.PoolOwner] = p
+			pools.mu.Unlock()
+		}
+	default:
+		return 0, false
+	}
+	if !p.ok {
+		return 0, false
+	}
+	q := sw.PoolQuotePre - p.lamportsNonReserve + p.quoteOffset
+	b := sw.PoolBasePre + p.tokenOffset
+	if q <= 0 || b <= 0 {
+		return 0, false
+	}
+	return q / b, true
 }
 
 // arrivalPrice returns the effective price (quote per token) of the last
