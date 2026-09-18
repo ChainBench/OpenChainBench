@@ -154,7 +154,7 @@ export async function TerminalFillSection({
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
         Real user swaps read on-chain from each terminal&apos;s fee-wallet transactions (newest first, 4 per terminal every 90 s),
         valued at the pool&apos;s pre-trade mid (exact from its reserves on PumpSwap and Raydium, the previous trade on the same pool
-        elsewhere, Jupiter&apos;s price when neither is readable). Loss = 1 − value received /
+        elsewhere; swaps whose pool state is not readable keep their cost split but no loss figure). Loss = 1 − value received /
         value given, in basis points of the trade; the split is exact from balance deltas. Each swap&apos;s block is scanned for a
         sandwich (front-run and back-run by the same signer on the same pool).
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}

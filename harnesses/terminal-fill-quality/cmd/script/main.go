@@ -85,6 +85,8 @@ func init() {
 	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gHealth, gRefresh, gSol, cCalls, cErrors)
 }
 
+var jupiterFallback bool
+
 func envInt(k string, def int) int {
 	if v := os.Getenv(k); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -181,6 +183,11 @@ func main() {
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 20)
 	scanPct := envInt("SANDWICH_SCAN_PCT", 100) // share of sampled swaps whose block is read
+	// Jupiter's price is read after the trade and carries the token's move
+	// since; on multi-pool routes it produced 29 % negative losses in
+	// audit. Off by default: unpriceable swaps keep their exact components
+	// and stay out of the loss figure.
+	jupiterFallback = envInt("JUPITER_FALLBACK", 0) == 1
 	stateFile := os.Getenv("STATE_FILE")
 	publicFile := os.Getenv("HISTORY_FILE_PUBLIC")
 	addr := os.Getenv("METRICS_ADDR")
@@ -353,7 +360,7 @@ func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, 
 			batch = append(batch, sw)
 		}
 	}
-	if len(batch) > 0 {
+	if len(batch) > 0 && jupiterFallback {
 		mints := map[string]bool{}
 		for _, sw := range batch {
 			mints[sw.Mint] = true
@@ -376,9 +383,11 @@ func sample(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, 
 					sw.finalize(&q, at-sw.Time, "jupiter")
 				}
 			}
-			st.Swaps = append(st.Swaps, *sw)
-			added++
 		}
+	}
+	for _, sw := range batch {
+		st.Swaps = append(st.Swaps, *sw)
+		added++
 	}
 	return added, seen
 }
@@ -585,7 +594,7 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			}
 			venues[s.Venue]++
 			quotes[s.Quote]++
-			if s.Priced && s.LossBps != nil {
+			if s.Priced && s.LossBps != nil && s.RefSrc != "jupiter" {
 				ts.Priced++
 				loss = append(loss, *s.LossBps)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)

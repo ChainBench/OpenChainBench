@@ -40,8 +40,13 @@ The token leg is valued at an **arrival price**, in this order:
    2026 curves: real trades fill 20 to 60 % above virtual_sol /
    virtual_token, so the account cannot be trusted for a mid), Meteora,
    CLMM and multi-pool routes.
-3. `ref_src: jupiter`: Jupiter's price API right after the sample, when no
-   earlier trade is readable within 30 min.
+3. (off by default, `JUPITER_FALLBACK=1`) Jupiter's price API right after
+   the sample. Audit on the live window: 29 % of Jupiter-referenced swaps
+   came out with a negative loss (price read after the trade, multi-pool
+   routes), against 1 % for the two on-chain references, so Jupiter-priced
+   samples never enter the loss statistics. Swaps whose pool state is not
+   readable keep their exact components and stay out of the loss figure;
+   `ref_src_pct` says how many were priced and how.
 
 On PumpSwap with the reserve mid the per-swap loss distribution is tight
 (p10 to p90 roughly 140 to 800 bps, none negative); the previous-trade
