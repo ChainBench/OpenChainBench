@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 // Terminal is one cohort member: the trading app or Telegram bot whose
 // swaps we sample. Wallets are the Solana accounts that receive the
 // terminal's fee on every routed swap (the same lists DeFiLlama's dexs /
@@ -56,13 +58,26 @@ var terminals = []Terminal{
 	{Slug: "pepeboost", Name: "Pepeboost", Kind: "bot", Wallets: []string{"G9PhF9C9H83mAjjkdJz4MDqkufiTPMJkx7TnKE1kFyCp"}},
 }
 
-// Jito tip accounts: lamports sent here are the priority the user paid for
-// bundle inclusion, a network cost like the priority fee.
-var jitoTips = set(
+// Tip accounts of the inclusion services: lamports sent here are the
+// priority the user paid to land, a network cost like the priority fee.
+// Jito (8 mainnet tip accounts), 0slot and bloXroute by address, Nozomi /
+// Temporal by its "noz" vanity prefix. Services not listed here end up in
+// "other"; the per-terminal other_top list in the JSON is there to catch
+// them.
+var tipAccounts = set(
+	// Jito
 	"96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5", "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe", "Cw8CFyvL8HLPxsuYyRZgmL4LLYbXP7WhQXBRcpNhTr8s",
 	"ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49", "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh", "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
 	"DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL", "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
+	// 0slot
+	"7toBU3inhmrARGngC7z6SjyP85HgGMmCTEwGNRAcYnEK", "6fQaVhYZA4w3MBSXjJ81Vf6W1EDYrrwyGVUhmpm2LuLb", "4HiwLEP2Bzqj3hM2ENxJuzhcPCdsafwiet3oGkMkuQY4",
+	// bloXroute
+	"HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY",
 )
+
+func isTip(pubkey string) bool {
+	return tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz")
+}
 
 const (
 	wsolMint = "So11111111111111111111111111111111111111112"

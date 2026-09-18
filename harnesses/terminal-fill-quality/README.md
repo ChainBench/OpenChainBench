@@ -36,10 +36,20 @@ buy : loss = 1 − tokens × ref / user_q
 sell: loss = 1 − user_q / (tokens × ref)
 ```
 
-`loss_bps` is the whole shortfall the user suffered against that reference,
-`pool_bps` the part the pool kept (LP fee + price impact), and
-`terminal_bps` / `network_bps` / `other_bps` the explicit costs, all in
+`loss_bps` is the whole shortfall the user suffered against that reference;
+`terminal_bps` / `network_bps` are exact; `other_bps` (pump.fun protocol and
+creator fees, referral payouts, tip services not listed) is known on
+single-venue routes only; `pool_bps` = loss − terminal − network − other,
+i.e. LP fee + price impact, plus the hop costs and unattributed fees on
+multi-pool routes. The four components always sum to the loss. All in
 basis points of the trade (buy: quote spent; sell: tokens × ref).
+
+Network covers the tx fee and the tip accounts of Jito, 0slot, bloXroute
+and Nozomi (`noz…` vanity prefix); a tip service not listed lands in
+"other". Each terminal's `other_top` (largest "other" recipients over the
+window, single-venue swaps) is in the JSON so new fee or tip accounts can
+be spotted and classified. Rent of token accounts created or closed in the
+transaction is excluded from the user's quote movement.
 
 Failed transactions are counted from the signature scan (`fail_rate_pct`): the
 user paid the priority fee for nothing, which no fill metric shows.

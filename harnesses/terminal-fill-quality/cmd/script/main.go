@@ -120,7 +120,17 @@ type TerminalStats struct {
 	Venues      map[string]float64 `json:"venue_share_pct"`
 	Quotes      map[string]float64 `json:"quote_share_pct"`
 	Rejects     map[string]int     `json:"rejects,omitempty"`
-	Healthy     bool               `json:"healthy"`
+	/** Share of priced samples whose reference is the previous pool trade (the rest: Jupiter). */
+	RefPoolPct float64 `json:"ref_pool_pct"`
+	/** Largest "other" recipients over the window, for audit: pubkey, count, share of trade in bps (median). */
+	OtherTop []OtherRecipient `json:"other_top,omitempty"`
+	Healthy  bool             `json:"healthy"`
+}
+
+type OtherRecipient struct {
+	Pubkey string  `json:"pubkey"`
+	Count  int     `json:"count"`
+	Quote  float64 `json:"quote_sum"`
 }
 
 type Quantiles struct {
@@ -409,11 +419,28 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 		}
 		var loss, pool, term, net, other, trade []float64
 		buys := 0
+		refPool := 0
 		venues := map[string]int{}
 		quotes := map[string]int{}
+		otherAgg := map[string]*OtherRecipient{}
 		for _, s := range st.Swaps {
 			if s.Terminal != t.Slug {
 				continue
+			}
+			if s.RefSrc == "pool" {
+				refPool++
+			}
+			for k, v := range s.Others {
+				if s.OtherQ == nil {
+					break // multi-hop route: recipients include hop pools, not fees
+				}
+				r := otherAgg[k]
+				if r == nil {
+					r = &OtherRecipient{Pubkey: k}
+					otherAgg[k] = r
+				}
+				r.Count++
+				r.Quote += v * s.QuoteUSD
 			}
 			ts.Parsed++
 			term = append(term, s.TerminalBps)
@@ -459,7 +486,17 @@ func compute(st *State, windowHours, minPriced int, now time.Time) []TerminalSta
 			if len(pool) > 0 {
 				ts.Components["pool"] = median(pool)
 			}
+			ts.RefPoolPct = 100 * float64(refPool) / float64(ts.Priced)
 		}
+		top := make([]OtherRecipient, 0, len(otherAgg))
+		for _, r := range otherAgg {
+			top = append(top, *r)
+		}
+		sort.Slice(top, func(i, j int) bool { return top[i].Quote > top[j].Quote })
+		if len(top) > 8 {
+			top = top[:8]
+		}
+		ts.OtherTop = top
 		ts.Healthy = ts.Priced >= minPriced
 		out = append(out, ts)
 	}

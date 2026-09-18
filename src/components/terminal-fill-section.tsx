@@ -141,7 +141,7 @@ export async function TerminalFillSection({
 }
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", other: "#8B5CF6", pool: "#5B89FF" } as const;
-const LABELS = { terminal: "Terminal fee", network: "Network (priority + tip)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact)" } as const;
+const LABELS = { terminal: "Terminal fee", network: "Network (priority + tip)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
 
 function stackTotal(t: TerminalFillStats): number {
   return (["terminal", "network", "other", "pool"] as const).reduce((s, c) => s + Math.max(0, t.components[c] ?? 0), 0);
