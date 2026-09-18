@@ -405,7 +405,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v66: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
   // objects without it kept the Head lag tab on Solana after the deploy.
   // v67: add bench 267 trading-app-daily-volume. Bench SET grew.
-  ["bench-unfiltered-v68", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v69: keyed RPC cohort back (237-242 restored, 269 HyperEVM, 270 Arc) and
+  // 243 Robinhood opened to 3 regions. Bench SET grew.
+  ["bench-unfiltered-v69", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -622,7 +624,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v60: lockstep with bench-unfiltered-v65 (add bench 265 perp-pf-ratio).
   // v61: lockstep with bench-unfiltered-v66 (Benchmark.chart).
   // v62: lockstep with bench-unfiltered-v67 (add bench 267 trading-app-daily-volume).
-  ["all-benchmarks-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
+  ["all-benchmarks-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
