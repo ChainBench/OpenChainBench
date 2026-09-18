@@ -880,7 +880,11 @@ func cohort() []Terminal {
 		}
 	}
 	for _, t := range evmTerminals {
-		out = append(out, Terminal{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: nativeNote})
+		note := nativeNote
+		if t.Note != "" {
+			note += " " + t.Note
+		}
+		out = append(out, Terminal{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: note})
 	}
 	return out
 }
@@ -920,13 +924,13 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	sw.TerminalQ = x.AppFeeUsd / q
 	sw.NetworkQ = s.GasUSD / q // origin gas, paid by the user
 	sw.PoolQ = s.PoolInUSD / q // quote the origin pool paid out
-	relay := s.PoolInUSD - x.AppFeeUsd - recv.Tokens*q
+	relay := s.PoolInUSD - s.OtherUSD - x.AppFeeUsd - recv.Tokens*q
 	if relay < 0 {
 		relay = 0
 	}
 	sw.RelayQ = relay / q
-	zero := 0.0
-	sw.OtherQ = &zero
+	other := s.OtherUSD / q // a launchpad's protocol fee
+	sw.OtherQ = &other
 	if !s.Priced {
 		sw.finalize(nil, 0, "")
 		sw.Flag = "unpriced_" + s.Unpriced
@@ -979,13 +983,13 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 	sw.TerminalQ = x.AppFeeUsd / q
 	sw.NetworkQ = feeUSD / q
 	sw.PoolQ = s.PoolInUSD / q
-	relay := givenUSD - feeUSD - x.AppFeeUsd - s.PoolInUSD
+	relay := givenUSD - feeUSD - x.AppFeeUsd - s.PoolInUSD - s.OtherUSD
 	if relay < 0 {
 		relay = 0
 	}
 	sw.RelayQ = relay / q
-	zero := 0.0
-	sw.OtherQ = &zero
+	other := s.OtherUSD / q // a launchpad's protocol fee
+	sw.OtherQ = &other
 	if !s.Priced {
 		sw.finalize(nil, 0, "")
 		sw.Flag = "unpriced_" + s.Unpriced

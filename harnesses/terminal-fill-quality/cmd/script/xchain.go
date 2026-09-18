@@ -66,7 +66,7 @@ type originChain struct {
 }
 
 var originChains = []originChain{
-	{56, "bnb", []string{"https://bsc-rpc.publicnode.com", "https://bsc-dataseed.binance.org", "https://1rpc.io/bnb"}, "BNB-USD"},
+	{56, "bnb", []string{"https://bsc-rpc.publicnode.com", "https://bsc-dataseed.binance.org", "https://1rpc.io/bnb", "https://bsc.drpc.org"}, "BNB-USD"}, // drpc last: the one public BSC node serving debug_traceTransaction
 	{4663, "robinhood", []string{"https://rpc.mainnet.chain.robinhood.com"}, "ETH-USD"},
 	{8453, "base", []string{"https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://base.drpc.org"}, "ETH-USD"},
 	{1, "ethereum", []string{"https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"}, "ETH-USD"},

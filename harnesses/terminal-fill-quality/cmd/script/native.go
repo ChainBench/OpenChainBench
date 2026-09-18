@@ -33,7 +33,13 @@ type evmTerminal struct {
 	Chain     string
 	Routers   []string
 	Collector string
-	Note      string
+	// A fixed inclusion tip the terminal adds to every transaction, in
+	// gas coins, and the account it goes to (an internal transfer from the
+	// router, checked through that account's balance across the block);
+	// counted as network cost like the Solana terminals' own tip relays.
+	Tip   float64
+	TipTo string
+	Note  string
 }
 
 var evmTerminals = []evmTerminal{
@@ -42,14 +48,31 @@ var evmTerminals = []evmTerminal{
 	// (0x8619026a…) on that chain, 654 swaps in 300 blocks on 2026-09-18;
 	// a second, older one still trades.
 	{Slug: "gmgn-robinhood", Name: "GMGN · Robinhood Chain", Kind: "app", Chain: "robinhood", Routers: []string{"0x65050a9b7e5075a2ba5ced7b1b64ee66262c40dc", "0xe492912f37c2a4eca45d42dc67548f4c6cd7ce2b"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
-	{Slug: "axiom-bnb", Name: "Axiom · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x05701dc0b8f6711f6de3b282f46b10c813afb02d", "0x9689992f5b5c09447f15906d8d11214944488341", "0x5da7dd96efa6127e68c8ab06f125124c3c05d18d", "0x325098a6291a412bba7a52531ef05ac5dd7d5d6e"}, Collector: "0xdec29d79e8cdf009d2fa33e0558cb5648481cac3"},
+	{Slug: "axiom-bnb", Name: "Axiom · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x05701dc0b8f6711f6de3b282f46b10c813afb02d", "0x9689992f5b5c09447f15906d8d11214944488341", "0x5da7dd96efa6127e68c8ab06f125124c3c05d18d", "0x325098a6291a412bba7a52531ef05ac5dd7d5d6e"}, Collector: "0xdec29d79e8cdf009d2fa33e0558cb5648481cac3",
+		// Every Axiom BNB transaction forwards a fixed 0.0025 BNB to this
+		// account (call trace of 0x547a8838…, 0xc804c93e…, 2026-09-18) on
+		// top of the 1 % to the collector.
+		Tip: 0.0025, TipTo: "0xdd8431ce6a62698708292ec5508a3708a0bf1226"},
 	{Slug: "axiom-robinhood", Name: "Axiom · Robinhood Chain", Kind: "app", Chain: "robinhood", Routers: []string{
 		"0xcda14e87628317e4f90077750fbe9634b896a24f", "0x76a0e120631735845769e3de2606924af7716150", "0xc6cdc85a225236013ee9b3b47dd05c07aed1fabc", "0x105358a03c47706ad4697e227d5a8ddfacf85448",
 		"0xe3dc74b2d5b83916a1682777f1de8b2155ddfc38", "0xd9fc1771672f08f3abce96d033cc21d1e5a3ac7f", "0x578980d6cac7ab262c40dfca650b1d2d259c1cca", "0x4a86009a36fcec5aa341ffceb3205a911fcf6f60",
-		"0x9689992f5b5c09447f15906d8d11214944488341"}, Collector: "0x6fb4460e4bebf662fcd9bfa5ce6d6231732bb86c"},
+		"0x9689992f5b5c09447f15906d8d11214944488341"}, Collector: "0x6fb4460e4bebf662fcd9bfa5ce6d6231732bb86c",
+		// Same pattern on Robinhood Chain: a fixed 0.001 ETH forwarded to
+		// this account on every transaction (traces of 2026-09-18).
+		Tip: 0.001, TipTo: "0x569319680e2f921a23340d9a223c48f7b07c55bd"},
+	// Banana Gun's EVM routers (DeFiLlama's dexs adapter); its fee is taken
+	// inside the router like the others.
+	// On the sampled Ethereum swaps the router's fee event (0x72015ace…,
+	// what DeFiLlama sums) reads 0 and the wallet pays nothing beyond the
+	// value and the gas in the block (balance N−1 → N): the fee is not in
+	// the swap transaction, so the terminal component reads 0 here.
+	{Slug: "banana-gun-ethereum", Name: "Banana Gun · Ethereum", Kind: "bot", Chain: "ethereum", Routers: []string{"0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49"},
+		Note: "Banana Gun's Ethereum router logs a fee of 0 on the sampled swaps and the wallet pays nothing beyond the value sent and the gas: its fee is collected outside the swap transaction, so the terminal component reads 0 here and the loss excludes it."},
+	{Slug: "banana-gun-base", Name: "Banana Gun · Base", Kind: "bot", Chain: "base", Routers: []string{"0x1fba6b0bbae2b74586fba407fb45bd4788b7b130"}},
+	{Slug: "banana-gun-bnb", Name: "Banana Gun · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0x461efe0100be0682545972ebfc8b4a13253bd602"}},
 }
 
-const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps only: a failed transaction emits none, so no fail rate here). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas."
+const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps only: a failed transaction emits none, so no fail rate here). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas. A fee the pool's own hook keeps (launchpad pools on Robinhood Chain and BNB) is a pool cost; a fixed inclusion tip the terminal adds to every transaction is network cost."
 
 // nativeFeed polls the routers' logs per chain since the last block seen.
 type nativeFeed struct {
@@ -104,12 +127,17 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			f.up[c.slug] = true
 			continue
 		}
-		// Ranges of at most 400 blocks, a few per tick: a public RPC may
-		// refuse or redirect a heavier query.
+		// Ranges of at most 400 blocks (50 on Ethereum, where the public
+		// nodes cap eth_getLogs at 50 blocks; ten minutes of chain), a few
+		// per tick: a public RPC may refuse or redirect a heavier query.
+		span := int64(400)
+		if c.slug == "ethereum" {
+			span = 50
+		}
 		var logs []evmLog
 		failed := false
 		for chunk := 0; chunk < 5 && from <= head; chunk++ {
-			to := from + 399
+			to := from + span - 1
 			if to > head {
 				to = head
 			}
@@ -274,25 +302,134 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		return best
 	}
-	value := f(hexBig(tx.Value)) / 1e18 * gasPrice
+	if len(bought) == 0 && len(sold) == 0 {
+		// The sender is not the trader (a relayer or a smart account): the
+		// trader is whoever received the token from a pool (buy) or sent it
+		// to one (sell), never a pool, a router or the collector.
+		emitters := map[string]bool{}
+		for i := range rc.Logs {
+			if ev := parseSwapEv(&rc.Logs[i]); ev != nil {
+				emitters[ev.pool] = true
+			}
+		}
+		skip := func(a string) bool {
+			if emitters[a] || a == t.Collector || a == "0x0000000000000000000000000000000000000000" || a == "0x000000000000000000000000000000000000dead" {
+				return true
+			}
+			for _, r := range t.Routers {
+				if a == r {
+					return true
+				}
+			}
+			return false
+		}
+		bestAmt := new(big.Int)
+		for _, l := range rc.Logs {
+			if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+				continue
+			}
+			erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+			m := erc20(ctx, httpc, *c, erc)
+			if _, ok := quoteUSD(m.symbol, *c, gas); ok || !m.ok {
+				continue
+			}
+			if emitters[from] && !skip(to) && amt.Cmp(bestAmt) > 0 {
+				user, bestAmt = to, amt
+				bought, sold = map[string]*big.Int{erc: amt}, map[string]*big.Int{}
+			} else if emitters[to] && !skip(from) && amt.Cmp(bestAmt) > 0 {
+				user, bestAmt = from, amt
+				bought, sold = map[string]*big.Int{}, map[string]*big.Int{erc: amt}
+			}
+		}
+		if len(bought)+len(sold) > 0 {
+			// Quote legs for that trader.
+			quoteIn, quoteOut = 0, 0
+			for _, l := range rc.Logs {
+				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+					continue
+				}
+				erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+				m := erc20(ctx, httpc, *c, erc)
+				q, ok := quoteUSD(m.symbol, *c, gas)
+				if !ok || !m.ok {
+					continue
+				}
+				if from == user {
+					quoteIn += f(amt) * math.Pow10(-m.dec) * q
+				} else if to == user {
+					quoteOut += f(amt) * math.Pow10(-m.dec) * q
+				}
+			}
+		}
+	}
+	valueWei := hexBig(tx.Value)
 	sw := &Swap{Method: methodVersion, Sig: hash, Terminal: t.Slug, Slot: uint64(hexInt(rc.BlockNumber)), Time: now, User: user, Quote: "USD", QuoteUSD: 1, Chain: t.Chain, Pools: 1}
 	zero := 0.0
 	sw.OtherQ = &zero
 	sw.NetworkQ = gasUSD
-	if token := pick(bought); token != "" && len(sold) == 0 {
-		// Buy: given = native value or quote ERC20 from the user, plus gas.
-		given := value + quoteIn
-		if given <= 0 {
-			return &Swap{Flag: "unpriced_no_quote_in"}
+	bn := hexInt(rc.BlockNumber)
+	// tipWei: the inclusion tip forwarded to the terminal's tip account,
+	// exact from the call trace when the chain's endpoints serve one (the
+	// tip is the user's own setting on Robinhood Chain); else the fixed
+	// amount when that account did receive at least that much in the block.
+	tipWei := func() *big.Int {
+		if t.TipTo == "" {
+			return nil
 		}
+		if calls, ok := evmTrace(ctx, httpc, *c, hash); ok {
+			tip := new(big.Int)
+			for _, vc := range calls {
+				if vc.To == t.TipTo {
+					tip.Add(tip, vc.Value)
+				}
+			}
+			if tip.Sign() > 0 {
+				return tip
+			}
+			return nil
+		}
+		if t.Tip <= 0 {
+			return nil
+		}
+		var b0, b1 string
+		if evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{t.TipTo, "0x" + big.NewInt(bn-1).Text(16)}, &b0) != nil || evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{t.TipTo, "0x" + big.NewInt(bn).Text(16)}, &b1) != nil {
+			return nil
+		}
+		tip, _ := new(big.Float).Mul(big.NewFloat(t.Tip), big.NewFloat(1e18)).Int(nil)
+		if new(big.Int).Sub(hexBig(b1), hexBig(b0)).Cmp(tip) < 0 {
+			return nil
+		}
+		return tip
+	}
+	if token := pick(bought); token != "" && len(sold) == 0 {
 		s, err := priceEvmSettlement(ctx, httpc, *c, hash, user, token, gas)
 		if err != nil {
 			return nil
 		}
+		// The native value at the rate the route itself swapped the gas
+		// coin at when it did, else the exchange's price.
+		price := gasPrice
+		if s.NativeUSD > 0 {
+			price = s.NativeUSD
+		}
+		value := f(valueWei) / 1e18 * price
+		// Buy: given = native value or quote ERC20 from the user, plus
+		// gas; the fixed tip inside the value is network cost.
+		given := value + quoteIn
+		if given <= 0 {
+			return &Swap{Flag: "unpriced_no_quote_in"}
+		}
+		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) > 0 {
+			tipUSD := f(tip) / 1e18 * price
+			given -= tipUSD
+			sw.NetworkQ += tipUSD
+		}
 		sw.Side, sw.Mint, sw.Tokens, sw.Venue, sw.Pools, sw.Hops, sw.PoolVault = "buy", token, s.Tokens, s.Venue, s.Pools, s.Hops, s.Pool
-		sw.UserQ = given + gasUSD
+		sw.UserQ = given + sw.NetworkQ
 		sw.PoolQ = s.PoolInUSD
-		fee := given - s.PoolInUSD
+		other := s.OtherUSD // a launchpad's protocol fee (four.meme)
+		sw.OtherQ = &other
+		fee := given - s.PoolInUSD - s.OtherUSD
 		if fee < 0 {
 			fee = 0
 		}
@@ -312,18 +449,28 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if err != nil {
 			return nil
 		}
+		price := gasPrice
+		if s.NativeUSD > 0 {
+			price = s.NativeUSD
+		}
+		// A sale sends no value, except the terminal's fixed tip: network
+		// cost, and not part of what the user received.
+		tipUSD := 0.0
+		if valueWei.Sign() > 0 && t.TipTo != "" {
+			tipUSD = f(valueWei) / 1e18 * price
+			sw.NetworkQ += tipUSD
+		}
 		// Received: quote ERC20 to the user, else the native balance change
-		// across the block plus the gas paid.
+		// across the block plus the gas and the tip paid out of it.
 		recv := quoteOut
 		if recv == 0 {
-			bn := hexInt(rc.BlockNumber)
 			var b0, b1 string
 			if evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn-1).Text(16)}, &b0) != nil || evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn).Text(16)}, &b1) != nil {
 				return &Swap{Flag: "unpriced_balance"}
 			}
 			delta := new(big.Float).SetInt(new(big.Int).Sub(hexBig(b1), hexBig(b0)))
 			d, _ := delta.Float64()
-			recv = d/1e18*gasPrice + gasUSD + value*0 // the gas left the same balance
+			recv = d/1e18*price + gasUSD + tipUSD
 			if recv <= 0 {
 				return &Swap{Flag: "unpriced_no_receive"}
 			}
@@ -331,7 +478,9 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		sw.Side, sw.Mint, sw.Tokens, sw.Venue, sw.Pools, sw.Hops, sw.PoolVault = "sell", token, s.Tokens, s.Venue, s.Pools, s.Hops, s.Pool
 		sw.UserQ = recv
 		sw.PoolQ = s.PoolInUSD
-		fee := s.PoolInUSD - recv
+		other := s.OtherUSD // a launchpad's protocol fee (four.meme)
+		sw.OtherQ = &other
+		fee := s.PoolInUSD - s.OtherUSD - recv
 		if fee < 0 {
 			fee = 0
 		}
