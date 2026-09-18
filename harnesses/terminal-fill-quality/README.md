@@ -260,10 +260,27 @@ sender is not the trader (a relayer or a smart account), the trader is
 whoever received the token from a pool (buy) or sent it to one (sell).
 Banana Gun's Ethereum, Base and BNB routers (DeFiLlama's adapter) are
 polled the same way (`banana-gun-<chain>`); on Ethereum its router's fee
-event (`0x72015ace…`, what DeFiLlama sums) reads 0 on the sampled swaps
-and the wallet pays nothing beyond value and gas in the block, so the
-fee is collected outside the swap transaction and the terminal component
-reads 0 there (said in the row's note). A taxed token that swaps its own
+event (`0x72015ace…`, what DeFiLlama sums) reads 0 on every sampled
+swap, the wallet pays nothing beyond value and gas in the block, and the
+users' other transfers (Alchemy asset transfers, weeks back) go nowhere
+but the routers: no fee is visible on-chain, the terminal component
+reads 0 there (said in the row's note); Base and BNB see no Banana Gun
+swaps (Mobula attributes none either). **Binance Wallet** trades through
+one swap router on BSC, Ethereum and Base (`0xb300000b…`, the
+transactions' `to`; Mobula attributes ~75 an hour on BSC, ~30 on
+Ethereum, ~10 on Base) that emits no event of its own (an executor
+contract does), so its swaps are the successful transactions sent to it
+in the blocks the fail-rate sample reads in full (`NoEvents` on the
+terminal: 8 of ~80 BNB blocks a minute, 2 of ~5 on Ethereum, 8 of ~30 on
+Base), priced and split like the other native rows. **Terminal**
+(Padre) on EVM: DeFiLlama's `trading-terminal` fees adapter lists its
+fee wallets (Ethereum `0xa74FA823…`, BSC `0x2b0A28A0…`, Base
+`0x16388de4…`); they last received on Ethereum on 2026-08-26 and on Base
+on 2026-09-06, the BSC one gains about 0.01 BNB a day, the trades went
+through Multicall3: no volume to measure. **BasedBot**: the Solana
+wallets it funds through Relay swap through Jupiter and pump.fun with no
+recurring fee recipient (2026-09-19, 11 wallets, 69 swaps): its only
+measurable fee is Relay's app fee in `basedbot-funding`. A taxed token that swaps its own
 tax on the same pool inside the user's transaction is not the user's
 pool: only the token flow from the user (sell) or to the user (buy),
 directly or through one forwarding address, selects the pools. Arc's
@@ -285,7 +302,10 @@ Axiom (22 wallets: 20 fee wallets plus the two second-leg recipients of
 its 1 %), GMGN (9), FOMO (fee wallet + gas sponsor excluded as user, USDC
 fee legs), Photon, Trojan (6), Bloom, Maestro, Pepeboost, BONKbot, Banana
 Gun (fee wallet + its Solana router program), Terminal (formerly Padre:
-protocol + cashback wallets), pump.fun's mobile app (by its app program).
+protocol + cashback wallets), pump.fun's mobile app (by its app program),
+Phantom's in-wallet swap (0.85 % to `9yj3zvLS…` in SOL, or WSOL into
+that wallet's token account `6Wzuv7vL…`, the account subscribed to;
+router `proVF4pM…` counted as a swap program; ~45 swaps a minute).
 Wallet lists come from DeFiLlama's adapters and Dune's spellbook
 (`dex_solana.bot_trades` platform models), checked live on 2026-09-18. Not in: BullX (trading
 suspended 2026-06-01, its wallets only see 1,000-lamport markers), Nova
