@@ -199,6 +199,27 @@ Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
 publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
 `rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
 
+**Native EVM terminals (`native.go`)**: GMGN and Axiom route their BNB
+and Robinhood Chain swaps through their own contracts (GMGN BNB router
+`0x1de460f3…`; GMGN Robinhood routers `0x65050a9b…` and `0xe492912f…`,
+found as the emitters of GMGN's swap-end event `0x8619026a…` on that
+chain; Axiom's trade contracts from DeFiLlama's adapter), which emit an
+event on every swap. Each tick polls `eth_getLogs` on those routers since
+the last block (`evm_cursor` in the state, at most 2,000 blocks a tick):
+every successful routed swap is seen (a failed transaction emits nothing,
+so these rows have no fail rate), a random sample is read. Rows
+`gmgn-bnb`, `gmgn-robinhood`, `axiom-bnb`, `axiom-robinhood`, quoted in
+USD. Buy: given = native value or a quote ERC20 from the user, plus gas;
+the token is the ERC20 that reached the user; pricing through
+`priceEvmSettlement`. Sell: the token is the ERC20 that left the user;
+received = a quote ERC20 to the user, else the user's native balance
+change across the block plus the gas paid (`eth_getBalance` at N−1 and
+N); pricing through `priceEvmOriginSale`. The terminal's fee is an
+internal native transfer to its collector, invisible in logs: it is the
+residual of given − pool − gas (buy) or pool − received − gas (sell),
+so a venue fee paid the same way would sit in it; rows priced through a
+v2 / v3 / v4 pool carry that fee as the terminal's alone.
+
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
 from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
 from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap
