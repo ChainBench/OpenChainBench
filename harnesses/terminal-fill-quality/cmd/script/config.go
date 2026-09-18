@@ -93,6 +93,14 @@ var terminals = []Terminal{
 	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
 	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF"},
 		Programs: []string{"BANANAjs7FJiPQqJTGFzkZJndT9o7UmKiYYGaJz6frGu"}}, // its Solana router (DeFiLlama's dexs adapter attributes on it)
+	// Phantom's in-wallet swapper: 0.85 % of the quote to its fee wallet
+	// (SOL, or WSOL into that wallet's token account 6Wzuv7…, the account
+	// the transaction mentions), through Jupiter or its own router
+	// proVF4pM…; ~45 swaps a minute on 2026-09-19 (Mobula attributes it,
+	// fee accounts confirmed on the transactions).
+	{Slug: "phantom", Name: "Phantom", Kind: "app", Wallets: []string{"9yj3zvLS3fDMqi1F8zhkaWfq8TZpZWHe6cz1Sgt7djXf"},
+		Programs: []string{"6Wzuv7vLc6Vq8HJcHwwSCE9SKcdJiuoJmJm3EMFkWERN"},
+		Note:     "Phantom's in-wallet swap: 0.85 % of the trade to its fee wallet in SOL or WSOL, routed through Jupiter or its own router."},
 	// Terminal (formerly Padre): protocol share to the main fee wallet,
 	// cashback / referral share to the second, both in the same
 	// transaction (DeFiLlama's trading-terminal fees adapter).
@@ -202,6 +210,7 @@ var swapProgramPrefixes = []string{
 	"b1oomGGq",             // Bloom
 	"BBRouter", "MaestroA", // Maestro
 	"BSfD6SHZ", "T1TANpTe", // Photon, Titan
+	"proVF4pM", // Phantom's router
 	"proVF4pM", // FOMO (OKX router)
 	"troyXT7T", // Trojan
 	"BANANAjs", // Banana Gun

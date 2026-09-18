@@ -39,7 +39,11 @@ type evmTerminal struct {
 	// counted as network cost like the Solana terminals' own tip relays.
 	Tip   float64
 	TipTo string
-	Note  string
+	// NoEvents: the router emits nothing (Binance Wallet's), so its swaps
+	// come from the block sample alone: every successful transaction
+	// sent to it in the sampled blocks.
+	NoEvents bool
+	Note     string
 }
 
 var evmTerminals = []evmTerminal{
@@ -67,9 +71,17 @@ var evmTerminals = []evmTerminal{
 	// value and the gas in the block (balance N−1 → N): the fee is not in
 	// the swap transaction, so the terminal component reads 0 here.
 	{Slug: "banana-gun-ethereum", Name: "Banana Gun · Ethereum", Kind: "bot", Chain: "ethereum", Routers: []string{"0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49"},
-		Note: "Banana Gun's Ethereum router logs a fee of 0 on the sampled swaps and the wallet pays nothing beyond the value sent and the gas: its fee is collected outside the swap transaction, so the terminal component reads 0 here and the loss excludes it."},
+		Note: "Banana Gun's Ethereum router logs a fee of 0 on every sampled swap, the wallet pays nothing beyond the value sent and the gas, and its other transfers show no fee either: no fee is visible on-chain for these swaps, so the terminal component reads 0."},
 	{Slug: "banana-gun-base", Name: "Banana Gun · Base", Kind: "bot", Chain: "base", Routers: []string{"0x1fba6b0bbae2b74586fba407fb45bd4788b7b130"}},
 	{Slug: "banana-gun-bnb", Name: "Banana Gun · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0x461efe0100be0682545972ebfc8b4a13253bd602"}},
+	// Binance Wallet's swap router, the same address on BSC, Ethereum and
+	// Base (Mobula attributes it; the transactions' `to` on 2026-09-19:
+	// ~75 an hour on BSC, ~30 on Ethereum, ~10 on Base). It emits no
+	// event of its own (an executor contract does), so the block sample
+	// is the feed.
+	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
+	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
+	{Slug: "binance-wallet-base", Name: "Binance Wallet · Base", Kind: "app", Chain: "base", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
 }
 
 const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps: a failed transaction emits none, so the fail rate comes from a sample of blocks read in full, every transaction sent to the routers counted, reverted or not). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas. A fee the pool's own hook keeps (launchpad pools on Robinhood Chain and BNB) is a pool cost; a fixed inclusion tip the terminal adds to every transaction is network cost."
@@ -96,7 +108,7 @@ func isNativeEVM(slug string) bool {
 // failScanBlocks: blocks read in full per chain per tick for the fail
 // rate (BNB makes ~80 a minute, Robinhood Chain ~590, Base ~30, Ethereum
 // ~5), drawn at random from the range the tick polled.
-var failScanBlocks = map[string]int{"bnb": 5, "robinhood": 8, "base": 4, "ethereum": 2}
+var failScanBlocks = map[string]int{"bnb": 8, "robinhood": 8, "base": 8, "ethereum": 2}
 
 // failScan reads the sampled blocks in full: every transaction sent to a
 // terminal's routers is an attempt, a reverted one (receipt status 0) a
@@ -110,6 +122,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			continue
 		}
 		byRouter := map[string]string{}
+		noEvents := map[string]bool{}
 		for _, t := range evmTerminals {
 			if t.Chain != c.slug {
 				continue
@@ -117,6 +130,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			for _, r := range t.Routers {
 				byRouter[r] = t.Slug
 			}
+			noEvents[t.Slug] = t.NoEvents
 		}
 		if len(byRouter) == 0 {
 			continue
@@ -156,6 +170,20 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 					failed[slug]++
 					fee := float64(hexInt(rc.GasUsed)) * float64(hexInt(rc.EffectiveGasPrice)) / 1e18 * price
 					st.Fails = append(st.Fails, failSample{Terminal: slug, Sig: tx.Hash, Time: now, FeeUSD: fee, Err: "reverted"})
+				} else if noEvents[slug] {
+					// The block sample is this terminal's feed.
+					b := f.box[slug]
+					if b == nil {
+						b = &xinboxTx{}
+						f.box[slug] = b
+					}
+					b.seen++
+					b.total++
+					if len(b.reservoir) < reservoirSize {
+						b.reservoir = append(b.reservoir, tx.Hash)
+					} else if j := rand.Intn(b.total); j < reservoirSize {
+						b.reservoir[j] = tx.Hash
+					}
 				}
 			}
 		}
