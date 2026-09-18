@@ -189,7 +189,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <a
-                    href={`https://solscan.io/tx/${s.sig}`}
+                    href={`${txExplorer(s)}${s.sig}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
@@ -214,20 +214,18 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                         via X
                       </span>
                     ) : null}
-                    {s.chain ? (
-                      s.inTx && EXPLORERS[s.chain] ? (
-                        <a
-                          href={`${EXPLORERS[s.chain]}${s.inTx}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
-                          title={`paid on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the origin deposit`}
-                        >
-                          from {CHAIN_NAMES[s.chain] ?? s.chain}
-                        </a>
-                      ) : (
-                        <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
-                      )
+                    {s.chain && s.inTx ? (
+                      <a
+                        href={`${(s.terminal.endsWith("-" + s.chain) ? EXPLORERS.solana : EXPLORERS[s.chain]) ?? EXPLORERS.solana}${s.inTx}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
+                        title={s.terminal.endsWith("-" + s.chain) ? `paid in SOL on Solana, settled on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the deposit` : `paid on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the origin deposit`}
+                      >
+                        {s.terminal.endsWith("-" + s.chain) ? `on ${CHAIN_NAMES[s.chain] ?? s.chain}` : `from ${CHAIN_NAMES[s.chain] ?? s.chain}`}
+                      </a>
+                    ) : s.chain ? (
+                      <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
                     ) : null}
                   </span>
                 </td>
@@ -282,8 +280,12 @@ type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Other fees", pool: "Pool" } as const;
-const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc" };
-const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/" };
+const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
+const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
+/** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
+function txExplorer(s: FillSample): string {
+  return s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain) ? EXPLORERS[s.chain] : "https://solscan.io/tx/";
+}
 
 const selectCls = "h-7 rounded-md border border-rule bg-paper px-2 text-[11px] text-ink hover:border-ink/40 focus:outline-none focus:border-ink/60";
 

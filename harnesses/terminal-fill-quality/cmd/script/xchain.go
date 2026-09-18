@@ -51,8 +51,8 @@ var xchainApps = []xchainApp{
 	// fee on the Relay requests settling to wallets that also trade FOMO
 	// natively on Solana (join on Mobula's FOMO-attributed trades, 133 of
 	// 2,000 settlements on 2026-09-18); FOMO's referrer is private (403).
-	{Slug: "fomo-xchain", Name: "FOMO cross-chain", FeeRecipients: []string{"0x9fc4e320a181e88644a302d11f1f158ef0699e37"}},
-	{Slug: "basedbot-xchain", Name: "BasedBot cross-chain", Referrer: "BasedBot"},
+	{Slug: "fomo", Name: "FOMO", FeeRecipients: []string{"0x9fc4e320a181e88644a302d11f1f158ef0699e37"}},
+	{Slug: "basedbot", Name: "BasedBot", Referrer: "BasedBot"},
 }
 
 // Origin chains Relay users pay from, with a public RPC for the gas
@@ -70,26 +70,53 @@ var originChains = []originChain{
 	{8453, "base", []string{"https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://base.drpc.org"}, "ETH-USD"},
 	{1, "ethereum", []string{"https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"}, "ETH-USD"},
 	{5042, "arc", []string{"https://rpc.mainnet.arc.io"}, ""},
+	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, ""},
 }
 
 const solanaChainID = 792703809
+
+func chainByID(id int64) *originChain {
+	for i := range originChains {
+		if originChains[i].id == id {
+			return &originChains[i]
+		}
+	}
+	return nil
+}
+
+// rowSlug: the bench row a request belongs to. Requests settling on
+// Solana are the app's funding leg (`<app>-funding`); requests leaving
+// Solana for a token on another chain are the app's trading on that
+// chain (`<app>-<chain>`).
+func (x relayRequest) rowSlug() string {
+	if x.DestChain == "" {
+		if x.InIsToken && x.Chain != "" && x.Chain != "solana" {
+			return x.App + "-" + x.Chain // a sale of a token on the origin chain, settled on Solana
+		}
+		return x.App + "-funding"
+	}
+	return x.App + "-" + x.DestChain
+}
 
 // relayRequest is one settled (or failed) Relay request of a cohort app.
 type relayRequest struct {
 	ID          string  `json:"id"`
 	App         string  `json:"app"`
-	Chain       string  `json:"chain"` // origin chain slug
+	Chain       string  `json:"chain"`      // origin chain slug ("solana" when leaving Solana)
+	DestChain   string  `json:"dest_chain"` // destination chain slug when not Solana
+	TokenOut    string  `json:"token_out"`  // destination token address when not Solana
 	Status      string  `json:"status"`
 	User        string  `json:"user"`      // origin address
-	Recipient   string  `json:"recipient"` // Solana wallet
+	Recipient   string  `json:"recipient"` // destination wallet
 	InTx        string  `json:"in_tx"`
-	OutTx       string  `json:"out_tx"` // Solana signature
+	OutTx       string  `json:"out_tx"` // destination transaction (Solana signature or EVM hash)
 	UsdIn       float64 `json:"usd_in"`
 	UsdOut      float64 `json:"usd_out"` // Relay's own valuation of the output, cross-check only
 	AppFeeUsd   float64 `json:"app_fee_usd"`
 	RelayFeeUsd float64 `json:"relay_fee_usd"`
 	OutIsToken  bool    `json:"out_is_token"` // Solana side delivers a token (not SOL / a stable)
 	InIsToken   bool    `json:"in_is_token"`  // origin side was a token (not the gas coin / a stable): usd_in is Relay's valuation, not an on-chain mid
+	TokenIn     string  `json:"token_in"`     // origin token address when InIsToken
 	Created     int64   `json:"created"`
 }
 
@@ -169,12 +196,24 @@ type xinbox struct {
 }
 
 func newXfeed(httpc *http.Client) *xfeed {
-	f := &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}}
-	for _, a := range xchainApps {
-		f.box[a.Slug] = &xinbox{}
-	}
-	return f
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}}
 }
+
+// xchainRows: every bench row the cross-chain apps can produce.
+func xchainRows() []string {
+	var out []string
+	for _, a := range xchainApps {
+		out = append(out, a.Slug+"-funding")
+		for _, c := range originChains {
+			out = append(out, a.Slug+"-"+c.slug)
+		}
+	}
+	return out
+}
+
+// solanaOrigin is the feed of requests leaving Solana (not an origin
+// chain for gas purposes: the deposit is read from the Solana transaction).
+var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
 
 // run polls every interval. Each poll walks each origin chain's feed
 // (newest first, 50 per page) until it meets a request already seen or
@@ -182,7 +221,7 @@ func newXfeed(httpc *http.Client) *xfeed {
 // when it settled a token on Solana, offered to the reservoir.
 func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 	for ctx.Err() == nil {
-		n := 0
+		n := f.poll(ctx, solanaOrigin)
 		for _, c := range originChains {
 			n += f.poll(ctx, c)
 		}
@@ -259,7 +298,11 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				f.mu.Lock()
 				f.seen[r.ID] = time.Now().Unix()
 				if ok {
-					b := f.box[a.Slug]
+					b := f.box[x.rowSlug()]
+					if b == nil {
+						b = &xinbox{}
+						f.box[x.rowSlug()] = b
+					}
 					b.seen++
 					if x.Status != "success" {
 						b.failed++
@@ -318,20 +361,36 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 			break
 		}
 	}
+	out := r.Data.Metadata.CurrencyOut.Currency
+	if out.ChainID != solanaChainID {
+		// Leaving Solana for a token elsewhere: only chains we can read.
+		dc := chainByID(out.ChainID)
+		if c.id != solanaChainID || dc == nil {
+			return relayRequest{}, false
+		}
+		x.DestChain, x.TokenOut = dc.slug, strings.ToLower(out.Address)
+		if x.TokenOut == "" || x.TokenOut == "0x0000000000000000000000000000000000000000" {
+			return relayRequest{}, false // a sell into the gas coin: not priced here
+		}
+	} else if c.id == solanaChainID {
+		return relayRequest{}, false // Solana to Solana: a native swap, not a bridge
+	}
 	for _, tx := range r.Data.OutTxs {
-		if tx.ChainID == solanaChainID && tx.Hash != "" {
+		if tx.ChainID == out.ChainID && tx.Hash != "" {
 			x.OutTx = tx.Hash
 			break
 		}
 	}
-	out := r.Data.Metadata.CurrencyOut.Currency
 	x.OutIsToken = out.ChainID == solanaChainID && out.Address != "" && out.Address != "11111111111111111111111111111111" && out.Address != wsolMint && !stableMints[out.Address]
 	in := r.Data.Metadata.CurrencyIn.Currency
 	switch strings.ToUpper(in.Symbol) {
 	case "ETH", "BNB", "WETH", "WBNB", "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "SOL":
 		x.InIsToken = false
 	default:
-		x.InIsToken = in.Address != "0x0000000000000000000000000000000000000000"
+		x.InIsToken = in.Address != "0x0000000000000000000000000000000000000000" && in.Address != "11111111111111111111111111111111"
+		if x.InIsToken {
+			x.TokenIn = strings.ToLower(in.Address)
+		}
 	}
 	// What the user actually paid after Relay's sponsorship: the app's
 	// fee and Relay's own components (execution on the destination, the
@@ -437,6 +496,52 @@ func bridgeRow(t Terminal, x relayRequest, tx *parsedTx, solUSD, gasUSD float64)
 	zero := 0.0
 	sw.OtherQ = &zero
 	return sw
+}
+
+// solanaGiven reads what the user gave on Solana for a request leaving
+// it: SOL (lamports delta, the tx fee inside when they paid it) or a
+// stable, in USD, plus the fee part apart.
+func solanaGiven(tx *parsedTx, user string, solUSD float64) (givenUSD, feeUSD float64, quote string) {
+	msg := tx.Transaction.Message
+	n := len(msg.AccountKeys)
+	if n == 0 || len(tx.Meta.PreBalances) != n || len(tx.Meta.PostBalances) != n {
+		return 0, 0, ""
+	}
+	sol := 0.0
+	for i, k := range msg.AccountKeys {
+		if k.Pubkey == user {
+			sol += float64(int64(tx.Meta.PreBalances[i])-int64(tx.Meta.PostBalances[i])) / 1e9
+		}
+	}
+	if len(msg.AccountKeys) > 0 && msg.AccountKeys[0].Pubkey == user {
+		feeUSD = float64(tx.Meta.Fee) / 1e9 * solUSD
+	}
+	pre := map[int]float64{}
+	for _, b := range tx.Meta.PreTokenBalances {
+		if b.Owner == user && (stableMints[b.Mint] || b.Mint == wsolMint) {
+			pre[b.AccountIndex] = b.raw()
+		}
+	}
+	stable, wsol := 0.0, 0.0
+	for _, b := range tx.Meta.PostTokenBalances {
+		if b.Owner != user {
+			continue
+		}
+		d := pre[b.AccountIndex] - b.raw()
+		if b.Mint == wsolMint {
+			wsol += d / 1e9
+		} else if stableMints[b.Mint] {
+			stable += d / 1e6
+		}
+	}
+	sol += wsol
+	if stable*1 > sol*solUSD {
+		return stable, feeUSD, "USDC"
+	}
+	if sol <= 0 {
+		return 0, feeUSD, ""
+	}
+	return sol * solUSD, feeUSD, "SOL"
 }
 
 // originGasUSD reads the origin deposit's receipt on the chain's public

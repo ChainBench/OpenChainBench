@@ -111,7 +111,7 @@ export async function TerminalFillSection({
                           <span className="font-medium text-ink group-hover:underline underline-offset-2">{t.name}</span>
                         </Link>
                       )}
-                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? "bridge leg" : t.kind}</span>
+                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? xchainLabel(t.slug) : t.kind}</span>
                       {isXchain(t.slug) && Object.keys(t.byChain).length > 0 ? (
                         <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help" title={chainText(t)}>
                           by origin chain
@@ -194,14 +194,20 @@ export async function TerminalFillSection({
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network (tx fee + tips, origin gas)", relay: "Relay (bridge fees + spread)", other: "Other fees (pump.fun, referrals)", pool: "Pool (LP fee + impact, hops)" } as const;
 const PARTS = ["terminal", "network", "relay", "other", "pool"] as const;
-const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood Chain", base: "Base", ethereum: "Ethereum", arc: "Arc" };
+const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood Chain", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
 
-/** Cross-chain rows (slug ending in -xchain) belong to the product of the native slug. */
+const XCHAIN_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
+/** Cross-chain rows (funding leg, or trading on another chain through Relay) belong to the product of the native slug. */
 function productOf(slug: string): string {
-  return slug.replace(/-xchain$/, "");
+  return slug.replace(XCHAIN_SUFFIX, "");
 }
 function isXchain(slug: string): boolean {
-  return slug.endsWith("-xchain");
+  return XCHAIN_SUFFIX.test(slug);
+}
+function xchainLabel(slug: string): string {
+  const m = slug.match(XCHAIN_SUFFIX);
+  if (!m) return "";
+  return m[1] === "funding" ? "funding leg" : `on ${CHAIN_NAMES[m[1]] ?? m[1]} via Relay`;
 }
 function chainText(t: TerminalFillStats): string {
   return Object.entries(t.byChain)

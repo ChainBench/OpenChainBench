@@ -36,6 +36,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -545,29 +546,55 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		return 0
 	}
 	now := time.Now().Unix()
-	for _, a := range xchainApps {
-		seen, failed, errs, sample, total := xf.drain(a.Slug)
-		st.record(a.Slug, now, seen, failed, 0, errs)
+	for _, slug := range xchainRows() {
+		seen, failed, errs, sample, total := xf.drain(slug)
+		st.record(slug, now, seen, failed, 0, errs)
 		if total == 0 {
 			continue
 		}
-		quota[a.Slug] += perTick
-		if cap := math.Max(3*perTick, 2); quota[a.Slug] > cap {
-			quota[a.Slug] = cap
+		quota[slug] += perTick
+		if cap := math.Max(3*perTick, 2); quota[slug] > cap {
+			quota[slug] = cap
 		}
-		n := int(quota[a.Slug])
+		n := int(quota[slug])
 		if n > len(sample) {
 			n = len(sample)
 		}
 		if n <= 0 {
 			continue
 		}
-		quota[a.Slug] -= float64(n)
+		quota[slug] -= float64(n)
 		rand.Shuffle(len(sample), func(i, j int) { sample[i], sample[j] = sample[j], sample[i] })
-		t := Terminal{Slug: a.Slug, Name: a.Name, Kind: "app"}
+		t := Terminal{Slug: slug, Kind: "app"}
 		for _, x := range sample[:n] {
+			if x.DestChain != "" || (x.InIsToken && x.Chain != "solana") {
+				// Leaving Solana for a token elsewhere (the deposit is read on
+				// Solana, the delivery and the pool's state on the destination),
+				// or a token sold on the origin chain and settled on Solana.
+				var sw *Swap
+				if x.DestChain != "" {
+					sw = evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
+				} else {
+					sw = evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
+				}
+				if sw != nil {
+					if sw.Flag != "" && sw.Flag != "origin_token" {
+						st.reject(slug, parseReject(sw.Flag))
+						continue
+					}
+					if sw.TradeUSD < minTradeUSD {
+						st.reject(slug, rejectDust)
+						continue
+					}
+					st.Swaps = append(st.Swaps, *sw)
+					added++
+				} else {
+					st.reject(slug, "unreadable")
+				}
+				continue
+			}
 			if x.UsdIn <= 0 {
-				st.reject(a.Slug, "no_usd_in")
+				st.reject(slug, "no_usd_in")
 				continue
 			}
 			tx, err := rpc.transaction(ctx, x.OutTx)
@@ -575,6 +602,18 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				continue
 			}
 			gasUSD, gasOK := originGasUSD(ctx, httpc, x.Chain, x.InTx, gas)
+			// The deposit read on the origin chain itself (native value or a
+			// priced ERC20) replaces Relay's valuation; a token deposit keeps
+			// Relay's figure and the origin_token flag.
+			if oc := chainByID(0); oc == nil {
+				for i := range originChains {
+					if originChains[i].slug == x.Chain {
+						if given, ok := originGivenUSD(ctx, httpc, originChains[i], x.InTx, x.User, gas); ok && given > 0 {
+							x.UsdIn, x.InIsToken = given, false
+						}
+					}
+				}
+			}
 			var sw *Swap
 			if x.OutIsToken {
 				// The settlement bought the token on Solana: value received =
@@ -582,11 +621,11 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				var reject parseReject
 				sw, reject = parseSwap(t, x.OutTx, tx, solUSD, x.Recipient)
 				if reject != "" {
-					st.reject(a.Slug, reject)
+					st.reject(slug, reject)
 					continue
 				}
 				if sw.Side != "buy" || sw.QuoteUSD <= 0 {
-					st.reject(a.Slug, "not_buy")
+					st.reject(slug, "not_buy")
 					continue
 				}
 				q := sw.QuoteUSD
@@ -609,7 +648,7 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				// what is left of the deposit after the app fee and the gas.
 				sw = bridgeRow(t, x, tx, solUSD, gasUSD)
 				if sw == nil {
-					st.reject(a.Slug, "no_quote_received")
+					st.reject(slug, "no_quote_received")
 					continue
 				}
 			}
@@ -624,7 +663,7 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 			if x.OutIsToken {
 				sw.finalize(nil, 0, "")
 				if sw.TradeUSD < minTradeUSD {
-					st.reject(a.Slug, rejectDust)
+					st.reject(slug, rejectDust)
 					continue
 				}
 				priceSwap(ctx, rpc, sw, tx, pools, solUSD, now)
@@ -632,7 +671,7 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				one := 1.0
 				sw.finalize(&one, 0, "reserves") // quote per quote: exact by construction
 				if sw.TradeUSD < minTradeUSD {
-					st.reject(a.Slug, rejectDust)
+					st.reject(slug, rejectDust)
 					continue
 				}
 			}
@@ -814,13 +853,135 @@ func prune(st *State, windowHours int) {
 	}
 }
 
-// cohort: the native terminals plus the cross-chain apps, as rows.
+// chainNames for the row names.
+var chainNames = map[string]string{"bnb": "BNB", "robinhood": "Robinhood Chain", "base": "Base", "ethereum": "Ethereum", "arc": "Arc", "hyperevm": "HyperEVM"}
+
+// cohort: the native terminals plus the cross-chain rows (one funding
+// leg per app, one row per destination chain the app trades on).
 func cohort() []Terminal {
 	out := append([]Terminal{}, terminals...)
 	for _, a := range xchainApps {
-		out = append(out, Terminal{Slug: a.Slug, Name: a.Name, Kind: "app", Note: "Cross-chain buys through Relay: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives the token on Solana. Value given = the origin deposit plus its gas; terminal = the app fee the user paid; relay = Relay's own fees the user paid; pool = the settlement swap on Solana. Sells from the origin chain and failed or refunded requests are counted, not priced."})
+		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding leg through Relay: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (the token buy that follows is a native swap in the app's Solana row). Value given = the origin deposit plus its gas; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate."})
+		for _, c := range originChains {
+			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in SOL on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
+		}
 	}
 	return out
+}
+
+// evmSaleRow measures a request that sold a token on its origin chain and
+// settled USDC / SOL on Solana: the tokens sold at the origin pool's state
+// before the swap versus what reached the user on Solana.
+func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal, x relayRequest, solUSD float64, gas map[string]float64) *Swap {
+	var oc *originChain
+	for i := range originChains {
+		if originChains[i].slug == x.Chain {
+			oc = &originChains[i]
+		}
+	}
+	if oc == nil || x.InTx == "" || x.OutTx == "" || x.TokenIn == "" {
+		return nil
+	}
+	outTx, err := rpc.transaction(ctx, x.OutTx)
+	if err != nil || outTx == nil {
+		return nil
+	}
+	recv := bridgeRow(t, x, outTx, solUSD, 0) // what reached the user on Solana, exact
+	if recv == nil {
+		return &Swap{Flag: "no_quote_received"}
+	}
+	s, err := priceEvmOriginSale(ctx, httpc, *oc, x.InTx, x.User, x.TokenIn, gas)
+	if err != nil {
+		return nil
+	}
+	q := recv.QuoteUSD
+	sw := &Swap{Method: methodVersion, Sig: x.OutTx, Terminal: t.Slug, Slot: outTx.Slot, User: x.Recipient, Side: "sell", Quote: recv.Quote, Venue: s.Venue, Mint: x.TokenIn, Tokens: s.Tokens,
+		Chain: x.Chain, RelayID: x.ID, InTx: x.InTx, QuoteUSD: q, Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool, Time: recv.Time}
+	if sw.Venue == "" {
+		sw.Venue = "relay"
+	}
+	sw.UserQ = recv.Tokens // quote received on Solana
+	sw.TerminalQ = x.AppFeeUsd / q
+	sw.NetworkQ = s.GasUSD / q // origin gas, paid by the user
+	sw.PoolQ = s.PoolInUSD / q // quote the origin pool paid out
+	relay := s.PoolInUSD - x.AppFeeUsd - recv.Tokens*q
+	if relay < 0 {
+		relay = 0
+	}
+	sw.RelayQ = relay / q
+	zero := 0.0
+	sw.OtherQ = &zero
+	if !s.Priced {
+		sw.finalize(nil, 0, "")
+		sw.Flag = "unpriced_" + s.Unpriced
+		return sw
+	}
+	ref := s.MidUSD / q
+	sw.finalize(&ref, 0, s.RefSrc)
+	return sw
+}
+
+// evmRow measures a request that left Solana for a token on another
+// chain: deposit on Solana, delivery and pool state on the destination.
+func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal, x relayRequest, solUSD float64, gas map[string]float64) *Swap {
+	dc := chainByID(0)
+	for i := range originChains {
+		if originChains[i].slug == x.DestChain {
+			dc = &originChains[i]
+		}
+	}
+	if dc == nil || x.InTx == "" || x.OutTx == "" {
+		return nil
+	}
+	inTx, err := rpc.transaction(ctx, x.InTx)
+	if err != nil || inTx == nil {
+		return nil
+	}
+	givenUSD, feeUSD, quote := solanaGiven(inTx, x.User, solUSD)
+	if givenUSD <= 0 {
+		return &Swap{Flag: "no_deposit"}
+	}
+	s, err := priceEvmSettlement(ctx, httpc, *dc, x.OutTx, x.Recipient, x.TokenOut, gas)
+	if err != nil {
+		return nil
+	}
+	q := 1.0
+	if quote == "SOL" {
+		q = solUSD
+	}
+	sw := &Swap{Method: methodVersion, Sig: x.OutTx, Terminal: t.Slug, Slot: inTx.Slot, User: x.Recipient, Side: "buy", Quote: quote, Venue: s.Venue, Mint: x.TokenOut, Tokens: s.Tokens,
+		Chain: x.DestChain, RelayID: x.ID, InTx: x.InTx, QuoteUSD: q, Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool}
+	if inTx.BlockTime != nil {
+		sw.Time = *inTx.BlockTime
+	}
+	if sw.Venue == "" {
+		sw.Venue = "relay"
+	}
+	sw.UserQ = givenUSD / q
+	sw.TerminalQ = x.AppFeeUsd / q
+	sw.NetworkQ = feeUSD / q
+	sw.PoolQ = s.PoolInUSD / q
+	relay := givenUSD - feeUSD - x.AppFeeUsd - s.PoolInUSD
+	if relay < 0 {
+		relay = 0
+	}
+	sw.RelayQ = relay / q
+	zero := 0.0
+	sw.OtherQ = &zero
+	if !s.Priced {
+		sw.finalize(nil, 0, "")
+		sw.Flag = "unpriced_" + s.Unpriced
+		if s.Unpriced == "" {
+			sw.Flag = ""
+		}
+		return sw
+	}
+	ref := s.MidUSD / q
+	sw.finalize(&ref, 0, s.RefSrc)
+	if x.InIsToken {
+		sw.Flag, sw.Priced = "origin_token", false
+	}
+	return sw
 }
 
 func compute(st *State, minPriced, minRank int) []TerminalStats {
@@ -995,6 +1156,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		ts.OtherTop = top
 		ts.Healthy = ts.Priced >= minPriced
 		ts.Ranked = ts.Priced >= minRank
+		if strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
+			continue // a cross-chain row nobody used in the window
+		}
 		out = append(out, ts)
 	}
 	// Ranked terminals first by median, then published-but-not-ranked by
@@ -1019,6 +1183,15 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		return out[i].Loss.Median < out[j].Loss.Median
 	})
 	return out
+}
+
+func isXchainRow(slug string) bool {
+	for _, r := range xchainRows() {
+		if r == slug {
+			return true
+		}
+	}
+	return false
 }
 
 func topN(m map[string]int, n int) map[string]int {

@@ -163,6 +163,35 @@ are flagged `origin_token` and kept out of the statistics (value in is
 Relay's valuation). `chain`, `relay_bps`, `relay_id`, `in_tx` per row,
 `by_chain` and `components_bps.relay` per app, `tfq_loss_bps_chain`.
 
+**Trading on another chain through Relay (`evm.go`)**: most of FOMO's
+cross-chain flow goes the other way: the user pays in SOL and a Relay
+solver buys the token on Robinhood Chain (87 % of it), BNB, Base,
+Ethereum or Arc. Rows `<app>-<chain>`. The Solana deposit gives the value
+given (SOL or a stable, tx fee inside); the destination receipt gives the
+tokens delivered (ERC20 `Transfer` to the user), the final pool (the swap
+event whose emitter paid those tokens out), the quote paid into it and
+the pool's state before our swap: Uniswap v2 forks from the `Sync`
+reserves minus the swap's amounts (same receipt), v3 forks (PancakeSwap
+v3 included) and Uniswap v4 from the `sqrtPriceX96` left by the previous
+`Swap` on the pool (`eth_getLogs` on the pool, 3,000 blocks back, same
+block with a lower log index accepted). Token side of the pool settled by
+matching the event's amounts with the transfers, never by `token0()`.
+Quote priced at $1 for stables, Coinbase ETH / BNB for wrapped gas coins;
+other quotes leave the row unpriced (`flag: unpriced_quote_<SYM>`).
+Split: terminal = app fee, relay = deposit − app fee − Solana fee − quote
+paid into the pool (Relay's fees, spread and the destination gas it
+paid), pool = loss − the rest, network = the Solana tx fee. Sales the
+other way (`priceEvmOriginSale`: the user's deposit transaction sells the
+token into a pool on the origin chain, Relay delivers USDC / SOL on
+Solana) sit in the same per-chain row as sells: tokens sold at the origin
+pool's state before the sale versus what reached the user, relay = quote
+the pool paid out − app fee − received. Uniswap v4's Swap event carries
+the swapper's deltas (positive = received), v3's the pool's (positive =
+paid in); both are normalised in `parseSwapEv`. Public RPCs:
+Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
+publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
+`rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
+
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
 from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
 from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap
