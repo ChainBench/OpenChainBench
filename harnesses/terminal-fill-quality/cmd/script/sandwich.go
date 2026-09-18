@@ -199,11 +199,21 @@ func detectSandwich(ctx context.Context, rpc *rpcClient, sw *Swap, cache *blockC
 			if b.idx < mine || b.signer != f.signer || (b.dTok < 0) == (f.dTok < 0) {
 				continue
 			}
+			// The back-run closes the front-run: comparable token amounts
+			// (a market maker quoting both sides at unrelated sizes is not a
+			// sandwich) and a positive take.
+			ratio := math.Abs(b.dTok) / math.Abs(f.dTok)
+			if ratio < 0.5 || ratio > 2 {
+				continue
+			}
 			// Attacker paid |f.dQuote| (pool received it) on the front-run and
 			// received |b.dQuote| (pool paid it) on the back-run.
 			profit := math.Abs(b.dQuote) - math.Abs(f.dQuote)
 			if sw.Side == "sell" {
 				profit = math.Abs(f.dQuote) - math.Abs(b.dQuote) // front-run sold, back-run bought back
+			}
+			if profit <= 0 {
+				continue
 			}
 			trade := sw.TradeUSD / sw.QuoteUSD
 			s := &Sandwich{Attacker: f.signer, FrontSig: first(txs[f.idx].Signatures), BackSig: first(txs[b.idx].Signatures), ProfitQ: profit}
