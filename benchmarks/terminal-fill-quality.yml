@@ -49,9 +49,9 @@ abstract: |
 methodology:
   - "Sampling: newest successful transactions on each terminal's fee wallets (Axiom 20, GMGN 9, Trojan 6, BullX 2, Maestro 2, FOMO / Photon / Bloom / Pepeboost 1; BasedBot via its own program), 4 per terminal per 90 s tick, rolling 24 h. Wallet-funding transfers and fee sweeps are excluded (no user token leg)."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, rent for new token accounts and the tx fee excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets."
-  - "network_q = tx fee if the user paid it + Jito tips; other_q = user_q, minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts, hop costs), only when the pool leg is visible."
+  - "network_q = tx fee if the user paid it + tips to Jito, 0slot, bloXroute and Nozomi tip accounts (other tip services land in other); other_q = user_q minus pool_q, terminal_q and network_q (pump.fun protocol and creator fees, referral payouts), single-pool routes only. Rent of token accounts created or closed in the transaction is excluded."
   - "Reference price: effective price of the previous trade on the same pool (|Δquote| / |Δtoken| over the pool's own accounts in the preceding transaction on the pool's token vault); Jupiter price API right after the sample when none is readable within 30 minutes (ref_src flags each sample)."
-  - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = the part the pool kept versus that reference (LP fee + price impact). Median over priced samples; p90 shown."
+  - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = loss minus terminal, network and other: LP fee and price impact, plus hop costs on multi-pool routes. The four components sum to the loss. Median over priced samples; p90 shown."
   - "Fail rate: failed signatures over all signatures seen on the terminal's wallets in the window. A failed swap still costs the priority fee."
   - "Why not the vault ratio as the mid: PumpSwap's vault balances do not follow x·y = k against the executed price (8 to 50 % off, not constant), so the previous print is the only pre-trade reference that holds on every venue."
   - "Not measured: sandwiches (the front-run is in the same slot before our transaction and already in the arrival price; needs block-level analysis), cross-chain trades (FOMO via Relay), perps."
@@ -106,7 +106,7 @@ metric_panels:
     metric: tfq_component_bps{component="pool"}
     unit: bps
     higher_is_better: false
-    description: "Median part the pool kept versus the arrival price: LP fee plus price impact."
+    description: "Median of loss minus terminal, network and other: LP fee and price impact, plus hop costs on multi-pool routes."
   - id: other
     label: Other fees
     label_key: terminal

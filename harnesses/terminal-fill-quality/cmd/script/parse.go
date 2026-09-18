@@ -53,6 +53,10 @@ type Swap struct {
 	NetworkQ  float64  `json:"network_q"`
 	OtherQ    *float64 `json:"other_q,omitempty"`
 	QuoteUSD  float64  `json:"quote_usd"` // quote unit price used for sizing
+	// Quote received by accounts that are neither user, pool, terminal nor
+	// tip, by pubkey (token accounts keyed by owner): what "other" is made
+	// of, aggregated per terminal for audit.
+	Others map[string]float64 `json:"others,omitempty"`
 
 	// Set by finalize: reference price of the token (quote units per
 	// token), where it came from ("pool": previous trade on the same pool,
@@ -188,6 +192,11 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 			// balance but is not part of the swap.
 			rent += float64(tx.Meta.PostBalances[i]) / 1e9
 		}
+		if e.hadPre && i < n && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
+			// A token account closed in this tx (sell everything): its rent
+			// came back to the user and is not swap proceeds.
+			rent -= float64(tx.Meta.PreBalances[i]) / 1e9
+		}
 		if e.mint == wsolMint {
 			quoteDelta["SOL"] += (e.post - e.pre) * math.Pow10(-e.dec)
 		} else if stableMints[e.mint] {
@@ -204,7 +213,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		quoteDelta["SOL"] += float64(tx.Meta.Fee) / 1e9
 	}
 	for k, v := range lam {
-		if jitoTips[k] && v > 0 {
+		if isTip(k) && v > 0 {
 			network += float64(v) / 1e9
 		}
 	}
@@ -343,16 +352,53 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	}
 	poolQ = math.Abs(poolQ)
 
+	// Everyone else who received quote: pump.fun fee recipients, creator
+	// vaults, referrals, tip services we do not know, hop pools.
+	others := map[string]float64{}
+	isUserAcct := map[int]bool{}
+	for i, e := range tok {
+		if e.owner == user {
+			isUserAcct[i] = true
+		}
+	}
+	for i := 0; i < n; i++ {
+		k := pubkeyAt(i)
+		if k == user || fee[k] || internal[k] || isTip(k) || poolOwners[k] || isUserAcct[i] {
+			continue
+		}
+		if e, ok := tok[i]; ok {
+			if poolOwners[e.owner] || fee[e.owner] || internal[e.owner] {
+				continue
+			}
+			d := (e.post - e.pre) * math.Pow10(-e.dec)
+			if d > 0 {
+				if e.mint == wsolMint {
+					others[e.owner] += toQuote("SOL", d)
+				} else if stableMints[e.mint] {
+					others[e.owner] += toQuote(quoteName(e.mint), d)
+				}
+			}
+			continue
+		}
+		if v := lam[k]; v > 0 {
+			others[k] += toQuote("SOL", float64(v)/1e9)
+		}
+	}
+
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Sig: sig, Terminal: t.Slug, Slot: tx.Slot, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
 		PoolVault: poolVault, PoolOwner: poolOwner,
 		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
+		Others: others,
 	}
 	if tx.BlockTime != nil {
 		s.Time = *tx.BlockTime
 	}
-	if poolQ > 0 {
+	// "other" is known on single-venue routes (one pool, no hop): what the
+	// user paid minus pool, terminal and network. On multi-hop routes the
+	// hop pools hide it; it stays inside the derived pool figure.
+	if poolQ > 0 && venue != "multi" && len(poolOwners) == 1 {
 		var o float64
 		if side == "buy" {
 			o = s.UserQ - poolQ - terminalQ - networkQ
@@ -382,23 +428,17 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	s.LossBps, s.PoolBps, s.RefPrice, s.RefAgeS, s.RefSrc = nil, nil, nil, nil, ""
 	if ref != nil && *ref > 0 && s.QuoteUSD > 0 {
 		value := s.Tokens * *ref // token leg in quote units
-		var loss, pool float64
+		var loss float64
 		switch s.Side {
 		case "buy":
 			trade = s.UserQ
 			if trade > 0 {
 				loss = 1e4 * (1 - value/trade)
-				if s.PoolQ > 0 {
-					pool = 1e4 * (1 - value/s.PoolQ)
-				}
 			}
 		case "sell":
 			trade = value
 			if trade > 0 {
 				loss = 1e4 * (1 - s.UserQ/trade)
-				if s.PoolQ > 0 {
-					pool = 1e4 * (1 - s.PoolQ/trade)
-				}
 			}
 		}
 		if trade > 0 {
@@ -407,9 +447,15 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 			s.RefSrc = src
 			s.RefAgeS = &refAge
 			s.LossBps = &loss
-			if s.PoolQ > 0 {
-				s.PoolBps = &pool
+			// Pool = what is left once the explicit costs are out: LP fee,
+			// price impact, and on multi-hop routes the hop costs. The four
+			// components always sum to the loss.
+			other := 0.0
+			if s.OtherQ != nil {
+				other = *s.OtherQ
 			}
+			pool := loss - 1e4*(s.TerminalQ+s.NetworkQ+other)/trade
+			s.PoolBps = &pool
 		}
 	}
 	if !s.Priced {
