@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
-import { TerminalFillSwaps } from "@/components/terminal-fill-swaps";
 import {
   fmtBps,
   getTerminalFills,
@@ -164,14 +163,12 @@ export async function TerminalFillSection({
         </div>
       )}
 
-      <details className="mb-6 group">
-        <summary className="cursor-pointer text-[11px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink select-none">
-          Sampled swaps · {focus ? f.recent.filter((s) => s.terminal === focus).length : f.recent.length} most recent, one transaction per row
-        </summary>
-        <div className="mt-3">
-          <TerminalFillSwaps swaps={focus ? f.recent.filter((s) => s.terminal === focus) : f.recent} terminals={f.terminals.map((t) => ({ slug: t.slug, name: t.name }))} focus={focus} />
-        </div>
-      </details>
+      <p className="mb-6 text-[12px]">
+        <Link href="/benchmarks/terminal-fill-quality#swaps" className="underline underline-offset-2 hover:no-underline font-medium">
+          Audit the sampled swaps
+        </Link>
+        <span className="text-ink-faint"> · the {f.recent.length} most recent transactions{focus ? ` (${f.recent.filter((s) => s.terminal === focus).length} on ${me?.name})` : ""}, one per row with its Solscan link, loss and cost split, on the bench page</span>
+      </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
         Real user swaps read on-chain from each terminal&apos;s fee-wallet feed (300 drawn at random per terminal per day, every attempt

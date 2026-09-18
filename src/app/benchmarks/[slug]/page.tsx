@@ -9,6 +9,7 @@ import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
 import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
+import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
@@ -767,6 +768,11 @@ export default async function BenchmarkPage({
           which source pair drives each row so a tweet like "Chainlink
           SOL is 0.8% off Binance" maps to a visible cell on the page. */}
       {!isDraft && benchmark.slug === "oracle-deviation" && <OraclePairMatrix />}
+
+      {/* Bench 268: the sampled swaps behind the ledger, one real
+          transaction per row with its Solscan link, so every figure can
+          be checked on-chain. */}
+      {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"
