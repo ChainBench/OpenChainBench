@@ -8,7 +8,7 @@ methodologically comparable.
 
 | Bench | Measures | How |
 |---|---|---|
-| Keyed RPC latency | `eth_getBlockByNumber(latest)` (EVM) / `getSlot` (Solana) round-trip p50/p90/p99 per provider per chain | Probe every 60 s per region, rotating request id (anti-cache), gauge + histogram with `tier="keyed"` |
+| Keyed RPC latency | `eth_getBlockByNumber(latest)` (EVM) / `getSlot` (Solana) round-trip p50/p90/p99 per provider per chain | Probe every 120 s per region (RPC_KEYED_PROBE_SECONDS, default 60), rotating request id (anti-cache), gauge + histogram with `tier="keyed"` |
 
 ## Env contract
 
