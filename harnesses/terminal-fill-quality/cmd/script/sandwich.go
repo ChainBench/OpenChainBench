@@ -63,6 +63,8 @@ func poolLeg(tx *parsedTx, sw *Swap, solUSD float64) (dTok, dQuote float64) {
 			dQuote += toQuote("SOL", d)
 		case stableMints[b.Mint]:
 			dQuote += toQuote(quoteName(b.Mint), d)
+		case sw.XMint != "" && b.Mint == sw.XMint:
+			dQuote += d * sw.XRate
 		}
 	}
 	if sw.Venue == "pump-curve" {

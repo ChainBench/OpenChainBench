@@ -52,6 +52,12 @@ type Swap struct {
 	// of the curve account). Zero otherwise.
 	PoolBasePre  float64 `json:"pool_base_pre,omitempty"`
 	PoolQuotePre float64 `json:"pool_quote_pre,omitempty"`
+	// Multi-hop routes whose final pool is quoted in a third asset (FOMO
+	// routes USDC → NEAR / INJ / USO → token): the asset and its rate in
+	// quote units, read from the route's own first hop in the same
+	// transaction (quote paid into the hop pools / X they paid out).
+	XMint string  `json:"x_mint,omitempty"`
+	XRate float64 `json:"x_rate,omitempty"` // quote units per X
 
 	UserQ     float64  `json:"user_q"`
 	PoolQ     float64  `json:"pool_q"`
@@ -377,6 +383,67 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 		}
 	}
 	poolQ = math.Abs(poolQ)
+	// No quote leg on the final pool: look for a third asset X that moved
+	// against the token there, and price X from the hop pools of this
+	// same transaction (quote in, X out).
+	xMint, xRate := "", 0.0
+	if poolQ == 0 {
+		xIn := map[string]float64{} // X delta on the final pool(s), by mint
+		for _, e := range tok {
+			if !poolOwners[e.owner] || e.mint == best.mint || isQuoteMint(e.mint) {
+				continue
+			}
+			d := (e.post - e.pre) * math.Pow10(-e.dec)
+			// The pool's other side moves like the user's token leg: on a
+			// buy the pool gives tokens and takes X.
+			if d != 0 && (d > 0) == (best.delta > 0) {
+				xIn[e.mint] += d
+			}
+		}
+		for m, d := range xIn {
+			if math.Abs(d) > math.Abs(xIn[xMint]) || xMint == "" {
+				xMint = m
+			}
+		}
+		if xMint != "" {
+			// Hop pools: owners that are not the user, the terminal, a tip or
+			// the final pool, and that moved X against quote.
+			qIn, xOut := 0.0, 0.0
+			byOwner := map[string]*struct{ q, x float64 }{}
+			for _, e := range tok {
+				if e.owner == user || fee[e.owner] || internal[e.owner] || poolOwners[e.owner] || isTip(e.owner) {
+					continue
+				}
+				d := (e.post - e.pre) * math.Pow10(-e.dec)
+				h := byOwner[e.owner]
+				if h == nil {
+					h = &struct{ q, x float64 }{}
+					byOwner[e.owner] = h
+				}
+				switch {
+				case e.mint == xMint:
+					h.x += d
+				case e.mint == wsolMint:
+					h.q += toQuote("SOL", d)
+				case stableMints[e.mint]:
+					h.q += toQuote(quoteName(e.mint), d)
+				}
+			}
+			for _, h := range byOwner {
+				// A hop pool takes quote and gives X on a buy; the reverse on a sell.
+				if (side == "buy" && h.q > 0 && h.x < 0) || (side == "sell" && h.q < 0 && h.x > 0) {
+					qIn += math.Abs(h.q)
+					xOut += math.Abs(h.x)
+				}
+			}
+			if qIn > 0 && xOut > 0 {
+				xRate = qIn / xOut
+				poolQ = math.Abs(xIn[xMint]) * xRate
+			} else {
+				xMint = ""
+			}
+		}
+	}
 	// Single constant-product pool: keep its pre-trade balances so the
 	// exact mid can be computed (see reservePrice).
 	singleCP := len(poolOwners) == 1 && baseAccounts == 1 && quoteAccounts == 1 && len(venues) == 1 && venuePrograms[venueProgram(venues[0])].cp
@@ -420,7 +487,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64) (*Swap, par
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Sig: sig, Terminal: t.Slug, Slot: tx.Slot, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
-		PoolVault: poolVault, PoolOwner: poolOwner, PoolBasePre: basePre, PoolQuotePre: quotePre,
+		PoolVault: poolVault, PoolOwner: poolOwner, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
 		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
 		Others: others,
 	}
@@ -516,7 +583,7 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 // another transaction: |Δquote| / |Δtoken| over the pool's own accounts,
 // in the given quote unit (pool quote converted through SOL/USD when it
 // differs). Zero when the transaction did not move both legs of that pool.
-func poolTradePrice(tx *parsedTx, poolOwner, mint, quote string, quoteUSD, solUSD float64, curve bool) float64 {
+func poolTradePrice(tx *parsedTx, poolOwner, mint, quote string, quoteUSD, solUSD float64, curve bool, xMint string, xRate float64) float64 {
 	toQuote := func(asset string, amount float64) float64 {
 		switch {
 		case asset == quote:
@@ -553,6 +620,8 @@ func poolTradePrice(tx *parsedTx, poolOwner, mint, quote string, quoteUSD, solUS
 			dQuote += toQuote("SOL", d)
 		case stableMints[b.Mint]:
 			dQuote += toQuote(quoteName(b.Mint), d)
+		case xMint != "" && b.Mint == xMint:
+			dQuote += d * xRate
 		}
 	}
 	if curve {

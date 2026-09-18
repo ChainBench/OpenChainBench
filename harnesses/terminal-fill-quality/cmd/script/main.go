@@ -407,7 +407,7 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 						if sw.Priced {
 							break // only the immediate neighbour is needed for the screen
 						}
-						if p := poolTradePrice(ptx, sw.PoolOwner, sw.Mint, sw.Quote, sw.QuoteUSD, solUSD, sw.Venue == "pump-curve"); p > 0 {
+						if p := poolTradePrice(ptx, sw.PoolOwner, sw.Mint, sw.Quote, sw.QuoteUSD, solUSD, sw.Venue == "pump-curve", sw.XMint, sw.XRate); p > 0 {
 							age := int64(0)
 							if ps.BlockTime != nil {
 								age = sw.Time - *ps.BlockTime
@@ -691,7 +691,7 @@ func publishGauges(stats []TerminalStats) {
 			gComponent.WithLabelValues(ts.Slug, c).Set(v)
 		}
 		if ts.FailRate != nil {
-			gFail.WithLabelValues(ts.Slug).Set(100 * *ts.FailRate)
+			gFail.WithLabelValues(ts.Slug).Set(*ts.FailRate) // already percent
 		} else {
 			gFail.DeleteLabelValues(ts.Slug)
 		}
