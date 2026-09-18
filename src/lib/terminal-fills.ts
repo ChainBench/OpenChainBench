@@ -55,6 +55,10 @@ export type FillSample = {
   priced: boolean;
   refSrc?: string;
   refAgeS?: number;
+  /** Route through a third asset (mint) priced from the route's own hop. */
+  xMint?: string;
+  scanned: boolean;
+  sandwiched: boolean;
   lossBps?: number;
   poolBps?: number;
   terminalBps: number;
@@ -153,6 +157,9 @@ function parse(raw: unknown): TerminalFills | null {
         priced: s.priced === true,
         ...(typeof s.ref_src === "string" ? { refSrc: s.ref_src } : {}),
         ...(num(s.ref_age_s) !== undefined ? { refAgeS: num(s.ref_age_s) } : {}),
+        ...(typeof s.x_mint === "string" && s.x_mint ? { xMint: s.x_mint } : {}),
+        scanned: s.scanned === true,
+        sandwiched: isRecord(s.sandwich),
         ...(num(s.loss_bps) !== undefined ? { lossBps: num(s.loss_bps) } : {}),
         ...(num(s.pool_bps) !== undefined ? { poolBps: num(s.pool_bps) } : {}),
         terminalBps: num(s.terminal_bps) ?? 0,

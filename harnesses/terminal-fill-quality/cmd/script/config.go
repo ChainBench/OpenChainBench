@@ -57,6 +57,11 @@ var terminals = []Terminal{
 		"8r2hZoDfk5hDWJ1sDujAi2Qr45ZyZw5EQxAXiMZWLKh2", "Cj297UauzMX64FU9dKJZRUBWszJ7tEWpVheasq4CfATV", "HKMh8nV3ysSofRi23LsfVGLGQKB415QAEfZT96kCcVj4",
 	}},
 	{Slug: "nova", Name: "Nova", Kind: "bot", Wallets: []string{"noVaE91mUL5jTb8e9Vf6dqJdNPzJpEQ3uAdnQ8h4nVz"}},
+	// pump.fun's own mobile app: its swaps invoke the app program in the
+	// same transaction (DeFiLlama's pumpfun-app adapter attributes on it);
+	// no app fee wallet, the app charges nothing on top of pump.fun's fees.
+	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
+		Note: "pump.fun's mobile app takes no fee of its own; the terminal column is zero by construction and pump.fun's protocol and creator fees sit in other."},
 	{Slug: "photon", Name: "Photon", Kind: "app", Wallets: []string{"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH"}},
 	{Slug: "trojan", Name: "Trojan", Kind: "bot", Wallets: []string{
 		"92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH", "2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ", "65gDv7pZQCZELsNpNYSFEBtNFpWZAbxmRFB6BGMqFkHH",
