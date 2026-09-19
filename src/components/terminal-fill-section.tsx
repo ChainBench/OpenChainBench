@@ -40,7 +40,6 @@ export async function TerminalFillSection({
   if (focus && !me) return null;
   const meRank = me && me.ranked && me.loss ? ranked.findIndex((t) => t.slug === me.slug) + 1 : null;
   const rows = compact ? ordered.slice(0, 8) : ordered;
-  const maxBps = Math.max(1, ...ordered.map((t) => stackTotal(t)));
   const cheapest = ranked[0];
   const priciest = ranked[ranked.length - 1];
   const totalPriced = f.terminals.reduce((s, t) => s + t.priced, 0);
@@ -80,12 +79,15 @@ export async function TerminalFillSection({
           <thead>
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
-              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade; hover for the 95 % interval of the median">Cost per swap</Th>
-              <Th right title="90th percentile of the same">p90</Th>
-              <Th title="Median cost split: terminal fee, network (tx fee + inclusion tips), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
-              <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway">Failed swaps</Th>
               <Th right title="Median sampled trade size">Median trade</Th>
+              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, percent of the trade; hover for the basis points and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
+              <Th right title="What reached the terminal's fee wallets, basis points of the trade (median)">Terminal</Th>
+              <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
+              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay">Pool</Th>
+              <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
+              <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway">Failed</Th>
+              <Th right title="90th percentile of the value lost">p90</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
             </tr>
           </thead>
@@ -121,18 +123,19 @@ export async function TerminalFillSection({
                       {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? ciText(t) : undefined}>
-                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtBps(t.loss!.median)} · ${ciText(t)}` : undefined}>
+                    {pub ? fmtPct(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtBps(t.loss!.p90) : "—"}</td>
-                  <td className="py-2.5 pr-4">
-                    <CostBar t={t} max={maxBps} />
-                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
+                  <SplitCell t={t} part="terminal" pub={pub} />
+                  <SplitCell t={t} part="network" pub={pub} />
+                  <SplitCell t={t} part="pool" pub={pub} relay />
+                  <SplitCell t={t} part="other" pub={pub} />
                   <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtPct(t.loss!.p90) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.priced}</td>
                 </tr>
               );
@@ -141,6 +144,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
+        <span className="text-ink-faint">Split columns are medians in basis points of the trade (100 bps = 1 %).</span>
         {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />
@@ -220,10 +224,6 @@ function chainText(t: TerminalFillStats): string {
     .join(" · ");
 }
 
-function stackTotal(t: TerminalFillStats): number {
-  return PARTS.reduce((s, c) => s + Math.max(0, t.components[c] ?? 0), 0);
-}
-
 /** "95 % interval 210 to 260 bps · n swaps" for a published terminal. */
 function ciText(t: TerminalFillStats): string {
   const l = t.loss;
@@ -255,27 +255,21 @@ function topReason(t: TerminalFillStats): string | undefined {
 }
 
 /** Stacked bar of the median cost components, on a shared scale. */
-function CostBar({ t, max }: { t: TerminalFillStats; max: number }) {
-  const parts = PARTS.map((c) => ({ c, v: Math.max(0, t.components[c] ?? 0) }))
-    .filter((p) => p.v > 0);
-  if (parts.length === 0) return <span className="text-ink-faint">—</span>;
-  const total = parts.reduce((s, p) => s + p.v, 0);
-  const width = Math.max(4, Math.min(100, (total / max) * 100));
-  const title = parts.map((p) => `${LABELS[p.c]}: ${fmtBps(p.v)}`).join("\n");
+/** Percent of the trade from basis points: 442 bps → "4.42 %". */
+function fmtPct(bps: number): string {
+  const sign = bps < 0 ? "−" : "";
+  return `${sign}${(Math.abs(bps) / 100).toFixed(2)} %`;
+}
+
+/** One numeric cell of the median cost split, in basis points, tinted like the bar. On a cross-chain product the pool cell carries the relay's take next to it. */
+function SplitCell({ t, part, pub, relay = false }: { t: TerminalFillStats; part: (typeof PARTS)[number]; pub: boolean; relay?: boolean }) {
+  const v = t.components[part];
+  const r = relay ? t.components.relay : undefined;
   return (
-    <span className="inline-flex items-center gap-2.5 w-full min-w-[160px]" title={title}>
-      <span className="flex h-2 overflow-hidden rounded-full bg-paper-soft" style={{ width: `${width}%`, minWidth: 12 }}>
-        {parts.map((p) => (
-          <span key={p.c} style={{ width: `${(p.v / total) * 100}%`, background: COLORS[p.c] }} />
-        ))}
-      </span>
-      <span className="text-[11px] text-ink-soft whitespace-nowrap tabular-nums">
-        {t.components.terminal !== undefined ? `fee ${Math.round(t.components.terminal)}` : ""}
-        {t.components.network !== undefined ? ` · net ${Math.round(t.components.network)}` : ""}
-        {t.components.relay !== undefined ? ` · relay ${Math.round(t.components.relay)}` : ""}
-        {t.components.pool !== undefined && !isXchain(t.slug) ? ` · pool ${Math.round(t.components.pool)}` : ""}
-      </span>
-    </span>
+    <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap" style={{ color: pub && v !== undefined ? COLORS[part] : undefined }} title={pub && v !== undefined ? `${LABELS[part]}: ${fmtBps(v)}${r !== undefined ? ` · relay ${fmtBps(r)}` : ""}` : undefined}>
+      {pub && v !== undefined ? Math.round(v) : <span className="text-ink-faint">—</span>}
+      {pub && r !== undefined ? <span className="text-ink-faint text-[10px]"> +{Math.round(r)} relay</span> : null}
+    </td>
   );
 }
 
