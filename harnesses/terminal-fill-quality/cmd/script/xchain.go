@@ -254,7 +254,8 @@ type xfeed struct {
 	answered bool                        // a poll of this round got a page from Relay (read and reset by run)
 	pending  map[string]pendingReq       // app:id -> the request as met before it was final (re-fetched by id each round)
 	funded   map[string]map[string]int64 // app -> wallet funded on another chain -> time, drained into the state each tick
-	newest   map[string]int64            // app:origin -> created of the newest final request counted (persisted: a restart resumes there)
+	newest   map[string]int64            // app:origin -> created of the newest final request counted (persisted for the next instance)
+	resume   map[string]int64            // the previous instance's newest, read only: the first walk stops there (never the live map, which the walk itself advances)
 }
 
 // pendingReq: a request met on the feed before it was final; re-read by id
@@ -274,11 +275,11 @@ type xinbox struct {
 }
 
 func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
-	n := map[string]int64{}
+	n, r := map[string]int64{}, map[string]int64{}
 	for k, v := range newest {
-		n[k] = v
+		n[k], r[k] = v, v
 	}
-	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n}
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n, resume: r}
 }
 
 // xchainRows: every bench row the cross-chain apps can produce.
@@ -468,8 +469,8 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				}
 				f.mu.Lock()
 				_, known := f.seen[key]
-				if !known && created > 0 && created <= f.newest[a.Slug+":"+c.slug] {
-					known = true // counted by the previous instance (the state carries the newest created)
+				if !known && created > 0 && created <= f.resume[a.Slug+":"+c.slug] {
+					known = true // counted by the previous instance (the state carries its newest created)
 				}
 				f.mu.Unlock()
 				if known {
