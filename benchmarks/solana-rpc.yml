@@ -28,6 +28,11 @@ methodology:
   - "LeoRPC disclosure: the endpoint uses a publicly documented FREE query key (solana.leorpc.com/?api_key=FREE). It is admitted as keyless in practice since no signup is required; flagged here for transparency."
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
 
+excluded_providers:
+  - { name: dRPC, reason: "Solana moved to paid tiers, no keyless endpoint" }
+  - { name: Ankr, reason: "returns 403 without an API key" }
+  - { name: OnFinality, reason: "shared public quota permanently exhausted" }
+
 faq:
   - q: "Which Solana RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."

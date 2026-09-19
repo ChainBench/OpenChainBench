@@ -150,6 +150,7 @@ export function buildEditorial(
     seoIntro: spec.seo_intro,
     disclaimer: spec.disclaimer,
     faq: spec.faq,
+    excludedProviders: spec.excluded_providers,
     perChainExplainer: spec.per_chain_explainer,
     subtitle: spec.subtitle,
     category: spec.category,

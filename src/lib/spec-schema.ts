@@ -258,6 +258,21 @@ export const SpecSchema = z
     /** Optional FAQ section. Each pair generates a FAQPage JSON-LD entry +
      *  a visible block on the page. Capped at 12 entries to keep the page
      *  reasonable. */
+    /** Providers audited and NOT listed, with the reason (key-gated,
+     *  paid tier, region-blocked, delisted for reliability). Answers the
+     *  "<chain> rpc provider" searcher who expects a name the table does
+     *  not show. Names and reason codes only: a URL here is refused, so a
+     *  keyed endpoint can never ride in through this field. */
+    excluded_providers: z
+      .array(
+        z.object({
+          name: z.string().min(1).max(60).refine((v) => !/:\/\//.test(v), "excluded_providers.name: no URL"),
+          reason: seoText(3, 160).refine((v) => !/:\/\/|api[_-]?key=/i.test(v), "excluded_providers.reason: no URL, no key"),
+          since: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/).optional(),
+        }),
+      )
+      .max(20)
+      .optional(),
     faq: z
       .array(
         z.object({

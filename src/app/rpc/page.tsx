@@ -254,11 +254,7 @@ export default async function RpcHubPage() {
             <ul className="mt-3 flex flex-wrap gap-2 text-[12px]">
               {rpcSpecs.map((s) => (
                 <li key={s.slug}>
-                  <Link
-                    href={`/benchmarks/${s.slug}`}
-                    className="inline-flex rounded-full border border-ink/15 px-2.5 py-0.5 text-ink-soft hover:text-ink hover:border-ink/30"
-                    title={`${chainLabelOf(s)} RPC endpoints`}
-                  >
+                  <Link href={`/benchmarks/${s.slug}`} className="pill-lnk">
                     {chainLabelOf(s)}
                     <span className="sr-only"> RPC endpoints</span>
                   </Link>

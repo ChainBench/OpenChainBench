@@ -40,6 +40,6 @@ related:
   - which-perp-dex-has-the-lowest-fees
   - prediction-market-api-for-developers
 
-seo_title: "Which prediction market API has the strictest rate limits in 2026?"
+seo_title: "Which prediction market API has the strictest rate limits?"
 seo_description: "Myriad has the strictest documented rate limit in the cohort (30 req/10s). Polymarket queues via Cloudflare, Kalshi uses a token bucket per tier. Live throttle ramp and warm-book latency for all five venues at OpenChainBench."
 status: live

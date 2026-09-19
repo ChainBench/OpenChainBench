@@ -33,6 +33,6 @@ related:
   - cheapest-bridge-usdc-to-base
   - which-bridge-has-the-fastest-quote-api
 
-seo_title: "How much does it cost to bridge USDC to Arbitrum? Live all in fees"
+seo_title: "How much does it cost to bridge USDC to Arbitrum? Live fees"
 seo_description: "Bridging $300 of USDC costs from {{best_p50}} to {{worst_p50}} all in (p50, 24h) depending on provider. deBridge, LI.FI, Mobula, Relay, Across and Near Intents measured live by OpenChainBench."
 status: live

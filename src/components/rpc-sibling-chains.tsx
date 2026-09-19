@@ -37,11 +37,7 @@ export async function RpcSiblingChains({ currentSlug }: { currentSlug: string })
       <ul className="mt-3 flex flex-wrap gap-1.5 text-[12px]">
         {siblings.map((s) => (
           <li key={s.slug}>
-            <Link
-              href={`/benchmarks/${s.slug}`}
-              className="inline-flex rounded-full border border-ink/15 px-2.5 py-0.5 text-ink-soft hover:text-ink hover:border-ink/30"
-              title={`${s.label} RPC endpoints`}
-            >
+            <Link href={`/benchmarks/${s.slug}`} className="pill-lnk">
               {s.label}
               <span className="sr-only"> RPC endpoints</span>
             </Link>
