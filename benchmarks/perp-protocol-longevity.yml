@@ -68,7 +68,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads the security longevity leaderboard at {{best_p50}} days without a recorded exploit (24h live counter)."
-  - "{{name:gains}} has operated since {{gains_launch}} with no recorded exploit in rekt.news or public post-mortems as of the registry date. The synthetic architecture (no custodial vault holding user funds outright, no privileged admin key) removes the most common attack surfaces."
+  - "{{name:gains}} has operated since November 2021 (gTrade on Polygon) with no recorded exploit in rekt.news or public post-mortems as of the registry date. The synthetic architecture (no custodial vault holding user funds outright, no privileged admin key) removes the most common attack surfaces."
   - "{{name:gmx}} clocks {{p50:gmx}} days since its July 2025 reentrancy exploit (estimated USD 42 million). The incident involved a reentrancy in the vault and order-flow logic in GMX v2. The streak counter restarts from the incident date."
   - "{{name:hyperliquid}}, {{name:dydx}}, {{name:lighter}} and {{name:paradex}} have no recorded protocol exploits. Their clean streaks start from their respective launch dates."
   - "The perp_protocol_incident_amount_usd gauge shows cumulative confirmed losses per venue, allowing a risk-adjusted comparison alongside the day counter."
