@@ -185,6 +185,7 @@ type State struct {
 	Learned     map[string]*Learned         `json:"learned,omitempty"`      // terminal -> fee wallets / routers learned from the chain (discover.go)
 	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
+	Resampling  map[string]int64            `json:"resampling,omitempty"`   // slug -> unix time its rows were purged (the entry says it is re-sampling while its window refills)
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -314,7 +315,7 @@ func main() {
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
 	dailyTarget := envInt("DAILY_TARGET", 400) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
-	evmDailyTarget := envInt("EVM_DAILY_TARGET", dailyTarget) // the Relay and native EVM rows: their own rate (one chain each)
+	evmDailyTarget := envInt("EVM_DAILY_TARGET", 1000) // the Relay and native EVM rows: their own rate (one chain each)
 	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
 	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
@@ -1336,6 +1337,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
 			ts.Healthy = true
 		}
+		if t0, ok := st.Resampling[t.Slug]; ok && !ts.Healthy {
+			ts.Note = strings.TrimSpace(ts.Note + " Re-sampling since " + time.Unix(t0, 0).UTC().Format("15:04 UTC") + " after a method change: the figure returns when the window refills.")
+		}
 		// A native EVM row whose sample is one side only with no fee on it
 		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
 		// the fee sits on the side the feed never sees, the row waits.
@@ -1378,7 +1382,17 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		if waits {
 			ts.Healthy, ts.Ranked = false, false
-			ts.Note = strings.TrimSpace(ts.Note + " No chain row of this product is published on its own yet: the pooled figure waits.")
+			re := false
+			for _, s := range rows {
+				if _, ok := st.Resampling[s]; ok {
+					re = true
+				}
+			}
+			if re {
+				ts.Note = strings.TrimSpace(ts.Note + " Re-sampling after a method change: the figure returns when the window refills.")
+			} else {
+				ts.Note = strings.TrimSpace(ts.Note + " No chain row of this product is published on its own yet: the pooled figure waits.")
+			}
 		}
 		if len(byProduct[p]) == 1 {
 			// One chain only: the pooled entry is that row, published at the
@@ -2169,6 +2183,10 @@ func loadState(path string) *State {
 	purgeSlugs := set(strings.Split(os.Getenv("PURGE_TERMINALS"), ",")...)
 	kept := st.Swaps[:0]
 	dropped, purged := 0, 0
+	if st.Resampling == nil {
+		st.Resampling = map[string]int64{}
+	}
+	now := time.Now().Unix()
 	for _, s := range st.Swaps {
 		if s.Method != methodVersion {
 			dropped++
@@ -2176,9 +2194,15 @@ func loadState(path string) *State {
 		}
 		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] {
 			purged++
+			st.Resampling[s.Terminal] = now
 			continue
 		}
 		kept = append(kept, s)
+	}
+	for slug, t := range st.Resampling {
+		if now-t > 24*3600 {
+			delete(st.Resampling, slug)
+		}
 	}
 	st.Swaps = kept
 	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
