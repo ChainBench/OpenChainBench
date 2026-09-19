@@ -294,7 +294,9 @@ contracts on those chains (the funded wallets are plain EOAs, a few with an EIP-
 delegation to `0xe6cae83b…` or `0x69007702…`): they all trade through the
 chain's shared router `0x7ab338…` (sell contract `0xe33e9e…`), read as the
 `basedbot-robinhood` row filtered on the funded set (`FromSet`, seeded from
-Relay's history at start); the
+Relay's history at start), and the same router family on BNB (`0xeada78…`),
+Base (`0xbce806…`) and Ethereum (`0xf92807…`) as `basedbot-bnb`, `-base`,
+`-ethereum`; HyperEVM deliveries are valued at Hyperliquid's HYPE mid; the
 Solana wallets it funds swap through Jupiter and pump.fun with no
 recurring fee recipient (11 wallets, 69 swaps). A taxed token that swaps its own
 tax on the same pool inside the user's transaction is not the user's
