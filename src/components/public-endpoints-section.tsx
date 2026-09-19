@@ -20,13 +20,11 @@ import { canonicalize } from "@/lib/providers";
 import type { Benchmark } from "@/types/benchmark";
 
 export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
+  // Only endpoints with a live 24h measurement: a URL we cannot vouch for
+  // today (provider down, unresponsive, no samples) is not listed.
   const rows = benchmark.results
-    .filter((r) => r.endpoint && !r.unrankedLabel)
-    .sort((a, b) => {
-      const av = a.ms.p50 > 0 ? a.ms.p50 : Number.POSITIVE_INFINITY;
-      const bv = b.ms.p50 > 0 ? b.ms.p50 : Number.POSITIVE_INFINITY;
-      return benchmark.higherIsBetter ? bv - av : av - bv;
-    });
+    .filter((r) => r.endpoint && !r.unrankedLabel && !r.unresponsive && r.availability !== "unavailable" && r.ms.p50 > 0)
+    .sort((a, b) => (benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50));
   if (rows.length < 2) return null;
 
   // "Ethereum RPC" from "Fastest free Ethereum RPC, live no-key ..." is not
@@ -45,15 +43,14 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
         {heading}
       </h2>
       <p className="mt-2 text-sm text-ink-soft leading-snug">
-        The {rows.length} no-key endpoints this page probes, with their current
-        24h median. Paste one into a wallet or a client as is: no signup, no
+        The {rows.length} no-key endpoints answering our probes today, with
+        their current 24h median. Paste one into a wallet or a client as is: no signup, no
         key. Providers that need an API key are compared on the keyed pages
         and are never listed with a URL.
       </p>
       <ul className="mt-4 divide-y divide-rule rounded-lg border border-rule card-soft">
         {rows.map((r) => {
           const canon = canonicalize(r.slug);
-          const live = r.ms.p50 > 0;
           return (
             <li key={r.slug} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
               <span className="flex items-center gap-2 min-w-[140px]">
@@ -67,10 +64,10 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
               </code>
               <CopyButton value={r.endpoint!} label="Copy" />
               <span className="w-[72px] text-right tabular-nums text-ink-soft">
-                {live ? fmtUnit(r.ms.p50, benchmark.unit) : "no data"}
+                {fmtUnit(r.ms.p50, benchmark.unit)}
               </span>
               <span className="w-[56px] text-right tabular-nums text-ink-faint text-[12px]">
-                {live ? `${r.successRate.toFixed(1)}%` : ""}
+                {`${r.successRate.toFixed(1)}%`}
               </span>
             </li>
           );
