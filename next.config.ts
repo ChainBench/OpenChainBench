@@ -195,6 +195,10 @@ const nextConfig: NextConfig = {
       "linea",
       "scroll",
       "mantle",
+      "gnosis",
+      "sonic",
+      "solana",
+      "polkadot",
     ];
     const rpcClusterRedirects = RPC_CLUSTER_CHAINS.map((chain) => ({
       source: `/benchmarks/rpc-capabilities/${chain}`,

@@ -45,3 +45,15 @@ export function displayResults(results: ProviderResult[]): ProviderResult[] {
     (r) => (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT,
   );
 }
+
+/**
+ * The RPC thin gate, in one place. A chain RPC bench with fewer than three
+ * declared results is noindex (src/app/benchmarks/[slug]/page.tsx) and the
+ * worker keeps it out of the sitemap; hubs and the benchmarks index must not
+ * link it either (Search Console 2026-09-19: /rpc and /benchmarks linked 36
+ * such pages, crawl spent on noindex dead ends).
+ */
+export const THIN_RPC_MIN_RESULTS = 3;
+export function isThinRpcBench(b: { category: string; results?: unknown[] | null }): boolean {
+  return b.category === "RPCs" && (b.results?.length ?? 0) < THIN_RPC_MIN_RESULTS;
+}
