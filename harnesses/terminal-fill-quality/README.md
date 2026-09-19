@@ -397,7 +397,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `RPC_RPS` | `8` | pacing, calls per second |
 | `TICK_SECONDS` | `60` | sweep interval |
 | `DAILY_TARGET` | `400` | swaps read per terminal per day (random draw from the feed) |
-| `EVM_DAILY_TARGET` | `DAILY_TARGET` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs them at 1,000 so the per-chain windows fill within hours) |
+| `EVM_DAILY_TARGET` | `1000` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs them at 1,000 so the per-chain windows fill within hours) |
 | `PURGE_EVM_BEFORE` | unset | at load, drop the cross-chain and native EVM rows older than this unix time (once, after a pricing change); the variable stays in the container's env until the next deploy resets it |
 | `PURGE_TERMINALS` | unset | at load, drop every row of these slugs (comma-separated), once, after a feed or attribution change; same caveat |
 | `DISCOVER_DENY` | unset | comma-separated wallets or routers discovery must never adopt (also skipped when the state's adoptions are re-applied at start) |
