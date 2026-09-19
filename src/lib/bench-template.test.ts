@@ -62,8 +62,28 @@ describe("renderTemplate", () => {
     );
   });
 
-  test("leaves typed tokens with unknown slug untouched", () => {
-    expect(renderTemplate("{{p50:ghost}}", live)).toBe("{{p50:ghost}}");
+  test("drops the clause of a typed token whose slug has no live data", () => {
+    // The validator guarantees the slug exists in the spec; at request
+    // time a missing slug means the provider is down today.
+    expect(renderTemplate("{{p50:ghost}}", live)).toBe("");
+    expect(
+      renderTemplate(
+        "Alpha leads at {{best_p50}}; the official endpoint measures {{p50:ghost}}. Second sentence stays.",
+        live,
+      ),
+    ).toBe("Alpha leads at 100 ms. Second sentence stays.");
+    expect(
+      renderTemplate("First clause; {{p50:ghost}} is down; third clause.", live),
+    ).toBe("First clause; third clause.");
+    expect(
+      renderTemplate("Kept sentence. {{name:ghost}} answers in {{p50:ghost}}.\nNext paragraph.", live),
+    ).toBe("Kept sentence.\nNext paragraph.");
+  });
+
+  test("renders p90 and the success rate", () => {
+    expect(renderTemplate("{{p90:alpha}} / {{success:alpha}}", live)).toBe("100 ms / 100 %");
+    const flaky = bench([{ ...r("alpha", "Alpha", 100), successRate: 99.87 }]);
+    expect(renderTemplate("{{success:alpha}}", flaky)).toBe("99.9 %");
   });
 
   test("is case-insensitive on the keyword", () => {
@@ -74,9 +94,12 @@ describe("renderTemplate", () => {
     expect(renderTemplate("plain text", live)).toBe("plain text");
   });
 
-  test("leaves presets intact when there are no live providers", () => {
+  test("drops the clause quoting a preset when there are no live providers", () => {
     const empty = bench([]);
-    expect(renderTemplate("{{best_name}}", empty)).toBe("{{best_name}}");
+    expect(renderTemplate("{{best_name}}", empty)).toBe("");
+    expect(renderTemplate("Cohort of {{count}} today. {{best_name}} leads.", empty)).toBe(
+      "Cohort of 0 today.",
+    );
   });
 
   describe("chain-aware placeholders", () => {
@@ -119,16 +142,14 @@ describe("renderTemplate", () => {
       );
     });
 
-    test("leaves the placeholder untouched when the chain isn't stashed", () => {
-      expect(renderTemplate("{{best_name:chain:bnb}}", withChains())).toBe(
-        "{{best_name:chain:bnb}}",
-      );
+    test("drops the clause when the chain isn't stashed", () => {
+      expect(renderTemplate("On BNB, {{best_name:chain:bnb}} leads.", withChains())).toBe("");
     });
 
-    test("leaves chain placeholders untouched when bestPerChain is absent", () => {
+    test("drops the clause when bestPerChain is absent", () => {
       const noChain = bench([r("alpha", "Alpha", 100)]);
-      expect(renderTemplate("{{best_name:chain:solana}}", noChain)).toBe(
-        "{{best_name:chain:solana}}",
+      expect(renderTemplate("Alpha is live. {{best_name:chain:solana}} leads Solana.", noChain)).toBe(
+        "Alpha is live.",
       );
     });
 
