@@ -2,9 +2,9 @@
 
 slug: core-rpc
 number: "142"
-title: "Core Chain RPC endpoints: free public URLs ranked by latency"
-seo_title: "Core Chain RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Core Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Core Chain RPC endpoints: free public URLs by latency"
+seo_title: "Core Chain RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Core Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Core Chain EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Core Chain is a Bitcoin-aligned EVM-compatible L1 blockchain (chain 1116) using a hybrid Satoshi Plus consensus that combines Bitcoin PoW mining with delegated PoS, CORE as gas token, ~3 s block cadence, BTC staking via the Self-Custodial Bitcoin Staking protocol. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Core DAO official endpoint (rpc.coredao.org), dRPC (core.drpc.org), Thirdweb (1116.rpc.thirdweb.com), and Ankr (rpc.ankr.com/core). Excluded: Alchemy (no Core route), QuickNode (key required).
 
 abstract: |
-  Core Chain: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:core-official}}.
+  Core Chain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:core-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public Core Chain endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Core Chain-scaled staleness gap (20 blocks at Core Chain's ~3 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Core Chain-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

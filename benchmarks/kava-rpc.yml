@@ -2,9 +2,9 @@
 
 slug: kava-rpc
 number: "121"
-title: "Kava RPC endpoints: free public URLs ranked by latency"
-seo_title: "Kava RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Kava RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Kava RPC endpoints: free public URLs by latency"
+seo_title: "Kava RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Kava RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Kava EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Kava is a Cosmos SDK Layer 1 (chain 2222) with a native EVM execution layer, ~5 s block time under Tendermint BFT consensus, KAVA gas token on the EVM side, and IBC connectivity to the wider Cosmos ecosystem. The 2026-08-03 audit confirms {{count}} clean keyless providers: the Kava Labs official endpoint (evm.kava.io), dRPC (kava.drpc.org), Thirdweb (kava.rpc.thirdweb.com), PublicNode (kava-evm-rpc.publicnode.com), and Ankr (rpc.ankr.com/kava_evm). Excluded: Tenderly (no kava route), Blast API (no listing), OnFinality (rate-limited without a key), 1RPC (unknown network).
 
 abstract: |
-  Kava: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:kava-official}}.
+  Kava: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:kava-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Kava EVM endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Kava-scaled staleness gap (20 blocks at Kava's ~5 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Kava-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

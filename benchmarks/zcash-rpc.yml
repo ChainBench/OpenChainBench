@@ -2,9 +2,9 @@
 
 slug: zcash-rpc
 number: "236"
-title: "Zcash RPC endpoints: free public URLs ranked by latency"
-seo_title: "Zcash RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Zcash RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Zcash RPC endpoints: free public URLs by latency"
+seo_title: "Zcash RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Zcash RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for getblockcount against every available public Zcash endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Zcash is a proof-of-work privacy blockchain launched in October 2016; it uses the Equihash algorithm and produces one block every 75 seconds. Zcash exposes a Bitcoin-compatible JSON-RPC interface; the canonical height method is getblockcount. Public endpoints are available without an API key from Tatum ({{count}} gateways: one backed by the legacy zcashd node and one backed by the new Zebra node) and Blockchair (REST GET). zcashd reached end of life in July 2026; Zebra is now the reference Zcash full-node implementation maintained by the Zcash Foundation. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
-  Zcash: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Zcash: {{count}} free public RPC endpoints answering `getblockcount` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a block-height query against every available public Zcash endpoint that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. Tatum is probed via JSON-RPC POST (getblockcount) on {{count}} gateways: a zcashd backend and a Zebra backend behind the same provider. Blockchair is probed via REST GET of its zcash stats endpoint. The harness classifies every response (ok; http_err; jsonrpc_err; stale; timeout) with a Zcash-scaled staleness gap (4 blocks, around 5 min at 75 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Zcash-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -25,7 +25,7 @@ methodology:
   - "Payload (Tatum zcashd, Tatum Zebra): {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"getblockcount\",\"params\":[]}. Plain HTTP POST. The result is a decimal integer (block count = current height + 1)."
   - "Payload (Blockchair): GET https://api.blockchair.com/zcash/stats. Returns a JSON object with a data.best_block_height field containing the current block height."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Zcash-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=zcash. Provider coverage at launch: {{count}} endpoints (Tatum zcashd, Tatum Zebra, Blockchair)."
+  - "Chain scope: every query on this page is pinned to chain=zcash. Provider coverage today: {{count}} endpoints (Tatum zcashd, Tatum Zebra, Blockchair)."
 
 faq:
   - q: "Which Zcash RPC endpoints work without an API key?"

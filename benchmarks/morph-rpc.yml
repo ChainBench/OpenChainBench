@@ -2,9 +2,9 @@
 
 slug: morph-rpc
 number: "134"
-title: "Morph RPC endpoints: free public URLs ranked by latency"
-seo_title: "Morph RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Morph RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Morph RPC endpoints: free public URLs by latency"
+seo_title: "Morph RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Morph RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Morph EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Morph is a ZK Rollup L2 (chain 2818) combining optimistic execution with ZK proof settlement on Ethereum, ETH gas token, ~2 s block cadence, Decentralized Sequencer Network for censorship resistance. Mainnet launched late 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Morph official endpoint (rpc.morphl2.io), dRPC (morph.drpc.org), Thirdweb (2818.rpc.thirdweb.com), and Morph QuickNode public endpoint (rpc-quicknode.morph.network). Excluded: Ankr (no morph route), Alchemy (key required).
 
 abstract: |
-  Morph: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:morph-official}}.
+  Morph: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:morph-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public Morph endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Morph-scaled staleness gap (20 blocks at Morph's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Morph-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

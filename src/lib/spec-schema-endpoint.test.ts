@@ -21,6 +21,7 @@ describe("provider.endpoint accepts public URLs only", () => {
     for (const u of [
       "https://eth-mainnet.g.alchemy.com/v2/abcdefghijklmnopqrstuvwxyz",
       "https://stylish-patient.robinhood-mainnet.quiknode.pro/0123456789abcdef0123456789abcdef01234567/",
+      "https://rpc.example.com/v3/123e4567-e89b-12d3-a456-426614174000",
       "https://ethereum-mainnet.core.chainstack.com/0123456789abcdef0123456789abcdef",
       "https://go.getblock.io/0123456789abcdef0123456789abcdef",
       "https://rpc.example.com/?api_key=sk_live_123456789012",

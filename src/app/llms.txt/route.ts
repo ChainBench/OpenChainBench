@@ -1,4 +1,5 @@
 import { getBenchmarks } from "@/data/benchmarks";
+import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { groundingTraceLine } from "@/lib/citation";
@@ -57,7 +58,9 @@ export async function GET() {
   // RPC per-chain benches (142 entries) are compressed into a single section below
   // to avoid truncation before the high-value content.
   const nonRpc = benches.filter((b) => b.category !== "RPCs");
-  const rpc = benches.filter((b) => b.category === "RPCs");
+  // Same gate as the sitemap: thin or expired chain pages are noindex and
+  // must not be handed to a model as citable.
+  const rpc = benches.filter((b) => b.category === "RPCs" && !isThinRpcBench(b) && !isExpiredRpcPage(b));
 
   for (const b of nonRpc) {
     lines.push(`### ${b.title}`);

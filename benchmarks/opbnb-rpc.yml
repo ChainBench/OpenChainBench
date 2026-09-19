@@ -2,9 +2,9 @@
 
 slug: opbnb-rpc
 number: "100"
-title: "opBNB RPC endpoints: free public URLs ranked by latency"
-seo_title: "opBNB RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free opBNB RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "opBNB RPC endpoints: free public URLs by latency"
+seo_title: "opBNB RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free opBNB RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public opBNB EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,14 +17,14 @@ seo_intro: |
   opBNB is the OP Stack rollup (chain 204) operated by the BNB Chain team, with BNB gas and settlement onto BNB Chain (not Ethereum). Standard EVM JSON-RPC. Excluded by the launch audit: NodeReal (`opbnb-mainnet.nodereal.io` requires API key), BlockPI (`unknown host`), Grove/Pocket public LB (needs app id), Tatum (404). Every provider live-verified with 4 consecutive keyless probes at launch.
 
 abstract: |
-  opBNB: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:opbnb-official}}.
+  opBNB: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:opbnb-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public opBNB endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a opBNB-scaled staleness gap (25 blocks at opBNB's ~1 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the opBNB-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the opBNB-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to `chain=\"opbnb\"`. Provider coverage at launch: {{count}} no-key endpoints (BNB Chain Team, PublicNode, dRPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"opbnb\"`. Provider coverage today: {{count}} no-key endpoints."
 
 faq:
   - q: "Which opBNB RPCs work without an API key?"

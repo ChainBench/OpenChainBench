@@ -2,8 +2,8 @@
 
 slug: blast-rpc
 number: "060"
-title: "Blast RPC endpoints: free public URLs ranked by latency"
-seo_title: "Blast RPC endpoints: free public URLs ranked by latency"
+title: "Blast RPC endpoints: free public URLs by latency"
+seo_title: "Blast RPC endpoints: free public URLs by latency"
 seo_description: "{{count}} free public Blast RPC endpoints ranked by eth_getBlockByNumber p50 (24h, 3 regions). {{best_name}} measures {{best_p50}}; read the co-location note before comparing."
 disclaimer: "The chain-official rpc.blast.io figure on this page reflects GCP co-location with our three probes, not a typical client path. Compare the gateways on the per-region tabs before choosing a primary."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Blast RPC endpoint, audited every 60 seconds from 3 regions.

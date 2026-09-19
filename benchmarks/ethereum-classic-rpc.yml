@@ -2,8 +2,8 @@
 
 slug: ethereum-classic-rpc
 number: "194"
-title: "Ethereum Classic RPC endpoints: free public URLs ranked by latency"
-seo_title: "Ethereum Classic RPC endpoints: free public URLs ranked by latency"
+title: "Ethereum Classic RPC endpoints: free public URLs by latency"
+seo_title: "Ethereum Classic RPC endpoints: free public URLs by latency"
 seo_description: "{{best_name}} leads free Ethereum Classic RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum Classic EVM endpoint, audited every 60 seconds from 3 regions.
 

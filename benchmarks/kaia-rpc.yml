@@ -2,8 +2,8 @@
 
 slug: kaia-rpc
 number: "098"
-title: "Kaia RPC endpoints: free public URLs ranked by latency"
-seo_title: "Kaia RPC endpoints: free public URLs ranked by latency"
+title: "Kaia RPC endpoints: free public URLs by latency"
+seo_title: "Kaia RPC endpoints: free public URLs by latency"
 seo_description: "{{best_name}} leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Kaia EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -17,7 +17,7 @@ seo_intro: |
   Kaia is the EVM L1 formed by the Klaytn + Finschia merger in Aug 2024, with Istanbul BFT consensus, KAIA gas token, and dominant footprint in Korea + Japan through LINE and Kakao integrations. Standard EVM JSON-RPC. Excluded: dRPC (500 paid plan only), BlockPI (`kaia.blockpi.network` returned `Apikey not found`), Nodies (`klaytn-pokt.nodies.app` requires paid subscription), Alchemy public (`KAIA_MAINNET not enabled for this app` on public tier), AllThatNode + OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key required). Every provider live-verified with 4 consecutive keyless probes at launch.
 
 abstract: |
-  Kaia: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:kaia-official}}.
+  Kaia: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:kaia-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against the no-key public Kaia endpoint that sustains continuous probing ({{count}} provider: Kaia Foundation official), every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Kaia-scaled staleness gap (25 blocks at Kaia's ~1 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Kaia-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

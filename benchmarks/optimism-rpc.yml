@@ -2,9 +2,9 @@
 
 slug: optimism-rpc
 number: "047"
-title: "Optimism RPC endpoints: free public URLs ranked by latency"
-seo_title: "Optimism RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Optimism RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Optimism RPC endpoints: free public URLs by latency"
+seo_title: "Optimism RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Optimism RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Optimism RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Optimism pits the Foundation's `mainnet.optimism.io` against {{count}} multi-chain no-key gateways. As on Arbitrum, the official endpoint is documented best-effort, and the measured tail confirms it, while the gateway tier (PublicNode, dRPC, Tenderly, Nodies) competes on tighter distributions. Probes run every 60 seconds from three regions with full response classification, so an endpoint stuck on an old head is flagged `stale` rather than ranked fast.
+  Optimism pits the Foundation's `mainnet.optimism.io` against {{count}} multi-chain no-key gateways. As on Arbitrum, the official endpoint is documented best-effort, and the measured tail confirms it, while the gateway tier competes on tighter distributions. Probes run every 60 seconds from three regions with full response classification, so an endpoint stuck on an old head is flagged `stale` rather than ranked fast.
 
 abstract: |
   Optimism: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:optimism-official}}.

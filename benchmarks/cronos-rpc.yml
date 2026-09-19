@@ -2,9 +2,9 @@
 
 slug: cronos-rpc
 number: "064"
-title: "Cronos RPC endpoints: free public URLs ranked by latency"
-seo_title: "Cronos RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Cronos RPC endpoints: free public URLs by latency"
+seo_title: "Cronos RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
