@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
+import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -30,13 +32,34 @@ export const metadata: import("next").Metadata = pageMetadata({
 
 export const revalidate = 3600;
 
+/** "Arbitrum" from either title shape the cluster uses. */
+function chainLabelOf(s: { title: string; slug: string }): string {
+  const m = s.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i) ?? s.title.match(/^([A-Za-z0-9 .-]+?) RPC/i);
+  return m ? m[1] : s.slug.replace(/-rpc$/, "");
+}
+
 export default async function RpcHubPage() {
-  const [snapshot, specs] = await Promise.all([fetchRpcHub(), getSpecs()]);
+  const [snapshot, specs, sitemapBlob] = await Promise.all([fetchRpcHub(), getSpecs(), loadSitemapBlob()]);
   // Spec-derived chain list: stable across snapshot outages, so the
   // JSON-LD ItemList and the empty state never churn with data blips.
+  // Restricted to the benches the worker publishes in the sitemap: a chain
+  // bench under the thin gate is noindex on its own page and must not be
+  // linked from here (36 such links on 2026-09-19). Without the blob, no
+  // restriction rather than an empty hub.
+  const indexable = sitemapBlob
+    ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
   const rpcSpecs = specs
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
+    .filter((s) => !indexable || indexable.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
+  // The four pills: the chain pages with the most search demand (Search
+  // Console 2026-09-19), not the first four of the alphabet.
+  const FEATURED = ["arbitrum-rpc", "ethereum-rpc", "linea-rpc", "ronin-rpc"];
+  const featured = FEATURED.map((slug) => rpcSpecs.find((s) => s.slug === slug)).filter(
+    (s): s is (typeof rpcSpecs)[number] => Boolean(s),
+  );
+  const linkableSlugs = rpcSpecs.map((s) => s.slug);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -53,7 +76,7 @@ export default async function RpcHubPage() {
           "@type": "ItemList",
           name: "Per-chain free RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of free, no-key public RPC endpoints: latency, reliability and archive depth measured every 15 seconds from 3 regions.",
+            "Live per-chain benchmarks of free, no-key public RPC endpoints: latency, reliability and archive depth measured every 60 seconds from 3 regions.",
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -111,7 +134,7 @@ export default async function RpcHubPage() {
           Every free, no-key public RPC endpoint, measured per chain with
           the same probe: one identical{" "}
           <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
-          rotating request id (defeats CDN body-keyed caches) every 15
+          rotating request id (defeats CDN body-keyed caches) every 60
           seconds from 3 regions (N. Virginia, Amsterdam, Singapore). The matrix below folds the per-chain leaderboards
           into one view: fastest provider per chain, fastest per region,
           and which gateway covers your whole multichain stack. Headline
@@ -126,19 +149,13 @@ export default async function RpcHubPage() {
           .
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
-          {rpcSpecs.slice(0, 4).map((s) => (
+          {featured.map((s) => (
             <Link
               key={s.slug}
               href={`/benchmarks/${s.slug}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 hover:bg-sky-500/15"
             >
-              <span
-                className="label-mono text-ink-faint text-[10px]"
-                style={{ fontFamily: "var(--font-mono, monospace)" }}
-              >
-                Bench
-              </span>
-              <span className="text-ink">{s.slug}</span>
+              <span className="text-ink">{chainLabelOf(s)} RPC endpoints</span>
             </Link>
           ))}
           <Link
@@ -182,7 +199,26 @@ export default async function RpcHubPage() {
             />
           </section>
 
-          <RpcHubTabs snapshot={snapshot} />
+          <RpcHubTabs snapshot={snapshot} linkableSlugs={linkableSlugs} />
+
+          {/* Every indexable chain page as a plain link: the leaderboard
+              above renders 40 rows before "Show all", this nav is what a
+              crawler follows to the rest. */}
+          <nav className="mt-8" aria-labelledby="rpc-all-chains">
+            <h2 id="rpc-all-chains" className="label-mono text-ink-muted">
+              All {rpcSpecs.length} chain RPC pages
+            </h2>
+            <ul className="mt-3 flex flex-wrap gap-2 text-[12px]">
+              {rpcSpecs.map((s) => (
+                <li key={s.slug}>
+                  <Link href={`/benchmarks/${s.slug}`} className="pill-lnk">
+                    {chainLabelOf(s)}
+                    <span className="sr-only"> RPC endpoints</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source: the open-source{" "}
@@ -218,7 +254,7 @@ export default async function RpcHubPage() {
                   href={`/benchmarks/${s.slug}`}
                   className="inline-flex rounded-full border border-ink/15 px-3 py-1 text-ink-soft hover:text-ink hover:border-ink/30"
                 >
-                  {s.slug}
+                  {chainLabelOf(s)} RPC endpoints
                 </Link>
               </li>
             ))}
@@ -231,7 +267,7 @@ export default async function RpcHubPage() {
         <p>
           Each chain row aggregates that chain&apos;s dedicated bench: an
           identical JSON-RPC POST (<code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> with
-          rotating request id, or the chain&apos;s equivalent head call) sent every 15 seconds to
+          rotating request id, or the chain&apos;s equivalent head call) sent every 60 seconds to
           every free, no-key public endpoint from us-east, eu-west and
           Singapore. Headline figures are the 50th percentile of
           client-side round-trip latency over the trailing 24 hours,

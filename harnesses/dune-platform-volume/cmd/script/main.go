@@ -7,25 +7,39 @@
 // fomo uses dataset_fomo_sol_daily (no blockchain column).
 //
 // Required env vars:
-//   DUNE_API_KEY  - Dune Analytics API key
+//
+//	DUNE_API_KEY  - Dune Analytics API key
 //
 // Metrics on :2112/metrics:
-//   dune_platform_volume_24h_usd{platform}
-//   dune_platform_volume_health{platform}
+//
+//	dune_platform_volume_24h_usd{platform}
+//	dune_platform_volume_health{platform}
 package main
 
 import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
 
 const (
-	fetchInterval   = 15 * time.Minute
-	refreshInterval = 4 * time.Hour
+	fetchInterval = 15 * time.Minute
 )
+
+// refreshInterval is how often a fresh Dune execution is requested (credits
+// are metered per execution; the plan is sized for one a day per query).
+// DUNE_REFRESH_HOURS overrides it.
+var refreshInterval = func() time.Duration {
+	if v := os.Getenv("DUNE_REFRESH_HOURS"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h > 0 {
+			return time.Duration(h) * time.Hour
+		}
+	}
+	return 24 * time.Hour
+}()
 
 func main() {
 	fmt.Println("=== dune-platform-volume harness ===")
@@ -62,15 +76,21 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
+	// Fetch the cached result first; execute on start only when that
+	// result is older than the cadence (a redeploy must not cost credits).
 	runFetch(client, queryID)
-	go func() {
-		execID, err := client.execute(queryID)
-		if err != nil {
-			fmt.Printf("[refresh] execute failed: %v\n", err)
-			return
-		}
-		pollUntilDone(client, queryID, execID)
-	}()
+	if age := client.resultAge(); age < refreshInterval {
+		fmt.Printf("[init] cached Dune result is %s old (cadence %s), no execution on start\n", age.Round(time.Minute), refreshInterval)
+	} else {
+		go func() {
+			execID, err := client.execute(queryID)
+			if err != nil {
+				fmt.Printf("[refresh] execute failed: %v\n", err)
+				return
+			}
+			pollUntilDone(client, queryID, execID)
+		}()
+	}
 
 	fetchTick := time.NewTicker(fetchInterval)
 	refreshTick := time.NewTicker(refreshInterval)

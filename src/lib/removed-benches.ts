@@ -80,6 +80,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // keyed RPC cohort (dev #2442, 2026-09-18): pages exist on dev only until
   // the cohort has data from 3+ providers per chain. Robinhood (243) stays
   // live on main in its Singapore-only form.
+  // terminal-fill-quality (268) is dev-only (2026-09-19); the dev-built
+  // blob lists it and the prod sitemap smoke would 404.
+  "terminal-fill-quality",
   "keyed-rpc-ethereum",
   "keyed-rpc-arbitrum",
   "keyed-rpc-base",

@@ -12,6 +12,7 @@ import {
   sparklineFor,
 } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
+import { dataAgeHours, displayResults, isStaleBench } from "@/lib/provider-filters";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -117,6 +118,17 @@ export async function GET(
     expectedN: b.expectedN,
     dataConfidence: b.dataConfidence,
     asOf: citableAsOf(b),
+    // How old the data is, so a citer sees a paused measurement before
+    // quoting it (six chain RPC pages served 11 to 34 day old numbers as
+    // "live" on 2026-09-19). `measured` is the display cohort the page
+    // counts; `rankings` keeps only rows above the citation success
+    // floor, which is why the two can differ.
+    freshness: {
+      asOf: b.lastRunAt ?? null,
+      ageHours: Number.isFinite(dataAgeHours(b)) ? Math.round(dataAgeHours(b) * 10) / 10 : null,
+      stale: isStaleBench(b),
+    },
+    measured: displayResults(b.results).length,
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),

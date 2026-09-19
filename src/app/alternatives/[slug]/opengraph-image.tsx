@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { loadAlternative } from "@/lib/alternatives";
 
 export const runtime = "nodejs";
@@ -23,13 +23,13 @@ export default async function OG({
 }) {
   const { slug } = await params;
   const a = await loadAlternative(slug);
-  if (!a) return new ImageResponse(<div />, { ...size });
+  if (!a) return ogResponse(<div />, { ...size });
 
   const title = `${a.target_product} alternatives`;
   const intro =
     a.intro.length > 140 ? `${a.intro.slice(0, 137).trimEnd()}…` : a.intro;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

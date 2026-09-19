@@ -139,6 +139,29 @@ const provider = z.object({
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
   formula: z.string().min(1).max(240).optional(),
+  /** Public, no-key endpoint URL the harness probes for this provider.
+   *  Rendered on the bench page ("Public endpoints measured") because
+   *  the searchers who land on the RPC pages want the URL as much as the
+   *  latency. Keyed endpoints are NEVER declared here: the refinement
+   *  rejects a path or query that looks like a token. `api_key=FREE`
+   *  (LeoRPC's public sentinel) is the one allowed query key. */
+  endpoint: z
+    .string()
+    .url()
+    .max(200)
+    .refine((u) => u.startsWith("https://"), "endpoint: https only")
+    .refine(
+      (u) =>
+        !/[?&](api[_-]?key|apikey|token|key|access[_-]?token)=(?!FREE\b)[A-Za-z0-9._%-]+/i.test(u) &&
+        !/\/v2\/[A-Za-z0-9_-]{20,}/.test(u) &&
+        !/quiknode\.pro\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/core\.chainstack\.com\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/getblock\.io\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/[a-f0-9]{32,}/i.test(u) &&
+        !/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(u),
+      "endpoint: looks like a keyed URL (token in path or query); only public no-key endpoints may be declared",
+    )
+    .optional(),
   /** Optional architectural category. When set, a badge appears next to
    *  the name so readers understand the comparison. */
   type: ProviderType.optional(),
@@ -189,12 +212,20 @@ const noAiDashes = (s: string) =>
   !s.includes("—") && !s.includes("–");
 const noAiDashesMsg =
   "Avoid em or en dashes; use a comma, semicolon, or period instead";
+// Marketing adjectives the editorial rules forbid in copy; a measured claim
+// ("fastest ... measured") is fine, these words never are.
+// "trusted" and "powerful" are left out on purpose: both occur as plain
+// technical verbs and adjectives ("timestamps are never trusted").
+const MARKETING = /\b(blisteringly|blazing(ly)?|best-in-class|world-class|revolutionary|lightning-fast|ultra-fast|cutting-edge|game-changing)\b/i;
+const noMarketing = (s: string) => !MARKETING.test(s);
+const noMarketingMsg = "marketing adjective (blisteringly, blazing, best-in-class, world-class, ...): state the number instead";
 const seoText = (min: number, max: number) =>
   z
     .string()
     .min(min)
     .max(max)
-    .refine(noAiDashes, noAiDashesMsg);
+    .refine(noAiDashes, noAiDashesMsg)
+    .refine(noMarketing, noMarketingMsg);
 
 export const SpecSchema = z
   .object({
@@ -227,6 +258,21 @@ export const SpecSchema = z
     /** Optional FAQ section. Each pair generates a FAQPage JSON-LD entry +
      *  a visible block on the page. Capped at 12 entries to keep the page
      *  reasonable. */
+    /** Providers audited and NOT listed, with the reason (key-gated,
+     *  paid tier, region-blocked, delisted for reliability). Answers the
+     *  "<chain> rpc provider" searcher who expects a name the table does
+     *  not show. Names and reason codes only: a URL here is refused, so a
+     *  keyed endpoint can never ride in through this field. */
+    excluded_providers: z
+      .array(
+        z.object({
+          name: z.string().min(1).max(60).refine((v) => !/:\/\//.test(v), "excluded_providers.name: no URL"),
+          reason: seoText(3, 160).refine((v) => !/:\/\/|api[_-]?key=/i.test(v), "excluded_providers.reason: no URL, no key"),
+          since: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/).optional(),
+        }),
+      )
+      .max(20)
+      .optional(),
     faq: z
       .array(
         z.object({
@@ -252,7 +298,7 @@ export const SpecSchema = z
           body: z.string().min(1).max(1000),
         })
       )
-      .max(20)
+      .max(30)
       .optional(),
     subtitle: seoText(1, 400),
     category: Category,

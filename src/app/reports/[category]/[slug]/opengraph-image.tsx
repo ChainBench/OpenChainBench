@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getReport } from "@/lib/reports/loader";
 import { OgHighlight, splitLead } from "@/lib/og-claim";
 
@@ -22,7 +22,7 @@ export default async function OG({
 }) {
   const { category, slug } = await params;
   const report = getReport(category, slug);
-  if (!report) return new ImageResponse(<div />, { ...size });
+  if (!report) return ogResponse(<div />, { ...size });
 
   const title = report.title;
   // Lead clause of the hero finding is the card's highlighted line; the
@@ -37,7 +37,7 @@ export default async function OG({
   })();
   const fontSize = title.length > 60 ? 58 : title.length > 40 ? 68 : 80;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

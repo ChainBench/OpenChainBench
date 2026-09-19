@@ -112,15 +112,29 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   // endpoints, editorial exclusions) until the worker next sweeps. Without
   // this filter those phantom rows persist in rankings indefinitely.
   const specSlugs = new Set(providerByCanonSlug.keys());
-  const prunedResults = reconciledResults.filter((r) => specSlugs.has(r.slug));
+  const prunedResults = reconciledResults
+    .filter((r) => specSlugs.has(r.slug))
+    // Editorial per-provider fields ride on the live YAML, like the page
+    // copy above, so a new `endpoint` shows without a worker sweep.
+    .map((r) => {
+      const sp = providerByCanonSlug.get(r.slug);
+      return sp?.endpoint ? { ...r, endpoint: sp.endpoint } : r;
+    });
 
   const overlaid: Benchmark = {
     ...stored,
     results: prunedResults,
+    // `title` drives the H1, the breadcrumb, TechArticle and /api/stat;
+    // `seoTitle` drives <title>. Both come from the live YAML so a
+    // retitle never leaves the H1 on the blob's older string (audit
+    // 2026-09-19 round 3, blocker 1: 6 staging pages with <title> new
+    // and H1 old, 10 production pages the other way round).
+    title: spec.title ?? stored.title,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
     faq: spec.faq ?? stored.faq,
+    excludedProviders: spec.excluded_providers ?? stored.excludedProviders,
     perChainExplainer: spec.per_chain_explainer ?? stored.perChainExplainer,
     abstract: spec.abstract ?? stored.abstract,
     methodology: spec.methodology ?? stored.methodology,

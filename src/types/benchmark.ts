@@ -110,6 +110,9 @@ export type ProviderResult = {
    *  headline value is computed. Rendered as the leaderboard-row
    *  hover tooltip. Authored per-bench in YAML (provider.formula). */
   formula?: string;
+  /** Public no-key endpoint URL probed for this provider (spec
+   *  provider.endpoint). Never a keyed URL: the spec schema rejects them. */
+  endpoint?: string;
   /** Short-window liveness verdict derived at load time from the spec's
    *  `queries.live_activity` scalar and the bench-level `probe_ok`
    *  gate. Only populated when the spec declares those queries.
@@ -232,6 +235,9 @@ export type Benchmark = {
   /** Optional FAQ entries. Surfaced both as visible Q&A blocks and as
    *  FAQPage JSON-LD for rich-result eligibility. */
   faq?: { q: string; a: string }[];
+  /** Providers audited and not listed, with the reason. Rendered under
+   *  the public endpoints table; never carries a URL (schema-refused). */
+  excludedProviders?: { name: string; reason: string; since?: string }[];
   /** Optional per-chain explainer blocks rendered as H2-anchored sections
    *  below the main chart. Targets long-tail "X chain {metric}" queries
    *  that benefit from a dedicated on-page anchor (#ethereum, #solana, ...).

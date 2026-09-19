@@ -2,9 +2,9 @@
 
 slug: peaq-rpc
 number: "199"
-title: Fastest free Peaq Network RPC, live no-key endpoint latency
-seo_title: "Fastest free Peaq Network RPC 2026"
-seo_description: "{{best_name}} leads free Peaq Network RPC at {{best_p50}} (chain_getHeader p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+title: "Peaq Network RPC endpoints: free public URLs by latency"
+seo_title: "Peaq Network RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Peaq Network RPC at {{best_p50}} (chain_getHeader p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Peaq Network Polkadot parachain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,37 +14,21 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Peaq Network is a DePIN (Decentralized Physical Infrastructure) parachain on Polkadot focused on the machine economy and IoT connectivity. PEAQ is the native token. Partnerships with Bosch and Fetch.ai underpin its real-world machine data use cases. Three keyless endpoints are probed continuously: PublicNode (peaq-rpc.publicnode.com), Peaq Foundation official (rpc.peaq.network), and OnFinality (peaq.api.onfinality.io/public).
+  Peaq Network is a DePIN (Decentralized Physical Infrastructure) parachain on Polkadot focused on the machine economy and IoT connectivity. PEAQ is the native token. Partnerships with Bosch and Fetch.ai underpin its real-world machine data use cases. {{count}} keyless endpoints are probed continuously, each listed with its URL in the endpoints table above.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Peaq Network.
-  We measure the round-trip latency of a single, identical JSON-RPC call
-  (`chain_getHeader`) against every no-key public Peaq parachain endpoint
-  that sustains continuous probing, 3 providers at launch,
-  every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
-  view lives on the parent `rpc-capabilities` benchmark; this page is the
-  Peaq-scoped answer with per-region breakdowns as a first-class dimension.
+  Peaq Network: {{count}} free public RPC endpoints answering `chain_getHeader` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`chain_getHeader`) against every no-key public Peaq parachain endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Peaq-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"chain_getHeader\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + parsable hex block number), `http_err`, `jsonrpc_err`, `stale` (more than 40 blocks behind the cross-provider tip), `timeout`."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"peaq\"`. Provider coverage at launch: 3 no-key endpoints."
-
-findings:
-  - "{{best_name}} currently leads free Peaq Network RPC at {{best_p50}} (`chain_getHeader` p50, 24h) across 3 measured providers."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Peaq Network-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to `chain=\"peaq\"`. Provider coverage today: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free Peaq Network RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Peaq Network RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing: PublicNode, Peaq Foundation official, and OnFinality. Every endpoint was live-verified before inclusion."
-  - q: "Does the fastest Peaq RPC change by region?"
-    a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is Peaq Network RPC latency measured here?"
-    a: "One identical Substrate JSON-RPC POST (`chain_getHeader`) every 60 seconds against each provider from each of 3 regions."
+    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -64,6 +48,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://peaq-rpc.publicnode.com
     tag: PublicNode multi-chain gateway including Substrate/Peaq
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to PublicNode's no-key Peaq endpoint."
     queries:
@@ -87,6 +72,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://peaq.api.onfinality.io/public
     tag: OnFinality Substrate public gateway for Peaq
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to OnFinality's no-key Peaq endpoint."
     queries:

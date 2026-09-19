@@ -2,9 +2,9 @@
 
 slug: interlay-rpc
 number: "249"
-title: Fastest free Interlay RPC, live no-key endpoint latency
-seo_title: "Fastest free Interlay RPC 2026"
-seo_description: "{{best_name}} leads free Interlay RPC at {{best_p50}} (block height p50, 24h). 1 provider measured every 60s from 3 regions."
+title: "Interlay RPC endpoints: free public URLs by latency"
+seo_title: "Interlay RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Interlay RPC at {{best_p50}} (block height p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for Substrate chain_getHeader queries against every available public Interlay endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,38 +17,20 @@ seo_intro: |
   Interlay is a Polkadot parachain that brings trustless Bitcoin to DeFi; it issues iBTC, a fully Bitcoin-backed asset, by locking BTC in a decentralized vault system without wrapping or custodians. Interlay uses the Substrate framework and exposes a standard Substrate JSON-RPC interface; block height is queried via chain_getHeader. The Interlay official node (api.interlay.io/parachain) is the only consistently available keyless public endpoint. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Interlay.
-  We measure the round-trip latency of a Substrate chain_getHeader query against
-  every available public Interlay endpoint that sustains continuous probing:
-  1 provider at launch, every 60 seconds, from us-east, eu-west and
-  Singapore. Each provider is probed via a JSON-RPC POST (chain_getHeader)
-  from which the block number is extracted.
-  The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout)
-  with a Polkadot-scaled staleness gap (40 blocks, around 8 min at 12 s/block).
-  The cross-chain view lives on the parent rpc-capabilities benchmark;
-  this page is the Interlay-scoped answer with per-region breakdowns as
-  a first-class dimension.
+  Interlay: {{count}} free public RPC endpoints answering `chain_getHeader` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:interlay-official}}.
+  We measure the round-trip latency of a Substrate chain_getHeader query against every available public Interlay endpoint that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. Each provider is probed via a JSON-RPC POST (chain_getHeader) from which the block number is extracted. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Polkadot-scaled staleness gap (40 blocks, around 8 min at 12 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Interlay-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"chain_getHeader\",\"params\":[]}. The result contains a number field (hex-encoded block number)."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
-  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 40 behind the cross-provider tip), timeout."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage at launch: 1 endpoint (Interlay official api.interlay.io/parachain)."
-
-findings:
-  - "{{best_name}} is the measured Interlay RPC at {{best_p50}} (chain_getHeader p50, 24h) from 1 monitored provider."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Interlay-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage today: {{count}} endpoint (Interlay official api.interlay.io/parachain)."
 
 faq:
-  - q: "What is the fastest free Interlay RPC right now?"
-    a: "The Interlay official node (api.interlay.io/parachain) is the primary keyless public endpoint, probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard updates continuously against fresh Prometheus samples."
   - q: "Which Interlay RPC endpoints work without an API key?"
     a: "The Interlay official node at api.interlay.io/parachain sustains continuous keyless probing. Other providers (OnFinality, Dwellir) were tested but returned connection errors; only the official node was live-verified before inclusion."
   - q: "What is Interlay and why does its RPC latency matter?"
     a: "Interlay issues iBTC, a 1:1 Bitcoin-backed asset on Polkadot secured by decentralized vaults. Developers integrating iBTC, building vault monitoring tools, or querying collateral positions need reliable low-latency RPC access. Knowing which public endpoint is fastest from your region matters for application responsiveness."
-  - q: "Does the fastest Interlay RPC change by region?"
-    a: "With a single measured provider, per-region breakdowns reflect the geographic latency between each probe region and the Interlay official node infrastructure. The region tabs re-scope every number to a single origin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -68,6 +50,7 @@ dimensions:
 providers:
   - slug: interlay-official
     name: Interlay
+    endpoint: https://api.interlay.io/parachain
     tag: Interlay official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to api.interlay.io/parachain."
     queries:

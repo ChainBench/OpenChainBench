@@ -2,9 +2,9 @@
 
 slug: bnb-rpc
 number: "049"
-title: Fastest free BNB Chain RPC, live no-key endpoint latency
-seo_title: "Fastest free BNB Chain RPC 2026"
-seo_description: "{{best_name}} leads free BNB Chain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+title: "BNB Chain RPC endpoints: free public URLs by latency"
+seo_title: "BNB Chain RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free BNB Chain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public BNB Chain RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,35 +14,35 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and from some regions it is still the single fastest RPC response we measure anywhere in the cluster. The catch is that it serves exactly one chain, while PublicNode, dRPC and Nodies bring multi-chain coverage with increasingly competitive latency from EU origins. 4 providers, identical probes, three regions.
+  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and from some regions it still posts one of the lowest round trips in the cluster (see the region tabs). The catch is that it serves exactly one chain, while PublicNode, dRPC and Nodies bring multi-chain coverage with increasingly competitive latency from EU origins. {{count}} providers, identical probes, three regions.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public BNB Chain endpoint that sustains continuous probing, 4 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the BNB Chain-scoped answer with per-region breakdowns as a first-class dimension.
+  BNB Chain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public BNB Chain endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the BNB Chain-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
-  - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"bnb\". Provider coverage: 4 no-key endpoints (PublicNode, dRPC, Nodies, Binance). Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the BNB Chain-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=\"bnb\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
-findings:
-  - "{{best_name}} currently leads free BNB Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
-  - "Binance's dataseed is a single-chain specialist: blisteringly fast near its home regions (single-digit milliseconds from us-east at times) and 10x slower from Singapore, the widest regional spread in the cluster."
+excluded_providers:
+  - { name: Ankr, reason: "public endpoint requires an API key" }
+  - { name: NodeReal, reason: "requires an API key" }
+  - { name: GetBlock, reason: "requires an API key; compared on the keyed pages" }
+  - { name: Chainstack, reason: "requires an API key; compared on the keyed pages" }
+  - { name: 1RPC, reason: "delisted for reliability: under 13 % success at one probe per minute", since: "2026-07-09" }
+  - { name: gateway.fm, reason: "29 requests per IP budget, too small for continuous probing" }
+  - { name: LlamaRPC, reason: "Cloudflare 521 from the probe regions" }
+  - { name: BlockPI, reason: "Cloudflare 521 from the probe regions" }
+  - { name: OmniaTech, reason: "Cloudflare 521 from the probe regions" }
+  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; the keyed tier is compared on the keyed pages" }
 
 faq:
-  - q: "What is the fastest free BNB Chain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which BNB Chain RPCs work without an API key?"
-    a: "The 4 providers on this page: PublicNode, dRPC, Nodies, Binance. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
-  - q: "Does the fastest BNB Chain RPC change by region?"
-    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
-  - q: "How is BNB Chain RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Is bsc-dataseed still the best RPC for BNB Chain?"
-    a: "It depends entirely on where your requests originate. From regions near Binance's infrastructure the dataseed is often the fastest single response in our whole dataset; from Singapore it can be 10x slower than the gateway tier. Check the region tabs above, the cross-region average is meaningless for an endpoint with this much geographic variance."
+    a: "It depends entirely on where your requests originate. Its cross-region median is {{p50:binance}} against {{best_p50}} for the leader; the per-region tabs show how far the two ends of that range sit apart. Check the region tabs above, the cross-region average is meaningless for an endpoint with this much geographic variance."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -65,6 +65,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://bsc-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key BNB Chain endpoint."
     queries:
@@ -88,6 +89,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://bsc.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key BNB Chain endpoint."
     queries:
@@ -111,6 +113,7 @@ providers:
 
   - slug: nodies
     name: Nodies
+    endpoint: https://bsc-pokt.nodies.app
     tag: POKT Network's decentralized public RPC successor, 7+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key BNB Chain endpoint."
     queries:
@@ -134,6 +137,7 @@ providers:
 
   - slug: binance
     name: Binance
+    endpoint: https://bsc-dataseed1.binance.org
     tag: BNB Chain dataseed RPC, Binance-operated
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Binance's no-key BNB Chain endpoint."
     queries:

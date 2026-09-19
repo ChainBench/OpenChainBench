@@ -2,9 +2,9 @@
 
 slug: eos-rpc
 number: "223"
-title: Fastest free EOS RPC, live no-key endpoint latency
-seo_title: "Fastest free EOS RPC 2026"
-seo_description: "{{best_name}} leads free EOS RPC at {{best_p50}} (get_info head_block_num p50, 24h). 3 providers measured every 60s from 3 regions."
+title: "EOS RPC endpoints: free public URLs by latency"
+seo_title: "EOS RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free EOS RPC at {{best_p50}} (get_info head_block_num p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for GET /v1/chain/get_info against every available public EOS (Antelope) node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,37 +17,18 @@ seo_intro: |
   EOS is a delegated proof-of-stake (DPoS) blockchain built on the Antelope protocol, producing one block every 0.5 seconds across 21 elected block producers. The chain provides a REST chain API under /v1/chain/ allowing standard queries without an API key. Public endpoints are available from Greymass, EOS Nation and Aloha EOS. Every provider was live-verified with consecutive get_info probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to EOS.
-  We measure the round-trip latency of a single REST call (GET
-  /v1/chain/get_info) against every available public EOS node that
-  sustains continuous probing: 3 providers at launch, every 60
-  seconds, from us-east, eu-west and Singapore. The harness classifies
-  every response (ok / http_err / jsonrpc_err / stale / timeout) with
-  an EOS-scaled staleness gap (600 blocks, around 5 min at 0.5 s/block).
-  The cross-chain view lives on the parent rpc-capabilities benchmark;
-  this page is the EOS-scoped answer with per-region breakdowns as a
-  first-class dimension.
+  EOS: {{count}} free public RPC endpoints answering `GET /v1/chain/get_info` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  We measure the round-trip latency of a single REST call (GET /v1/chain/get_info) against every available public EOS node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with an EOS-scaled staleness gap (600 blocks, around 5 min at 0.5 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the EOS-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: HTTP GET /v1/chain/get_info. Plain REST call. The response carries head_block_num as a plain integer."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
-  - "Call-result classification: ok (HTTP 200 + parsable head_block_num integer), http_err, jsonrpc_err, stale (block more than 600 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=eos. Provider coverage at launch: 3 endpoints (Greymass, EOS Nation, Aloha EOS)."
-
-findings:
-  - "{{best_name}} currently leads EOS RPC at {{best_p50}} (get_info head_block_num p50, 24h) across 3 measured providers."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the EOS-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=eos. Provider coverage today: {{count}} endpoints."
 
 faq:
-  - q: "What is the fastest free EOS RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (EOS head block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which EOS RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Greymass (eos.greymass.com), EOS Nation (eos.api.eosnation.io) and Aloha EOS (api.main.alohaeos.com). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
-  - q: "Does the fastest EOS RPC change by region?"
-    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is EOS RPC latency measured here, technically?"
-    a: "One GET /v1/chain/get_info REST call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+    a: "{{count}} endpoints sustain continuous keyless probing today: Greymass (eos.greymass.com), EOS Nation (eos.api.eosnation.io) and Aloha EOS (api.main.alohaeos.com). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -67,6 +48,7 @@ dimensions:
 providers:
   - slug: greymass
     name: Greymass
+    endpoint: https://eos.greymass.com
     tag: Greymass public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to eos.greymass.com."
     queries:
@@ -90,6 +72,7 @@ providers:
 
   - slug: eosnation
     name: EOS Nation
+    endpoint: https://eos.api.eosnation.io
     tag: EOS Nation public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to eos.api.eosnation.io."
     queries:
@@ -113,6 +96,7 @@ providers:
 
   - slug: alohaeos
     name: Aloha EOS
+    endpoint: https://api.main.alohaeos.com
     tag: Aloha EOS public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to api.main.alohaeos.com."
     queries:

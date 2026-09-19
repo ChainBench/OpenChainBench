@@ -2,9 +2,9 @@
 
 slug: cronos-zkevm-rpc
 number: "193"
-title: Fastest free Cronos zkEVM RPC, live no-key endpoint latency
-seo_title: "Fastest free Cronos zkEVM RPC 2026"
-seo_description: "{{best_name}} leads free Cronos zkEVM RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
+title: "Cronos zkEVM RPC endpoints: free public URLs by latency"
+seo_title: "Cronos zkEVM RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Cronos zkEVM RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos zkEVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,37 +14,21 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Cronos zkEVM (chain 388) is Crypto.com's zkEVM Layer 2 built on the zkSync Era stack, distinct from Cronos EVM. CRO is the bridged gas token. Two keyless endpoints are probed continuously: the Cronos official mainnet gateway (mainnet.zkevm.cronos.org) and dRPC (cronos-zkevm.drpc.org).
+  Cronos zkEVM (chain 388) is Crypto.com's zkEVM Layer 2 built on the zkSync Era stack, distinct from Cronos EVM. CRO is the bridged gas token. {{count}} keyless endpoints are probed continuously: the Cronos official mainnet gateway (mainnet.zkevm.cronos.org) and dRPC (cronos-zkevm.drpc.org).
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Cronos zkEVM.
-  We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against every no-key public Cronos zkEVM endpoint
-  that sustains continuous probing, 3 providers at launch,
-  every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
-  view lives on the parent `rpc-capabilities` benchmark; this page is the
-  Cronos zkEVM-scoped answer with per-region breakdowns as a first-class dimension.
+  Cronos zkEVM: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:cronos-zkevm-official}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Cronos zkEVM endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Cronos zkEVM-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"cronos-zkevm\"`. Provider coverage at launch: 2 no-key endpoints."
-
-findings:
-  - "{{best_name}} currently leads free Cronos zkEVM RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Cronos zkEVM-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to `chain=\"cronos-zkevm\"`. Provider coverage today: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free Cronos zkEVM RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Cronos zkEVM RPCs work without an API key?"
-    a: "2 endpoints sustain continuous keyless probing: Cronos official and dRPC. Every endpoint was live-verified before inclusion."
-  - q: "Does the fastest Cronos zkEVM RPC change by region?"
-    a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is Cronos zkEVM RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions."
+    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -64,6 +48,7 @@ dimensions:
 providers:
   - slug: cronos-zkevm-official
     name: Cronos (Crypto.com)
+    endpoint: https://mainnet.zkevm.cronos.org
     tag: Crypto.com official Cronos zkEVM public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to the official Cronos zkEVM no-key endpoint."
     queries:
@@ -87,6 +72,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://cronos-zkevm.drpc.org
     tag: dRPC public gateway for Cronos zkEVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Cronos zkEVM endpoint."
     queries:

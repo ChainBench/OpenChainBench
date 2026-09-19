@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
+import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -28,7 +29,9 @@ export const metadata: Metadata = {
 };
 
 export default async function BenchmarksPage() {
-  const benchmarks = await getBenchmarksSafe();
+  // Thin chain RPC benches (< 3 providers) are noindex on their own page;
+  // the index does not link them (see isThinRpcBench).
+  const benchmarks = (await getBenchmarksSafe()).filter((b) => !isThinRpcBench(b) && !isExpiredRpcPage(b));
 
   // ItemList + BreadcrumbList JSON-LD so search engines and LLMs see the
   // page as a structured registry (the data is already in the DOM but

@@ -36,6 +36,6 @@ related:
   - best-rpc-for-indexer
   - alchemy-vs-quicknode-vs-infura-latency
 
-seo_title: "Which Ethereum RPC pushes new blocks the fastest over WebSocket? 2026"
+seo_title: "Which Ethereum RPC pushes new blocks fastest over WebSocket?"
 seo_description: "{{best_name}} leads Ethereum WebSocket newHeads push at {{best_p50}} lag (p50, 24h) across {{count}} keyless providers. Live per-block race by OpenChainBench from eu-west."
 status: live

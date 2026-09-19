@@ -5,7 +5,7 @@
  */
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
-import { liveResults } from "@/lib/provider-filters";
+import { liveResults, displayResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
 /** Minimum measured success rate (in percent, 0-100) for a provider to
@@ -19,7 +19,7 @@ import { fmtUnit } from "@/lib/format";
  *  freshness / gauge-only benches and only bites where the harness
  *  actually measures polling reliability (gas-estimation, RPC
  *  benches). */
-const LEADER_MIN_SUCCESS_PCT = 50;
+export const LEADER_MIN_SUCCESS_PCT = 50;
 
 /** Provider set used to derive the headline figures. Drops rows whose
  *  per-provider sample-health is "insufficient" (set on the load path
@@ -43,7 +43,11 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
   const reliable = live.filter(
     (r) => (r.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT,
   );
-  const pool = reliable.length > 0 ? reliable : live;
+  // Chain RPC pages do not fall back: crowning a 23 % success endpoint
+  // as "the fastest Starknet RPC" in the TL;DR, StatisticalReport and
+  // /api/stat is worse than saying nobody cleared the floor.
+  const pool =
+    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : live;
   if (!b.expectedN) return pool;
   return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
@@ -112,6 +116,21 @@ function windowSuffix(unit: string): string {
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
+/** "Head lag" reads "head lag" mid-sentence, but "RPC latency", "P/F ratio"
+ *  and "VAA finalization" keep their acronym: only a leading capital
+ *  followed by a lowercase letter is lowered. */
+export function metricInSentence(metric: string): string {
+  return /^[A-Z][a-z]/.test(metric) ? metric[0].toLowerCase() + metric.slice(1) : metric;
+}
+
+/** "Arbitrum" for a chain RPC bench (slug <chain>-rpc, category RPCs),
+ *  read from the title patterns the cluster uses; null elsewhere. */
+export function rpcChainLabel(b: Pick<Benchmark, "slug" | "category" | "title">): string | null {
+  if (b.category !== "RPCs" || !b.slug.endsWith("-rpc") || b.slug === "mev-protect-rpc") return null;
+  const m = b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i) ?? b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i);
+  return m ? m[1] : null;
+}
+
 export function headlineSentence(b: Benchmark): string {
   const parts = headlineParts(b);
   return parts.claim ? `${parts.claim} ${parts.rest}` : parts.rest;
@@ -127,11 +146,37 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     return { claim: "", rest: `${b.title}. Insufficient data to assert a leader.` };
   }
   const top = leader(b);
+  const chainForFloor = rpcChainLabel(b);
+  if (!top && chainForFloor && liveResults(b.results).length > 0) {
+    return {
+      claim: "",
+      rest: `${b.title}. No ${chainForFloor} endpoint answered above the ${LEADER_MIN_SUCCESS_PCT} % success floor in the last 24h.`,
+    };
+  }
   if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
   const value = fmtUnit(top.value, b.unit);
+  // Chain RPC pages: the sentence names the entity searchers use ("free
+  // public Arbitrum RPC endpoints") and the cohort size, instead of
+  // jamming the H1 in as the object. Same string feeds the TL;DR,
+  // StatisticalReport, TechArticle, /api/citable and llms.txt.
+  const chain = rpcChainLabel(b);
+  if (chain) {
+    // Same set as the Results table and the endpoints block (display
+    // floor), so the four surfaces quote one count.
+    const listed = displayResults(b.results).length;
+    const ranked = rankedCandidates(b).length;
+    const below = listed - ranked;
+    const claim =
+      ranked === 1 && listed === 1
+        ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
+        : ranked === 1
+          ? `${top.name} is the only one of the ${listed} free public ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
+          : `${top.name} has the lowest median latency of the ${ranked} free public ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
+    return { claim, rest: `(p50, 24h, 3 regions).` };
+  }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {
-    claim: `${top.name} ${verb} ${b.metric.toLowerCase()} at ${value}`,
+    claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
     rest: `${windowSuffix(b.unit)} on ${b.title}.`,
   };
 }

@@ -2,9 +2,9 @@
 
 slug: lukso-rpc
 number: "260"
-title: Fastest free LUKSO RPC, live no-key endpoint latency
-seo_title: "Fastest free LUKSO RPC 2026"
-seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+title: "LUKSO RPC endpoints: free public URLs by latency"
+seo_title: "LUKSO RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public LUKSO endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,14 +14,11 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). Three providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
+  LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). {{count}} providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every
-  public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three
-  regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok
-  responses (HTTP 200 with a usable block height, not stale) contribute to the distribution;
-  p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
+  LUKSO: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lukso-official}}.
+  Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok responses (HTTP 200 with a usable block height, not stale) contribute to the distribution; p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
 
 methodology:
   - "Probe: a single eth_getBlockByNumber('latest', false) JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."
@@ -29,18 +26,13 @@ methodology:
   - "Providers: LUKSO Foundation (rpc.mainnet.lukso.network), NOWNodes (public-lukso.nownodes.io, no key, 5 RPS), thirdweb (42.rpc.thirdweb.com)."
   - "Aggregation: p50/p90/p99 via Prometheus quantile_over_time over 24h; the headline cites the cross-region figure and the region tabs re-scope it."
 
-findings:
-  - "{{best_name}} leads at {{best_p50}} (eth_getBlockByNumber p50, 24h) across {{provider_count}} no-key LUKSO endpoints."
-  - "LUKSO targets a short EVM block time, so a stale tip is uncommon and the ranking is driven by each provider's regional edge placement."
-  - "{{name:nownodes}} serves LUKSO from its public no-key endpoint at {{p50:nownodes}} (p50, 24h), rate-limited to 5 requests per second."
-
 faq:
   - q: "Which free LUKSO RPC is fastest?"
     a: "Per the live data above: {{best_name}} at {{best_p50}} (eth_getBlockByNumber p50, 24h) across the no-key providers measured here."
   - q: "How is LUKSO RPC latency measured?"
     a: "A single eth_getBlockByNumber call every 60 seconds from three regions (us-east, eu-west, Singapore), recording the wall-clock round trip. Only successful, non-stale responses count."
   - q: "Do these endpoints need an API key?"
-    a: "No. LUKSO Foundation, NOWNodes and thirdweb all serve LUKSO mainnet JSON-RPC with no key. NOWNodes' public endpoint is rate-limited to 5 requests per second."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -59,6 +51,7 @@ dimensions:
 providers:
   - slug: lukso-official
     name: LUKSO Foundation
+    endpoint: https://rpc.mainnet.lukso.network
     tag: Official LUKSO mainnet RPC, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to LUKSO Foundation's no-key LUKSO endpoint."
     queries:
@@ -82,6 +75,7 @@ providers:
 
   - slug: nownodes
     name: NOWNodes
+    endpoint: https://public-lukso.nownodes.io
     tag: Public node, 110+ chains, 5 RPS free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes's no-key LUKSO endpoint."
     queries:
@@ -105,6 +99,7 @@ providers:
 
   - slug: thirdweb
     name: thirdweb
+    endpoint: https://42.rpc.thirdweb.com
     tag: Multi-chain RPC edge, no-key public endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to thirdweb's no-key LUKSO endpoint."
     queries:

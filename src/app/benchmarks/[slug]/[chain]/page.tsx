@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { citableAsOf } from "@/lib/citation";
 import { liveResults, MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -199,18 +199,6 @@ async function loadChainPage(
   };
 }
 
-/** Meta descriptions must not leak inline markdown from the YAML body
- *  (backticks around RPC method names, bold, links). */
-function stripInlineMarkdown(text: string): string {
-  return text
-    .replace(/`([^`]*)`/g, "$1")
-    .replace(/\*\*([^*]*)\*\*/g, "$1")
-    .replace(/\*([^*]*)\*/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function asOfDate(lastRunAt: string | undefined): string {
   const d = lastRunAt ? new Date(lastRunAt) : new Date();
   return d.toLocaleDateString("en-US", {
@@ -365,7 +353,14 @@ export default async function BenchmarkChainPage({
   // which leaves the source URL in the index competing with the canonical.
   if (canon !== chain) permanentRedirect(`/benchmarks/${slug}/${canon}`);
   const data = await loadChainPage(slug, chain);
-  if (!data) notFound();
+  if (!data) {
+    // The bench exists but this chain left its cohort (network-fees lost
+    // gram, blast, optimism and stellar; Search Console listed the four
+    // per-chain URLs as 404 on 2026-09-19). Consolidate on the parent
+    // bench instead of a dead end; a bench that does not exist stays 404.
+    if (await getBenchmark(slug)) permanentRedirect(`/benchmarks/${slug}`);
+    notFound();
+  }
   const { benchmark, explainer } = data;
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;

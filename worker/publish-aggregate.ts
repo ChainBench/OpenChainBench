@@ -33,6 +33,7 @@
  */
 
 import { mkdir, rename, writeFile } from "node:fs/promises";
+import { isExpiredBench } from "@/lib/provider-filters";
 import path from "node:path";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
@@ -277,6 +278,9 @@ export async function publishSitemapSlim(
       // Mirror bench page noindex gate: RPC benches with <3 providers are
       // thin-content and render noindex. Emitting them fails the smoke gate.
       if (b.category === "RPCs" && (b.results?.length ?? 0) < 3) return false;
+      // Mirror the freshness gate: a chain RPC page whose data is older
+      // than a week renders noindex (src/app/benchmarks/[slug]/page.tsx).
+      if (b.category === "RPCs" && b.slug.endsWith("-rpc") && isExpiredBench(b)) return false;
       return true;
     })
     .map((b) => {

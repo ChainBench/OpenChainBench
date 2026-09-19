@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { THIN_RPC_MIN_RESULTS } from "@/lib/provider-filters";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -43,7 +44,27 @@ function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   return r.regions[k]?.p50Ms ?? null;
 }
 
-export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
+/** Rows rendered before "Show all": 152 chains at about 4 KB of markup
+ *  each (sparkline SVG, logos, links) made /rpc a 1 MB document
+ *  (2026-09-19). The full list of chain pages is still in the HTML as a
+ *  compact nav on the page, so crawlers lose no link. */
+const INITIAL_ROWS = 40;
+
+export function RpcChainsLeaderboard({
+  rows,
+  linkableSlugs,
+}: {
+  rows: RpcHubChain[];
+  /** Bench slugs whose page is indexable (worker sitemap). When given it
+   *  replaces the declared-count gate, so an expired chain (data older
+   *  than a week, noindex) is shown but not linked. */
+  linkableSlugs?: string[];
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const linkableSet = useMemo(
+    () => (linkableSlugs ? new Set(linkableSlugs) : null),
+    [linkableSlugs],
+  );
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("bestP50");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -161,17 +182,25 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
+            {(showAll || q ? filtered : filtered.slice(0, INITIAL_ROWS)).map((r, i) => {
+              // Under the thin gate (< 3 providers) the chain page is noindex:
+              // show the row, do not link it (the hub was the main source of
+              // noindex crawl on 2026-09-19).
+              const linkable = linkableSet
+                ? linkableSet.has(r.slug)
+                : (r.declaredCount ?? r.providerCount) >= THIN_RPC_MIN_RESULTS;
+              return (
               <tr
                 key={r.slug}
-                onClick={() => router.push(`/benchmarks/${r.slug}`)}
-                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
+                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}`) : undefined}
+                className={`border-t border-ink/5 transition-colors ${linkable ? "hover:bg-paper-soft/40 cursor-pointer" : ""}`}
               >
                 <Td muted mono>
                   {i + 1}
                 </Td>
                 <Td>
                   <div className="flex items-center gap-2 min-w-0">
+                    {linkable ? (
                     <Link
                       href={`/benchmarks/${r.slug}`}
                       className="flex items-center gap-2 min-w-0 group"
@@ -179,13 +208,23 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                     >
                       <ProviderLogo slug={r.chain} name={r.name} size={18} />
                       <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
-                        {r.name}
+                        {r.name} <span className="font-normal text-ink-faint">RPC endpoints</span>
                       </span>
                       <ChevronRight
                         size={14}
                         className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       />
                     </Link>
+                    ) : (
+                    <span
+                      className="flex items-center gap-2 min-w-0"
+                      title="Measured, not yet ranked: fewer than 3 no-key providers"
+                    >
+                      <ProviderLogo slug={r.chain} name={r.name} size={18} />
+                      <span className="font-medium text-ink truncate">{r.name}</span>
+                      <span className="text-[10px] text-ink-faint shrink-0">not yet ranked</span>
+                    </span>
+                    )}
                     <Link
                       href={`/chains/${r.chain}`}
                       className="text-[10px] text-ink-faint hover:text-ink underline underline-offset-2 shrink-0"
@@ -308,7 +347,8 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   )}
                 </Td>
               </tr>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td
@@ -322,6 +362,17 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
           </tbody>
         </table>
       </div>
+      {!showAll && !q && filtered.length > INITIAL_ROWS && (
+        <div className="p-3 border-t border-ink/8 text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="text-[12px] underline underline-offset-2 text-ink-soft hover:text-ink"
+          >
+            Show all {filtered.length} chains
+          </button>
+        </div>
+      )}
     </div>
   );
 }

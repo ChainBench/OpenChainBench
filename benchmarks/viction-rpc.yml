@@ -2,9 +2,9 @@
 
 slug: viction-rpc
 number: "229"
-title: Fastest free Viction RPC, live no-key endpoint latency
-seo_title: "Fastest free Viction RPC 2026"
-seo_description: "{{best_name}} leads free Viction RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). 3 providers measured every 60s from 3 regions."
+title: "Viction RPC endpoints: free public URLs by latency"
+seo_title: "Viction RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Viction RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public Viction node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,36 +17,18 @@ seo_intro: |
   Viction (formerly TomoChain) is a proof-of-stake-voting EVM L1 blockchain (chain ID 88) with 2-second block times, targeting low fees and high throughput for DeFi and NFTs. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Viction Official, Viction RPC2 and dRPC. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Viction.
-  We measure the round-trip latency of a single eth_getBlockByNumber
-  ("latest", false) call against every available public Viction node
-  that sustains continuous probing: 3 providers at launch, every 60
-  seconds, from us-east, eu-west and Singapore. The harness classifies
-  every response (ok / http_err / jsonrpc_err / stale / timeout) with
-  a standard EVM staleness gap. The cross-chain view lives on the
-  parent rpc-capabilities benchmark; this page is the Viction-scoped
-  answer with per-region breakdowns as a first-class dimension.
+  Viction: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:viction-official}}.
+  We measure the round-trip latency of a single eth_getBlockByNumber ("latest", false) call against every available public Viction node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a standard EVM staleness gap. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Viction-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}. Plain HTTP POST. Standard Ethereum JSON-RPC 2.0."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
-  - "Call-result classification: ok (HTTP 200 + parsable block number), http_err, jsonrpc_err, stale, timeout. Latency without reliability is a misleading ranking signal."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=viction. Provider coverage at launch: 3 endpoints (Viction Official, Viction RPC2, dRPC)."
-
-findings:
-  - "{{best_name}} currently leads Viction RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Viction-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=viction. Provider coverage today: {{count}} endpoints."
 
 faq:
-  - q: "What is the fastest free Viction RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Viction block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Viction RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Viction Official (rpc.viction.xyz), Viction RPC2 (rpc2.viction.xyz) and dRPC (viction.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
-  - q: "Does the fastest Viction RPC change by region?"
-    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is Viction RPC latency measured here, technically?"
-    a: "One eth_getBlockByNumber JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
+    a: "{{count}} endpoints sustain continuous keyless probing today: Viction Official (rpc.viction.xyz), Viction RPC2 (rpc2.viction.xyz) and dRPC (viction.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -66,6 +48,7 @@ dimensions:
 providers:
   - slug: viction-official
     name: Viction Official
+    endpoint: https://rpc.viction.xyz
     tag: Viction official public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to rpc.viction.xyz."
     queries:
@@ -89,6 +72,7 @@ providers:
 
   - slug: viction-rpc2
     name: Viction RPC2
+    endpoint: https://rpc2.viction.xyz
     tag: Viction secondary public RPC (rpc2.viction.xyz), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to rpc2.viction.xyz."
     queries:
@@ -112,6 +96,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://viction.drpc.org
     tag: dRPC decentralised multi-chain RPC, public Viction endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to viction.drpc.org."
     queries:

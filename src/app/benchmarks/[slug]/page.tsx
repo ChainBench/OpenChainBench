@@ -7,11 +7,14 @@ import { getBenchmark, getBenchIndexSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
-import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
+import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
+import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults } from "@/lib/provider-filters";
+import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
+import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -25,9 +28,10 @@ import {
   headlineSentence,
   isInsufficient,
   leader,
+  rpcChainLabel,
 } from "@/lib/citation";
-import { valueInDeclaredUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { valueInDeclaredUnit, fmtUnit } from "@/lib/format";
+import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -122,7 +126,7 @@ export async function generateMetadata({
   // provider leaderboard has no comparative value and no search demand.
   // noindex/follow keeps crawl equity flowing without letting an
   // empty-looking table rank for "fastest X rpc".
-  const metaThinRpc = b.category === "RPCs" && (b.results?.length ?? 0) < 3;
+  const metaThinRpc = isThinRpcBench(b);
   const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
@@ -138,6 +142,23 @@ export async function generateMetadata({
   // description renders with live, chain-honest numbers. seoDescription
   // is the most common host for these placeholders.
   if (description) description = renderTemplate(description, b);
+  // Freshness gate. A chain RPC page whose data stopped moving must not
+  // promise "updated every 60s" in the snippet; after a day the
+  // description says when the measurement paused and what the last
+  // ranked leader was, after a week the page is noindex (and the worker
+  // keeps it out of the sitemap).
+  const metaChain = rpcChainLabel(b);
+  const metaStale = metaChain != null && isStaleBench(b);
+  const metaExpired = metaChain != null && isExpiredBench(b);
+  if (metaStale && metaChain) {
+    const lastLeader = leader(b);
+    const pausedOn = b.lastRunAt ? new Date(b.lastRunAt).toISOString().slice(0, 10) : "an earlier date";
+    const n = displayResults(b.results).length;
+    description = `${metaChain} RPC measurement paused since ${pausedOn}.${
+      lastLeader ? ` Last ranked leader: ${lastLeader.name} at ${fmtUnit(lastLeader.value, b.unit)} (p50, 24h, 3 regions).` : ""
+    }${n >= 2 ? ` URLs for the ${n} no-key endpoints stay listed.` : ""}`;
+  }
+  if (description) description = stripInlineMarkdown(description);
   // Google truncates meta descriptions at ~155-160 chars in the SERP. Anything
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
@@ -160,7 +181,7 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
-    ...((metaIsAwaiting || metaThinRpc)
+    ...((metaIsAwaiting || metaThinRpc || metaExpired)
       ? { robots: { index: false, follow: true } }
       : {}),
     openGraph: {
@@ -180,7 +201,11 @@ export async function generateMetadata({
       citation_title: metaTitle,
       citation_author: "OpenChainBench",
       citation_publisher: "OpenChainBench",
-      ...(isoPubDate ? { citation_publication_date: isoPubDate } : {}),
+      // publication_date is the bench's creation (stable), online_date the
+      // last measurement: a citation date that moved every day read as a
+      // new paper each morning to scholarly crawlers.
+      citation_publication_date: getBenchCreatedAt(b.slug).toISOString().slice(0, 10),
+      ...(isoPubDate ? { citation_online_date: isoPubDate } : {}),
       citation_doi: "10.5281/zenodo.20800312",
       citation_pdf_url: `${SITE.url}/api/stat/${b.slug}`,
       citation_public_url: canonical,
@@ -362,7 +387,19 @@ export default async function BenchmarkPage({
     // Google Rich Results validator caps description at ~1000 chars even
     // though schema.org Dataset allows up to 5000. Keep it under 990 to
     // avoid the "Invalid string length" warning that strips rich snippets.
-    description: capDescription(benchmark.abstract, 990),
+    // The abstract is a method paragraph shared by every page of a cluster
+    // (11 of 12 RPC pages identical); the resolved seo_description carries
+    // the leader, the number and the chain, so it leads and the method
+    // follows. Unique per page, live numbers, under the validator cap.
+    description: capDescription(
+      [
+        benchmark.seoDescription ? renderTemplate(benchmark.seoDescription, benchmark) : "",
+        benchmark.abstract,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      990,
+    ),
     url: benchmarkUrl,
     variableMeasured,
     category: benchmark.category,
@@ -459,6 +496,9 @@ export default async function BenchmarkPage({
     `${benchmark.title}: frequently asked questions`,
   );
 
+  // The RPC TL;DR announces the endpoints table (the "<chain> rpc"
+  // searcher's question), with the count that table shows.
+  const publicEndpointCount = isDraft ? 0 : publicEndpointRows(benchmark).length;
   return (
     <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
@@ -553,9 +593,23 @@ export default async function BenchmarkPage({
             <span className="font-medium text-ink">TL;DR.</span> As of{" "}
             <time dateTime={trace.isoDate}>{trace.isoDate}</time>,{" "}
             {trace.claim}. Source: OpenChainBench, {trace.url}.
+            {publicEndpointCount >= 2 && (
+              <>
+                {" "}
+                Endpoint URLs for the {publicEndpointCount} public providers
+                are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>.
+              </>
+            )}
           </p>
         </section>
       )}
+
+      {/* Public endpoint URLs directly under the TL;DR: the "<chain> rpc"
+          searcher wants chain ID, URL and the provider list in the first
+          screen, before the intro prose (audit 2026-09-19 round 3: the
+          block started at word 1,145 on blast-rpc). Renders only when at
+          least two providers declare a public no-key `endpoint`. */}
+      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
 
       {/* Companion hub callout. A handful of benches have a curated
           landing page that sits next to (not in place of) the bench
@@ -692,7 +746,7 @@ export default async function BenchmarkPage({
 
       {/* Citation affordances. one click takes a journalist or agent from
           the page to a pasteable quote or a JSON endpoint. */}
-      {!isDraft && <CitationBar benchmark={benchmark} />}
+      {!isDraft && <CitationBar slug={benchmark.slug} />}
 
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
@@ -700,12 +754,13 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <details
           open
+          id="methodology"
           className="mt-8 group card-soft px-5 py-1"
         >
           <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
-            <span className="label-mono text-ink">
+            <h2 className="label-mono text-ink">
               Methodology
-            </span>
+            </h2>
             <ChevronDown
               size={16}
               strokeWidth={2}
@@ -724,7 +779,7 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <Suspense fallback={<BenchmarkBodySkeleton />}>
+        <Suspense fallback={<StaticLedger benchmark={benchmark} />}>
           <BenchmarkBody
             variants={variants}
             chainOptions={chainOptions}
@@ -743,7 +798,14 @@ export default async function BenchmarkPage({
                   <ShareSection
                     slug={benchmark.slug}
                     title={benchmark.title}
-                    benchmark={benchmark}
+                    benchmark={{
+                      dimensions: benchmark.dimensions,
+                      metricPanels: benchmark.metricPanels,
+                      results: benchmark.results,
+                      higherIsBetter: benchmark.higherIsBetter,
+                      panelMainLabel: benchmark.panelMainLabel,
+                      metric: benchmark.metric,
+                    }}
                     chain={chain}
                   />
                   <ExportVideoSection
@@ -776,6 +838,10 @@ export default async function BenchmarkPage({
           ChainHeadingsSummary, so the dedicated per-chain pages need
           their own server-rendered discovery links here. */}
       {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
+
+      {!isDraft && benchmark.category === "RPCs" && benchmark.slug.endsWith("-rpc") && (
+        <RpcSiblingChains currentSlug={benchmark.slug} />
+      )}
 
       {!isDraft && <CompareThisBench benchmark={benchmark} />}
 

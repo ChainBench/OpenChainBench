@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { loadSitemapBlob } from "@/lib/sitemap-blob";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { fetchRpcHub } from "@/lib/rpc-hub-stats";
 import { ProviderLogo } from "@/components/provider-logo";
 
@@ -48,7 +50,12 @@ export async function RpcProviderChainsSection({
   providerSlug: string;
   providerName: string;
 }) {
-  const snapshot = await fetchRpcHub();
+  const [snapshot, sitemapBlob] = await Promise.all([fetchRpcHub(), loadSitemapBlob()]);
+  // Link a chain only when its bench page is indexable (worker sitemap
+  // minus expired chain pages); thin or expired chains stay as text.
+  const linkable = sitemapBlob
+    ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
   if (!snapshot) return null;
 
   const rows: Row[] = [];
@@ -113,15 +120,22 @@ export async function RpcProviderChainsSection({
             {rows.map((r) => (
               <tr key={r.chain} className="hover:bg-paper-soft/60 transition-colors">
                 <td className="py-2.5 pr-3">
-                  <Link
-                    href={`/benchmarks/${r.benchSlug}`}
-                    className="inline-flex items-center gap-2 group"
-                  >
-                    <ProviderLogo slug={r.chain} name={r.chainName} size={18} />
-                    <span className="font-medium text-ink group-hover:underline underline-offset-2">
-                      {r.chainName}
+                  {!linkable || linkable.has(r.benchSlug) ? (
+                    <Link
+                      href={`/benchmarks/${r.benchSlug}`}
+                      className="inline-flex items-center gap-2 group"
+                    >
+                      <ProviderLogo slug={r.chain} name={r.chainName} size={18} />
+                      <span className="font-medium text-ink group-hover:underline underline-offset-2">
+                        {r.chainName}
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <ProviderLogo slug={r.chain} name={r.chainName} size={18} />
+                      <span className="font-medium text-ink">{r.chainName}</span>
                     </span>
-                  </Link>
+                  )}
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
                   {r.rank != null && r.rank > 0 ? (

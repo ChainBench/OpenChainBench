@@ -2,9 +2,9 @@
 
 slug: monad-rpc
 number: "071"
-title: Fastest free Monad RPC, live no-key endpoint latency
-seo_title: "Fastest free Monad RPC 2026"
-seo_description: "{{best_name}} leads free Monad RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+title: "Monad RPC endpoints: free public URLs by latency"
+seo_title: "Monad RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Monad RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Monad RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -27,35 +27,18 @@ seo_intro: |
   page is the live answer to which one deserves it.
 
 abstract: |
-  We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against every no-key public Monad endpoint
-  that sustains continuous probing, 5 providers, every 60 seconds,
-  from us-east, eu-west and Singapore. The harness classifies every
-  response (ok / http_err / jsonrpc_err / stale / timeout) so the
-  leaderboard rewards sustained, honest availability rather than a
-  fast error message. The cross-chain view lives on the parent
-  rpc-capabilities benchmark; this page is the Monad-scoped answer
-  with per-region breakdowns as a first-class dimension.
+  Monad: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:monad-official}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Monad endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Monad-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
-  - "Chain scope: every query on this page is pinned to chain=\"monad\" (chain id 143, mainnet since November 2025). Provider coverage: 5 no-key endpoints (Monad Official, dRPC, Tenderly Gateway, bloXroute, OnFinality). Exclusions follow the cluster-wide rules documented on the parent benchmark."
-
-findings:
-  - "{{best_name}} currently leads the free Monad RPC field at {{best_p50}} (p50, 24h) across 5 measured providers."
-  - "{{name:monad-official}} answers at {{p50:monad-official}}. On-chain response headers (`x-node-id: monad_monad-mainnet_fra`) confirm geo-distributed nodes co-located with our Railway probes in GCP datacenters (Frankfurt for eu-west, equivalent US and Singapore nodes). The sub-2 ms figure reflects network co-location, not what a developer outside GCP infra will experience; expect 30-120 ms from a typical connection. Rate-limit: 25 rps."
-  - "{{name:drpc}} sits at {{p50:drpc}} and {{name:tenderly}} at {{p50:tenderly}}: the multi-chain gateways reached Monad within weeks of mainnet, but route through their global meshes rather than chain-local nodes."
-  - "{{name:bloxroute}} at {{p50:bloxroute}} is the outlier entry: a BDN operator exposing a keyless endpoint, unusual for a company whose core product is paid low-latency access."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Monad-scoped view of the same harness, with the same exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=\"monad\" (chain id 143, mainnet since November 2025). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
-  - q: "What is the fastest free Monad RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50 over 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so this page is the answer right now, not a quarterly snapshot."
   - q: "Which Monad RPCs work without an API key in 2026?"
-    a: "Five endpoints sustain continuous keyless probing: the official rpc.monad.xyz (QuickNode-backed, 25 rps; four sibling mirrors exist at rpc1-rpc3.monad.xyz and rpc-mainnet.monadinfra.com on Alchemy, Goldsky, Ankr and Foundation infra), dRPC, Tenderly Gateway, bloXroute and OnFinality. All were live-verified (eth_chainId 143 + anti-cache probe) before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
   - q: "How is Monad RPC latency measured on OpenChainBench?"
     a: "One identical JSON-RPC POST (eth_getBlockByNumber latest, rotating request id) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Responses are classified so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
 
@@ -77,6 +60,7 @@ dimensions:
 providers:
   - slug: monad-official
     name: Monad
+    endpoint: https://rpc.monad.xyz
     tag: Foundation endpoint (rpc.monad.xyz, QuickNode-backed, 25 rps)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Monad Official's no-key Monad endpoint."
     queries:
@@ -100,6 +84,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://monad-mainnet.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Monad endpoint."
     queries:
@@ -123,6 +108,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://monad.gateway.tenderly.co
     tag: Public gateway by Tenderly
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key Monad endpoint."
     queries:
@@ -146,6 +132,7 @@ providers:
 
   - slug: bloxroute
     name: bloXroute
+    endpoint: https://monad.rpc.blxrbdn.com
     tag: BDN operator's public Monad endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to bloXroute's no-key Monad endpoint."
     queries:
@@ -169,6 +156,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://monad-mainnet.api.onfinality.io/public
     tag: Public endpoint, 80+ networks
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's no-key Monad endpoint."
     queries:

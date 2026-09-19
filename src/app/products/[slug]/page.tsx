@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { loadSitemapBlob } from "@/lib/sitemap-blob";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -64,6 +66,33 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return [];
 }
 
+/** A row that is a link when the target page is indexable, a div
+ *  otherwise (same layout, no anchor into a noindex page). */
+function RowLink({
+  href,
+  className,
+  children,
+}: {
+  href: string | null;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return href ? (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
+/** "Arbitrum RPC" for a chain RPC bench, the title otherwise: the chain
+ *  RPC titles are 55 to 65 characters and would eat the whole snippet. */
+function shortBenchLabel(b: { slug: string; title: string }): string {
+  const m = b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i) ?? b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i);
+  return m && b.slug.endsWith("-rpc") ? `${m[1]} RPC` : b.title;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -104,8 +133,11 @@ export async function generateMetadata({
   // is cited more by ChatGPT/Perplexity/Copilot). Kept short so Google's
   // ~60-char SERP truncation never cuts the brand suffix that Next's
   // title template appends (" · OpenChainBench").
-  const currentYear = new Date().getUTCFullYear();
-  const title = `${p.name} Live Benchmark ${currentYear}`;
+  // Brand queries ("publicnode" 57 impressions at position 8, "leorpc" 49
+  // at position 4, 0 clicks each on 2026-09-19) land next to the brand's
+  // own site; the title has to say what this page adds, independent
+  // measurement, and the description has to carry the numbers.
+  const title = `${p.name} benchmark: live rank and measured numbers`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
@@ -130,16 +162,23 @@ export async function generateMetadata({
   // Some registry descriptions end with a period, others do not. Normalize
   // before appending so the concatenated meta description never reads
   // "...provider Live performance..." as a run-on sentence.
-  const rawDescription = reg?.description
-    ? `${stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
-    : fallbackDescription;
-  // Google truncates meta description at ~155 chars in the SERP snippet.
-  // Reserve ~22 chars for the ISO date suffix so the concatenated string
-  // stays inside the cap even after appending "As of YYYY-MM-DD."
-  // (LLM extractability: dated content is cited more by ChatGPT /
-  // Perplexity / Copilot, which drive most of our Bing query traffic).
-  const isoDate = new Date().toISOString().split("T")[0];
-  const description = `${capDescription(rawDescription, 130)} As of ${isoDate}.`;
+  // Measured facts first: the best two ranked appearances with rank and
+  // value, then the registry one-liner if room remains. The dated
+  // "As of" belongs in the page body (TL;DR, JSON-LD dateModified), not
+  // in 22 characters of the snippet.
+  const metaRanked = [...p.appearances]
+    .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
+    .sort((a, b) => a.rank - b.rank || a.benchmark.title.localeCompare(b.benchmark.title))
+    .slice(0, 2)
+    .map((a) => `${a.rank === 1 ? "#1" : `#${a.rank} of ${a.totalRanked}`} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+  const measuredLead =
+    metaRanked.length > 0
+      ? `${p.name} ranks ${metaRanked.join(", ")} (p50, 24h). ${benchCount} live ${benchWord}${winSuffix}.`
+      : fallbackDescription;
+  const registryLine = reg?.description
+    ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
+    : "";
+  const description = capDescription(`${measuredLead} ${registryLine}`.trim(), 158);
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
@@ -188,6 +227,17 @@ export default async function ProviderPage({
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
+  // Bench pages this deployment indexes (worker sitemap minus expired
+  // chain pages). An appearance on a thin or expired chain RPC bench is
+  // still shown (it is a real measurement) but not linked: the product
+  // pages were a main source of crawl into noindex pages (2 to 7 per
+  // page on 2026-09-19).
+  const sitemapBlob = await loadSitemapBlob();
+  const linkableBench = sitemapBlob
+    ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
+  const canLink = (benchSlug: string) =>
+    !benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug);
 
   // Degraded-read tripwire: a provider listed on several benches never
   // loses EVERY rank in the same cycle — that signature means the store
@@ -470,7 +520,9 @@ export default async function ProviderPage({
           990,
         ),
         ...(sameAs.length > 0 ? { sameAs } : {}),
-        subjectOf: sorted.map((a) => ({
+        // Only indexable bench pages: a Dataset node pointing at a noindex
+        // URL is a crawl hint into a page we asked engines to skip.
+        subjectOf: sorted.filter((a) => canLink(a.benchmark.slug)).map((a) => ({
           "@type": "Dataset",
           // GSC + Google Dataset Search flag anonymous Datasets
           // ("Unnamed item" with recommended fields missing) when the
@@ -811,8 +863,8 @@ export default async function ProviderPage({
             const hasChainRanks = chainRanks.length > 0;
             return (
               <li key={a.benchmark.slug}>
-                <Link
-                  href={`/benchmarks/${a.benchmark.slug}`}
+                <RowLink
+                  href={canLink(a.benchmark.slug) ? `/benchmarks/${a.benchmark.slug}` : null}
                   className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
@@ -870,7 +922,7 @@ export default async function ProviderPage({
                       </p>
                     )}
                   </div>
-                </Link>
+                </RowLink>
               </li>
             );
           })}

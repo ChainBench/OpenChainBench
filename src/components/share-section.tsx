@@ -67,7 +67,12 @@ const TEMPLATES: Template[] = [
 type Props = {
   slug: string;
   title: string;
-  benchmark: Benchmark;
+  /** Only the fields the share card needs; the client bundle must not
+   *  receive the whole Benchmark a second time. */
+  benchmark: Pick<
+    Benchmark,
+    "dimensions" | "metricPanels" | "results" | "higherIsBetter" | "panelMainLabel" | "metric"
+  >;
   /** When the bench page is filtered by chain, propagate it to the
    * share-card so the generated PNG renders with the same scope. */
   chain?: string | null;

@@ -34,6 +34,6 @@ related:
   - which-l1-has-the-fastest-finality
   - which-l2-has-the-fastest-block-time
 
-seo_title: "Is Solana staking better than Ethereum? Live yield comparison 2026"
+seo_title: "Is Solana staking better than Ethereum? Live yield comparison"
 seo_description: "Solana validators pay a median net {{p50:solana}} versus {{p50:ethereum}} for Ethereum (24h, live). What the gap includes, what it hides, and the risks on each side, measured by OpenChainBench."
 status: live

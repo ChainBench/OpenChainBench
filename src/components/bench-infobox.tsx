@@ -1,4 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
+import { displayResults } from "@/lib/provider-filters";
 import { leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { SITE } from "@/data/site";
@@ -25,9 +26,8 @@ import { SITE } from "@/data/site";
  */
 export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
   const top = leader(benchmark);
-  const providerCount = benchmark.results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
-  ).length;
+  // Display cohort, same count as {{count}}, the Results H2 and the TL;DR.
+  const providerCount = displayResults(benchmark.results).length;
   const lastRunIso = benchmark.lastRunAt
     ? new Date(benchmark.lastRunAt).toISOString()
     : null;
