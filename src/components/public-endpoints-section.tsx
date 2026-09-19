@@ -17,14 +17,21 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { CopyButton } from "@/components/copy-button";
 import { fmtUnit } from "@/lib/format";
 import { canonicalize } from "@/lib/providers";
+import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
 import type { Benchmark } from "@/types/benchmark";
 
-export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
-  // Only endpoints with a live 24h measurement: a URL we cannot vouch for
-  // today (provider down, unresponsive, no samples) is not listed.
-  const rows = benchmark.results
+/** The endpoints the section lists: a declared public URL with a live
+ *  24h measurement. A URL we cannot vouch for today (provider down,
+ *  unresponsive, no samples) is not listed. Shared with the TL;DR so the
+ *  count it announces is the count the table shows. */
+export function publicEndpointRows(benchmark: Benchmark) {
+  return benchmark.results
     .filter((r) => r.endpoint && !r.unrankedLabel && !r.unresponsive && r.availability !== "unavailable" && r.ms.p50 > 0)
     .sort((a, b) => (benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50));
+}
+
+export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
+  const rows = publicEndpointRows(benchmark);
   if (rows.length < 2) return null;
 
   // "Ethereum RPC" from "Fastest free Ethereum RPC, live no-key ..." is not
@@ -33,6 +40,7 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
   const chainLabel =
     benchmark.dimensions?.chain?.find((c) => c.value !== "all")?.label ??
     (benchmark.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i)?.[1] ?? null);
+  const chainId = EVM_CHAIN_IDS[benchmark.slug.replace(/-rpc$/, "")];
   const heading = chainLabel
     ? `Public ${chainLabel} RPC endpoints measured`
     : "Public endpoints measured";
@@ -43,6 +51,7 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
         {heading}
       </h2>
       <p className="mt-2 text-sm text-ink-soft leading-snug">
+        {chainId ? <>Chain ID {chainId}. </> : null}
         The {rows.length} no-key endpoints answering our probes today, with
         their current 24h median. Paste one into a wallet or a client as is: no signup, no
         key. Providers that need an API key are compared on the keyed pages

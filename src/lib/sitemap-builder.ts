@@ -142,15 +142,24 @@ function reportsRoutes(): MetadataRoute.Sitemap {
     },
   ];
   try {
+    const reports = getAllReports();
     for (const cat of getAllReportCategories()) {
+      // A category index changes when a report is published in it, not
+      // on every deploy.
+      const newest = reports
+        .filter((r) => r.categorySlug === cat)
+        .reduce<Date | null>((acc, r) => {
+          const d = new Date(r.publishedAt);
+          return !acc || d > acc ? d : acc;
+        }, null);
       entries.push({
         url: `${SITE.url}/reports/${cat}`,
-        lastModified: BUILD_TIME,
+        lastModified: newest ?? pageMtime("reports/page.tsx"),
         changeFrequency: "monthly",
         priority: 0.7,
       });
     }
-    for (const r of getAllReports()) {
+    for (const r of reports) {
       entries.push({
         url: `${SITE.url}/reports/${r.categorySlug}/${r.slug}`,
         lastModified: new Date(r.publishedAt),
