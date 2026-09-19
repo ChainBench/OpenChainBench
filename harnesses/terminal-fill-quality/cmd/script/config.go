@@ -32,7 +32,7 @@ type Terminal struct {
 	// StableLegsAreFee: besides its main fee wallet, the terminal's fee
 	// arrives as user-signed stable transfers to per-trade accounts (FOMO
 	// through the OKX router: commission leg plus one or two transferChecked
-	// legs, about 50 bps in total). Such legs, outside any pool
+	// legs, 2 % of the trade with a $0.10 minimum on its DFlow flow). Such legs, outside any pool
 	// instruction and under 2 % of the trade, count as terminal fee.
 	StableLegsAreFee bool `json:"stable_legs_are_fee,omitempty"`
 	// SolLegIsFee: the terminal's fee on buys is one SOL transfer of about

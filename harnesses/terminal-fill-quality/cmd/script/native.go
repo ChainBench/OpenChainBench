@@ -299,6 +299,9 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		head := hexInt(headHex)
 		from := f.cursor[c.slug] + 1
 		if from == 1 || head-from > 2000 {
+			if from != 1 {
+				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-200 (the gap is not read nor sampled)", c.slug, from-1, head-from, head)
+			}
 			from = head - 200 // first run, or too far behind: start from the recent past
 		}
 		if from > head {
@@ -337,16 +340,21 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			delete(f.polled, c.slug)
 		}
 		seen := map[string]bool{}
+		others := map[string]int{} // shared routers: swaps by wallets outside the app's funded set
 		for _, l := range logs {
 			slug := byRouter[strings.ToLower(l.Address)]
-			if slug == "" || seen[l.TxHash] {
+			if slug == "" || seen[l.TxHash] || len(l.Topics) == 0 {
 				continue
 			}
 			if t := termOf[slug]; t.FromSet != "" {
 				// A shared router: only the events whose sender topic names a
 				// wallet the app funded; other event kinds are not swaps here.
 				idx, ok := t.SenderTopic[l.Topics[0]]
-				if !ok || len(l.Topics) <= idx || !f.mine(t, topicAddr(l.Topics[idx])) {
+				if !ok || len(l.Topics) <= idx {
+					continue
+				}
+				if !f.mine(t, topicAddr(l.Topics[idx])) {
+					others[slug]++
 					continue
 				}
 			}
@@ -357,6 +365,11 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				f.box[slug] = b
 			}
 			b.add(l.TxHash)
+		}
+		for slug, n := range others {
+			if n > 0 {
+				log.Printf("[native] %s: %d router swaps by wallets outside the funded set this tick (not counted)", slug, n)
+			}
 		}
 	}
 }

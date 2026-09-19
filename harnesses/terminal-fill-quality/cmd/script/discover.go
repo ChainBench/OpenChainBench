@@ -418,7 +418,7 @@ func accountLabel(owner string) string {
 	case owner == "":
 		return ""
 	case strings.HasPrefix(owner, "pfee"):
-		return "pump.fun creator fee vault"
+		return "pump.fun fee vault (protocol or creator): other, not a terminal fee"
 	case strings.HasPrefix(owner, "Tokenkeg") || strings.HasPrefix(owner, "TokenzQd"):
 		return "token account"
 	case owner == "11111111111111111111111111111111":

@@ -287,7 +287,10 @@ wallet on Robinhood Chain, BNB, Base or Ethereum (a few into its contract
 = the native amount at the exchange's price, relay = the rest) into
 `basedbot-funding`, out of the pooled figure. Its trades run in its own
 contracts on those chains (the funded wallets carry an EIP-7702
-delegation to `0xe6cae83b…` or `0x69007702…`), not identified yet; the
+delegation to `0xe6cae83b…` or `0x69007702…`): they all trade through the
+chain's shared router `0x7ab338…` (sell contract `0xe33e9e…`), read as the
+`basedbot-robinhood` row filtered on the funded set (`FromSet`, seeded from
+Relay's history at start); the
 Solana wallets it funds swap through Jupiter and pump.fun with no
 recurring fee recipient (11 wallets, 69 swaps). A taxed token that swaps its own
 tax on the same pool inside the user's transaction is not the user's
