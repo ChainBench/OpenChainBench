@@ -316,7 +316,7 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 		gRelayFeed.Set(b2f(f.up))
 		// forget ids older than a day
 		cut := time.Now().Add(-24 * time.Hour).Unix()
-		pcut := time.Now().Add(-2 * time.Hour).Unix()
+		pcut := time.Now().Add(-30 * time.Minute).Unix()
 		for id, t := range f.pending {
 			if t < pcut {
 				delete(f.pending, id)
@@ -391,16 +391,21 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				// goes past known requests until the oldest pending one is
 				// reached again, so a late finaliser (refunds finalise last)
 				// is counted on the poll where it is final.
+				// Only recent pending requests keep the walk going (a request
+				// stuck pending for long would otherwise drag every round to
+				// the page budget); past a quarter of an hour the walk stops
+				// at the first known request as before.
 				older := false
+				recent := time.Now().Add(-15 * time.Minute).Unix()
 				for _, pc := range f.pending {
-					if pc < created {
+					if pc < created && pc >= recent {
 						older = true
 						break
 					}
 				}
 				f.mu.Unlock()
 				if known {
-					if !older {
+					if !older || created < recent {
 						stop = true
 					}
 					continue
