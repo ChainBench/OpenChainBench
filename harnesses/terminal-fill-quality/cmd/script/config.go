@@ -223,8 +223,7 @@ var swapProgramPrefixes = []string{
 	"b1oomGGq",             // Bloom
 	"BBRouter", "MaestroA", // Maestro
 	"BSfD6SHZ", "T1TANpTe", // Photon, Titan
-	"proVF4pM", // Phantom's router
-	"proVF4pM", // FOMO (OKX router)
+	"proVF4pM", // a shared router (Phantom, FOMO's large flow, OKX)
 	"troyXT7T", // Trojan
 	"BANANAjs", // Banana Gun
 	"DF1ow4ts", // DFlow (FOMO's router since 2026-09)

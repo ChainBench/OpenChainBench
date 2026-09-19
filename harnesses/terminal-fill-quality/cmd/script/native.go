@@ -15,7 +15,8 @@ import (
 // Chain swaps through their own router contracts, which emit an event
 // on every swap. Polling eth_getLogs on those routers gives every
 // successful swap they routed (a failed transaction emits nothing, so
-// the fail rate is not measured here); a random sample is read.
+// the fail rate comes from failScan's blocks read in full); a random
+// sample is read.
 //
 // Per sampled swap the receipt gives the tokens delivered or sold, the
 // pool(s) and their state before the swap (evm.go), and the gas; the
