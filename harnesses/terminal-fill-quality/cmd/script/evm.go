@@ -164,7 +164,7 @@ type erc20Meta struct {
 func erc20(ctx context.Context, httpc *http.Client, c originChain, token string) erc20Meta {
 	// Arc's gas coin is USDC; the chain logs its native moves as ERC20
 	// Transfers of a pseudo-token (18 decimals) with no code to ask.
-	if c.slug == "arc" && token == "0xfffffffffffffffffffffffffffffffffffffffe" {
+	if c.slug == "arc" && token == arcPseudo {
 		return erc20Meta{dec: 18, symbol: "USDC", ok: true}
 	}
 	key := c.slug + ":" + token
@@ -207,12 +207,19 @@ func erc20(ctx context.Context, httpc *http.Client, c originChain, token string)
 // Maker / Ethena / Paxos / World Liberty / First Digital deployments and
 // Robinhood Chain's USDG, Arc's native USDC and its pseudo-token).
 var stableAddrs = map[string]map[string]bool{
-	"bnb":       set("0x55d398326f99059ff775485246999027b3197955", "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d", "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d", "0xe9e7cea3dedca5984780bafc599bd69add087d56", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409", "0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3"),
-	"ethereum":  set("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xdac17f958d2ee523a2206206994597c13d831ec7", "0x6b175474e89094c44da98b954eedeac495271d0f", "0xdc035d45d973e3ec169d2276ddab16f1e407384f", "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", "0x6c3ea9036406852006290770bedfcaba0e23a0e8"),
-	"base":      set("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca", "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"),
+	"bnb":       set("0x55d398326f99059ff775485246999027b3197955", "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d", "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d", "0xe9e7cea3dedca5984780bafc599bd69add087d56", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409", "0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3", "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"),
+	"ethereum":  set("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xdac17f958d2ee523a2206206994597c13d831ec7", "0x6b175474e89094c44da98b954eedeac495271d0f", "0xdc035d45d973e3ec169d2276ddab16f1e407384f", "0x4c9edd5852cd905f086c759e8383e09bff1e68b3", "0x6c3ea9036406852006290770bedfcaba0e23a0e8", "0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409"),
+	"base":      set("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca", "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2", "0x820c137fa70c8691f0e44dc420a5e53c168921dc", "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"),
 	"robinhood": set("0x5fc5360d0400a0fd4f2af552add042d716f1d168"),
-	"arc":       set("0x3600000000000000000000000000000000000000", "0xfffffffffffffffffffffffffffffffffffffffe"),
+	"arc":       set(arcUSDC, arcPseudo),
 }
+
+// Arc logs a native USDC move twice: as the 6-decimal token and as the
+// 18-decimal pseudo-token of the gas coin.
+const (
+	arcUSDC   = "0x3600000000000000000000000000000000000000"
+	arcPseudo = "0xfffffffffffffffffffffffffffffffffffffffe"
+)
 
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
 // Coinbase spot of the chain's gas token.
@@ -478,6 +485,9 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		// 18-decimal native pseudo-token: only one matches the event).
 		for pass := 0; pass < 2; pass++ {
 			for erc, amt := range intoPool[ev.pool] {
+				if erc == arcPseudo && intoPool[ev.pool][arcUSDC] != nil {
+					continue // Arc's twin log of the same move: the 6-decimal token is the one the event counts
+				}
 				qm := erc20(ctx, httpc, c, erc)
 				q, ok := quoteUSD(qm.symbol, c, gas)
 				if !qm.ok || !ok {
@@ -531,7 +541,7 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 		out.PoolInUSD += f(p.quote) * u
 	}
-	out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+	out.NativeUSD = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr)
 	// The main pool's price before our swap, raw quote per raw token.
 	var midRaw float64
 	switch main.ev.kind {
@@ -694,8 +704,8 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 			return quoteRaw, new(big.Int)
 		}
 		for erc, byTo := range outTo[ev.pool] {
-			if len(byTo) < 2 {
-				continue
+			if len(byTo) < 2 || outOfPool[ev.pool][erc] == nil || outOfPool[ev.pool][erc].Cmp(quoteRaw) < 0 {
+				continue // not this swap's quote (another ERC20's smaller flow)
 			}
 			// The largest recipient got what went on; the shortfall to the
 			// swap's output is the hook's when one other recipient got
@@ -812,6 +822,9 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		// pseudo-token: only one matches the event).
 		for pass := 0; pass < 2; pass++ {
 			for erc, amt := range outOfPool[ev.pool] {
+				if erc == arcPseudo && outOfPool[ev.pool][arcUSDC] != nil {
+					continue // Arc's twin log of the same move
+				}
 				qm := erc20(ctx, httpc, c, erc)
 				q, ok := quoteUSD(qm.symbol, c, gas)
 				if !qm.ok || !ok {
@@ -866,7 +879,7 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		out.PoolInUSD += f(q) * u // here: the quote the pools paid out to the route, USD
 		out.HookUSD += f(hook) * u
 	}
-	out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+	out.NativeUSD = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr)
 	var midRaw float64
 	switch main.ev.kind {
 	case "v2":
@@ -937,7 +950,7 @@ func evmTrace(ctx context.Context, httpc *http.Client, c originChain, hash strin
 		Calls []call `json:"calls"`
 	}
 	var root call
-	if err := evmCall(ctx, httpc, c.rpc, "debug_traceTransaction", []any{hash, map[string]any{"tracer": "callTracer"}}, &root); err != nil {
+	if err := evmCall(ctx, httpc, c.traceRPC(), "debug_traceTransaction", []any{hash, map[string]any{"tracer": "callTracer"}}, &root); err != nil {
 		return nil, false
 	}
 	var out []valueCall
@@ -952,6 +965,17 @@ func evmTrace(ctx context.Context, httpc *http.Client, c originChain, hash strin
 	}
 	walk(&root)
 	return out, true
+}
+
+// nativeRateFor applies nativeRate only when the pool leg was not itself
+// valued at the exchange's gas price (a token pool quoted in WBNB /
+// WETH): then both legs share the exchange's print and the route's own
+// rate would move value between the buckets for nothing.
+func nativeRateFor(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64, upr float64) float64 {
+	if p, ok := gas[c.gas]; ok && p > 0 && math.Abs(upr/(p*1e-18)-1) < 1e-9 {
+		return 0
+	}
+	return nativeRate(ctx, httpc, c, logs, evs, gas)
 }
 
 // nativeRate: USD per wrapped gas coin at the rate this route itself got on
@@ -1076,7 +1100,7 @@ func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool,
 			from = 0
 		}
 		logs = nil
-		if err := evmCall(ctx, httpc, c.rpc, "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(block).Text(16)}}, &logs); err != nil {
+		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(block).Text(16)}}, &logs); err != nil {
 			return nil, err
 		}
 		found := false

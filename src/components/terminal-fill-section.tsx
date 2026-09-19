@@ -127,7 +127,7 @@ export async function TerminalFillSection({
                   <td className="py-2.5 pr-4">
                     <CostBar t={t} max={maxBps} />
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.failed.toLocaleString("en-US")} of ${t.seen.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
@@ -237,7 +237,7 @@ function failSub(t: TerminalFillStats): string {
   if (r) parts.push(`mostly ${r}`);
   if (t.failCostUsd) parts.push(`$${t.failCostUsd.median.toFixed(t.failCostUsd.median < 0.1 ? 3 : 2)} per failed attempt`);
   if (t.failOverheadBps !== undefined) parts.push(`burns ${fmtBps(t.failOverheadBps)} per swap`);
-  if (parts.length === 0) parts.push(`${t.seen.toLocaleString("en-US")} attempts seen`);
+  if (parts.length === 0) parts.push(`${t.attempts.toLocaleString("en-US")} attempts seen`);
   return parts.join(" · ");
 }
 
@@ -287,8 +287,8 @@ function sizeCohortMedian(ts: TerminalFillStats[], b: keyof typeof SIZE_LABELS):
 }
 
 function aggregateFail(ts: TerminalFillStats[]): string {
-  const seen = ts.reduce((s, t) => s + t.seen, 0);
-  const failed = ts.reduce((s, t) => s + t.failed, 0);
+  const seen = ts.reduce((s, t) => s + t.attempts, 0);
+  const failed = ts.reduce((s, t) => s + t.attemptsFailed, 0);
   return seen > 0 ? `${((100 * failed) / seen).toFixed(1)}%` : "—";
 }
 

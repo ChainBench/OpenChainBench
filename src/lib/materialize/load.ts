@@ -763,6 +763,16 @@ export function injectLabels(query: string, labels: Record<string, string>): str
   return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
     const additions: string[] = [];
     for (const [k, v] of Object.entries(labels)) {
+      // A selector pinned to the dimension's `all` value is the
+      // unfiltered form of a bench whose harness publishes a pooled
+      // series next to the per-value ones (terminal-fill-quality:
+      // `chain="all"` is the product over every chain); a filter
+      // replaces it instead of adding a second, contradictory matcher.
+      const pinnedAll = new RegExp(`\\b${escapeRe(k)}\\s*=\\s*"all"`);
+      if (pinnedAll.test(inside)) {
+        inside = inside.replace(pinnedAll, `${k}="${escapePromLabelValue(v)}"`);
+        continue;
+      }
       const present = new RegExp(`\\b${escapeRe(k)}\\s*=`).test(inside);
       if (!present) additions.push(`${k}="${escapePromLabelValue(v)}"`);
     }

@@ -78,10 +78,10 @@ func fourTokenInfo(ctx context.Context, httpc *http.Client, c originChain, manag
 }
 
 type fourTrade struct {
-	manager                   string
-	buy                       bool
-	amount, cost, fee, offers *big.Int
-	index                     int64
+	manager                          string
+	buy                              bool
+	price, amount, cost, fee, offers *big.Int
+	index                            int64
 }
 
 // fourTrades lists the curve trades of the token in the receipt.
@@ -95,7 +95,7 @@ func fourTrades(logs []evmLog, token string) []fourTrade {
 		if "0x"+strings.ToLower(strings.TrimPrefix(l.Data, "0x")[24:64]) != token {
 			continue
 		}
-		out = append(out, fourTrade{manager: strings.ToLower(l.Address), buy: l.Topics[0] == topicFourPurchase, amount: word(l.Data, 3), cost: word(l.Data, 4), fee: word(l.Data, 5), offers: word(l.Data, 6), index: hexInt(l.LogIndex)})
+		out = append(out, fourTrade{manager: strings.ToLower(l.Address), buy: l.Topics[0] == topicFourPurchase, price: word(l.Data, 2), amount: word(l.Data, 3), cost: word(l.Data, 4), fee: word(l.Data, 5), offers: word(l.Data, 6), index: hexInt(l.LogIndex)})
 	}
 	return out
 }
@@ -103,6 +103,13 @@ func fourTrades(logs []evmLog, token string) []fourTrade {
 // priceFourMeme fills the settlement from a curve trade: the quote the
 // curve took or paid (pool), the protocol fee (other), the mid before.
 func priceFourMeme(ctx context.Context, httpc *http.Client, c originChain, out *evmSettlement, tr fourTrade, token string, tokenDec int, gas map[string]float64) {
+	// The event's own consistency check (price × amount = cost, to 1 %)
+	// guards the layout: the V1 manager is assumed to share V2's, and a
+	// different one could not pass it.
+	if tr.amount.Sign() <= 0 || tr.cost.Sign() <= 0 || math.Abs(f(tr.price)*f(tr.amount)/1e18/f(tr.cost)-1) > 0.01 {
+		out.Unpriced = "four_meme_layout"
+		return
+	}
 	info := fourTokenInfo(ctx, httpc, c, tr.manager, token)
 	if !info.ok {
 		out.Unpriced = "four_meme_info"

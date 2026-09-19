@@ -47,49 +47,49 @@ import (
 var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|ci_lo|ci_hi",
-	}, []string{"terminal", "stat"})
+	}, []string{"terminal", "chain", "stat"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Median cost component per swap, basis points of the trade",
-	}, []string{"terminal", "component"})
+	}, []string{"terminal", "chain", "component"})
 	gFail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_rate_pct", Help: "Share of the terminal's swap attempts that failed on-chain, percent (rolling window, every attempt the feed saw)",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gSamples = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_sample_size", Help: "Samples in the window: seen (swap attempts), parsed (swaps), priced (with a loss figure)",
-	}, []string{"terminal", "kind"})
+	}, []string{"terminal", "chain", "kind"})
 	gTrade = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_trade_usd", Help: "Sampled trade size in USD",
-	}, []string{"terminal", "stat"})
+	}, []string{"terminal", "chain", "stat"})
 	gVenue = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_venue_share_pct", Help: "Share of sampled swaps per venue",
-	}, []string{"terminal", "venue"})
+	}, []string{"terminal", "chain", "venue"})
 	gBuy = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_buy_share_pct", Help: "Share of sampled swaps that are buys",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gSandwich = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_sandwich_pct", Help: "Share of screened swaps with a front-run and a back-run by the same signer on the same pool (informative; coverage depends on pool activity)",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gSandwichProfit = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_sandwich_profit_bps", Help: "Median attacker profit on sandwiched swaps, basis points of the victim's trade",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gLossSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps_size", Help: "Median loss per swap by trade-size bucket (under25, 25to250, over250 USD)",
-	}, []string{"terminal", "bucket"})
+	}, []string{"terminal", "chain", "bucket"})
 	gLossChain = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps_chain", Help: "Cross-chain apps: median loss per swap by origin chain (bnb, robinhood, base, ethereum, arc)",
-	}, []string{"terminal", "chain"})
+	}, []string{"terminal", "chain", "origin"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_health", Help: "1 when the terminal has at least MIN_PRICED priced samples in the window",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gFailCost = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_cost_usd", Help: "Median transaction fee paid on a failed swap attempt, USD (sampled failed attempts, rolling window)",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gFailOverhead = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_overhead_bps", Help: "Expected fee burnt on failed attempts per successful swap: fail rate / (1 − fail rate) × median failed-attempt fee, basis points of the median trade",
-	}, []string{"terminal"})
+	}, []string{"terminal", "chain"})
 	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	gSol     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
@@ -199,6 +199,9 @@ type TerminalStats struct {
 	Name string `json:"name"`
 	Kind string `json:"kind"`
 	Note string `json:"note,omitempty"`
+	/** The product (fomo, gmgn, …) and the chain of this entry: one chain per row, "all" for the product's pooled entry over every chain it trades on (the headline). "funding" is a cross-chain app's bridge leg, left out of the pool. */
+	Product string `json:"product"`
+	Chain   string `json:"chain"`
 	/** Feed counts over the window: swap attempts, failed ones, top error classes, non-swap notifications. */
 	Seen        int            `json:"seen"`
 	Failed      int            `json:"failed"`
@@ -208,6 +211,9 @@ type TerminalStats struct {
 	/** Native EVM terminals: the fail rate comes from a block sample (transactions sent to the routers, reverted or not), these are its counts. */
 	SampSeen   int `json:"sampled_attempts,omitempty"`
 	SampFailed int `json:"sampled_failed,omitempty"`
+	/** The base of the fail rate: the feed's attempts (Solana), the block sample's (native EVM), both on a pooled product. */
+	Attempts       int `json:"attempts"`
+	AttemptsFailed int `json:"attempts_failed"`
 	/** Cost of failures: sampled failed attempts, the median fee they paid, and the expected burn per successful swap in bps of the median trade. */
 	FailsSampled    int        `json:"fails_sampled"`
 	FailCostUSD     *Quantiles `json:"fail_cost_usd,omitempty"`
@@ -295,7 +301,7 @@ func main() {
 	if addr == "" {
 		addr = ":2112"
 	}
-	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d terminals | tick=%s target=%d swaps/terminal/day window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, windowHours, minPriced, minRank, useWS)
+	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d Solana terminals | tick=%s target=%d swaps/terminal/day window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, windowHours, minPriced, minRank, useWS)
 
 	// Redirects are not followed: a public RPC that answers a heavy query
 	// with a redirect to a private address (seen on Robinhood Chain's
@@ -1072,30 +1078,137 @@ func implausibleSplit(sw *Swap) {
 	}
 }
 
+// productChains: the chain suffixes a row slug can carry; "funding" is
+// the bridge leg of a cross-chain app, kept out of the product's pooled
+// figure (it is not a swap).
+var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", "arc", "hyperevm"}
+
+// productOf splits a row slug into the product and its chain
+// ("fomo-bnb" → fomo, bnb; "trojan" → trojan, solana).
+func productOf(slug string) (string, string) {
+	for _, c := range productChains {
+		if strings.HasSuffix(slug, "-"+c) {
+			return strings.TrimSuffix(slug, "-"+c), c
+		}
+	}
+	return slug, "solana"
+}
+
+var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", "basedbot": "BasedBot"}
+
+// productTerminal: the identity of a product's pooled row.
+func productTerminal(p string, rows []Terminal) Terminal {
+	for _, t := range terminals {
+		if t.Slug == p {
+			return Terminal{Slug: p, Name: t.Name, Kind: t.Kind, Note: t.Note}
+		}
+	}
+	name, kind, note := productNames[p], "app", ""
+	if len(rows) > 0 {
+		kind, note = rows[0].Kind, rows[0].Note
+	}
+	if name == "" {
+		name = p
+	}
+	return Terminal{Slug: p, Name: name, Kind: kind, Note: note}
+}
+
+// compute builds one entry per row (a product on one chain, `chain` set)
+// and one pooled entry per product over every chain it trades on
+// (`chain: all`, the bench's headline, the funding legs left out).
 func compute(st *State, minPriced, minRank int) []TerminalStats {
-	out := make([]TerminalStats, 0, len(terminals)+len(xchainApps))
+	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
+	byProduct := map[string][]string{}
+	rowsOf := map[string][]Terminal{}
+	var products []string
 	for _, t := range cohort() {
-		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: st.Rejects[t.Slug]}
+		ts, ok := statsFor(st, t, []string{t.Slug}, minPriced, minRank)
+		if !ok {
+			continue
+		}
+		ts.Product, ts.Chain = productOf(t.Slug)
+		out = append(out, ts)
+		if ts.Chain == "funding" {
+			continue
+		}
+		if byProduct[ts.Product] == nil {
+			products = append(products, ts.Product)
+		}
+		byProduct[ts.Product] = append(byProduct[ts.Product], t.Slug)
+		rowsOf[ts.Product] = append(rowsOf[ts.Product], t)
+	}
+	for _, p := range products {
+		ts, ok := statsFor(st, productTerminal(p, rowsOf[p]), byProduct[p], minPriced, minRank)
+		if !ok {
+			continue
+		}
+		ts.Product, ts.Chain = p, "all"
+		out = append(out, ts)
+	}
+	// Ranked terminals first by median, then published-but-not-ranked by
+	// median, then the rest by sample size.
+	tier := func(ts TerminalStats) int {
+		switch {
+		case ts.Ranked && ts.Loss != nil:
+			return 0
+		case ts.Healthy && ts.Loss != nil:
+			return 1
+		}
+		return 2
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		ti, tj := tier(out[i]), tier(out[j])
+		if ti != tj {
+			return ti < tj
+		}
+		if ti == 2 {
+			return out[i].Priced > out[j].Priced
+		}
+		return out[i].Loss.Median < out[j].Loss.Median
+	})
+	return out
+}
+
+// statsFor aggregates the window over the rows in slugs (one row, or a
+// product's rows on every chain).
+func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (TerminalStats, bool) {
+	member := set(slugs...)
+	rejects := map[string]int{}
+	for _, slug := range slugs {
+		for k, v := range st.Rejects[slug] {
+			rejects[k] += v
+		}
+	}
+	if len(rejects) == 0 {
+		rejects = nil
+	}
+	{
+		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
-		for _, b := range st.Buckets[t.Slug] {
-			ts.Seen += b.Seen
-			ts.Failed += b.Failed
-			ts.NonSwap += b.Other
-			ts.SampSeen += b.SampSeen
-			ts.SampFailed += b.SampFailed
-			for k, v := range b.Errs {
-				errs[k] += v
+		att, failed := 0, 0 // fail-rate base: the feed's attempts, or the block sample's on a native EVM row
+		for _, slug := range slugs {
+			native := isNativeEVM(slug)
+			for _, b := range st.Buckets[slug] {
+				ts.Seen += b.Seen
+				ts.Failed += b.Failed
+				ts.NonSwap += b.Other
+				ts.SampSeen += b.SampSeen
+				ts.SampFailed += b.SampFailed
+				if native {
+					att += b.SampSeen
+					failed += b.SampFailed
+				} else {
+					att += b.Seen
+					failed += b.Failed
+				}
+				for k, v := range b.Errs {
+					errs[k] += v
+				}
 			}
 		}
-		if isNativeEVM(t.Slug) {
-			// The router logs carry successful swaps only: the fail rate
-			// comes from the block sample.
-			if ts.SampSeen >= 20 {
-				fr := 100 * float64(ts.SampFailed) / float64(ts.SampSeen)
-				ts.FailRate = &fr
-			}
-		} else if ts.Seen >= 20 {
-			fr := 100 * float64(ts.Failed) / float64(ts.Seen)
+		ts.Attempts, ts.AttemptsFailed = att, failed
+		if att >= 20 {
+			fr := 100 * float64(failed) / float64(att)
 			ts.FailRate = &fr // percent
 		}
 		if len(errs) > 0 {
@@ -1103,7 +1216,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		var failFees []float64
 		for _, f := range st.Fails {
-			if f.Terminal == t.Slug {
+			if member[f.Terminal] {
 				failFees = append(failFees, f.FeeUSD) // 0 when sponsored: the user paid nothing
 			}
 		}
@@ -1121,7 +1234,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		for _, s := range st.Swaps {
-			if s.Terminal != t.Slug || s.Method != methodVersion {
+			if !member[s.Terminal] || s.Method != methodVersion {
 				continue
 			}
 			if s.Scanned {
@@ -1176,6 +1289,8 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
 				if s.Chain != "" {
 					byChain[s.Chain] = append(byChain[s.Chain], *s.LossBps)
+				} else if len(slugs) > 1 {
+					byChain["solana"] = append(byChain["solana"], *s.LossBps) // a product pooled over its chains
 				}
 				if s.PoolBps != nil {
 					pool = append(pool, *s.PoolBps)
@@ -1253,33 +1368,11 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		ts.OtherTop = top
 		ts.Healthy = ts.Priced >= minPriced
 		ts.Ranked = ts.Priced >= minRank
-		if strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
-			continue // a cross-chain row nobody used in the window
+		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
+			return ts, false // a cross-chain row nobody used in the window
 		}
-		out = append(out, ts)
+		return ts, true
 	}
-	// Ranked terminals first by median, then published-but-not-ranked by
-	// median, then the rest by sample size.
-	tier := func(ts TerminalStats) int {
-		switch {
-		case ts.Ranked && ts.Loss != nil:
-			return 0
-		case ts.Healthy && ts.Loss != nil:
-			return 1
-		}
-		return 2
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		ti, tj := tier(out[i]), tier(out[j])
-		if ti != tj {
-			return ti < tj
-		}
-		if ti == 2 {
-			return out[i].Priced > out[j].Priced
-		}
-		return out[i].Loss.Median < out[j].Loss.Median
-	})
-	return out
 }
 
 func isXchainRow(slug string) bool {
@@ -1319,65 +1412,65 @@ func topN(m map[string]int, n int) map[string]int {
 func publishGauges(stats []TerminalStats) {
 	for _, ts := range stats {
 		if ts.Loss != nil && ts.Healthy {
-			gLoss.WithLabelValues(ts.Slug, "median").Set(ts.Loss.Median)
-			gLoss.WithLabelValues(ts.Slug, "p90").Set(ts.Loss.P90)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.Loss.Median)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.Loss.P90)
 			if ts.Loss.CILo != nil && ts.Loss.CIHi != nil {
-				gLoss.WithLabelValues(ts.Slug, "ci_lo").Set(*ts.Loss.CILo)
-				gLoss.WithLabelValues(ts.Slug, "ci_hi").Set(*ts.Loss.CIHi)
+				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_lo").Set(*ts.Loss.CILo)
+				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_hi").Set(*ts.Loss.CIHi)
 			}
 		} else {
-			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
+			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
 		for c, v := range ts.Components {
-			gComponent.WithLabelValues(ts.Slug, c).Set(v)
+			gComponent.WithLabelValues(ts.Product, ts.Chain, c).Set(v)
 		}
 		if ts.FailRate != nil {
-			gFail.WithLabelValues(ts.Slug).Set(*ts.FailRate) // already percent
+			gFail.WithLabelValues(ts.Product, ts.Chain).Set(*ts.FailRate) // already percent
 		} else {
-			gFail.DeleteLabelValues(ts.Slug)
+			gFail.DeleteLabelValues(ts.Product, ts.Chain)
 		}
-		gSamples.WithLabelValues(ts.Slug, "seen").Set(float64(ts.Seen))
-		gSamples.WithLabelValues(ts.Slug, "parsed").Set(float64(ts.Parsed))
-		gSamples.WithLabelValues(ts.Slug, "priced").Set(float64(ts.Priced))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
 		if ts.TradeUSD != nil {
-			gTrade.WithLabelValues(ts.Slug, "median").Set(ts.TradeUSD.Median)
-			gTrade.WithLabelValues(ts.Slug, "p90").Set(ts.TradeUSD.P90)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.TradeUSD.Median)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.TradeUSD.P90)
 		}
-		gVenue.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
+		gVenue.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		for v, p := range ts.Venues {
-			gVenue.WithLabelValues(ts.Slug, v).Set(p)
+			gVenue.WithLabelValues(ts.Product, ts.Chain, v).Set(p)
 		}
-		gBuy.WithLabelValues(ts.Slug).Set(ts.BuySharePct)
+		gBuy.WithLabelValues(ts.Product, ts.Chain).Set(ts.BuySharePct)
 		if ts.SandwichPct != nil {
-			gSandwich.WithLabelValues(ts.Slug).Set(*ts.SandwichPct)
+			gSandwich.WithLabelValues(ts.Product, ts.Chain).Set(*ts.SandwichPct)
 		} else {
-			gSandwich.DeleteLabelValues(ts.Slug)
+			gSandwich.DeleteLabelValues(ts.Product, ts.Chain)
 		}
 		if ts.SandwichProfit != nil {
-			gSandwichProfit.WithLabelValues(ts.Slug).Set(ts.SandwichProfit.Median)
+			gSandwichProfit.WithLabelValues(ts.Product, ts.Chain).Set(ts.SandwichProfit.Median)
 		} else {
-			gSandwichProfit.DeleteLabelValues(ts.Slug)
+			gSandwichProfit.DeleteLabelValues(ts.Product, ts.Chain)
 		}
-		gLossSize.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
+		gLossSize.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		for b, q := range ts.BySize {
-			gLossSize.WithLabelValues(ts.Slug, b).Set(q.Median)
+			gLossSize.WithLabelValues(ts.Product, ts.Chain, b).Set(q.Median)
 		}
-		gLossChain.DeletePartialMatch(prometheus.Labels{"terminal": ts.Slug})
+		gLossChain.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		for c, q := range ts.ByChain {
-			gLossChain.WithLabelValues(ts.Slug, c).Set(q.Median)
+			gLossChain.WithLabelValues(ts.Product, ts.Chain, c).Set(q.Median)
 		}
 		if ts.FailCostUSD != nil {
-			gFailCost.WithLabelValues(ts.Slug).Set(ts.FailCostUSD.Median)
+			gFailCost.WithLabelValues(ts.Product, ts.Chain).Set(ts.FailCostUSD.Median)
 		} else {
-			gFailCost.DeleteLabelValues(ts.Slug)
+			gFailCost.DeleteLabelValues(ts.Product, ts.Chain)
 		}
 		if ts.FailOverheadBps != nil {
-			gFailOverhead.WithLabelValues(ts.Slug).Set(*ts.FailOverheadBps)
+			gFailOverhead.WithLabelValues(ts.Product, ts.Chain).Set(*ts.FailOverheadBps)
 		} else {
-			gFailOverhead.DeleteLabelValues(ts.Slug)
+			gFailOverhead.DeleteLabelValues(ts.Product, ts.Chain)
 		}
-		gHealth.WithLabelValues(ts.Slug).Set(b2f(ts.Healthy))
-		gRanked.WithLabelValues(ts.Slug).Set(b2f(ts.Ranked))
+		gHealth.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Healthy))
+		gRanked.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Ranked))
 	}
 }
 
@@ -1480,17 +1573,25 @@ func loadState(path string) *State {
 	}
 	// Rows of another method version never enter the statistics; drop
 	// them so the window holds one method only.
+	// PURGE_EVM_BEFORE (unix seconds) drops the EVM rows older than that
+	// once, after a pricing fix that changed their split (the Solana rows
+	// keep their method version and stay).
+	purgeBefore := int64(envInt("PURGE_EVM_BEFORE", 0))
 	kept := st.Swaps[:0]
-	dropped := 0
+	dropped, purged := 0, 0
 	for _, s := range st.Swaps {
 		if s.Method != methodVersion {
 			dropped++
 			continue
 		}
+		if purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore {
+			purged++
+			continue
+		}
 		kept = append(kept, s)
 	}
 	st.Swaps = kept
-	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped)", len(st.Swaps), path, dropped)
+	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d EVM rows purged)", len(st.Swaps), path, dropped, purged)
 	return st
 }
 
