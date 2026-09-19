@@ -15,6 +15,7 @@ import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
 import { isThinRpcBench } from "@/lib/provider-filters";
 import { PublicEndpointsSection } from "@/components/public-endpoints-section";
+import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -183,7 +184,11 @@ export async function generateMetadata({
       citation_title: metaTitle,
       citation_author: "OpenChainBench",
       citation_publisher: "OpenChainBench",
-      ...(isoPubDate ? { citation_publication_date: isoPubDate } : {}),
+      // publication_date is the bench's creation (stable), online_date the
+      // last measurement: a citation date that moved every day read as a
+      // new paper each morning to scholarly crawlers.
+      citation_publication_date: getBenchCreatedAt(b.slug).toISOString().slice(0, 10),
+      ...(isoPubDate ? { citation_online_date: isoPubDate } : {}),
       citation_doi: "10.5281/zenodo.20800312",
       citation_pdf_url: `${SITE.url}/api/stat/${b.slug}`,
       citation_public_url: canonical,
@@ -365,7 +370,19 @@ export default async function BenchmarkPage({
     // Google Rich Results validator caps description at ~1000 chars even
     // though schema.org Dataset allows up to 5000. Keep it under 990 to
     // avoid the "Invalid string length" warning that strips rich snippets.
-    description: capDescription(benchmark.abstract, 990),
+    // The abstract is a method paragraph shared by every page of a cluster
+    // (11 of 12 RPC pages identical); the resolved seo_description carries
+    // the leader, the number and the chain, so it leads and the method
+    // follows. Unique per page, live numbers, under the validator cap.
+    description: capDescription(
+      [
+        benchmark.seoDescription ? renderTemplate(benchmark.seoDescription, benchmark) : "",
+        benchmark.abstract,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      990,
+    ),
     url: benchmarkUrl,
     variableMeasured,
     category: benchmark.category,
@@ -790,6 +807,9 @@ export default async function BenchmarkPage({
           searcher wants the URL and the provider list first. Renders only
           when providers declare a public no-key `endpoint` in the spec. */}
       {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
+      {!isDraft && benchmark.category === "RPCs" && benchmark.slug.endsWith("-rpc") && (
+        <RpcSiblingChains currentSlug={benchmark.slug} />
+      )}
 
       {!isDraft && <CompareThisBench benchmark={benchmark} />}
 
