@@ -337,9 +337,11 @@ providers:
       sample_size: tfq_sample_size{terminal="banana-gun",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median"}
 
-  - slug: binance-wallet
-    name: Binance Wallet
-    tag: "Wallet, BNB + Ethereum + Base"
+  # Product slug is "binance" (one product page for the exchange's RPC and
+  # its wallet); the harness label stays terminal="binance-wallet".
+  - slug: binance
+    name: Binance
+    tag: "Binance Wallet swap, BNB + Ethereum + Base"
     formula: "Transactions sent to Binance Wallet's swap router (one address on BNB, Ethereum and Base) in a sample of blocks read in full, valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="median"}

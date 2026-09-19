@@ -100,7 +100,7 @@ const BRANDS: Record<string, Brand> = {
   bybit: { color: "#F7A600" },         // bybit yellow
   kraken: { color: "#5741D9" },        // kraken purple
   "binance-us": { color: "#F0B90B" },  // binance yellow
-  "binance-wallet": { color: "#F0B90B" }, // binance yellow (bench 268)
+  binance: { color: "#F0B90B" },          // binance yellow (bench 268 row, bnb-rpc)
   phantom: { color: "#AB9FF2" },        // phantom purple (bench 268)
 
   // ─── Non-EVM L1s (benches 211-214) ───
