@@ -252,7 +252,12 @@ export default async function RootLayout({
           Do NOT add overflow-x clip here — WebKit treats it as creating a
           containing block for position: fixed descendants and the header
           ends up scrolling with the body. Clip is on html + main + article. */}
-      <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
+      {/* grid-cols-[minmax(0,1fr)]: the implicit `auto` column sized the page to
+          the header's min-content (the search trigger's 0% basis resolves to its
+          text width inside intrinsic sizing), so every page was 1,207 px wide on a
+          1,024 px viewport and scrolled sideways. minmax(0,1fr) lets rows be
+          narrower than their min-content. */}
+      <body className="min-h-full grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

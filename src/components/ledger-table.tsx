@@ -116,6 +116,14 @@ export function LedgerTable({
   // Disabled while a panel tab is active — the panel sort already owns
   // the table and the aggregate columns are dashed out.
   const customCols = !panelActive ? benchmark.ledgerColumns : undefined;
+  // Five or more declared columns (perp P/F, terminal fill quality) do not
+  // fit next to the name, tag, embed button, delta and error columns on a
+  // laptop: the card scrolled sideways at 1400 px. Dense mode drops the
+  // derived delta and error columns (the declared columns carry the
+  // story), tightens cell padding and keeps the tag and embed button for
+  // xl screens.
+  const dense = !!customCols && customCols.length >= 5;
+  const cellPad = dense ? "px-2" : "px-3";
   const panelById = useMemo(
     () => new Map((benchmark.metricPanels ?? []).map((p) => [p.id, p])),
     [benchmark.metricPanels],
@@ -354,7 +362,9 @@ export function LedgerTable({
     sorted.reduce((s, r) => s + pickValue(r), 0) / Math.max(1, sorted.length);
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+    <div
+      className={`overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 ${dense ? "xl:-mx-20 2xl:-mx-32" : ""}`}
+    >
       {hasWindows && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
           <span className="mr-2 label-mono-xs">
@@ -401,7 +411,7 @@ export function LedgerTable({
             <th
               colSpan={
                 customCols
-                  ? customCols.length + 1
+                  ? customCols.length + (dense ? 0 : 1)
                   : activePanel || singleValueColumn
                     ? 2
                     : 5
@@ -424,13 +434,16 @@ export function LedgerTable({
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
             <th
-              colSpan={2}
+              colSpan={dense ? 1 : 2}
               scope="colgroup"
-              className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
+              className={`border-y-2 border-ink py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
             >
               Reliability
             </th>
-            <th scope="col" className="border-y-2 border-ink py-2 pl-3 text-right">
+            <th
+              scope="col"
+              className={`border-y-2 border-ink py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : ""}`}
+            >
               Trend
             </th>
             {hasSlots && (
@@ -477,7 +490,7 @@ export function LedgerTable({
                   dir={sortDir}
                   onClick={handleHeaderClick}
                   align="right"
-                  className={`py-2 px-3 ${idx === 0 ? "" : "hidden md:table-cell"}`}
+                  className={`py-2 ${cellPad} ${idx === 0 ? "" : "hidden md:table-cell"}`}
                 >
                   {colLabel(c)}
                 </SortableHeader>
@@ -540,39 +553,43 @@ export function LedgerTable({
                 </SortableHeader>
               </>
             )}
-            <SortableHeader
-              sortKey="delta"
-              activeKey={sortKey}
-              dir={sortDir}
-              onClick={handleHeaderClick}
-              align="right"
-              className="py-2 px-3 hidden md:table-cell"
-            >
-              Δ field
-            </SortableHeader>
+            {!dense && (
+              <SortableHeader
+                sortKey="delta"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={handleHeaderClick}
+                align="right"
+                className="py-2 px-3 hidden md:table-cell"
+              >
+                Δ field
+              </SortableHeader>
+            )}
             <SortableHeader
               sortKey="success"
               activeKey={sortKey}
               dir={sortDir}
               onClick={handleHeaderClick}
               align="right"
-              className="py-2 px-3 hidden md:table-cell"
+              className={`py-2 px-3 ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
             >
               Success
             </SortableHeader>
-            <SortableHeader
-              sortKey="errors"
-              activeKey={sortKey}
-              dir={sortDir}
-              onClick={handleHeaderClick}
-              align="right"
-              className="py-2 px-3 hidden md:table-cell"
-            >
-              <Hint label="Failed probes in the last 24h across all regions: HTTP errors, JSON-RPC error bodies, timeouts and stale responses (block >20 behind the cross-provider tip). Derived from sample size × (1 − success rate).">
-                Errors (24h)
-              </Hint>
-            </SortableHeader>
-            <th scope="col" className="py-2 pl-3 text-right">
+            {!dense && (
+              <SortableHeader
+                sortKey="errors"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={handleHeaderClick}
+                align="right"
+                className="py-2 px-3 hidden md:table-cell"
+              >
+                <Hint label="Failed probes in the last 24h across all regions: HTTP errors, JSON-RPC error bodies, timeouts and stale responses (block >20 behind the cross-provider tip). Derived from sample size × (1 − success rate).">
+                  Errors (24h)
+                </Hint>
+              </SortableHeader>
+            )}
+            <th scope="col" className={`py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : ""}`}>
               24h
             </th>
             {hasSlots && (
@@ -600,7 +617,7 @@ export function LedgerTable({
             <td
               colSpan={
                 (customCols
-                  ? 7 + customCols.length
+                  ? 7 + customCols.length - (dense ? 2 : 0)
                   : panelActive || singleValueColumn
                     ? 8
                     : 11) +
@@ -625,6 +642,7 @@ export function LedgerTable({
               singleValueColumn={singleValueColumn}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
+              dense={dense}
               customCells={customCols?.map((c) => ({
                 v: colValueW(r, c),
                 unit: colUnit(c),
@@ -656,6 +674,7 @@ export function LedgerTable({
               singleValueColumn={singleValueColumn}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
+              dense={dense}
               // Headline stays empty (that is the point); the panel-backed
               // columns carry the row's real numbers (fees, OI, ...).
               customCells={customCols?.map((c, idx) => ({
@@ -685,6 +704,7 @@ export function LedgerTable({
               singleValueColumn={singleValueColumn}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
+              dense={dense}
               customCells={customCols?.map((c) => ({
                 v: null,
                 unit: colUnit(c),
@@ -706,6 +726,7 @@ export function LedgerTable({
 }
 
 function Row({
+  dense = false,
   r,
   i,
   unit,
@@ -739,6 +760,9 @@ function Row({
   /** Custom-column mode (benchmark.ledgerColumns): one pre-resolved
    *  {value, unit} per declared column, replacing p50/p90/p99/Mean. */
   customCells?: { v: number | null; unit: string }[];
+  /** Ledger with 5+ declared columns: no delta / error columns, tighter
+   *  padding, tag and embed button only from xl. */
+  dense?: boolean;
   series: (number | null)[];
   sparkMin: number;
   sparkMax: number;
@@ -788,7 +812,7 @@ function Row({
           a better fit than Organization; everything else is a vendor and
           gets Organization. itemProp="name" wraps the visible name. */}
       <td
-        className="py-2.5 pr-3 font-serif text-[14px] min-w-0"
+        className={`py-2.5 pr-3 font-serif text-[14px] min-w-0 ${dense ? "max-w-[190px] 2xl:max-w-none" : ""}`}
         itemScope
         itemType={
           isRegion(r.slug)
@@ -829,7 +853,9 @@ function Row({
               </span>
             )}
             {r.tag && !isMuted && (
-              <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+              <span
+                className={`${dense ? "hidden 2xl:inline-block max-w-[160px]" : "hidden sm:inline-block max-w-[140px] md:max-w-[220px]"} truncate font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted`}
+              >
                 {r.tag}
               </span>
             )}
@@ -911,7 +937,7 @@ function Row({
               </span>
             )}
             {!isMuted && !isRegion(r.slug) && (
-              <span className="ml-auto pl-2 shrink-0">
+              <span className={`ml-auto pl-2 shrink-0 ${dense ? "hidden 2xl:inline-flex" : ""}`}>
                 <EmbedBadgeButton
                   benchSlug={benchmark.slug}
                   benchTitle={benchmark.title}
@@ -943,7 +969,7 @@ function Row({
       {isOffline ? (
         <td
           colSpan={
-            (customCells ? customCells.length + 4 : 8) +
+            (customCells ? customCells.length + (dense ? 2 : 4) : 8) +
             (hasSlots ? 1 : 0) +
             (hasSecondary ? 1 : 0)
           }
@@ -963,7 +989,7 @@ function Row({
             customCells.slice(1).map((_, idx) => (
               <td
                 key={idx}
-                className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell"
+                className={`py-2.5 ${dense ? "px-2" : "px-3"} text-right text-ink-faint whitespace-nowrap hidden md:table-cell`}
               >
                 —
               </td>
@@ -981,16 +1007,20 @@ function Row({
               </td>
             </>
           )}
-          <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
-            —
-          </td>
-          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+          {!dense && (
+            <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
+              —
+            </td>
+          )}
+          <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
             {r.successRate.toFixed(2)}%
           </td>
-          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
-            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
-          </td>
-          <td className="py-2.5 pl-3 text-right text-ink-faint">—</td>
+          {!dense && (
+            <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+              {errorCount(r)?.toLocaleString("en-US") ?? "—"}
+            </td>
+          )}
+          <td className={`py-2.5 pl-3 text-right text-ink-faint ${dense ? "hidden xl:table-cell" : ""}`}>—</td>
           {hasSlots && (
             <td className="py-2.5 pl-3 text-right text-ink-faint hidden md:table-cell">
               -
@@ -1005,7 +1035,7 @@ function Row({
       ) : (
         <>
           {/* Headline column with inline data bar */}
-          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+          <td className={`py-2.5 ${dense ? "px-2 text-[13px]" : "px-3"} text-right whitespace-nowrap`}>
             <span className="inline-flex items-center gap-2 justify-end">
               <span
                 className="hidden sm:inline-block h-1.5 rounded-sm"
@@ -1029,7 +1059,7 @@ function Row({
             customCells.slice(1).map((c, idx) => (
               <td
                 key={idx}
-                className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell"
+                className={`py-2.5 ${dense ? "px-2 text-[13px]" : "px-3"} text-right text-ink-soft whitespace-nowrap hidden md:table-cell`}
               >
                 {c.v != null ? fmtUnit(c.v, c.unit) : "-"}
               </td>
@@ -1047,16 +1077,20 @@ function Row({
               </td>
             </>
           )}
-          <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
-            {isUnranked ? "—" : fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
-          </td>
-          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+          {!dense && (
+            <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
+              {isUnranked ? "—" : fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
+            </td>
+          )}
+          <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
             {isUnranked ? "—" : `${r.successRate.toFixed(2)}%`}
           </td>
-          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
-            {isUnranked ? "—" : (errorCount(r)?.toLocaleString("en-US") ?? "—")}
-          </td>
-          <td className="py-2.5 pl-3 text-right">
+          {!dense && (
+            <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+              {isUnranked ? "—" : (errorCount(r)?.toLocaleString("en-US") ?? "—")}
+            </td>
+          )}
+          <td className={`py-2.5 pl-3 text-right ${dense ? "hidden xl:table-cell" : ""}`}>
             <span className="inline-flex items-center justify-end">
               <Sparkline
                 values={series}
