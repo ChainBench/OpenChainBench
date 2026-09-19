@@ -11,8 +11,43 @@ import { SpecSchema } from "../src/lib/spec-schema";
 
 const ROOT = path.resolve(__dirname, "..");
 const SPECS_DIR = path.join(ROOT, "benchmarks");
+const ANSWERS_DIR = path.join(ROOT, "answers");
 
 type Issue = { file: string; level: "error" | "warning"; message: string };
+
+const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
+const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_p50", "worst_name", "worst_p50", "count"]);
+
+/** Every `{{...}}` in `fields` names a known keyword, a provider slug of
+ *  the bench for per-provider lookups, or a declared chain value. */
+function lintPlaceholders(
+  issues: Issue[],
+  file: string,
+  fields: [string, string | undefined][],
+  providerSlugs: Set<string>,
+  chainValues: Set<string>,
+) {
+  for (const [name, text] of fields) {
+    if (!text) continue;
+    for (const m of text.matchAll(TOKEN_RE)) {
+      const [whole, kw, a, b] = m;
+      const k = kw.toLowerCase();
+      if (!KNOWN_TOKENS.has(k)) {
+        issues.push({ file, level: "error", message: `${name}: unknown placeholder ${whole}` });
+      } else if (a === "chain") {
+        if (!b || !chainValues.has(b.toLowerCase())) {
+          issues.push({ file, level: "error", message: `${name}: ${whole} names a chain value the spec does not declare` });
+        }
+      } else if (["p50", "p90", "p99", "mean", "success", "name"].includes(k)) {
+        if (!a || !providerSlugs.has(a)) {
+          issues.push({ file, level: "error", message: `${name}: ${whole} names no provider slug of this spec` });
+        }
+      } else if (a) {
+        issues.push({ file, level: "error", message: `${name}: ${whole} takes no argument` });
+      }
+    }
+  }
+}
 
 async function main() {
   const issues: Issue[] = [];
@@ -28,6 +63,9 @@ async function main() {
 
   const seenSlugs = new Map<string, string>();
   const seenNumbers = new Map<string, string>();
+  // Per spec, what its templates may reference; the answers pass below
+  // resolves an answer's placeholders against its bench.
+  const specRefs = new Map<string, { providers: Set<string>; chains: Set<string>; rpc: boolean }>();
 
   for (const f of files) {
     const filePath = path.join(SPECS_DIR, f);
@@ -141,26 +179,52 @@ async function main() {
       ...(spec.methodology ?? []).map((t, i) => [`methodology[${i}]`, t] as [string, string]),
       ...(spec.faq ?? []).flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string][]),
     ];
-    const tokenRe = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
-    const known = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_p50", "worst_name", "worst_p50", "count"]);
+    lintPlaceholders(issues, f, templated, providerSlugs, chainValues);
+    specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, rpc: spec.slug.endsWith("-rpc") });
+  }
+
+  // answers/*.yml render through the same template engine against the
+  // bench they name, so the same static resolution applies: a chain value
+  // the bench does not declare or a provider slug it does not have would
+  // vanish from the page silently (the renderer drops the clause).
+  // The typed-cohort rule covers the fields that carry {{count}} on the
+  // same page: a hand-typed list of names next to a live count drifts on
+  // the first cohort change (audit 2026-09-19, blocker 2).
+  const answerFiles = (await fs.readdir(ANSWERS_DIR).catch(() => [] as string[])).filter(
+    (f) => f.endsWith(".yml") || f.endsWith(".yaml")
+  );
+  for (const f of answerFiles) {
+    const file = `../answers/${f}`;
+    let ans: Record<string, unknown>;
+    try {
+      ans = yaml.load(await fs.readFile(path.join(ANSWERS_DIR, f), "utf8")) as Record<string, unknown>;
+    } catch (e) {
+      issues.push({ file, level: "error", message: `YAML parse error: ${(e as Error).message}` });
+      continue;
+    }
+    if (!ans || typeof ans !== "object") continue;
+    const benchSlug = typeof ans.benchmark === "string" ? ans.benchmark : "";
+    const refs = specRefs.get(benchSlug);
+    if (!refs) continue; // a bench outside this checkout: the answer is filtered out at load time
+    const str = (k: string) => (typeof ans[k] === "string" ? (ans[k] as string) : undefined);
+    const faq = Array.isArray(ans.faq) ? (ans.faq as { q?: string; a?: string }[]) : [];
+    const templated: [string, string | undefined][] = [
+      ["short_answer", str("short_answer")],
+      ["seo_title", str("seo_title")],
+      ["seo_description", str("seo_description")],
+      ["intro", str("intro")],
+      ["methodology", str("methodology")],
+      ["expert_take", str("expert_take")],
+      ...faq.flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string | undefined][]),
+    ];
+    lintPlaceholders(issues, file, templated, refs.providers, refs.chains);
+    // "{{count}} bridges (Mobula, Relay, LI.FI, deBridge, ...)": a live
+    // count followed by a typed enumeration of four or more names.
+    const typedCohort = /\{\{\s*count\s*\}\}\s+\w+\s*\((?:[^()]*,){3,}[^()]*\)/;
     for (const [name, text] of templated) {
-      if (!text) continue;
-      for (const m of text.matchAll(tokenRe)) {
-        const [whole, kw, a, b] = m;
-        const k = kw.toLowerCase();
-        if (!known.has(k)) {
-          issues.push({ file: f, level: "error", message: `${name}: unknown placeholder ${whole}` });
-        } else if (a === "chain") {
-          if (!b || !chainValues.has(b.toLowerCase())) {
-            issues.push({ file: f, level: "error", message: `${name}: ${whole} names a chain value the spec does not declare` });
-          }
-        } else if (["p50", "p90", "p99", "mean", "success", "name"].includes(k)) {
-          if (!a || !providerSlugs.has(a)) {
-            issues.push({ file: f, level: "error", message: `${name}: ${whole} names no provider slug of this spec` });
-          }
-        } else if (a) {
-          issues.push({ file: f, level: "error", message: `${name}: ${whole} takes no argument` });
-        }
+      const m = text ? typedCohort.exec(text) : null;
+      if (m) {
+        issues.push({ file, level: "error", message: `${name}: {{count}} followed by a typed cohort list "${m[0].slice(0, 60)}"; drop the list, the count is live` });
       }
     }
   }

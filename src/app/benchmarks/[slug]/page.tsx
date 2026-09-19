@@ -13,6 +13,7 @@ import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
+import { AnswersForBench } from "@/components/answers-for-bench";
 import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults } from "@/lib/provider-filters";
 import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
 import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
@@ -855,6 +856,8 @@ export default async function BenchmarkPage({
       )}
 
       {!isDraft && <CompareThisBench benchmark={benchmark} />}
+
+      {!isDraft && <AnswersForBench benchSlug={benchmark.slug} />}
 
       {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the
