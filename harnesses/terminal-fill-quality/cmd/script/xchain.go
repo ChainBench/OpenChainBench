@@ -254,6 +254,7 @@ type xfeed struct {
 	answered bool                        // a poll of this round got a page from Relay (read and reset by run)
 	pending  map[string]pendingReq       // app:id -> the request as met before it was final (re-fetched by id each round)
 	funded   map[string]map[string]int64 // app -> wallet funded on another chain -> time, drained into the state each tick
+	newest   map[string]int64            // app:origin -> created of the newest final request counted (persisted: a restart resumes there)
 }
 
 // pendingReq: a request met on the feed before it was final; re-read by id
@@ -272,8 +273,12 @@ type xinbox struct {
 	total        int
 }
 
-func newXfeed(httpc *http.Client) *xfeed {
-	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}}
+func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
+	n := map[string]int64{}
+	for k, v := range newest {
+		n[k] = v
+	}
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n}
 }
 
 // xchainRows: every bench row the cross-chain apps can produce.
@@ -287,6 +292,78 @@ func xchainRows() []string {
 		for _, c := range originChains {
 			out = append(out, a.Slug+"-"+c.slug)
 		}
+	}
+	return out
+}
+
+// seedFundedFromRelay walks a funding-only app's public requests from Solana
+// back about a day at start (70 pages) when the state holds few of its
+// funded wallets, so the app's row on a shared router does not wait a day
+// for its users to be known.
+func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
+	for _, a := range xchainApps {
+		if !a.FundingOnly || a.Referrer == "" {
+			continue
+		}
+		if st.Funded == nil {
+			st.Funded = map[string]map[string]int64{}
+		}
+		if len(st.Funded[a.Slug]) >= 500 {
+			continue
+		}
+		if st.Funded[a.Slug] == nil {
+			st.Funded[a.Slug] = map[string]int64{}
+		}
+		cont, got := "", 0
+		for page := 0; page < 70; page++ {
+			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50&referrer=%s", solanaChainID, a.Referrer)
+			if cont != "" {
+				url += "&continuation=" + cont
+			}
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0 (+https://openchainbench.com)")
+			req.Header.Set("Accept", "application/json")
+			resp, err := httpc.Do(req)
+			if err != nil {
+				break
+			}
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+			resp.Body.Close()
+			var rr relayResp
+			if resp.StatusCode != 200 || json.Unmarshal(body, &rr) != nil || len(rr.Requests) == 0 {
+				break
+			}
+			for _, raw := range rr.Requests {
+				var r relayRaw
+				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
+					continue
+				}
+				x, ok := classify(a, solanaOrigin, r)
+				if !ok || !x.Funding || !strings.HasPrefix(x.Recipient, "0x") {
+					continue
+				}
+				w := strings.ToLower(x.Recipient)
+				if st.Funded[a.Slug][w] < x.Created {
+					st.Funded[a.Slug][w] = x.Created
+					got++
+				}
+			}
+			cont = rr.Continuation
+			if cont == "" {
+				break
+			}
+		}
+		log.Printf("[relay] %s: %d funded wallets seeded from Relay's history (%d known)", a.Slug, got, len(st.Funded[a.Slug]))
+	}
+}
+
+// newestSnapshot copies the per-feed newest created times for the state.
+func (f *xfeed) newestSnapshot() map[string]int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]int64, len(f.newest))
+	for k, v := range f.newest {
+		out[k] = v
 	}
 	return out
 }
@@ -391,6 +468,9 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				}
 				f.mu.Lock()
 				_, known := f.seen[key]
+				if !known && created > 0 && created <= f.newest[a.Slug+":"+c.slug] {
+					known = true // counted by the previous instance (the state carries the newest created)
+				}
 				f.mu.Unlock()
 				if known {
 					stop = true
@@ -433,6 +513,11 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 	defer f.mu.Unlock()
 	f.seen[key] = time.Now().Unix()
 	delete(f.pending, key)
+	if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+		if nk := a.Slug + ":" + c.slug; t.Unix() > f.newest[nk] {
+			f.newest[nk] = t.Unix()
+		}
+	}
 	if !ok {
 		return false
 	}

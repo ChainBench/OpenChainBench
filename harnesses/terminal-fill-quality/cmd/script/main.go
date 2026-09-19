@@ -170,14 +170,15 @@ type failSample struct {
 }
 
 type State struct {
-	Swaps     []Swap                      `json:"swaps"`
-	Fails     []failSample                `json:"fails"`
-	Buckets   map[string][]minuteBucket   `json:"buckets"`              // terminal -> per-minute feed counts
-	Rejects   map[string]map[string]int   `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
-	Cursors   map[string]*walletCursor    `json:"cursors"`              // wallet -> cursor (polling fallback)
-	EvmCursor map[string]int64            `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
-	Learned   map[string]*Learned         `json:"learned,omitempty"`    // terminal -> fee wallets / routers learned from the chain (discover.go)
-	Funded    map[string]map[string]int64 `json:"funded,omitempty"`     // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
+	Swaps       []Swap                      `json:"swaps"`
+	Fails       []failSample                `json:"fails"`
+	Buckets     map[string][]minuteBucket   `json:"buckets"`                // terminal -> per-minute feed counts
+	Rejects     map[string]map[string]int   `json:"rejects"`                // terminal -> reason -> count (window not enforced; informative)
+	Cursors     map[string]*walletCursor    `json:"cursors"`                // wallet -> cursor (polling fallback)
+	EvmCursor   map[string]int64            `json:"evm_cursor,omitempty"`   // chain -> last block scanned for the native EVM terminals
+	Learned     map[string]*Learned         `json:"learned,omitempty"`      // terminal -> fee wallets / routers learned from the chain (discover.go)
+	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
+	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -328,6 +329,11 @@ func main() {
 	st := loadState(stateFile)
 	applyLearned(st)
 	seedFunded(st)
+	{
+		sctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		seedFundedFromRelay(sctx, httpc, st)
+		cancel()
+	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
 	failQuota := map[string]float64{}
@@ -347,7 +353,7 @@ func main() {
 		st.EvmCursor = map[string]int64{}
 	}
 	nf := newNativeFeed(httpc, st.EvmCursor)
-	xf := newXfeed(httpc)
+	xf := newXfeed(httpc, st.RelayNewest)
 	go xf.run(context.Background(), tick)
 	var mu sync.RWMutex
 	var pub *Public
@@ -534,6 +540,7 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				if err != nil {
 					log.Printf("[%s] tx %s: %v", t.Slug, s.Signature[:8], err)
 				}
+				st.reject(t.Slug, "unreadable")
 				continue
 			}
 			sw, reject := parseSwap(t, s.Signature, tx, solUSD, "")
@@ -620,6 +627,7 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		return 0
 	}
 	now := time.Now().Unix()
+	st.RelayNewest = xf.newestSnapshot()
 	for app, ws := range xf.drainFunded() {
 		if st.Funded == nil {
 			st.Funded = map[string]map[string]int64{}
@@ -651,7 +659,16 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		quota[slug] -= float64(n)
 		rand.Shuffle(len(sample), func(i, j int) { sample[i], sample[j] = sample[j], sample[i] })
 		t := Terminal{Slug: slug, Kind: "app"}
+		measured := map[string]bool{}
+		for _, s := range st.Swaps {
+			if s.RelayID != "" {
+				measured[s.RelayID] = true
+			}
+		}
 		for _, x := range sample[:n] {
+			if measured[x.ID] {
+				continue // already in the window (re-walked after a restart)
+			}
 			if x.DestChain != "" || (x.InIsToken && x.Chain != "solana") {
 				// Leaving Solana for a token elsewhere (the deposit is read on
 				// Solana, the delivery and the pool's state on the destination),
@@ -1254,6 +1271,7 @@ func productTerminal(p string, rows []Terminal) Terminal {
 func compute(st *State, minPriced, minRank int) []TerminalStats {
 	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
 	byProduct := map[string][]string{}
+	byProductFirm := map[string][]string{} // the rows above their own floor
 	rowsOf := map[string][]Terminal{}
 	var products []string
 	for _, t := range cohort() {
@@ -1280,13 +1298,28 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		byProduct[ts.Product] = append(byProduct[ts.Product], t.Slug)
 		rowsOf[ts.Product] = append(rowsOf[ts.Product], t)
+		if ts.Healthy {
+			byProductFirm[ts.Product] = append(byProductFirm[ts.Product], t.Slug)
+		}
 	}
 	for _, p := range products {
-		ts, ok := statsFor(st, productTerminal(p, rowsOf[p]), byProduct[p], minPriced, minRank)
+		// The pooled entry weighs each chain by its flow, so a chain row
+		// under its own floor (a handful of swaps carrying most of the
+		// product's attempts) would set the product's figure: only the rows
+		// published on their own enter the pool; when none is, every row
+		// does (the product is then published from the pooled count alone).
+		rows := byProductFirm[p]
+		if len(rows) == 0 {
+			rows = byProduct[p]
+		}
+		ts, ok := statsFor(st, productTerminal(p, rowsOf[p]), rows, minPriced, minRank)
 		if !ok {
 			continue
 		}
 		ts.Product, ts.Chain = p, "all"
+		if len(rows) < len(byProduct[p]) {
+			ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
+		}
 		out = append(out, ts)
 	}
 	// Ranked terminals first by median, then published-but-not-ranked by
@@ -1357,8 +1390,8 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.SampFailed += sf
 			if native {
 				cov := 1.0
-				if pooled && sb > 0 && sp > 0 {
-					cov = float64(sb) / float64(sp)
+				if sb > 0 && sp > 0 {
+					cov = float64(sb) / float64(sp) // the block sample's coverage: attempts are estimated from it on every entry
 				}
 				att += float64(ss) / cov
 				failed += float64(sf) / cov
@@ -1621,6 +1654,23 @@ func topN(m map[string]int, n int) map[string]int {
 
 func publishGauges(stats []TerminalStats) {
 	for _, ts := range stats {
+		if !ts.Healthy {
+			// An entry under its floor publishes its sample sizes and its
+			// health only: a split or a trade size next to an unpublished
+			// headline would read as a figure.
+			for _, g := range []*prometheus.GaugeVec{gLoss, gComponent, gTrade, gVenue, gLossSize, gLossChain} {
+				g.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
+			}
+			for _, g := range []*prometheus.GaugeVec{gFail, gBuy, gSandwich, gSandwichProfit, gFailCost, gFailOverhead, gLostUSD} {
+				g.DeleteLabelValues(ts.Product, ts.Chain)
+			}
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
+			gHealth.WithLabelValues(ts.Product, ts.Chain).Set(0)
+			gRanked.WithLabelValues(ts.Product, ts.Chain).Set(0)
+			continue
+		}
 		if ts.Loss != nil && ts.Healthy {
 			gLoss.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.Loss.Median)
 			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.Loss.P90)
