@@ -14,7 +14,7 @@ unit: bp
 higher_is_better: false
 
 disclaimer: |
-  Random sample (400 per terminal per day) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade on the pool within 60 s elsewhere); swaps without one keep their split but no loss figure. Published from 50 priced swaps pooled over the product's chains (25 on one chain), ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
+  Random sample (400 per terminal per day) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade on the pool within 60 s elsewhere); swaps without one keep their split but no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more, ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -48,7 +48,7 @@ abstract: |
   virtual quote reserve its migrated pools store) and Raydium, else at the
   effective price of the previous trade on the same pool, at most 60 seconds
   earlier. Loss = 1 − value received / value given, in basis points of the
-  trade; the split is exact and independent of the reference. Rolling 24 hour
+  trade; terminal, network and other are exact and independent of the reference, pool is the remainder. Rolling 24 hour
   window, medians with a bootstrap interval, p90, trade size and venue mix per
   terminal; published from 50 priced swaps, ranked from 100.
 
@@ -66,13 +66,14 @@ methodology:
   - "PumpSwap's vault ratio alone is not the mid: pools migrated from pump.fun add a virtual quote reserve (about 17.6 SOL) that the pool account stores; with it x·y = k matches executed trades exactly. pump.fun's 2026 bonding curve fills 20 to 60 % above its stored virtual_sol / virtual_token, so the curve gets the previous-trade reference instead."
   - "Sandwiches: each sampled swap's neighbours on its pool are screened (another signer trading our direction in our slot just before, and back just after, closing a comparable position with a take). Kept per swap in the JSON with the attacker and both signatures, not published as a column: how many swaps can be screened depends on pool activity, so terminals are not comparable on it."
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
-  - "One row per product; the chain selector shows the product on one chain (Solana, BNB, Robinhood Chain, Base, Ethereum, Arc), All chains pools its swaps across chains (the bridge funding legs stay out, they are in the JSON). Each chain is sampled at a fixed daily rate, so All chains weighs a chain's sampled swaps by its swap attempts per sample (EVM block samples scaled by coverage): the pooled figure follows the users, not the sampler. Published from 50 priced swaps pooled, 25 on one chain."
+  - "One row per product; the chain selector shows the product on one chain (Solana, BNB, Robinhood Chain, Base, Ethereum, Arc), All chains pools its swaps across chains (bridge funding legs stay out). Each chain is sampled at a fixed daily rate, so All chains weighs a chain's sampled swaps by its swap attempts per sample: the pooled figure follows the users, not the sampler. Published from 50 priced swaps pooled over the chains at 25 or more; it waits while the chain carrying most of the flow fills."
   - "Cross-chain (FOMO, BasedBot): the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana. Relay's public requests feed identifies the app's requests (fee address or referrer) with what the user sent in USD, the fees, both hashes and the status. Value received = what the settlement delivered on Solana: USDC / SOL exactly (FOMO funds the wallet this way; the token buy that follows is a native swap in the FOMO row) or a token at the pool's state before the swap."
   - "Cross-chain split: terminal = the app fee the user paid; network = the origin gas (receipt on the chain's public RPC); relay = Relay's fees and spread (deposit minus received minus app fee); pool only when a token was delivered. Requests paid with a token on the origin chain are shown but not counted (their value in is Relay's own valuation). Refunds and failures count in the fail rate. Perps are not measured; swaps under $2 are dropped."
   - "Trading on another chain (FOMO on Robinhood Chain, BNB, Base, Ethereum, Arc): the user pays in SOL, a Relay solver buys the token there. Value given = the SOL sent (tx fee inside); value received = the tokens delivered at the pool's state before the settlement swap: v2 forks from the Sync reserves minus the swap, v3 forks and Uniswap v4 from the price left by the previous swap on the pool, all from the pool's own logs on public RPCs."
   - "Which side of an EVM pool is the token is settled by matching the swap event's amounts with the receipt's transfers, not the pool's token order. Split: terminal = the app fee; relay = what Relay kept (fees, spread, gas); pool = the settlement swap's impact and LP fee; network = the Solana tx fee (0 when the app's sponsor signs). Sales the other way (a token sold on that chain, USDC or SOL delivered on Solana) sit in the same per-chain row, priced at the origin pool's state before the sale."
-  - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; its fee is a router commission plus user-signed USDC legs, all counted as terminal fee. pump.fun's app takes no fee; the fixed 0.001 SOL it forwards per swap is counted as network."
+  - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; its fee is a router commission plus user-signed USDC legs, all counted as terminal fee. pump.fun's app takes no fee; the fixed 0.001 SOL it forwards on some swaps is counted as network."
   - "Native EVM (GMGN and Axiom on BNB and Robinhood Chain, Banana Gun): their router contracts emit an event on every swap; eth_getLogs on those routers lists every successful swap they routed; the fail rate comes from a sample of blocks read in full (every tx sent to the routers, reverted or not). Value given = what the user sent plus gas; received = the tokens at the pool's state before the swap; the fee is paid inside the router as a native transfer: the residual after pool and gas."
+  - "Unpriced draws: on the EVM rows a large share of the drawn swaps (about half on BNB, up to three quarters on Robinhood Chain) cannot be valued at the pool's state (a route through pools without a quote leg, a venue whose event is not decoded) and stays out of the figure; each entry's unpriced_share and its rejects in the JSON say how much and why."
   - "Cohort discovery: the fee wallets and routers are learned from the chain, the lists being the seed. On a platform's transactions (Mobula's attribution as the sample, every 6 h), a recipient taking a fixed share of the trade across many payers is its fee wallet, adopted from 30 swaps of 20 payers with a stable 20 to 300 bps share; on EVM the transactions' destination is its router. The window's swaps also give the fee-like recipients no terminal lists yet (JSON, 'discovery')."
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains, no event of its own, so its swaps are the transactions sent to it in the blocks read in full; valued and split like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: no fee visible on-chain, terminal 0."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
@@ -91,7 +92,7 @@ faq:
   - q: "Why is the loss much larger than the terminal's 1 % fee?"
     a: "Because the fee is one of five costs. On a pump.fun curve or PumpSwap trade the protocol and creator fees add roughly 1 to 2 %, the pool keeps its LP fee and the price impact of the trade, the app attaches a priority fee and often an inclusion tip, and the pool's price may already have moved between the arrival trade and ours. The split is published per terminal so the terminal-attributable part is visible on its own."
   - q: "Is this comparable across terminals?"
-    a: "The explicit components (terminal, network) are exact and terminal-attributable. The pool component depends on what users trade and how much, which differs per app (Photon's median swap is about $30, Banana Gun's above $50, FOMO's about $20), so read the total loss together with the trade size column and the size buckets. A terminal is ranked from 100 priced swaps, where the median's 95 % interval is narrower than the gaps between terminals; single swaps are not comparable."
+    a: "The explicit components (terminal, network) are exact and terminal-attributable. The pool component depends on what users trade and how much, which differs per app (Photon's median swap is about $20, Banana Gun's above $50, FOMO's about $20), so read the total loss together with the trade size column and the size buckets. A terminal is ranked from 100 priced swaps, where the median's 95 % interval is narrower than the gaps between terminals; single swaps are not comparable."
   - q: "Are sandwiches counted?"
     a: "Screened, not ranked. A sandwich's two legs both touch the pool, so they are the user's neighbours in the pool's own transaction sequence: another signer trading the same direction just before, and back just after, in the same slot or the next. Every hit is in the JSON with the attacker and both signatures. It is not a column because the share of swaps that can be screened depends on how busy the pool is, which differs per terminal. The victim's extra cost is not a separate line either: the front-run precedes the user's swap, so the arrival price already carries it inside the pool component."
   - q: "How is a swap attributed to a terminal?"
@@ -103,6 +104,7 @@ prometheus:
   window: 24h
   freshness_metric: tfq_health
   expected_freshness_seconds: 900
+  probe_ok: time() - tfq_last_refresh_unix < 900
 
 panel_main_description: "Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade. Rolling 24 h of sampled user swaps. The split columns are medians of each cost (on All chains, the chains' medians weighted by their flow): they do not sum to the median loss."
 
@@ -135,7 +137,7 @@ metric_panels:
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Cross-chain rows: median of Relay's fees and spread (deposit minus received minus app fee), share of the trade."
+    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow, 0 where no bridge is used."
   - id: other
     label: Other fees
     label_key: terminal

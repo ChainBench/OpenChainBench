@@ -187,7 +187,7 @@ export async function TerminalFillSection({
         Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
-        Loss = 1 − value received / value given, in basis points of the trade; the split is exact from balance deltas, the tx fee
+        Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee
         and inclusion tips included. Published from {f.minPriced} priced swaps, ranked from {f.minRank}.
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}
         <Link href="/benchmarks/terminal-fill-quality" className="underline hover:no-underline">

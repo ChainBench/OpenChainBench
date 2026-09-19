@@ -327,8 +327,10 @@ median)`).
 from `MIN_PRICED` = 50 priced swaps in the window (a product's entry on
 one chain from half that, 25); `ranked` (`tfq_ranked`) from `MIN_RANK` =
 100. **Pooled entries** (`chain="all"`): each chain is sampled at its own
-fixed daily rate, so the pooled medians weigh a row's sampled swaps by the
-row's swap attempts per sample (`weightOf` in `statsFor`; native EVM rows
+fixed daily rate, so the pooled loss and trade size weigh a row's sampled
+swaps by the row's swap attempts per sample (`weightOf` in `statsFor`; the
+split columns take each chain's median weighted by its flow,
+`chainMeanOfMedians`; native EVM rows
 estimate their attempts from the block sample scaled by its coverage,
 blocks read over blocks in range) and the pooled fail rate uses the same
 scaling: the figure follows the users' flow, not the sampler. `loss_bps` carries the median's 95 % bootstrap

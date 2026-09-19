@@ -722,7 +722,9 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 			legs += toQuote(quoteName(e.mint), tr.amount*math.Pow10(-e.dec))
 			feeLegOwners[e.owner] = true
 		}
-		if legs > 0 && legs <= 0.02*math.Abs(userQ) {
+		// 2 % of the trade, or FOMO's $0.10 minimum on small trades (a
+		// $3 buy pays 0.10 USDC: 333 bps), with a little room.
+		if legs > 0 && legs <= math.Max(0.02*math.Abs(userQ), 0.12/quoteUSD) {
 			terminalQ += legs
 		} else {
 			feeLegOwners = map[string]bool{}
