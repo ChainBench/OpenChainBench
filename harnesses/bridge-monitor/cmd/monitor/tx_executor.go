@@ -449,21 +449,28 @@ func (tx *TxExecutor) getMobulaStatus(txHash string) (*BridgeStatus, error) {
 		return nil, fmt.Errorf("status API error %d: %s", resp.StatusCode, string(body))
 	}
 
+	// The settled payload carries depositTxHash (origin) and fillTxHash
+	// (destination); toTxHash is the older field name, kept as a fallback.
 	var result struct {
 		Data struct {
-			Status    string `json:"status"`
-			LatencyMs int64  `json:"latencyMs"`
-			ToTxHash  string `json:"toTxHash"`
+			Status     string `json:"status"`
+			LatencyMs  int64  `json:"latencyMs"`
+			ToTxHash   string `json:"toTxHash"`
+			FillTxHash string `json:"fillTxHash"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
+	toTx := result.Data.FillTxHash
+	if toTx == "" {
+		toTx = result.Data.ToTxHash
+	}
 
 	return &BridgeStatus{
 		Status:    result.Data.Status,
 		TxHash:    txHash,
-		ToTxHash:  result.Data.ToTxHash,
+		ToTxHash:  toTx,
 		LatencyMs: result.Data.LatencyMs,
 	}, nil
 }
