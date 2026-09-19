@@ -147,17 +147,18 @@ ORDER BY fees.platform
 const duneBase = "https://api.dune.com/api/v1"
 
 type duneClient struct {
-	apiKey string
-	http   *http.Client
+	apiKey             string
+	http               *http.Client
+	lastExecutionEnded time.Time
 }
 
 type duneRow struct {
-	Platform               string  `json:"platform"`
-	USDCFees24h            float64 `json:"usdc_fees_24h"`
-	WSOLFees24h            float64 `json:"wsol_fees_24h"`
-	SOLFees24h             float64 `json:"sol_fees_24h"`
-	DataFreshness          string  `json:"data_freshness"`
-	FeePayingVolumeUSD24h  float64 `json:"fee_paying_volume_usd_24h"`
+	Platform              string  `json:"platform"`
+	USDCFees24h           float64 `json:"usdc_fees_24h"`
+	WSOLFees24h           float64 `json:"wsol_fees_24h"`
+	SOLFees24h            float64 `json:"sol_fees_24h"`
+	DataFreshness         string  `json:"data_freshness"`
+	FeePayingVolumeUSD24h float64 `json:"fee_paying_volume_usd_24h"`
 }
 
 func isNoExecutionError(err error) bool {
@@ -281,12 +282,25 @@ func (d *duneClient) latestResult(queryID string) ([]duneRow, error) {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, b)
 	}
 	var out struct {
-		Result struct {
+		ExecutionEndedAt string `json:"execution_ended_at"`
+		Result           struct {
 			Rows []duneRow `json:"rows"`
 		} `json:"result"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
+	if t, err := time.Parse(time.RFC3339Nano, out.ExecutionEndedAt); err == nil {
+		d.lastExecutionEnded = t
+	}
 	return out.Result.Rows, nil
+}
+
+// resultAge is the age of the newest cached result seen by latestResult,
+// or a very large duration before the first successful fetch.
+func (d *duneClient) resultAge() time.Duration {
+	if d.lastExecutionEnded.IsZero() {
+		return 365 * 24 * time.Hour
+	}
+	return time.Since(d.lastExecutionEnded)
 }
