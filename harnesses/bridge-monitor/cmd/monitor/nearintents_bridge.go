@@ -23,6 +23,9 @@ import (
 type NearIntentsBridge struct {
 	client *http.Client
 	apiKey string
+	// Destination-chain hash reported by the last Status() call, read by
+	// the executor after the settle poll to measure the on-chain latency.
+	lastDestTx string
 }
 
 func NewNearIntentsBridge(apiKey string) *NearIntentsBridge {

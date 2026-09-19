@@ -220,10 +220,18 @@ func (n *NearIntentsBridge) Status(depositAddress, memo string) (string, error) 
 		return "", fmt.Errorf("status %d: %s", resp.StatusCode, truncateNI(string(raw), 200))
 	}
 	var out struct {
-		Status string `json:"status"`
+		Status      string `json:"status"`
+		SwapDetails struct {
+			DestinationChainTxHashes []struct {
+				Hash string `json:"hash"`
+			} `json:"destinationChainTxHashes"`
+		} `json:"swapDetails"`
 	}
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", fmt.Errorf("status decode: %w", err)
+	}
+	if len(out.SwapDetails.DestinationChainTxHashes) > 0 {
+		n.lastDestTx = out.SwapDetails.DestinationChainTxHashes[0].Hash
 	}
 	return out.Status, nil
 }
@@ -293,14 +301,17 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 	}
 
 	// Poll to settlement.
+	e.nearIntents.lastDestTx = ""
 	status := e.pollNearIntentsSettle(quote.Quote.DepositAddress, quote.Quote.DepositMemo, 5*time.Minute)
 	now := time.Now()
 	result.ExecutionLatencyMs = now.Sub(broadcastStart).Milliseconds()
 	result.E2ELatencyMs = now.Sub(quoteStart).Milliseconds()
+	nearDestTx := e.nearIntents.lastDestTx
 
 	switch status {
 	case "SUCCESS":
 		result.Success = true
+		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, nearDestTx)
 	case "REFUNDED", "FAILED":
 		result.Reverted = true
 		result.Refunded = status == "REFUNDED"
