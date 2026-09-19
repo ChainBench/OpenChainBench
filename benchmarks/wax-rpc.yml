@@ -4,7 +4,7 @@ slug: wax-rpc
 number: "226"
 title: Fastest free WAX RPC, live no-key endpoint latency
 seo_title: "Fastest free WAX RPC 2026"
-seo_description: "{{best_name}} leads free WAX RPC at {{best_p50}} (get_info head_block_num p50, 24h). 3 providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free WAX RPC at {{best_p50}} (get_info head_block_num p50, 24h). {{count}} providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for GET /v1/chain/get_info against every available public WAX (Antelope) node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,16 +17,8 @@ seo_intro: |
   WAX (Worldwide Asset eXchange) is a delegated proof-of-stake blockchain built on the Antelope protocol, specialising in NFTs and gaming assets. It produces one block every 0.5 seconds and operates the same /v1/chain/get_info REST endpoint as EOS. Public endpoints are available without an API key from Greymass, EOSUSA and WAX Sweden. Every provider was live-verified with consecutive get_info probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to WAX.
-  We measure the round-trip latency of a single REST call (GET
-  /v1/chain/get_info) against every available public WAX node that
-  sustains continuous probing: 3 providers at launch, every 60
-  seconds, from us-east, eu-west and Singapore. The harness classifies
-  every response (ok / http_err / jsonrpc_err / stale / timeout) with
-  a WAX-scaled staleness gap (600 blocks, around 5 min at 0.5 s/block).
-  The cross-chain view lives on the parent rpc-capabilities benchmark;
-  this page is the WAX-scoped answer with per-region breakdowns as a
-  first-class dimension.
+  WAX: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  We measure the round-trip latency of a single REST call (GET /v1/chain/get_info) against every available public WAX node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a WAX-scaled staleness gap (600 blocks, around 5 min at 0.5 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the WAX-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
@@ -34,13 +26,13 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable head_block_num integer), http_err, jsonrpc_err, stale (block more than 600 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=wax. Provider coverage at launch: 3 endpoints (Greymass, EOSUSA, WAX Sweden)."
+  - "Chain scope: every query on this page is pinned to chain=wax. Provider coverage at launch: {{count}} endpoints (Greymass, EOSUSA, WAX Sweden)."
 
 faq:
   - q: "What is the fastest free WAX RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (WAX head block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (WAX head block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which WAX RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

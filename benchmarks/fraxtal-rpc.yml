@@ -14,10 +14,11 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Fraxtal, Frax's OP Stack rollup, fields {{count}} no-key providers: PublicNode, dRPC, Tenderly and Frax's own `rpc.frax.com`. The four-provider floor it just clears is the cluster's deliberate admission bar, chains that could not field {{count}} keyless endpoints (Mode, Zora, Abstract) were left out of the expansion entirely rather than shipped as two-row leaderboards. Identical probes every 60 seconds, three regions.
+  Fraxtal, Frax's OP Stack rollup, fields {{count}} no-key providers: PublicNode, dRPC, Tenderly and Frax's own `rpc.frax.com`. The {{count}}-provider floor it just clears is the cluster's deliberate admission bar, chains that could not field {{count}} keyless endpoints (Mode, Zora, Abstract) were left out of the expansion entirely rather than shipped as two-row leaderboards. Identical probes every 60 seconds, three regions.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Fraxtal endpoint that sustains continuous probing, 4 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Fraxtal-scoped answer with per-region breakdowns as a first-class dimension.
+  Fraxtal: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:fraxtal-official}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Fraxtal endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Fraxtal-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -32,7 +33,7 @@ faq:
   - q: "What is the fastest free Fraxtal RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Fraxtal RPCs work without an API key?"
-    a: "The 4 providers on this page: PublicNode, dRPC, Tenderly, Fraxtal. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
+    a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Why are chains like Mode, Zora or Sei missing from this cluster?"
     a: "Each failed a specific admission test. Mode, Zora and Abstract could not field {{count}} keyless providers, below the bar for a meaningful leaderboard. Sei was excluded because dRPC caches `eth_getBlockByNumber` there, poisoning the exact probe we rank on. opBNB fell out because 1RPC returns 429 at our 60-second cadence, leaving only 3 solid providers. The cluster only ships chains where the comparison is honest."
 

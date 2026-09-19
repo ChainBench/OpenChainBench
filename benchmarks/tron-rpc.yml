@@ -32,18 +32,8 @@ seo_intro: |
   and would need a chain-specific probe added.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to the TRON
-  JSON-RPC-compatible surface. We measure the round-trip latency of a
-  single, identical JSON-RPC call
-  (`eth_getBlockByNumber("latest", false)`) against every no-key
-  public TRON JSON-RPC endpoint that sustains continuous probing,
-  2 providers, every 60 seconds, from us-east, eu-west and
-  Singapore. The harness classifies every response
-  (ok / http_err / jsonrpc_err / stale / timeout) with the EVM
-  staleness gap tuned for TRON's ~3 s block time (25 blocks ≈ 75
-  seconds). The cross-chain view lives on the parent `rpc-capabilities`
-  benchmark; this page is the TRON-scoped answer with per-region
-  breakdowns as a first-class dimension.
+  TRON: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public TRON JSON-RPC endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with the EVM staleness gap tuned for TRON's ~3 s block time (25 blocks ≈ 75 seconds). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the TRON-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -61,7 +51,7 @@ faq:
   - q: "Which TRON RPCs work without an API key?"
     a: "Two JSON-RPC endpoints sustain continuous keyless probing: TronGrid (`api.trongrid.io/jsonrpc`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). dRPC was removed after the TRON JSON-RPC method became unavailable. Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway."
   - q: "Why only 2 providers when other RPC benches have 5+?"
-    a: "TRON's JSON-RPC compat layer is thinner than the EVM one, and most infra vendors gate it behind an API key even when their native TRON REST endpoints are keyless. dRPC was removed after the TRON JSON-RPC method became unavailable. The 2 providers on this page are all keyless endpoints that responded correctly to a plain POST; when other vendors open a keyless JSON-RPC path we will add them."
+    a: "TRON's JSON-RPC compat layer is thinner than the EVM one, and most infra vendors gate it behind an API key even when their native TRON REST endpoints are keyless. dRPC was removed after the TRON JSON-RPC method became unavailable. The {{count}} providers on this page are all keyless endpoints that responded correctly to a plain POST; when other vendors open a keyless JSON-RPC path we will add them."
   - q: "Does this bench cover the native TRON REST API (`wallet/getnowblock`)?"
     a: "No. This bench scopes only the EVM-compatible JSON-RPC surface (`/jsonrpc` endpoints), because that is the path cross-chain wallets, TronWeb bridges, and arbitrage bots integrate against. The native TRON REST API surface (used by TronWeb + TronBox directly) has different method semantics (address encoding, resource model, `wallet/*` vs `walletsolidity/*` paths) and would need a chain-specific probe added. That will land as a separate `tron-rest` bench when the demand from integrators using TronWeb directly is clear."
   - q: "How is TRON RPC latency measured here, technically?"

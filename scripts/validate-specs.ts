@@ -80,6 +80,33 @@ async function main() {
       seenNumbers.set(spec.number, f);
     }
 
+    // RPC cluster copy: provider counts are live ({{count}}), never typed.
+    // 332 typed counts contradicted the infobox on 5 pages (2026-09-19); a
+    // page whose meta description, FAQPage JSON-LD and table disagree on
+    // the cohort size is the failure this rule prevents.
+    // Chain RPC pages only ("<chain>-rpc"): rpc-reliability's quorum rule
+    // legitimately says "two providers".
+    if (spec.slug.endsWith("-rpc") && spec.slug !== "mev-protect-rpc") {
+      const typedCount = /\b(\d+|two|three|four|five|six|seven|eight|nine|ten)[- ](provider|gateway|endpoint)s?\b/i;
+      const fields: [string, string | undefined][] = [
+        ["seo_description", spec.seo_description],
+        ["subtitle", spec.subtitle],
+        ["seo_intro", spec.seo_intro],
+        ["abstract", spec.abstract],
+        ...(spec.faq ?? []).map((q, i) => [`faq[${i}].a`, q.a] as [string, string]),
+      ];
+      for (const [name, text] of fields) {
+        const m = text ? typedCount.exec(text) : null;
+        if (m) {
+          issues.push({
+            file: f,
+            level: "error",
+            message: `${name}: typed provider count "${m[0]}"; use {{count}} (live cohort) instead`,
+          });
+        }
+      }
+    }
+
     // Provider slugs unique within a spec
     const providerSlugs = new Set<string>();
     for (const p of spec.providers) {

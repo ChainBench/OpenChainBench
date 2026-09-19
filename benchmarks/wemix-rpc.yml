@@ -14,16 +14,11 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  WEMIX 3.0 (chain 1111) is a South Korean gaming blockchain by WeMade, EVM-compatible with WEMIX as the native gas token. Home to Mirror World, WonderX, and a large P2E gaming ecosystem in Asia. {{count}} keyless endpoints are probed continuously: WEMIX official (api.wemix.com), dRPC (wemix.drpc.org), Blast API, and 1RPC.
+  WEMIX 3.0 (chain 1111) is a South Korean gaming blockchain by WeMade, EVM-compatible with WEMIX as the native gas token. Home to Mirror World, WonderX, and a large P2E gaming ecosystem in Asia. {{count}} keyless endpoints are probed continuously, each listed with its URL in the endpoints table above.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to WEMIX.
-  We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against every no-key public WEMIX endpoint
-  that sustains continuous probing, 4 providers at launch,
-  every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
-  view lives on the parent `rpc-capabilities` benchmark; this page is the
-  WEMIX-scoped answer with per-region breakdowns as a first-class dimension.
+  WEMIX: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:wemix-official}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public WEMIX endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the WEMIX-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -37,7 +32,7 @@ faq:
   - q: "What is the fastest free WEMIX RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which WEMIX RPCs work without an API key?"
-    a: "4 endpoints sustain continuous keyless probing: WEMIX official, dRPC, Blast API, and 1RPC. Every endpoint was live-verified before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

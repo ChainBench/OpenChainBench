@@ -17,17 +17,8 @@ seo_intro: |
   opBNB is the OP Stack rollup (chain 204) operated by the BNB Chain team, with BNB gas and settlement onto BNB Chain (not Ethereum). Standard EVM JSON-RPC. Excluded by the launch audit: NodeReal (`opbnb-mainnet.nodereal.io` requires API key), BlockPI (`unknown host`), Grove/Pocket public LB (needs app id), Tatum (404). Every provider live-verified with 4 consecutive keyless probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to opBNB.
-  We measure the round-trip latency of a single, identical JSON-RPC call
-  (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public opBNB endpoint
-  that sustains continuous probing, 3 providers at launch,
-  every 60 seconds, from us-east, eu-west and Singapore. The harness
-  classifies every response (ok / http_err / jsonrpc_err / stale /
-  timeout) with a opBNB-scaled staleness gap (25 blocks at
-  opBNB's ~1 s block time). The cross-chain view lives
-  on the parent `rpc-capabilities` benchmark; this page is the
-  opBNB-scoped answer with per-region breakdowns as a
-  first-class dimension.
+  opBNB: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:opbnb-official}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public opBNB endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a opBNB-scaled staleness gap (25 blocks at opBNB's ~1 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the opBNB-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -41,7 +32,7 @@ faq:
   - q: "What is the fastest free opBNB RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which opBNB RPCs work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: BNB Chain Team, PublicNode, dRPC. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
+    a: "{{count}} endpoints sustain continuous keyless probing today: BNB Chain Team, PublicNode, dRPC. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
   - q: "How is opBNB RPC latency measured here, technically?"
     a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
 
