@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
+import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -31,11 +32,17 @@ export const metadata: import("next").Metadata = pageMetadata({
 export const revalidate = 3600;
 
 export default async function RpcHubPage() {
-  const [snapshot, specs] = await Promise.all([fetchRpcHub(), getSpecs()]);
+  const [snapshot, specs, sitemapBlob] = await Promise.all([fetchRpcHub(), getSpecs(), loadSitemapBlob()]);
   // Spec-derived chain list: stable across snapshot outages, so the
   // JSON-LD ItemList and the empty state never churn with data blips.
+  // Restricted to the benches the worker publishes in the sitemap: a chain
+  // bench under the thin gate is noindex on its own page and must not be
+  // linked from here (36 such links on 2026-09-19). Without the blob, no
+  // restriction rather than an empty hub.
+  const indexable = sitemapBlob ? new Set(sitemapBlob.benches.map((b) => b.slug)) : null;
   const rpcSpecs = specs
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
+    .filter((s) => !indexable || indexable.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
 
   const breadcrumbLd = {
@@ -53,7 +60,7 @@ export default async function RpcHubPage() {
           "@type": "ItemList",
           name: "Per-chain free RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of free, no-key public RPC endpoints: latency, reliability and archive depth measured every 15 seconds from 3 regions.",
+            "Live per-chain benchmarks of free, no-key public RPC endpoints: latency, reliability and archive depth measured every 60 seconds from 3 regions.",
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -111,7 +118,7 @@ export default async function RpcHubPage() {
           Every free, no-key public RPC endpoint, measured per chain with
           the same probe: one identical{" "}
           <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
-          rotating request id (defeats CDN body-keyed caches) every 15
+          rotating request id (defeats CDN body-keyed caches) every 60
           seconds from 3 regions (N. Virginia, Amsterdam, Singapore). The matrix below folds the per-chain leaderboards
           into one view: fastest provider per chain, fastest per region,
           and which gateway covers your whole multichain stack. Headline
@@ -231,7 +238,7 @@ export default async function RpcHubPage() {
         <p>
           Each chain row aggregates that chain&apos;s dedicated bench: an
           identical JSON-RPC POST (<code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> with
-          rotating request id, or the chain&apos;s equivalent head call) sent every 15 seconds to
+          rotating request id, or the chain&apos;s equivalent head call) sent every 60 seconds to
           every free, no-key public endpoint from us-east, eu-west and
           Singapore. Headline figures are the 50th percentile of
           client-side round-trip latency over the trailing 24 hours,

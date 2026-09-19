@@ -211,12 +211,20 @@ const noAiDashes = (s: string) =>
   !s.includes("—") && !s.includes("–");
 const noAiDashesMsg =
   "Avoid em or en dashes; use a comma, semicolon, or period instead";
+// Marketing adjectives the editorial rules forbid in copy; a measured claim
+// ("fastest ... measured") is fine, these words never are.
+// "trusted" and "powerful" are left out on purpose: both occur as plain
+// technical verbs and adjectives ("timestamps are never trusted").
+const MARKETING = /\b(blisteringly|blazing(ly)?|best-in-class|world-class|revolutionary|lightning-fast|ultra-fast|cutting-edge|game-changing)\b/i;
+const noMarketing = (s: string) => !MARKETING.test(s);
+const noMarketingMsg = "marketing adjective (blisteringly, blazing, best-in-class, world-class, ...): state the number instead";
 const seoText = (min: number, max: number) =>
   z
     .string()
     .min(min)
     .max(max)
-    .refine(noAiDashes, noAiDashesMsg);
+    .refine(noAiDashes, noAiDashesMsg)
+    .refine(noMarketing, noMarketingMsg);
 
 export const SpecSchema = z
   .object({

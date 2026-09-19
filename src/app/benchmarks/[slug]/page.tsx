@@ -12,6 +12,7 @@ import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
+import { isThinRpcBench } from "@/lib/provider-filters";
 import { PublicEndpointsSection } from "@/components/public-endpoints-section";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
@@ -123,7 +124,7 @@ export async function generateMetadata({
   // provider leaderboard has no comparative value and no search demand.
   // noindex/follow keeps crawl equity flowing without letting an
   // empty-looking table rank for "fastest X rpc".
-  const metaThinRpc = b.category === "RPCs" && (b.results?.length ?? 0) < 3;
+  const metaThinRpc = isThinRpcBench(b);
   const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the

@@ -995,7 +995,7 @@ export function BenchmarkBody({
               </>
             ) : (
               <>
-                <p className="label-mono text-ink-faint mb-4">
+                <h2 className="label-mono text-ink-faint mb-4">
                   {viewBenchmark.unit === "count"
                     ? "Product ledger"
                     : activePanel
@@ -1003,7 +1003,7 @@ export function BenchmarkBody({
                       : viewBenchmark.ledgerColumns?.length
                         ? `Product ledger · sorted by ${viewBenchmark.ledgerColumns[0].label}`
                         : "Product ledger · sorted by p50"}
-                </p>
+                </h2>
                 <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
                 {/* Visible freshness stamp next to the numbers. Answer
                     engines quote data far more readily when the page says
@@ -1023,7 +1023,7 @@ export function BenchmarkBody({
           {viewBenchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
               <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
-                <p className="label-mono text-ink-faint mb-4">By region</p>
+                <h2 className="label-mono text-ink-faint mb-4">By region</h2>
                 <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
