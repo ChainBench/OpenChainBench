@@ -2,9 +2,9 @@
 
 slug: xlayer-rpc
 number: "140"
-title: "X Layer RPC endpoints: free public URLs ranked by latency"
-seo_title: "X Layer RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free X Layer RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "X Layer RPC endpoints: free public URLs by latency"
+seo_title: "X Layer RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free X Layer RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public X Layer EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   X Layer is a ZK-powered L2 blockchain (chain 196) built by OKX using the Polygon CDK and Aggregation Layer, bringing OKX users and the broader crypto ecosystem together, ETH gas token, ~2 s block cadence, Ethereum settlement. Mainnet launched April 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the X Layer official endpoint (rpc.xlayer.tech), dRPC (xlayer.drpc.org), and Thirdweb (196.rpc.thirdweb.com). Excluded: Ankr (no X Layer route), Alchemy (key required), QuickNode (key required).
 
 abstract: |
-  X Layer: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:xlayer-official}}.
+  X Layer: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:xlayer-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public X Layer endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with an X Layer-scaled staleness gap (20 blocks at X Layer's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the X Layer-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

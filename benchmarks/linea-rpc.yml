@@ -2,10 +2,10 @@
 
 slug: linea-rpc
 number: "051"
-title: "Linea RPC endpoints: free public URLs ranked by latency"
+title: "Linea RPC endpoints: free public URLs by latency"
 # seo_title test cohort (2026-09-19): endpoint-intent title; H1 keeps the measured claim.
-seo_title: "Linea RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Linea RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+seo_title: "Linea RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Linea RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Linea RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -15,7 +15,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  The no-key field thins out on Linea: {{count}} providers qualify (PublicNode, dRPC, Tenderly), all multi-chain gateways. Thinner competition makes the reliability columns matter more than raw speed, a fast endpoint with a high stale or timeout rate is a worse default than a slightly slower consistent one. Probes run every 60 seconds from us-east, eu-west and Singapore with full response classification.
+  The no-key field thins out on Linea: {{count}} providers qualify, all multi-chain gateways. Thinner competition makes the reliability columns matter more than raw speed, a fast endpoint with a high stale or timeout rate is a worse default than a slightly slower consistent one. Probes run every 60 seconds from us-east, eu-west and Singapore with full response classification.
 
 abstract: |
   Linea: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.

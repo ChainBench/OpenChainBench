@@ -15,6 +15,7 @@ import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -285,6 +286,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    // Expired chain RPC pages render noindex; never list them even if the
+    // blob still carries them.
+    if (isExpiredRpcPage(b)) return [];
     // Editorial change only. lastRunAt is a data timestamp, not a page
     // change; with an empty manifest it stamped 857 of 879 entries with
     // one day on production (2026-09-19). Fall back to the page module's

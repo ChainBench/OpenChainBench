@@ -2,9 +2,9 @@
 
 slug: immutable-rpc
 number: "111"
-title: "Immutable zkEVM RPC endpoints: free public URLs ranked by latency"
-seo_title: "Immutable zkEVM RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Immutable zkEVM RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Immutable zkEVM RPC endpoints: free public URLs by latency"
+seo_title: "Immutable zkEVM RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Immutable zkEVM RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Immutable zkEVM EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,14 +17,14 @@ seo_intro: |
   Immutable zkEVM is a Polygon CDK zkEVM L2 (chain 13371) operated by Immutable, dedicated to Web3 gaming with an IMX gas token model, 2 s block cadence, settlement onto Ethereum via zk-proofs. {{count}} clean keyless providers live-verified at launch: `immutable-official` (rpc.immutable.com), dRPC, Tenderly Gateway, Thirdweb. Excluded by the launch audit: PublicNode (no `immutable` subdomain), Alchemy public (chain not enabled on public tier), Tenderly's `rpc.immutable.gateway.tenderly.co` alias (route redirects to keyed path).
 
 abstract: |
-  Immutable zkEVM: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:immutable-official}}.
+  Immutable zkEVM: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:immutable-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Immutable zkEVM endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Immutable zkEVM-scaled staleness gap (25 blocks at Immutable zkEVM's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Immutable zkEVM-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Immutable zkEVM-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to `chain=\"immutable\"`. Provider coverage at launch: {{count}} no-key endpoints."
+  - "Chain scope: every query on this page is pinned to `chain=\"immutable\"`. Provider coverage today: {{count}} no-key endpoints."
 
 faq:
   - q: "Which Immutable zkEVM RPCs work without an API key?"

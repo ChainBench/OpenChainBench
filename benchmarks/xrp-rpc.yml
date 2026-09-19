@@ -2,9 +2,9 @@
 
 slug: xrp-rpc
 number: "213"
-title: "XRP Ledger RPC endpoints: free public URLs ranked by latency"
-seo_title: "XRP Ledger RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free XRP Ledger RPC at {{best_p50}} (ledger_current p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "XRP Ledger RPC endpoints: free public URLs by latency"
+seo_title: "XRP Ledger RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free XRP Ledger RPC at {{best_p50}} (ledger_current p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for ledger_current against every free, no-key public XRP Ledger node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,18 +17,18 @@ seo_intro: |
   The XRP Ledger is a decentralized payment network using a federated consensus protocol (RPCA) that closes a new ledger every 3 to 4 seconds with instant, deterministic finality. Free public JSON-RPC endpoints are available without an API key from Ripple, XRPL Labs and PublicNode. Every provider was live-verified with consecutive keyless ledger_current probes at launch.
 
 abstract: |
-  XRP Ledger: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  XRP Ledger: {{count}} free public RPC endpoints answering `ledger_current` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a single JSON-RPC call (ledger_current) against every no-key public XRP Ledger node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a XRPL-scaled staleness gap (75 ledgers, around 5 min). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the XRP-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: {\"method\":\"ledger_current\",\"params\":[{}]}. Plain HTTP POST. XRPL uses its own JSON-RPC envelope (no jsonrpc:2.0 field); errors are signalled via result.status='error'. Non-cacheable by design."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the XRP Ledger-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=xrp. Provider coverage at launch: {{count}} no-key endpoints (Ripple, XRPL Labs, PublicNode)."
+  - "Chain scope: every query on this page is pinned to chain=xrp. Provider coverage today: {{count}} no-key endpoints."
 
 faq:
   - q: "Which XRP Ledger nodes work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Ripple's public s1 node, XRPL Labs cluster and PublicNode. Every listed endpoint was live-verified with a ledger_current POST returning a parsable ledger index before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today, each listed with its URL, 24h median and success rate in the endpoints table on this page. Every listed endpoint was live-verified with a ledger_current POST returning a parsable ledger index before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

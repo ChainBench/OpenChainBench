@@ -2,9 +2,9 @@
 
 slug: lukso-rpc
 number: "260"
-title: "LUKSO RPC endpoints: free public URLs ranked by latency"
-seo_title: "LUKSO RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "LUKSO RPC endpoints: free public URLs by latency"
+seo_title: "LUKSO RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public LUKSO endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). {{count}} providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
 
 abstract: |
-  LUKSO: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lukso-official}}.
+  LUKSO: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lukso-official}}.
   Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok responses (HTTP 200 with a usable block height, not stale) contribute to the distribution; p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
 
 methodology:

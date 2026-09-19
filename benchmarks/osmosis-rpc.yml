@@ -2,10 +2,10 @@
 
 slug: osmosis-rpc
 number: "091"
-title: "Osmosis RPC endpoints: free public URLs ranked by latency"
+title: "Osmosis RPC endpoints: free public URLs by latency"
 # seo_title test cohort (2026-09-19): endpoint-intent title; H1 keeps the measured claim.
-seo_title: "Osmosis RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+seo_title: "Osmosis RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public Osmosis Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -43,7 +43,7 @@ methodology:
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Osmosis-scoped view of the same harness, with the same exclusion rules."
   - "No archive-depth loop on this chain. Cosmos SDK chains access historical state via ABCI queries keyed on module + KV-store, which does not map onto the flat `eth_getBalance(address, height)` probe cleanly."
   - "No cross-provider hash quorum on this chain at v1. Tendermint `status` does return `latest_block_hash` on the same block the height is reported for, so a quorum check is technically feasible, but the initial Osmosis add-on ships without it to keep the reliability change surface small; the hash normalisation across Cosmos chains will be validated before wiring bench 083 here."
-  - "Chain scope: every query on this page is pinned to `chain=\"osmosis\"`. Provider coverage at launch: {{count}} no-key endpoints (Osmosis Foundation, Polkachu, PublicNode, Imperator, LavenderFive)."
+  - "Chain scope: every query on this page is pinned to `chain=\"osmosis\"`. Provider coverage today: {{count}} no-key endpoints."
   - "Excluded by the launch audit: Lava (osmosis.tendermintrpc.lava.build 403 without a key despite public branding), OnFinality (osmosis public gateway timing out at probe cadence), Numia (401), AutoStake (404), BlockApsis / WhisperNode / Enigma-Validator / StakeTown / reece.sh (connect errors, likely IPv6-only or geo-gated), Ankr + Chainstack (paid Cosmos tiers only)."
 
 faq:

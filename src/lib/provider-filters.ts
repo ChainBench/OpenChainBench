@@ -78,3 +78,19 @@ export function isStaleBench(b: { lastRunAt?: string | null; status?: string }):
 export function isExpiredBench(b: { lastRunAt?: string | null; status?: string }): boolean {
   return b.status === "live" && dataAgeHours(b) > NOINDEX_AFTER_HOURS;
 }
+
+/** The chain RPC page gate, app side, in one place: a `<chain>-rpc` bench
+ *  is linked and listed only when it is not thin (declared cohort) and its
+ *  data is not expired. The worker applies the same rule to the sitemap
+ *  blob; the app repeats it so a stale blob (or a worker built from an
+ *  older branch) never makes the sitemap, the hubs, the sibling nav or
+ *  llms.txt list a noindex page. Works on the slim sitemap rows too. */
+export function isExpiredRpcPage(b: {
+  slug: string;
+  category?: string;
+  lastRunAt?: string | null;
+  status?: string;
+}): boolean {
+  if (!b.slug.endsWith("-rpc") || (b.category && b.category !== "RPCs")) return false;
+  return dataAgeHours(b) > NOINDEX_AFTER_HOURS;
+}
