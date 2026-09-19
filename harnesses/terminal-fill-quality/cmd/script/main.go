@@ -90,6 +90,9 @@ var (
 	gFailOverhead = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_overhead_bps", Help: "Expected fee burnt on failed attempts per successful swap: fail rate / (1 − fail rate) × median failed-attempt fee, basis points of the median trade",
 	}, []string{"terminal", "chain"})
+	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
+	}, []string{"terminal", "chain"})
 	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	gSol     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
@@ -98,7 +101,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gRefresh, gFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gRefresh, gFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -289,6 +292,8 @@ func main() {
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
 	dailyTarget := envInt("DAILY_TARGET", 300) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
+	evmDailyTarget := envInt("EVM_DAILY_TARGET", dailyTarget) // the Relay and native EVM rows: their own rate (one chain each)
+	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
 	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 50)
@@ -301,7 +306,7 @@ func main() {
 	if addr == "" {
 		addr = ":2112"
 	}
-	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d Solana terminals | tick=%s target=%d swaps/terminal/day window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, windowHours, minPriced, minRank, useWS)
+	log.Printf("OpenChainBench #268: terminal fill quality, method v%d, %d Solana terminals | tick=%s target=%d swaps/terminal/day (EVM rows %d) window=%dh publish>=%d rank>=%d ws=%v", methodVersion, len(terminals), tick, dailyTarget, evmDailyTarget, windowHours, minPriced, minRank, useWS)
 
 	// Redirects are not followed: a public RPC that answers a heavy query
 	// with a redirect to a private address (seen on Robinhood Chain's
@@ -375,8 +380,8 @@ func main() {
 		}
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
-		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTick)
-		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTick)
+		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTickEVM)
+		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTickEVM)
 		added += a2
 		seen += s2
 		if tickN == 3 || (discoverEvery > 0 && tickN%discoverEvery == 0) {
@@ -1474,6 +1479,11 @@ func publishGauges(stats []TerminalStats) {
 			gFailOverhead.WithLabelValues(ts.Product, ts.Chain).Set(*ts.FailOverheadBps)
 		} else {
 			gFailOverhead.DeleteLabelValues(ts.Product, ts.Chain)
+		}
+		if ts.Loss != nil && ts.Healthy && ts.TradeUSD != nil {
+			gLostUSD.WithLabelValues(ts.Product, ts.Chain).Set(ts.TradeUSD.Median * ts.Loss.Median / 1e4)
+		} else {
+			gLostUSD.DeleteLabelValues(ts.Product, ts.Chain)
 		}
 		gHealth.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Healthy))
 		gRanked.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Ranked))

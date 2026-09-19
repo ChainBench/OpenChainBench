@@ -150,7 +150,7 @@ metric_panels:
     higher_is_better: false
     description: "Share of the terminal's swap attempts that failed on-chain in the window; the priority fee is paid anyway."
   - id: trade_usd
-    label: Median trade
+    label: Median swap
     label_key: terminal
     metric: tfq_trade_usd{chain="all",stat="median"}
     unit: usd
@@ -165,6 +165,14 @@ metric_panels:
     higher_is_better: false
     tab: false
     description: "Expected fee burnt on failed attempts per successful swap: fail rate / (1 − fail rate) × median failed-attempt fee, bps of the median trade."
+  - id: lost_usd
+    label: Lost per swap
+    label_key: terminal
+    metric: tfq_lost_usd{chain="all"}
+    unit: usd
+    higher_is_better: false
+    tab: false
+    description: "Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars."
   - id: priced
     label: Swaps sampled
     label_key: terminal
@@ -175,12 +183,14 @@ metric_panels:
     description: "Priced swaps in the rolling window."
 
 ledger_columns:
-  - { label: "Cost per swap", slot: p50 }
+  - { label: "Value lost", slot: p50 }
+  - { label: "Median swap", panel: trade_usd }
+  - { label: "Lost / swap", panel: lost_usd }
   - { label: "Terminal fee", panel: terminal_fee }
   - { label: "Network", panel: network }
   - { label: "Pool", panel: pool }
+  - { label: "Other fees", panel: other }
   - { label: "Failed swaps", panel: fail_rate }
-  - { label: "Median trade", panel: trade_usd }
 
 dimensions:
   chain:
