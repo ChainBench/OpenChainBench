@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"log"
 	"strconv"
 	"strings"
@@ -77,8 +78,10 @@ type Executor struct {
 	region        string
 	// Millisecond watch of the leg in flight (fill_watcher.go).
 	watch *legWatch
-	slack *SlackNotifier
-	spend *SpendTracker
+	// Persisted last-execution times (last_execution.go).
+	lastExec *lastExecStore
+	slack    *SlackNotifier
+	spend    *SpendTracker
 }
 
 // DailySpent returns today's consumed budget via the mutex-guarded tracker.
@@ -133,7 +136,9 @@ func NewExecutor(
 		region:        region,
 		slack:         slack,
 		spend:         NewSpendTracker(spendStatePath(), time.Now),
+		lastExec:      newLastExecStore(lastExecPath()),
 	}
+	e.lastExec.expose(region)
 
 	// Initialize TxExecutor if we have private keys
 	if walletManager != nil && walletManager.HasPrivateKeys() {
@@ -476,7 +481,7 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	}
 	log.Printf("    %s! TX: %s | Quote: %dms | Exec: %dms | E2E: %dms | Fee: $%.4f",
 		status,
-		txHash[:16]+"...",
+		shortHash(txHash),
 		result.QuoteLatencyMs,
 		result.ExecutionLatencyMs,
 		result.E2ELatencyMs,
@@ -957,16 +962,23 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	// Exact latency gauge (only on a real fill): lets the bench read the true
 	// observed value via quantile_over_time instead of a coarse bucket midpoint.
 	if result.Success && result.ExecutionLatencyMs > 0 {
-		bridgeExecLatencyMs.WithLabelValues(labels...).Set(float64(result.ExecutionLatencyMs))
+		method := result.LatencyMethod
+		if method == "" {
+			method = "poll"
+		}
+		pulse(bridgeExecLatencyMs, append(append([]string{}, labels...), method), float64(result.ExecutionLatencyMs))
 		if result.ObservedLatencyMs > 0 {
-			bridgeExecObservedMs.WithLabelValues(labels...).Set(float64(result.ObservedLatencyMs))
+			pulse(bridgeExecObservedMs, labels, float64(result.ObservedLatencyMs))
 		}
 		if result.OnchainBlockDeltaMs >= 0 && result.DestTxHash != "" {
-			bridgeExecOnchainMs.WithLabelValues(labels...).Set(float64(result.OnchainBlockDeltaMs))
+			pulse(bridgeExecOnchainMs, labels, float64(result.OnchainBlockDeltaMs))
 		}
-		if result.LatencyMethod == "poll" {
-			bridgeExecLatencyFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region).Inc()
+		if method != "watch" {
+			bridgeExecLatencyFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region, method).Inc()
 		}
+	}
+	if result.Success || result.Reverted || result.TxHash != "" {
+		e.lastExec.record(result.Bridge, e.region, time.Now())
 	}
 
 	// Record success/revert + consecutive-failure streak (used for paging alerts).
@@ -1003,22 +1015,24 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 
 	// Record fees + the new execution-cost metrics
-	bridgeFeesUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD)
+	pulse(bridgeFeesUSD, labels, result.ActualFeeUSD)
 	if result.AmountUSD > 0 {
-		bridgeFeesPercent.WithLabelValues(labels...).Set((result.ActualFeeUSD / result.AmountUSD) * 100)
+		pulse(bridgeFeesPercent, labels, (result.ActualFeeUSD/result.AmountUSD)*100)
 	}
 	if result.OutputUSD > 0 {
-		bridgeRealizedOutputUSD.WithLabelValues(labels...).Set(result.OutputUSD)
+		pulse(bridgeRealizedOutputUSD, labels, result.OutputUSD)
 	}
 	// Execution slippage vs quote = realized fee - quote-projected fee. Only on
 	// a real fill: on a revert / refund / pre-broadcast failure there is no
 	// realized fee (ActualFeeUSD stays 0 while QuoteFeeUSD was set), so recording
 	// it would inject spurious 0 / negative samples into the realized-cost bench.
-	if result.Success {
-		bridgeQuoteSlippageUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD - result.QuoteFeeUSD)
+	// Slippage is only meaningful against a quoted fee; Near Intents used to
+	// publish its whole realized fee here (QuoteFeeUSD was never set).
+	if result.Success && result.QuoteFeeUSD > 0 {
+		pulse(bridgeQuoteSlippageUSD, labels, result.ActualFeeUSD-result.QuoteFeeUSD)
 	}
 	if result.ExecGasUSD > 0 {
-		bridgeExecGasUSD.WithLabelValues(labels...).Set(result.ExecGasUSD)
+		pulse(bridgeExecGasUSD, labels, result.ExecGasUSD)
 	}
 }
 
@@ -1283,4 +1297,15 @@ func (e *Executor) PrintExecutionPlan() {
 
 	planJSON, _ := json.MarshalIndent(plan, "", "  ")
 	log.Printf("📋 Execution Plan:\n%s", string(planJSON))
+}
+
+// pulseTTL is how long a per-execution gauge stays exposed: two to three
+// scrapes at the 30 s interval, then the series is deleted so a range
+// query over days weighs every execution the same.
+const pulseTTL = 75 * time.Second
+
+func pulse(g *prometheus.GaugeVec, labels []string, v float64) {
+	g.WithLabelValues(labels...).Set(v)
+	lv := append([]string{}, labels...)
+	time.AfterFunc(pulseTTL, func() { g.DeleteLabelValues(lv...) })
 }

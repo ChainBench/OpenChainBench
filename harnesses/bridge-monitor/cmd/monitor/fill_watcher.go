@@ -24,8 +24,9 @@ import (
 //     watchInterval from the moment before the deposit is broadcast; the
 //     first read that exceeds the pre-execution balance stamps creditAt.
 //   - the source: from the broadcast, the deposit's receipt (EVM) or
-//     signature status (Solana) is read every watchInterval; the first
-//     read that shows it included stamps confirmedAt.
+//     signature status (Solana, any commitment from processed) is read
+//     every watchInterval; the first read that shows it included stamps
+//     confirmedAt.
 //
 // bridge_exec_latency_ms = creditAt - confirmedAt: what the bridge took
 // once the deposit was on-chain, observed with the same detection lag on
@@ -140,8 +141,13 @@ func (tx *TxExecutor) txIncluded(chain, txHash string) bool {
 		if err != nil || out == nil || len(out.Value) == 0 || out.Value[0] == nil {
 			return false
 		}
+		// Any commitment counts: a relayer acting on `processed` can credit
+		// the destination before our `confirmed` stamp, which would make
+		// credit precede inclusion and push the leg to the broadcast fallback.
 		st := out.Value[0]
-		return st.ConfirmationStatus == rpc.ConfirmationStatusConfirmed || st.ConfirmationStatus == rpc.ConfirmationStatusFinalized
+		return st.ConfirmationStatus == rpc.ConfirmationStatusProcessed ||
+			st.ConfirmationStatus == rpc.ConfirmationStatusConfirmed ||
+			st.ConfirmationStatus == rpc.ConfirmationStatusFinalized
 	case "base", "arbitrum":
 		client := tx.baseClient
 		if strings.ToLower(chain) == "arbitrum" {

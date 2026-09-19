@@ -13,16 +13,13 @@ unit: usd
 higher_is_better: false
 
 # Per-corridor breakdown. The chain label carries route.ToChain, so each tab
-# isolates one leg of the executed triangle. amount_usd isolates ticket size.
+# isolates one leg of the executed triangle; the $3 and $30 tickets are pooled.
 # Every figure is a REAL executed transaction, never a quote.
 dimensions:
   chain:
     - { value: Base,     label: Sol to Base }
     - { value: Arbitrum, label: Base to Arb }
     - { value: Solana,   label: Arb to Sol }
-  amount_usd:
-    - { value: "3",  label: "$3" }
-    - { value: "30", label: "$30" }
 
 seo_intro: |
   Every bridge quotes a cost. This benchmark measures whether that quote
@@ -39,8 +36,8 @@ seo_intro: |
 abstract: |
   For every executed transfer we record the realized fee (amount sent minus
   amount received on-chain) and subtract the quote-projected fee, giving the
-  execution slippage versus the quote in USD. The headline is the 24h median
-  of that gap. Companion panels report our own on-chain gas (approve plus
+  execution slippage versus the quote in USD. The headline is the 7-day median
+  of that gap (one execution per corridor per day, $3 and $30 pooled). Companion panels report our own on-chain gas (approve plus
   deposit, measured as the source-chain native balance delta) and the
   realized output that landed on the destination. Sampled at $3 and $30 from
   EU-West on the same conserving USDC triangle as the execution-latency
@@ -73,74 +70,82 @@ faq:
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 metric_panels:
+  - id: fee
+    label: Realized fee
+    metric: avg by (bridge) (ocb:bridge_fees_usd:avg_7d{region="eu-west"})
+    label_key: bridge
+    unit: usd
+    higher_is_better: false
+    description: "Amount sent minus amount actually received on the destination chain, in USD, averaged over the last 7 days of executions. The fee a user really paid, read on-chain rather than from the quote."
   - id: gas
     label: All-in gas we paid
-    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_24h{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_7d{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
     description: "Our own on-chain gas (approve plus deposit), measured as the source-chain native balance delta. The cost the user bears on top of the bridge fee."
   - id: realized
     label: Realized output on-chain
-    metric: avg by (bridge) (ocb:bridge_realized_output_usd:avg_24h{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_realized_output_usd:avg_7d{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: true
     description: "The USD value that actually landed on the destination chain, waited for on-chain rather than read from the quote."
 
 prometheus:
-  window: 24h
-  expected_freshness_seconds: 90000
+  window: 7d
+  freshness_timestamp_metric: bridge_last_execution_timestamp_seconds
+  expected_freshness_seconds: 172800
 
 providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
     type: intent
-    formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Mobula from EU-West, at the selected corridor and ticket size."
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Mobula from EU-West, at the selected corridor, $3 and $30 tickets pooled."
     queries:
-      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="mobula", region="eu-west"})
-      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="mobula", region="eu-west"})
-      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="mobula", region="eu-west"})
-      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="mobula", region="eu-west"})
-      sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="mobula", region="eu-west"}[24h]))
-      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="mobula", region="eu-west"}
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="mobula", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="mobula", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="mobula", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="mobula", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="mobula", region="eu-west"}
 
   - slug: relay
     name: Relay
     tag: Cross-chain relay
     type: relay
-    formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Relay from EU-West, at the selected corridor and ticket size."
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Relay from EU-West, at the selected corridor, $3 and $30 tickets pooled."
     queries:
-      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="relay", region="eu-west"})
-      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="relay", region="eu-west"})
-      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="relay", region="eu-west"})
-      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="relay", region="eu-west"})
-      sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="relay", region="eu-west"}[24h]))
-      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="relay", region="eu-west"}
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="relay", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="relay", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="relay", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="relay", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="relay", region="eu-west"}
 
   - slug: lifi
     name: LI.FI
     tag: Aggregator
     type: aggregator
-    formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through LI.FI from EU-West, at the selected corridor and ticket size."
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through LI.FI from EU-West, at the selected corridor, $3 and $30 tickets pooled."
     queries:
-      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="lifi", region="eu-west"})
-      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="lifi", region="eu-west"})
-      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="lifi", region="eu-west"})
-      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="lifi", region="eu-west"})
-      sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="lifi", region="eu-west"}[24h]))
-      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="lifi", region="eu-west"}
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="lifi", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="lifi", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="lifi", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="lifi", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="lifi", region="eu-west"}
 
   - slug: near-intents
     name: Near Intents
     tag: Intent layer (NEAR)
     type: intent
-    formula: "24h median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through the Near Intents 1Click flow from EU-West, at the selected corridor and ticket size."
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through the Near Intents 1Click flow from EU-West, at the selected corridor, $3 and $30 tickets pooled."
     queries:
-      p50: avg(ocb:bridge_quote_slippage_usd:p50_24h{bridge="near-intents", region="eu-west"})
-      p90: avg(ocb:bridge_quote_slippage_usd:p90_24h{bridge="near-intents", region="eu-west"})
-      p99: avg(ocb:bridge_quote_slippage_usd:p99_24h{bridge="near-intents", region="eu-west"})
-      mean: avg(ocb:bridge_quote_slippage_usd:mean_24h{bridge="near-intents", region="eu-west"})
-      sample_size: sum(count_over_time(bridge_quote_slippage_usd{bridge="near-intents", region="eu-west"}[24h]))
-      series: ocb:bridge_quote_slippage_usd:p50_24h{bridge="near-intents", region="eu-west"}
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="near-intents", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="near-intents", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="near-intents", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="near-intents", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="near-intents", region="eu-west"}

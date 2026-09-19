@@ -376,6 +376,14 @@ export const SpecSchema = z
           .string()
           .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
           .optional(),
+        /** For benches whose raw metrics are pulses (present a minute
+         *  after each execution, then deleted): a persistent gauge whose
+         *  VALUE is the unix time of the last run. Age = time() - max(it).
+         *  Takes precedence over freshness_metric. */
+        freshness_timestamp_metric: z
+          .string()
+          .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
+          .optional(),
         /** Bench-level sanity check for the per-provider `live_activity`
          *  probe: an instant query that must be > 0 for the "Feed down"
          *  UI to trust its per-provider verdicts. Meant to answer "are

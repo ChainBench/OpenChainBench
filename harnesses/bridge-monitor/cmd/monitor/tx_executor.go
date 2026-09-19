@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -109,7 +110,8 @@ func NewTxExecutor(solPrivKey, evmPrivKey, mobulaAPIKey string, dryRun bool) (*T
 			return nil, fmt.Errorf("failed to connect to Arbitrum RPC: %w", err)
 		}
 
-		log.Printf("✅ Connected to Solana (%s), Base (%s), Arbitrum (%s)", solURL, baseURL, arbURL)
+		// Hosts only: the keyed URLs carry the provider token in the path.
+		log.Printf("✅ Connected to Solana (%s), Base (%s), Arbitrum (%s)", rpcHost(solURL), rpcHost(baseURL), rpcHost(arbURL))
 	}
 
 	return tx, nil
@@ -656,4 +658,13 @@ func (tx *TxExecutor) Close() {
 	if tx.arbitrumClient != nil {
 		tx.arbitrumClient.Close()
 	}
+}
+
+// rpcHost returns the host of an RPC URL, never its path (keyed endpoints
+// carry the token there).
+func rpcHost(raw string) string {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return "invalid-url"
 }
