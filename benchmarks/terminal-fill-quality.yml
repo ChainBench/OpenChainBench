@@ -14,7 +14,7 @@ unit: bp
 higher_is_better: false
 
 disclaimer: |
-  Random sample (300 per terminal per day) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade on the pool within 60 s elsewhere); swaps without one keep their cost split but no loss figure. The trade's own impact is inside. A terminal is published from 50 priced swaps and ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
+  Random sample (400 per terminal per day) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade on the pool within 60 s elsewhere); swaps without one keep their cost split but no loss figure. The trade's own impact is inside. A terminal is published from 50 priced swaps and ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -34,7 +34,7 @@ abstract: |
   Each terminal takes its fee through known wallets. A live WebSocket feed of
   every transaction mentioning those wallets, with its program logs, says which
   ones attempted a swap and whether they failed; the harness counts them all
-  (fail rate) and reads 300 successful ones per terminal per day, drawn at
+  (fail rate) and reads 400 successful ones per terminal per day, drawn at
   random. From the pre/post balances of every account in the transaction it
   derives, in quote units (SOL or a $1 stable), what left the user, what the
   pool received, what reached the terminal's fee wallets, the tx fee and the
@@ -51,7 +51,7 @@ abstract: |
   terminal; published from 50 priced swaps, ranked from 100.
 
 methodology:
-  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters, Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, Terminal 2, the others 1; pump.fun's app and Banana Gun also by program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; 300 successful ones per terminal per day are read, drawn at random with the tick's activity as weight. Rolling 24 h."
+  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters, Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, Terminal 2, the others 1; pump.fun's app and Banana Gun also by program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; 400 successful ones per terminal per day are read, drawn at random with the tick's activity as weight. Rolling 24 h."
   - "The user is the signer whose token balance moved; when nobody signed for the user (limit, DCA and auto-sell orders executed by the terminal's keeper), the wallet whose token account moved against its SOL / stable balance, never a program-derived pool address. Quote assets: SOL, USDC, USDT, USD1, USDS, PYUSD; token-to-token swaps are not measured."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, the tx fee included when the user paid it, rent of accounts created or closed in the transaction excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets (FOMO: plus its user-signed USDC legs, under 2 % of the trade)."
   - "network_q = tx fee if the user paid it + inclusion tips: Jito, 0slot, bloXroute, Astralane, Nozomi and each terminal's own relay accounts (Axiom, Trojan, Maestro, Photon, Pepeboost, pump.fun app). other_q = user_q minus pool_q, terminal_q and network_q on single-pool routes without hops (pump.fun protocol and creator fees, referral payouts); on routed swaps it stays inside pool."
@@ -59,11 +59,12 @@ methodology:
   - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction on one constant-product pool (PumpSwap with its migrated pools' virtual quote reserve, Raydium v4 / CPMM); the venue's swap event when it carries the state before the trade (Launchpad reserves, Meteora DLMM start bin), accepted only when it reconciles with the vault deltas; else the previous trade on the same pool at most 60 s old (pump.fun curve, CLMM, DBC, routed swaps). No off-chain price."
   - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent, sell: tokens × ref). Pool = loss minus terminal, network and other; the four sum to the loss. Losses outside −10 % to +50 % are parsing or reference errors and stay out (flagged in the JSON). Median over priced samples with its 95 % bootstrap interval; p90 shown."
   - "A terminal is published from 50 priced swaps in the window and ranked from 100: below that the median's interval is wider than the gaps between terminals. The previous-trade reference carries the previous trader's direction, so terminals priced mostly that way read some tens of bps worse in buy waves than on the exact mid."
-  - "Fail rate: failed over every swap attempt the feed saw on the terminal's wallets in the window, exhaustive; wallet funding, fee sweeps and marker transfers invoke no swap program and are not attempts. Error classes (slippage, insufficient funds, program codes) are in the JSON."
+  - "Fail rate: failed over every swap attempt the feed saw on the terminal's wallets in the window, exhaustive; wallet funding, fee sweeps and marker transfers invoke no swap program and are not attempts. Error classes are in the JSON. On the EVM rows the fail rate comes from a sample of blocks read in full (every transaction sent to the routers, reverted or not)."
   - "Cost of failures: 40 failed attempts per terminal per day are read for the fee they paid (a failed transaction executes nothing but pays base + priority fee; zero when the terminal sponsors gas). Failure overhead = fail rate / (1 − fail rate) × median failed fee, in bps of the median trade: what a successful swap carries on average in wasted attempts. Published apart from the cost per swap, not added to it."
   - "PumpSwap's vault ratio alone is not the mid: pools migrated from pump.fun add a virtual quote reserve (about 17.6 SOL) that the pool account stores; with it x·y = k matches executed trades exactly. pump.fun's 2026 bonding curve fills 20 to 60 % above its stored virtual_sol / virtual_token, so the curve gets the previous-trade reference instead."
   - "Sandwiches: each sampled swap's neighbours on its pool are screened (another signer trading our direction in our slot just before, and back just after, closing a comparable position with a take). Kept per swap in the JSON with the attacker and both signatures, not published as a column: how many swaps can be screened depends on pool activity, so terminals are not comparable on it."
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
+  - "One row per product; the chain selector shows the product on one chain (Solana, BNB, Robinhood Chain, Base, Ethereum, Arc) and All chains pools every swap of the product across its chains (the bridge funding legs stay out, they are in the JSON). A product is published from 50 priced swaps on the selected view."
   - "Cross-chain (FOMO, BasedBot): the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana. Relay's public requests feed identifies the app's requests (fee address or referrer) with what the user sent in USD, the fees, both hashes and the status. Value received = what the settlement delivered on Solana: USDC / SOL exactly (FOMO funds the wallet this way; the token buy that follows is a native swap in the FOMO row) or a token at the pool's state before the swap."
   - "Cross-chain split: terminal = the app fee the user paid; network = the origin gas (receipt on the chain's public RPC); relay = Relay's fees and spread (deposit minus received minus app fee); pool only when a token was delivered. Requests paid with a token on the origin chain are shown but not counted (their value in is Relay's own valuation). Refunds and failures count in the fail rate. Perps are not measured; swaps under $2 are dropped."
   - "Trading on another chain (FOMO on Robinhood Chain, BNB, Base, Ethereum, Arc; BasedBot on Robinhood Chain, HyperEVM): the user pays in SOL, a Relay solver buys the token there. Value given = the SOL sent (tx fee inside); value received = the tokens delivered at the pool's state before the settlement swap: v2 forks from the Sync reserves minus the swap, v3 forks and Uniswap v4 from the price left by the previous swap on the pool, all from the pool's own logs on public RPCs."
@@ -74,7 +75,7 @@ methodology:
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains, no event of its own, so its swaps are the transactions sent to it in the blocks read in full; valued and split like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: no fee visible on-chain, terminal 0."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
   - "Kept out of that residual: a fee the pool's own hook keeps (Uniswap v4 launchpad pools on Robinhood Chain, 1 %, and BNB, 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the rate the route itself swapped the gas coin at, not at an exchange's print; Axiom's inclusion tip on every transaction (a fixed 0.0025 BNB; on Robinhood Chain the user's own setting, read from the call trace) is network cost, like the Solana terminals' own tip relays."
-  - "Not in the table: BullX (trading suspended since 2026-06-01, its fee wallets only see marker transfers), Nova (no live fee wallet), BasedBot's native Solana swaps (DeFiLlama's addresses belong to a launchpad and bid mechanism, not the trading bot, and the bot's fee wallet is not published; its cross-chain requests are public on Relay and measured). Each joins the day a live wallet is known."
+  - "Not in the table: BullX (trading suspended since 2026-06-01, its fee wallets only see marker transfers), Nova (no live fee wallet), BasedBot's native Solana swaps (no Solana swap volume: the wallets it funds through Relay trade through Jupiter with no BasedBot fee; its cross-chain requests are public on Relay and measured). Each joins the day a live wallet is known."
 
 findings:
   - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's state before the trade, all costs included."
@@ -107,28 +108,28 @@ metric_panels:
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal
-    metric: tfq_component_bps{component="terminal"}
+    metric: tfq_component_bps{component="terminal",chain="all"}
     unit: bp
     higher_is_better: false
     description: "Median share of the trade that reached the terminal's fee wallets."
   - id: network
     label: Network
     label_key: terminal
-    metric: tfq_component_bps{component="network"}
+    metric: tfq_component_bps{component="network",chain="all"}
     unit: bp
     higher_is_better: false
     description: "Median transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), share of the trade. Zero when the terminal sponsors gas."
   - id: pool
     label: Pool
     label_key: terminal
-    metric: tfq_component_bps{component="pool"}
+    metric: tfq_component_bps{component="pool",chain="all"}
     unit: bp
     higher_is_better: false
     description: "Median of loss minus terminal, network and other: LP fee and price impact, plus hop costs on routed swaps."
   - id: relay
     label: Relay
     label_key: terminal
-    metric: tfq_component_bps{component="relay"}
+    metric: tfq_component_bps{component="relay",chain="all"}
     unit: bp
     higher_is_better: false
     tab: false
@@ -136,7 +137,7 @@ metric_panels:
   - id: other
     label: Other fees
     label_key: terminal
-    metric: tfq_component_bps{component="other"}
+    metric: tfq_component_bps{component="other",chain="all"}
     unit: bp
     higher_is_better: false
     tab: false
@@ -144,14 +145,14 @@ metric_panels:
   - id: fail_rate
     label: Failed swaps
     label_key: terminal
-    metric: tfq_fail_rate_pct
+    metric: tfq_fail_rate_pct{chain="all"}
     unit: pct
     higher_is_better: false
     description: "Share of the terminal's swap attempts that failed on-chain in the window; the priority fee is paid anyway."
   - id: trade_usd
     label: Median trade
     label_key: terminal
-    metric: tfq_trade_usd{stat="median"}
+    metric: tfq_trade_usd{chain="all",stat="median"}
     unit: usd
     higher_is_better: true
     tab: false
@@ -159,7 +160,7 @@ metric_panels:
   - id: fail_overhead
     label: Failure overhead
     label_key: terminal
-    metric: tfq_fail_overhead_bps
+    metric: tfq_fail_overhead_bps{chain="all"}
     unit: bp
     higher_is_better: false
     tab: false
@@ -167,7 +168,7 @@ metric_panels:
   - id: priced
     label: Swaps sampled
     label_key: terminal
-    metric: tfq_sample_size{kind="priced"}
+    metric: tfq_sample_size{chain="all",kind="priced"}
     unit: count
     higher_is_better: true
     tab: false
@@ -181,315 +182,193 @@ ledger_columns:
   - { label: "Failed swaps", panel: fail_rate }
   - { label: "Median trade", panel: trade_usd }
 
+dimensions:
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: ethereum,  label: Ethereum }
+    - { value: arc,       label: Arc }
+
 providers:
   - slug: axiom
     name: Axiom
-    tag: "Terminal, Solana"
-    formula: "Random sample of the swaps paying Axiom's 22 fee wallets, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    tag: "Terminal, Solana + BNB + Robinhood Chain"
+    formula: "Solana: random sample of the swaps paying Axiom's fee wallets. BNB, Robinhood Chain: swaps routed through its own contracts. All valued at the pool's state before the trade; loss in bps of the trade, median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="axiom",stat="median"}
-      p90: tfq_loss_bps{terminal="axiom",stat="p90"}
-      p99: tfq_loss_bps{terminal="axiom",stat="p90"}
-      success: tfq_health{terminal="axiom"}
-      sample_size: tfq_sample_size{terminal="axiom",kind="priced"}
-      series: tfq_loss_bps{terminal="axiom",stat="median"}
+      p50: tfq_loss_bps{terminal="axiom",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="axiom",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="axiom",chain="all",stat="p90"}
+      success: tfq_health{terminal="axiom",chain="all"}
+      sample_size: tfq_sample_size{terminal="axiom",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="axiom",chain="all",stat="median"}
 
   - slug: gmgn
     name: GMGN
-    tag: "Terminal, Solana"
-    formula: "Random sample of the swaps paying GMGN's 9 fee wallets (wallet-funding markers excluded), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    tag: "Terminal, Solana + BNB + Robinhood Chain"
+    formula: "Solana: random sample of the swaps paying GMGN's fee wallets. BNB, Robinhood Chain: swaps routed through its own routers. All valued at the pool's state before the trade; loss in bps of the trade, median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="gmgn",stat="median"}
-      p90: tfq_loss_bps{terminal="gmgn",stat="p90"}
-      p99: tfq_loss_bps{terminal="gmgn",stat="p90"}
-      success: tfq_health{terminal="gmgn"}
-      sample_size: tfq_sample_size{terminal="gmgn",kind="priced"}
-      series: tfq_loss_bps{terminal="gmgn",stat="median"}
+      p50: tfq_loss_bps{terminal="gmgn",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="gmgn",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="gmgn",chain="all",stat="p90"}
+      success: tfq_health{terminal="gmgn",chain="all"}
+      sample_size: tfq_sample_size{terminal="gmgn",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="gmgn",chain="all",stat="median"}
 
   - slug: fomo
     name: FOMO
-    tag: "Terminal, Solana, gas sponsored"
-    formula: "Random sample of the swaps paying FOMO's USDC fee wallet (gas sponsor excluded as user), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h. Network cost is zero by construction."
+    tag: "Terminal, Solana + Robinhood Chain + BNB + Base + Ethereum + Arc, gas sponsored"
+    formula: "Solana: random sample of the swaps paying FOMO's USDC fee wallet. Other chains: its trades executed through Relay (SOL in, tokens delivered there). Valued at the pool's state before the trade; loss in bps, median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="fomo",stat="median"}
-      p90: tfq_loss_bps{terminal="fomo",stat="p90"}
-      p99: tfq_loss_bps{terminal="fomo",stat="p90"}
-      success: tfq_health{terminal="fomo"}
-      sample_size: tfq_sample_size{terminal="fomo",kind="priced"}
-      series: tfq_loss_bps{terminal="fomo",stat="median"}
+      p50: tfq_loss_bps{terminal="fomo",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="fomo",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="fomo",chain="all",stat="p90"}
+      success: tfq_health{terminal="fomo",chain="all"}
+      sample_size: tfq_sample_size{terminal="fomo",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="fomo",chain="all",stat="median"}
 
   - slug: phantom
     name: Phantom
     tag: "Wallet, Solana"
     formula: "Random sample of the swaps paying Phantom's in-wallet swap fee (0.85 % to its fee wallet, SOL or WSOL), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="phantom",stat="median"}
-      p90: tfq_loss_bps{terminal="phantom",stat="p90"}
-      p99: tfq_loss_bps{terminal="phantom",stat="p90"}
-      success: tfq_health{terminal="phantom"}
-      sample_size: tfq_sample_size{terminal="phantom",kind="priced"}
-      series: tfq_loss_bps{terminal="phantom",stat="median"}
+      p50: tfq_loss_bps{terminal="phantom",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="phantom",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="phantom",chain="all",stat="p90"}
+      success: tfq_health{terminal="phantom",chain="all"}
+      sample_size: tfq_sample_size{terminal="phantom",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="phantom",chain="all",stat="median"}
 
   - slug: photon
     name: Photon
     tag: "Terminal, Solana"
     formula: "Random sample of the swaps paying Photon's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="photon",stat="median"}
-      p90: tfq_loss_bps{terminal="photon",stat="p90"}
-      p99: tfq_loss_bps{terminal="photon",stat="p90"}
-      success: tfq_health{terminal="photon"}
-      sample_size: tfq_sample_size{terminal="photon",kind="priced"}
-      series: tfq_loss_bps{terminal="photon",stat="median"}
+      p50: tfq_loss_bps{terminal="photon",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="photon",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="photon",chain="all",stat="p90"}
+      success: tfq_health{terminal="photon",chain="all"}
+      sample_size: tfq_sample_size{terminal="photon",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="photon",chain="all",stat="median"}
 
   - slug: trojan
     name: Trojan
     tag: "Telegram bot, Solana"
     formula: "Random sample of the swaps paying Trojan's 6 fee wallets, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="trojan",stat="median"}
-      p90: tfq_loss_bps{terminal="trojan",stat="p90"}
-      p99: tfq_loss_bps{terminal="trojan",stat="p90"}
-      success: tfq_health{terminal="trojan"}
-      sample_size: tfq_sample_size{terminal="trojan",kind="priced"}
-      series: tfq_loss_bps{terminal="trojan",stat="median"}
+      p50: tfq_loss_bps{terminal="trojan",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="trojan",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="trojan",chain="all",stat="p90"}
+      success: tfq_health{terminal="trojan",chain="all"}
+      sample_size: tfq_sample_size{terminal="trojan",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="trojan",chain="all",stat="median"}
 
   - slug: bloom
     name: Bloom
     tag: "Telegram bot, Solana"
     formula: "Random sample of the swaps paying Bloom's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="bloom",stat="median"}
-      p90: tfq_loss_bps{terminal="bloom",stat="p90"}
-      p99: tfq_loss_bps{terminal="bloom",stat="p90"}
-      success: tfq_health{terminal="bloom"}
-      sample_size: tfq_sample_size{terminal="bloom",kind="priced"}
-      series: tfq_loss_bps{terminal="bloom",stat="median"}
+      p50: tfq_loss_bps{terminal="bloom",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="bloom",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="bloom",chain="all",stat="p90"}
+      success: tfq_health{terminal="bloom",chain="all"}
+      sample_size: tfq_sample_size{terminal="bloom",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="bloom",chain="all",stat="median"}
 
   - slug: maestro
     name: Maestro
     tag: "Telegram bot, Solana"
     formula: "Random sample of the swaps paying Maestro's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="maestro",stat="median"}
-      p90: tfq_loss_bps{terminal="maestro",stat="p90"}
-      p99: tfq_loss_bps{terminal="maestro",stat="p90"}
-      success: tfq_health{terminal="maestro"}
-      sample_size: tfq_sample_size{terminal="maestro",kind="priced"}
-      series: tfq_loss_bps{terminal="maestro",stat="median"}
+      p50: tfq_loss_bps{terminal="maestro",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="maestro",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="maestro",chain="all",stat="p90"}
+      success: tfq_health{terminal="maestro",chain="all"}
+      sample_size: tfq_sample_size{terminal="maestro",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="maestro",chain="all",stat="median"}
 
   - slug: pepeboost
     name: Pepeboost
     tag: "Telegram bot, Solana"
     formula: "Random sample of the swaps paying Pepeboost's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="pepeboost",stat="median"}
-      p90: tfq_loss_bps{terminal="pepeboost",stat="p90"}
-      p99: tfq_loss_bps{terminal="pepeboost",stat="p90"}
-      success: tfq_health{terminal="pepeboost"}
-      sample_size: tfq_sample_size{terminal="pepeboost",kind="priced"}
-      series: tfq_loss_bps{terminal="pepeboost",stat="median"}
+      p50: tfq_loss_bps{terminal="pepeboost",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="pepeboost",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="pepeboost",chain="all",stat="p90"}
+      success: tfq_health{terminal="pepeboost",chain="all"}
+      sample_size: tfq_sample_size{terminal="pepeboost",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="pepeboost",chain="all",stat="median"}
 
   - slug: bonkbot
     name: BONKbot
     tag: "Telegram bot, Solana"
-    formula: "Random sample of the swaps paying BONKbot's fee wallet (Dune spellbook), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    formula: "Random sample of the swaps paying BONKbot's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="bonkbot",stat="median"}
-      p90: tfq_loss_bps{terminal="bonkbot",stat="p90"}
-      p99: tfq_loss_bps{terminal="bonkbot",stat="p90"}
-      success: tfq_health{terminal="bonkbot"}
-      sample_size: tfq_sample_size{terminal="bonkbot",kind="priced"}
-      series: tfq_loss_bps{terminal="bonkbot",stat="median"}
+      p50: tfq_loss_bps{terminal="bonkbot",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="bonkbot",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="bonkbot",chain="all",stat="p90"}
+      success: tfq_health{terminal="bonkbot",chain="all"}
+      sample_size: tfq_sample_size{terminal="bonkbot",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="bonkbot",chain="all",stat="median"}
 
   - slug: banana-gun
     name: Banana Gun
-    tag: "Telegram bot, Solana"
-    formula: "Random sample of the swaps paying Banana Gun's fee wallet (DeFiLlama fees adapter, the one with live traffic), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    tag: "Telegram bot, Solana + Ethereum"
+    formula: "Solana: swaps paying Banana Gun's fee wallet. Ethereum: swaps routed through its router (its fee is collected outside the swap tx, so terminal reads 0 there). Valued at the pool's state before the trade; loss in bps, median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="banana-gun",stat="median"}
-      p90: tfq_loss_bps{terminal="banana-gun",stat="p90"}
-      p99: tfq_loss_bps{terminal="banana-gun",stat="p90"}
-      success: tfq_health{terminal="banana-gun"}
-      sample_size: tfq_sample_size{terminal="banana-gun",kind="priced"}
-      series: tfq_loss_bps{terminal="banana-gun",stat="median"}
+      p50: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="banana-gun",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="banana-gun",chain="all",stat="p90"}
+      success: tfq_health{terminal="banana-gun",chain="all"}
+      sample_size: tfq_sample_size{terminal="banana-gun",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median"}
 
-  - slug: binance-wallet-bnb
-    name: Binance Wallet on BNB
-    tag: "Wallet, BNB"
-    formula: "Transactions sent to Binance Wallet's swap router in a sample of BNB blocks read in full (no event of its own), valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h; fee = residual after pool and gas."
+  - slug: binance-wallet
+    name: Binance Wallet
+    tag: "Wallet, BNB + Ethereum + Base"
+    formula: "Transactions sent to Binance Wallet's swap router (one address on BNB, Ethereum and Base) in a sample of blocks read in full, valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="binance-wallet-bnb",stat="median"}
-      p90: tfq_loss_bps{terminal="binance-wallet-bnb",stat="p90"}
-      p99: tfq_loss_bps{terminal="binance-wallet-bnb",stat="p90"}
-      success: tfq_health{terminal="binance-wallet-bnb"}
-      sample_size: tfq_sample_size{terminal="binance-wallet-bnb",kind="priced"}
-      series: tfq_loss_bps{terminal="binance-wallet-bnb",stat="median"}
+      p50: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="p90"}
+      success: tfq_health{terminal="binance-wallet",chain="all"}
+      sample_size: tfq_sample_size{terminal="binance-wallet",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="median"}
 
-  - slug: binance-wallet-ethereum
-    name: Binance Wallet on Ethereum
-    tag: "Wallet, Ethereum"
-    formula: "Transactions sent to Binance Wallet's swap router in a sample of Ethereum blocks read in full (no event of its own), valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h; fee = residual after pool and gas."
+  - slug: basedbot
+    name: BasedBot
+    tag: "Telegram bot, Robinhood Chain through Relay"
+    formula: "BasedBot's trades executed through Relay (SOL in, tokens delivered on Robinhood Chain), valued at the pool's state before the settlement swap; loss in bps of the trade, median over 24 h. Its bridge funding legs are in the JSON."
     queries:
-      p50: tfq_loss_bps{terminal="binance-wallet-ethereum",stat="median"}
-      p90: tfq_loss_bps{terminal="binance-wallet-ethereum",stat="p90"}
-      p99: tfq_loss_bps{terminal="binance-wallet-ethereum",stat="p90"}
-      success: tfq_health{terminal="binance-wallet-ethereum"}
-      sample_size: tfq_sample_size{terminal="binance-wallet-ethereum",kind="priced"}
-      series: tfq_loss_bps{terminal="binance-wallet-ethereum",stat="median"}
-
-  - slug: binance-wallet-base
-    name: Binance Wallet on Base
-    tag: "Wallet, Base"
-    formula: "Transactions sent to Binance Wallet's swap router in a sample of Base blocks read in full (no event of its own), valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h; fee = residual after pool and gas."
-    queries:
-      p50: tfq_loss_bps{terminal="binance-wallet-base",stat="median"}
-      p90: tfq_loss_bps{terminal="binance-wallet-base",stat="p90"}
-      p99: tfq_loss_bps{terminal="binance-wallet-base",stat="p90"}
-      success: tfq_health{terminal="binance-wallet-base"}
-      sample_size: tfq_sample_size{terminal="binance-wallet-base",kind="priced"}
-      series: tfq_loss_bps{terminal="binance-wallet-base",stat="median"}
-
-  - slug: banana-gun-ethereum
-    name: Banana Gun on Ethereum
-    tag: "Telegram bot, Ethereum"
-    formula: "Swaps routed through Banana Gun's Ethereum router (its events), valued at the pool's state before the swap; loss in bps of the trade (gas inside), median over 24 h. Its fee is collected outside the swap tx (router logs 0): not in the loss."
-    queries:
-      p50: tfq_loss_bps{terminal="banana-gun-ethereum",stat="median"}
-      p90: tfq_loss_bps{terminal="banana-gun-ethereum",stat="p90"}
-      p99: tfq_loss_bps{terminal="banana-gun-ethereum",stat="p90"}
-      success: tfq_health{terminal="banana-gun-ethereum"}
-      sample_size: tfq_sample_size{terminal="banana-gun-ethereum",kind="priced"}
-      series: tfq_loss_bps{terminal="banana-gun-ethereum",stat="median"}
-
-  - slug: gmgn-bnb
-    name: GMGN on BNB
-    tag: "Terminal, BNB"
-    formula: "Swaps routed through GMGN's BNB router (its events), valued at the pool's state before the swap; loss in bps of the trade (gas inside), median over 24 h; the fee is the residual after the pool and the gas."
-    queries:
-      p50: tfq_loss_bps{terminal="gmgn-bnb",stat="median"}
-      p90: tfq_loss_bps{terminal="gmgn-bnb",stat="p90"}
-      p99: tfq_loss_bps{terminal="gmgn-bnb",stat="p90"}
-      success: tfq_health{terminal="gmgn-bnb"}
-      sample_size: tfq_sample_size{terminal="gmgn-bnb",kind="priced"}
-      series: tfq_loss_bps{terminal="gmgn-bnb",stat="median"}
-
-  - slug: gmgn-robinhood
-    name: GMGN on Robinhood Chain
-    tag: "Terminal, Robinhood Chain"
-    formula: "Swaps routed through GMGN's Robinhood Chain routers (their events), valued at the pool's state before the swap; loss in bps of the trade (gas inside), median over 24 h; the fee is the residual after the pool and the gas."
-    queries:
-      p50: tfq_loss_bps{terminal="gmgn-robinhood",stat="median"}
-      p90: tfq_loss_bps{terminal="gmgn-robinhood",stat="p90"}
-      p99: tfq_loss_bps{terminal="gmgn-robinhood",stat="p90"}
-      success: tfq_health{terminal="gmgn-robinhood"}
-      sample_size: tfq_sample_size{terminal="gmgn-robinhood",kind="priced"}
-      series: tfq_loss_bps{terminal="gmgn-robinhood",stat="median"}
-
-  - slug: axiom-bnb
-    name: Axiom on BNB
-    tag: "Terminal, BNB"
-    formula: "Swaps routed through Axiom's BNB trade contracts (their events, DeFiLlama's list), valued at the pool's state before the swap; loss in bps of the trade (gas inside), median over 24 h; the fee is the residual after the pool and the gas."
-    queries:
-      p50: tfq_loss_bps{terminal="axiom-bnb",stat="median"}
-      p90: tfq_loss_bps{terminal="axiom-bnb",stat="p90"}
-      p99: tfq_loss_bps{terminal="axiom-bnb",stat="p90"}
-      success: tfq_health{terminal="axiom-bnb"}
-      sample_size: tfq_sample_size{terminal="axiom-bnb",kind="priced"}
-      series: tfq_loss_bps{terminal="axiom-bnb",stat="median"}
-
-  - slug: axiom-robinhood
-    name: Axiom on Robinhood Chain
-    tag: "Terminal, Robinhood Chain"
-    formula: "Swaps routed through Axiom's Robinhood Chain trade contracts (their events), valued at the pool's state before the swap; loss in bps of the trade (gas inside), median over 24 h; the fee is the residual after the pool and the gas."
-    queries:
-      p50: tfq_loss_bps{terminal="axiom-robinhood",stat="median"}
-      p90: tfq_loss_bps{terminal="axiom-robinhood",stat="p90"}
-      p99: tfq_loss_bps{terminal="axiom-robinhood",stat="p90"}
-      success: tfq_health{terminal="axiom-robinhood"}
-      sample_size: tfq_sample_size{terminal="axiom-robinhood",kind="priced"}
-      series: tfq_loss_bps{terminal="axiom-robinhood",stat="median"}
-
-  - slug: fomo-funding
-    name: FOMO funding
-    tag: "Funding leg, BNB / Robinhood Chain / Base / Ethereum / Arc to Solana"
-    formula: "Relay requests paying FOMO's fee address: loss = 1 − USDC or SOL delivered on Solana / (deposit + origin gas), median over 24 h; terminal = FOMO's app fee, relay = Relay's fees and spread. The token buy that follows is in the FOMO row."
-    queries:
-      p50: tfq_loss_bps{terminal="fomo-funding",stat="median"}
-      p90: tfq_loss_bps{terminal="fomo-funding",stat="p90"}
-      p99: tfq_loss_bps{terminal="fomo-funding",stat="p90"}
-      success: tfq_health{terminal="fomo-funding"}
-      sample_size: tfq_sample_size{terminal="fomo-funding",kind="priced"}
-      series: tfq_loss_bps{terminal="fomo-funding",stat="median"}
-
-  - slug: basedbot-funding
-    name: BasedBot funding
-    tag: "Funding leg, BNB / Robinhood Chain / Ethereum / Arc to Solana"
-    formula: "Relay requests under BasedBot's referrer: loss = 1 − SOL or USDC delivered on Solana / (deposit + origin gas), median over the rolling 24 h; relay = Relay's fees and spread, no app fee on the bridge."
-    queries:
-      p50: tfq_loss_bps{terminal="basedbot-funding",stat="median"}
-      p90: tfq_loss_bps{terminal="basedbot-funding",stat="p90"}
-      p99: tfq_loss_bps{terminal="basedbot-funding",stat="p90"}
-      success: tfq_health{terminal="basedbot-funding"}
-      sample_size: tfq_sample_size{terminal="basedbot-funding",kind="priced"}
-      series: tfq_loss_bps{terminal="basedbot-funding",stat="median"}
-
-  - slug: fomo-robinhood
-    name: FOMO on Robinhood Chain
-    tag: "Terminal, Robinhood Chain, paid in SOL through Relay"
-    formula: "Relay requests paying FOMO's fee address that buy a Robinhood Chain token with SOL: loss = 1 − tokens delivered at the pool's state before the settlement swap / SOL sent, median over 24 h; terminal = FOMO's app fee, relay = Relay's take."
-    queries:
-      p50: tfq_loss_bps{terminal="fomo-robinhood",stat="median"}
-      p90: tfq_loss_bps{terminal="fomo-robinhood",stat="p90"}
-      p99: tfq_loss_bps{terminal="fomo-robinhood",stat="p90"}
-      success: tfq_health{terminal="fomo-robinhood"}
-      sample_size: tfq_sample_size{terminal="fomo-robinhood",kind="priced"}
-      series: tfq_loss_bps{terminal="fomo-robinhood",stat="median"}
-
-  - slug: fomo-bnb
-    name: FOMO on BNB
-    tag: "Terminal, BNB, paid in SOL through Relay"
-    formula: "Relay requests paying FOMO's fee address that buy a BNB token with SOL: loss = 1 − tokens delivered at the pool's state before the settlement swap / SOL sent, median over 24 h; terminal = FOMO's app fee, relay = Relay's take."
-    queries:
-      p50: tfq_loss_bps{terminal="fomo-bnb",stat="median"}
-      p90: tfq_loss_bps{terminal="fomo-bnb",stat="p90"}
-      p99: tfq_loss_bps{terminal="fomo-bnb",stat="p90"}
-      success: tfq_health{terminal="fomo-bnb"}
-      sample_size: tfq_sample_size{terminal="fomo-bnb",kind="priced"}
-      series: tfq_loss_bps{terminal="fomo-bnb",stat="median"}
-
-  - slug: basedbot-robinhood
-    name: BasedBot on Robinhood Chain
-    tag: "Telegram bot, Robinhood Chain, paid in SOL through Relay"
-    formula: "Relay requests under BasedBot's referrer that buy a Robinhood Chain token with SOL: loss = 1 − tokens delivered at the pool's state before the settlement swap / SOL sent, median over 24 h; relay = Relay's take."
-    queries:
-      p50: tfq_loss_bps{terminal="basedbot-robinhood",stat="median"}
-      p90: tfq_loss_bps{terminal="basedbot-robinhood",stat="p90"}
-      p99: tfq_loss_bps{terminal="basedbot-robinhood",stat="p90"}
-      success: tfq_health{terminal="basedbot-robinhood"}
-      sample_size: tfq_sample_size{terminal="basedbot-robinhood",kind="priced"}
-      series: tfq_loss_bps{terminal="basedbot-robinhood",stat="median"}
+      p50: tfq_loss_bps{terminal="basedbot",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="basedbot",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="basedbot",chain="all",stat="p90"}
+      success: tfq_health{terminal="basedbot",chain="all"}
+      sample_size: tfq_sample_size{terminal="basedbot",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="basedbot",chain="all",stat="median"}
 
   - slug: padre
     name: Terminal
     tag: "Terminal, Solana, formerly Padre"
-    formula: "Random sample of the swaps paying Terminal's two fee wallets (protocol and cashback shares, DeFiLlama's trading-terminal adapter), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    formula: "Random sample of the swaps paying Terminal's protocol and cashback wallets (formerly Padre), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="padre",stat="median"}
-      p90: tfq_loss_bps{terminal="padre",stat="p90"}
-      p99: tfq_loss_bps{terminal="padre",stat="p90"}
-      success: tfq_health{terminal="padre"}
-      sample_size: tfq_sample_size{terminal="padre",kind="priced"}
-      series: tfq_loss_bps{terminal="padre",stat="median"}
+      p50: tfq_loss_bps{terminal="padre",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="padre",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="padre",chain="all",stat="p90"}
+      success: tfq_health{terminal="padre",chain="all"}
+      sample_size: tfq_sample_size{terminal="padre",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="padre",chain="all",stat="median"}
 
   - slug: pump-fun
     name: pump.fun app
     tag: "Terminal, Solana, pump.fun's own app"
-    formula: "Random sample of the swaps whose transaction invokes the pump.fun app program (the mobile app), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h. The app charges no fee of its own."
+    formula: "Random sample of the swaps of pump.fun's own app (by its app program; no app fee, the fixed 0.001 SOL it forwards is network), valued at the pool's state before the trade; loss in bps, median over the rolling 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="pump-fun",stat="median"}
-      p90: tfq_loss_bps{terminal="pump-fun",stat="p90"}
-      p99: tfq_loss_bps{terminal="pump-fun",stat="p90"}
-      success: tfq_health{terminal="pump-fun"}
-      sample_size: tfq_sample_size{terminal="pump-fun",kind="priced"}
-      series: tfq_loss_bps{terminal="pump-fun",stat="median"}
+      p50: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90"}
+      success: tfq_health{terminal="pump-fun",chain="all"}
+      sample_size: tfq_sample_size{terminal="pump-fun",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median"}

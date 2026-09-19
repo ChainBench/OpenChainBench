@@ -99,6 +99,33 @@ func applyRPCOverrides() {
 	}
 }
 
+// logsRPC: the endpoints for a wide eth_getLogs, the ones that cap the
+// range (Alchemy's free tier: 10 blocks) moved last so no call is wasted
+// on them; a keyed QuickNode stays first.
+func (c originChain) logsRPC() []string {
+	var first, last []string
+	for _, u := range c.rpc {
+		if strings.Contains(u, "alchemy.com") {
+			last = append(last, u)
+		} else {
+			first = append(first, u)
+		}
+	}
+	return append(first, last...)
+}
+
+// traceRPC: the endpoints that may serve debug_traceTransaction (Alchemy's
+// free tier does not).
+func (c originChain) traceRPC() []string {
+	var out []string
+	for _, u := range c.rpc {
+		if !strings.Contains(u, "alchemy.com") {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
 func chainByID(id int64) *originChain {
 	for i := range originChains {
 		if originChains[i].id == id {

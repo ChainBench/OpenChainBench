@@ -116,7 +116,7 @@ func isNativeEVM(slug string) bool {
 // failScanBlocks: blocks read in full per chain per tick for the fail
 // rate (BNB makes ~80 a minute, Robinhood Chain ~590, Base ~30, Ethereum
 // ~5), drawn at random from the range the tick polled.
-var failScanBlocks = map[string]int{"bnb": 8, "robinhood": 8, "base": 8, "ethereum": 2}
+var failScanBlocks = map[string]int{"bnb": 8, "robinhood": 30, "base": 8, "ethereum": 2}
 
 // failScan reads the sampled blocks in full: every transaction sent to a
 // terminal's routers is an attempt, a reverted one (receipt status 0) a
@@ -185,13 +185,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 						b = &xinboxTx{}
 						f.box[slug] = b
 					}
-					b.seen++
-					b.total++
-					if len(b.reservoir) < reservoirSize {
-						b.reservoir = append(b.reservoir, tx.Hash)
-					} else if j := rand.Intn(b.total); j < reservoirSize {
-						b.reservoir[j] = tx.Hash
-					}
+					b.add(tx.Hash)
 				}
 			}
 		}
@@ -205,6 +199,25 @@ type xinboxTx struct {
 	seen      int
 	reservoir []string
 	total     int
+	sigs      map[string]bool // hashes counted this tick (the log feed and the block sample can both see one)
+}
+
+func (b *xinboxTx) add(hash string) bool {
+	if b.sigs == nil {
+		b.sigs = map[string]bool{}
+	}
+	if b.sigs[hash] {
+		return false
+	}
+	b.sigs[hash] = true
+	b.seen++
+	b.total++
+	if len(b.reservoir) < reservoirSize {
+		b.reservoir = append(b.reservoir, hash)
+	} else if j := rand.Intn(b.total); j < reservoirSize {
+		b.reservoir[j] = hash
+	}
+	return true
 }
 
 func newNativeFeed(httpc *http.Client, cursor map[string]int64) *nativeFeed {
@@ -262,7 +275,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				to = head
 			}
 			var part []evmLog
-			if err := evmCall(ctx, f.http, c.rpc, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
+			if err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
 				log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
 				failed = true
 				break
@@ -289,13 +302,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				b = &xinboxTx{}
 				f.box[slug] = b
 			}
-			b.seen++
-			b.total++
-			if len(b.reservoir) < reservoirSize {
-				b.reservoir = append(b.reservoir, l.TxHash)
-			} else if j := rand.Intn(b.total); j < reservoirSize {
-				b.reservoir[j] = l.TxHash
-			}
+			b.add(l.TxHash)
 		}
 	}
 }
@@ -319,12 +326,14 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		n0, sample, total := nf.drain(t.Slug)
 		seen += n0
 		st.record(t.Slug, now, n0, 0, 0, nil)
-		if total == 0 {
-			continue
-		}
+		// The quota accrues every tick (a sparse row, one swap a minute,
+		// would otherwise need several active ticks per sample).
 		quota[t.Slug] += perTick
 		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
 			quota[t.Slug] = cap
+		}
+		if total == 0 {
+			continue
 		}
 		n := int(quota[t.Slug])
 		if n > len(sample) {
@@ -339,6 +348,10 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 			sw := nativeRow(ctx, httpc, t, h, gas, now)
 			if sw == nil {
 				st.reject(t.Slug, "unreadable")
+				continue
+			}
+			if sw.Flag == "not_swap" {
+				st.reject(t.Slug, rejectNotSwap)
 				continue
 			}
 			if sw.Flag != "" && !sw.Priced && strings.HasPrefix(sw.Flag, "unpriced_") {
@@ -376,11 +389,21 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return nil
 	}
 	user := strings.ToLower(tx.From)
-	// A liquidity add (Binance Wallet's zap: part of the quote swapped,
-	// the rest minted into the position) is not a swap.
-	for _, l := range rc.Logs {
-		if len(l.Topics) > 0 && liquidityTopics[l.Topics[0]] {
-			return &Swap{Flag: "not_swap"}
+	// A liquidity add (Binance Wallet's zap contract: part of the quote
+	// swapped, the rest minted into the position) is not a swap. Only when
+	// the transaction was not sent to the router itself: a hook adjusting
+	// its own position during a routed swap must not hide the swap.
+	toRouter := false
+	for _, r := range t.Routers {
+		if strings.EqualFold(tx.To, r) {
+			toRouter = true
+		}
+	}
+	if !toRouter {
+		for _, l := range rc.Logs {
+			if len(l.Topics) > 0 && liquidityTopics[l.Topics[0]] {
+				return &Swap{Flag: "not_swap"}
+			}
 		}
 	}
 	gasPrice, gasOK := gas[c.gas]

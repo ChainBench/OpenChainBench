@@ -19,10 +19,16 @@ export type TerminalFillStats = {
   name: string;
   kind: "app" | "bot";
   note?: string;
+  /** The product (fomo, gmgn, …) and the chain of this entry: "all" for the product's pooled entry over every chain it trades on, a chain slug for one chain, "funding" for a cross-chain app's bridge leg. */
+  product: string;
+  chain: string;
   /** Swap attempts the feed saw in the window, failed ones, non-swap notifications (markers, funding). */
   seen: number;
   failed: number;
   nonSwap: number;
+  /** The base of the fail rate: the feed's attempts on Solana, the block sample's on the EVM rows, both on a pooled product. */
+  attempts: number;
+  attemptsFailed: number;
   /** Percent of the terminal's swap attempts that failed on-chain; undefined under 20 seen. */
   failRatePct?: number;
   /** Top error classes among failed attempts (slippage, program codes). */
@@ -153,10 +159,14 @@ function parse(raw: unknown): TerminalFills | null {
       slug: t.slug,
       name: t.name,
       kind: t.kind === "bot" ? "bot" : "app",
+      product: typeof t.product === "string" && t.product ? t.product : t.slug,
+      chain: typeof t.chain === "string" && t.chain ? t.chain : "solana",
       ...(typeof t.note === "string" && t.note ? { note: t.note } : {}),
       seen: num(t.seen) ?? 0,
       failed: num(t.failed) ?? 0,
       nonSwap: num(t.non_swap) ?? 0,
+      attempts: num(t.attempts) ?? num(t.seen) ?? 0,
+      attemptsFailed: num(t.attempts_failed) ?? num(t.failed) ?? 0,
       ...(num(t.fail_rate_pct) !== undefined ? { failRatePct: num(t.fail_rate_pct) } : {}),
       failReasons: numMap(t.fail_reasons),
       failsSampled: num(t.fails_sampled) ?? 0,
@@ -237,7 +247,10 @@ function parse(raw: unknown): TerminalFills | null {
     minRank: num(raw.min_rank) ?? 100,
     solUsd: num(raw.sol_usd) ?? 0,
     method: typeof raw.method === "string" ? raw.method : "",
-    terminals,
+    // One entry per product: the pooled `chain: all` entries when the
+    // harness publishes them (per-chain entries stay in the JSON for the
+    // audit), every entry otherwise (older snapshots).
+    terminals: terminals.some((t) => t.chain === "all") ? terminals.filter((t) => t.chain === "all") : terminals,
     recent,
   };
 }

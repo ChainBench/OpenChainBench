@@ -173,7 +173,7 @@ event whose emitter paid those tokens out), the quote paid into it and
 the pool's state before our swap: Uniswap v2 forks from the `Sync`
 reserves minus the swap's amounts (same receipt), v3 forks (PancakeSwap
 v3 included) and Uniswap v4 from the `sqrtPriceX96` left by the previous
-`Swap` on the pool (`eth_getLogs` on the pool, 3,000 blocks back, same
+`Swap` on the pool (`eth_getLogs` on the pool, 3,000 blocks back, then 30,000 when the pool was quiet, same
 block with a lower log index accepted). Token side of the pool settled by
 matching the event's amounts with the transfers, never by `token0()`.
 Quote priced at $1 for stables, Coinbase ETH / BNB for wrapped gas coins;
@@ -332,7 +332,7 @@ Wallet lists come from DeFiLlama's adapters and Dune's spellbook
 (`dex_solana.bot_trades` platform models), checked live on 2026-09-18. Not in: BullX (trading
 suspended 2026-06-01, its wallets only see 1,000-lamport markers), Nova
 (no live fee wallet), BasedBot (DeFiLlama's `basedbid` addresses belong to
-a launchpad / bid mechanism; the bot's fee wallet is not published).
+a launchpad / bid mechanism; no Solana swap volume, see the native EVM section).
 
 ## Outputs
 
@@ -377,7 +377,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 Budget: about 4 to 5 RPC calls per sampled swap (transaction, two
 signature pages on the pool vault, previous trade when the reserves give
 no mid, pool account once per pool, back-run only on a sandwich
-candidate) and no polling, so 300 swaps × 11 terminals ≈ 15k calls a day.
+candidate) and no polling, so 400 swaps × 13 Solana terminals ≈ 26k calls a day, plus ~400 reads per discovery run.
 Fits Helius's free tier; WebSocket notifications on the public endpoint
 are not metered.
 

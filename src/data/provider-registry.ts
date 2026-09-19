@@ -1264,6 +1264,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "EchoSync is a copy trading platform for Hyperliquid and Aster that replicates top traders' perp positions with configurable ratios, executing via a registered builder code.",
     twitter: "@echosync",
   },
+  phantom: {
+    url: "https://phantom.com",
+    description:
+      "Phantom is a multi-chain wallet (Solana, Ethereum, Base, Bitcoin) whose in-wallet swap routes through Jupiter or its own router and takes a 0.85 % fee on each trade.",
+    twitter: "@phantom",
+  },
+  "binance-wallet": {
+    url: "https://www.binance.com/en/web3wallet",
+    description:
+      "Binance Wallet is Binance's self-custody Web3 wallet; its in-app swap routes through one router contract deployed on BNB Chain, Ethereum and Base and settles on on-chain pools.",
+    twitter: "@BinanceWallet",
+  },
   fomo: {
     url: "https://fomo.family",
     description:
