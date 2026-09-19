@@ -119,6 +119,46 @@ async function main() {
       }
       providerSlugs.add(p.slug);
     }
+
+    // Template placeholders resolve statically: a `{{p50:<slug>}}` names
+    // a provider of this spec and a `{{best_name:chain:<x>}}` a declared
+    // chain value. The renderer drops the clause of a known placeholder
+    // it cannot resolve at request time (an endpoint down today), so a
+    // typo would vanish silently on the page; it is caught here instead.
+    const chainValues = new Set((spec.dimensions?.chain ?? []).map((c) => c.value.toLowerCase()));
+    const templated: [string, string | undefined][] = [
+      ["subtitle", spec.subtitle],
+      ["seo_title", spec.seo_title],
+      ["seo_description", spec.seo_description],
+      ["seo_intro", spec.seo_intro],
+      ["abstract", spec.abstract],
+      ["disclaimer", spec.disclaimer],
+      ...(spec.findings ?? []).map((t, i) => [`findings[${i}]`, t] as [string, string]),
+      ...(spec.methodology ?? []).map((t, i) => [`methodology[${i}]`, t] as [string, string]),
+      ...(spec.faq ?? []).flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string][]),
+    ];
+    const tokenRe = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
+    const known = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_p50", "worst_name", "worst_p50", "count"]);
+    for (const [name, text] of templated) {
+      if (!text) continue;
+      for (const m of text.matchAll(tokenRe)) {
+        const [whole, kw, a, b] = m;
+        const k = kw.toLowerCase();
+        if (!known.has(k)) {
+          issues.push({ file: f, level: "error", message: `${name}: unknown placeholder ${whole}` });
+        } else if (a === "chain") {
+          if (!b || !chainValues.has(b.toLowerCase())) {
+            issues.push({ file: f, level: "error", message: `${name}: ${whole} names a chain value the spec does not declare` });
+          }
+        } else if (["p50", "p90", "p99", "mean", "success", "name"].includes(k)) {
+          if (!a || !providerSlugs.has(a)) {
+            issues.push({ file: f, level: "error", message: `${name}: ${whole} names no provider slug of this spec` });
+          }
+        } else if (a) {
+          issues.push({ file: f, level: "error", message: `${name}: ${whole} takes no argument` });
+        }
+      }
+    }
   }
 
   if (issues.length === 0) {

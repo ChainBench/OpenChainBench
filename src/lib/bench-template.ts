@@ -14,8 +14,10 @@
  *   {{p50:<slug>}}             live p50 for a provider, formatted with
  *                              the benchmark's unit. e.g. "6.6 min" /
  *                              "397 ms".
+ *   {{p90:<slug>}}             same for p90.
  *   {{p99:<slug>}}             same for p99.
  *   {{mean:<slug>}}            same for mean.
+ *   {{success:<slug>}}         provider success rate, "99.8 %".
  *   {{name:<slug>}}            provider display name.
  *   {{best_name}}              name of the leading provider (best p50).
  *   {{best_p50}}               p50 of the leader, formatted.
@@ -33,7 +35,14 @@
  *   {{count}}                  number of providers with live data.
  *
  * Unknown placeholders are left untouched so a typo in the YAML can't
- * silently erase a sentence.
+ * silently erase a sentence. A known placeholder that cannot resolve
+ * today (`{{p50:arbitrum-official}}` while that endpoint is down, or
+ * `{{best_name}}` before the first run) is different: the token is
+ * correct, the data is missing, and a page must not print raw template
+ * syntax. The clause that quotes it is dropped instead (clauses are
+ * split on `;`, then on the sentence boundary), so "X leads at 44 ms;
+ * the chain-official endpoint measures {{p50:foo}}." renders as
+ * "X leads at 44 ms." during the outage and recovers on its own.
  */
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -52,6 +61,41 @@ const TEMPLATE_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9-]+))?\s*\}\}/gi;
 // Chain-aware variants. Resolved BEFORE TEMPLATE_RE so the longer form
 // gets first dibs; whatever is left falls through to the unfiltered
 // resolver. Pattern: {{best_name:chain:solana}}, {{worst_p50:chain:bnb}}.
+// Marker left in place of a known-but-unresolvable placeholder, removed
+// with its clause by pruneUnresolved(). A control character so no YAML
+// author can type it.
+const UNRESOLVED = "\u0000";
+
+/** Drop every clause that still carries an UNRESOLVED marker. Sentences
+ *  split on `. `, clauses inside a sentence on `; `. A sentence whose
+ *  clauses all fall is removed; a sentence that keeps some ends in a
+ *  period again. Text with no marker is returned untouched. */
+export function pruneUnresolved(text: string): string {
+  if (text.indexOf(UNRESOLVED) === -1) return text;
+  return text
+    .split(/\n/)
+    .map((line) => {
+      if (line.indexOf(UNRESOLVED) === -1) return line;
+      const sentences = line.split(/(?<=[.!?])\s+/);
+      const kept: string[] = [];
+      for (const sentence of sentences) {
+        if (sentence.indexOf(UNRESOLVED) === -1) {
+          kept.push(sentence);
+          continue;
+        }
+        const end = /[.!?]$/.exec(sentence)?.[0] ?? ".";
+        const clauses = sentence
+          .replace(/[.!?]$/, "")
+          .split(/;\s*/)
+          .filter((c) => c.indexOf(UNRESOLVED) === -1 && c.trim() !== "");
+        if (clauses.length === 0) continue;
+        kept.push(clauses.join("; ") + end);
+      }
+      return kept.join(" ");
+    })
+    .join("\n");
+}
+
 const CHAIN_TEMPLATE_RE =
   /\{\{\s*(best_name|best_p50|worst_name|worst_p50):chain:([a-z0-9_-]+)\s*\}\}/gi;
 
@@ -111,54 +155,60 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       const k = keyword.toLowerCase();
       if (k === "best_name") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? lead.name : whole;
+        return lead ? lead.name : UNRESOLVED;
       }
       if (k === "best_p50") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : whole;
+        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
       }
       if (k === "worst_name") {
         const trailer = worstForChain(benchmark, chain);
-        return trailer ? trailer.name : whole;
+        return trailer ? trailer.name : UNRESOLVED;
       }
       if (k === "worst_p50") {
         const trailer = worstForChain(benchmark, chain);
-        return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : whole;
+        return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : UNRESOLVED;
       }
       return whole;
     },
   );
 
-  return withChain.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
+  const rendered = withChain.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
     const k = keyword.toLowerCase();
     switch (k) {
       case "p50":
+      case "p90":
       case "p99":
       case "mean":
+      case "success":
       case "name": {
         if (!arg) return whole;
         const provider = live.find(
           (r) => r.slug.toLowerCase() === arg.toLowerCase()
         );
-        if (!provider) return whole;
+        if (!provider) return UNRESOLVED;
         if (k === "name") return provider.name;
-        const raw = provider.ms[k as "p50" | "p99" | "mean"];
+        if (k === "success") {
+          return `${provider.successRate.toFixed(1).replace(/\.0$/, "")} %`;
+        }
+        const raw = provider.ms[k as "p50" | "p90" | "p99" | "mean"];
         return fmtUnit(raw, benchmark.unit);
       }
       case "best_name":
-        return best ? best.name : whole;
+        return best ? best.name : UNRESOLVED;
       case "best_p50":
-        return best ? fmtUnit(best.ms.p50, benchmark.unit) : whole;
+        return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
       case "worst_name":
-        return worst ? worst.name : whole;
+        return worst ? worst.name : UNRESOLVED;
       case "worst_p50":
-        return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : whole;
+        return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : UNRESOLVED;
       case "count":
         return String(live.length);
       default:
         return whole;
     }
   });
+  return pruneUnresolved(rendered);
 }
 
 /** Apply renderTemplate to every editorial field that supports it. The
