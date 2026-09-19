@@ -322,7 +322,11 @@ by median, then published-but-not-ranked, then the rest.
 
 Axiom (22 wallets: 20 fee wallets plus the two second-leg recipients of
 its 1 %), GMGN (9), FOMO (fee wallet + gas sponsor excluded as user, USDC
-fee legs), Photon, Trojan (6), Bloom, Maestro, Pepeboost, BONKbot, Banana
+fee legs; the feed subscribes to the vanity account `…TradeonFomo` every
+FOMO transaction carries, because its small DFlow-routed swaps pay the
+fee wallet's USDC token account without mentioning the wallet, and a
+feed on the wallet alone saw the large `proVF4pM…`-routed flow only:
+median $476 against Mobula's $13 on 2026-09-19), Photon, Trojan (6), Bloom, Maestro, Pepeboost, BONKbot, Banana
 Gun (fee wallet + its Solana router program), Terminal (formerly Padre:
 protocol + cashback wallets), pump.fun's mobile app (by its app program),
 Phantom's in-wallet swap (0.85 % to `9yj3zvLS…` in SOL, or WSOL into

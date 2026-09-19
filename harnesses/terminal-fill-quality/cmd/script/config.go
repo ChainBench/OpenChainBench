@@ -66,8 +66,16 @@ var terminals = []Terminal{
 		"ByRRgnZenY6W2sddo1VJzX9o4sMU4gPDUkcmgrpGBxRy", "DXfkEGoo6WFsdL7x6gLZ7r6Hw2S6HrtrAQVPWYx2A1s9", "3t9EKmRiAUcQUYzTZpNojzeGP1KBAVEEbDNmy6wECQpK",
 		"DymeoWc5WLNiQBaoLuxrxDnDRvLgGZ1QGsEoCAM7Jsrx", "dBhdrmwBkRa66XxBuAK4WZeZnsZ6bHeHCCLXa3a8bTJ", "6TxjC5wJzuuZgTtnTMipwwULEbMPx5JPW3QwWkdTGnrn",
 	}, Note: "GMGN's fee wallets also receive 1-lamport markers on wallet-funding transfers; those invoke no swap program and are excluded from every count, the fail rate included."},
+	// FOMO has two swap flows on Solana: the large ones through the
+	// proVF4pM… router mention the fee wallet itself, the small ones
+	// through DFlow pay its USDC token account (HrTf9Cz…) and never
+	// mention the wallet, so a feed on the wallet alone saw the large
+	// flow only (median $476 against Mobula's $13, 2026-09-19). Every
+	// FOMO transaction carries the vanity account …TradeonFomo: the feed
+	// subscribes to it.
 	{Slug: "fomo", Name: "FOMO", Kind: "app",
 		Wallets:          []string{"R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX"},
+		Programs:         []string{"jitodontfront1111111111111111111TradeonFomo"},
 		Internal:         []string{"AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51"},
 		StableLegsAreFee: true,
 		Note:             "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Its fee is a router commission plus one or two user-signed USDC legs to per-trade accounts, all counted as terminal fee. Cross-chain trades routed through Relay are not swaps on Solana and are not sampled."},
