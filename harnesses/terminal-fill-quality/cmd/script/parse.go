@@ -720,16 +720,19 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 			if inVenue {
 				continue
 			}
-			legs += toQuote(quoteName(e.mint), tr.amount*math.Pow10(-e.dec))
+			// Each leg on its own: 2 % of the trade, or FOMO's $0.10 minimum
+			// on small trades (a $3 buy pays 0.10 USDC: 333 bps), with a
+			// little room. A routing transfer that slips in (the user
+			// signing the hop vault's input, 98 % of the trade) is dropped
+			// alone instead of taking the real legs down with it.
+			leg := toQuote(quoteName(e.mint), tr.amount*math.Pow10(-e.dec))
+			if leg <= 0 || leg > math.Max(0.02*math.Abs(userQ), 0.12/quoteUSD) {
+				continue
+			}
+			legs += leg
 			feeLegOwners[e.owner] = true
 		}
-		// 2 % of the trade, or FOMO's $0.10 minimum on small trades (a
-		// $3 buy pays 0.10 USDC: 333 bps), with a little room.
-		if legs > 0 && legs <= math.Max(0.02*math.Abs(userQ), 0.12/quoteUSD) {
-			terminalQ += legs
-		} else {
-			feeLegOwners = map[string]bool{}
-		}
+		terminalQ += legs
 	}
 
 	// Venue label: the final pool's venue; "multi" when the token leg is

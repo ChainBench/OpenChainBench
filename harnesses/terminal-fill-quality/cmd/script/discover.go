@@ -287,11 +287,12 @@ func evmTerminalIndex(slug string) int {
 // on the terminals at start (the lists in the code are the seed).
 func applyLearned(st *State) {
 	n := 0
+	deny := set(strings.Split(os.Getenv("DISCOVER_DENY"), ",")...) // a vetoed adoption stays out at start too
 	for slug, l := range st.Learned {
 		if i := terminalIndex(slug); i >= 0 {
 			known := set(terminals[i].Wallets...)
 			for w, e := range l.Wallets {
-				if e.Adopted && !known[w] {
+				if e.Adopted && !known[w] && !deny[w] {
 					terminals[i].Wallets = append(terminals[i].Wallets, w)
 					n++
 				}
@@ -301,7 +302,7 @@ func applyLearned(st *State) {
 			known := set(evmTerminals[i].Routers...)
 			for k, e := range l.Routers {
 				addr := k[strings.Index(k, ":")+1:]
-				if e.Adopted && !known[addr] {
+				if e.Adopted && !known[addr] && !deny[addr] {
 					evmTerminals[i].Routers = append(evmTerminals[i].Routers, addr)
 					n++
 				}

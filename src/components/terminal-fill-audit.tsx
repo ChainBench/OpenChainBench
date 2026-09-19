@@ -23,7 +23,7 @@ export async function TerminalFillAudit() {
           <p className="mt-1 text-sm text-ink-faint max-w-3xl">
             The {f.recent.length} most recent transactions the harness read ({priced} priced), one per row. Click a hash to open it on
             Solscan and check every figure against the transaction&apos;s balances: Loss = 1 − value received / value given; Fee + Net +
-            Other + Pool = Loss. Ref says what the tokens were valued at (reserves: the pool&apos;s exact mid before the swap; pool: the
+            Other + Pool (+ Relay on the cross-chain rows) = Loss. Ref says what the tokens were valued at (reserves: the pool&apos;s exact mid before the swap; pool: the
             previous trade on the same pool, age in seconds). A <span className="font-mono">!</span> marks a row outside the plausible
             bounds, kept out of the statistics.
           </p>
