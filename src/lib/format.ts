@@ -22,7 +22,7 @@ export function fmtAsOfUtc(iso: string): string | null {
   )} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-export function fmtUnit(value: number, unit: string) {
+export function fmtUnit(value: number, unit: string): string {
   if (!Number.isFinite(value)) return "-";
   if (unit === "pct") return formatPercent(value);
   if (unit === "bps") {
