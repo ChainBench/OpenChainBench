@@ -428,7 +428,7 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			continue
 		}
 		cont := ""
-		const pages = 12 // 600 requests a round; logged when the budget binds
+		const pages = 30 // 1,500 requests a round: one page in steady state, the gap after a restart's seed walk; logged when it binds
 		for page := 0; page < pages; page++ {
 			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50", c.id)
 			if a.Referrer != "" {
