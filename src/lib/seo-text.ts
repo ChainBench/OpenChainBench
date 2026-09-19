@@ -20,3 +20,17 @@ export function capDescription(input: string | undefined, max = 990): string {
   if (lastSpace > max * 0.6) return head.slice(0, lastSpace) + "…";
   return head + "…";
 }
+
+/** Meta descriptions must not leak inline markdown from the YAML body
+ *  (backticks around RPC method names, bold, links): 32 of 153 chain RPC
+ *  descriptions reached the SERP as "(`eth_getBlockByNumber` p50, 24h)"
+ *  on 2026-09-19. */
+export function stripInlineMarkdown(text: string): string {
+  return text
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\*\*([^*]*)\*\*/g, "$1")
+    .replace(/\*([^*]*)\*/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}

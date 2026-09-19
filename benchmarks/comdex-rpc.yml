@@ -2,8 +2,8 @@
 
 slug: comdex-rpc
 number: "183"
-title: Fastest free Comdex RPC, live no-key endpoint latency
-seo_title: "Fastest free Comdex RPC 2026"
+title: "Comdex RPC endpoints: free public URLs ranked by latency"
+seo_title: "Comdex RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Comdex RPC at {{best_p50}} (Tendermint status p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Tendermint status method against the free, no-key public Comdex Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"comdex\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page."
 
 faq:
-  - q: "What is the fastest free Comdex RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Comdex RPCs work without an API key?"
     a: "STAVR's endpoint (comdex.rpc.m.stavr.tech) is the free, keyless Comdex RPC sustaining probes from all 3 regions. Every listed endpoint was live-verified before inclusion."
 

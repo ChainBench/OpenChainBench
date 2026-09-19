@@ -5,7 +5,7 @@
  */
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
-import { liveResults } from "@/lib/provider-filters";
+import { liveResults, displayResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
 /** Minimum measured success rate (in percent, 0-100) for a provider to
@@ -19,7 +19,7 @@ import { fmtUnit } from "@/lib/format";
  *  freshness / gauge-only benches and only bites where the harness
  *  actually measures polling reliability (gas-estimation, RPC
  *  benches). */
-const LEADER_MIN_SUCCESS_PCT = 50;
+export const LEADER_MIN_SUCCESS_PCT = 50;
 
 /** Provider set used to derive the headline figures. Drops rows whose
  *  per-provider sample-health is "insufficient" (set on the load path
@@ -43,7 +43,11 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
   const reliable = live.filter(
     (r) => (r.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT,
   );
-  const pool = reliable.length > 0 ? reliable : live;
+  // Chain RPC pages do not fall back: crowning a 23 % success endpoint
+  // as "the fastest Starknet RPC" in the TL;DR, StatisticalReport and
+  // /api/stat is worse than saying nobody cleared the floor.
+  const pool =
+    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : live;
   if (!b.expectedN) return pool;
   return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
@@ -142,6 +146,13 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     return { claim: "", rest: `${b.title}. Insufficient data to assert a leader.` };
   }
   const top = leader(b);
+  const chainForFloor = rpcChainLabel(b);
+  if (!top && chainForFloor && liveResults(b.results).length > 0) {
+    return {
+      claim: "",
+      rest: `${b.title}. No ${chainForFloor} endpoint answered above the ${LEADER_MIN_SUCCESS_PCT} % success floor in the last 24h.`,
+    };
+  }
   if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
   const value = fmtUnit(top.value, b.unit);
   // Chain RPC pages: the sentence names the entity searchers use ("free
@@ -150,9 +161,14 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   // StatisticalReport, TechArticle, /api/citable and llms.txt.
   const chain = rpcChainLabel(b);
   if (chain) {
-    const n = liveResults(b.results).length;
+    // Same set as the Results table and the endpoints block (display
+    // floor), so the four surfaces quote one count.
+    const n = displayResults(b.results).length;
     return {
-      claim: `${top.name} has the lowest median latency of the ${n} free public ${chain} RPC endpoints measured, ${value}`,
+      claim:
+        n === 1
+          ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
+          : `${top.name} has the lowest median latency of the ${n} free public ${chain} RPC endpoints measured, ${value}`,
       rest: `(p50, 24h, 3 regions).`,
     };
   }

@@ -2,8 +2,8 @@
 
 slug: union-rpc
 number: "253"
-title: Fastest free Union RPC, live no-key endpoint latency
-seo_title: "Fastest free Union RPC 2026"
+title: "Union RPC endpoints: free public URLs ranked by latency"
+seo_title: "Union RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Union RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Union (union-1) endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=union. Provider coverage at launch: {{count}} endpoints (Nodes.Guru, Stake And Relax, High Stakes)."
 
 faq:
-  - q: "What is the fastest free Union RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Union block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Union RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Nodes.Guru (rpc-1.union.nodes.guru), Stake And Relax (union-rpc.stakeandrelax.net), and High Stakes (union-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
   - q: "What is Union and why does its RPC latency matter?"

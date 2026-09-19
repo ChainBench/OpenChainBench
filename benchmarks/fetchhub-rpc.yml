@@ -2,8 +2,8 @@
 
 slug: fetchhub-rpc
 number: "252"
-title: Fastest free Fetch.ai RPC, live no-key endpoint latency
-seo_title: "Fastest free Fetch.ai RPC 2026"
+title: "Fetch.ai RPC endpoints: free public URLs ranked by latency"
+seo_title: "Fetch.ai RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Fetch.ai RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Fetch.ai (FetchHub-4) endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=fetchhub. Provider coverage at launch: {{count}} endpoints (Fetch.ai official, PublicNode, Cosmos Directory)."
 
 faq:
-  - q: "What is the fastest free Fetch.ai RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Fetch.ai block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Fetch.ai RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Fetch.ai official (rpc-fetchhub.fetch.ai), PublicNode (fetch-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/fetchhub). Every listed endpoint was live-verified before inclusion."
   - q: "What is Fetch.ai and why does its RPC latency matter?"

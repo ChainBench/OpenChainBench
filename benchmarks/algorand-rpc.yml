@@ -2,8 +2,8 @@
 
 slug: algorand-rpc
 number: "214"
-title: Fastest free Algorand RPC, live no-key endpoint latency
-seo_title: "Fastest free Algorand RPC 2026"
+title: "Algorand RPC endpoints: free public URLs ranked by latency"
+seo_title: "Algorand RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Algorand RPC at {{best_p50}} (algod /v2/status last-round p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the Algorand algod status endpoint (last-round) against every free, no-key public Algorand node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=algorand. Provider coverage at launch: {{count}} no-key endpoints (AlgoNode, Nodely, Tatum)."
 
 faq:
-  - q: "What is the fastest free Algorand RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Algorand algod /v2/status last-round p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Algorand nodes work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: AlgoNode community node, Nodely (mainnet-api.4160.nodely.dev) and Tatum gateway. Every listed endpoint was live-verified with a GET /v2/status returning a parsable last-round before inclusion."
 

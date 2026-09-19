@@ -2,8 +2,8 @@
 
 slug: merlin-rpc
 number: "228"
-title: Fastest free Merlin Chain RPC, live no-key endpoint latency
-seo_title: "Fastest free Merlin Chain RPC 2026"
+title: "Merlin Chain RPC endpoints: free public URLs ranked by latency"
+seo_title: "Merlin Chain RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Merlin Chain RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public Merlin Chain node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=merlin. Provider coverage at launch: {{count}} endpoints (Merlin Official, dRPC, BlockPI)."
 
 faq:
-  - q: "What is the fastest free Merlin Chain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Merlin Chain block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Merlin Chain RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 

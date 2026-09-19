@@ -31,6 +31,12 @@ export const metadata: import("next").Metadata = pageMetadata({
 
 export const revalidate = 3600;
 
+/** "Arbitrum" from either title shape the cluster uses. */
+function chainLabelOf(s: { title: string; slug: string }): string {
+  const m = s.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i) ?? s.title.match(/^([A-Za-z0-9 .-]+?) RPC/i);
+  return m ? m[1] : s.slug.replace(/-rpc$/, "");
+}
+
 export default async function RpcHubPage() {
   const [snapshot, specs, sitemapBlob] = await Promise.all([fetchRpcHub(), getSpecs(), loadSitemapBlob()]);
   // Spec-derived chain list: stable across snapshot outages, so the
@@ -44,6 +50,13 @@ export default async function RpcHubPage() {
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
     .filter((s) => !indexable || indexable.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
+  // The four pills: the chain pages with the most search demand (Search
+  // Console 2026-09-19), not the first four of the alphabet.
+  const FEATURED = ["arbitrum-rpc", "ethereum-rpc", "linea-rpc", "ronin-rpc"];
+  const featured = FEATURED.map((slug) => rpcSpecs.find((s) => s.slug === slug)).filter(
+    (s): s is (typeof rpcSpecs)[number] => Boolean(s),
+  );
+  const linkableSlugs = rpcSpecs.map((s) => s.slug);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -133,19 +146,13 @@ export default async function RpcHubPage() {
           .
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
-          {rpcSpecs.slice(0, 4).map((s) => (
+          {featured.map((s) => (
             <Link
               key={s.slug}
               href={`/benchmarks/${s.slug}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 hover:bg-sky-500/15"
             >
-              <span
-                className="label-mono text-ink-faint text-[10px]"
-                style={{ fontFamily: "var(--font-mono, monospace)" }}
-              >
-                Bench
-              </span>
-              <span className="text-ink">{s.slug}</span>
+              <span className="text-ink">{chainLabelOf(s)} RPC endpoints</span>
             </Link>
           ))}
           <Link
@@ -189,7 +196,30 @@ export default async function RpcHubPage() {
             />
           </section>
 
-          <RpcHubTabs snapshot={snapshot} />
+          <RpcHubTabs snapshot={snapshot} linkableSlugs={linkableSlugs} />
+
+          {/* Every indexable chain page as a plain link: the leaderboard
+              above renders 40 rows before "Show all", this nav is what a
+              crawler follows to the rest. */}
+          <nav className="mt-8" aria-labelledby="rpc-all-chains">
+            <h2 id="rpc-all-chains" className="label-mono text-ink-muted">
+              All {rpcSpecs.length} chain RPC pages
+            </h2>
+            <ul className="mt-3 flex flex-wrap gap-2 text-[12px]">
+              {rpcSpecs.map((s) => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/benchmarks/${s.slug}`}
+                    className="inline-flex rounded-full border border-ink/15 px-2.5 py-0.5 text-ink-soft hover:text-ink hover:border-ink/30"
+                    title={`${chainLabelOf(s)} RPC endpoints`}
+                  >
+                    {chainLabelOf(s)}
+                    <span className="sr-only"> RPC endpoints</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source: the open-source{" "}
@@ -225,7 +255,7 @@ export default async function RpcHubPage() {
                   href={`/benchmarks/${s.slug}`}
                   className="inline-flex rounded-full border border-ink/15 px-3 py-1 text-ink-soft hover:text-ink hover:border-ink/30"
                 >
-                  {s.slug}
+                  {chainLabelOf(s)} RPC endpoints
                 </Link>
               </li>
             ))}

@@ -2,8 +2,8 @@
 
 slug: near-rpc
 number: "216"
-title: Fastest free NEAR RPC, live no-key endpoint latency
-seo_title: "Fastest free NEAR Protocol RPC 2026"
+title: "NEAR RPC endpoints: free public URLs ranked by latency"
+seo_title: "NEAR RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free NEAR RPC at {{best_p50}} (block/finality:final height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for block (finality=final) against every available public NEAR Protocol node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=near. Provider coverage at launch: {{count}} endpoints (NEAR Foundation, FastNEAR, Lava, dRPC)."
 
 faq:
-  - q: "What is the fastest free NEAR Protocol RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (NEAR block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which NEAR RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com), Lava (near.lava.build) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
 

@@ -18,32 +18,53 @@ import { CopyButton } from "@/components/copy-button";
 import { fmtUnit } from "@/lib/format";
 import { canonicalize } from "@/lib/providers";
 import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
+import { LEADER_MIN_SUCCESS_PCT, rpcChainLabel } from "@/lib/citation";
+import { displayResults } from "@/lib/provider-filters";
+import { getSpecs } from "@/lib/spec";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
 import type { Benchmark } from "@/types/benchmark";
 
 /** The endpoints the section lists: a declared public URL with a live
- *  24h measurement. A URL we cannot vouch for today (provider down,
- *  unresponsive, no samples) is not listed. Shared with the TL;DR so the
- *  count it announces is the count the table shows. */
+ *  24h measurement above the display floor (the same set the Results
+ *  table and the TL;DR count use). Endpoints above the citation success
+ *  floor come first, sorted by p50, so row one is the crowned leader;
+ *  the rest follow, flagged, sorted by p50 too. Shared with the TL;DR so
+ *  the count it announces is the count the table shows. */
 export function publicEndpointRows(benchmark: Benchmark) {
-  return benchmark.results
-    .filter((r) => r.endpoint && !r.unrankedLabel && !r.unresponsive && r.availability !== "unavailable" && r.ms.p50 > 0)
-    .sort((a, b) => (benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50));
+  const dir = benchmark.higherIsBetter ? -1 : 1;
+  return displayResults(benchmark.results)
+    .filter((r) => r.endpoint && !r.unrankedLabel)
+    .sort((a, b) => {
+      const fa = (a.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT ? 0 : 1;
+      const fb = (b.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT ? 0 : 1;
+      return fa - fb || dir * (a.ms.p50 - b.ms.p50);
+    });
 }
 
-export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
+export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
   const rows = publicEndpointRows(benchmark);
   if (rows.length < 2) return null;
 
-  // "Ethereum RPC" from "Fastest free Ethereum RPC, live no-key ..." is not
-  // derivable safely; the chain label comes from the first chain dimension
-  // when the spec has one, else from the H1 pattern "<Chain> RPC".
+  // Chain entity for the H2, from the title patterns the cluster uses
+  // (both the "Fastest free X RPC" and the "X RPC endpoints" shapes),
+  // else the first chain dimension.
   const chainLabel =
+    rpcChainLabel(benchmark) ??
     benchmark.dimensions?.chain?.find((c) => c.value !== "all")?.label ??
-    (benchmark.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i)?.[1] ?? null);
+    null;
   const chainSlug = benchmark.slug.replace(/-rpc$/, "");
   const chainId = EVM_CHAIN_IDS[chainSlug];
   const symbol = CHAIN_BY_SLUG.get(chainSlug)?.nativeSymbol;
+  const belowFloor = rows.filter((r) => (r.successRate ?? 100) < LEADER_MIN_SUCCESS_PCT).length;
+
+  // The "<chain> rpc provider" searcher (414 impressions, 0 clicks on
+  // 2026-09-19) wants the keyed providers named too. They are compared on
+  // the keyed page when this deployment has one; named here, never with
+  // a URL.
+  const keyed = (await getSpecs().catch(() => [])).find(
+    (sp) => sp.slug === `keyed-rpc-${chainSlug}`,
+  );
+  const keyedNames = keyed ? keyed.providers.map((pv) => pv.name) : [];
   const heading = chainLabel
     ? `Public ${chainLabel} RPC endpoints measured`
     : "Public endpoints measured";
@@ -56,9 +77,24 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
       <p className="mt-2 text-sm text-ink-soft leading-snug">
         {chainId ? <>Chain ID {chainId}{symbol ? <>, currency {symbol}</> : null}. </> : null}
         The {rows.length} no-key endpoints answering our probes today, with
-        their current 24h median. Paste one into a wallet or a client as is: no signup, no
-        key. Providers that need an API key are compared on the keyed pages
-        and are never listed with a URL.
+        their current 24h median
+        {belowFloor > 0
+          ? `; ${belowFloor} of them ${belowFloor === 1 ? "sits" : "sit"} below the ${LEADER_MIN_SUCCESS_PCT} % success floor and ${belowFloor === 1 ? "is" : "are"} listed last`
+          : ""}
+        . Paste one into a wallet or a client as is: no signup, no key.{" "}
+        {keyed && keyedNames.length > 0 ? (
+          <>
+            {keyedNames.slice(0, -1).join(", ")}
+            {keyedNames.length > 1 ? " and " : ""}
+            {keyedNames[keyedNames.length - 1]}, which need an API key, are compared on the{" "}
+            <Link href={`/benchmarks/${keyed.slug}`} className="underline underline-offset-2">
+              keyed {chainLabel ?? ""} RPC page
+            </Link>
+            ; keyed URLs are never listed.
+          </>
+        ) : (
+          <>Providers that need an API key are never listed with a URL.</>
+        )}
       </p>
       <ul className="mt-4 divide-y divide-rule rounded-lg border border-rule card-soft">
         {rows.map((r) => {
@@ -78,8 +114,12 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
               <span className="w-[72px] text-right tabular-nums text-ink-soft">
                 {fmtUnit(r.ms.p50, benchmark.unit)}
               </span>
-              <span className="w-[56px] text-right tabular-nums text-ink-faint text-[12px]">
+              <span
+                className="w-[56px] text-right tabular-nums text-ink-faint text-[12px]"
+                title={(r.successRate ?? 100) < LEADER_MIN_SUCCESS_PCT ? `Below the ${LEADER_MIN_SUCCESS_PCT} % success floor: not eligible for the headline` : undefined}
+              >
                 {`${r.successRate.toFixed(1)}%`}
+                {(r.successRate ?? 100) < LEADER_MIN_SUCCESS_PCT ? " ▾" : ""}
               </span>
             </li>
           );

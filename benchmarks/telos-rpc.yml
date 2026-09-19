@@ -2,8 +2,8 @@
 
 slug: telos-rpc
 number: "195"
-title: Fastest free Telos EVM RPC, live no-key endpoint latency
-seo_title: "Fastest free Telos EVM RPC 2026"
+title: "Telos EVM RPC endpoints: free public URLs ranked by latency"
+seo_title: "Telos EVM RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Telos EVM RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Telos EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"telos\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Telos Foundation official returned 404 and has been removed."
 
 faq:
-  - q: "What is the fastest free Telos EVM RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Telos EVM RPCs work without an API key?"
     a: "{{count}} endpoint sustains continuous keyless probing: dRPC (telos.drpc.org). The Telos Foundation official endpoint (mainnet.telos.net/evm) returned 404 and has been removed."
 

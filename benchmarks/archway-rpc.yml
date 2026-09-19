@@ -2,8 +2,8 @@
 
 slug: archway-rpc
 number: "178"
-title: Fastest free Archway RPC, live no-key endpoint latency
-seo_title: "Fastest free Archway RPC 2026"
+title: "Archway RPC endpoints: free public URLs ranked by latency"
+seo_title: "Archway RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Archway RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the Tendermint status method against every free, no-key public Archway Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,10 +27,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"archway\"`. Provider coverage at launch: {{count}} no-key endpoints (Polkachu, LavenderFive, Archway Foundation, PublicNode)."
 
 faq:
-  - q: "What is the fastest free Archway RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Archway RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Polkachu, LavenderFive, Archway Foundation, PublicNode. Every listed endpoint was live-verified before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

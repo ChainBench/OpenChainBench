@@ -2,8 +2,8 @@
 
 slug: shentu-rpc
 number: "254"
-title: Fastest free Shentu RPC, live no-key endpoint latency
-seo_title: "Fastest free Shentu RPC 2026"
+title: "Shentu RPC endpoints: free public URLs ranked by latency"
+seo_title: "Shentu RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Shentu RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Shentu (shentu-2.2) endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=shentu. Provider coverage at launch: {{count}} endpoints (Shentu official, Polkachu, High Stakes)."
 
 faq:
-  - q: "What is the fastest free Shentu RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Shentu block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Shentu RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Shentu official (rpc.shentu.org), Polkachu (shentu-rpc.polkachu.com), and High Stakes (shentu-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
   - q: "What is Shentu and why does its RPC latency matter?"

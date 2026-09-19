@@ -19,7 +19,7 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   if (rows.length === 0) return null;
   const chain = rpcChainLabel(benchmark);
   const heading = chain
-    ? `Results: ${rows.length} free public ${chain} RPC endpoints ranked by p50 latency (24h, 3 regions)`
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
     : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, 24h)`;
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (

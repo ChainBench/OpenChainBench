@@ -28,12 +28,10 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"linea\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
-  - q: "What is the fastest free Linea RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Linea RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Why do so few free RPCs support Linea?"
-    a: "Free-tier coverage follows demand: gateways add no-key chains when traffic justifies the infrastructure. Linea's cohort ({{count}} providers) is typical of newer L2s; the Ethereum and Arbitrum pages list their own live counts. The flip side is that the providers that do qualify are the disciplined multi-chain operators, so the reliability floor is high even where the field is thin."
+    a: "Free-tier coverage follows demand: gateways add no-key chains when traffic justifies the infrastructure. Linea's cohort ({{count}} providers) is typical of newer L2s; the Ethereum and Arbitrum pages list their own live counts. The flip side is that the providers that do qualify are the disciplined multi-chain operators, so the measured success rates (listed in the endpoints table) stay high even where the field is thin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

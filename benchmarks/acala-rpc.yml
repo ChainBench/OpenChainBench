@@ -2,8 +2,8 @@
 
 slug: acala-rpc
 number: "248"
-title: Fastest free Acala RPC, live no-key endpoint latency
-seo_title: "Fastest free Acala RPC 2026"
+title: "Acala RPC endpoints: free public URLs ranked by latency"
+seo_title: "Acala RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Acala RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Substrate chain_getHeader queries against every available public Acala endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=acala. Provider coverage at launch: {{count}} endpoints (Dwellir, Acala RPC-0, Acala RPC-2)."
 
 faq:
-  - q: "What is the fastest free Acala RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Acala block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Acala RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Dwellir (acala-rpc.n.dwellir.com), Acala RPC-0 (acala-rpc-0.aca-api.network) and Acala RPC-2 (acala-rpc-2.aca-api.network). Every listed endpoint was live-verified before inclusion."
   - q: "How does Acala RPC latency compare to other Polkadot parachains?"

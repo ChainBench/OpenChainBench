@@ -2,8 +2,8 @@
 
 slug: blast-rpc
 number: "060"
-title: Fastest free Blast RPC, live no-key endpoint latency
-seo_title: "Fastest free Blast RPC 2026"
+title: "Blast RPC endpoints: free public URLs ranked by latency"
+seo_title: "Blast RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{count}} free public Blast RPC endpoints ranked by eth_getBlockByNumber p50 (24h, 3 regions). {{best_name}} measures {{best_p50}}; read the co-location note before comparing."
 disclaimer: "The chain-official rpc.blast.io figure on this page reflects GCP co-location with our three probes, not a typical client path. Compare the gateways on the per-region tabs before choosing a primary."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Blast RPC endpoint, audited every 60 seconds from 3 regions.
@@ -28,8 +28,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"blast\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
-  - q: "What is the fastest free Blast RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Blast RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Is rpc.blast.io really that fast, or is something else going on?"

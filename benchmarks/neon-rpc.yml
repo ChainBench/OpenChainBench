@@ -2,8 +2,8 @@
 
 slug: neon-rpc
 number: "227"
-title: Fastest free Neon EVM RPC, live no-key endpoint latency
-seo_title: "Fastest free Neon EVM RPC 2026"
+title: "Neon EVM RPC endpoints: free public URLs ranked by latency"
+seo_title: "Neon EVM RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Neon EVM RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public Neon EVM node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=neon. Provider coverage at launch: {{count}} endpoints (P2P Neon Proxy, Thirdweb, Everstake)."
 
 faq:
-  - q: "What is the fastest free Neon EVM RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Neon EVM block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Neon EVM RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: P2P Neon Proxy (neon-proxy-mainnet.solana.p2p.org), Thirdweb (245022934.rpc.thirdweb.com) and Everstake (neon-mainnet.everstake.one). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
