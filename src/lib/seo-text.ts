@@ -13,9 +13,12 @@ export function capDescription(input: string | undefined, max = 990): string {
   const s = (input ?? "").replace(/\s+/g, " ").trim();
   if (s.length <= max) return s;
   const head = s.slice(0, max - 1);
-  // Prefer cutting at a sentence end, otherwise the last word boundary.
+  // Prefer cutting at a sentence end, but only when that keeps most of
+  // the budget: at 0.6 the Polymarket answer (323 impressions, 0.3 % CTR
+  // at position 7.6) shipped a 102-character snippet and lost its hook
+  // ("Sports vs crypto vs politics, disputes and the pending backlog").
   const lastDot = head.lastIndexOf(". ");
-  if (lastDot > max * 0.6) return head.slice(0, lastDot + 1);
+  if (lastDot > max * 0.8) return head.slice(0, lastDot + 1);
   const lastSpace = head.lastIndexOf(" ");
   if (lastSpace > max * 0.6) return head.slice(0, lastSpace) + "…";
   return head + "…";

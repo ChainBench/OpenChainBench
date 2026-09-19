@@ -26,6 +26,18 @@ methodology:
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the BNB Chain-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"bnb\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
+excluded_providers:
+  - { name: Ankr, reason: "public endpoint requires an API key" }
+  - { name: NodeReal, reason: "requires an API key" }
+  - { name: GetBlock, reason: "requires an API key; compared on the keyed pages" }
+  - { name: Chainstack, reason: "requires an API key; compared on the keyed pages" }
+  - { name: 1RPC, reason: "delisted for reliability: under 13 % success at one probe per minute", since: "2026-07-09" }
+  - { name: gateway.fm, reason: "29 requests per IP budget, too small for continuous probing" }
+  - { name: LlamaRPC, reason: "Cloudflare 521 from the probe regions" }
+  - { name: BlockPI, reason: "Cloudflare 521 from the probe regions" }
+  - { name: OmniaTech, reason: "Cloudflare 521 from the probe regions" }
+  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; the keyed tier is compared on the keyed pages" }
+
 faq:
   - q: "Which BNB Chain RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."

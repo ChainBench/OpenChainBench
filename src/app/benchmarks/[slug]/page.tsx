@@ -746,7 +746,7 @@ export default async function BenchmarkPage({
 
       {/* Citation affordances. one click takes a journalist or agent from
           the page to a pasteable quote or a JSON endpoint. */}
-      {!isDraft && <CitationBar benchmark={benchmark} />}
+      {!isDraft && <CitationBar slug={benchmark.slug} />}
 
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
@@ -798,7 +798,14 @@ export default async function BenchmarkPage({
                   <ShareSection
                     slug={benchmark.slug}
                     title={benchmark.title}
-                    benchmark={benchmark}
+                    benchmark={{
+                      dimensions: benchmark.dimensions,
+                      metricPanels: benchmark.metricPanels,
+                      results: benchmark.results,
+                      higherIsBetter: benchmark.higherIsBetter,
+                      panelMainLabel: benchmark.panelMainLabel,
+                      metric: benchmark.metric,
+                    }}
                     chain={chain}
                   />
                   <ExportVideoSection

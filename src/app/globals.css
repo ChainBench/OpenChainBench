@@ -186,6 +186,20 @@ table {
   text-decoration-color: currentColor;
 }
 
+/* Compact link pill (chain navs with 100+ entries: one class instead of
+   nine utilities per anchor keeps the served HTML small). */
+.pill-lnk {
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+  padding: 0.125rem 0.625rem;
+  color: var(--color-ink-soft);
+}
+.pill-lnk:hover {
+  color: var(--color-ink);
+  border-color: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+
 ::selection {
   background: var(--color-accent);
   color: #ffffff;

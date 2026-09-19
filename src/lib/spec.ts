@@ -134,6 +134,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
     faq: spec.faq ?? stored.faq,
+    excludedProviders: spec.excluded_providers ?? stored.excludedProviders,
     perChainExplainer: spec.per_chain_explainer ?? stored.perChainExplainer,
     abstract: spec.abstract ?? stored.abstract,
     methodology: spec.methodology ?? stored.methodology,
