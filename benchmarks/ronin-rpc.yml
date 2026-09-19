@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: ronin-official
     name: Sky Mavis
+    endpoint: https://api.roninchain.com/rpc
     tag: Ronin chain official public RPC, Sky Mavis-operated
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Sky Mavis's no-key ronin RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://ronin.gateway.tenderly.co
     tag: Tenderly Gateway public RPC for Ronin
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key ronin RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://ronin.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Ronin
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key ronin RPC endpoint."
     queries:

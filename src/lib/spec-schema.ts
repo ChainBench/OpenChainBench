@@ -139,6 +139,28 @@ const provider = z.object({
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
   formula: z.string().min(1).max(240).optional(),
+  /** Public, no-key endpoint URL the harness probes for this provider.
+   *  Rendered on the bench page ("Public endpoints measured") because
+   *  the searchers who land on the RPC pages want the URL as much as the
+   *  latency. Keyed endpoints are NEVER declared here: the refinement
+   *  rejects a path or query that looks like a token. `api_key=FREE`
+   *  (LeoRPC's public sentinel) is the one allowed query key. */
+  endpoint: z
+    .string()
+    .url()
+    .max(200)
+    .refine((u) => u.startsWith("https://"), "endpoint: https only")
+    .refine(
+      (u) =>
+        !/[?&](api[_-]?key|apikey|token|key|access[_-]?token)=(?!FREE\b)[A-Za-z0-9._%-]+/i.test(u) &&
+        !/\/v2\/[A-Za-z0-9_-]{20,}/.test(u) &&
+        !/quiknode\.pro\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/core\.chainstack\.com\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/getblock\.io\/[A-Za-z0-9]{16,}/i.test(u) &&
+        !/[a-f0-9]{32,}/i.test(u),
+      "endpoint: looks like a keyed URL (token in path or query); only public no-key endpoints may be declared",
+    )
+    .optional(),
   /** Optional architectural category. When set, a badge appears next to
    *  the name so readers understand the comparison. */
   type: ProviderType.optional(),

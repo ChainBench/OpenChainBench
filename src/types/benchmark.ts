@@ -110,6 +110,9 @@ export type ProviderResult = {
    *  headline value is computed. Rendered as the leaderboard-row
    *  hover tooltip. Authored per-bench in YAML (provider.formula). */
   formula?: string;
+  /** Public no-key endpoint URL probed for this provider (spec
+   *  provider.endpoint). Never a keyed URL: the spec schema rejects them. */
+  endpoint?: string;
   /** Short-window liveness verdict derived at load time from the spec's
    *  `queries.live_activity` scalar and the bench-level `probe_ok`
    *  gate. Only populated when the spec declares those queries.

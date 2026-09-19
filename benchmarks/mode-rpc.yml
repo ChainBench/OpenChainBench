@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: mode-official
     name: Mode Labs
+    endpoint: https://mainnet.mode.network
     tag: Mode Labs official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Mode Labs's no-key mode RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://mode.drpc.org
     tag: dRPC public gateway routing to Mode node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key mode RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: 1rpc
     name: 1RPC
+    endpoint: https://1rpc.io/mode
     tag: 1RPC public gateway with privacy relay
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key mode RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://mode.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Mode
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key mode RPC endpoint."
     queries:

@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: dwellir
     name: Dwellir
+    endpoint: https://acala-rpc.n.dwellir.com
     tag: Dwellir public Acala RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc.n.dwellir.com."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: acala-rpc0
     name: Acala (RPC-0)
+    endpoint: https://acala-rpc-0.aca-api.network
     tag: Acala official public RPC node 0 (aca-api.network), no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc-0.aca-api.network."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: acala-rpc2
     name: Acala (RPC-2)
+    endpoint: https://acala-rpc-2.aca-api.network
     tag: Acala official public RPC node 2 (aca-api.network), no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to acala-rpc-2.aca-api.network."
     queries:

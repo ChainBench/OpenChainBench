@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://axelar-rpc.polkachu.com
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Axelar endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://axelar-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Axelar endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: lavenderfive
     name: LavenderFive
+    endpoint: https://rpc.lavenderfive.com:443/axelar
     tag: Cosmos validator and no-key RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key Axelar endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: autostake
     name: AutoStake
+    endpoint: https://axelar-mainnet-rpc.autostake.com:443
     tag: AutoStake community Cosmos RPC operator
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions (us-east + eu-west + sgp) to AutoStake's no-key Axelar RPC endpoint."
     queries:

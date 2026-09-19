@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/swell
     tag: Ankr public RPC gateway for Swellchain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key swellchain RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: sentio
     name: Sentio
+    endpoint: https://swell-mainnet.rpc.sentio.xyz
     tag: Sentio RPC node for Swellchain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Sentio's no-key swellchain RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://1923.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Swellchain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key swellchain RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://swell.drpc.org
     tag: dRPC public gateway routing to Swellchain node pool (slug swell)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key swellchain RPC endpoint."
     queries:

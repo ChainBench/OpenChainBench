@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: cyber-official
     name: Cyber Network
+    endpoint: https://rpc.cyber.co
     tag: Cyber Network official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Cyber Network's no-key cyber RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: altlayer
     name: AltLayer
+    endpoint: https://cyber.alt.technology
     tag: AltLayer RPC node for Cyber Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to AltLayer's no-key cyber RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://7560.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Cyber Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key cyber RPC endpoint."
     queries:

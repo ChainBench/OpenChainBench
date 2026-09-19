@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://avalanche-c-chain-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Avalanche endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://avalanche.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Avalanche endpoint."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://gateway.tenderly.co/public/avalanche
     tag: Multi-chain public gateway, 9 chains, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Avalanche endpoint."
     queries:
@@ -135,6 +138,7 @@ providers:
 
   - slug: avalanche-official
     name: Avalanche
+    endpoint: https://api.avax.network/ext/bc/C/rpc
     tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Avalanche's no-key Avalanche endpoint."
     queries:

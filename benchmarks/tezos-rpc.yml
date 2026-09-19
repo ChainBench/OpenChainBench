@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: smartpy
     name: SmartPy
+    endpoint: https://mainnet.smartpy.io
     tag: SmartPy public Tezos mainnet RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /chains/main/blocks/head/header sent every 60s from 3 regions to mainnet.smartpy.io."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: tzbeta
     name: TezBeta
+    endpoint: https://rpc.tzbeta.net
     tag: TezBeta public Tezos mainnet RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /chains/main/blocks/head/header sent every 60s from 3 regions to rpc.tzbeta.net."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: tzkt
     name: TzKT (Baking Bad)
+    endpoint: https://rpc.tzkt.io/mainnet
     tag: TzKT public Tezos mainnet RPC by Baking Bad, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /chains/main/blocks/head/header sent every 60s from 3 regions to rpc.tzkt.io/mainnet."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: tcinfra
     name: TCInfra
+    endpoint: https://prod.tcinfra.net/rpc/mainnet
     tag: TCInfra public Tezos mainnet RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /chains/main/blocks/head/header sent every 60s from 3 regions to prod.tcinfra.net/rpc/mainnet."
     queries:

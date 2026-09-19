@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://gnosis-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Gnosis endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://gnosis.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Gnosis endpoint."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://gateway.tenderly.co/public/gnosis
     tag: Multi-chain public gateway, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Gnosis endpoint."
     queries:
@@ -135,6 +138,7 @@ providers:
 
   - slug: gnosis-official
     name: Gnosis
+    endpoint: https://rpc.gnosischain.com
     tag: Gnosis chain-official RPC (rpc.gnosischain.com)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Gnosis's no-key Gnosis endpoint."
     queries:

@@ -65,6 +65,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://base-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Base endpoint."
     queries:
@@ -88,6 +89,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://base.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Base endpoint."
     queries:
@@ -111,6 +113,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://gateway.tenderly.co/public/base
     tag: Multi-chain public gateway, 9 chains, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Base endpoint."
     queries:
@@ -134,6 +137,7 @@ providers:
 
   - slug: nodies
     name: Nodies
+    endpoint: https://base-pokt.nodies.app
     tag: POKT Network's decentralized public RPC successor, 7+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Base endpoint."
     queries:
@@ -157,6 +161,7 @@ providers:
 
   - slug: base-official
     name: Base
+    endpoint: https://mainnet.base.org
     tag: Coinbase-operated, Base mainnet RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Base's no-key Base endpoint."
     queries:

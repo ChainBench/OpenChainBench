@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://sonic-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Sonic endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://sonic.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Sonic endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://gateway.tenderly.co/public/sonic
     tag: Multi-chain public gateway, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Sonic endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: lava
     name: Lava
+    endpoint: https://sonic.lava.build
     tag: Decentralized permissionless RPC mesh (sonic.lava.build, open no-key)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Lava's no-key Sonic endpoint."
     queries:
@@ -159,6 +163,7 @@ providers:
 
   - slug: sonic-official
     name: Sonic Labs
+    endpoint: https://rpc.soniclabs.com
     tag: Sonic Labs public RPC, Sonic mainnet only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Sonic Labs's no-key Sonic endpoint."
     queries:

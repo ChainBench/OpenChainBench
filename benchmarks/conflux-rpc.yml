@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: conflux-official
     name: Conflux Foundation
+    endpoint: https://evm.confluxrpc.com
     tag: Conflux Foundation's primary eSpace RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Conflux Foundation's no-key Conflux eSpace endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: conflux-global
     name: Conflux Global
+    endpoint: https://evm.confluxrpc.org
     tag: Conflux Foundation's global eSpace mirror
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Conflux Global's no-key Conflux eSpace endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: unifra
     name: Unifra
+    endpoint: https://conflux-espace.nodereal.io/v1/pub
     tag: Unifra public Conflux eSpace node
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Unifra's no-key Conflux eSpace endpoint."
     queries:

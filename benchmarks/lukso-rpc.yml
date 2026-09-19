@@ -59,6 +59,7 @@ dimensions:
 providers:
   - slug: lukso-official
     name: LUKSO Foundation
+    endpoint: https://rpc.mainnet.lukso.network
     tag: Official LUKSO mainnet RPC, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to LUKSO Foundation's no-key LUKSO endpoint."
     queries:
@@ -82,6 +83,7 @@ providers:
 
   - slug: nownodes
     name: NOWNodes
+    endpoint: https://public-lukso.nownodes.io
     tag: Public node, 110+ chains, 5 RPS free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes's no-key LUKSO endpoint."
     queries:
@@ -105,6 +107,7 @@ providers:
 
   - slug: thirdweb
     name: thirdweb
+    endpoint: https://42.rpc.thirdweb.com
     tag: Multi-chain RPC edge, no-key public endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` sent every 60s from 3 regions (us-east + eu-west + sgp) to thirdweb's no-key LUKSO endpoint."
     queries:

@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: toncenter
     name: TON Center
+    endpoint: https://toncenter.com/api/v2/jsonRPC
     tag: TON Center public HTTP API v2, keyless at 1 req/s, operated by the TON Foundation
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to TON Center's public endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://ton.api.onfinality.io/public/jsonRPC
     tag: Multi-chain RPC provider with TON support, public endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to OnFinality's TON endpoint."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: tatum
     name: Tatum
+    endpoint: https://ton-mainnet.gateway.tatum.io/jsonRPC
     tag: Multi-chain RPC gateway with TON support, public endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to Tatum's TON gateway."
     queries:
@@ -135,6 +138,7 @@ providers:
 
   - slug: uniblock
     name: Uniblock
+    endpoint: https://api.uniblock.dev/uni/v1/json-rpc?chainId=toncoin
     tag: Multi-chain RPC aggregator with TON support, public endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getMasterchainInfo POST sent every 60s from 3 regions to Uniblock's TON endpoint."
     queries:

@@ -71,6 +71,7 @@ dimensions:
 providers:
   - slug: tatum
     name: Tatum
+    endpoint: https://dogecoin-mainnet.gateway.tatum.io
     tag: Tatum public Dogecoin RPC gateway, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to dogecoin-mainnet.gateway.tatum.io."
     queries:
@@ -94,6 +95,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://dogecoin.drpc.org
     tag: dRPC decentralized RPC mesh, Dogecoin public endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to dogecoin.drpc.org."
     queries:
@@ -117,6 +119,7 @@ providers:
 
   - slug: blockcypher
     name: BlockCypher
+    endpoint: https://api.blockcypher.com/v1/doge/main
     tag: BlockCypher public Dogecoin REST API, no API key required for basic queries
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockcypher.com/v1/doge/main."
     queries:

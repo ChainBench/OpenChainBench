@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: oktc-official
     name: OKX Chain Official
+    endpoint: https://exchainrpc.okex.org
     tag: OKX Chain official public RPC (exchainrpc.okex.org), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to exchainrpc.okex.org."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: 1rpc
     name: 1RPC
+    endpoint: https://1rpc.io/oktc
     tag: 1RPC privacy-preserving public OKTC endpoint, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 1rpc.io/oktc."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://oktc.drpc.org
     tag: dRPC decentralised multi-chain RPC, public OKTC endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to oktc.drpc.org."
     queries:

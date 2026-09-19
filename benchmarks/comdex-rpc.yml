@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: stavr
     name: STAVR
+    endpoint: https://comdex.rpc.m.stavr.tech:443
     tag: STAVR validator public Cosmos RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to STAVR's no-key Comdex endpoint."
     queries:

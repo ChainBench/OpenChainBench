@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: worldchain-official
     name: World Chain
+    endpoint: https://worldchain-mainnet.g.alchemy.com/public
     tag: Tools for Humanity's official public RPC on Alchemy infra
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to World Chain's no-key world-chain RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://worldchain.drpc.org
     tag: Multi-provider RPC load balancer, edge-close routing
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key world-chain RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://worldchain-mainnet.gateway.tenderly.co
     tag: Tenderly's public multi-chain RPC gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key world-chain RPC endpoint."
     queries:

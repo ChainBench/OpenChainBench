@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: iotex-mirror
     name: IoTeX Mirror
+    endpoint: https://babel-api.mainnet.iotex.one
     tag: IoTeX Foundation secondary public gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to IoTeX Foundation's secondary RPC endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="iotex-mirror", chain="iotex", region="sgp"}[1h])
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/iotex
     tag: Multi-chain public RPC network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key IoTeX endpoint."
     queries:
@@ -111,6 +113,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="sgp"}[1h])
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://4689.rpc.thirdweb.com
     tag: Web3 developer platform public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key IoTeX endpoint."
     queries:

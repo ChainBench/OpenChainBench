@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: zircuit-official
     name: Zircuit Foundation
+    endpoint: https://mainnet.zircuit.com
     tag: Zircuit Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Zircuit Foundation's no-key Zircuit endpoint."
     queries:

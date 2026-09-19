@@ -95,6 +95,7 @@ dimensions:
 providers:
   - slug: trongrid
     name: TronGrid
+    endpoint: https://api.trongrid.io/jsonrpc
     tag: Tron Foundation's official public API gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to TronGrid's no-key TRON JSON-RPC endpoint."
     queries:
@@ -118,6 +119,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://tron.publicnode.com/jsonrpc
     tag: Allnodes-operated, 70+ chains, keyless TRON JSON-RPC path
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key TRON JSON-RPC endpoint."
     queries:

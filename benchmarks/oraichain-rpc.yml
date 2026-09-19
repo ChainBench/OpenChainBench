@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://oraichain-rpc.publicnode.com
     tag: PublicNode multi-chain gateway for Oraichain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions to PublicNode's no-key Oraichain endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: orai-official
     name: Orai Foundation
+    endpoint: https://rpc.orai.io
     tag: Orai Foundation official public Cosmos RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions to the Orai Foundation's no-key endpoint."
     queries:

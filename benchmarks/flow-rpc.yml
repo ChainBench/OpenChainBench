@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: onflow
     name: Flow Foundation
+    endpoint: https://rest-mainnet.onflow.org
     tag: Flow Foundation official public REST node, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/blocks?height=sealed sent every 60s from 3 regions to rest-mainnet.onflow.org."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: flow-access
     name: Flow Access Node
+    endpoint: https://access.mainnet.nodes.onflow.org
     tag: Flow Foundation public access node REST API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/blocks?height=sealed sent every 60s from 3 regions to access.mainnet.nodes.onflow.org."
     queries:

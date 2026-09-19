@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://haqq-evm-rpc.publicnode.com
     tag: PublicNode multi-chain gateway for HAQQ EVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PublicNode's no-key HAQQ endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://haqq.drpc.org
     tag: dRPC public gateway for HAQQ Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key HAQQ endpoint."
     queries:
@@ -110,6 +112,7 @@ providers:
 
   - slug: haqq-official
     name: HAQQ Foundation
+    endpoint: https://rpc.eth.haqq.network
     tag: HAQQ Foundation official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to HAQQ Foundation's no-key endpoint."
     queries:

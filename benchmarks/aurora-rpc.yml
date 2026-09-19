@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: aurora-official
     name: Aurora Labs
+    endpoint: https://mainnet.aurora.dev
     tag: Aurora Labs-operated public RPC for Aurora mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Aurora Labs's no-key Aurora endpoint."
     queries:

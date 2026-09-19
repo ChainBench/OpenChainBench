@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://regen-rpc.polkachu.com:443
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Regen Network endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="regen", region="sgp"}[1h])
   - slug: publicnode
     name: PublicNode
+    endpoint: https://regen-rpc.publicnode.com:443
     tag: Non-profit public RPC by Allnodes
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Regen Network endpoint."
     queries:

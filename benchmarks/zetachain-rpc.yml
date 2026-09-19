@@ -65,6 +65,7 @@ dimensions:
 providers:
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://7000.rpc.thirdweb.com
     tag: Thirdweb chain-ID RPC gateway for ZetaChain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Thirdweb's no-key ZetaChain endpoint."
     queries:

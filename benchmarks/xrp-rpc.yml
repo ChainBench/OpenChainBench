@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: ripple
     name: Ripple
+    endpoint: https://s1.ripple.com:51234
     tag: Ripple-operated public XRP Ledger mainnet node (s1), no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to Ripple's public s1 node."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: xrpl-labs
     name: XRPL Labs
+    endpoint: https://xrplcluster.com
     tag: XRPL Labs cluster (xrplcluster.com), community-operated XRPL Foundation nodes, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to the XRPL Labs cluster."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://xrp-rpc.publicnode.com
     tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to PublicNode's XRP Ledger endpoint."
     queries:

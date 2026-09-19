@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: merlin-official
     name: Merlin Official
+    endpoint: https://rpc.merlinchain.io
     tag: Merlin Chain official public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to rpc.merlinchain.io."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://merlin.drpc.org
     tag: dRPC decentralised multi-chain RPC, public Merlin Chain endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to merlin.drpc.org."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: blockpi
     name: BlockPI
+    endpoint: https://merlin.blockpi.network/v1/rpc/public
     tag: BlockPI public Merlin Chain RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to merlin.blockpi.network/v1/rpc/public."
     queries:

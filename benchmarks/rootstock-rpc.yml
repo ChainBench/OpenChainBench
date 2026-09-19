@@ -74,6 +74,7 @@ dimensions:
 providers:
   - slug: rootstock-official
     name: Rootstock Foundation
+    endpoint: https://public-node.rsk.co
     tag: RSKSwap public node operated by the Rootstock Foundation
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Rootstock Foundation's no-key Rootstock RPC endpoint."
     queries:
@@ -97,6 +98,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://rootstock.drpc.org
     tag: dRPC public gateway routing to Rootstock node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Rootstock RPC endpoint."
     queries:
@@ -120,6 +122,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://30.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Rootstock
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Rootstock RPC endpoint."
     queries:

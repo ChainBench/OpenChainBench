@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: fullnode
     name: Mysten Labs
+    endpoint: https://fullnode.mainnet.sui.io
     tag: Official Mysten Labs public Sui fullnode, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to the Mysten Labs fullnode."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://sui-rpc.publicnode.com
     tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to PublicNode's Sui endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: blockvision
     name: BlockVision
+    endpoint: https://sui-mainnet-endpoint.blockvision.org
     tag: High-throughput Sui mainnet RPC by BlockVision, public endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to BlockVision's Sui endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: suiet
     name: Suiet
+    endpoint: https://mainnet.suiet.app
     tag: Suiet wallet-operated public Sui RPC, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to Suiet's Sui endpoint."
     queries:
@@ -159,6 +163,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://sui.api.onfinality.io/public
     tag: Global multi-chain gateway, 70+ networks, rate-limited public tier, 5 req/sec
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to OnFinality's Sui endpoint."
     queries:

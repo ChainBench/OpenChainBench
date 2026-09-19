@@ -98,6 +98,7 @@ dimensions:
 providers:
   - slug: osmosis-official
     name: Osmosis Foundation
+    endpoint: https://rpc.osmosis.zone
     tag: Osmosis Foundation's official public Cosmos SDK RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Osmosis Foundation's official public RPC (`rpc.osmosis.zone`)."
     queries:
@@ -121,6 +122,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://osmosis-rpc.polkachu.com
     tag: Community Cosmos validator + public RPC network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Osmosis RPC endpoint."
     queries:
@@ -144,6 +146,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://osmosis-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, includes Cosmos
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Osmosis RPC endpoint."
     queries:
@@ -167,6 +170,7 @@ providers:
 
   - slug: imperator
     name: Imperator
+    endpoint: https://rpc-osmosis.imperator.co
     tag: Cosmos-native infra provider, IBC + Osmosis ecosystem focus
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Imperator's no-key Osmosis RPC endpoint."
     queries:
@@ -190,6 +194,7 @@ providers:
 
   - slug: lavenderfive
     name: LavenderFive
+    endpoint: https://rpc.lavenderfive.com:443/osmosis
     tag: Cosmos validator + no-key RPC path, multi-chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key Osmosis RPC endpoint."
     queries:

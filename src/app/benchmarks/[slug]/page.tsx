@@ -12,6 +12,7 @@ import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
+import { PublicEndpointsSection } from "@/components/public-endpoints-section";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -703,9 +704,9 @@ export default async function BenchmarkPage({
           className="mt-8 group card-soft px-5 py-1"
         >
           <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
-            <span className="label-mono text-ink">
+            <h2 className="label-mono text-ink">
               Methodology
-            </span>
+            </h2>
             <ChevronDown
               size={16}
               strokeWidth={2}
@@ -776,6 +777,11 @@ export default async function BenchmarkPage({
           ChainHeadingsSummary, so the dedicated per-chain pages need
           their own server-rendered discovery links here. */}
       {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
+
+      {/* Public endpoint URLs next to the numbers: the "<chain> rpc"
+          searcher wants the URL and the provider list first. Renders only
+          when providers declare a public no-key `endpoint` in the spec. */}
+      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
 
       {!isDraft && <CompareThisBench benchmark={benchmark} />}
 

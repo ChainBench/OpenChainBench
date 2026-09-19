@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: drpc
     name: dRPC
+    endpoint: https://starknet.drpc.org
     tag: Decentralized RPC mesh, consensus-checked responses, 29+ chains, 210M CU/mo free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single starknet_blockNumber POST sent every 60s from 3 regions to dRPC's no-key Starknet endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: lava
     name: Lava Network
+    endpoint: https://rpc.starknet.lava.build
     tag: Permissionless decentralized RPC mesh, no-signup public endpoint, multi-chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single starknet_blockNumber POST sent every 60s from 3 regions to Lava Network's no-key Starknet endpoint."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: nethermind
     name: Nethermind
+    endpoint: https://free-rpc.nethermind.io/mainnet-juno/
     tag: Nethermind-operated free public Starknet Soroban endpoint for builders, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single starknet_blockNumber POST sent every 60s from 3 regions to Nethermind's no-key Starknet endpoint."
     queries:
@@ -135,6 +138,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://starknet.api.onfinality.io/public
     tag: Global multi-chain gateway, 70+ networks, rate-limited public tier, 5 req/sec
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single starknet_blockNumber POST sent every 60s from 3 regions to OnFinality's no-key Starknet endpoint."
     queries:
@@ -158,6 +162,7 @@ providers:
 
   - slug: 1rpc
     name: 1RPC
+    endpoint: https://public.1rpc.io/starknet
     tag: Privacy-preserving RPC relay by Automata, strips request metadata, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single starknet_blockNumber POST sent every 60s from 3 regions to 1RPC's no-key Starknet endpoint."
     queries:

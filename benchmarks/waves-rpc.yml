@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: wavesnodes
     name: Waves Foundation
+    endpoint: https://nodes.wavesnodes.com
     tag: Waves Foundation official public nodes, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.wavesnodes.com."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: wx-network
     name: Waves.Exchange
+    endpoint: https://nodes.wx.network
     tag: Waves.Exchange public node (nodes.wx.network), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.wx.network."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: waves-exchange
     name: Waves Exchange Node
+    endpoint: https://nodes.waves.exchange
     tag: Waves Exchange public node (nodes.waves.exchange), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/last sent every 60s from 3 regions to nodes.waves.exchange."
     queries:

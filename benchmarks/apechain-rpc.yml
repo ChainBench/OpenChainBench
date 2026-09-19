@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: apechain-official
     name: ApeChain
+    endpoint: https://rpc.apechain.com/http
     tag: ApeChain official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to ApeChain's no-key apechain RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://apechain.drpc.org
     tag: dRPC public gateway routing to ApeChain node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key apechain RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://apechain.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for ApeChain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key apechain RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://gateway.tenderly.co/public/apechain
     tag: Tenderly public gateway for ApeChain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key apechain RPC endpoint."
     queries:

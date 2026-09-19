@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: nspcc
     name: NSPCC
+    endpoint: https://rpc10.n3.nspcc.ru:10331
     tag: NSPCC NEO N3 public mainnet RPC node, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to rpc10.n3.nspcc.ru:10331."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: ngd
     name: NGD
+    endpoint: https://n3seed1.ngd.network:10332
     tag: Neo Global Development seed node 1, public mainnet RPC, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to n3seed1.ngd.network:10332."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: ngd2
     name: NGD (2)
+    endpoint: https://n3seed2.ngd.network:10332
     tag: Neo Global Development seed node 2, public mainnet RPC, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to n3seed2.ngd.network:10332."
     queries:

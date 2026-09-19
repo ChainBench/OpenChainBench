@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: hemi-official
     name: Hemi Labs
+    endpoint: https://rpc.hemi.network/rpc
     tag: Hemi Labs official public RPC endpoint for Hemi mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hemi Labs's no-key hemi RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://hemi.drpc.org
     tag: dRPC public gateway routing to Hemi node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key hemi RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://43111.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Hemi
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key hemi RPC endpoint."
     queries:

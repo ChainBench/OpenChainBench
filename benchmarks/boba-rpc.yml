@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: boba-official
     name: Boba Foundation
+    endpoint: https://mainnet.boba.network
     tag: Boba Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Boba Foundation's no-key Boba Network endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://boba-eth.drpc.org
     tag: Decentralized RPC mesh
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Boba Network endpoint."
     queries:
