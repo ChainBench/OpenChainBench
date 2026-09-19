@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { readFileSync } from "node:fs";
 import { join, extname } from "node:path";
 import { getBenchmark } from "@/data/benchmarks";
@@ -754,7 +754,7 @@ async function renderRanking(
   // ImageResponse canvas regardless of how the title wraps.
   const chartHeight = dense ? 200 : 220;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
@@ -929,7 +929,7 @@ async function renderLeaderboard(
   const rowGap = veryDense ? 8 : dense ? 10 : 14;
   const logoSize = veryDense ? 22 : dense ? 24 : 28;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
@@ -1145,7 +1145,7 @@ async function renderSnapshot(
   };
   const maxLen = Math.max(...seriesList.map((s) => s.values.length), 1);
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
@@ -1345,7 +1345,7 @@ async function renderHeadline(
     : 0;
   const isFastest = rank === 1;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel}>
         <div
@@ -1472,7 +1472,7 @@ async function renderCompare(
   const delta = b.ms.p50 - a.ms.p50;
   const deltaPct = a.ms.p50 !== 0 ? (delta / a.ms.p50) * 100 : 0;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div

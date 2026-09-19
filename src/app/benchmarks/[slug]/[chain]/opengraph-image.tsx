@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getBenchmark } from "@/data/benchmarks";
 import { leader } from "@/lib/citation";
 import { OgClaimSentence } from "@/lib/og-claim";
@@ -24,7 +24,7 @@ export default async function OG({
   const { slug, chain } = await params;
   const b =
     (await loadBenchmark(slug, { chain })) ?? (await getBenchmark(slug));
-  if (!b) return new ImageResponse(<div />, { ...size });
+  if (!b) return ogResponse(<div />, { ...size });
 
   const chainEntry = b.dimensions?.chain?.find((c) =>
     matchesChainSlug(c.value, chain),
@@ -37,7 +37,7 @@ export default async function OG({
   const catColor = CATEGORY_COLOR[b.category] ?? "#7a2e1f";
   const titleText = `${b.title} on ${chainLabel}`;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

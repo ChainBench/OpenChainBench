@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { CHAIN_BY_SLUG, getBenchmarksForChain } from "@/lib/chains";
 
 export const runtime = "nodejs";
@@ -24,7 +24,7 @@ export default async function OG({
 }) {
   const { slug } = await params;
   const chain = CHAIN_BY_SLUG.get(slug);
-  if (!chain) return new ImageResponse(<div />, { ...size });
+  if (!chain) return ogResponse(<div />, { ...size });
 
   const benches = await getBenchmarksForChain(slug);
   const count = benches.length;
@@ -32,7 +32,7 @@ export default async function OG({
   const categoryLine = chain.category === "L1" ? "Layer 1" : "Layer 2";
   const accent = "#6a9466";
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

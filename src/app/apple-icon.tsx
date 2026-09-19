@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -14,7 +14,7 @@ export default function AppleIcon() {
   const logoBuffer = readFileSync(join(process.cwd(), "public", "logo.png"));
   const logoDataUrl = `data:image/png;base64,${logoBuffer.toString("base64")}`;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{
