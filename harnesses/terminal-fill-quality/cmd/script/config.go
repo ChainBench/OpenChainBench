@@ -34,8 +34,12 @@ type Terminal struct {
 	// through the OKX router: commission leg plus one or two transferChecked
 	// legs, about 50 bps in total). Such legs, outside any pool
 	// instruction and under 2 % of the trade, count as terminal fee.
-	StableLegsAreFee bool   `json:"stable_legs_are_fee,omitempty"`
-	Note             string `json:"note,omitempty"`
+	StableLegsAreFee bool `json:"stable_legs_are_fee,omitempty"`
+	// SolLegIsFee: the terminal's fee on buys is one SOL transfer of about
+	// 1 % of the trade to a per-user or per-referrer account (Banana Gun:
+	// sells pay the listed wallet, buys pay such an account).
+	SolLegIsFee bool   `json:"sol_leg_is_fee,omitempty"`
+	Note        string `json:"note,omitempty"`
 }
 
 func (t Terminal) scanAddresses() []string {
@@ -100,7 +104,8 @@ var terminals = []Terminal{
 	// DeFiLlama's fees adapter, the ones with live traffic on 2026-09-18.
 	{Slug: "bonkbot", Name: "BONKbot", Kind: "bot", Wallets: []string{"ZG98FUCjb8mJ824Gbs6RsgVmr1FhXb2oNiJHa2dwmPd"}},
 	{Slug: "banana-gun", Name: "Banana Gun", Kind: "bot", Wallets: []string{"47hEzz83VFR23rLTEeVm9A7eFzjJwjvdupPPmX3cePqF"},
-		Programs: []string{"BANANAjs7FJiPQqJTGFzkZJndT9o7UmKiYYGaJz6frGu"}}, // its Solana router (DeFiLlama's dexs adapter attributes on it)
+		Programs:    []string{"BANANAjs7FJiPQqJTGFzkZJndT9o7UmKiYYGaJz6frGu"}, // its Solana router (DeFiLlama's dexs adapter attributes on it)
+		SolLegIsFee: true, Note: "Banana Gun's sells pay its fee wallet; its buys pay 1 % of the swap as a SOL transfer to a per-user or per-referrer account, which no list holds: on a buy the one SOL leg of 0.8 to 1.2 % of the trade to an account outside every pool and tip set is the fee."},
 	// Phantom's in-wallet swapper: 0.85 % of the quote to its fee wallet
 	// (SOL, or WSOL into that wallet's token account 6Wzuv7…, the account
 	// the transaction mentions), through Jupiter or its own router

@@ -1,6 +1,7 @@
 /**
  * Reader for the terminal-fill-quality harness output (bench 268): what a
- * swap costs the user on each Solana trading terminal / Telegram bot,
+ * swap costs the user on each trading terminal, wallet app or Telegram bot
+ * (Solana and the EVM chains they trade on),
  * from sampled user transactions read on-chain and valued at the pool's
  * own state before the trade (reserves, or the previous trade on it).
  *

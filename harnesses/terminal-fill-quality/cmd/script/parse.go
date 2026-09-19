@@ -773,6 +773,26 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 	}
 
+	// Banana Gun's buy fee: one SOL leg of about 1 % of the trade to an
+	// account no list holds (per user or per referrer); the sell fee goes
+	// to the listed wallet. The leg closest to 1 % moves from other to fee.
+	if t.SolLegIsFee && side == "buy" && userQ != 0 && terminalQ == 0 {
+		bestK, bestD := "", 1.0
+		for k, v := range others {
+			if pumpFeeRecipients[k] {
+				continue
+			}
+			share := v / math.Abs(userQ)
+			if d := math.Abs(share - 0.01); share >= 0.008 && share <= 0.012 && d < bestD {
+				bestK, bestD = k, d
+			}
+		}
+		if bestK != "" {
+			terminalQ += others[bestK]
+			delete(others, bestK)
+		}
+	}
+
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,

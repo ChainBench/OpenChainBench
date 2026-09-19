@@ -38,7 +38,8 @@ abstract: |
   (fail rate) and reads 400 successful ones per terminal per day, drawn at
   random. From the pre/post balances of every account in the transaction it
   derives, in quote units (SOL or a $1 stable), what left the user, what the
-  pool received, what reached the terminal's fee wallets, the tx fee and the
+  pool received, what reached the terminal's fee wallets (on the EVM rows: the
+  router's residual after the pool and the gas), the tx fee and the
   inclusion tips, and the rest (pump.fun protocol and creator fees, referral
   payouts). The pool is the vault pair of the swap instruction, by pubkey, so
   a hop through another pool of the same program is never mistaken for pool
@@ -69,19 +70,19 @@ methodology:
   - "Cross-chain (FOMO, BasedBot): the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana. Relay's public requests feed identifies the app's requests (fee address or referrer) with what the user sent in USD, the fees, both hashes and the status. Value received = what the settlement delivered on Solana: USDC / SOL exactly (FOMO funds the wallet this way; the token buy that follows is a native swap in the FOMO row) or a token at the pool's state before the swap."
   - "Cross-chain split: terminal = the app fee the user paid; network = the origin gas (receipt on the chain's public RPC); relay = Relay's fees and spread (deposit minus received minus app fee); pool only when a token was delivered. Requests paid with a token on the origin chain are shown but not counted (their value in is Relay's own valuation). Refunds and failures count in the fail rate. Perps are not measured; swaps under $2 are dropped."
   - "Trading on another chain (FOMO on Robinhood Chain, BNB, Base, Ethereum, Arc): the user pays in SOL, a Relay solver buys the token there. Value given = the SOL sent (tx fee inside); value received = the tokens delivered at the pool's state before the settlement swap: v2 forks from the Sync reserves minus the swap, v3 forks and Uniswap v4 from the price left by the previous swap on the pool, all from the pool's own logs on public RPCs."
-  - "Which side of an EVM pool is the token is settled by matching the swap event's amounts with the receipt's transfers, never by reading the pool's token order. Split: terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee; network = the Solana tx fee. Sales the other way (a token sold on that chain, USDC or SOL delivered on Solana) sit in the same per-chain row, priced at the origin pool's state before the sale."
+  - "Which side of an EVM pool is the token is settled by matching the swap event's amounts with the receipt's transfers, never by reading the pool's token order. Split: terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee; network = the Solana tx fee when the user pays it (0 when the app's sponsor signs). Sales the other way (a token sold on that chain, USDC or SOL delivered on Solana) sit in the same per-chain row, priced at the origin pool's state before the sale."
   - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; its fee is a router commission plus user-signed USDC legs, all counted as terminal fee. pump.fun's app takes no fee; the fixed 0.001 SOL it forwards per swap is counted as network."
   - "Native EVM (GMGN and Axiom on BNB and Robinhood Chain, Banana Gun): their router contracts emit an event on every swap; eth_getLogs on those routers lists every successful swap they routed; the fail rate comes from a sample of blocks read in full (every tx sent to the routers, reverted or not). Value given = what the user sent plus gas; received = the tokens at the pool's state before the swap; the fee is paid inside the router as a native transfer: the residual after pool and gas."
   - "Cohort discovery: the fee wallets and routers are learned from the chain, the lists being the seed. On a platform's transactions (Mobula's attribution as the sample, every 6 h), a recipient taking a fixed share of the trade across many payers is its fee wallet, adopted from 30 swaps of 20 payers with a stable 20 to 300 bps share; on EVM the transactions' destination is its router. The window's swaps also give the fee-like recipients no terminal lists yet (JSON, 'discovery')."
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains, no event of its own, so its swaps are the transactions sent to it in the blocks read in full; valued and split like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: no fee visible on-chain, terminal 0."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
   - "Kept out of that residual: a fee the pool's own hook keeps (Uniswap v4 launchpad pools on Robinhood Chain, 1 %, and BNB, 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the rate the route itself swapped the gas coin at, not at an exchange's print; Axiom's inclusion tip on every transaction (a fixed 0.0025 BNB; on Robinhood Chain the user's own setting, read from the call trace) is network cost, like the Solana terminals' own tip relays."
-  - "Not in the table: BullX (trading suspended since June 2026, its fee wallets only see marker transfers), Nova (no live wallet). Listed unranked, bridge legs only: BasedBot (its Relay requests are wallet funding, SOL from Solana to ETH or BNB in the user's wallet on Robinhood Chain, BNB, Base or Ethereum, no app fee: a funding leg in the JSON; its trades run in its own contracts there, unidentified so far). Not read yet: GMGN's Ethereum, Base and Tron routers, HyperEVM (gas coin unpriced)."
+  - "Not in the table: BullX (trading suspended since June 2026, its fee wallets only see marker transfers), Nova (no live fee wallet). BasedBot: its Relay requests fund its users' wallets (SOL from Solana to the gas coin, no app fee: a funding leg in the JSON), and those wallets' swaps on Robinhood Chain's shared router are its row (about 1 % to the router's fee and referral accounts); its BNB, Base and Ethereum trades are not read yet, nor GMGN's Ethereum, Base and Tron routers, nor HyperEVM."
 
 findings:
   - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's state before the trade, all costs included."
-  - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 200 bps on curve and PumpSwap trades whichever terminal routes them."
-  - "Network cost separates the Telegram bots: Bloom, Trojan and Maestro attach tips through Jito or their own relays worth tens of basis points on a median swap, Axiom and GMGN a few."
+  - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 140 bps on curve and PumpSwap trades whichever terminal routes them."
+  - "Network cost separates the Telegram bots: Maestro's tips through its own relay approach a percent of a median swap, Bloom, Trojan and Photon sit in the tens of basis points, Axiom and Phantom at a few."
   - "Failed swaps are a hidden cost: on the busiest terminals several percent of swap attempts fail on-chain and still pay the priority fee (unless the app sponsors gas, as FOMO does)."
 
 faq:
@@ -112,7 +113,7 @@ metric_panels:
     metric: tfq_component_bps{component="terminal",chain="all"}
     unit: bp
     higher_is_better: false
-    description: "Median share of the trade that reached the terminal's fee wallets."
+    description: "Median share of the trade the terminal took: what reached its fee wallets on Solana, the router's residual after the pool and the gas on the EVM rows, the app fee on Relay legs."
   - id: network
     label: Network
     label_key: terminal
@@ -338,24 +339,23 @@ providers:
       series: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median"}
 
   # Product slug is "binance" (one product page for the exchange's RPC and
-  # its wallet); the harness label stays terminal="binance-wallet".
+  # its wallet); the harness label stays terminal="binance".
   - slug: binance
     name: Binance
     tag: "Binance Wallet swap, BNB + Ethereum + Base"
     formula: "Transactions sent to Binance Wallet's swap router (one address on BNB, Ethereum and Base) in a sample of blocks read in full, valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h."
     queries:
-      p50: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="median"}
-      p90: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="p90"}
-      p99: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="p99"}
-      success: tfq_health{terminal="binance-wallet",chain="all"}
-      sample_size: tfq_sample_size{terminal="binance-wallet",chain="all",kind="priced"}
-      series: tfq_loss_bps{terminal="binance-wallet",chain="all",stat="median"}
+      p50: tfq_loss_bps{terminal="binance",chain="all",stat="median"}
+      p90: tfq_loss_bps{terminal="binance",chain="all",stat="p90"}
+      p99: tfq_loss_bps{terminal="binance",chain="all",stat="p99"}
+      success: tfq_health{terminal="binance",chain="all"}
+      sample_size: tfq_sample_size{terminal="binance",chain="all",kind="priced"}
+      series: tfq_loss_bps{terminal="binance",chain="all",stat="median"}
 
   - slug: basedbot
     name: BasedBot
-    tag: "Telegram bot, Robinhood Chain and BNB through Relay"
-    unranked: "Bridge legs only"
-    formula: "BasedBot's Relay requests are wallet funding (SOL from Solana, the gas coin into the user's wallet on Robinhood Chain or BNB, no app fee): a funding leg in the JSON, out of the table; its trades run in its own contracts, not yet identified."
+    tag: "Telegram bot, Robinhood Chain (wallets funded from Solana through Relay)"
+    formula: "Swaps of the wallets BasedBot funded from Solana through Relay, on Robinhood Chain's router, valued at the pool's state before the swap; the router's fee and referral transfers (about 1 %) are the fee. Median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="basedbot",chain="all",stat="median"}
       p90: tfq_loss_bps{terminal="basedbot",chain="all",stat="p90"}
