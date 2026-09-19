@@ -4,8 +4,8 @@ slug: bridge-execution-latency
 number: "261"
 title: "Fastest on-chain bridge execution: real settlement latency, Mobula vs Relay vs LI.FI"
 seo_title: "Fastest bridge execution 2026: real on-chain settlement latency and success rate"
-seo_description: "Live on-chain bridge execution, not quotes: real block-to-block settlement latency, success rate and realized fees for Mobula, Relay and LI.FI on a self-conserving USDC triangle across Solana, Base and Arbitrum."
-subtitle: Real on-chain settlement latency (source block to destination block), success rate and realized fees for executed bridge transactions on a self-conserving USDC triangle (Solana, Base, Arbitrum), at $3 and $30, measured from EU-West.
+seo_description: "Live on-chain bridge execution, not quotes: real millisecond settlement latency, success rate and realized fees for Mobula, Relay and LI.FI on a self-conserving USDC triangle across Solana, Base and Arbitrum."
+subtitle: Real on-chain settlement latency (deposit included to credit observed, ms), success rate and realized fees for executed bridge transactions on a self-conserving USDC triangle (Solana, Base, Arbitrum), at $3 and $30, measured from EU-West.
 category: Bridges
 status: live
 metric: Execution latency
@@ -33,7 +33,7 @@ seo_intro: |
   broadcast to the moment the funds actually land on the destination chain.
   Quotes are a promise; settlement is the truth, and the gap between them is
   where slippage, failed fills and refunds live. This benchmark reports the
-  real block-to-block settlement latency, the success rate (fills versus
+  real millisecond settlement latency, the success rate (fills versus
   reverts and refunds) and the realized fee (amount sent minus amount
   received) for two ticket sizes, $3 and $30, per corridor, measured from
   EU-West. Inventory is conserved across the cycle, so only fees burn.
@@ -42,7 +42,7 @@ abstract: |
   We execute real cross-chain transfers on a conserving USDC triangle
   (Solana to Base, Base to Arbitrum, Arbitrum to Solana) through Mobula,
   Relay and LI.FI, at $3 and $30. For each executed transaction we record
-  the on-chain execution latency (source block to destination block), the
+  the on-chain execution latency (deposit included to credit observed, ms), the
   end-to-end latency (quote to funds received), the realized fee, and
   whether it settled, reverted or was refunded. p50, p90 and p99 latency are
   derived over a rolling 24-hour window; success rate is fills over fills
@@ -52,8 +52,8 @@ abstract: |
 methodology:
   - "Route: a self-conserving all-USDC triangle. Solana USDC to Base USDC, Base USDC to Arbitrum USDC, Arbitrum USDC to Solana USDC. Each executing bridge completes the full triangle before the next starts, so inventory returns to its origin and only fees burn."
   - "Ticket sizes: $3 daily and $30 twice weekly, on fixed UTC schedules. Amounts are deliberately small: this measures settlement reliability, not large-ticket cost."
-  - "Latency: settlement latency is read on-chain, destination block timestamp minus source block timestamp (our deposit's block and the provider's fill block: Mobula toTxHash, Relay txHashes, LI.FI receiving.txHash, 1Click destinationChainTxHashes). Whole-second block resolution, independent of our poll cadence. p50, p90 and p99 are quantile_over_time over the exact per-execution values of the last 24h. End-to-end latency adds the quote round-trip."
-  - "Latency history: until 2026-09-19 the figure was the wall clock to a 5-second status poll, which floored every fill at 5.x s; that series stays published as bridge_exec_observed_ms for comparison. A settled execution whose destination hash is missing falls back to the wall clock and is counted in bridge_execution_latency_fallback_total."
+  - "Latency: settlement latency is measured by the harness at both ends on one clock, every 100 ms on keyed RPCs: the recipient's balance is watched from before the deposit is broadcast (first read above the pre-execution balance = credit observed), and the deposit's inclusion is watched from the broadcast (receipt on Base/Arbitrum, signature status on Solana = source included). Published figure = credit observed minus source included, in milliseconds; detection lag is at most 100 ms plus one RPC round-trip on each end."
+  - "Cross-check and history: the destination block timestamp minus the source block timestamp is published alongside as bridge_exec_onchain_ms (whole seconds, and the two chains' clocks can disagree by a block). Until 2026-09-19 the figure was the wall clock to a 5-second status poll, which floored every fill at 5.x s; that series stays as bridge_exec_observed_ms, and the polluted history was deleted from Prometheus. A settled execution the watch missed falls back to the block delta, then to the wall clock, counted in bridge_execution_latency_fallback_total."
   - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts and refunds count against the success rate."
   - "Region: EU-West only at present. The execution node runs a single wallet, so a second origin would race the same inventory; additional origins are not planned for the execution loop."
   - "Cohort: Mobula, Relay, LI.FI and Near Intents (Near Intents runs its own conserving USDC triangle via the 1Click flow). deBridge is quote-only in this loop. Providers without a symmetric route on all three legs are excluded so the triangle conserves."
@@ -110,7 +110,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
-    formula: "p50 over 24h of on-chain execution latency (source block to destination block, ms) for real USDC-triangle transfers executed through Mobula from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Mobula from EU-West, at the selected ticket size and corridor."
     queries:
       p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="mobula", region="eu-west"})
       p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="mobula", region="eu-west"})
@@ -123,7 +123,7 @@ providers:
   - slug: relay
     name: Relay
     tag: Cross-chain relay
-    formula: "p50 over 24h of on-chain execution latency (source block to destination block, ms) for real USDC-triangle transfers executed through Relay from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Relay from EU-West, at the selected ticket size and corridor."
     queries:
       p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="relay", region="eu-west"})
       p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="relay", region="eu-west"})
@@ -136,7 +136,7 @@ providers:
   - slug: lifi
     name: LI.FI
     tag: Aggregator
-    formula: "p50 over 24h of on-chain execution latency (source block to destination block, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, at the selected ticket size and corridor."
     queries:
       p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="lifi", region="eu-west"})
       p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="lifi", region="eu-west"})
@@ -149,7 +149,7 @@ providers:
   - slug: near-intents
     name: Near Intents
     tag: Intent layer (NEAR)
-    formula: "p50 over 24h of exact on-chain execution latency (source block to destination block, ms) for real USDC-triangle transfers executed through the Near Intents 1Click flow from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over 24h of exact on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through the Near Intents 1Click flow from EU-West, at the selected ticket size and corridor."
     queries:
       p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="near-intents", region="eu-west"})
       p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="near-intents", region="eu-west"})
