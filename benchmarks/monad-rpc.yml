@@ -4,7 +4,7 @@ slug: monad-rpc
 number: "071"
 title: Fastest free Monad RPC, live no-key endpoint latency
 seo_title: "Fastest free Monad RPC 2026"
-seo_description: "{{best_name}} leads free Monad RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Monad RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Monad RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -33,9 +33,7 @@ abstract: |
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Monad-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"monad\" (chain id 143, mainnet since November 2025). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:

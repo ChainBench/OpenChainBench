@@ -87,12 +87,16 @@ async function main() {
     // Chain RPC pages only ("<chain>-rpc"): rpc-reliability's quorum rule
     // legitimately says "two providers".
     if (spec.slug.endsWith("-rpc") && spec.slug !== "mev-protect-rpc") {
-      const typedCount = /\b(\d+|two|three|four|five|six|seven|eight|nine|ten)[- ](provider|gateway|endpoint)s?\b/i;
+      // Up to three words may sit between the number and the noun ("5
+      // multi-chain no-key gateways", "three qualifying gateways").
+      const typedCount =
+        /(?<![\d.-])\b(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten)(?:[- ](?!(?:seconds?|minutes?|hours?|ms|blocks?|slots?|chains?|behind|per|each|against|of|from|to|in|on|with|by|for)\b)[a-z-]+){0,3}[- ](provider|gateway|endpoint)s?\b/i;
       const fields: [string, string | undefined][] = [
         ["seo_description", spec.seo_description],
         ["subtitle", spec.subtitle],
         ["seo_intro", spec.seo_intro],
         ["abstract", spec.abstract],
+        ...(spec.methodology ?? []).map((m, i) => [`methodology[${i}]`, m] as [string, string]),
         ...(spec.faq ?? []).map((q, i) => [`faq[${i}].a`, q.a] as [string, string]),
       ];
       for (const [name, text] of fields) {
