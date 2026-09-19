@@ -37,8 +37,11 @@ type ExecutionResult struct {
 	Route              TestRoute
 	AmountUSD          float64
 	QuoteLatencyMs     int64
-	ExecutionLatencyMs int64 // Time from broadcast to funds received
-	E2ELatencyMs       int64 // Time from quote start to funds received
+	ExecutionLatencyMs int64 // Settlement latency: destination block timestamp minus source block timestamp (on-chain); wall clock when a hash is missing
+	ObservedLatencyMs  int64 // Wall clock from broadcast to the poll that saw the terminal status (the pre-2026-09-19 figure), kept for the audit trail
+	DestTxHash         string
+	LatencyMethod      string // "onchain" | "poll"
+	E2ELatencyMs       int64  // Time from quote start to funds received
 	Success            bool
 	Reverted           bool
 	Refunded           bool // subset of Reverted: provider returned capital (status "refunded")
@@ -636,6 +639,7 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
+		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" {
 		result.Reverted = true
 		result.Refunded = true
@@ -774,6 +778,7 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
+		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" {
 		result.Reverted = true
 		result.Refunded = true
@@ -906,6 +911,7 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
+		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" || status.Status == "failed" {
 		result.Reverted = true
 		result.Refunded = status.Status == "refunded"
@@ -942,6 +948,12 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	// observed value via quantile_over_time instead of a coarse bucket midpoint.
 	if result.Success && result.ExecutionLatencyMs > 0 {
 		bridgeExecLatencyMs.WithLabelValues(labels...).Set(float64(result.ExecutionLatencyMs))
+		if result.ObservedLatencyMs > 0 {
+			bridgeExecObservedMs.WithLabelValues(labels...).Set(float64(result.ObservedLatencyMs))
+		}
+		if result.LatencyMethod != "onchain" {
+			bridgeExecLatencyFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region).Inc()
+		}
 	}
 
 	// Record success/revert + consecutive-failure streak (used for paging alerts).

@@ -522,6 +522,9 @@ func (tx *TxExecutor) getLiFiStatus(txHash, fromChain, toChain string) (*BridgeS
 		Sending struct {
 			TxHash string `json:"txHash"`
 		} `json:"sending"`
+		Receiving struct {
+			TxHash string `json:"txHash"`
+		} `json:"receiving"`
 		Received struct {
 			TxHash string `json:"txHash"`
 		} `json:"received"`
@@ -529,11 +532,15 @@ func (tx *TxExecutor) getLiFiStatus(txHash, fromChain, toChain string) (*BridgeS
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
+	toTx := result.Receiving.TxHash
+	if toTx == "" {
+		toTx = result.Received.TxHash
+	}
 
 	return &BridgeStatus{
 		Status:   result.Status,
 		TxHash:   result.Sending.TxHash,
-		ToTxHash: result.Received.TxHash,
+		ToTxHash: toTx,
 	}, nil
 }
 
@@ -584,17 +591,30 @@ func (tx *TxExecutor) getRelayStatus(requestID string) (*BridgeStatus, error) {
 		return nil, fmt.Errorf("status API error %d: %s", resp.StatusCode, string(body))
 	}
 
+	// v3: inTxHashes are the deposit(s) on the origin chain, txHashes the
+	// fill(s) on the destination chain.
 	var result struct {
-		Status string `json:"status"`
-		TxHash string `json:"txHash"`
+		Status     string   `json:"status"`
+		TxHash     string   `json:"txHash"`
+		InTxHashes []string `json:"inTxHashes"`
+		TxHashes   []string `json:"txHashes"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
+	toTx := ""
+	if len(result.TxHashes) > 0 {
+		toTx = result.TxHashes[0]
+	}
+	srcTx := result.TxHash
+	if srcTx == "" && len(result.InTxHashes) > 0 {
+		srcTx = result.InTxHashes[0]
+	}
 
 	return &BridgeStatus{
-		Status: result.Status,
-		TxHash: result.TxHash,
+		Status:   result.Status,
+		TxHash:   srcTx,
+		ToTxHash: toTx,
 	}, nil
 }
 

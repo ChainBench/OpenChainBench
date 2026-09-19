@@ -114,8 +114,20 @@ var (
 	// numbers are exact instead of bucketed.
 	bridgeExecLatencyMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_exec_latency_ms",
-		Help: "Exact execution latency (broadcast to funds received) in ms, last value per corridor",
+		Help: "Settlement latency in ms, last value per corridor: destination block timestamp minus source block timestamp (on-chain); the poll wall clock only when a hash is missing (see bridge_execution_latency_fallback_total)",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// The pre-2026-09-19 figure (broadcast to the poll that saw the fill),
+	// kept next to the on-chain one so the two can be compared.
+	bridgeExecObservedMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_observed_ms",
+		Help: "Wall clock from broadcast to the status poll that first reported the fill, in ms (poll cadence 5 s; not the settlement latency)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	bridgeExecLatencyFallback = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_execution_latency_fallback_total",
+		Help: "Settled executions whose latency had to use the poll wall clock (no destination hash or block time unavailable)",
+	}, []string{"bridge", "from_chain", "to_chain", "region"})
 
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{
