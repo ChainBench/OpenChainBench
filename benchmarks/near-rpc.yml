@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: near-org
     name: NEAR Foundation
+    endpoint: https://rpc.mainnet.near.org
     tag: Official NEAR Foundation public mainnet RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to rpc.mainnet.near.org."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: fastnear
     name: FastNEAR
+    endpoint: https://free.rpc.fastnear.com
     tag: FastNEAR community RPC, free tier, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to free.rpc.fastnear.com."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: lava
     name: Lava
+    endpoint: https://near.lava.build
     tag: Lava Network decentralised RPC, public NEAR endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to near.lava.build."
     queries:
@@ -135,6 +138,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://near.drpc.org
     tag: dRPC decentralised multi-chain RPC, public NEAR endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to near.drpc.org."
     queries:

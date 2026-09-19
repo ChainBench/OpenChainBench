@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://pulsechain-rpc.publicnode.com
     tag: PublicNode multi-chain gateway for PulseChain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PublicNode's no-key PulseChain endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: pulsechain-official
     name: PulseChain Foundation
+    endpoint: https://rpc.pulsechain.com
     tag: PulseChain official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PulseChain Foundation's no-key endpoint."
     queries:
@@ -110,6 +112,7 @@ providers:
 
   - slug: g4mm4
     name: G4MM4
+    endpoint: https://rpc-pulsechain.g4mm4.io
     tag: G4MM4 community public RPC for PulseChain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to G4MM4's no-key PulseChain endpoint."
     queries:

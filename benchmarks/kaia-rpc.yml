@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: kaia-official
     name: Kaia Foundation
+    endpoint: https://public-en.node.kaia.io
     tag: Kaia Foundation's official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Kaia Foundation's no-key kaia RPC endpoint."
     queries:

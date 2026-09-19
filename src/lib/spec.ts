@@ -112,7 +112,14 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   // endpoints, editorial exclusions) until the worker next sweeps. Without
   // this filter those phantom rows persist in rankings indefinitely.
   const specSlugs = new Set(providerByCanonSlug.keys());
-  const prunedResults = reconciledResults.filter((r) => specSlugs.has(r.slug));
+  const prunedResults = reconciledResults
+    .filter((r) => specSlugs.has(r.slug))
+    // Editorial per-provider fields ride on the live YAML, like the page
+    // copy above, so a new `endpoint` shows without a worker sweep.
+    .map((r) => {
+      const sp = providerByCanonSlug.get(r.slug);
+      return sp?.endpoint ? { ...r, endpoint: sp.endpoint } : r;
+    });
 
   const overlaid: Benchmark = {
     ...stored,

@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://sentinel-rpc.polkachu.com
     tag: Polkachu public Sentinel DVPN RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to sentinel-rpc.polkachu.com."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://sentinel-rpc.publicnode.com
     tag: PublicNode public Sentinel DVPN RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to sentinel-rpc.publicnode.com."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: cosmos-directory
     name: Cosmos Directory
+    endpoint: https://rpc.cosmos.directory/sentinel
     tag: Cosmos Directory public Sentinel DVPN RPC proxy, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.cosmos.directory/sentinel."
     queries:

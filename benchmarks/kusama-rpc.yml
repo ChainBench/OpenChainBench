@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://kusama-rpc.publicnode.com
     tag: Allnodes-operated multi-chain gateway including Substrate
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to PublicNode's no-key Kusama endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://kusama.api.onfinality.io/public
     tag: Substrate-native public gateway, Web3 Foundation grantee
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to OnFinality's no-key Kusama endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://kusama.drpc.org
     tag: dRPC public gateway for Kusama relay chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to dRPC's no-key Kusama endpoint."
     queries:

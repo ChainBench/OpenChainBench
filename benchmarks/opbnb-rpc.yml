@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: opbnb-official
     name: BNB Chain Team
+    endpoint: https://opbnb-mainnet-rpc.bnbchain.org
     tag: BNB Chain team's official public opBNB RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BNB Chain Team's no-key opbnb RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://opbnb-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, includes opBNB
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key opbnb RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://opbnb.drpc.org
     tag: Multi-provider RPC load balancer, edge-close routing
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key opbnb RPC endpoint."
     queries:

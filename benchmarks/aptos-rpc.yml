@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: aptoslabs
     name: Aptos Labs
+    endpoint: https://api.mainnet.aptoslabs.com/v1/
     tag: Official Aptos Labs public mainnet node, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to the Aptos Labs official endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: aptos-fullnode
     name: Aptos Labs (Fullnode)
+    endpoint: https://fullnode.mainnet.aptoslabs.com/v1/
     tag: Aptos Labs fullnode endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to the Aptos Labs fullnode endpoint."
     queries:

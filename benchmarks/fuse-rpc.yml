@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: fuse-official
     name: Fuse Foundation
+    endpoint: https://rpc.fuse.io
     tag: Fuse Foundation official public RPC for Fuse Network mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Fuse Foundation's no-key Fuse Network RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://fuse.drpc.org
     tag: dRPC public gateway routing to Fuse Network node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Fuse Network RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://122.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Fuse Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Fuse Network RPC endpoint."
     queries:

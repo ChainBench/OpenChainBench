@@ -59,6 +59,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://bitcoin-rpc.publicnode.com
     tag: Allnodes-operated, no-key Bitcoin Core JSON-RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Bitcoin endpoint."
     queries:
@@ -82,6 +83,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://bitcoin.drpc.org
     tag: Decentralised RPC mesh, no-key Bitcoin endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Bitcoin endpoint."
     queries:
@@ -105,6 +107,7 @@ providers:
 
   - slug: nownodes
     name: NOWNodes
+    endpoint: https://public-btc.nownodes.io
     tag: Public node, 110+ chains, 5 RPS free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getblockcount` sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes's no-key Bitcoin endpoint."
     queries:

@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: injective-official
     name: Injective Foundation
+    endpoint: https://tm.injective.network
     tag: Injective Foundation's official public Tendermint RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Injective Foundation's no-key injective RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://injective-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, includes Cosmos SDK
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key injective RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://injective-rpc.polkachu.com
     tag: Community Cosmos validator + public RPC network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key injective RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: lavenderfive
     name: LavenderFive
+    endpoint: https://rpc.lavenderfive.com:443/injective
     tag: Cosmos validator + no-key RPC path, multi-chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key injective RPC endpoint."
     queries:

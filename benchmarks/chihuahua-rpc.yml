@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: chihuahua-official
     name: Chihuahua
+    endpoint: https://rpc.chihuahua.wtf
     tag: Chihuahua official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.chihuahua.wtf."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://chihuahua-rpc.polkachu.com
     tag: Polkachu public Chihuahua RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to chihuahua-rpc.polkachu.com."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: validatus
     name: Validatus
+    endpoint: https://rpc.chihuahua.validatus.com
     tag: Validatus public Chihuahua RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.chihuahua.validatus.com."
     queries:

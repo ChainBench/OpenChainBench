@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: core-official
     name: Core DAO
+    endpoint: https://rpc.coredao.org
     tag: Core DAO official public RPC for Core Chain mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Core DAO's no-key Core Chain RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://core.drpc.org
     tag: dRPC public gateway routing to Core Chain node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Core Chain RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://1116.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Core Chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Core Chain RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/core
     tag: Ankr decentralized node provider for Core Chain mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Core Chain RPC endpoint."
     queries:

@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: interlay-official
     name: Interlay
+    endpoint: https://api.interlay.io/parachain
     tag: Interlay official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to api.interlay.io/parachain."
     queries:

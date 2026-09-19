@@ -74,6 +74,7 @@ dimensions:
 providers:
   - slug: tatum
     name: Tatum
+    endpoint: https://litecoin-mainnet.gateway.tatum.io
     tag: Tatum public Litecoin RPC gateway, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to litecoin-mainnet.gateway.tatum.io."
     queries:
@@ -97,6 +98,7 @@ providers:
 
   - slug: blockcypher
     name: BlockCypher
+    endpoint: https://api.blockcypher.com/v1/ltc/main
     tag: BlockCypher public Litecoin REST API, no API key required for basic queries
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockcypher.com/v1/ltc/main."
     queries:
@@ -120,6 +122,7 @@ providers:
 
   - slug: litecoinspace
     name: LitecoinSpace
+    endpoint: https://litecoinspace.org/api/blocks/tip/height
     tag: LitecoinSpace Esplora public API, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to litecoinspace.org/api/blocks/tip/height."
     queries:

@@ -77,6 +77,7 @@ dimensions:
 providers:
   - slug: monad-official
     name: Monad
+    endpoint: https://rpc.monad.xyz
     tag: Foundation endpoint (rpc.monad.xyz, QuickNode-backed, 25 rps)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Monad Official's no-key Monad endpoint."
     queries:
@@ -100,6 +101,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://monad-mainnet.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Monad endpoint."
     queries:
@@ -123,6 +125,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://monad.gateway.tenderly.co
     tag: Public gateway by Tenderly
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key Monad endpoint."
     queries:
@@ -146,6 +149,7 @@ providers:
 
   - slug: bloxroute
     name: bloXroute
+    endpoint: https://monad.rpc.blxrbdn.com
     tag: BDN operator's public Monad endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to bloXroute's no-key Monad endpoint."
     queries:
@@ -169,6 +173,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://monad-mainnet.api.onfinality.io/public
     tag: Public endpoint, 80+ networks
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's no-key Monad endpoint."
     queries:

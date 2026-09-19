@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: viction-official
     name: Viction Official
+    endpoint: https://rpc.viction.xyz
     tag: Viction official public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to rpc.viction.xyz."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: viction-rpc2
     name: Viction RPC2
+    endpoint: https://rpc2.viction.xyz
     tag: Viction secondary public RPC (rpc2.viction.xyz), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to rpc2.viction.xyz."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://viction.drpc.org
     tag: dRPC decentralised multi-chain RPC, public Viction endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to viction.drpc.org."
     queries:

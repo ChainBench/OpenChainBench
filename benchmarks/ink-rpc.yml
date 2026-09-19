@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: ink-official
     name: Gelato
+    endpoint: https://rpc-gel.inkonchain.com
     tag: Kraken's Ink Chain official public RPC, Gelato-backed
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Gelato's no-key ink RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: ink-quicknode
     name: QuickNode
+    endpoint: https://rpc-qnd.inkonchain.com
     tag: Kraken's Ink Chain second official public RPC, QuickNode-backed
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to QuickNode's no-key ink RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://ink.drpc.org
     tag: Multi-provider RPC load balancer, edge-close routing
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key ink RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://ink.gateway.tenderly.co
     tag: Tenderly's public multi-chain RPC gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key ink RPC endpoint."
     queries:

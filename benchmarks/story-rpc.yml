@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: story-official
     name: Story Foundation
+    endpoint: https://mainnet.storyrpc.io
     tag: Story Protocol Foundation official mainnet RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Story Foundation's no-key Story RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/story_mainnet
     tag: Ankr decentralized node provider for Story mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Story RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: stakely
     name: Stakely
+    endpoint: https://story-json-rpc.stakely.io
     tag: Stakely validator-operated public RPC for Story
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stakely's no-key Story RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://story-rpc.publicnode.com
     tag: Allnodes free public RPC for Story (story-rpc.publicnode.com)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Story RPC endpoint."
     queries:

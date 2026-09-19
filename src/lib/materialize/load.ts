@@ -242,6 +242,7 @@ export async function specToBenchmark(
           secondary: p.secondary,
           availability: "unavailable",
           formula: p.formula,
+    endpoint: p.endpoint,
         });
       }
 
@@ -849,6 +850,7 @@ export function unresponsiveResult(
     availability: "unavailable",
     unresponsive: true,
     formula: p.formula,
+    endpoint: p.endpoint,
   };
 }
 
@@ -1005,6 +1007,7 @@ async function tryLoadLive(
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
+    endpoint: p.endpoint,
         liveStatus,
       });
 
@@ -1264,6 +1267,7 @@ function draftBenchmark(
     successRate: 0,
     secondary: p.secondary,
     formula: p.formula,
+    endpoint: p.endpoint,
   }));
   return {
     ...editorial,

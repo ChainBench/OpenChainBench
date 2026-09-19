@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: etherlink-official
     name: Etherlink Foundation
+    endpoint: https://node.mainnet.etherlink.com
     tag: Etherlink official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Etherlink's no-key endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://etherlink.drpc.org
     tag: dRPC public gateway for Etherlink mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Etherlink endpoint."
     queries:

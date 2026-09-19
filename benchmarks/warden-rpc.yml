@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://warden-evm-rpc.publicnode.com
     tag: PublicNode multi-chain gateway for Warden EVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PublicNode's no-key Warden endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: warden-official
     name: Warden Foundation
+    endpoint: https://evm.wardenprotocol.org
     tag: Warden Foundation official public EVM RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to the Warden Foundation's no-key endpoint."
     queries:

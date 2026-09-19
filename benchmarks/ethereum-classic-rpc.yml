@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: drpc
     name: dRPC
+    endpoint: https://etc.drpc.org
     tag: dRPC public gateway for Ethereum Classic
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Ethereum Classic endpoint."
     queries:

@@ -74,6 +74,7 @@ dimensions:
 providers:
   - slug: tatum
     name: Tatum
+    endpoint: https://zcash-mainnet.gateway.tatum.io
     tag: Tatum public Zcash RPC gateway (zcashd backend), no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to zcash-mainnet.gateway.tatum.io."
     queries:
@@ -97,6 +98,7 @@ providers:
 
   - slug: tatum-zebra
     name: Tatum (Zebra)
+    endpoint: https://zcash-mainnet-zebrad.gateway.tatum.io
     tag: Tatum public Zcash RPC gateway (Zebra node backend), no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a getblockcount POST sent every 60s from 3 regions to zcash-mainnet-zebrad.gateway.tatum.io."
     queries:
@@ -120,6 +122,7 @@ providers:
 
   - slug: blockchair
     name: Blockchair
+    endpoint: https://api.blockchair.com/zcash/stats
     tag: Blockchair public Zcash REST API, no API key required for basic queries
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockchair.com/zcash/stats."
     queries:

@@ -70,6 +70,7 @@ dimensions:
 providers:
   - slug: cheqd-official
     name: cheqd
+    endpoint: https://rpc.cheqd.net
     tag: cheqd official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.cheqd.net."
     queries:
@@ -93,6 +94,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://cheqd-rpc.publicnode.com:443
     tag: PublicNode public cheqd RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to cheqd-rpc.publicnode.com."
     queries:
@@ -116,6 +118,7 @@ providers:
 
   - slug: nodestake
     name: NodeStake
+    endpoint: https://rpc.cheqd.nodestake.org
     tag: NodeStake public cheqd RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.cheqd.nodestake.org."
     queries:

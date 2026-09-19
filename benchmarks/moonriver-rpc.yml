@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: moonriver-official
     name: Moonbeam Foundation
+    endpoint: https://rpc.api.moonriver.moonbeam.network
     tag: Moonbeam Foundation official public RPC for Moonriver
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Moonbeam Foundation's no-key moonriver RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://moonriver-rpc.publicnode.com
     tag: PublicNode community-funded public Moonriver RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key moonriver RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://moonriver.api.onfinality.io/public
     tag: OnFinality shared node service public endpoint for Moonriver
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's no-key moonriver RPC endpoint."
     queries:

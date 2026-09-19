@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://nibiru-rpc.polkachu.com
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Nibiru endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="nibiru", region="sgp"}[1h])
   - slug: publicnode
     name: PublicNode
+    endpoint: https://nibiru-rpc.publicnode.com:443
     tag: Non-profit public RPC by Allnodes
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Nibiru endpoint."
     queries:
@@ -111,6 +113,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="nibiru", region="sgp"}[1h])
   - slug: nibiru-official
     name: Nibiru Foundation
+    endpoint: https://rpc.nibiru.fi:443
     tag: Official Nibiru Foundation public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Nibiru Foundation's no-key endpoint."
     queries:

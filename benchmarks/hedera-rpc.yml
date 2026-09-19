@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: hashio
     name: Hashio
+    endpoint: https://mainnet.hashio.io/api
     tag: Hedera Foundation Hashio public EVM JSON-RPC endpoint, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to mainnet.hashio.io/api."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: thirdweb
     name: thirdweb
+    endpoint: https://295.rpc.thirdweb.com
     tag: thirdweb public RPC for Hedera EVM (chain 295), no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 295.rpc.thirdweb.com."
     queries:

@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: neon-p2p
     name: P2P Neon Proxy
+    endpoint: https://neon-proxy-mainnet.solana.p2p.org
     tag: P2P.org public Neon EVM mainnet proxy, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to neon-proxy-mainnet.solana.p2p.org."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://245022934.rpc.thirdweb.com
     tag: Thirdweb public Neon EVM RPC (chain 245022934), no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to 245022934.rpc.thirdweb.com."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: everstake
     name: Everstake
+    endpoint: https://neon-mainnet.everstake.one
     tag: Everstake public Neon EVM mainnet RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to neon-mainnet.everstake.one."
     queries:

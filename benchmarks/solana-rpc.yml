@@ -76,6 +76,7 @@ dimensions:
 providers:
   - slug: solana
     name: Solana
+    endpoint: https://api.mainnet-beta.solana.com
     tag: Chain-official api.mainnet-beta.solana.com, 100 req per 10s documented
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to api.mainnet-beta.solana.com."
     queries:
@@ -99,6 +100,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://solana-rpc.publicnode.com
     tag: Allnodes-operated, same footprint as its EVM cluster entries
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana-rpc.publicnode.com."
     queries:
@@ -122,6 +124,7 @@ providers:
 
   - slug: lava
     name: Lava
+    endpoint: https://solana.lava.build
     tag: Gateway mesh, pooled per-IP quota
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana.lava.build."
     queries:
@@ -145,6 +148,7 @@ providers:
 
   - slug: leorpc
     name: LeoRPC
+    endpoint: https://solana.leorpc.com/?api_key=FREE
     tag: Community endpoint, publicly documented FREE query key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana.leorpc.com."
     queries:
@@ -168,6 +172,7 @@ providers:
 
   - slug: solanavibestation
     name: Solana Vibe Station
+    endpoint: https://public.rpc.solanavibestation.com
     tag: Community endpoint, unpublished cap, churn monitored live
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to public.rpc.solanavibestation.com."
     queries:

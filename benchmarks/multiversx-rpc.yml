@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: mvx-gateway
     name: MultiversX Gateway
+    endpoint: https://gateway.multiversx.com
     tag: MultiversX Foundation official gateway, public REST endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /network/status/4294967295 sent every 60s from 3 regions to gateway.multiversx.com."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: mvx-api
     name: MultiversX API
+    endpoint: https://api.multiversx.com
     tag: MultiversX Foundation official API endpoint, public REST, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /network/status/4294967295 sent every 60s from 3 regions to api.multiversx.com."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: elrond
     name: Elrond API
+    endpoint: https://api.elrond.com
     tag: MultiversX legacy Elrond domain (api.elrond.com), public REST, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /network/status/4294967295 sent every 60s from 3 regions to api.elrond.com."
     queries:

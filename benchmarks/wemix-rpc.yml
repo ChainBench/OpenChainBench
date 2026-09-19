@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: wemix-official
     name: WeMade
+    endpoint: https://api.wemix.com
     tag: WeMade official WEMIX 3.0 public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to WEMIX's no-key endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://wemix.drpc.org
     tag: dRPC public gateway for WEMIX 3.0
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key WEMIX endpoint."
     queries:

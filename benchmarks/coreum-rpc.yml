@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://coreum-rpc.polkachu.com
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Coreum endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://coreum-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Coreum endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: nownodes
     name: NOWNodes
+    endpoint: https://public-coreum.nownodes.io
     tag: Public node, 110+ chains, 5 RPS free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Coreum endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: coreum-official
     name: Coreum Foundation
+    endpoint: https://full-node.mainnet-1.coreum.dev:26657
     tag: Coreum Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Coreum Foundation's no-key Coreum endpoint."
     queries:
