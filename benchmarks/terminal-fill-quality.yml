@@ -77,7 +77,7 @@ methodology:
   - "Cohort discovery: the fee wallets and routers are learned from the chain, the lists being the seed. On a platform's transactions (Mobula's attribution as the sample, every 6 h), a recipient taking a fixed share of the trade across many payers is its fee wallet, adopted from 30 swaps of 20 payers with a stable 20 to 300 bps share; on EVM the transactions' destination is its router. The window's swaps also give the fee-like recipients no terminal lists yet (JSON, 'discovery')."
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains with no event of its own, so its swaps are the transactions sent to it in blocks read in full; valued like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: buys only in its router feed, no fee on them; the row waits for its sells and fee."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
-  - "Kept out of that residual: a fee the pool's own hook keeps (Uniswap v4 launchpad pools on Robinhood Chain, 1 %, and BNB, 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the rate the route itself swapped the gas coin at, not at an exchange's print; Axiom's inclusion tip on every transaction (a fixed 0.0025 BNB; on Robinhood Chain the user's own setting, read from the call trace) is network cost, like the Solana terminals' own tip relays."
+  - "Kept out of that residual: a fee the pool's own hook keeps (v4 launchpad pools on Robinhood Chain 1 %, BNB 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the mid of the route's own stable-to-gas-coin hop before that hop, so the hop's LP fee and impact stay a pool cost; Axiom's inclusion tip (0.0025 BNB fixed; on Robinhood Chain the user's setting, from the call trace) is network cost, like the Solana tip relays."
   - "Not in the table: BullX (suspended since June 2026), Nova (no live fee wallet), Maestro's and Bloom's EVM bots (routers not identified). BasedBot: its Relay requests fund its users' wallets (SOL from Solana to the gas coin, no app fee: a funding leg in the JSON), and those wallets' swaps on Robinhood Chain's shared router are its row; on BNB, Base and Ethereum its router is not identified. GMGN's Ethereum, Base and Tron routers are not verified; HyperEVM has no gas price."
 
 findings:
@@ -129,7 +129,7 @@ metric_panels:
     metric: tfq_component_bps{component="pool",chain="all"}
     unit: bp
     higher_is_better: false
-    description: "Median of loss minus terminal, network, other and relay: LP fee and price impact, plus hop costs on routed swaps (a stable-to-gas-coin hop's own cost is excluded on the EVM rows, its rate values the native leg)."
+    description: "Median of loss minus terminal, network, other and relay: LP fee and price impact, plus hop costs on routed swaps (on the EVM rows the stable-to-gas-coin hop's own cost included, the native leg being valued at that hop's pre-trade mid)."
   - id: relay
     label: Relay
     label_key: terminal
