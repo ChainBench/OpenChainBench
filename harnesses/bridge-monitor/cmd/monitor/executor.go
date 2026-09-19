@@ -41,9 +41,11 @@ type ExecutionResult struct {
 	ExecutionLatencyMs  int64 // Settlement latency: destination block timestamp minus source block timestamp (on-chain); wall clock when a hash is missing
 	ObservedLatencyMs   int64 // Wall clock from broadcast to the poll that saw the terminal status (the pre-2026-09-19 figure), kept for the audit trail
 	DestTxHash          string
-	LatencyMethod       string // "watch" (credit observed minus source inclusion observed, ms) | "watch-broadcast" (credit minus broadcast) | "blocks" (block timestamp delta) | "poll"
-	OnchainBlockDeltaMs int64  // destination block timestamp minus source block timestamp, -1 when unknown
-	E2ELatencyMs        int64  // Time from quote start to funds received
+	LatencyMethod       string  // "watch" (credit observed minus source inclusion observed, ms) | "watch-broadcast" (credit minus broadcast) | "blocks" (block timestamp delta) | "poll"
+	OnchainBlockDeltaMs int64   // destination block timestamp minus source block timestamp, -1 when unknown
+	QuotedOutputUSD     float64 // what the quote said would land (USD), before any on-chain read
+	RealizedOnChain     bool    // OutputUSD and ActualFeeUSD come from the destination balance delta, not from the quote
+	E2ELatencyMs        int64   // Time from quote start to funds received
 	Success             bool
 	Reverted            bool
 	Refunded            bool // subset of Reverted: provider returned capital (status "refunded")
@@ -438,6 +440,17 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	// Prometheus correctly classify it (Reverted takes precedence over Success).
 	result.Success = !result.Reverted
 
+	// One definition of the quoted fee for every bridge: ticket minus the
+	// output the quote promised. Provider fee sums mixed in gas paid in the
+	// native token (Mobula: TotalFeeUsd + GasFeeUsd), which the realized fee
+	// (ticket minus landed) can never contain, so their slippage read a
+	// constant negative offset regardless of ticket (-$0.0015 at $3 and at
+	// $30 on Base). Gas we pay ourselves is its own panel.
+	result.QuotedOutputUSD = result.OutputUSD
+	if amountUSD > 0 && result.QuotedOutputUSD > 0 && result.QuotedOutputUSD <= amountUSD {
+		result.QuoteFeeUSD = amountUSD - result.QuotedOutputUSD
+	}
+
 	// Read the destination balance again to compute the REALIZED fill on-chain.
 	// Bridge status "filled" sometimes precedes the destination credit by 1-3
 	// blocks; pollRealizedFill waits up to 30s for the delta to materialise.
@@ -451,6 +464,7 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 			realizedUSD := realizedToken * destinationUSDPerToken(route)
 			log.Printf("    💰 Realized fill on-chain: %.6f tokens = $%.4f (quote projected $%.4f)", realizedToken, realizedUSD, result.OutputUSD)
 			result.OutputUSD = realizedUSD
+			result.RealizedOnChain = true
 			// Recompute fees from realized: amount sent - amount received
 			realFees := amountUSD - realizedUSD
 			if realFees < 0 {
@@ -1015,12 +1029,23 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 
 	// Record fees + the new execution-cost metrics
-	pulse(bridgeFeesUSD, labels, result.ActualFeeUSD)
-	if result.AmountUSD > 0 {
-		pulse(bridgeFeesPercent, labels, (result.ActualFeeUSD/result.AmountUSD)*100)
-	}
-	if result.OutputUSD > 0 {
-		pulse(bridgeRealizedOutputUSD, labels, result.OutputUSD)
+	// Realized cost metrics come from the destination balance delta only.
+	// A failed leg, a 30 s destination poll miss or a pre-balance read
+	// failure leaves OutputUSD at the quote's projection: published as
+	// "realized", that was a quote number wearing an on-chain label (Relay
+	// $30 Base: one errored leg published $29.97 of "landed" value).
+	if result.Success && result.RealizedOnChain {
+		pulse(bridgeFeesUSD, labels, result.ActualFeeUSD)
+		pulse(bridgeExecRealizedFeeUSD, labels, result.ActualFeeUSD)
+		if result.AmountUSD > 0 {
+			pulse(bridgeFeesPercent, labels, (result.ActualFeeUSD/result.AmountUSD)*100)
+			pulse(bridgeExecRealizedFeeBps, labels, (result.ActualFeeUSD/result.AmountUSD)*10000)
+		}
+		if result.OutputUSD > 0 {
+			pulse(bridgeRealizedOutputUSD, labels, result.OutputUSD)
+		}
+	} else if result.Success {
+		bridgeRealizedFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region).Inc()
 	}
 	// Execution slippage vs quote = realized fee - quote-projected fee. Only on
 	// a real fill: on a revert / refund / pre-broadcast failure there is no
@@ -1028,7 +1053,7 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	// it would inject spurious 0 / negative samples into the realized-cost bench.
 	// Slippage is only meaningful against a quoted fee; Near Intents used to
 	// publish its whole realized fee here (QuoteFeeUSD was never set).
-	if result.Success && result.QuoteFeeUSD > 0 {
+	if result.Success && result.RealizedOnChain && result.QuoteFeeUSD > 0 {
 		pulse(bridgeQuoteSlippageUSD, labels, result.ActualFeeUSD-result.QuoteFeeUSD)
 	}
 	if result.ExecGasUSD > 0 {

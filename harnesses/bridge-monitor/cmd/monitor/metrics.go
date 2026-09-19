@@ -155,6 +155,22 @@ var (
 		Help: "Settled executions whose published latency did not come from the two-ended watch, by method (watch-broadcast: source inclusion missed; blocks: block-timestamp delta; poll: wall clock to the status poll)",
 	}, []string{"bridge", "from_chain", "to_chain", "region", "method"})
 
+	// Execution-only realized fee (bridge_fees_usd is also written by the
+	// quote loop at $5/$50/$300 and off-triangle routes, so a panel reading
+	// it averaged quotes into "realized"). Pulses.
+	bridgeExecRealizedFeeUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_realized_fee_usd",
+		Help: "Realized fee of one settled execution in USD: ticket minus the value that landed on the destination, read from the balance delta (pulse)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+	bridgeExecRealizedFeeBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_realized_fee_bps",
+		Help: "Realized fee of one settled execution in basis points of the ticket (comparable across $3 and $30) (pulse)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+	bridgeRealizedFallback = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_realized_fallback_total",
+		Help: "Settled executions whose destination balance could not be read (pre-balance read failed or the credit was not visible within 30 s): no realized fee, output or slippage published for them",
+	}, []string{"bridge", "from_chain", "to_chain", "region"})
+
 	// Persistent: unix time of the last completed execution per bridge and
 	// region, the site's freshness source (prometheus.freshness_timestamp_metric).
 	bridgeLastExecutionTs = promauto.NewGaugeVec(prometheus.GaugeOpts{

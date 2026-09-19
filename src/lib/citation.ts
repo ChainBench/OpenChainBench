@@ -109,10 +109,10 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 /** Honest window wording per unit. "(p50, 24h)" is only true for latency
  *  style benches; USD revenue and count benches repurpose the p50 slot as
  *  a plain rolling-window figure and percentile wording would mislead. */
-function windowSuffix(unit: string): string {
-  if (unit === "usd" || unit === "count") return "(24h)";
-  if (unit === "pct" || unit === "bps") return "(24h avg)";
-  return "(p50, 24h)";
+function windowSuffix(unit: string, window = "24h"): string {
+  if (unit === "usd" || unit === "count") return `(${window})`;
+  if (unit === "pct" || unit === "bps") return `(${window} avg)`;
+  return `(p50, ${window})`;
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
@@ -177,7 +177,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
-    rest: `${windowSuffix(b.unit)} on ${b.title}.`,
+    rest: `${windowSuffix(b.unit, b.window ?? "24h")} on ${b.title}.`,
   };
 }
 

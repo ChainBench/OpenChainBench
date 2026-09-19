@@ -151,6 +151,8 @@ export function buildEditorial(
     disclaimer: spec.disclaimer,
     faq: spec.faq,
     excludedProviders: spec.excluded_providers,
+    window: spec.prometheus?.window,
+    expectedFreshnessSec: spec.prometheus?.expected_freshness_seconds,
     perChainExplainer: spec.per_chain_explainer,
     subtitle: spec.subtitle,
     category: spec.category,

@@ -549,7 +549,11 @@ export default async function BenchmarkPage({
         )}
         {!isDraft && !insufficient && (
           <span className="ml-auto">
-            <LiveIndicator lastRunAt={benchmark.lastRunAt} slug={benchmark.slug} />
+            <LiveIndicator
+              lastRunAt={benchmark.lastRunAt}
+              slug={benchmark.slug}
+              staleAfterSec={Math.max(300, benchmark.expectedFreshnessSec ?? 300)}
+            />
           </span>
         )}
       </div>

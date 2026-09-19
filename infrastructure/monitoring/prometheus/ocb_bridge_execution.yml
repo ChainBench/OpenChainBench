@@ -33,7 +33,9 @@ groups:
         expr: avg_over_time(bridge_exec_gas_usd[7d])
       - record: ocb:bridge_realized_output_usd:avg_7d
         expr: avg_over_time(bridge_realized_output_usd[7d])
-      - record: ocb:bridge_fees_usd:avg_7d
-        expr: avg_over_time(bridge_fees_usd[7d])
+      - record: ocb:bridge_exec_realized_fee_usd:avg_7d
+        expr: avg_over_time(bridge_exec_realized_fee_usd[7d])
+      - record: ocb:bridge_exec_realized_fee_bps:avg_7d
+        expr: avg_over_time(bridge_exec_realized_fee_bps[7d])
       - record: ocb:bridge_exec_onchain_ms:mean_7d
         expr: avg_over_time(bridge_exec_onchain_ms[7d])

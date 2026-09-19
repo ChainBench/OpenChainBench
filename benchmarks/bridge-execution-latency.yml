@@ -89,12 +89,12 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-
 # are documented in the methodology until they accrue enough samples to panel.
 metric_panels:
   - id: fee
-    label: Realized fee
-    metric: avg by (bridge) (ocb:bridge_fees_usd:avg_7d{region="eu-west"})
+    label: Realized fee (bps of ticket)
+    metric: avg by (bridge) (ocb:bridge_exec_realized_fee_bps:avg_7d{region="eu-west"})
     label_key: bridge
-    unit: usd
+    unit: bps
     higher_is_better: false
-    description: "Amount sent minus amount actually received on the destination chain, in USD, averaged over the last 7 days of executions. The fee a user really paid, read on-chain rather than from the quote."
+    description: "Ticket minus the value that actually landed on the destination chain, in basis points of the ticket so the $3 and $30 executions compare, averaged over the last 7 days of settled executions whose destination balance was read on-chain."
   - id: slippage
     label: Slippage vs quote
     metric: avg by (bridge) (ocb:bridge_quote_slippage_usd:mean_7d{region="eu-west"})
