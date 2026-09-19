@@ -430,6 +430,8 @@ const RAW: Record<string, string> = {
   cryptocom: "/logos/cryptocom.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
+  // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───
+  phantom: "/logos/phantom.svg",
   axiom: "/logos/axiom.png",
   "pvp-trade": "/logos/pvp-trade.png",
   insilico: "/logos/insilico.svg",
@@ -656,6 +658,7 @@ const ALIASES: Record<string, string> = {
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
+  "binance-wallet": "binance", // bench 268: the wallet carries the exchange's mark
   "publicnode-feehistory": "publicnode",
   // Same brand split across two HL builder addresses; one logo is enough.
   "metamask-alt": "metamask",
