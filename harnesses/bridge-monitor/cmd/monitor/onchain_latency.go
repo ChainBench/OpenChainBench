@@ -98,34 +98,63 @@ func (tx *TxExecutor) txBlockTimeOnce(chain, txHash string) (time.Time, error) {
 	}
 }
 
-// settlementLatency replaces the wall-clock execution latency on a settled
-// result with the on-chain one (destination block timestamp minus source
-// block timestamp) when both hashes resolve. The wall clock is kept in
-// ObservedLatencyMs for the audit trail. Returns the method used.
+// settlementLatency sets the published latency of a settled result, in
+// this order of preference:
+//  1. watch: destination credit observed minus source inclusion observed
+//     (millisecond, one clock, fill_watcher.go);
+//  2. watch-broadcast: credit observed minus our broadcast time, when the
+//     source watcher missed the inclusion;
+//  3. blocks: destination block timestamp minus source block timestamp;
+//  4. poll: the wall clock to the status poll (the pre-2026-09-19 figure).
+//
+// The block delta is always computed when both hashes resolve and kept in
+// OnchainBlockDeltaMs as the cross-check; the poll figure stays in
+// ObservedLatencyMs. Returns the method used.
 func (e *Executor) settlementLatency(result *ExecutionResult, fromChain, toChain, srcTx, dstTx string) string {
 	result.ObservedLatencyMs = result.ExecutionLatencyMs
-	if !result.Success || srcTx == "" || dstTx == "" {
+	result.OnchainBlockDeltaMs = -1
+	if !result.Success {
 		return "poll"
 	}
-	srcTs, err := e.txExecutor.TxBlockTime(fromChain, srcTx)
-	if err != nil {
-		log.Printf("    ⚠️  on-chain latency: source block time (%s %s): %v", fromChain, shortHash(srcTx), err)
-		return "poll"
-	}
-	dstTs, err := e.txExecutor.TxBlockTime(toChain, dstTx)
-	if err != nil {
-		log.Printf("    ⚠️  on-chain latency: destination block time (%s %s): %v", toChain, shortHash(dstTx), err)
-		return "poll"
-	}
-	d := dstTs.Sub(srcTs)
-	if d < 0 {
-		log.Printf("    ⚠️  on-chain latency: destination block %s before source block %s, keeping the wall clock", dstTs.UTC().Format(time.RFC3339), srcTs.UTC().Format(time.RFC3339))
-		return "poll"
-	}
-	result.ExecutionLatencyMs = d.Milliseconds()
 	result.DestTxHash = dstTx
-	log.Printf("    ⏱  on-chain settlement: %s -> %s = %dms (wall clock %dms)", srcTs.UTC().Format("15:04:05"), dstTs.UTC().Format("15:04:05"), result.ExecutionLatencyMs, result.ObservedLatencyMs)
-	return "onchain"
+
+	// Block delta (cross-check), independent of the watch.
+	if srcTx != "" && dstTx != "" {
+		srcTs, err1 := e.txExecutor.TxBlockTime(fromChain, srcTx)
+		dstTs, err2 := e.txExecutor.TxBlockTime(toChain, dstTx)
+		switch {
+		case err1 != nil:
+			log.Printf("    ⚠️  block delta: source block time (%s %s): %v", fromChain, shortHash(srcTx), err1)
+		case err2 != nil:
+			log.Printf("    ⚠️  block delta: destination block time (%s %s): %v", toChain, shortHash(dstTx), err2)
+		case dstTs.Before(srcTs):
+			log.Printf("    ⚠️  block delta: destination block %s before source block %s", dstTs.UTC().Format(time.RFC3339), srcTs.UTC().Format(time.RFC3339))
+		default:
+			result.OnchainBlockDeltaMs = dstTs.Sub(srcTs).Milliseconds()
+		}
+	}
+
+	method := "poll"
+	if w := e.watch; w != nil {
+		credit := w.awaitCredit(20 * time.Second)
+		broadcast, confirmed, _ := w.get()
+		logWatch(result.Bridge, w)
+		switch {
+		case !credit.IsZero() && !confirmed.IsZero() && credit.After(confirmed):
+			result.ExecutionLatencyMs = credit.Sub(confirmed).Milliseconds()
+			method = "watch"
+		case !credit.IsZero() && !broadcast.IsZero() && credit.After(broadcast):
+			result.ExecutionLatencyMs = credit.Sub(broadcast).Milliseconds()
+			method = "watch-broadcast"
+		}
+	}
+	if method == "poll" && result.OnchainBlockDeltaMs >= 0 {
+		result.ExecutionLatencyMs = result.OnchainBlockDeltaMs
+		method = "blocks"
+	}
+	log.Printf("    ⏱  settlement latency: %dms (%s); block delta %dms; poll wall clock %dms",
+		result.ExecutionLatencyMs, method, result.OnchainBlockDeltaMs, result.ObservedLatencyMs)
+	return method
 }
 
 func shortHash(h string) string {

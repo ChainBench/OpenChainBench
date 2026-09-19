@@ -114,7 +114,7 @@ var (
 	// numbers are exact instead of bucketed.
 	bridgeExecLatencyMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_exec_latency_ms",
-		Help: "Settlement latency in ms, last value per corridor: destination block timestamp minus source block timestamp (on-chain); the poll wall clock only when a hash is missing (see bridge_execution_latency_fallback_total)",
+		Help: "Settlement latency in ms, last value per corridor: destination credit observed minus source inclusion observed, both read every 100 ms on one clock; block-timestamp delta or the poll wall clock only when the watch missed an end (see bridge_execution_latency_fallback_total)",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
 	// The pre-2026-09-19 figure (broadcast to the poll that saw the fill),
@@ -122,6 +122,13 @@ var (
 	bridgeExecObservedMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_exec_observed_ms",
 		Help: "Wall clock from broadcast to the status poll that first reported the fill, in ms (poll cadence 5 s; not the settlement latency)",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Block-timestamp delta (destination block minus source block), the
+	// whole-second cross-check of the millisecond watch figure.
+	bridgeExecOnchainMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_exec_onchain_ms",
+		Help: "Destination block timestamp minus source block timestamp, in ms (whole-second resolution), last value per corridor",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
 	bridgeExecLatencyFallback = promauto.NewCounterVec(prometheus.CounterOpts{

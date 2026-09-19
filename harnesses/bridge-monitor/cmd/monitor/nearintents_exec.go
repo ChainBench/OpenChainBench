@@ -294,6 +294,7 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 		return result, txHash, fmt.Errorf("near-intents deposit transfer failed: %w", err)
 	}
 	result.TxHash = txHash
+	e.markBroadcast(route.FromChain, txHash)
 
 	// Best-effort notify; the solver also detects the deposit on-chain.
 	if serr := e.nearIntents.SubmitDeposit(txHash, quote.Quote.DepositAddress, quote.Quote.DepositMemo); serr != nil {
