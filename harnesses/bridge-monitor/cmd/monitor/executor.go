@@ -1053,7 +1053,11 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	// it would inject spurious 0 / negative samples into the realized-cost bench.
 	// Slippage is only meaningful against a quoted fee; Near Intents used to
 	// publish its whole realized fee here (QuoteFeeUSD was never set).
-	if result.Success && result.RealizedOnChain && result.QuoteFeeUSD > 0 {
+	// Gate on "a quote existed", not on "the quoted fee is positive": a
+	// quote that promises the full ticket back (Mobula Sol to Base quoted
+	// $3.0000 out of $3) has a quoted fee of exactly zero, and its slippage
+	// (+$0.003 realized) is the most honest row on the page.
+	if result.Success && result.RealizedOnChain && result.QuotedOutputUSD > 0 {
 		pulse(bridgeQuoteSlippageUSD, labels, result.ActualFeeUSD-result.QuoteFeeUSD)
 	}
 	if result.ExecGasUSD > 0 {
