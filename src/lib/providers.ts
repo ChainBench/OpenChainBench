@@ -12,6 +12,8 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { loadProvidersFromBlob } from "@/lib/bench-blob";
+import { loadSpecsUncached } from "@/lib/materialize/load";
+import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { liveResults } from "@/lib/provider-filters";
 import { citationCandidates } from "@/lib/citation";
 import { readBestPerChain } from "@/lib/per-chain-contract";
@@ -635,14 +637,73 @@ async function loadProvidersMemoized(): Promise<ProviderProfile[]> {
   }
   const value = (async () => {
     const fromBlob = await loadProvidersFromBlob().catch(() => null);
-    if (fromBlob && fromBlob.length > 0) return fromBlob;
-    return buildProvidersCached();
+    const profiles =
+      fromBlob && fromBlob.length > 0 ? fromBlob : await buildProvidersCached();
+    return confineToThisDeploy(profiles);
   })();
   providersMemo = { at: now, value };
   value.catch(() => {
     providersMemo = null;
   });
   return value;
+}
+
+/** The providers blob is built by the worker from the `dev` checkout, so
+ *  on production it credits appearances on benches whose spec is not on
+ *  `main` (dev-only benches: the page 404s there). Every product page
+ *  then linked 3 to 7 dead bench and compare URLs (Search Console 2026-09:
+ *  271 404s; audit 2026-09-19). Keep only appearances whose bench exists
+ *  in this deployment's spec set (and is not removed; main also excludes
+ *  its DEV_ONLY_BENCH_SLUGS), recount
+ *  wins from what is left, and drop a profile that has nothing left. On
+ *  dev every bench exists and this is a no-op. Falls open (no filtering)
+ *  when the spec directory cannot be read. */
+async function confineToThisDeploy(
+  profiles: ProviderProfile[],
+): Promise<ProviderProfile[]> {
+  const specs = await loadSpecsUncached().catch(() => []);
+  if (specs.length === 0) return profiles;
+  const here = new Set(specs.map((s) => s.slug));
+  const keep = (slug: string) =>
+    here.has(slug) && !REMOVED_BENCH_SLUGS.has(slug);
+  const out: ProviderProfile[] = [];
+  for (const p of profiles) {
+    if (p.appearances.every((a) => keep(a.benchmark.slug))) {
+      out.push(p);
+      continue;
+    }
+    const appearances = p.appearances.filter((a) => keep(a.benchmark.slug));
+    if (appearances.length === 0) continue;
+    const dropped = p.appearances.filter((a) => !keep(a.benchmark.slug));
+    // Wins: 1 per aggregate #1 without chain dimensions, 1 per chain led
+    // with them (the rule in buildProvidersFromBenches). Subtract what the
+    // dropped appearances contributed rather than recomputing from scratch.
+    let lostWins = 0;
+    const chainWins = { ...(p.chainWins ?? {}) };
+    for (const a of dropped) {
+      const hasChainDims =
+        (a.benchmark.chainDimensions ?? []).some((c) => c.value !== "all");
+      if (hasChainDims) {
+        const led = Object.entries(a.rankPerChain ?? {}).filter(([, v]) => v.rank === 1);
+        lostWins += led.length;
+        for (const [chain] of led) {
+          if (chainWins[chain]) chainWins[chain] -= 1;
+          if (!chainWins[chain]) delete chainWins[chain];
+        }
+      } else if (a.rank === 1) {
+        lostWins += 1;
+      }
+    }
+    const categories = [...new Set(appearances.map((a) => a.benchmark.category))];
+    out.push({
+      ...p,
+      appearances,
+      wins: Math.max(0, p.wins - lostWins),
+      categories,
+      chainWins: Object.keys(chainWins).length > 0 ? chainWins : undefined,
+    });
+  }
+  return out;
 }
 
 export const getProviders = cache(loadProvidersMemoized);
