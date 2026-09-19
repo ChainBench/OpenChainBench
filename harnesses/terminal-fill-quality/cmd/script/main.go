@@ -304,14 +304,24 @@ type Public struct {
 }
 
 func main() {
-	rpcURL := os.Getenv("SOLANA_RPC")
-	if rpcURL == "" {
-		if k := os.Getenv("HELIUS_API_KEY"); k != "" {
-			rpcURL = "https://mainnet.helius-rpc.com/?api-key=" + k
-		} else {
-			rpcURL = "https://api.mainnet-beta.solana.com"
+	// SOLANA_RPC: comma-separated endpoints tried in order (the next on a
+	// rate limit or a transport error); the Helius key, when set, joins the
+	// list after them, the public node last. Production: Chainstack's
+	// shared Solana node first (a paid node with no per-call budget), then
+	// Alchemy's free app for the overflow, then Helius (free tier, 1 M
+	// credits a month: the bench alone used 0.9 M when it was primary).
+	var rpcURLs []string
+	for _, u := range strings.Split(os.Getenv("SOLANA_RPC"), ",") {
+		if u = strings.TrimSpace(u); u != "" {
+			rpcURLs = append(rpcURLs, u)
 		}
 	}
+	if k := os.Getenv("HELIUS_API_KEY"); k != "" {
+		rpcURLs = append(rpcURLs, "https://mainnet.helius-rpc.com/?api-key="+k)
+	}
+	rpcURLs = append(rpcURLs, "https://api.mainnet-beta.solana.com")
+	rpcURL := rpcURLs[0]
+	log.Printf("solana reads: %d endpoint(s), primary %s", len(rpcURLs), redactURL(rpcURL, rpcURL))
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
 	dailyTarget := envInt("DAILY_TARGET", 400) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
@@ -336,7 +346,7 @@ func main() {
 	// eth_getLogs) would otherwise hang every call for the whole timeout.
 	httpc := &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	rps := envInt("RPC_RPS", 8)
-	rpc := &rpcClient{url: rpcURL, http: httpc, calls: cCalls.Inc, errors: cErrors.Inc, minGap: time.Second / time.Duration(max(rps, 1))}
+	rpc := &rpcClient{url: rpcURL, urls: rpcURLs, http: httpc, calls: cCalls.Inc, errors: cErrors.Inc, minGap: time.Second / time.Duration(max(rps, 1))}
 
 	applyRPCOverrides()
 	st := loadState(stateFile)
@@ -352,7 +362,7 @@ func main() {
 		// public wss://api.mainnet-beta.solana.com is free and keyless).
 		wsURL := os.Getenv("WS_URL")
 		if wsURL == "" {
-			wsURL = rpcURL
+			wsURL = "wss://api.mainnet-beta.solana.com"
 		}
 		fd = newFeed(wsURL)
 		go fd.run(context.Background())
