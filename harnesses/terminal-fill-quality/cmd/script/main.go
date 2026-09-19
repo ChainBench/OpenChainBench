@@ -258,6 +258,8 @@ type TerminalStats struct {
 	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
 	Healthy bool `json:"healthy"`
 	Ranked  bool `json:"ranked"`
+	// UnpricedShare: drawn swaps left unpriced over drawn swaps (cumulative rejects), informative.
+	UnpricedShare float64 `json:"unpriced_share,omitempty"`
 }
 
 type OtherRecipient struct {
@@ -809,6 +811,9 @@ const refMaxAgeS = 60
 
 // sampleFails reads a few of the tick's failed attempts (quota
 // FAIL_DAILY_TARGET per terminal per day) for the fee they paid.
+// failRetry: failed attempts drawn but not readable yet, per terminal, read again next tick.
+var failRetry = map[string][]sigInfo{}
+
 func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, failed []sigInfo, failQuota map[string]float64, perTickFail, solUSD float64, now int64) {
 	// The quota accrues every tick, failures seen or not (a terminal failing
 	// once every few minutes would otherwise never reach a whole sample),
@@ -822,6 +827,12 @@ func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, fai
 	if cap := math.Max(3*perTickFail, 2); failQuota[t.Slug] > cap {
 		failQuota[t.Slug] = cap
 	}
+	// A failed attempt drawn from the tick's feed is often not served yet at
+	// the commitment asked (the notification is seconds old): the draw is
+	// kept and read again on the next tick instead of being dropped.
+	rand.Shuffle(len(failed), func(i, j int) { failed[i], failed[j] = failed[j], failed[i] })
+	failed = append(append([]sigInfo{}, failRetry[t.Slug]...), failed...)
+	failRetry[t.Slug] = nil
 	if len(failed) == 0 {
 		return
 	}
@@ -834,11 +845,13 @@ func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, fai
 	}
 	failQuota[t.Slug] -= float64(n)
 	internal := set(t.Internal...)
-	rand.Shuffle(len(failed), func(i, j int) { failed[i], failed[j] = failed[j], failed[i] })
 	for _, s := range failed[:n] {
 		tx, err := rpc.transaction(ctx, s.Signature)
 		if err != nil || tx == nil {
 			failQuota[t.Slug] += 1
+			if len(failRetry[t.Slug]) < 8 {
+				failRetry[t.Slug] = append(failRetry[t.Slug], s)
+			}
 			continue
 		}
 		f := failSample{Terminal: t.Slug, Sig: s.Signature, Time: now, Err: errClass(tx.Meta.Err)}
@@ -1272,6 +1285,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
 	byProduct := map[string][]string{}
 	byProductFirm := map[string][]string{} // the rows above their own floor
+	attOfRow := map[string]int{}           // each row's attempts in the window (its share of the product's flow)
 	rowsOf := map[string][]Terminal{}
 	var products []string
 	for _, t := range cohort() {
@@ -1298,6 +1312,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		byProduct[ts.Product] = append(byProduct[ts.Product], t.Slug)
 		rowsOf[ts.Product] = append(rowsOf[ts.Product], t)
+		attOfRow[t.Slug] = ts.Attempts
 		if ts.Healthy {
 			byProductFirm[ts.Product] = append(byProductFirm[ts.Product], t.Slug)
 		}
@@ -1318,7 +1333,24 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		ts.Product, ts.Chain = p, "all"
 		if len(rows) < len(byProduct[p]) {
-			ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
+			// The rows left out carry part of the product's flow; when they
+			// carry most of it the pooled figure would describe the minority
+			// (Banana Gun's Ethereum buys, fee-free, ranked the product first
+			// while its Solana row refilled): the entry waits for them.
+			in, outAtt := 0, 0
+			for _, s := range rows {
+				in += attOfRow[s]
+			}
+			for _, s := range byProduct[p] {
+				outAtt += attOfRow[s]
+			}
+			outAtt -= in
+			if outAtt > in {
+				ts.Healthy, ts.Ranked = false, false
+				ts.Note = strings.TrimSpace(ts.Note + " The chain carrying most of this product's flow is still filling its window: the pooled figure waits for it.")
+			} else {
+				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
+			}
 		}
 		out = append(out, ts)
 	}
@@ -1609,6 +1641,21 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			top = top[:8]
 		}
 		ts.OtherTop = top
+		// The share of the drawn swaps that could not be valued (cumulative
+		// rejects against parsed rows): large on the EVM rows, where routes
+		// through pools without a quote leg or undecoded venues stay out.
+		if total := 0; rejects != nil {
+			unpriced := 0
+			for k, v := range rejects {
+				total += v
+				if strings.HasPrefix(k, "unpriced") || k == "no_pool" || k == "no_quote_leg" {
+					unpriced += v
+				}
+			}
+			if ts.Parsed+total > 0 && unpriced > 0 {
+				ts.UnpricedShare = float64(unpriced) / float64(ts.Parsed+total)
+			}
+		}
 		ts.Healthy = ts.Priced >= minPriced
 		ts.Ranked = ts.Priced >= minRank
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
