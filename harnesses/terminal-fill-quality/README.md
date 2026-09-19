@@ -1,6 +1,7 @@
 # terminal-fill-quality
 
-What a swap costs the user on each Solana trading terminal / Telegram bot,
+What a swap costs the user on each trading terminal, wallet app or Telegram
+bot (Solana, and the EVM chains they trade on),
 measured on-chain. Feeds bench 268 (`terminal-fill-quality`), the
 `/trading-apps` hub and the "Trading app" view on `/products/<slug>`.
 

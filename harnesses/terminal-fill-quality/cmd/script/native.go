@@ -43,7 +43,14 @@ type evmTerminal struct {
 	// come from the block sample alone: every successful transaction
 	// sent to it in the sampled blocks.
 	NoEvents bool
-	Note     string
+	// FromSet: the router is shared (a chain's own aggregator); only the
+	// swaps sent by wallets this app funded through Relay (State.Funded)
+	// are the app's. SenderTopic says, per event signature, which topic
+	// carries the sender, so the log feed filters without a transaction
+	// read; the block sample filters on the transaction's from.
+	FromSet     string
+	SenderTopic map[string]int
+	Note        string
 }
 
 var evmTerminals = []evmTerminal{
@@ -81,6 +88,17 @@ var evmTerminals = []evmTerminal{
 	// ~75 an hour on BSC, ~30 on Ethereum, ~10 on Base). It emits no
 	// event of its own (an executor contract does), so the block sample
 	// is the feed.
+	// BasedBot on Robinhood Chain: the wallets it funds from Solana through
+	// Relay (EIP-7702 accounts) trade on the chain's shared router
+	// 0x7ab338… (its swap event names the sender in topic 1) and its sell
+	// contract 0xe33e9e… (sender in topic 3); only those wallets' swaps are
+	// BasedBot's. The router forwards about 1 % of the trade to fee and
+	// referral accounts before the pool: the residual reads as the fee.
+	{Slug: "basedbot-robinhood", Name: "BasedBot · Robinhood Chain", Kind: "bot", Chain: "robinhood",
+		Routers:     []string{"0x7ab338fde039feb0da5a38d90d1a08fff1c31af0", "0xe33e9e479df8802cb0866d5d05258bec4cf62948"},
+		FromSet:     "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1, "0xdcacba5e347ae7abd91cb519eb877af8fa7774e347b85dd3ddcd24a2ba8cdf37": 3},
+		Note:        "BasedBot's users on Robinhood Chain: the wallets it funded from Solana through Relay, trading on the chain's router (shared with other front ends: only those wallets' swaps count). Value given = what the wallet sent plus gas; received = the tokens at the pool's state before the swap; the router's transfers to its fee and referral accounts (about 1 % of the trade) are the fee, the residual after the pool and gas."},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
 	{Slug: "binance-wallet-base", Name: "Binance Wallet · Base", Kind: "app", Chain: "base", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
@@ -95,6 +113,17 @@ type nativeFeed struct {
 	polled map[string][2]int64
 	box    map[string]*xinboxTx
 	up     map[string]bool
+	funded map[string]map[string]int64 // State.Funded, set by sampleNative each tick (app -> wallet -> time)
+}
+
+// mine: whether a swap sent by `from` belongs to the terminal (always,
+// unless the terminal reads a shared router through the app's funded set).
+func (f *nativeFeed) mine(t evmTerminal, from string) bool {
+	if t.FromSet == "" {
+		return true
+	}
+	_, ok := f.funded[t.FromSet][strings.ToLower(from)]
+	return ok
 }
 
 // liquidityTopics: Uniswap v2 Mint, v3 Mint, v4 ModifyLiquidity — a
@@ -133,6 +162,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 		}
 		byRouter := map[string]string{}
 		noEvents := map[string]bool{}
+		termOf := map[string]evmTerminal{}
 		for _, t := range evmTerminals {
 			if t.Chain != c.slug {
 				continue
@@ -141,6 +171,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 				byRouter[r] = t.Slug
 			}
 			noEvents[t.Slug] = t.NoEvents
+			termOf[t.Slug] = t
 		}
 		if len(byRouter) == 0 {
 			continue
@@ -160,6 +191,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			var blk struct {
 				Transactions []struct {
 					Hash string `json:"hash"`
+					From string `json:"from"`
 					To   string `json:"to"`
 				} `json:"transactions"`
 			}
@@ -170,7 +202,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			read++
 			for _, tx := range blk.Transactions {
 				slug := byRouter[strings.ToLower(tx.To)]
-				if slug == "" {
+				if slug == "" || !f.mine(termOf[slug], tx.From) {
 					continue
 				}
 				var rc evmReceipt
@@ -245,6 +277,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 	for _, c := range originChains {
 		var routers []string
 		byRouter := map[string]string{}
+		termOf := map[string]evmTerminal{}
 		for _, t := range evmTerminals {
 			if t.Chain != c.slug {
 				continue
@@ -253,6 +286,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				routers = append(routers, r)
 				byRouter[r] = t.Slug
 			}
+			termOf[t.Slug] = t
 		}
 		if len(routers) == 0 {
 			continue
@@ -308,6 +342,14 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			if slug == "" || seen[l.TxHash] {
 				continue
 			}
+			if t := termOf[slug]; t.FromSet != "" {
+				// A shared router: only the events whose sender topic names a
+				// wallet the app funded; other event kinds are not swaps here.
+				idx, ok := t.SenderTopic[l.Topics[0]]
+				if !ok || len(l.Topics) <= idx || !f.mine(t, topicAddr(l.Topics[idx])) {
+					continue
+				}
+			}
 			seen[l.TxHash] = true
 			b := f.box[slug]
 			if b == nil {
@@ -331,6 +373,7 @@ func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
 
 // sampleNative draws the tick's quota per native EVM terminal and measures.
 func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *nativeFeed, gas map[string]float64, quota map[string]float64, perTick float64) (added, seen int) {
+	nf.funded = st.Funded
 	nf.poll(ctx)
 	now := time.Now().Unix()
 	nf.failScan(ctx, st, gas, now)

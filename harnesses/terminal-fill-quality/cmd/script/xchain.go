@@ -45,6 +45,7 @@ type xchainApp struct {
 	Name          string
 	FeeRecipients []string // app-fee recipients (EVM addresses, lower-case) that identify the app
 	Referrer      string   // Relay referrer, when the app's requests are public under it
+	FundingOnly   bool     // its Relay requests are wallet funding, never a trade: no per-chain trading rows from the feed
 }
 
 var xchainApps = []xchainApp{
@@ -53,7 +54,10 @@ var xchainApps = []xchainApp{
 	// natively on Solana (join on Mobula's FOMO-attributed trades, 133 of
 	// 2,000 settlements on 2026-09-18); FOMO's referrer is private (403).
 	{Slug: "fomo", Name: "FOMO", FeeRecipients: []string{"0x9fc4e320a181e88644a302d11f1f158ef0699e37"}},
-	{Slug: "basedbot", Name: "BasedBot", Referrer: "BasedBot"},
+	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
+	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
+	// funded wallets' swaps on Robinhood Chain's router (native.go).
+	{Slug: "basedbot", Name: "BasedBot", Referrer: "BasedBot", FundingOnly: true},
 }
 
 // Origin chains Relay users pay from, with a public RPC for the gas
@@ -247,7 +251,9 @@ type xfeed struct {
 	ok       map[string]int
 	last     time.Time
 	up       bool
-	answered bool // a poll of this round got a page from Relay (read and reset by run)
+	answered bool                        // a poll of this round got a page from Relay (read and reset by run)
+	pending  map[string]int64            // request id -> created, requests met before they were final (walked past on the next polls)
+	funded   map[string]map[string]int64 // app -> wallet funded on another chain -> time, drained into the state each tick
 }
 
 type xinbox struct {
@@ -258,7 +264,7 @@ type xinbox struct {
 }
 
 func newXfeed(httpc *http.Client) *xfeed {
-	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}}
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]int64{}, funded: map[string]map[string]int64{}}
 }
 
 // xchainRows: every bench row the cross-chain apps can produce.
@@ -266,10 +272,22 @@ func xchainRows() []string {
 	var out []string
 	for _, a := range xchainApps {
 		out = append(out, a.Slug+"-funding")
+		if a.FundingOnly {
+			continue
+		}
 		for _, c := range originChains {
 			out = append(out, a.Slug+"-"+c.slug)
 		}
 	}
+	return out
+}
+
+// drainFunded hands the wallets funded since the last tick to the state.
+func (f *xfeed) drainFunded() map[string]map[string]int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := f.funded
+	f.funded = map[string]map[string]int64{}
 	return out
 }
 
@@ -298,6 +316,12 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 		gRelayFeed.Set(b2f(f.up))
 		// forget ids older than a day
 		cut := time.Now().Add(-24 * time.Hour).Unix()
+		pcut := time.Now().Add(-2 * time.Hour).Unix()
+		for id, t := range f.pending {
+			if t < pcut {
+				delete(f.pending, id)
+			}
+		}
 		for id, t := range f.seen {
 			if t < cut {
 				delete(f.seen, id)
@@ -322,7 +346,8 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			continue
 		}
 		cont := ""
-		for page := 0; page < 6; page++ {
+		const pages = 12 // 600 requests a round; logged when the budget binds
+		for page := 0; page < pages; page++ {
 			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50", c.id)
 			if a.Referrer != "" {
 				url += "&referrer=" + a.Referrer
@@ -353,19 +378,49 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
 					continue
 				}
+				// Seen is per app: FOMO's walk of the same origin feed must not
+				// hide BasedBot's requests from BasedBot's walk.
+				key := a.Slug + ":" + r.ID
+				created := int64(0)
+				if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+					created = t.Unix()
+				}
 				f.mu.Lock()
-				_, known := f.seen[r.ID]
+				_, known := f.seen[key]
+				// A request met before it was final sits in pending: the walk
+				// goes past known requests until the oldest pending one is
+				// reached again, so a late finaliser (refunds finalise last)
+				// is counted on the poll where it is final.
+				older := false
+				for _, pc := range f.pending {
+					if pc < created {
+						older = true
+						break
+					}
+				}
 				f.mu.Unlock()
 				if known {
-					stop = true
+					if !older {
+						stop = true
+					}
 					continue
 				}
 				if r.Status == "pending" || r.Status == "depositing" {
-					continue // not final yet; seen on a later poll
+					f.mu.Lock()
+					f.pending[key] = created
+					f.mu.Unlock()
+					continue // not final yet; counted on a later poll
 				}
 				x, ok := classify(a, c, r)
 				f.mu.Lock()
-				f.seen[r.ID] = time.Now().Unix()
+				f.seen[key] = time.Now().Unix()
+				delete(f.pending, key)
+				if ok && x.Funding && x.Recipient != "" && strings.HasPrefix(x.Recipient, "0x") {
+					if f.funded[x.App] == nil {
+						f.funded[x.App] = map[string]int64{}
+					}
+					f.funded[x.App][strings.ToLower(x.Recipient)] = time.Now().Unix()
+				}
 				if ok {
 					b := f.box[x.rowSlug()]
 					if b == nil {
@@ -394,6 +449,9 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			cont = rr.Continuation
 			if stop || cont == "" {
 				break
+			}
+			if page == pages-1 {
+				log.Printf("[relay] %s from %s: page budget reached (%d pages), older requests of this round skipped", a.Slug, c.slug, pages)
 			}
 		}
 	}
@@ -455,6 +513,9 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		}
 	}
 	x.OutIsToken = out.ChainID == solanaChainID && out.Address != "" && out.Address != "11111111111111111111111111111111" && out.Address != wsolMint && !stableMints[out.Address]
+	if a.FundingOnly && !x.Funding && x.DestChain != "" {
+		return relayRequest{}, false // the app's trades are read on the chain itself, not from the bridge
+	}
 	in := r.Data.Metadata.CurrencyIn.Currency
 	switch strings.ToUpper(in.Symbol) {
 	case "ETH", "BNB", "WETH", "WBNB", "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "SOL":

@@ -109,8 +109,8 @@ export async function TerminalFillSection({
                           {t.name}
                         </span>
                       ) : (
-                        <Link href={`/products/${productOf(t.slug)}#trading-app`} className="inline-flex items-center gap-2 group">
-                          <ProviderLogo slug={productOf(t.slug)} name={t.name} size={18} />
+                        <Link href={`/products/${t.product || productOf(t.slug)}#trading-app`} className="inline-flex items-center gap-2 group">
+                          <ProviderLogo slug={t.product || productOf(t.slug)} name={t.name} size={18} />
                           <span className="font-medium text-ink group-hover:underline underline-offset-2">{t.name}</span>
                         </Link>
                       )}
@@ -137,7 +137,7 @@ export async function TerminalFillSection({
                   <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtPct(t.loss!.p90) : "—"}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtBps(t.loss!.p90) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.priced}</td>
                 </tr>
               );
@@ -184,7 +184,7 @@ export async function TerminalFillSection({
       </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain from each terminal&apos;s fee-wallet feed (400 drawn at random per terminal per day, every attempt
+        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; the split is exact from balance deltas, the tx fee

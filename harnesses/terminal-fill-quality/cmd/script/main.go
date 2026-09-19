@@ -170,13 +170,14 @@ type failSample struct {
 }
 
 type State struct {
-	Swaps     []Swap                    `json:"swaps"`
-	Fails     []failSample              `json:"fails"`
-	Buckets   map[string][]minuteBucket `json:"buckets"`              // terminal -> per-minute feed counts
-	Rejects   map[string]map[string]int `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
-	Cursors   map[string]*walletCursor  `json:"cursors"`              // wallet -> cursor (polling fallback)
-	EvmCursor map[string]int64          `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
-	Learned   map[string]*Learned       `json:"learned,omitempty"`    // terminal -> fee wallets / routers learned from the chain (discover.go)
+	Swaps     []Swap                      `json:"swaps"`
+	Fails     []failSample                `json:"fails"`
+	Buckets   map[string][]minuteBucket   `json:"buckets"`              // terminal -> per-minute feed counts
+	Rejects   map[string]map[string]int   `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
+	Cursors   map[string]*walletCursor    `json:"cursors"`              // wallet -> cursor (polling fallback)
+	EvmCursor map[string]int64            `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
+	Learned   map[string]*Learned         `json:"learned,omitempty"`    // terminal -> fee wallets / routers learned from the chain (discover.go)
+	Funded    map[string]map[string]int64 `json:"funded,omitempty"`     // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -326,6 +327,7 @@ func main() {
 	applyRPCOverrides()
 	st := loadState(stateFile)
 	applyLearned(st)
+	seedFunded(st)
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
 	failQuota := map[string]float64{}
@@ -413,7 +415,7 @@ func main() {
 		}
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
-			Method:    "Random sample of the swaps each terminal routed (fee-wallet feed), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool) is exact from balance deltas.",
+			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
 			Terminals: stats, Recent: recent(st, 400), Discovery: disc,
 		}
 		mu.Lock()
@@ -618,6 +620,17 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		return 0
 	}
 	now := time.Now().Unix()
+	for app, ws := range xf.drainFunded() {
+		if st.Funded == nil {
+			st.Funded = map[string]map[string]int64{}
+		}
+		if st.Funded[app] == nil {
+			st.Funded[app] = map[string]int64{}
+		}
+		for w, t := range ws {
+			st.Funded[app][w] = t
+		}
+	}
 	for _, slug := range xchainRows() {
 		seen, failed, errs, sample, total := xf.drain(slug)
 		st.record(slug, now, seen, failed, 0, errs)
@@ -782,8 +795,12 @@ const refMaxAgeS = 60
 func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, failed []sigInfo, failQuota map[string]float64, perTickFail, solUSD float64, now int64) {
 	// The quota accrues every tick, failures seen or not (a terminal failing
 	// once every few minutes would otherwise never reach a whole sample),
-	// and a read that fails (the transaction not yet served at the
+	// starts at one draw so a restart does not blank the figure for 36
+	// ticks, and a read that fails (the transaction not yet served at the
 	// commitment asked) gives its share back for the next tick.
+	if _, ok := failQuota[t.Slug]; !ok {
+		failQuota[t.Slug] = 1
+	}
 	failQuota[t.Slug] += perTickFail
 	if cap := math.Max(3*perTickFail, 2); failQuota[t.Slug] > cap {
 		failQuota[t.Slug] = cap
@@ -956,6 +973,9 @@ func cohort() []Terminal {
 	out := append([]Terminal{}, terminals...)
 	for _, a := range xchainApps {
 		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or pays in SOL and receives the gas coin in a wallet on one of those chains (BasedBot). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
+		if a.FundingOnly {
+			continue
+		}
 		for _, c := range originChains {
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in SOL on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
@@ -1022,6 +1042,38 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	sw.finalize(&ref, 0, s.RefSrc)
 	implausibleSplit(sw)
 	return sw
+}
+
+// seedFunded rebuilds the funded-wallet sets from the window's funding legs
+// (the users an app funded on another chain: their trades on that chain's
+// shared router are the app's) and drops entries older than a week.
+func seedFunded(st *State) {
+	if st.Funded == nil {
+		st.Funded = map[string]map[string]int64{}
+	}
+	for _, s := range st.Swaps {
+		if !strings.HasSuffix(s.Terminal, "-funding") || s.Chain == "" || !strings.HasPrefix(s.User, "0x") {
+			continue
+		}
+		app := strings.TrimSuffix(s.Terminal, "-funding")
+		if st.Funded[app] == nil {
+			st.Funded[app] = map[string]int64{}
+		}
+		if w := strings.ToLower(s.User); st.Funded[app][w] < s.Time {
+			st.Funded[app][w] = s.Time
+		}
+	}
+	cut := time.Now().Add(-7 * 24 * time.Hour).Unix()
+	for app, m := range st.Funded {
+		for w, t := range m {
+			if t < cut {
+				delete(m, w)
+			}
+		}
+		if len(m) == 0 {
+			delete(st.Funded, app)
+		}
+	}
 }
 
 // evmFundingRow measures a request that left Solana as the gas coin (or
@@ -1172,7 +1224,12 @@ func productOf(slug string) (string, string) {
 	return slug, "solana"
 }
 
-var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", "basedbot": "BasedBot"}
+var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance", "basedbot": "BasedBot"}
+
+// productAlias: the product a row belongs to when the bench names it
+// differently from the row prefix (Binance Wallet's rows are the Binance
+// product on the site, one page for the exchange's wallet and RPC).
+var productAlias = map[string]string{"binance-wallet": "binance"}
 
 // productTerminal: the identity of a product's pooled row.
 func productTerminal(p string, rows []Terminal) Terminal {
@@ -1205,6 +1262,9 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			continue
 		}
 		ts.Product, ts.Chain = productOf(t.Slug)
+		if p, ok := productAlias[ts.Product]; ok {
+			ts.Product = p
+		}
 		// A single chain's entry publishes from half the pooled threshold
 		// (25 swaps): the chain tabs are an exploratory view of the pooled
 		// figure, the interval next to the median says how firm it is.
@@ -1434,6 +1494,10 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 		}
 		if ts.Parsed > 0 {
+			// A pooled entry's split: each chain's median weighted by the
+			// chain's flow (a weighted median over a bimodal mix, pump.fun's
+			// fee on the Solana swaps and none on the EVM ones, would land on
+			// one chain's mode and print a 0 that describes no user).
 			ts.Components["terminal"] = wmedian(term, termW, pooled)
 			ts.Components["network"] = wmedian(net, netW, pooled)
 			if len(other) > 0 {
@@ -1441,6 +1505,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 			if len(relay) > 0 {
 				ts.Components["relay"] = wmedian(relay, relayW, pooled)
+			}
+			if pooled {
+				for c, v := range chainMeanOfMedians(st, member, slugs, attOf, c2field) {
+					ts.Components[c] = v
+				}
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
 			for v, c := range venues {
@@ -1465,6 +1534,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.Loss = wquantiles(loss, lossW, true, pooled)
 			if len(pool) > 0 {
 				ts.Components["pool"] = wmedian(pool, poolW, pooled)
+				if pooled {
+					if v, ok := chainMeanOfMedians(st, member, slugs, attOf, c2field)["pool"]; ok {
+						ts.Components["pool"] = v
+					}
+				}
 			}
 			ts.RefPoolPct = 100 * float64(refPool) / float64(ts.Priced)
 			ts.RefSrcPct = map[string]float64{}
@@ -1676,6 +1750,76 @@ func median(v []float64) float64 {
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
 	return pct(s, 0.5)
+}
+
+// c2field reads one component of a swap, in basis points (ok false when
+// the swap has none).
+func c2field(s Swap, c string) (float64, bool) {
+	switch c {
+	case "terminal":
+		return s.TerminalBps, true
+	case "network":
+		return s.NetworkBps, true
+	case "relay":
+		if s.Chain == "" {
+			return 0, false
+		}
+		return s.RelayBps, true
+	case "other":
+		if s.OtherBps == nil {
+			return 0, false
+		}
+		return *s.OtherBps, true
+	case "pool":
+		if !s.Priced || s.PoolBps == nil {
+			return 0, false
+		}
+		return *s.PoolBps, true
+	}
+	return 0, false
+}
+
+// chainMeanOfMedians: for a pooled entry, each component as the mean of
+// the rows' medians weighted by the rows' attempts (a row with no value
+// for a component, an EVM row without "other", counts as 0 there: its
+// users pay none of it).
+func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf map[string]float64, get func(Swap, string) (float64, bool)) map[string]float64 {
+	out := map[string]float64{}
+	for _, c := range []string{"terminal", "network", "relay", "other", "pool"} {
+		num, den := 0.0, 0.0
+		any := false
+		for _, slug := range slugs {
+			var vals []float64
+			rows := 0
+			for _, s := range st.Swaps {
+				if s.Terminal != slug || s.Method != methodVersion {
+					continue
+				}
+				rows++
+				if v, ok := get(s, c); ok {
+					vals = append(vals, v)
+				}
+			}
+			if rows == 0 {
+				continue
+			}
+			w := attOf[slug]
+			if w <= 0 {
+				w = float64(rows)
+			}
+			m := 0.0
+			if len(vals) > 0 {
+				m = median(vals)
+				any = true
+			}
+			num += w * m
+			den += w
+		}
+		if any && den > 0 {
+			out[c] = num / den
+		}
+	}
+	return out
 }
 
 // wpct: the weighted quantile (the value where the cumulative weight,
