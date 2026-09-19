@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: glif
     name: Glif
+    endpoint: https://api.node.glif.io/rpc/v1
     tag: Filecoin community node, primary keyless FEVM endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Glif's no-key Filecoin endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://filecoin.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Filecoin endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/filecoin
     tag: Multi-cloud RPC network, 40+ chains, keyless tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Filecoin endpoint."
     queries:

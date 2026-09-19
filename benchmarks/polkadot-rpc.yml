@@ -93,6 +93,7 @@ dimensions:
 providers:
   - slug: polkadot-official
     name: Parity
+    endpoint: https://rpc.polkadot.io
     tag: Parity's official Polkadot relay endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Parity's official Polkadot relay endpoint."
     queries:
@@ -116,6 +117,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://polkadot.api.onfinality.io/public
     tag: Substrate-native public gateway, Web3 Foundation grantee
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's public Polkadot endpoint."
     queries:
@@ -139,6 +141,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://polkadot-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, includes Substrate
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Polkadot endpoint."
     queries:

@@ -78,6 +78,7 @@ dimensions:
 providers:
   - slug: blockchair
     name: Blockchair
+    endpoint: https://api.blockchair.com/bitcoin-cash/stats
     tag: Blockchair public Bitcoin Cash REST API, no API key required for basic queries
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.blockchair.com/bitcoin-cash/stats."
     queries:
@@ -101,6 +102,7 @@ providers:
 
   - slug: bitcore
     name: Bitcore (Bitpay)
+    endpoint: https://api.bitcore.io/api/BCH/mainnet/block/tip
     tag: Bitcore by Bitpay public Bitcoin Cash REST API, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to api.bitcore.io/api/BCH/mainnet/block/tip."
     queries:
@@ -124,6 +126,7 @@ providers:
 
   - slug: biggestfan
     name: BiggestFan Node
+    endpoint: https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo
     tag: BiggestFan public BCHN full node REST API, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET request sent every 60s from 3 regions to rest1.biggestfan.net/v2/blockchain/getBlockchainInfo."
     queries:

@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: harmony-s0
     name: Harmony S0
+    endpoint: https://a.api.s0.t.hmny.io
     tag: Harmony Foundation Shard-0 alternate gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Harmony Foundation's Shard-0 alternate endpoint."
     queries:

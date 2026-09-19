@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: greymass
     name: Greymass
+    endpoint: https://eos.greymass.com
     tag: Greymass public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to eos.greymass.com."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: eosnation
     name: EOS Nation
+    endpoint: https://eos.api.eosnation.io
     tag: EOS Nation public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to eos.api.eosnation.io."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: alohaeos
     name: Aloha EOS
+    endpoint: https://api.main.alohaeos.com
     tag: Aloha EOS public EOS mainnet Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to api.main.alohaeos.com."
     queries:

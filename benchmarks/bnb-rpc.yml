@@ -65,6 +65,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://bsc-rpc.publicnode.com
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key BNB Chain endpoint."
     queries:
@@ -88,6 +89,7 @@ providers:
 
   - slug: nownodes
     name: NOWNodes
+    endpoint: https://public-bsc.nownodes.io
     tag: Public node, 110+ chains, 5 RPS free tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to NOWNodes public no-key BNB Chain endpoint."
     queries:
@@ -111,6 +113,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://bsc.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key BNB Chain endpoint."
     queries:
@@ -134,6 +137,7 @@ providers:
 
   - slug: nodies
     name: Nodies
+    endpoint: https://bsc-pokt.nodies.app
     tag: POKT Network's decentralized public RPC successor, 7+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key BNB Chain endpoint."
     queries:
@@ -157,6 +161,7 @@ providers:
 
   - slug: binance
     name: Binance
+    endpoint: https://bsc-dataseed1.binance.org
     tag: BNB Chain dataseed RPC, Binance-operated
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Binance's no-key BNB Chain endpoint."
     queries:

@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: flare-official
     name: Flare Foundation
+    endpoint: https://songbird-api.flare.network/ext/C/rpc
     tag: Flare Foundation official Songbird public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to the Flare Foundation's no-key Songbird endpoint."
     queries:

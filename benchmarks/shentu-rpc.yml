@@ -70,6 +70,7 @@ dimensions:
 providers:
   - slug: shentu-official
     name: Shentu
+    endpoint: https://rpc.shentu.org:443
     tag: Shentu official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.shentu.org."
     queries:
@@ -93,6 +94,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://shentu-rpc.polkachu.com:443
     tag: Polkachu public Shentu RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to shentu-rpc.polkachu.com."
     queries:
@@ -116,6 +118,7 @@ providers:
 
   - slug: highstakes
     name: High Stakes
+    endpoint: https://shentu-rpc.highstakes.ch
     tag: High Stakes public Shentu RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to shentu-rpc.highstakes.ch."
     queries:

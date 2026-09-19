@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: flare-official
     name: Flare Foundation
+    endpoint: https://flare-api.flare.network/ext/bc/C/rpc
     tag: Flare Foundation official public RPC for Flare mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Flare Foundation's no-key Flare RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://flare.drpc.org
     tag: dRPC public gateway routing to Flare node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Flare RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://14.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Flare
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Flare RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/flare
     tag: Ankr decentralized node provider for Flare mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Flare RPC endpoint."
     queries:

@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: cronos-zkevm-official
     name: Cronos (Crypto.com)
+    endpoint: https://mainnet.zkevm.cronos.org
     tag: Crypto.com official Cronos zkEVM public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to the official Cronos zkEVM no-key endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://cronos-zkevm.drpc.org
     tag: dRPC public gateway for Cronos zkEVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Cronos zkEVM endpoint."
     queries:

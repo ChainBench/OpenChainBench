@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: bob-official
     name: BOB
+    endpoint: https://rpc.gobob.xyz
     tag: BOB official public RPC endpoint operated by Conduit
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BOB's no-key bob RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly
+    endpoint: https://bob.gateway.tenderly.co
     tag: Tenderly public gateway for BOB
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key bob RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://bob.drpc.org
     tag: dRPC public gateway routing to BOB node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key bob RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://60808.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for BOB
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key bob RPC endpoint."
     queries:

@@ -90,6 +90,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/gravity
     tag: Multi-cloud RPC network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Gravity Alpha endpoint."
     queries:

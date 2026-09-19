@@ -93,6 +93,7 @@ providers:
 
   - slug: highstakes
     name: High Stakes
+    endpoint: https://bandprotocol-rpc.highstakes.ch
     tag: High Stakes public Band Protocol RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to bandprotocol-rpc.highstakes.ch."
     queries:
@@ -116,6 +117,7 @@ providers:
 
   - slug: stakewolle
     name: Stakewolle
+    endpoint: https://public.stakewolle.com/cosmos/bandchain/rpc
     tag: Stakewolle public Band Protocol RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to public.stakewolle.com/cosmos/bandchain/rpc."
     queries:

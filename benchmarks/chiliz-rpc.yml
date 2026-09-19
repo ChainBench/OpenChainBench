@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://chiliz-rpc.publicnode.com
     tag: PublicNode multi-chain gateway for Chiliz Chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to PublicNode's no-key Chiliz endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/chiliz
     tag: Ankr decentralized node provider for Chiliz Chain
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Ankr's no-key Chiliz endpoint."
     queries:
@@ -110,6 +112,7 @@ providers:
 
   - slug: chiliz-official
     name: Chiliz Foundation
+    endpoint: https://rpc.chiliz.com
     tag: Chiliz Foundation official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Chiliz Foundation's no-key endpoint."
     queries:

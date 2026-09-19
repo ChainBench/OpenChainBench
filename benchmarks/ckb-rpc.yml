@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: ckb-dev
     name: Nervos Foundation
+    endpoint: https://mainnet.ckb.dev/rpc
     tag: Nervos Foundation official CKB mainnet public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a get_tip_block_number POST sent every 60s from 3 regions to mainnet.ckb.dev/rpc."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: ckbapp
     name: CKBapp
+    endpoint: https://mainnet.ckbapp.dev/rpc
     tag: CKBapp community CKB mainnet public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a get_tip_block_number POST sent every 60s from 3 regions to mainnet.ckbapp.dev/rpc."
     queries:

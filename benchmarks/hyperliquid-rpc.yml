@@ -87,6 +87,7 @@ dimensions:
 providers:
   - slug: hyperliquid-official
     name: Hyperliquid Labs
+    endpoint: https://rpc.hyperliquid.xyz/evm
     tag: Hyperliquid Labs's official public HyperEVM RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hyperliquid Labs's official public HyperEVM RPC."
     queries:
@@ -110,6 +111,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://hyperliquid.drpc.org
     tag: Multi-provider RPC load balancer, edge-close routing
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key HyperEVM endpoint."
     queries:
@@ -133,6 +135,7 @@ providers:
 
   - slug: stakely
     name: Stakely
+    endpoint: https://hyperliquid-json-rpc.stakely.io
     tag: EU-based staking + infra provider, keyless HyperEVM path
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stakely's no-key HyperEVM endpoint."
     queries:
@@ -156,6 +159,7 @@ providers:
 
   - slug: purroofgroup
     name: Purroof Group
+    endpoint: https://rpc.purroofgroup.com
     tag: Community Hyperliquid validator + public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Purroof Group's no-key HyperEVM endpoint."
     queries:
@@ -179,6 +183,7 @@ providers:
 
   - slug: hypurrscan
     name: Hypurrscan
+    endpoint: https://rpc.hypurrscan.io
     tag: HyperEVM explorer + no-key public RPC gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hypurrscan's no-key HyperEVM endpoint."
     queries:

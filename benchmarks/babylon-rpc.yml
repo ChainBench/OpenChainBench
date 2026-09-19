@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://babylon-rpc.publicnode.com
     tag: PublicNode public Babylon RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a Tendermint status GET sent every 60s from 3 regions to babylon-rpc.publicnode.com."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://babylon-rpc.polkachu.com
     tag: Polkachu public Babylon RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a Tendermint status GET sent every 60s from 3 regions to babylon-rpc.polkachu.com."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: lavenderfive
     name: LavenderFive
+    endpoint: https://rpc.lavenderfive.com:443/babylon
     tag: LavenderFive public Babylon RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a Tendermint status GET sent every 60s from 3 regions to rpc.lavenderfive.com/babylon."
     queries:

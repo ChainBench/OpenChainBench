@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: fantom-official
     name: Fantom Foundation
+    endpoint: https://rpcapi.fantom.network
     tag: Fantom Foundation official public RPC gateway
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Fantom Foundation's no-key endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://fantom.drpc.org
     tag: dRPC public gateway for Fantom mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to dRPC's no-key Fantom endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://250.rpc.thirdweb.com
     tag: Thirdweb chain-ID RPC gateway for Fantom
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to Thirdweb's no-key Fantom endpoint."
     queries:

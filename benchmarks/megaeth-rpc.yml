@@ -76,6 +76,7 @@ dimensions:
 providers:
   - slug: megaeth-official
     name: MegaETH Official
+    endpoint: https://mainnet.megaeth.com/rpc
     tag: Foundation endpoint, compute-unit limited
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to MegaETH Official's no-key MegaETH endpoint."
     queries:
@@ -99,6 +100,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://megaeth.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key MegaETH endpoint."
     queries:
@@ -122,6 +124,7 @@ providers:
 
   - slug: tenderly
     name: Tenderly Gateway
+    endpoint: https://megaeth.gateway.tenderly.co
     tag: Public gateway by Tenderly
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key MegaETH endpoint."
     queries:

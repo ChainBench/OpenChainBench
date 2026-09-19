@@ -70,6 +70,7 @@ dimensions:
 providers:
   - slug: mantrachain-official
     name: MANTRA
+    endpoint: https://rpc.mantrachain.io
     tag: MANTRA Chain official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc.mantrachain.io."
     queries:
@@ -93,6 +94,7 @@ providers:
 
   - slug: itrocket
     name: ITRocket
+    endpoint: https://mantra-mainnet-rpc.itrocket.net:443
     tag: ITRocket public MANTRA Chain RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to mantra-mainnet-rpc.itrocket.net."
     queries:
@@ -116,6 +118,7 @@ providers:
 
   - slug: polkachu
     name: Polkachu
+    endpoint: https://mantra-rpc.polkachu.com:443
     tag: Polkachu public MANTRA Chain RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to mantra-rpc.polkachu.com."
     queries:

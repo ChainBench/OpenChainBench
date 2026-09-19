@@ -64,6 +64,7 @@ dimensions:
 providers:
   - slug: publicnode
     name: PublicNode
+    endpoint: https://peaq-rpc.publicnode.com
     tag: PublicNode multi-chain gateway including Substrate/Peaq
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to PublicNode's no-key Peaq endpoint."
     queries:
@@ -87,6 +88,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://peaq.api.onfinality.io/public
     tag: OnFinality Substrate public gateway for Peaq
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions to OnFinality's no-key Peaq endpoint."
     queries:

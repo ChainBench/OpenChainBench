@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: kava-official
     name: Kava Labs
+    endpoint: https://evm.kava.io
     tag: Kava Labs official public EVM RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Kava Labs's no-key kava EVM RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://kava.drpc.org
     tag: dRPC public gateway routing to Kava node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key kava RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://kava.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Kava EVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key kava RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://kava-evm-rpc.publicnode.com
     tag: PublicNode free public RPC for Kava EVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key kava RPC endpoint."
     queries:
@@ -160,6 +164,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/kava_evm
     tag: Ankr public RPC gateway for Kava EVM
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key kava RPC endpoint."
     queries:

@@ -90,6 +90,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://plume.drpc.org
     tag: Decentralized RPC mesh
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Plume Network endpoint."
     queries:

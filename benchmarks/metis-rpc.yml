@@ -75,6 +75,7 @@ dimensions:
 providers:
   - slug: metis-official
     name: Metis
+    endpoint: https://andromeda.metis.io/?owner=1088
     tag: Metis Foundation Andromeda mainnet public endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Metis's no-key Metis RPC endpoint."
     queries:
@@ -98,6 +99,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://metis.drpc.org
     tag: dRPC public gateway routing to Metis node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Metis RPC endpoint."
     queries:
@@ -121,6 +123,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://metis-rpc.publicnode.com
     tag: PublicNode community-funded public Metis RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Metis RPC endpoint."
     queries:
@@ -144,6 +147,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://1088.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Metis
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Metis RPC endpoint."
     queries:

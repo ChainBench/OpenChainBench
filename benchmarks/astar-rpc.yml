@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: onfinality
     name: OnFinality
+    endpoint: https://astar.api.onfinality.io/public
     tag: OnFinality shared node service
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's no-key Astar Network endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: 1rpc
     name: 1RPC
+    endpoint: https://1rpc.io/astr
     tag: Privacy-first RPC relay, Automata Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Astar endpoint."
     queries:

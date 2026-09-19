@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: thundercore-official
     name: ThunderCore Official
+    endpoint: https://mainnet-rpc.thundercore.com
     tag: ThunderCore official public RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to mainnet-rpc.thundercore.com."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: thundertoken
     name: ThunderToken
+    endpoint: https://mainnet-rpc.thundertoken.net
     tag: ThunderToken public ThunderCore RPC, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to mainnet-rpc.thundertoken.net."
     queries:
@@ -112,6 +114,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://thundercore.drpc.org
     tag: dRPC decentralised multi-chain RPC, public ThunderCore endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to thundercore.drpc.org."
     queries:

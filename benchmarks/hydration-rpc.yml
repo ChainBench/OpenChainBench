@@ -66,6 +66,7 @@ dimensions:
 providers:
   - slug: hydration-official
     name: Hydration
+    endpoint: https://rpc.hydradx.cloud
     tag: Hydration official public RPC (rpc.hydradx.cloud), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to rpc.hydradx.cloud."
     queries:
@@ -89,6 +90,7 @@ providers:
 
   - slug: dwellir
     name: Dwellir
+    endpoint: https://hydration-rpc.n.dwellir.com
     tag: Dwellir public Hydration RPC (hydration-rpc.n.dwellir.com), keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a chain_getHeader POST sent every 60s from 3 regions to hydration-rpc.n.dwellir.com."
     queries:

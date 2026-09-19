@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: b2-official
     name: B² Network Official
+    endpoint: https://rpc.bsquared.network
     tag: B² team-operated public RPC for B² Network mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to B² Official's no-key B² Network endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://b2-mainnet.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key B² Network endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://223.rpc.thirdweb.com
     tag: Multi-chain RPC gateway, 1000+ chains via chain ID routing
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key B² Network endpoint."
     queries:

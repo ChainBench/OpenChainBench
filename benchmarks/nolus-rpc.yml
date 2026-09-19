@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://nolus-rpc.polkachu.com
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Nolus endpoint."
     queries:
@@ -89,6 +90,7 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="nolus", region="sgp"}[1h])
   - slug: autostake
     name: AutoStake
+    endpoint: https://nolus-mainnet-rpc.autostake.com:443
     tag: Cosmos validator and public RPC service
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to AutoStake's no-key Nolus endpoint."
     queries:

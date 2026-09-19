@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: manta-official
     name: Manta Network
+    endpoint: https://pacific-rpc.manta.network/http
     tag: Manta Network official public RPC for Manta Pacific
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Manta Network's no-key Manta Pacific RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://manta-pacific.drpc.org
     tag: dRPC public gateway routing to Manta Pacific node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Manta Pacific RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://169.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Manta Pacific
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Manta Pacific RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: 1rpc
     name: 1RPC
+    endpoint: https://1rpc.io/manta
     tag: Automata Network privacy-preserving public RPC for Manta Pacific
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Manta Pacific RPC endpoint."
     queries:

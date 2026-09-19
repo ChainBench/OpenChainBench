@@ -70,6 +70,7 @@ dimensions:
 providers:
   - slug: nodes-guru
     name: Nodes.Guru
+    endpoint: https://rpc-1.union.nodes.guru
     tag: Nodes.Guru public Union RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to rpc-1.union.nodes.guru."
     queries:
@@ -93,6 +94,7 @@ providers:
 
   - slug: stakeandrelax
     name: Stake And Relax
+    endpoint: https://union-rpc.stakeandrelax.net
     tag: Stake And Relax public Union RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to union-rpc.stakeandrelax.net."
     queries:
@@ -116,6 +118,7 @@ providers:
 
   - slug: highstakes
     name: High Stakes
+    endpoint: https://union-rpc.highstakes.ch
     tag: High Stakes public Union RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to union-rpc.highstakes.ch."
     queries:

@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: bitlayer-official
     name: Bitlayer Official
+    endpoint: https://rpc.bitlayer.org
     tag: Bitlayer Labs-operated public RPC for Bitlayer mainnet
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Bitlayer Official's no-key Bitlayer endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://bitlayer.drpc.org
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Bitlayer endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/bitlayer
     tag: Multi-cloud RPC network, 40+ chains, keyless tier
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Bitlayer endpoint."
     queries:

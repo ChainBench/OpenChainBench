@@ -68,6 +68,7 @@ dimensions:
 providers:
   - slug: morph-official
     name: Morph
+    endpoint: https://rpc.morphl2.io
     tag: Morph foundation official public RPC endpoint
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Morph's no-key Morph RPC endpoint."
     queries:
@@ -91,6 +92,7 @@ providers:
 
   - slug: drpc
     name: dRPC
+    endpoint: https://morph.drpc.org
     tag: dRPC public gateway routing to Morph node pool
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Morph RPC endpoint."
     queries:
@@ -114,6 +116,7 @@ providers:
 
   - slug: thirdweb
     name: Thirdweb
+    endpoint: https://2818.rpc.thirdweb.com
     tag: Thirdweb public RPC gateway for Morph
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Morph RPC endpoint."
     queries:
@@ -137,6 +140,7 @@ providers:
 
   - slug: morph-quicknode
     name: QuickNode
+    endpoint: https://rpc-quicknode.morph.network
     tag: Morph Foundation public RPC powered by QuickNode
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Morph's QuickNode-powered public RPC endpoint."
     queries:

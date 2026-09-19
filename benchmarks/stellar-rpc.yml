@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: gateway
     name: Gateway.fm
+    endpoint: https://soroban-rpc.mainnet.stellar.gateway.fm
     tag: Decentralized infrastructure provider with a public Stellar Soroban RPC endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single getLatestLedger POST sent every 60s from 3 regions to Gateway.fm's no-key Stellar Soroban endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: ankr
     name: Ankr
+    endpoint: https://rpc.ankr.com/stellar_soroban
     tag: Multi-chain RPC platform with a public Stellar Soroban endpoint, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single getLatestLedger POST sent every 60s from 3 regions to Ankr's no-key Stellar Soroban endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: onfinality
     name: OnFinality
+    endpoint: https://stellar.api.onfinality.io/public
     tag: Global multi-chain gateway, 70+ networks, rate-limited public tier, 5 req/sec
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single getLatestLedger POST sent every 60s from 3 regions to OnFinality's no-key Stellar Soroban endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: sorobanrpc
     name: SorobanRPC.com
+    endpoint: https://mainnet.sorobanrpc.com
     tag: Community-run public Soroban RPC endpoint dedicated to Stellar mainnet, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single getLatestLedger POST sent every 60s from 3 regions to SorobanRPC.com's no-key Stellar Soroban endpoint."
     queries:
@@ -159,6 +163,7 @@ providers:
 
   - slug: lightsail
     name: Lightsail Network
+    endpoint: https://rpc.lightsail.network/
     tag: Lightsail Quasar node, public Stellar Soroban RPC for mainnet, no key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single getLatestLedger POST sent every 60s from 3 regions to Lightsail Network's no-key Stellar Soroban endpoint."
     queries:

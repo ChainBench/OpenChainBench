@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: vechain-foundation
     name: VeChain Foundation
+    endpoint: https://mainnet.vechain.org
     tag: VeChain Foundation official mainnet node, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/best sent every 60s from 3 regions to mainnet.vechain.org."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: vethor-node
     name: VeThor Node
+    endpoint: https://vethor-node.vechain.com
     tag: VeChain Foundation VeThor public node, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/best sent every 60s from 3 regions to vethor-node.vechain.com."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: vechain-energy
     name: VeChain.energy
+    endpoint: https://node-mainnet.vechain.energy
     tag: VeChain.energy community node, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /blocks/best sent every 60s from 3 regions to node-mainnet.vechain.energy."
     queries:

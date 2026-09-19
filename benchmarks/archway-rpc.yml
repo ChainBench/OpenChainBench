@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: polkachu
     name: Polkachu
+    endpoint: https://archway-rpc.polkachu.com
     tag: Community Cosmos validator and public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Archway endpoint."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: lavenderfive
     name: LavenderFive
+    endpoint: https://rpc.lavenderfive.com:443/archway
     tag: Cosmos validator and no-key RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key Archway endpoint."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: archway-official
     name: Archway Foundation
+    endpoint: https://rpc.mainnet.archway.io
     tag: Archway Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Archway Foundation's no-key Archway endpoint."
     queries:
@@ -136,6 +139,7 @@ providers:
 
   - slug: publicnode
     name: PublicNode
+    endpoint: https://archway-rpc.publicnode.com:443
     tag: Allnodes-operated, 70+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Archway RPC endpoint."
     queries:

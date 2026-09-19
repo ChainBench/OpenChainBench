@@ -67,6 +67,7 @@ dimensions:
 providers:
   - slug: greymass
     name: Greymass
+    endpoint: https://wax.greymass.com
     tag: Greymass public WAX Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to wax.greymass.com."
     queries:
@@ -90,6 +91,7 @@ providers:
 
   - slug: eosusa
     name: EOSUSA
+    endpoint: https://wax.eosusa.io
     tag: EOSUSA public WAX Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to wax.eosusa.io."
     queries:
@@ -113,6 +115,7 @@ providers:
 
   - slug: waxsweden
     name: WAX Sweden
+    endpoint: https://api.waxsweden.org
     tag: WAX Sweden public Antelope API, keyless
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /v1/chain/get_info sent every 60s from 3 regions to api.waxsweden.org."
     queries:

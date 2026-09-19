@@ -70,6 +70,7 @@ dimensions:
 providers:
   - slug: icon-solidwallet
     name: ICON Foundation
+    endpoint: https://ctz.solidwallet.io
     tag: ICON Foundation official public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a POST /api/v3 icx_getLastBlock sent every 60s from 3 regions to ctz.solidwallet.io."
     queries:
@@ -93,6 +94,7 @@ providers:
 
   - slug: icon-community
     name: ICON Community
+    endpoint: https://api.icon.community
     tag: ICON Community public RPC node, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a POST /api/v3 icx_getLastBlock sent every 60s from 3 regions to api.icon.community."
     queries:
@@ -116,6 +118,7 @@ providers:
 
   - slug: iconblockchain
     name: iconblockchain.xyz
+    endpoint: https://api.iconblockchain.xyz
     tag: iconblockchain.xyz community-operated public ICON RPC, no API key required
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a POST /api/v3 icx_getLastBlock sent every 60s from 3 regions to api.iconblockchain.xyz."
     queries:
