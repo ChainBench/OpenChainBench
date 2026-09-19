@@ -14,7 +14,7 @@ unit: bp
 higher_is_better: false
 
 disclaimer: |
-  Random sample (400 per terminal per day) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade on the pool within 60 s elsewhere); swaps without one keep their split but no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more, ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
+  Random sample (400 per terminal per day, 1,000 on the EVM rows) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (exact reserves on PumpSwap and Raydium, the previous trade within 60 s elsewhere); swaps without one keep their split, no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more, ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -78,7 +78,7 @@ methodology:
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains, no event of its own, so its swaps are the transactions sent to it in the blocks read in full; valued and split like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: no fee visible on-chain, terminal 0."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
   - "Kept out of that residual: a fee the pool's own hook keeps (Uniswap v4 launchpad pools on Robinhood Chain, 1 %, and BNB, 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the rate the route itself swapped the gas coin at, not at an exchange's print; Axiom's inclusion tip on every transaction (a fixed 0.0025 BNB; on Robinhood Chain the user's own setting, read from the call trace) is network cost, like the Solana terminals' own tip relays."
-  - "Not in the table: BullX (trading suspended since June 2026, its fee wallets only see marker transfers), Nova (no live fee wallet). BasedBot: its Relay requests fund its users' wallets (SOL from Solana to the gas coin, no app fee: a funding leg in the JSON), and those wallets' swaps on Robinhood Chain's shared router are its row (about 1 % to the router's fee and referral accounts); its BNB, Base and Ethereum trades are not read yet, nor GMGN's Ethereum, Base and Tron routers, nor HyperEVM."
+  - "Not in the table: BullX (suspended since June 2026), Nova (no live fee wallet). BasedBot: its Relay requests fund its users' wallets (SOL from Solana to the gas coin, no app fee: a funding leg in the JSON), and those wallets' swaps on Robinhood Chain's shared router are its row (about 1 % to the router's fee and referral accounts); on BNB, Base and Ethereum its router is not identified yet. GMGN's Ethereum, Base and Tron routers are not verified; HyperEVM deliveries have no gas price."
 
 findings:
   - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's state before the trade, all costs included."
@@ -137,7 +137,7 @@ metric_panels:
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow, 0 where no bridge is used."
+    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow; blank where no bridge is used."
   - id: other
     label: Other fees
     label_key: terminal

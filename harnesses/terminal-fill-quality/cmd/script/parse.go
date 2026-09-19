@@ -693,7 +693,8 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	}
 	// FOMO: user-signed stable transfers to accounts outside every pool
 	// instruction are fee legs (commission split per trade), bounded at
-	// 2 % of the trade so a routing leg can never pass for a fee.
+	// 2 % of the trade (or its $0.10 minimum) so a routing leg can never
+	// pass for a fee.
 	feeLegOwners := map[string]bool{}
 	if t.StableLegsAreFee {
 		legs := 0.0

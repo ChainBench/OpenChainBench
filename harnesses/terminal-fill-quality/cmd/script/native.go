@@ -50,7 +50,11 @@ type evmTerminal struct {
 	// read; the block sample filters on the transaction's from.
 	FromSet     string
 	SenderTopic map[string]int
-	Note        string
+	// DropLoops: wallets trading the same token both ways four times or
+	// more in the window are farming (Binance Alpha volume on Base, fee-free
+	// round trips): their swaps stay out of the row's statistics.
+	DropLoops bool
+	Note      string
 }
 
 var evmTerminals = []evmTerminal{
@@ -101,8 +105,8 @@ var evmTerminals = []evmTerminal{
 		Note:        "BasedBot's users on Robinhood Chain: the wallets it funded from Solana through Relay, trading on the chain's router (shared with other front ends: only those wallets' swaps count). Value given = what the wallet sent plus gas; received = the tokens at the pool's state before the swap; the router's transfers to its fee and referral accounts (about 1 % of the trade) are the fee, the residual after the pool and gas."},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
-	{Slug: "binance-wallet-base", Name: "Binance Wallet · Base", Kind: "app", Chain: "base", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true,
-		Note: "On Base most of the router's transactions are fee-free round trips on a few tokens (Binance Alpha-style volume, 0 to 1 bps terminal fee, $25 to $250): they set this row's median; the size buckets in the JSON show the retail trades apart."},
+	{Slug: "binance-wallet-base", Name: "Binance Wallet · Base", Kind: "app", Chain: "base", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
+		Note: "On Base most of the router's transactions are fee-free round trips on a few tokens (Binance Alpha-style volume, 0 to 1 bps terminal fee): wallets trading the same token both ways four times or more in the window are left out of this row, which keeps the retail swaps."},
 }
 
 const nativeNote = "Swaps routed through the terminal's own contracts on this chain, read from their events (successful swaps: a failed transaction emits none, so the fail rate comes from a sample of blocks read in full, every transaction sent to the routers counted, reverted or not). Value given = what the user sent plus gas; value received = the tokens at the pool's state before the swap (v2 reserves, v3 / v4 previous price). The terminal's fee is paid inside the router as a native transfer: it is the residual after the pool and the gas. A fee the pool's own hook keeps (launchpad pools on Robinhood Chain and BNB) is a pool cost; a fixed inclusion tip the terminal adds to every transaction is network cost."
@@ -115,6 +119,16 @@ type nativeFeed struct {
 	box    map[string]*xinboxTx
 	up     map[string]bool
 	funded map[string]map[string]int64 // State.Funded, set by sampleNative each tick (app -> wallet -> time)
+}
+
+// dropsLoops: whether the row leaves farming round trips out (DropLoops).
+func dropsLoops(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return t.DropLoops
+		}
+	}
+	return false
 }
 
 // mine: whether a swap sent by `from` belongs to the terminal (always,
@@ -213,8 +227,10 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 				seen[slug]++
 				if rc.Status != "0x1" {
 					failed[slug]++
-					fee := float64(hexInt(rc.GasUsed)) * float64(hexInt(rc.EffectiveGasPrice)) / 1e18 * price
-					st.Fails = append(st.Fails, failSample{Terminal: slug, Sig: tx.Hash, Time: now, FeeUSD: fee, Err: "reverted"})
+					if price > 0 { // no gas price this tick: the failure counts, its cost is not sampled
+						fee := float64(hexInt(rc.GasUsed)) * float64(hexInt(rc.EffectiveGasPrice)) / 1e18 * price
+						st.Fails = append(st.Fails, failSample{Terminal: slug, Sig: tx.Hash, Time: now, FeeUSD: fee, Err: "reverted"})
+					}
 				} else if noEvents[slug] {
 					// The block sample is this terminal's feed.
 					b := f.box[slug]

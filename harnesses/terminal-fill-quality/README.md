@@ -286,7 +286,7 @@ wallet on Robinhood Chain, BNB, Base or Ethereum (a few into its contract
 `evmFundingRow` prices them (value given = the SOL read on Solana, received
 = the native amount at the exchange's price, relay = the rest) into
 `basedbot-funding`, out of the pooled figure. Its trades run in its own
-contracts on those chains (the funded wallets carry an EIP-7702
+contracts on those chains (the funded wallets are plain EOAs, a few with an EIP-7702
 delegation to `0xe6cae83b…` or `0x69007702…`): they all trade through the
 chain's shared router `0x7ab338…` (sell contract `0xe33e9e…`), read as the
 `basedbot-robinhood` row filtered on the funded set (`FromSet`, seeded from

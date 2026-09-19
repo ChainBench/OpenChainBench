@@ -298,9 +298,9 @@ func xchainRows() []string {
 }
 
 // seedFundedFromRelay walks a funding-only app's public requests from Solana
-// back about a day at start (70 pages) when the state holds few of its
-// funded wallets, so the app's row on a shared router does not wait a day
-// for its users to be known.
+// back about three days at start (200 pages) when the state holds fewer
+// than 5,000 of its funded wallets, so the app's row on a shared router
+// knows the users still trading from an earlier funding.
 func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
 	for _, a := range xchainApps {
 		if !a.FundingOnly || a.Referrer == "" {
@@ -309,14 +309,14 @@ func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
 		if st.Funded == nil {
 			st.Funded = map[string]map[string]int64{}
 		}
-		if len(st.Funded[a.Slug]) >= 500 {
+		if len(st.Funded[a.Slug]) >= 5000 {
 			continue
 		}
 		if st.Funded[a.Slug] == nil {
 			st.Funded[a.Slug] = map[string]int64{}
 		}
 		cont, got := "", 0
-		for page := 0; page < 70; page++ {
+		for page := 0; page < 200; page++ { // about three days of the app's requests
 			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50&referrer=%s", solanaChainID, a.Referrer)
 			if cont != "" {
 				url += "&continuation=" + cont
