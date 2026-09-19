@@ -7,6 +7,7 @@
  * the sitemap are listed: thin ones are noindex on their own page.
  */
 import Link from "next/link";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { getSpecs } from "@/lib/spec";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
@@ -18,7 +19,9 @@ function chainLabel(title: string, slug: string): string {
 
 export async function RpcSiblingChains({ currentSlug }: { currentSlug: string }) {
   const [specs, blob] = await Promise.all([getSpecs(), loadSitemapBlob()]);
-  const indexable = blob ? new Set(blob.benches.map((b) => b.slug)) : null;
+  const indexable = blob
+    ? new Set(blob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
   const siblings = specs
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug) && s.slug !== currentSlug)
     .filter((s) => !indexable || indexable.has(s.slug))

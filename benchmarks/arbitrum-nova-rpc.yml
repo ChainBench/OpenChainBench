@@ -2,9 +2,9 @@
 
 slug: arbitrum-nova-rpc
 number: "139"
-title: "Arbitrum Nova RPC endpoints: free public URLs ranked by latency"
-seo_title: "Arbitrum Nova RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Arbitrum Nova RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Arbitrum Nova RPC endpoints: free public URLs by latency"
+seo_title: "Arbitrum Nova RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Arbitrum Nova RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Arbitrum Nova EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Arbitrum Nova is an AnyTrust chain (chain 42170) built on the Nitro stack, optimised for high-throughput gaming and social applications with ultra-low transaction costs. Unlike Arbitrum One's full rollup model, Nova posts minimal data on-chain via a Data Availability Committee, achieving sub-cent fees. The 2026-08-04 audit confirms {{count}} clean keyless providers: PublicNode (arbitrum-nova-rpc.publicnode.com), dRPC (arbitrum-nova.drpc.org), and Thirdweb (42170.rpc.thirdweb.com). Excluded: Ankr (no Nova route), Alchemy (key required).
 
 abstract: |
-  Arbitrum Nova: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Arbitrum Nova: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public Arbitrum Nova endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with an Arbitrum Nova-scaled staleness gap (20 blocks at Arbitrum Nova's ~1 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Arbitrum Nova-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

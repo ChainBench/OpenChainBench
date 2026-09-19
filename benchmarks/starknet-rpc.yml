@@ -2,9 +2,9 @@
 
 slug: starknet-rpc
 number: "209"
-title: "Starknet RPC endpoints: free public URLs ranked by latency"
-seo_title: "Starknet RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Starknet RPC at {{best_p50}} (starknet_blockNumber p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Starknet RPC endpoints: free public URLs by latency"
+seo_title: "Starknet RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Starknet RPC at {{best_p50}} (starknet_blockNumber p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for starknet_blockNumber against every free, no-key public Starknet RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,18 +17,15 @@ seo_intro: |
   Starknet is a ZK-Rollup on Ethereum using STARK proofs for validity. Blocks finalize on Ethereum L1. Free public RPC endpoints are available without an API key from dRPC, Lava, Nethermind, OnFinality and 1RPC. Every provider was live-verified with consecutive keyless starknet_blockNumber probes at launch.
 
 abstract: |
-  Starknet: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Starknet: {{count}} free public RPC endpoints answering `starknet_blockNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (starknet_blockNumber) against every no-key public Starknet endpoint that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Starknet-scaled staleness gap. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Starknet-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"starknet_blockNumber\",\"params\":[]}. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Starknet-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=starknet. Provider coverage at launch: {{count}} no-key endpoints (dRPC, Lava, Nethermind, OnFinality, 1RPC)."
+  - "Chain scope: every query on this page is pinned to chain=starknet. Provider coverage today: {{count}} no-key endpoints (dRPC, Lava, Nethermind, OnFinality, 1RPC)."
 
-faq:
-  - q: "Which Starknet RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go. Every listed endpoint was live-verified with a `starknet_blockNumber` request before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

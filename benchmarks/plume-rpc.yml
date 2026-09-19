@@ -2,8 +2,8 @@
 
 slug: plume-rpc
 number: "161"
-title: "Plume Network RPC endpoints: free public URLs ranked by latency"
-seo_title: "Plume Network RPC endpoints: free public URLs ranked by latency"
+title: "Plume Network RPC endpoints: free public URLs by latency"
+seo_title: "Plume Network RPC endpoints: free public URLs by latency"
 seo_description: "{{best_name}} leads free Plume Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Plume Network RPC endpoint, audited every 60 seconds from 3 regions.
 
@@ -24,11 +24,8 @@ methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Plume Network-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to `chain=\"plume\"`. Provider coverage at launch: {{count}} no-key endpoints (Plume Foundation, dRPC)."
+  - "Chain scope: every query on this page is pinned to `chain=\"plume\"`. Provider coverage today: {{count}} no-key endpoints."
 
-faq:
-  - q: "Which Plume Network RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

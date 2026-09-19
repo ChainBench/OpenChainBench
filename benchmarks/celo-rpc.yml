@@ -2,9 +2,9 @@
 
 slug: celo-rpc
 number: "057"
-title: "Celo RPC endpoints: free public URLs ranked by latency"
-seo_title: "Celo RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Celo RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Celo RPC endpoints: free public URLs by latency"
+seo_title: "Celo RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Celo RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Celo RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Celo brings {{count}} no-key providers anchored by Forno (`forno.celo.org`), cLabs' public endpoint that predates most of the gateway industry. Since Celo's migration to an Ethereum L2 the RPC surface is standard EVM, so the multi-chain gateways (PublicNode, dRPC, Tenderly) compete directly with the house endpoint on the identical `eth_getBlockByNumber` probe every 60 seconds from three regions.
+  Celo brings {{count}} no-key providers anchored by Forno (`forno.celo.org`), cLabs' public endpoint that predates most of the gateway industry. Since Celo's migration to an Ethereum L2 the RPC surface is standard EVM, so the multi-chain gateways compete directly with the house endpoint on the identical `eth_getBlockByNumber` probe every 60 seconds from three regions.
 
 abstract: |
   Celo: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:celo-official}}.
@@ -24,7 +24,7 @@ methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Celo-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=\"celo\". Provider coverage: {{count}} no-key endpoints (PublicNode, dRPC, Tenderly, Celo (Forno)). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"celo\". Provider coverage: {{count}} no-key endpoints. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
   - q: "Which Celo RPCs work without an API key?"

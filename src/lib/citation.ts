@@ -163,14 +163,16 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   if (chain) {
     // Same set as the Results table and the endpoints block (display
     // floor), so the four surfaces quote one count.
-    const n = displayResults(b.results).length;
-    return {
-      claim:
-        n === 1
-          ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
-          : `${top.name} has the lowest median latency of the ${n} free public ${chain} RPC endpoints measured, ${value}`,
-      rest: `(p50, 24h, 3 regions).`,
-    };
+    const listed = displayResults(b.results).length;
+    const ranked = rankedCandidates(b).length;
+    const below = listed - ranked;
+    const claim =
+      ranked === 1 && listed === 1
+        ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
+        : ranked === 1
+          ? `${top.name} is the only one of the ${listed} free public ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
+          : `${top.name} has the lowest median latency of the ${ranked} free public ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
+    return { claim, rest: `(p50, 24h, 3 regions).` };
   }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {

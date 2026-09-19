@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
@@ -45,7 +46,9 @@ export default async function RpcHubPage() {
   // bench under the thin gate is noindex on its own page and must not be
   // linked from here (36 such links on 2026-09-19). Without the blob, no
   // restriction rather than an empty hub.
-  const indexable = sitemapBlob ? new Set(sitemapBlob.benches.map((b) => b.slug)) : null;
+  const indexable = sitemapBlob
+    ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
   const rpcSpecs = specs
     .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
     .filter((s) => !indexable || indexable.has(s.slug))

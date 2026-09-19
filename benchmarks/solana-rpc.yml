@@ -2,9 +2,9 @@
 
 slug: solana-rpc
 number: "075"
-title: "Solana RPC endpoints: free public URLs ranked by latency"
-seo_title: "Solana RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h, 3 regions). URLs and success rates for all {{count}} no-key endpoints, updated every 60s."
+title: "Solana RPC endpoints: free public URLs by latency"
+seo_title: "Solana RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h, 3 regions). URLs and success rates for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for getSlot at the processed commitment against every free, no-key public Solana RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Solana is the first non-EVM member of the RPC latency cluster, and the chain where the free-RPC question is asked most and answered worst: most "best Solana RPC" roundups list endpoints that key-gated or died years ago. This page probes the {{count}} endpoints that actually answer keyless today, including the Solana Labs official api.mainnet-beta.solana.com that every tutorial pastes, with the same rules as the 20 EVM chains in the cluster: one identical probe (getSlot at the processed commitment) every 60 seconds from us-east, eu-west and Singapore, stale-slot detection against the cross-provider tip, and result classification so a fast error never ranks as a fast answer. The candidates that failed the keyless audit are listed with their exact refusals: dRPC moved Solana to paid tiers, Ankr returns 403 without a key, OnFinality's shared public quota is permanently exhausted.
 
 abstract: |
-  Solana: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Solana: {{count}} free public RPC endpoints answering `getSlot` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure round-trip latency of a single identical JSON-RPC call (getSlot at the processed commitment) against every no-key public Solana endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. Responses are classified (ok / http_err / jsonrpc_err / stale / timeout) with staleness measured in slots against the cross-provider tip. The archive-depth audit run on EVM chains has no keyless Solana equivalent and is not performed. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Solana-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

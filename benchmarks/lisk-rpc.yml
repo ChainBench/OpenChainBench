@@ -2,9 +2,9 @@
 
 slug: lisk-rpc
 number: "127"
-title: "Lisk RPC endpoints: free public URLs ranked by latency"
-seo_title: "Lisk RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Lisk RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Lisk RPC endpoints: free public URLs by latency"
+seo_title: "Lisk RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Lisk RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Lisk EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Lisk is an OP Stack L2 (chain 1135) operated by Onchain Foundation (formerly Lisk Foundation), focused on emerging-market Web3 adoption, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum. 2026-08-03 re-audit brings the total to {{count}} clean keyless providers: the Lisk official endpoint (rpc.api.lisk.com), dRPC (lisk.drpc.org), Thirdweb (lisk.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/lisk). Excluded: Blast API (no lisk route), Alchemy (key required), Infura (no lisk route), QuickNode (key required).
 
 abstract: |
-  Lisk: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lisk-official}}.
+  Lisk: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lisk-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Lisk endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Lisk-scaled staleness gap (20 blocks at Lisk's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Lisk-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

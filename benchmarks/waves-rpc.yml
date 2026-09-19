@@ -2,9 +2,9 @@
 
 slug: waves-rpc
 number: "225"
-title: "Waves RPC endpoints: free public URLs ranked by latency"
-seo_title: "Waves RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Waves RPC at {{best_p50}} (blocks/last height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Waves RPC endpoints: free public URLs by latency"
+seo_title: "Waves RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Waves RPC at {{best_p50}} (blocks/last height p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for GET /blocks/last against every available public Waves node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,14 +17,14 @@ seo_intro: |
   Waves is a proof-of-stake blockchain optimised for decentralised finance and token creation, producing one block approximately every 60 seconds. The chain exposes a REST API at /blocks/last returning the latest committed block height as a plain integer. Public REST endpoints are available without an API key from the Waves Foundation, Waves.Exchange and nodes.waves.exchange. Every provider was live-verified with consecutive block probes at launch.
 
 abstract: |
-  Waves: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Waves: {{count}} free public RPC endpoints answering `GET /blocks/last` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a single REST call (GET /blocks/last) against every available public Waves node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Waves-scaled staleness gap (5 blocks, around 5 min at 60 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Waves-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: HTTP GET /blocks/last. Plain REST call. The response carries height as a plain integer."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Waves-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=waves. Provider coverage at launch: {{count}} endpoints (Waves Foundation, Waves.Exchange x2)."
+  - "Chain scope: every query on this page is pinned to chain=waves. Provider coverage today: {{count}} endpoints (Waves Foundation, Waves.Exchange x2)."
 
 faq:
   - q: "Which Waves RPC endpoints work without an API key?"

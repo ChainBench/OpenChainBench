@@ -157,7 +157,8 @@ const provider = z.object({
         !/quiknode\.pro\/[A-Za-z0-9]{16,}/i.test(u) &&
         !/core\.chainstack\.com\/[A-Za-z0-9]{16,}/i.test(u) &&
         !/getblock\.io\/[A-Za-z0-9]{16,}/i.test(u) &&
-        !/[a-f0-9]{32,}/i.test(u),
+        !/[a-f0-9]{32,}/i.test(u) &&
+        !/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(u),
       "endpoint: looks like a keyed URL (token in path or query); only public no-key endpoints may be declared",
     )
     .optional(),

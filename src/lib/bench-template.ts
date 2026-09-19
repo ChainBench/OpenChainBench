@@ -46,7 +46,7 @@
  */
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
-import { liveResults } from "@/lib/provider-filters";
+import { liveResults, displayResults } from "@/lib/provider-filters";
 import { citationCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
@@ -203,7 +203,9 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       case "worst_p50":
         return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : UNRESOLVED;
       case "count":
-        return String(live.length);
+        // The display cohort (5 % success floor), the same set the Results
+        // table, the endpoints block and the TL;DR count.
+        return String(displayResults(benchmark.results).length);
       default:
         return whole;
     }

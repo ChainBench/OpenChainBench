@@ -2,9 +2,9 @@
 
 slug: fuse-rpc
 number: "143"
-title: "Fuse Network RPC endpoints: free public URLs ranked by latency"
-seo_title: "Fuse Network RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Fuse Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "Fuse Network RPC endpoints: free public URLs by latency"
+seo_title: "Fuse Network RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Fuse Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Fuse Network EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   Fuse Network is a community-owned EVM-compatible blockchain (chain 122) built around business payments and consumer DeFi, FUSE as gas token, ~5 s block cadence with AuRa-based consensus (parity-style PoA), real-world payment integrations with the Fuse Cash and Fuse Studio ecosystem. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Fuse Foundation official endpoint (rpc.fuse.io), dRPC (fuse.drpc.org), and Thirdweb (122.rpc.thirdweb.com). Excluded: Ankr (no Fuse route), Alchemy (no Fuse support), QuickNode (key required).
 
 abstract: |
-  Fuse Network: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:fuse-official}}.
+  Fuse Network: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:fuse-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public Fuse Network endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Fuse Network-scaled staleness gap (20 blocks at Fuse Network's ~5 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Fuse Network-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

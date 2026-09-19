@@ -2,9 +2,9 @@
 
 slug: bob-rpc
 number: "137"
-title: "BOB RPC endpoints: free public URLs ranked by latency"
-seo_title: "BOB RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free BOB RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+title: "BOB RPC endpoints: free public URLs by latency"
+seo_title: "BOB RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free BOB RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public BOB EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,7 +17,7 @@ seo_intro: |
   BOB (Build on Bitcoin) is an OP Stack hybrid L2 (chain 60808) that bridges Bitcoin and Ethereum, enabling Bitcoin DeFi with EVM smart contracts and native BTC collateral, ETH gas token, ~2 s block cadence, settlement on Ethereum. Integrated with Babylon BTC staking and leading Bitcoin LSTs. The 2026-08-03 audit confirms {{count}} clean keyless providers: the BOB official endpoint (rpc.gobob.xyz), Tenderly Gateway (bob.gateway.tenderly.co), dRPC (bob.drpc.org), and Thirdweb (60808.rpc.thirdweb.com). Excluded: Ankr (no bob route), Alchemy (key required), QuickNode (key required).
 
 abstract: |
-  BOB: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:bob-official}}.
+  BOB: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:bob-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public BOB endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a BOB-scaled staleness gap (20 blocks at BOB's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the BOB-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

@@ -2,10 +2,10 @@
 
 slug: ronin-rpc
 number: "110"
-title: "Ronin RPC endpoints: free public URLs ranked by latency"
+title: "Ronin RPC endpoints: free public URLs by latency"
 # seo_title test cohort (2026-09-19): endpoint-intent title; H1 keeps the measured claim.
-seo_title: "Ronin RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Ronin RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
+seo_title: "Ronin RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Ronin RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Ronin EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -18,7 +18,7 @@ seo_intro: |
   Ronin is an EVM L1 (chain 2020) operated by Sky Mavis, purpose-built for Web3 gaming and home of Axie Infinity, Pixels and a broader gaming ecosystem. RON gas token, delegated proof-of-stake validator set, 3 s block cadence. {{count}} clean keyless providers: `ronin-official` (api.roninchain.com), Tenderly Gateway, Thirdweb. Excluded: dRPC (500 persistent internal error after 3 consecutive attempts), Ronin Tech secondary domain (DNS-fail), PublicNode (no `ronin` subdomain), lgns.net (DNS-fail).
 
 abstract: |
-  Ronin: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:ronin-official}}.
+  Ronin: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:ronin-official}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Ronin endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Ronin-scaled staleness gap (25 blocks at Ronin's ~3 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Ronin-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:

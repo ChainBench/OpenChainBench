@@ -2,9 +2,9 @@
 
 slug: tezos-rpc
 number: "222"
-title: "Tezos RPC endpoints: free public URLs ranked by latency"
-seo_title: "Tezos RPC endpoints: free public URLs ranked by latency"
-seo_description: "{{best_name}} leads free Tezos RPC at {{best_p50}} (block level REST p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Tezos RPC endpoints: free public URLs by latency"
+seo_title: "Tezos RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Tezos RPC at {{best_p50}} (block level REST p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
 subtitle: HTTP round-trip latency for GET /chains/main/blocks/head/header against every available public Tezos node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,14 +17,14 @@ seo_intro: |
   Tezos is a self-amending proof-of-stake blockchain using Liquid Proof of Stake (LPoS) and an on-chain governance mechanism that allows protocol upgrades without hard forks. It targets roughly one block every 30 seconds on mainnet. Public REST endpoints are available without an API key from SmartPy, TezBeta, TzKT (Baking Bad) and TCInfra. Every provider was live-verified with consecutive block header probes at launch.
 
 abstract: |
-  Tezos: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Tezos: {{count}} free public RPC endpoints answering `GET /chains/main/blocks/head/header` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
   We measure the round-trip latency of a single REST call (GET /chains/main/blocks/head/header) against every available public Tezos node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Tezos-scaled staleness gap (10 blocks, around 5 min at 30 s/block). The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Tezos-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: HTTP GET /chains/main/blocks/head/header. Plain REST call. The response carries a JSON object with the level field as a plain integer."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Tezos-scoped view of the same harness, with the same exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=tezos. Provider coverage at launch: {{count}} endpoints (SmartPy, TezBeta, TzKT, TCInfra)."
+  - "Chain scope: every query on this page is pinned to chain=tezos. Provider coverage today: {{count}} endpoints (SmartPy, TezBeta, TzKT, TCInfra)."
 
 faq:
   - q: "Which Tezos RPC endpoints work without an API key?"
