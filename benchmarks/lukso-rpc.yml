@@ -14,14 +14,11 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). Three providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
+  LUKSO is an EVM layer-1 (chain ID 42) built around Universal Profiles and the LSP standards. It speaks standard Ethereum JSON-RPC, so the canonical height probe is eth_getBlockByNumber('latest'). {{count}} providers serve LUKSO mainnet with no API key: the LUKSO Foundation's official RPC, NOWNodes (public no-key endpoint, 5 requests per second) and thirdweb's public edge. All three were live-verified at launch, returning the same chain tip.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every
-  public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three
-  regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok
-  responses (HTTP 200 with a usable block height, not stale) contribute to the distribution;
-  p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
+  LUKSO: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lukso-official}}.
+  Per-chain member of the RPC latency cluster, extended to LUKSO. We probe every public no-key endpoint with a single eth_getBlockByNumber call every 60 seconds from three regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok responses (HTTP 200 with a usable block height, not stale) contribute to the distribution; p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
 
 methodology:
   - "Probe: a single eth_getBlockByNumber('latest', false) JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."

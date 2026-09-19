@@ -17,13 +17,8 @@ seo_intro: |
   Songbird (chain 19, SGB) is Flare Network's canary network, a production EVM-compatible chain used to test and validate Flare's FTSO oracle system before mainnet deployment. One keyless endpoint is probed continuously: the official Songbird gateway (songbird-api.flare.network/ext/C/rpc). The FTSO AU community node (songbird.rpc.ftso.au) was removed after DNS went dead.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Songbird.
-  We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against the no-key public Songbird endpoint
-  that sustains continuous probing (1 provider: Flare Foundation official),
-  every 60 seconds, from us-east, eu-west and Singapore. The cross-chain
-  view lives on the parent `rpc-capabilities` benchmark; this page is the
-  Songbird-scoped answer with per-region breakdowns as a first-class dimension.
+  Songbird: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:flare-official}}.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against the no-key public Songbird endpoint that sustains continuous probing ({{count}} provider: Flare Foundation official), every 60 seconds, from us-east, eu-west and Singapore. The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Songbird-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -37,7 +32,7 @@ faq:
   - q: "What is the fastest free Songbird RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Songbird RPCs work without an API key?"
-    a: "1 endpoint sustains continuous keyless probing: Flare Foundation official (songbird-api.flare.network/ext/C/rpc). The FTSO AU community node was removed after its DNS went dead."
+    a: "{{count}} endpoint sustains continuous keyless probing: Flare Foundation official (songbird-api.flare.network/ext/C/rpc). The FTSO AU community node was removed after its DNS went dead."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

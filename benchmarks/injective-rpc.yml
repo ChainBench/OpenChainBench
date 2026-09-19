@@ -17,17 +17,8 @@ seo_intro: |
   Injective is a Cosmos SDK L1 tuned for orderbook DEXs and DeFi, with native CosmWasm and EVM execution modules. Same Tendermint `status` probe used on the rest of the Cosmos cluster; every provider live-verified with 4 consecutive keyless probes at launch. Injective's `~0.65 s` block time is much faster than the Cosmos Hub / Osmosis norm, so the block-based staleness gap is deliberately wider (40 blocks = ~26 s) to avoid false-positive `stale` classifications during a fast leader turnover.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Injective.
-  We measure the round-trip latency of a single, identical JSON-RPC call
-  (Tendermint `status`) against every no-key public Injective endpoint
-  that sustains continuous probing, 4 providers at launch,
-  every 60 seconds, from us-east, eu-west and Singapore. The harness
-  classifies every response (ok / http_err / jsonrpc_err / stale /
-  timeout) with a Injective-scaled staleness gap (40 blocks at
-  Injective's ~0.65 s block time). The cross-chain view lives
-  on the parent `rpc-capabilities` benchmark; this page is the
-  Injective-scoped answer with per-region breakdowns as a
-  first-class dimension.
+  Injective: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:injective-official}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (Tendermint `status`) against every no-key public Injective endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Injective-scaled staleness gap (40 blocks at Injective's ~0.65 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Injective-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -41,7 +32,7 @@ faq:
   - q: "What is the fastest free Injective RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Injective RPCs work without an API key?"
-    a: "4 endpoints sustain continuous keyless probing at launch: Injective Foundation, PublicNode, Polkachu, LavenderFive. Every listed endpoint was live-verified with a Tendermint `status` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
+    a: "{{count}} endpoints sustain continuous keyless probing today: Injective Foundation, PublicNode, Polkachu, LavenderFive. Every listed endpoint was live-verified with a Tendermint `status` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

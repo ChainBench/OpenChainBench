@@ -17,11 +17,8 @@ seo_intro: |
   Bitcoin is the original proof-of-work UTXO blockchain, targeting one block every ten minutes under SHA-256. It exposes the canonical Bitcoin Core JSON-RPC interface; the lightest height method is getblockcount, which returns the current chain tip as a plain integer. A handful of providers serve this endpoint with no API key: PublicNode, dRPC and NOWNodes (public no-key endpoint, rate-limited to 5 requests per second). Every provider was live-verified with consecutive getblockcount probes at launch, all returning the same tip.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Bitcoin. We probe every
-  public no-key endpoint with a single getblockcount call every 60 seconds from three
-  regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok
-  responses (HTTP 200 with a usable block height, not stale) contribute to the distribution;
-  p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
+  Bitcoin: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Per-chain member of the RPC latency cluster, extended to Bitcoin. We probe every public no-key endpoint with a single getblockcount call every 60 seconds from three regions (us-east, eu-west, Singapore) and record wall-clock round-trip latency. Only ok responses (HTTP 200 with a usable block height, not stale) contribute to the distribution; p50/p90/p99 are computed via Prometheus quantile_over_time over a rolling 24-hour window.
 
 methodology:
   - "Probe: a single getblockcount JSON-RPC POST every 60 seconds per provider from us-east, eu-west and Singapore. Latency is the client-side wall-clock round trip."

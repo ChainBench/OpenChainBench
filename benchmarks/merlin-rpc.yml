@@ -4,7 +4,7 @@ slug: merlin-rpc
 number: "228"
 title: Fastest free Merlin Chain RPC, live no-key endpoint latency
 seo_title: "Fastest free Merlin Chain RPC 2026"
-seo_description: "{{best_name}} leads free Merlin Chain RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). 3 providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Merlin Chain RPC at {{best_p50}} (eth_getBlockByNumber EVM p50, 24h). {{count}} providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public Merlin Chain node, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -17,15 +17,8 @@ seo_intro: |
   Merlin Chain is an EVM-compatible Bitcoin Layer 2 network (chain ID 4200) that uses ZK-Rollup technology to inherit Bitcoin security while enabling smart contracts and DeFi. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Merlin Official, dRPC and BlockPI. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
 
 abstract: |
-  Per-chain member of the RPC latency cluster, extended to Merlin Chain.
-  We measure the round-trip latency of a single eth_getBlockByNumber
-  ("latest", false) call against every available public Merlin Chain
-  node that sustains continuous probing: 3 providers at launch, every
-  60 seconds, from us-east, eu-west and Singapore. The harness
-  classifies every response (ok / http_err / jsonrpc_err / stale /
-  timeout) with a standard EVM staleness gap. The cross-chain view
-  lives on the parent rpc-capabilities benchmark; this page is the
-  Merlin Chain-scoped answer with per-region breakdowns.
+  Merlin Chain: {{count}} free public RPC endpoints answering `the chain's head call` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:merlin-official}}.
+  We measure the round-trip latency of a single eth_getBlockByNumber ("latest", false) call against every available public Merlin Chain node that sustains continuous probing: {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a standard EVM staleness gap. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Merlin Chain-scoped answer with per-region breakdowns.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
@@ -33,13 +26,13 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
   - "Call-result classification: ok (HTTP 200 + parsable block number), http_err, jsonrpc_err, stale, timeout. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=merlin. Provider coverage at launch: 3 endpoints (Merlin Official, dRPC, BlockPI)."
+  - "Chain scope: every query on this page is pinned to chain=merlin. Provider coverage at launch: {{count}} endpoints (Merlin Official, dRPC, BlockPI)."
 
 faq:
   - q: "What is the fastest free Merlin Chain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Merlin Chain block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (Merlin Chain block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Merlin Chain RPC endpoints work without an API key?"
-    a: "3 endpoints sustain continuous keyless probing at launch: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
