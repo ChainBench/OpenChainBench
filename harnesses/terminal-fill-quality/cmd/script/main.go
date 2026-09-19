@@ -1127,6 +1127,12 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 			continue
 		}
 		ts.Product, ts.Chain = productOf(t.Slug)
+		// A single chain's entry publishes from half the pooled threshold
+		// (25 swaps): the chain tabs are an exploratory view of the pooled
+		// figure, the interval next to the median says how firm it is.
+		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
+			ts.Healthy = true
+		}
 		out = append(out, ts)
 		if ts.Chain == "funding" {
 			continue
