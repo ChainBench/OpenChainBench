@@ -85,6 +85,7 @@ export async function TerminalFillSection({
               <Th title="Median cost split: terminal fee, network (tx fee + inclusion tips), other fees (pump.fun protocol and creator, referrals), pool (LP fee + price impact)">Where it goes</Th>
               <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway">Failed swaps</Th>
               <Th right title="Median sampled trade size">Median trade</Th>
+              <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
             </tr>
           </thead>
@@ -131,6 +132,7 @@ export async function TerminalFillSection({
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.priced}</td>
                 </tr>
               );

@@ -1577,6 +1577,9 @@ func loadState(path string) *State {
 	// once, after a pricing fix that changed their split (the Solana rows
 	// keep their method version and stay).
 	purgeBefore := int64(envInt("PURGE_EVM_BEFORE", 0))
+	// PURGE_TERMINALS (comma-separated slugs) drops those rows once, after
+	// a feed change that made the row's sample unrepresentative.
+	purgeSlugs := set(strings.Split(os.Getenv("PURGE_TERMINALS"), ",")...)
 	kept := st.Swaps[:0]
 	dropped, purged := 0, 0
 	for _, s := range st.Swaps {
@@ -1584,7 +1587,7 @@ func loadState(path string) *State {
 			dropped++
 			continue
 		}
-		if purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore {
+		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] {
 			purged++
 			continue
 		}
