@@ -23,6 +23,8 @@ import { ArrowUpRight } from "lucide-react";
 import { liveResults } from "@/lib/provider-filters";
 import { rankResults } from "@/lib/ranking";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
+import { canonicalize, getProviders } from "@/lib/providers";
+import { isPairLinkable } from "@/lib/related-providers";
 import type { Benchmark } from "@/types/benchmark";
 
 // Mirror of the entry-side filter on /compare/[slug]/page.tsx. HL
@@ -44,7 +46,7 @@ const PAIR_INDEX_PATTERN: ReadonlyArray<readonly [number, number]> = [
 
 const MIN_PAIRS = 3;
 
-export function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
+export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
   // Blockchains category = chain-slug results. The hub for chains
   // already carries the "chain vs chain" story; keep those pages
   // out of the ad-hoc compare graph so we don't blur the two
@@ -68,6 +70,15 @@ export function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
 
   if (uniqueRanked.length < 3) return null;
 
+  // Link a pair only when its compare page is indexable: curated, or the
+  // two providers share at least two live benches. A pair that shares only
+  // this bench lands on a noindex page (Search Console: 3,356 such URLs on
+  // 2026-09-19), which is crawl spent on a dead end.
+  const profiles = await getProviders();
+  const bySlug = new Map(profiles.map((p) => [p.slug.toLowerCase(), p]));
+  const appearancesOf = (slug: string) =>
+    bySlug.get(canonicalize(slug).slug.toLowerCase())?.appearances ?? [];
+
   const seenPairs = new Set<string>();
   const pairs: { pairSlug: string; a: string; b: string }[] = [];
   for (const [i, j] of PAIR_INDEX_PATTERN) {
@@ -77,6 +88,7 @@ export function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
     const pairSlug = canonicalPairSlug(a.slug, b.slug);
     if (seenPairs.has(pairSlug)) continue;
     seenPairs.add(pairSlug);
+    if (!isPairLinkable(pairSlug, appearancesOf(a.slug), appearancesOf(b.slug))) continue;
     pairs.push({ pairSlug, a: a.name, b: b.name });
   }
 
