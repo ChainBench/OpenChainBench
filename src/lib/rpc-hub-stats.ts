@@ -99,6 +99,8 @@ export type RpcHubChain = {
   /** Bench display title (spec.title). */
   benchTitle: string;
   providerCount: number;
+  /** Declared results in the spec (live or not); drives the hub link gate. */
+  declaredCount?: number;
   /** Cohort providers currently flagged unresponsive on this chain
    *  (probed, all calls failing, no latency). Never part of
    *  best/fastest computations — display-only context. */
@@ -285,6 +287,9 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
     name: chainLabelForSlug(chain) ?? chain,
     benchTitle: spec.title,
     providerCount: rows.length,
+    // Declared cohort size: the page's thin gate (noindex under 3) counts
+    // declared results, not live ones, so hub links must gate on this.
+    declaredCount: bench.results.length,
     ...(unresponsiveRows.length > 0
       ? {
           unresponsiveCount: unresponsiveRows.length,

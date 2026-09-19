@@ -7,14 +7,14 @@ import { getBenchmark, getBenchIndexSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
-import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
+import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
 import { isThinRpcBench } from "@/lib/provider-filters";
-import { PublicEndpointsSection } from "@/components/public-endpoints-section";
+import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
 import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
@@ -479,6 +479,9 @@ export default async function BenchmarkPage({
     `${benchmark.title}: frequently asked questions`,
   );
 
+  // The RPC TL;DR announces the endpoints table (the "<chain> rpc"
+  // searcher's question), with the count that table shows.
+  const publicEndpointCount = isDraft ? 0 : publicEndpointRows(benchmark).length;
   return (
     <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
@@ -573,6 +576,13 @@ export default async function BenchmarkPage({
             <span className="font-medium text-ink">TL;DR.</span> As of{" "}
             <time dateTime={trace.isoDate}>{trace.isoDate}</time>,{" "}
             {trace.claim}. Source: OpenChainBench, {trace.url}.
+            {publicEndpointCount >= 2 && (
+              <>
+                {" "}
+                Endpoint URLs for the {publicEndpointCount} public providers
+                are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>.
+              </>
+            )}
           </p>
         </section>
       )}
@@ -715,6 +725,11 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
 
+      {/* Public endpoint URLs before the method: the "<chain> rpc" searcher
+          wants the URL and the provider list in the first screen. Renders
+          only when providers declare a public no-key `endpoint`. */}
+      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
+
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
@@ -745,7 +760,7 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <Suspense fallback={<BenchmarkBodySkeleton />}>
+        <Suspense fallback={<StaticLedger benchmark={benchmark} />}>
           <BenchmarkBody
             variants={variants}
             chainOptions={chainOptions}
@@ -803,10 +818,6 @@ export default async function BenchmarkPage({
           their own server-rendered discovery links here. */}
       {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
 
-      {/* Public endpoint URLs next to the numbers: the "<chain> rpc"
-          searcher wants the URL and the provider list first. Renders only
-          when providers declare a public no-key `endpoint` in the spec. */}
-      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
       {!isDraft && benchmark.category === "RPCs" && benchmark.slug.endsWith("-rpc") && (
         <RpcSiblingChains currentSlug={benchmark.slug} />
       )}
