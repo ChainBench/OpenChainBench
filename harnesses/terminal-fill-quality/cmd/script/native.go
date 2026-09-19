@@ -104,8 +104,10 @@ var evmTerminals = []evmTerminal{
 		FromSet:     "basedbot",
 		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1, "0xdcacba5e347ae7abd91cb519eb877af8fa7774e347b85dd3ddcd24a2ba8cdf37": 3},
 		Note:        "BasedBot's users on Robinhood Chain: the wallets it funded from Solana through Relay, trading on the chain's router (shared with other front ends: only those wallets' swaps count). Value given = what the wallet sent plus gas; received = the tokens at the pool's state before the swap; the router's transfers to its fee and referral accounts (about 1 % of the trade) are the fee, the residual after the pool and gas."},
-	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
-	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true},
+	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
+		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
+	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
+		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
 	{Slug: "binance-wallet-base", Name: "Binance Wallet · Base", Kind: "app", Chain: "base", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
 		Note: "On Base most of the router's transactions are fee-free round trips on a few tokens (Binance Alpha-style volume, 0 to 1 bps terminal fee): wallets trading the same token both ways four times or more in the window are left out of this row, which keeps the retail swaps."},
 }

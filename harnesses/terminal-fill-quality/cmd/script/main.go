@@ -264,6 +264,8 @@ type TerminalStats struct {
 	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
 	Healthy bool `json:"healthy"`
 	Ranked  bool `json:"ranked"`
+	// LoopShare: swaps left out as farming loops over parsed plus left out (rows with DropLoops).
+	LoopShare float64 `json:"loop_share,omitempty"`
 	// NEff: a pooled entry's effective sample size, (Σw)² / Σw² over the priced swaps' weights.
 	NEff float64 `json:"n_eff,omitempty"`
 	// UnpricedShare: the window's drawn swaps left unpriced over drawn swaps, informative.
@@ -519,21 +521,29 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 			st.record(t.Slug, now, len(fresh), failed, 0, nil)
 			okCount = float64(len(ok))
 		}
-		if okCount == 0 {
-			continue
-		}
+		// The quota accrues every tick, quiet ticks included (a sparse
+		// terminal, one swap every few minutes, would otherwise never reach
+		// a whole draw: Banana Gun drew about one an hour on 2,266 attempts
+		// a day), weighted by the tick's activity against its running mean
+		// within [0.5, 2] so a burst neither starves the next hour nor
+		// overdraws the tick.
 		w := 1.0
-		if a := activity[t.Slug]; a > 0 {
-			w = okCount / a
+		if a := activity[t.Slug]; a > 0 && okCount > 0 {
+			w = math.Min(2, math.Max(0.5, okCount/a))
 		}
-		if activity[t.Slug] == 0 {
-			activity[t.Slug] = okCount
-		} else {
-			activity[t.Slug] = 0.9*activity[t.Slug] + 0.1*okCount
+		if okCount > 0 {
+			if activity[t.Slug] == 0 {
+				activity[t.Slug] = okCount
+			} else {
+				activity[t.Slug] = 0.9*activity[t.Slug] + 0.1*okCount
+			}
 		}
 		quota[t.Slug] += perTick * w
 		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
 			quota[t.Slug] = cap
+		}
+		if okCount == 0 {
+			continue
 		}
 		n := int(quota[t.Slug])
 		if n > len(ok) {
@@ -1149,6 +1159,8 @@ func evmFundingRow(ctx context.Context, rpc *rpcClient, t Terminal, x relayReque
 			return &Swap{Flag: "gas_unknown"}
 		}
 		price, quote = p, strings.TrimSuffix(dc.gas, "-USD")
+	} else if dc.slug != "arc" {
+		return &Swap{Flag: "gas_unknown"} // a gas coin with no price pair (HyperEVM's HYPE): not a dollar
 	}
 	inTx, err := rpc.transaction(ctx, x.InTx)
 	if err != nil || inTx == nil {
@@ -1562,8 +1574,13 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		venues := map[string]int{}
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
+		looped := 0
 		for _, s := range st.Swaps {
-			if !member[s.Terminal] || s.Method != methodVersion || loopers[s.Terminal+":"+s.User] {
+			if !member[s.Terminal] || s.Method != methodVersion {
+				continue
+			}
+			if loopers[s.Terminal+":"+s.User] {
+				looped++
 				continue
 			}
 			if s.Scanned {
@@ -1633,6 +1650,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 					poolW = append(poolW, w)
 				}
 			}
+		}
+		if looped > 0 {
+			ts.LoopShare = float64(looped) / float64(looped+ts.Parsed)
 		}
 		if ts.Parsed > 0 {
 			// A pooled entry's split: each chain's median weighted by the

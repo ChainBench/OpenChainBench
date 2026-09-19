@@ -141,8 +141,10 @@ depends on pool activity. The victim's extra cost is already inside
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
 over $250; median loss and n from 5 samples).
 
-**Cross-chain (`xchain.go`)**: FOMO's and BasedBot's users pay on BNB,
-Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana;
+**Cross-chain (`xchain.go`)**: FOMO's users pay on BNB, Robinhood Chain,
+Base, Ethereum or Arc and Relay delivers on Solana (BasedBot's requests go
+the other way: SOL in, the gas coin into the user's EVM wallet, a funding
+leg; its trades are read on Robinhood Chain, see the native rows);
 nothing on Solana pays the app's fee wallet, so the WebSocket feed never
 sees these. Relay's public requests feed (`/requests/v2?originChainId=`,
 no key; the `referrer` filter works for BasedBot, FOMO's referrer is
@@ -374,7 +376,8 @@ Prometheus on `:2112/metrics`, rolling `WINDOW_HOURS`:
 | `tfq_buy_share_pct` | terminal | |
 | `tfq_sandwich_pct`, `tfq_sandwich_profit_bps` | terminal | informative, see above |
 | `tfq_loss_bps_size` | terminal, bucket | median loss by trade-size bucket |
-| `tfq_health`, `tfq_ranked` | terminal | priced ≥ `MIN_PRICED` / ≥ `MIN_RANK` |
+| `tfq_health`, `tfq_ranked` | terminal, chain | published: priced ≥ `MIN_PRICED` pooled (a chain row or a single-chain product: half that), a pooled entry also needs 25 effective swaps (Kish) and its main chain published, a one-sided fee-free EVM row waits; ranked: priced ≥ `MIN_RANK` |
+| `tfq_unpriced_share` | terminal, chain | the window's drawn swaps left unpriced over drawn |
 | `tfq_feed_up`, `tfq_sol_usd`, `tfq_last_refresh_unix`, `tfq_rpc_calls_total`, `tfq_rpc_errors_total` | | |
 
 JSON on `:2112/v1/fills` and mirrored to `HISTORY_FILE_PUBLIC`: per-terminal

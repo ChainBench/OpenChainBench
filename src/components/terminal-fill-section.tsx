@@ -134,7 +134,7 @@ export async function TerminalFillSection({
                   <SplitCell t={t} part="network" pub={pub} />
                   <SplitCell t={t} part="pool" pub={pub} relay />
                   <SplitCell t={t} part="other" pub={pub} />
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts${t.chain !== "solana" ? " (estimated from sampled blocks)" : ""} · ${failSub(t)}` : undefined}>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts${Object.keys(t.byChain).some((c) => c !== "solana") ? " (EVM rows estimated from sampled blocks)" : ""} · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtBps(t.loss!.p90) : "—"}</td>
