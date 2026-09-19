@@ -353,7 +353,14 @@ export default async function BenchmarkChainPage({
   // which leaves the source URL in the index competing with the canonical.
   if (canon !== chain) permanentRedirect(`/benchmarks/${slug}/${canon}`);
   const data = await loadChainPage(slug, chain);
-  if (!data) notFound();
+  if (!data) {
+    // The bench exists but this chain left its cohort (network-fees lost
+    // gram, blast, optimism and stellar; Search Console listed the four
+    // per-chain URLs as 404 on 2026-09-19). Consolidate on the parent
+    // bench instead of a dead end; a bench that does not exist stays 404.
+    if (await getBenchmark(slug)) permanentRedirect(`/benchmarks/${slug}`);
+    notFound();
+  }
   const { benchmark, explainer } = data;
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
