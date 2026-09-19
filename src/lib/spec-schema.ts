@@ -299,7 +299,7 @@ export const SpecSchema = z
           body: z.string().min(1).max(1000),
         })
       )
-      .max(20)
+      .max(30)
       .optional(),
     subtitle: seoText(1, 400),
     category: Category,
