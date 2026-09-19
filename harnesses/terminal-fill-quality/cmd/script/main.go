@@ -323,6 +323,17 @@ func main() {
 	rpcURL := rpcURLs[0]
 	log.Printf("solana reads: %d endpoint(s), primary %s", len(rpcURLs), redactURL(rpcURL, rpcURL))
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
+	sandwichOn = envInt("SANDWICH", 1) == 1
+	nativePollEvery = max(1, envInt("NATIVE_POLL_EVERY", 1))
+	if v := os.Getenv("FAIL_SCAN_BLOCKS"); v != "" { // e.g. "bnb=3,robinhood=0,base=2,ethereum=1"
+		for _, kv := range strings.Split(v, ",") {
+			if k, n, ok := strings.Cut(strings.TrimSpace(kv), "="); ok {
+				if i, err := strconv.Atoi(strings.TrimSpace(n)); err == nil {
+					failScanBlocks[strings.TrimSpace(k)] = i
+				}
+			}
+		}
+	}
 	dailyTarget := envInt("DAILY_TARGET", 400) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
 	evmDailyTarget := envInt("EVM_DAILY_TARGET", 1000) // the Relay and native EVM rows: their own rate (one chain each)
@@ -626,6 +637,12 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	if sw.PoolVault == "" {
 		return
 	}
+	// The pool neighbourhood costs one signature list plus a transaction
+	// read; with the screen off it is only read when the reference is
+	// still missing (the previous-trade fallback).
+	if !sandwichOn && sw.RefSrc != "" {
+		return
+	}
 	nb, err := poolNeighbours(ctx, rpc, sw)
 	if err != nil {
 		return
@@ -653,12 +670,20 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 			break
 		}
 	}
+	if !sandwichOn {
+		return
+	}
 	if sd, ok := screenSandwich(ctx, rpc, sw, nb, prevTx, solUSD, now); ok {
 		sw.Scanned = true
 		sw.Sandwich = sd
 		sw.BlockPoolTxs = len(nb.prev)
 	}
 }
+
+// sandwichOn: SANDWICH=0 turns the neighbour screen off (it is not a
+// published column; the reads it costs are about a fifth of the Solana
+// budget). Set at start.
+var sandwichOn = true
 
 // sampleXchain drains the Relay feed: counts every final request of each
 // cross-chain app for its fail rate, draws the tick's quota of successful
