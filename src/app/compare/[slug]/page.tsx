@@ -875,7 +875,7 @@ export default async function ComparePage({
     aWinsBench && bWinsBench && verbForBench(aWinsBench) === verbForBench(bWinsBench);
   const whichQ = (bench: SharedBench) =>
     sameVerb
-      ? `Which is ${verbForBench(bench)} on ${(bench.compareTitle ?? shortBenchTitle(bench.title)).toLowerCase()}, ${a.name} or ${b.name}?`
+      ? `Which is ${verbForBench(bench)} on ${bench.metric.toLowerCase()}, ${a.name} or ${b.name}?`
       : `Which is ${verbForBench(bench)}, ${a.name} or ${b.name}?`;
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
