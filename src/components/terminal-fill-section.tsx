@@ -82,7 +82,7 @@ export async function TerminalFillSection({
               <Th right title="Median sampled swap size, dollars">Median swap</Th>
               <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %); hover for the percent and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
-              <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; on Solana a referral split paid inside the transaction sits in Other">Terminal</Th>
+              <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; referral or cashback legs count as terminal fee where the terminal's list holds them, else they sit in Other">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
               <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
               <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
@@ -117,9 +117,9 @@ export async function TerminalFillSection({
                       {isXchain(t.slug) || !t.name.toLowerCase().endsWith(t.kind) ? (
                         <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? xchainLabel(t.slug) : t.kind}</span>
                       ) : null}
-                      {isXchain(t.slug) && Object.keys(t.byChain).length > 0 ? (
+                      {Object.keys(t.byChain).length > 1 ? (
                         <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help" title={chainText(t)}>
-                          by origin chain
+                          by chain
                         </span>
                       ) : null}
                       {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
@@ -188,7 +188,7 @@ export async function TerminalFillSection({
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact where the pool&apos;s formula is known: PumpSwap, Raydium, Launchpad, DLMM, four.meme, the EVM pools;
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee
-        and inclusion tips included. Published from {f.minPriced} priced swaps, ranked from {f.minRank}.
+        and inclusion tips included. Published from {f.minPriced} priced swaps pooled (a chain row or a single-chain product from {Math.max(20, Math.floor(f.minPriced / 2))}), ranked from {f.minRank}.
         {me?.note ? <span className="text-ink-soft"> {me.note}</span> : null} Bench{" "}
         <Link href="/benchmarks/terminal-fill-quality" className="underline hover:no-underline">
           268

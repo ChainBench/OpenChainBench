@@ -539,7 +539,7 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 			}
 		}
 		quota[t.Slug] += perTick * w
-		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
+		if cap := math.Max(3*perTick, 10); quota[t.Slug] > cap { // a bursty sparse terminal keeps its accrued draws
 			quota[t.Slug] = cap
 		}
 		if okCount == 0 {
@@ -1033,7 +1033,7 @@ func cohort() []Terminal {
 			continue
 		}
 		for _, c := range originChains {
-			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in SOL on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
+			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in USDC or SOL from the app wallet on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
 	}
 	for _, t := range evmTerminals {
@@ -2176,7 +2176,7 @@ func loadState(path string) *State {
 		kept = append(kept, s)
 	}
 	st.Swaps = kept
-	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d EVM rows purged)", len(st.Swaps), path, dropped, purged)
+	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
 	return st
 }
 

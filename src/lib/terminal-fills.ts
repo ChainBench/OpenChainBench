@@ -75,7 +75,9 @@ function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOut
   if (userQ === undefined || q === undefined || q <= 0) return {};
   const quoteUsd = Math.abs(userQ) * q;
   const tokenUsd = tokens !== undefined && ref !== undefined && ref > 0 ? tokens * ref * q : undefined;
-  if (s.side === "sell") return { ...(tokenUsd !== undefined ? { valueInUsd: tokenUsd } : {}), valueOutUsd: quoteUsd };
+  // A sale on an EVM chain pays its gas apart from the tokens: the base the harness uses is tokens at the reference plus that gas.
+  const gasUsd = typeof s.chain === "string" && s.chain ? (num(s.network_q) ?? 0) * q : 0;
+  if (s.side === "sell") return { ...(tokenUsd !== undefined ? { valueInUsd: tokenUsd + gasUsd } : {}), valueOutUsd: quoteUsd };
   return { valueInUsd: quoteUsd, ...(tokenUsd !== undefined ? { valueOutUsd: tokenUsd } : {}) };
 }
 
