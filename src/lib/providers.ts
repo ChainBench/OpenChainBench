@@ -57,6 +57,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // "gmx-v2"; every other perp bench and the product page use "gmx".
   // One brand, one product page, one compare entry.
   "gmx-v2": "gmx",
+  // Bench 268 measured the Binance Wallet swap as "binance-wallet" for a
+  // day (2026-09-18); the row and the product page are "binance".
+  "binance-wallet": "binance",
   // Oracle pair → underlying chain / asset
   "eth-usd": "ethereum",
   "sol-usd": "solana",
