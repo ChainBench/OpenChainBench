@@ -585,7 +585,10 @@ export const SpecSchema = z
           }),
       )
       .min(1)
-      .max(6)
+      // Eight covers a cost sheet (bench 268: value lost, trade size,
+      // dollars lost, four cost components, fail rate); the ledger
+      // scrolls sideways past that width.
+      .max(8)
       .optional(),
   })
   .strict()

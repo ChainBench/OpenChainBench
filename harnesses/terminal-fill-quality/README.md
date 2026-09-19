@@ -368,6 +368,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `RPC_RPS` | `8` | pacing, calls per second |
 | `TICK_SECONDS` | `60` | sweep interval |
 | `DAILY_TARGET` | `300` | swaps read per terminal per day (random draw from the feed) |
+| `EVM_DAILY_TARGET` | `DAILY_TARGET` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs them at 1,000 so the per-chain windows fill within hours) |
 | `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
 | `WS_URL` | RPC URL | feed endpoint when different from the reads (the keyless public `wss://api.mainnet-beta.solana.com` works) |
 | `WINDOW_HOURS` | `24` | rolling window |

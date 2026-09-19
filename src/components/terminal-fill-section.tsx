@@ -79,7 +79,7 @@ export async function TerminalFillSection({
           <thead>
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
-              <Th right title="Median sampled trade size">Median trade</Th>
+              <Th right title="Median sampled swap size, dollars">Median swap</Th>
               <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, percent of the trade; hover for the basis points and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What reached the terminal's fee wallets, basis points of the trade (median)">Terminal</Th>
