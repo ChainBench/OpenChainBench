@@ -16,7 +16,8 @@ import (
 )
 
 type rpcClient struct {
-	url    string
+	url    string   // the primary endpoint
+	urls   []string // every endpoint in order: the next one is tried on a rate limit or a transport error
 	http   *http.Client
 	calls  func()
 	errors func()
@@ -59,8 +60,16 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 
 func (c *rpcClient) call(ctx context.Context, method string, params []any, out any) error {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+	urls := c.urls
+	if len(urls) == 0 {
+		urls = []string{c.url}
+	}
 	for attempt := 0; attempt < 4; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(body))
+		// The first attempt goes to the primary, each retry to the next
+		// endpoint (a rate limit or a dead node on one costs one hop, not
+		// the draw); the sleeps only apply when every endpoint was tried.
+		url := urls[attempt%len(urls)]
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 		if err != nil {
 			return err
 		}
@@ -70,8 +79,10 @@ func (c *rpcClient) call(ctx context.Context, method string, params []any, out a
 		resp, err := c.http.Do(req)
 		if err != nil {
 			c.errors()
-			if err := sleepCtx(ctx, time.Duration(attempt+1)*time.Second); err != nil {
-				return err
+			if attempt+1 >= len(urls) {
+				if err := sleepCtx(ctx, time.Duration(attempt+1)*time.Second); err != nil {
+					return err
+				}
 			}
 			continue
 		}
@@ -79,8 +90,10 @@ func (c *rpcClient) call(ctx context.Context, method string, params []any, out a
 		resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
 			c.errors()
-			if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
-				return err
+			if attempt+1 >= len(urls) {
+				if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
+					return err
+				}
 			}
 			continue
 		}
@@ -98,8 +111,10 @@ func (c *rpcClient) call(ctx context.Context, method string, params []any, out a
 		if env.Error != nil {
 			if env.Error.Code == 429 || env.Error.Code == -32429 {
 				c.errors()
-				if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
-					return err
+				if attempt+1 >= len(urls) {
+					if err := sleepCtx(ctx, time.Duration(2*(attempt+1))*time.Second); err != nil {
+						return err
+					}
 				}
 				continue
 			}
