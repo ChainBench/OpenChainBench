@@ -129,6 +129,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Machine endpoints (citable JSON, badges, generated OG images)
+        // are fetched by Googlebot from links and meta tags and then sit
+        // in Search Console as "Crawled, currently not indexed" (about 60
+        // /api/stat and /api/badge URLs on 2026-09-19). noindex settles
+        // it; LLM crawlers still fetch them (robots.txt stays open).
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         // Citable JSON is polled by LLM crawlers (Perplexity, ChatGPT,
         // Claude Deep Research) — a bare `public` with no s-maxage sent
         // every scrape to origin. Sitemap's Cache-Control is set inside

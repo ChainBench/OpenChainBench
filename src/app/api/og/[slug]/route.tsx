@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
@@ -44,7 +44,7 @@ export async function GET(
   const valueStr = value != null ? fmtUnit(value, b.unit) : "-";
   const spark = sparklineFor(b, top?.slug);
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{
