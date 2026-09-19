@@ -4,7 +4,7 @@ slug: kusama-rpc
 number: "185"
 title: Fastest free Kusama RPC, live no-key endpoint latency
 seo_title: "Fastest free Kusama RPC 2026"
-seo_description: "{{best_name}} leads free Kusama RPC at {{best_p50}} (chain_getHeader p50, 24h). 6 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Kusama RPC at {{best_p50}} (chain_getHeader p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Kusama relay-chain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Kusama is Polkadot's canary network, a live production relay chain (KSM token) where new features ship before Polkadot mainnet. Substrate-based, ~6 s block time, same Substrate JSON-RPC wire protocol as Polkadot. Six keyless endpoints are probed continuously: PublicNode, OnFinality, dRPC, IBP Network, Dwellir, and 1RPC.
+  Kusama is Polkadot's canary network, a live production relay chain (KSM token) where new features ship before Polkadot mainnet. Substrate-based, ~6 s block time, same Substrate JSON-RPC wire protocol as Polkadot. {{count}} keyless endpoints are probed continuously: PublicNode, OnFinality, dRPC, IBP Network, Dwellir, and 1RPC.
 
 abstract: |
   Per-chain member of the RPC latency cluster, extended to Kusama.
@@ -34,20 +34,13 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + parsable hex block number), `http_err`, `jsonrpc_err`, `stale` (more than 40 relay blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"kusama\"`. Provider coverage at launch: 6 no-key endpoints."
-
-findings:
-  - "{{best_name}} currently leads free Kusama RPC at {{best_p50}} (`chain_getHeader` p50, 24h) across 6 measured providers."
+  - "Chain scope: every query on this page is pinned to `chain=\"kusama\"`. Provider coverage at launch: {{count}} no-key endpoints."
 
 faq:
   - q: "What is the fastest free Kusama RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against 6 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Kusama RPCs work without an API key?"
     a: "6 endpoints sustain continuous keyless probing at launch: PublicNode, OnFinality, dRPC, IBP Network (Kusama governance-funded infra), Dwellir, and 1RPC. Every listed endpoint was live-verified before inclusion."
-  - q: "Does the fastest Kusama RPC change by region?"
-    a: "Often. Substrate-ecosystem infra concentrates in Europe; endpoints that win from Amsterdam can lose from Singapore. The region tabs re-scope every number to a single origin."
-  - q: "How is Kusama RPC latency measured here?"
-    a: "One identical Substrate JSON-RPC POST (`chain_getHeader`) every 60 seconds from each of 3 regions. Responses are classified so stale or error endpoints are never ranked as fastest."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

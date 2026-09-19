@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=babylon. Provider coverage at launch: 3 endpoints (PublicNode, Polkachu, LavenderFive)."
 
-findings:
-  - "{{best_name}} currently leads Babylon RPC at {{best_p50}} (Tendermint status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Babylon RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Babylon block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: PublicNode (babylon-rpc.publicnode.com), Polkachu (babylon-rpc.polkachu.com) and LavenderFive (rpc.lavenderfive.com/babylon). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "What is Babylon and why does its RPC latency matter?"
     a: "Babylon is a Cosmos SDK chain that enables native Bitcoin staking. Developers building on Babylon or integrating its Bitcoin staking protocol need reliable low-latency RPC access to query chain state, submit transactions, and monitor finality. Knowing which public endpoint is fastest from your region helps optimize integration performance."
-  - q: "Does the fastest Babylon RPC change by region?"
-    a: "Often. PublicNode, Polkachu, and LavenderFive all have different infrastructure footprints; rankings shift by geographic origin. The region tabs re-scope every number to a single origin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

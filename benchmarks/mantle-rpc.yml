@@ -4,7 +4,7 @@ slug: mantle-rpc
 number: "053"
 title: Fastest free Mantle RPC, live no-key endpoint latency
 seo_title: "Fastest free Mantle RPC 2026"
-seo_description: "{{best_name}} leads free Mantle RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Mantle RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Mantle RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -26,22 +26,13 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"mantle\". Provider coverage: 3 no-key endpoints (PublicNode, dRPC, Tenderly). Exclusions follow the cluster-wide rules documented on the parent benchmark."
-
-findings:
-  - "{{best_name}} currently leads free Mantle RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
-  - "Mantle's field mirrors Linea and Scroll: the disciplined multi-chain gateways and nobody else, so the leaderboard is a pure read on how each gateway's infrastructure reaches the chain."
-  - "Thin cohorts amplify tail events, one regional incident at one gateway visibly moves the 24h aggregate, which is exactly why the page shows per-region breakdowns instead of only the average."
+  - "Chain scope: every query on this page is pinned to chain=\"mantle\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
   - q: "What is the fastest free Mantle RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Mantle RPCs work without an API key?"
-    a: "The 3 providers on this page: PublicNode, dRPC, Tenderly. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
-  - q: "Does the fastest Mantle RPC change by region?"
-    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
-  - q: "How is Mantle RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "The 3 providers on this page: PublicNode, dRPC, Tenderly. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Are free Mantle RPCs reliable enough to build on?"
     a: "The three qualifying gateways all maintain high measured success rates on Mantle, but a 3-provider field means less redundancy if one degrades. Use the current leader as primary and the runner-up as fallback, and re-check this page after incidents, the ranking is live and the honest answer moves."
 

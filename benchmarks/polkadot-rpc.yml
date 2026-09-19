@@ -4,7 +4,7 @@ slug: polkadot-rpc
 number: "086"
 title: Fastest free Polkadot RPC, live no-key endpoint latency
 seo_title: "Fastest free Polkadot RPC 2026"
-seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Polkadot relay-chain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -51,20 +51,13 @@ methodology:
   - "No archive-depth loop on this chain. Polkadot's state model is accessed via `state_getStorage` keyed by a Blake2-hashed storage key rather than the EVM `eth_getBalance(address, height)` pattern, so the archive probe used on the EVM cluster is not applied here."
   - "No cross-provider hash quorum on this chain. `chain_getHeader` returns the parent-block hash rather than the current-block hash (the current hash is derived by Blake2 over the SCALE-encoded header). Bench 083's height-hash quorum check is therefore skipped for Polkadot; the same reliability signal is still captured via `ok` / `stale` classification against the rolling cross-provider tip."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"polkadot\"`. Provider coverage at launch: 3 no-key endpoints (Parity official, OnFinality public gateway, PublicNode). Excluded by the launch audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay; Dwellir returned 503 during the audit sweep; Ankr paid Polkadot tier only; Chainstack key-gated; RadiumBlock requires a referral header; Grove and Thirdweb return invalid-chain or key-gated."
-
-findings:
-  - "{{best_name}} currently leads free Polkadot RPC at {{best_p50}} (`chain_getHeader` p50, 24h) across 3 measured providers."
-  - "{{name:onfinality}} is a Web3 Foundation grantee that serves a large share of Polkadot ecosystem infra; the bench measures its public gateway under the same probe used for the multi-chain gateways, so the leaderboard is directly comparable to what a chain-agnostic integrator sees."
-  - "{{name:publicnode}} extends its universal multi-chain footprint onto Substrate without a keyed path; the reliability column is what to read alongside p50 here since Substrate JSON-RPC has different failure modes than EVM (SCALE decode timeouts, sudden peer drops during finality gaps)."
+  - "Chain scope: every query on this page is pinned to `chain=\"polkadot\"`. Provider coverage at launch: {{count}} no-key endpoints (Parity official, OnFinality public gateway, PublicNode). Excluded by the launch audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay; Dwellir returned 503 during the audit sweep; Ankr paid Polkadot tier only; Chainstack key-gated; RadiumBlock requires a referral header; Grove and Thirdweb return invalid-chain or key-gated."
 
 faq:
   - q: "What is the fastest free Polkadot RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Polkadot RPCs work without an API key?"
     a: "Three endpoints sustain continuous keyless probing at launch: Parity's official `rpc.polkadot.io`, OnFinality's public gateway and PublicNode (operated by Allnodes). Every listed endpoint was live-verified with four consecutive `chain_getHeader` probes returning a parsable hex block number before inclusion. Excluded by the audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay, Dwellir returned 503 Service Unavailable during the sweep (will be revisited once stable), Ankr requires a paid Polkadot key, Chainstack is key-gated on Substrate, and RadiumBlock rejects requests without a referral header."
-  - q: "Does the fastest Polkadot RPC change by region?"
-    a: "Frequently, and often more sharply than EVM chains. Polkadot's public infra is heavily weighted toward Web3 Foundation grantees whose primary data centers sit in Europe; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Polkadot RPC latency measured here, technically?"
     a: "One identical Substrate JSON-RPC POST (`chain_getHeader`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the EVM cluster uses. The response is a header object containing a hex-encoded relay-block number and the parent-block hash; the harness parses the number (`strconv.ParseUint(strings.TrimPrefix(hdr.Number, \"0x\"), 16, 64)`, same rule as EVM). Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
   - q: "Why is the probe `chain_getHeader` and not `system_health`?"

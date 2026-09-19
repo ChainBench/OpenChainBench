@@ -35,18 +35,11 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=viction. Provider coverage at launch: 3 endpoints (Viction Official, Viction RPC2, dRPC)."
 
-findings:
-  - "{{best_name}} currently leads Viction RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Viction RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Viction block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Viction RPC endpoints work without an API key?"
     a: "3 endpoints sustain continuous keyless probing at launch: Viction Official (rpc.viction.xyz), Viction RPC2 (rpc2.viction.xyz) and dRPC (viction.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
-  - q: "Does the fastest Viction RPC change by region?"
-    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is Viction RPC latency measured here, technically?"
-    a: "One eth_getBlockByNumber JSON-RPC call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=fetchhub. Provider coverage at launch: 3 endpoints (Fetch.ai official, PublicNode, Cosmos Directory)."
 
-findings:
-  - "{{best_name}} leads free Fetch.ai RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Fetch.ai RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Fetch.ai block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: Fetch.ai official (rpc-fetchhub.fetch.ai), PublicNode (fetch-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/fetchhub). Every listed endpoint was live-verified before inclusion."
   - q: "What is Fetch.ai and why does its RPC latency matter?"
     a: "Fetch.ai is a Cosmos SDK blockchain enabling autonomous AI agents to transact, negotiate, and execute tasks on-chain. The FET token (rebranded as ASI following the ASI Alliance merger with SingularityNET and Ocean Protocol) powers agent services and staking. Developers building AI agent frameworks, DeFi integrations, or on-chain governance tools need reliable low-latency RPC access to query agent registrations, transactions, and network state."
-  - q: "Does the fastest Fetch.ai RPC change by region?"
-    a: "Often. The official Fetch.ai node infrastructure is concentrated in specific regions while PublicNode distributes globally. The region tabs re-scope every number to a single probe origin."
   - q: "What is the ASI Alliance and how does it relate to FetchHub?"
     a: "The ASI Alliance is a merger of Fetch.ai, SingularityNET, and Ocean Protocol into a unified AI blockchain project. FetchHub-4 remains the underlying Cosmos SDK chain; the FET token migrated to the ASI token name while the technical RPC infrastructure and chain ID are unchanged."
 

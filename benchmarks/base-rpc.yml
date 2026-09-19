@@ -4,7 +4,7 @@ slug: base-rpc
 number: "046"
 title: Fastest free Base RPC, live no-key endpoint latency
 seo_title: "Fastest free Base RPC 2026"
-seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Base RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -26,21 +26,13 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"base\". Provider coverage: 5 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Base). Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
-
-findings:
-  - "{{best_name}} currently leads free Base RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
-  - "The official `mainnet.base.org` and the multi-chain gateways trade the lead depending on region, a reminder that \"fastest\" is a per-origin question, not a global one."
+  - "Chain scope: every query on this page is pinned to chain=\"base\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
   - q: "What is the fastest free Base RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Base RPCs work without an API key?"
-    a: "The 5 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Base. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
-  - q: "Does the fastest Base RPC change by region?"
-    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
-  - q: "How is Base RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "The 5 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Base. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Is Coinbase's official Base RPC faster than third-party gateways?"
     a: "Not consistently. Despite being operated by the same team that runs the sequencer, `mainnet.base.org` trades the lead with PublicNode, dRPC and Tenderly depending on which region the request originates from. Check the region tabs on this page for the origin closest to your deployment; the cross-region average hides these flips."
 

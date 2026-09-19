@@ -4,7 +4,7 @@ slug: osmosis-rpc
 number: "091"
 title: Fastest free Osmosis RPC, live no-key endpoint latency
 seo_title: "Fastest free Osmosis RPC 2026"
-seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public Osmosis Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -54,24 +54,14 @@ methodology:
   - "No archive-depth loop on this chain. Cosmos SDK chains access historical state via ABCI queries keyed on module + KV-store, which does not map onto the flat `eth_getBalance(address, height)` probe cleanly."
   - "No cross-provider hash quorum on this chain at v1. Tendermint `status` does return `latest_block_hash` on the same block the height is reported for, so a quorum check is technically feasible, but the initial Osmosis add-on ships without it to keep the reliability change surface small; the hash normalisation across Cosmos chains will be validated before wiring bench 083 here."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"osmosis\"`. Provider coverage at launch: 5 no-key endpoints (Osmosis Foundation, Polkachu, PublicNode, Imperator, LavenderFive)."
+  - "Chain scope: every query on this page is pinned to `chain=\"osmosis\"`. Provider coverage at launch: {{count}} no-key endpoints (Osmosis Foundation, Polkachu, PublicNode, Imperator, LavenderFive)."
   - "Excluded by the launch audit: Lava (osmosis.tendermintrpc.lava.build 403 without a key despite public branding), OnFinality (osmosis public gateway timing out at probe cadence), Numia (401), AutoStake (404), BlockApsis / WhisperNode / Enigma-Validator / StakeTown / reece.sh (connect errors, likely IPv6-only or geo-gated), Ankr + Chainstack (paid Cosmos tiers only)."
-
-findings:
-  - "{{best_name}} currently leads free Osmosis RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 5 measured providers."
-  - "{{name:osmosis-official}} is operated by the Osmosis Foundation itself; the bench measures the same public endpoint that Keplr and Osmosis Frontier route through by default, so the number here reflects what a wallet or dApp integrator sees end-to-end."
-  - "{{name:polkachu}} runs one of the largest Cosmos validator + public RPC networks; latency here is directly comparable to the multi-chain gateways because we probe the same `status` method under the same 60 s cadence rule."
-  - "{{name:publicnode}} extends its universal multi-chain footprint from Ethereum + Polkadot onto Cosmos without a keyed path; the reliability column is what to read alongside p50 here since Cosmos JSON-RPC has different failure modes than EVM (peer set churn during epoch boundaries, gRPC gateway restarts)."
 
 faq:
   - q: "What is the fastest free Osmosis RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Osmosis RPCs work without an API key?"
     a: "Five endpoints sustain continuous keyless probing at launch: Osmosis Foundation's `rpc.osmosis.zone`, Polkachu (`osmosis-rpc.polkachu.com`), PublicNode / Allnodes (`osmosis-rpc.publicnode.com`), Imperator (`rpc-osmosis.imperator.co`) and LavenderFive (`rpc.lavenderfive.com/osmosis`). Every listed endpoint was live-verified with a `status` POST returning a parsable decimal `sync_info.latest_block_height` before inclusion. Excluded by the audit: Lava's `osmosis.tendermintrpc.lava.build` returned 403 without a key, OnFinality's public osmosis gateway kept timing out at probe cadence, Numia rejected without an API key (401), Ankr and Chainstack require paid Cosmos tiers, and several community-run endpoints (BlockApsis, WhisperNode, Enigma-Validator, StakeTown, reece.sh) returned connect errors during the sweep."
-  - q: "Does the fastest Osmosis RPC change by region?"
-    a: "Often. Cosmos public infra is heavily weighted toward validator ops in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples, especially for community-run providers with a single data centre. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
-  - q: "How is Osmosis RPC latency measured here, technically?"
-    a: "One identical Tendermint JSON-RPC POST (`status`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the EVM and Substrate clusters use. The response is a `result` object containing a `sync_info` block; the harness reads `sync_info.latest_block_height` (a decimal string on Cosmos SDK, unlike EVM / Substrate which hex-encode) and parses it with `strconv.ParseUint`. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
   - q: "Why is the probe `status` and not `abci_info` or `block`?"
     a: "Two reasons. First, Tendermint `status` returns `sync_info.latest_block_height` on every Cosmos SDK chain in a shape the cluster's cross-provider tip machinery understands without a chain-specific code path. Second, `abci_info` returns application-level metadata that a polite CDN can synthesise without touching the underlying node, defeating the point of a latency probe on the RPC path; `block` requires a height parameter and would either bias toward providers with a fast archive path or duplicate the head-block work `status` already does. `status` forces the endpoint to actually read the head from the consensus engine, which is what integrators care about."
   - q: "Why is there no archive-depth or hash-quorum column for Osmosis?"

@@ -36,18 +36,11 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=vechain. Provider coverage at launch: 3 endpoints (VeChain Foundation x2, VeChain.energy)."
 
-findings:
-  - "{{best_name}} currently leads VeChain RPC at {{best_p50}} (blocks/best number p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free VeChain RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (VeChain block number p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which VeChain RPC endpoints work without an API key?"
     a: "3 endpoints sustain continuous keyless probing at launch: VeChain Foundation mainnet node (mainnet.vechain.org), VeThor Node (vethor-node.vechain.com) and VeChain.energy community node (node-mainnet.vechain.energy). Every listed endpoint was live-verified with a blocks/best call returning a parsable block number before inclusion."
-  - q: "Does the fastest VeChain RPC change by region?"
-    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is VeChain RPC latency measured here, technically?"
-    a: "One GET /blocks/best REST call every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Best-effort measurements; p50 is the median, p90 the 90th percentile and p99 the 99th percentile of latency samples collected over the last 24 hours."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

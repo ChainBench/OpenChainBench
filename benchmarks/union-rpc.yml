@@ -37,20 +37,15 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=union. Provider coverage at launch: 3 endpoints (Nodes.Guru, Stake And Relax, High Stakes)."
 
-findings:
-  - "{{best_name}} leads free Union RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Union RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Union block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Union RPC endpoints work without an API key?"
     a: "3 endpoints sustain continuous keyless probing at launch: Nodes.Guru (rpc-1.union.nodes.guru), Stake And Relax (union-rpc.stakeandrelax.net), and High Stakes (union-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
   - q: "What is Union and why does its RPC latency matter?"
-    a: "Union is a ZK-based cross-chain interoperability protocol with a native Cosmos SDK chain (union-1). It connects blockchains without trusted intermediaries by verifying consensus proofs on-chain. Developers building cross-chain applications, bridges, or omnichain protocols on Union need reliable low-latency RPC access to query transactions, proofs, and chain state."
-  - q: "Does the fastest Union RPC change by region?"
-    a: "Often. Community validators like Nodes.Guru and High Stakes host in different datacentres. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your user base."
+    a: "Union is a ZK-based cross-chain interoperability protocol with a native Cosmos SDK chain (union-1). It connects blockchains without widely used intermediaries by verifying consensus proofs on-chain. Developers building cross-chain applications, bridges, or omnichain protocols on Union need reliable low-latency RPC access to query transactions, proofs, and chain state."
   - q: "What makes Union different from other cross-chain protocols?"
-    a: "Union replaces trusted validator sets and multisigs with ZK consensus proofs, making cross-chain message passing verifiable on-chain. This means no external trust assumptions: the security of the bridge reduces to the security of the underlying chains and ZK proof system."
+    a: "Union replaces widely used validator sets and multisigs with ZK consensus proofs, making cross-chain message passing verifiable on-chain. This means no external trust assumptions: the security of the bridge reduces to the security of the underlying chains and ZK proof system."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

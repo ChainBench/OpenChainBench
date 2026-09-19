@@ -4,7 +4,7 @@ slug: cronos-rpc
 number: "064"
 title: Fastest free Cronos RPC, live no-key endpoint latency
 seo_title: "Fastest free Cronos RPC 2026"
-seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Cronos fields 3 no-key providers and encodes an integration trap
+  Cronos fields {{count}} no-key providers and encodes an integration trap
   from our sweep: PublicNode serves the chain at
   `cronos-evm-rpc.publicnode.com` (the intuitive `cronos-rpc`
   subdomain resolves but returns non-JSON). Tenderly's public gateway
@@ -34,21 +34,11 @@ methodology:
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
 
-findings:
-  - "{{best_name}} currently leads free Cronos RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
-  - "{{name:publicnode}} ({{p50:publicnode}}) hides behind a naming trap: the working subdomain is `cronos-evm-rpc`, while `cronos-rpc` resolves and then returns non-JSON, a failure mode that looks like an outage if you guessed the URL."
-  - "{{name:drpc}} ({{p50:drpc}}) delivers its usual three-region steadiness, the anycast pattern behind its 10-of-12 record across this long-tail expansion."
-  - "MeowRPC, historically listed for Cronos in RPC directories, is absent by measurement: its long-tail DNS is gone and the provider appears defunct outside a handful of legacy chains."
-
 faq:
   - q: "What is the fastest free Cronos RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Cronos RPCs work without an API key?"
     a: "Three endpoints sustain continuous keyless probing: PublicNode (at `cronos-evm-rpc.publicnode.com`, note the non-intuitive subdomain), dRPC, and the chain-linked public endpoint. Tenderly's public gateway does not reach Cronos, and 1RPC was descoped cluster-wide to Ethereum and Arbitrum because its keyless per-IP daily budget cannot sustain continuous multi-chain probing. Every listed endpoint was live-verified before inclusion."
-  - q: "Does the fastest Cronos RPC change by region?"
-    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
-  - q: "How is Cronos RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Why isn't MeowRPC listed on Cronos?"
     a: "We tried it. MeowRPC's long-tail endpoints no longer resolve (DNS gone), and the provider appears defunct outside a few legacy chains, so it failed the live verification, eth_chainId match plus sustained probing, that gates admission to this cluster. Directories still listing it are copying stale metadata; this bench only ranks endpoints that answer."
 
