@@ -238,6 +238,12 @@ export type Benchmark = {
   /** Providers audited and not listed, with the reason. Rendered under
    *  the public endpoints table; never carries a URL (schema-refused). */
   excludedProviders?: { name: string; reason: string; since?: string }[];
+  /** Aggregation window of the headline queries ("24h" default, "7d" on the
+   *  bridge execution benches). Drives the "(p50, 24h)" wording. */
+  window?: string;
+  /** Seconds after which the data counts as stale for this bench (from
+   *  prometheus.expected_freshness_seconds; 600 when unset). */
+  expectedFreshnessSec?: number;
   /** Optional per-chain explainer blocks rendered as H2-anchored sections
    *  below the main chart. Targets long-tail "X chain {metric}" queries
    *  that benefit from a dedicated on-page anchor (#ethereum, #solana, ...).

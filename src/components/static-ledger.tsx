@@ -19,11 +19,12 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   if (rows.length === 0) return null;
   const chain = rpcChainLabel(benchmark);
   const pausedOn = isStaleBench(benchmark) && benchmark.lastRunAt ? benchmark.lastRunAt.slice(0, 10) : null;
+  const win = benchmark.window ?? "24h";
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
     : chain
     ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
-    : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, 24h)`;
+    : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, ${win})`;
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (
     <section className="mt-8" aria-labelledby="results">
@@ -33,7 +34,7 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
-            {benchmark.title}: {benchmark.metric} per provider, last 24 hours.
+            {benchmark.title}: {benchmark.metric} per provider, last {win === "24h" ? "24 hours" : win}.
           </caption>
           <thead>
             <tr className="border-y-2 border-ink text-left">
