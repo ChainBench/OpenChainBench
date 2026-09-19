@@ -47,10 +47,13 @@ export function SearchTrigger({ variant }: Props) {
       onMouseEnter={prefetchFeatured}
       onFocus={prefetchFeatured}
       aria-label="Open search"
-      className="group inline-flex items-center gap-2 w-full max-w-[440px] h-9 px-3 rounded-md border border-rule bg-paper-soft text-left text-sm text-ink-faint hover:border-rule-strong hover:text-ink-muted hover:bg-paper transition-colors"
+      // min-w-0 on the button and the label lets the trigger shrink to the
+      // icon between md and lg: without it the header row was 1,207 px wide
+      // on a 1,024 px viewport and every page scrolled sideways (2026-09-19).
+      className="group inline-flex items-center gap-2 w-full min-w-0 max-w-[440px] h-9 px-3 rounded-md border border-rule bg-paper-soft text-left text-sm text-ink-faint hover:border-rule-strong hover:text-ink-muted hover:bg-paper transition-colors"
     >
       <Search size={15} aria-hidden className="shrink-0" />
-      <span className="truncate">Search benchmarks, products…</span>
+      <span className="truncate min-w-0">Search benchmarks, products…</span>
     </button>
   );
 }
