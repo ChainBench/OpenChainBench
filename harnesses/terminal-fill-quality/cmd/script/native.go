@@ -421,8 +421,17 @@ func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
 }
 
 // sampleNative draws the tick's quota per native EVM terminal and measures.
+// nativePollEvery: the EVM log feed polls every N ticks (the cursor
+// keeps every block, a poll then covers N minutes of chain); 1 = each tick.
+var nativePollEvery = 1
+var nativeTick int
+
 func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *nativeFeed, gas map[string]float64, quota map[string]float64, perTick float64) (added, seen int) {
 	nf.funded = st.Funded
+	nativeTick++
+	if nativeTick%nativePollEvery != 0 {
+		return 0, 0
+	}
 	nf.poll(ctx)
 	now := time.Now().Unix()
 	nf.failScan(ctx, st, gas, now)
@@ -431,8 +440,9 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		seen += n0
 		st.record(t.Slug, now, n0, 0, 0, nil)
 		// The quota accrues every tick (a sparse row, one swap a minute,
-		// would otherwise need several active ticks per sample).
-		quota[t.Slug] += perTick
+		// would otherwise need several active ticks per sample); a poll
+		// every N ticks accrues N ticks' worth.
+		quota[t.Slug] += perTick * float64(nativePollEvery)
 		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
 			quota[t.Slug] = cap
 		}
