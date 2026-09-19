@@ -4,7 +4,7 @@ slug: cheqd-rpc
 number: "257"
 title: Fastest free cheqd RPC, live no-key endpoint latency
 seo_title: "Fastest free cheqd RPC 2026"
-seo_description: "{{best_name}} leads free cheqd RPC at {{best_p50}} (block height p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free cheqd RPC at {{best_p50}} (block height p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public cheqd (cheqd-mainnet-1) endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=cheqd. Provider coverage at launch: 3 endpoints (cheqd official, PublicNode, NodeStake)."
 
-findings:
-  - "{{best_name}} leads free cheqd RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free cheqd RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (cheqd block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: cheqd official (rpc.cheqd.net), PublicNode (cheqd-rpc.publicnode.com), and NodeStake (rpc.cheqd.nodestake.org). Every listed endpoint was live-verified before inclusion."
   - q: "What is cheqd and why does its RPC latency matter?"
     a: "cheqd is a Cosmos SDK blockchain built for decentralized identity (DID) and verifiable credentials. DID resolution, verifiable credential anchoring, and CHEQ token transfers all depend on RPC availability. Applications using the cheqd DID method resolve identifiers via RPC, making latency directly visible to end users and credential verifiers."
-  - q: "Does the fastest cheqd RPC change by region?"
-    a: "Yes. The official cheqd node and community validators are hosted in different regions. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your deployment geography."
   - q: "What is the CHEQ token?"
     a: "CHEQ is the native staking and governance token of the cheqd network (denominated as ncheq on-chain). It is used to pay for DID writes, credential schema anchoring, and on-chain governance participation."
 

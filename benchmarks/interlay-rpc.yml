@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage at launch: 1 endpoint (Interlay official api.interlay.io/parachain)."
 
-findings:
-  - "{{best_name}} is the measured Interlay RPC at {{best_p50}} (chain_getHeader p50, 24h) from 1 monitored provider."
-
 faq:
   - q: "What is the fastest free Interlay RPC right now?"
     a: "The Interlay official node (api.interlay.io/parachain) is the primary keyless public endpoint, probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard updates continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "The Interlay official node at api.interlay.io/parachain sustains continuous keyless probing. Other providers (OnFinality, Dwellir) were tested but returned connection errors; only the official node was live-verified before inclusion."
   - q: "What is Interlay and why does its RPC latency matter?"
     a: "Interlay issues iBTC, a 1:1 Bitcoin-backed asset on Polkadot secured by decentralized vaults. Developers integrating iBTC, building vault monitoring tools, or querying collateral positions need reliable low-latency RPC access. Knowing which public endpoint is fastest from your region matters for application responsiveness."
-  - q: "Does the fastest Interlay RPC change by region?"
-    a: "With a single measured provider, per-region breakdowns reflect the geographic latency between each probe region and the Interlay official node infrastructure. The region tabs re-scope every number to a single origin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

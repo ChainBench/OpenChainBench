@@ -4,7 +4,7 @@ slug: icon-rpc
 number: "258"
 title: Fastest free ICON RPC, live no-key endpoint latency
 seo_title: "Fastest free ICON RPC 2026"
-seo_description: "{{best_name}} leads free ICON RPC at {{best_p50}} (block height p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free ICON RPC at {{best_p50}} (block height p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for icx_getLastBlock queries against every available public ICON blockchain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=icon. Provider coverage at launch: 3 endpoints (ICON Foundation, ICON Community, iconblockchain.xyz)."
 
-findings:
-  - "{{best_name}} leads free ICON RPC at {{best_p50}} (icx_getLastBlock p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free ICON RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (ICON block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: ICON Foundation (ctz.solidwallet.io), ICON Community (api.icon.community), and iconblockchain.xyz. Every listed endpoint was live-verified before inclusion."
   - q: "What is ICON and why does its RPC latency matter?"
     a: "ICON is a South Korean blockchain focused on enterprise interoperability, originally built for connecting financial institutions and public organizations. ICX wallets, DApp integrations, and BTP cross-chain bridging all depend on reliable RPC access. Low latency matters for real-time ICX transfers and DeFi protocols built on the ICON ecosystem."
-  - q: "Does the fastest ICON RPC change by region?"
-    a: "Yes. The ICON Foundation node and community operators are distributed globally. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your deployment geography."
   - q: "What is the ICX token?"
     a: "ICX is the native staking and governance token of the ICON network. It is used to pay transaction fees, stake with validators (P-Reps), and participate in on-chain governance. ICON uses a Delegated Proof of Contribution model where P-Reps are elected by ICX holders."
 

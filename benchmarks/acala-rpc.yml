@@ -37,16 +37,11 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=acala. Provider coverage at launch: 3 endpoints (Dwellir, Acala RPC-0, Acala RPC-2)."
 
-findings:
-  - "{{best_name}} currently leads Acala RPC at {{best_p50}} (chain_getHeader p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Acala RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Acala block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Acala RPC endpoints work without an API key?"
     a: "3 endpoints sustain continuous keyless probing at launch: Dwellir (acala-rpc.n.dwellir.com), Acala RPC-0 (acala-rpc-0.aca-api.network) and Acala RPC-2 (acala-rpc-2.aca-api.network). Every listed endpoint was live-verified before inclusion."
-  - q: "Does the fastest Acala RPC change by region?"
-    a: "Often. Dwellir is Europe-focused while the Acala official nodes have fixed infrastructure. Rankings shift depending on your geographic origin. The region tabs re-scope every number to a single origin."
   - q: "How does Acala RPC latency compare to other Polkadot parachains?"
     a: "All Polkadot parachains use the same Substrate JSON-RPC probe (chain_getHeader), making latency directly comparable across the per-chain RPC cluster. The parent rpc-capabilities benchmark shows the cross-chain view."
 

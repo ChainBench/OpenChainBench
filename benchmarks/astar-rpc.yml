@@ -4,7 +4,7 @@ slug: astar-rpc
 number: "154"
 title: Fastest free Astar Network RPC, live no-key endpoint latency
 seo_title: "Fastest free Astar Network RPC 2026"
-seo_description: "{{best_name}} leads free Astar Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 2 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Astar Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Astar Network RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -34,20 +34,13 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"astar\"`. Provider coverage: 2 no-key endpoints (OnFinality, 1RPC). PublicNode returned 404; BlastAPI DNS is dead."
-
-findings:
-  - "{{best_name}} currently leads free Astar Network RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 2 measured providers."
+  - "Chain scope: every query on this page is pinned to `chain=\"astar\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. PublicNode returned 404; BlastAPI DNS is dead."
 
 faq:
   - q: "What is the fastest free Astar Network RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 2 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Astar Network RPCs work without an API key?"
     a: "2 endpoints sustain continuous keyless probing: OnFinality and 1RPC. PublicNode returned 404 and BlastAPI's DNS is dead; both were removed."
-  - q: "Does the fastest Astar Network RPC change by region?"
-    a: "Often. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
-  - q: "How is Astar Network RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions. Responses are classified so an endpoint stuck on an old head or returning errors is never ranked as fastest."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
