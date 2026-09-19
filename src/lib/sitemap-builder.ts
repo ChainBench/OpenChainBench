@@ -89,6 +89,31 @@ function pageMtime(relPath: string): Date {
   }
 }
 
+/**
+ * Last editorial change of a content file, from the prebuild manifest
+ * ("bench:<slug>", "answer:<slug>", "alt:<slug>", "compare-pairs"). The
+ * data on a bench page moves every minute; the page's <lastmod> is the
+ * last time its spec (copy, cohort, methodology) changed. Until this,
+ * bench URLs carried lastRunAt and 870 of 879 sitemap entries shared one
+ * day, which Google treats as no signal at all.
+ */
+function editorialMtime(key: string): Date | null {
+  const secs = MTIME_MANIFEST[key];
+  if (typeof secs !== "number" || !Number.isFinite(secs)) return null;
+  const d = new Date(secs * 1000);
+  return d > REAL_REPO_BIRTH ? d : null;
+}
+
+/** Newest editorial change among several manifest keys, else the fallback. */
+function newestEditorial(keys: string[], fallback: Date): Date {
+  let best: Date | null = null;
+  for (const k of keys) {
+    const d = editorialMtime(k);
+    if (d && (!best || d > best)) best = d;
+  }
+  return best ?? fallback;
+}
+
 async function safeLoad<T>(
   label: string,
   loader: () => Promise<T>,
@@ -109,7 +134,7 @@ function reportsRoutes(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [
     {
       url: `${SITE.url}/reports`,
-      lastModified: BUILD_TIME,
+      lastModified: pageMtime("reports/page.tsx"),
       changeFrequency: "monthly",
       priority: 0.8,
     },
@@ -230,17 +255,20 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     const t = new Date(b.lastRunAt);
     return t > acc ? t : acc;
   }, new Date(0));
-  const catalogTs = catalogLastRun.getTime() > 0 ? catalogLastRun : BUILD_TIME;
+  // Hubs and lists: the newest editorial change among the live benches
+  // (a spec edited, a bench added), not the last data run.
+  const catalogTs = newestEditorial(
+    blobBenches.map((b) => `bench:${b.slug}`),
+    catalogLastRun.getTime() > 0 ? catalogLastRun : BUILD_TIME,
+  );
 
   const benchBySlug = new Map(blobBenches.map((b) => [b.slug, b]));
 
   const alternativeLastRun = new Map<string, Date>();
   for (const alt of alternatives) {
-    const bench = benchBySlug.get(alt.benchmark);
-    if (bench?.lastRunAt) {
-      alternativeLastRun.set(alt.slug, new Date(bench.lastRunAt));
-    }
+    alternativeLastRun.set(alt.slug, newestEditorial([`alt:${alt.slug}`, `bench:${alt.benchmark}`], catalogTs));
   }
+
 
   const staticRoutes = staticHubRoutes(catalogTs);
 
@@ -248,7 +276,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
-    const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
+    const last = newestEditorial([`bench:${b.slug}`], b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME);
     const entries: MetadataRoute.Sitemap = [
       {
         url: `${SITE.url}/benchmarks/${b.slug}`,
@@ -284,8 +312,19 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // 404s and the deploy's sitemap smoke blocks the release (2026-09-08:
   // /products/serialized, declared on dev, listed in prod's sitemap).
   const declaredProviderSlugs = new Set<string>();
+  // provider slug -> manifest keys of the live benches that declare it,
+  // for the product pages' lastmod below.
+  const benchesByProvider = new Map<string, string[]>();
+  const liveBenchSlugs = new Set(blobBenches.map((b) => b.slug));
   for (const spec of await getSpecs()) {
-    for (const p of spec.providers ?? []) declaredProviderSlugs.add(p.slug);
+    for (const p of spec.providers ?? []) {
+      declaredProviderSlugs.add(p.slug);
+      if (liveBenchSlugs.has(spec.slug)) {
+        const list = benchesByProvider.get(p.slug) ?? [];
+        list.push(`bench:${spec.slug}`);
+        benchesByProvider.set(p.slug, list);
+      }
+    }
   }
   for (const entry of Object.values(PROVIDER_REGISTRY)) {
     if (entry.parent) declaredProviderSlugs.add(entry.parent);
@@ -303,9 +342,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return true;
   });
 
+  // A product page changes when one of the specs that name the provider
+  // changes (cohort, copy) or when a bench is added; the newest such spec
+  // is its lastmod. Providers the blob does not map fall back to catalogTs.
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
-    lastModified: catalogTs,
+    lastModified: newestEditorial(benchesByProvider.get(slug) ?? [], catalogTs),
     changeFrequency: "daily",
     priority: 0.85,
   }));
@@ -322,8 +364,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const answerRoutes: MetadataRoute.Sitemap = answers
     .filter((a) => benchBySlug.has(a.benchmark))
     .map((a) => {
-      const bench = benchBySlug.get(a.benchmark);
-      const last = bench?.lastRunAt ? new Date(bench.lastRunAt) : catalogTs;
+      const last = newestEditorial([`answer:${a.slug}`, `bench:${a.benchmark}`], catalogTs);
       return {
         url: `${SITE.url}/answers/${a.slug}`,
         lastModified: last,
@@ -343,15 +384,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
     if (!chainsWithBenches.has(c.slug)) return [];
     // lastRunAt: max over benches that touch this chain.
-    const last = blobBenches.reduce<Date>((acc, b) => {
-      if (!b.chainDimensions.includes(c.slug) && !b.chainDimensions.map(canonicalChainSlug).includes(c.slug)) return acc;
-      if (!b.lastRunAt) return acc;
-      const t = new Date(b.lastRunAt);
-      return t > acc ? t : acc;
-    }, new Date(0));
+    const last = newestEditorial(
+      blobBenches
+        .filter((b) => b.chainDimensions.includes(c.slug) || b.chainDimensions.map(canonicalChainSlug).includes(c.slug))
+        .map((b) => `bench:${b.slug}`),
+      catalogTs,
+    );
     return [{
       url: `${SITE.url}/chains/${c.slug}`,
-      lastModified: last.getTime() > 0 ? last : catalogTs,
+      lastModified: last,
       changeFrequency: "daily" as const,
       priority: 0.85,
     }];
@@ -363,7 +404,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // we're avoiding. The curated pairs cover the high-value compare URLs.
   const compareRoutes: MetadataRoute.Sitemap = COMPARE_PAIRS.map((pair) => ({
     url: `${SITE.url}/compare/${pair.slug}`,
-    lastModified: catalogTs,
+    lastModified: newestEditorial(["compare-pairs"], catalogTs),
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
@@ -377,14 +418,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     .filter((c) => liveCategoryLabels.has(c.label))
     .map((c) => {
       const catBenches = activeBlobBenches.filter((b) => b.category === c.label);
-      const last = catBenches.reduce<Date>((acc, b) => {
-        if (!b.lastRunAt) return acc;
-        const t = new Date(b.lastRunAt);
-        return t > acc ? t : acc;
-      }, new Date(0));
+      const last = newestEditorial(catBenches.map((b) => `bench:${b.slug}`), catalogTs);
       return {
         url: `${SITE.url}/benchmarks/category/${c.slug}`,
-        lastModified: last.getTime() > 0 ? last : catalogTs,
+        lastModified: last,
         changeFrequency: "weekly" as const,
         priority: 0.6,
       };
