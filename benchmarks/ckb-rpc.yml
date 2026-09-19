@@ -2,8 +2,8 @@
 
 slug: ckb-rpc
 number: "219"
-title: Fastest free Nervos CKB RPC, live no-key endpoint latency
-seo_title: "Fastest free Nervos CKB RPC 2026"
+title: "Nervos CKB RPC endpoints: free public URLs ranked by latency"
+seo_title: "Nervos CKB RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Nervos CKB RPC at {{best_p50}} (get_tip_block_number p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for get_tip_block_number against every available public Nervos CKB node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=ckb. Provider coverage at launch: {{count}} endpoints (Nervos Foundation, CKBapp)."
 
 faq:
-  - q: "What is the fastest free Nervos CKB RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (CKB block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Nervos CKB RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: the Nervos Foundation node (mainnet.ckb.dev/rpc) and CKBapp (mainnet.ckbapp.dev/rpc). Every listed endpoint was live-verified with a get_tip_block_number call returning a parsable hex block number before inclusion."
 

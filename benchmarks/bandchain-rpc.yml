@@ -2,8 +2,8 @@
 
 slug: bandchain-rpc
 number: "256"
-title: Fastest free Band Protocol RPC, live no-key endpoint latency
-seo_title: "Fastest free Band Protocol RPC 2026"
+title: "Band Protocol RPC endpoints: free public URLs ranked by latency"
+seo_title: "Band Protocol RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Band Protocol (laozi-mainnet) endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=bandchain. Provider coverage at launch: {{count}} endpoints (Band Protocol official, High Stakes, Stakewolle)."
 
 faq:
-  - q: "What is the fastest free Band Protocol RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Band Protocol block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Band Protocol RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Band Protocol official (rpc.laozi1.bandchain.org), High Stakes (bandprotocol-rpc.highstakes.ch), and Stakewolle (public.stakewolle.com/cosmos/bandchain/rpc). Every listed endpoint was live-verified before inclusion."
   - q: "What is Band Protocol and why does its RPC latency matter?"

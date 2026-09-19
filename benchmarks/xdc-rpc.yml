@@ -2,8 +2,8 @@
 
 slug: xdc-rpc
 number: "153"
-title: Fastest free XDC Network RPC, live no-key endpoint latency
-seo_title: "Fastest free XDC Network RPC 2026"
+title: "XDC Network RPC endpoints: free public URLs ranked by latency"
+seo_title: "XDC Network RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free XDC Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public XDC Network RPC endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"xdc\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. XDC Foundation official, XDCrpc and XDC.org stopped responding to probes and have been removed."
 
 faq:
-  - q: "What is the fastest free XDC Network RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which XDC Network RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 

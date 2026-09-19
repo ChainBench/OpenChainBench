@@ -2,8 +2,8 @@
 
 slug: cronos-rpc
 number: "064"
-title: Fastest free Cronos RPC, live no-key endpoint latency
-seo_title: "Fastest free Cronos RPC 2026"
+title: "Cronos RPC endpoints: free public URLs ranked by latency"
+seo_title: "Cronos RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos RPC endpoint, audited every 60 seconds from 3 regions.
 
@@ -33,8 +33,6 @@ methodology:
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Cronos-scoped view of the same harness, with the same exclusion rules."
 
 faq:
-  - q: "What is the fastest free Cronos RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Cronos RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing: PublicNode (at `cronos-evm-rpc.publicnode.com`, note the non-intuitive subdomain), dRPC, and the chain-linked public endpoint. Tenderly's public gateway does not reach Cronos, and 1RPC was descoped cluster-wide to Ethereum and Arbitrum because its keyless per-IP daily budget cannot sustain continuous multi-chain probing. Every listed endpoint was live-verified before inclusion."
   - q: "Why isn't MeowRPC listed on Cronos?"

@@ -2,8 +2,8 @@
 
 slug: etherlink-rpc
 number: "189"
-title: Fastest free Etherlink RPC, live no-key endpoint latency
-seo_title: "Fastest free Etherlink RPC 2026"
+title: "Etherlink RPC endpoints: free public URLs ranked by latency"
+seo_title: "Etherlink RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Etherlink RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Etherlink EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Etherlink (chain 42793) is a Tezos L2 using Smart Rollup technology, offering EVM compatibility backed by the Tezos Foundation. XTZ is the bridged gas token. {{count}} keyless endpoints are probed continuously, each listed with its URL in the endpoints table above.com/etherlink_mainnet), and Blast API.
+  Etherlink (chain 42793) is a Tezos L2 using Smart Rollup technology, offering EVM compatibility backed by the Tezos Foundation. XTZ is the bridged gas token. {{count}} keyless endpoints are probed continuously, each listed with its URL in the endpoints table on this page.
 
 abstract: |
   Etherlink: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:etherlink-official}}.
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"etherlink\"`. Provider coverage at launch: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free Etherlink RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Etherlink RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 

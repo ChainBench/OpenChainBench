@@ -13,7 +13,7 @@ import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
-import { isThinRpcBench } from "@/lib/provider-filters";
+import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults } from "@/lib/provider-filters";
 import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
 import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
@@ -29,9 +29,10 @@ import {
   headlineSentence,
   isInsufficient,
   leader,
+  rpcChainLabel,
 } from "@/lib/citation";
-import { valueInDeclaredUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { valueInDeclaredUnit, fmtUnit } from "@/lib/format";
+import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -142,6 +143,23 @@ export async function generateMetadata({
   // description renders with live, chain-honest numbers. seoDescription
   // is the most common host for these placeholders.
   if (description) description = renderTemplate(description, b);
+  // Freshness gate. A chain RPC page whose data stopped moving must not
+  // promise "updated every 60s" in the snippet; after a day the
+  // description says when the measurement paused and what the last
+  // ranked leader was, after a week the page is noindex (and the worker
+  // keeps it out of the sitemap).
+  const metaChain = rpcChainLabel(b);
+  const metaStale = metaChain != null && isStaleBench(b);
+  const metaExpired = metaChain != null && isExpiredBench(b);
+  if (metaStale && metaChain) {
+    const lastLeader = leader(b);
+    const pausedOn = b.lastRunAt ? new Date(b.lastRunAt).toISOString().slice(0, 10) : "an earlier date";
+    const n = displayResults(b.results).length;
+    description = `${metaChain} RPC measurement paused since ${pausedOn}.${
+      lastLeader ? ` Last ranked leader: ${lastLeader.name} at ${fmtUnit(lastLeader.value, b.unit)} (p50, 24h, 3 regions).` : ""
+    }${n >= 2 ? ` URLs for the ${n} no-key endpoints stay listed.` : ""}`;
+  }
+  if (description) description = stripInlineMarkdown(description);
   // Google truncates meta descriptions at ~155-160 chars in the SERP. Anything
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
@@ -164,7 +182,7 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
-    ...((metaIsAwaiting || metaThinRpc)
+    ...((metaIsAwaiting || metaThinRpc || metaExpired)
       ? { robots: { index: false, follow: true } }
       : {}),
     openGraph: {

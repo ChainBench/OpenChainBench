@@ -44,7 +44,27 @@ function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   return r.regions[k]?.p50Ms ?? null;
 }
 
-export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
+/** Rows rendered before "Show all": 152 chains at about 4 KB of markup
+ *  each (sparkline SVG, logos, links) made /rpc a 1 MB document
+ *  (2026-09-19). The full list of chain pages is still in the HTML as a
+ *  compact nav on the page, so crawlers lose no link. */
+const INITIAL_ROWS = 40;
+
+export function RpcChainsLeaderboard({
+  rows,
+  linkableSlugs,
+}: {
+  rows: RpcHubChain[];
+  /** Bench slugs whose page is indexable (worker sitemap). When given it
+   *  replaces the declared-count gate, so an expired chain (data older
+   *  than a week, noindex) is shown but not linked. */
+  linkableSlugs?: string[];
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const linkableSet = useMemo(
+    () => (linkableSlugs ? new Set(linkableSlugs) : null),
+    [linkableSlugs],
+  );
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("bestP50");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -162,11 +182,13 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => {
+            {(showAll || q ? filtered : filtered.slice(0, INITIAL_ROWS)).map((r, i) => {
               // Under the thin gate (< 3 providers) the chain page is noindex:
               // show the row, do not link it (the hub was the main source of
               // noindex crawl on 2026-09-19).
-              const linkable = (r.declaredCount ?? r.providerCount) >= THIN_RPC_MIN_RESULTS;
+              const linkable = linkableSet
+                ? linkableSet.has(r.slug)
+                : (r.declaredCount ?? r.providerCount) >= THIN_RPC_MIN_RESULTS;
               return (
               <tr
                 key={r.slug}
@@ -340,6 +362,17 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
           </tbody>
         </table>
       </div>
+      {!showAll && !q && filtered.length > INITIAL_ROWS && (
+        <div className="p-3 border-t border-ink/8 text-center">
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="text-[12px] underline underline-offset-2 text-ink-soft hover:text-ink"
+          >
+            Show all {filtered.length} chains
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -28,8 +28,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"ronin\"`. Provider coverage: {{count}} no-key endpoints. dRPC removed (500 persistent internal error)."
 
 faq:
-  - q: "What is the fastest free Ronin RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Ronin RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above. Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "How is Ronin RPC latency measured here, technically?"

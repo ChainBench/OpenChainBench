@@ -17,7 +17,13 @@ import type { RpcHubSnapshot } from "@/lib/rpc-hub-stats";
 
 type Tab = "chains" | "providers";
 
-export function RpcHubTabs({ snapshot }: { snapshot: RpcHubSnapshot }) {
+export function RpcHubTabs({
+  snapshot,
+  linkableSlugs,
+}: {
+  snapshot: RpcHubSnapshot;
+  linkableSlugs?: string[];
+}) {
   const [tab, setTab] = useState<Tab>("chains");
 
   return (
@@ -43,7 +49,9 @@ export function RpcHubTabs({ snapshot }: { snapshot: RpcHubSnapshot }) {
         </TabButton>
       </div>
 
-      {tab === "chains" && <RpcChainsLeaderboard rows={snapshot.chains} />}
+      {tab === "chains" && (
+        <RpcChainsLeaderboard rows={snapshot.chains} linkableSlugs={linkableSlugs} />
+      )}
       {tab === "providers" && (
         <RpcProvidersPivot
           rows={snapshot.providersPivot}

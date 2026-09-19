@@ -2,8 +2,8 @@
 
 slug: avalanche-rpc
 number: "048"
-title: Fastest free Avalanche RPC, live no-key endpoint latency
-seo_title: "Fastest free Avalanche RPC 2026"
+title: "Avalanche RPC endpoints: free public URLs ranked by latency"
+seo_title: "Avalanche RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Avalanche RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Avalanche RPC endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"avalanche\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Nodies was delisted 2026-07 when its Avalanche endpoint moved behind a paid plan. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
-  - q: "What is the fastest free Avalanche RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Avalanche RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Nodies was delisted in July 2026 when its Avalanche endpoint moved behind a paid plan. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Is the official Avalanche RPC good enough for production reads?"

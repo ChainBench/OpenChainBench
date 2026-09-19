@@ -2,8 +2,8 @@
 
 slug: flow-rpc
 number: "217"
-title: Fastest free Flow RPC, live no-key endpoint latency
-seo_title: "Fastest free Flow RPC 2026"
+title: "Flow RPC endpoints: free public URLs ranked by latency"
+seo_title: "Flow RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Flow RPC at {{best_p50}} (Cadence REST /v1/blocks sealed height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the Flow Cadence REST endpoint (GET /v1/blocks?height=sealed) against every available public Flow node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=flow. Provider coverage at launch: {{count}} endpoints (Flow Foundation REST, Flow access node)."
 
 faq:
-  - q: "What is the fastest free Flow RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Flow sealed block height p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Flow RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: the Flow Foundation REST node (rest-mainnet.onflow.org) and the Flow access node REST endpoint (access.mainnet.nodes.onflow.org). Every listed endpoint was live-verified with a GET /v1/blocks?height=sealed returning a parsable height before inclusion."
 

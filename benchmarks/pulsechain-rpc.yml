@@ -28,8 +28,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"pulsechain\"`. Provider coverage at launch: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free PulseChain RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which PulseChain RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
 

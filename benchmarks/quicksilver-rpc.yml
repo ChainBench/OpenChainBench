@@ -2,8 +2,8 @@
 
 slug: quicksilver-rpc
 number: "180"
-title: Fastest free Quicksilver RPC, live no-key endpoint latency
-seo_title: "Fastest free Quicksilver RPC 2026"
+title: "Quicksilver RPC endpoints: free public URLs ranked by latency"
+seo_title: "Quicksilver RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Quicksilver RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the Tendermint status method against every free, no-key public Quicksilver Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,10 +27,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"quicksilver\"`. Provider coverage at launch: {{count}} no-key endpoints (Polkachu, PublicNode, Quicksilver Foundation)."
 
 faq:
-  - q: "What is the fastest free Quicksilver RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Quicksilver RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Polkachu, PublicNode, and Quicksilver Foundation. Every listed endpoint was live-verified before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

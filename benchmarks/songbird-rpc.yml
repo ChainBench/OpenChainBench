@@ -2,8 +2,8 @@
 
 slug: songbird-rpc
 number: "192"
-title: Fastest free Songbird RPC, live no-key endpoint latency
-seo_title: "Fastest free Songbird RPC 2026"
+title: "Songbird RPC endpoints: free public URLs ranked by latency"
+seo_title: "Songbird RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Songbird RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Songbird EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"songbird\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. FTSO AU removed after DNS went dead."
 
 faq:
-  - q: "What is the fastest free Songbird RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Songbird RPCs work without an API key?"
     a: "{{count}} endpoint sustains continuous keyless probing: Flare Foundation official (songbird-api.flare.network/ext/C/rpc). The FTSO AU community node was removed after its DNS went dead."
 

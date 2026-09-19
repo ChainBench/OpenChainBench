@@ -28,12 +28,10 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"arbitrum\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
-  - q: "What is the fastest free Arbitrum RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Arbitrum RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Should I use the official Arbitrum Foundation RPC in production?"
-    a: "The Foundation documents `arb1.arbitrum.io/rpc` as best-effort and rate-limited, intended for development. Our continuous measurement confirms the profile: a p50 of {{p50:arbitrum-official}} against {{best_p50}} for the leader, with a p99 of {{p99:arbitrum-official}}. For read-heavy production paths a gateway with a tighter distribution is the safer default; keep the official endpoint as a fallback rather than a primary."
+    a: "The Foundation documents `arb1.arbitrum.io/rpc` as best-effort and rate-limited, intended for development. Our continuous measurement confirms the profile: a p50 of {{p50:arbitrum-official}} against {{best_p50}} for the leader, with a p99 of {{p99:arbitrum-official}}. Read the p99 column against the leader's before choosing it as a primary for a read-heavy path."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

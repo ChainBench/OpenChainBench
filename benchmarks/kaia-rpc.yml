@@ -2,8 +2,8 @@
 
 slug: kaia-rpc
 number: "098"
-title: Fastest free Kaia RPC, live no-key EVM endpoint latency
-seo_title: "Fastest free Kaia RPC 2026"
+title: "Kaia RPC endpoints: free public URLs ranked by latency"
+seo_title: "Kaia RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Kaia RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Kaia EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"kaia\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. dRPC removed (500 paid plan only)."
 
 faq:
-  - q: "What is the fastest free Kaia RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Kaia RPCs work without an API key?"
     a: "{{count}} endpoint sustains continuous keyless probing: Kaia Foundation (public-en.node.kaia.io). dRPC was removed after returning 500 (paid plan only). See the methodology section for the specific endpoints that were audited and excluded."
   - q: "How is Kaia RPC latency measured here, technically?"
@@ -73,5 +71,4 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="kaia-official", chain="kaia", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="kaia-official", chain="kaia", region="sgp"}[1h])
-
 

@@ -2,8 +2,8 @@
 
 slug: neo-rpc
 number: "221"
-title: Fastest free NEO N3 RPC, live no-key endpoint latency
-seo_title: "Fastest free NEO N3 RPC 2026"
+title: "NEO N3 RPC endpoints: free public URLs ranked by latency"
+seo_title: "NEO N3 RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free NEO N3 RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for getblockcount against every available public NEO N3 node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=neo. Provider coverage at launch: {{count}} endpoints (NSPCC, NGD seed 1, NGD seed 2)."
 
 faq:
-  - q: "What is the fastest free NEO N3 RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (NEO N3 block count p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which NEO N3 RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: NSPCC (rpc10.n3.nspcc.ru:10331), NGD seed node 1 (n3seed1.ngd.network:10332) and NGD seed node 2 (n3seed2.ngd.network:10332). Every listed endpoint was live-verified with a getblockcount call returning a parsable block count before inclusion."
 
