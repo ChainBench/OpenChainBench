@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { THIN_RPC_MIN_RESULTS } from "@/lib/provider-filters";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -161,17 +162,23 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
+            {filtered.map((r, i) => {
+              // Under the thin gate (< 3 providers) the chain page is noindex:
+              // show the row, do not link it (the hub was the main source of
+              // noindex crawl on 2026-09-19).
+              const linkable = r.providerCount >= THIN_RPC_MIN_RESULTS;
+              return (
               <tr
                 key={r.slug}
-                onClick={() => router.push(`/benchmarks/${r.slug}`)}
-                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
+                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}`) : undefined}
+                className={`border-t border-ink/5 transition-colors ${linkable ? "hover:bg-paper-soft/40 cursor-pointer" : ""}`}
               >
                 <Td muted mono>
                   {i + 1}
                 </Td>
                 <Td>
                   <div className="flex items-center gap-2 min-w-0">
+                    {linkable ? (
                     <Link
                       href={`/benchmarks/${r.slug}`}
                       className="flex items-center gap-2 min-w-0 group"
@@ -186,6 +193,16 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                         className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       />
                     </Link>
+                    ) : (
+                    <span
+                      className="flex items-center gap-2 min-w-0"
+                      title="Measured, not yet ranked: fewer than 3 no-key providers"
+                    >
+                      <ProviderLogo slug={r.chain} name={r.name} size={18} />
+                      <span className="font-medium text-ink truncate">{r.name}</span>
+                      <span className="text-[10px] text-ink-faint shrink-0">not yet ranked</span>
+                    </span>
+                    )}
                     <Link
                       href={`/chains/${r.chain}`}
                       className="text-[10px] text-ink-faint hover:text-ink underline underline-offset-2 shrink-0"
@@ -308,7 +325,8 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   )}
                 </Td>
               </tr>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td
