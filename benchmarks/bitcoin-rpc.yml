@@ -4,7 +4,7 @@ slug: bitcoin-rpc
 number: "259"
 title: Fastest free Bitcoin RPC, live no-key endpoint latency
 seo_title: "Fastest free Bitcoin RPC 2026"
-seo_description: "{{best_name}} leads free Bitcoin RPC at {{best_p50}} (getblockcount p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Bitcoin RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for block-height queries against every available public Bitcoin endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs

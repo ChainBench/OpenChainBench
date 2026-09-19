@@ -4,7 +4,7 @@ slug: babylon-rpc
 number: "247"
 title: Fastest free Babylon RPC, live no-key endpoint latency
 seo_title: "Fastest free Babylon RPC 2026"
-seo_description: "{{best_name}} leads free Babylon RPC at {{best_p50}} (block height p50, 24h). {{count}} providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Babylon RPC at {{best_p50}} (block height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for Tendermint status queries against every available public Babylon endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -23,9 +23,7 @@ abstract: |
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus avg(quantile_over_time(...)); per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: GET <endpoint>/status. Returns a Tendermint status JSON object; block height is read from result.sync_info.latest_block_height."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
-  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 40 behind the cross-provider tip), timeout."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Babylon-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=babylon. Provider coverage at launch: {{count}} endpoints (PublicNode, Polkachu, LavenderFive)."
 
 faq:
