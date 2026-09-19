@@ -84,7 +84,7 @@ export async function TerminalFillSection({
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows, the app fee on Relay legs">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
-              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay">Pool</Th>
+              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay; on the EVM rows a stable-to-gas-coin hop's own cost is excluded (its rate values the native leg)">Pool</Th>
               <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
               <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway unless the app sponsors gas (FOMO)">Failed</Th>
               <Th right title="90th percentile of the value lost">p90</Th>
@@ -134,7 +134,7 @@ export async function TerminalFillSection({
                   <SplitCell t={t} part="network" pub={pub} />
                   <SplitCell t={t} part="pool" pub={pub} relay />
                   <SplitCell t={t} part="other" pub={pub} />
-                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts · ${failSub(t)}` : undefined}>
+                  <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: t.failRatePct !== undefined && t.failRatePct >= 5 ? "var(--color-bad, #e5484d)" : undefined }} title={t.failRatePct !== undefined ? `${t.attemptsFailed.toLocaleString("en-US")} of ${t.attempts.toLocaleString("en-US")} attempts${t.chain !== "solana" ? " (estimated from sampled blocks)" : ""} · ${failSub(t)}` : undefined}>
                     {t.failRatePct !== undefined ? `${t.failRatePct.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{pub ? fmtBps(t.loss!.p90) : "—"}</td>
@@ -184,7 +184,7 @@ export async function TerminalFillSection({
       </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, every attempt
+        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, 1,000 on the EVM rows, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee

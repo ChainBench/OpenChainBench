@@ -264,6 +264,8 @@ type TerminalStats struct {
 	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
 	Healthy bool `json:"healthy"`
 	Ranked  bool `json:"ranked"`
+	// NEff: a pooled entry's effective sample size, (Σw)² / Σw² over the priced swaps' weights.
+	NEff float64 `json:"n_eff,omitempty"`
 	// UnpricedShare: the window's drawn swaps left unpriced over drawn swaps, informative.
 	UnpricedShare float64 `json:"unpriced_share,omitempty"`
 }
@@ -1345,12 +1347,31 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		// published on their own enter the pool; when none is, every row
 		// does (the product is then published from the pooled count alone).
 		rows := byProductFirm[p]
+		waits := false
 		if len(rows) == 0 {
-			rows = byProduct[p]
+			// No row is published on its own: the pooled entry is computed
+			// over every row for the JSON but waits (a held row must never
+			// carry the product: Banana Gun was published on 10 Solana swaps
+			// weighted two thirds plus its fee-free Ethereum buys).
+			rows, waits = byProduct[p], true
 		}
 		ts, ok := statsFor(st, productTerminal(p, rowsOf[p]), rows, minPriced, minRank)
 		if !ok {
 			continue
+		}
+		if waits {
+			ts.Healthy, ts.Ranked = false, false
+			ts.Note = strings.TrimSpace(ts.Note + " No chain row of this product is published on its own yet: the pooled figure waits.")
+		}
+		if len(byProduct[p]) == 1 {
+			// One chain only: the pooled entry is that row, published at the
+			// row's own floor (25) so the main view agrees with the chain tab.
+			for _, r := range out {
+				if r.Slug == byProduct[p][0] {
+					ts.Healthy = r.Healthy
+					ts.Ranked = r.Healthy && ts.Priced >= minRank
+				}
+			}
 		}
 		ts.Product, ts.Chain = p, "all"
 		if len(rows) < len(byProduct[p]) {
@@ -1441,9 +1462,15 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				if sb > 0 && sp > 0 {
 					cov = float64(sb) / float64(sp) // the block sample's coverage: attempts are estimated from it on every entry
 				}
-				att += float64(ss) / cov
+				// The block sample only counts transactions sent to the router;
+				// swaps sent through a smart account or a relayer emit the
+				// router's event without naming it as `to` (a quarter of the
+				// flow on Robinhood Chain), so the attempts are never below
+				// the successes the log feed saw plus the failures estimated.
+				est := math.Max(float64(ss)/cov, float64(seen)+float64(sf)/cov)
+				att += est
 				failed += float64(sf) / cov
-				attOf[slug] = math.Max(float64(ss)/cov, float64(seen))
+				attOf[slug] = est
 			} else {
 				att += float64(seen)
 				failed += float64(sfailed)
@@ -1646,6 +1673,18 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		}
 		if ts.Priced > 0 {
 			ts.Loss = wquantiles(loss, lossW, true, pooled)
+			if pooled {
+				// Kish's effective sample size: (Σw)² / Σw². Ten swaps
+				// weighted two thirds of a pool read as a sample of 22.
+				sw, sw2 := 0.0, 0.0
+				for _, w := range lossW {
+					sw += w
+					sw2 += w * w
+				}
+				if sw2 > 0 {
+					ts.NEff = sw * sw / sw2
+				}
+			}
 			if len(pool) > 0 {
 				ts.Components["pool"] = wmedian(pool, poolW, pooled)
 				if pooled {
@@ -1706,6 +1745,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 		}
 		ts.Healthy = ts.Priced >= minPriced
+		if pooled && ts.NEff > 0 && ts.NEff < float64(max(20, minPriced/2)) {
+			ts.Healthy = false // the pooled median rests on too few effective swaps
+		}
 		ts.Ranked = ts.Priced >= minRank
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
 			return ts, false // a cross-chain row nobody used in the window

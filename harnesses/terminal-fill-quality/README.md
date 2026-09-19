@@ -37,7 +37,7 @@ see `parse.go`:
 |---|---|
 | `user_q` | what left (buy) or reached (sell) the user's quote balance; the tx fee is inside when the user paid it; rent of token accounts created / closed and of program accounts the user funded (pump.fun's volume accumulator) excluded; a created WSOL account counts only its rent, the token delta carries the wrapped amount |
 | `pool_q` | what the pool(s) received / paid out, over the pool's own vaults |
-| `terminal_q` | what landed in the terminal's fee wallets (lamports, WSOL or a stable, converted to the quote unit); FOMO: plus its user-signed USDC legs to per-trade accounts outside every pool instruction, bounded at 2 % of the trade |
+| `terminal_q` | what landed in the terminal's fee wallets (lamports, WSOL or a stable, converted to the quote unit); FOMO: plus its user-signed USDC legs to per-trade accounts outside every pool instruction, up to 2 % of the trade or its $0.10 minimum |
 | `network_q` | tx fee when the user is the fee payer (0 when the terminal sponsors gas, FOMO) + inclusion tips: Jito, 0slot, bloXroute, Astralane, Nozomi and each terminal's own relay accounts (`Terminal.Tips`: Axiom, Trojan, Maestro `BBtip…`, Photon, Pepeboost, pump.fun app `pfn…`) |
 | `other_q` | `user_q − pool_q − terminal_q − network_q` on single-pool swaps without hops: pump.fun protocol / creator fees, referral payouts; exact, since the tx fee is no longer added back |
 
