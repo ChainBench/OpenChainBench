@@ -24,7 +24,10 @@ function GithubIcon({ size = 15 }: { size?: number }) {
   );
 }
 
-type NavItem = { href: string; label: string; match: (p: string) => boolean };
+type NavItem = { href: string; label: string; match: (p: string) => boolean
+  /** Hidden between md and lg so the header row fits a 768 px viewport. */
+  mdHidden?: boolean;
+};
 
 // Active-state predicates. Bench/product detail pages share the same
 // tab as the index, so `/benchmarks/aggregator-head-lag` highlights
@@ -51,8 +54,8 @@ const NAV: NavItem[] = [
     label: "Reports",
     match: (p) => p === "/reports" || p.startsWith("/reports/"),
   },
-  { href: "/about", label: "About", match: (p) => p === "/about" },
-  { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute" },
+  { href: "/about", label: "About", match: (p) => p === "/about", mdHidden: true },
+  { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute", mdHidden: true },
 ];
 
 
@@ -101,7 +104,10 @@ export function SiteHeader() {
           {/* Nav links - CMC-style: underline under the active section.
               Items keep a constant pb to avoid layout shift between
               active / inactive states. */}
-          <nav className="hidden md:flex items-center h-full gap-5 lg:gap-7 text-[14px] lg:text-[15px] font-medium shrink-0">
+          {/* md (768-1023): tighter gaps and 13 px labels, the last two links wait
+              for lg. Six full-size links plus logo and utilities are 875 px,
+              wider than the 768 px viewport, and the row cannot shrink. */}
+          <nav className="hidden md:flex items-center h-full gap-3 lg:gap-7 text-[13px] lg:text-[15px] font-medium shrink-0">
             {NAV.map((item) => {
               const active = item.match(pathname);
               return (
@@ -110,7 +116,8 @@ export function SiteHeader() {
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "relative flex items-center h-full transition-colors whitespace-nowrap",
+                    "relative items-center h-full transition-colors whitespace-nowrap",
+                    item.mdHidden ? "hidden lg:flex" : "flex",
                     active
                       ? "text-ink"
                       : "text-ink-muted hover:text-ink",
@@ -130,7 +137,7 @@ export function SiteHeader() {
 
           {/* Search takes the remaining horizontal space (flex-1) so it
               reads as a real input and discoverable without keyboard. */}
-          <div className="hidden md:flex flex-1 min-w-0 justify-end lg:justify-center">
+          <div className="hidden md:flex grow shrink basis-0 min-w-0 justify-end lg:justify-center">
             <SearchTrigger variant="desktop" />
           </div>
 
