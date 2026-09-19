@@ -130,6 +130,21 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
         probe regions; the ranked table above carries p90, p99 and the
         per-region split.
       </p>
+      {benchmark.excludedProviders && benchmark.excludedProviders.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-ink">
+            Not listed on {chainLabel ?? "this chain"}
+          </h3>
+          <ul className="mt-1.5 space-y-1 text-[12.5px] text-ink-soft">
+            {benchmark.excludedProviders.map((x) => (
+              <li key={x.name}>
+                <span className="font-medium text-ink">{x.name}</span>: {x.reason}
+                {x.since ? <span className="text-ink-faint"> (since {x.since})</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

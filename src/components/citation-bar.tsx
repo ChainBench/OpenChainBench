@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import type { Benchmark } from "@/types/benchmark";
 
 const ORIGIN = "https://openchainbench.com";
 
@@ -12,8 +11,11 @@ const ORIGIN = "https://openchainbench.com";
  * agents can hook in without leaving the page. The page URL itself is
  * the human-readable citation anchor (right-click copy link).
  */
-export function CitationBar({ benchmark }: { benchmark: Benchmark }) {
-  const apiUrl = `${ORIGIN}/api/stat/${benchmark.slug}`;
+/** Takes the slug only: this is a client component, and the full
+ *  Benchmark (results, series, editorial text) was serialised into the
+ *  RSC payload a second time for one string. */
+export function CitationBar({ slug }: { slug: string }) {
+  const apiUrl = `${ORIGIN}/api/stat/${slug}`;
   const [copied, setCopied] = useState(false);
 
   async function onCopy() {
