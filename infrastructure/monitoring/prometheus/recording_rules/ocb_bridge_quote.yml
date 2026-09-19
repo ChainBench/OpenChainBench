@@ -1,0 +1,32 @@
+# Recording rules for the bridge QUOTE benches (002 bridge-quote-latency,
+# 003 bridge-fee reads raw gauges). Deployed on the VPS Prometheus as
+# /opt/ocb/prom-rules/histogram_recording_rules.yml (the file was VPS-only
+# until 2026-09-19; this is the source of truth now).
+#
+# The rules keep (bridge, region, chain, amount_usd) so the chain tabs can
+# filter; the SPEC queries must aggregate with sum by (le) / sum() / avg()
+# over what is left, or prom.scalar takes result[0] and the headline is a
+# random cell (audit 2026-09-19: p99 below p50 on the live page).
+#
+# Excluded at the source:
+#   - the R4 meme route (TRUMP on Solana to BRETT on Base) quoted by the
+#     same loop, which pooled a cross-asset swap into the USDC corridors;
+#   - execution-path quotes, which the harness now observes in
+#     bridge_exec_quote_latency_ms (amount_usd 3 and 30 kept out here for
+#     the samples recorded before that change).
+groups:
+  - name: bridge_quote_recording
+    interval: 15m
+    rules:
+      - record: ocb:bridge_quote_latency_ms_bucket:rate24h
+        expr: sum by (bridge, region, chain, amount_usd, le) (rate(bridge_quote_latency_ms_bucket{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_sum:rate24h
+        expr: sum by (bridge, region, chain, amount_usd) (rate(bridge_quote_latency_ms_sum{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_count:rate24h
+        expr: sum by (bridge, region, chain, amount_usd) (rate(bridge_quote_latency_ms_count{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_count:increase24h
+        expr: sum by (bridge, region, chain, amount_usd) (increase(bridge_quote_latency_ms_count{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]))
+      - record: ocb:bridge_quote_success:avg24h
+        expr: avg by (bridge, region, chain, amount_usd) (avg_over_time(bridge_quote_success{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]))
+      - record: ocb:bridge_quote_latency_ms_bucket:rate24h_provider
+        expr: sum by (provider, region, chain, amount_usd, le) (label_replace(rate(bridge_quote_latency_ms_bucket{from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", amount_usd!~"3|30"}[24h]), "provider", "$1", "bridge", "(.+)"))
