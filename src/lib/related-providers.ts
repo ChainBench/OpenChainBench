@@ -24,6 +24,44 @@ import { unstable_cache } from "next/cache";
 // one list and we never drift the two literals out of sync.
 import { canonicalize, DEAD_COMPOSITE_SLUGS, getProviders } from "@/lib/providers";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
+import { getComparePair } from "@/data/compare-pairs";
+import type { ProviderAppearance } from "@/lib/providers";
+
+/**
+ * A compare page is indexable when the pair is curated or when both
+ * providers have live data on at least two shared benches (the `thin`
+ * gate in /compare/[slug]/page.tsx). Search Console listed 3,356 URLs
+ * "excluded by noindex" on 2026-09-19, almost all /compare pairs reached
+ * from these link lists; linking pages Google may not index wastes crawl
+ * and spreads internal link weight over dead ends. Same rule here, so a
+ * pair is linked only when the page it leads to can rank.
+ */
+export const MIN_LIVE_SHARED_FOR_LINK = 2;
+
+function isLiveAppearance(a: ProviderAppearance): boolean {
+  return a.result.availability !== "unavailable" && a.result.ms.p50 > 0;
+}
+
+export function liveSharedBenchCount(
+  a: ProviderAppearance[],
+  b: ProviderAppearance[],
+): number {
+  const aLive = new Set(a.filter(isLiveAppearance).map((x) => x.benchmark.slug));
+  let n = 0;
+  for (const x of b) {
+    if (isLiveAppearance(x) && aLive.has(x.benchmark.slug)) n += 1;
+  }
+  return n;
+}
+
+export function isPairLinkable(
+  pairSlug: string,
+  a: ProviderAppearance[],
+  b: ProviderAppearance[],
+): boolean {
+  if (getComparePair(pairSlug) !== undefined) return true;
+  return liveSharedBenchCount(a, b) >= MIN_LIVE_SHARED_FOR_LINK;
+}
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadBenchmark } from "@/lib/spec";
 
@@ -79,11 +117,14 @@ export const getCompareCandidates = cache(async function getCompareCandidates(
       if (myBenches.has(a.benchmark.slug)) shared += 1;
     }
     if (shared === 0) continue;
+    const pairSlug = canonicalPairSlug(meProfile.slug, other.slug);
+    // Only pairs whose compare page is indexable (see isPairLinkable).
+    if (!isPairLinkable(pairSlug, meProfile.appearances, other.appearances)) continue;
     out.push({
       slug: other.slug,
       name: other.name,
       sharedCount: shared,
-      pairSlug: canonicalPairSlug(meProfile.slug, other.slug),
+      pairSlug,
     });
   }
 
