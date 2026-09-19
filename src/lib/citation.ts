@@ -119,6 +119,14 @@ export function metricInSentence(metric: string): string {
   return /^[A-Z][a-z]/.test(metric) ? metric[0].toLowerCase() + metric.slice(1) : metric;
 }
 
+/** "Arbitrum" for a chain RPC bench (slug <chain>-rpc, category RPCs),
+ *  read from the title patterns the cluster uses; null elsewhere. */
+export function rpcChainLabel(b: Pick<Benchmark, "slug" | "category" | "title">): string | null {
+  if (b.category !== "RPCs" || !b.slug.endsWith("-rpc") || b.slug === "mev-protect-rpc") return null;
+  const m = b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i) ?? b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i);
+  return m ? m[1] : null;
+}
+
 export function headlineSentence(b: Benchmark): string {
   const parts = headlineParts(b);
   return parts.claim ? `${parts.claim} ${parts.rest}` : parts.rest;
@@ -136,6 +144,18 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   const top = leader(b);
   if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
   const value = fmtUnit(top.value, b.unit);
+  // Chain RPC pages: the sentence names the entity searchers use ("free
+  // public Arbitrum RPC endpoints") and the cohort size, instead of
+  // jamming the H1 in as the object. Same string feeds the TL;DR,
+  // StatisticalReport, TechArticle, /api/citable and llms.txt.
+  const chain = rpcChainLabel(b);
+  if (chain) {
+    const n = liveResults(b.results).length;
+    return {
+      claim: `${top.name} has the lowest median latency of the ${n} free public ${chain} RPC endpoints measured, ${value}`,
+      rest: `(p50, 24h, 3 regions).`,
+    };
+  }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,

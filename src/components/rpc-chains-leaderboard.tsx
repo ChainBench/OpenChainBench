@@ -166,7 +166,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
               // Under the thin gate (< 3 providers) the chain page is noindex:
               // show the row, do not link it (the hub was the main source of
               // noindex crawl on 2026-09-19).
-              const linkable = r.providerCount >= THIN_RPC_MIN_RESULTS;
+              const linkable = (r.declaredCount ?? r.providerCount) >= THIN_RPC_MIN_RESULTS;
               return (
               <tr
                 key={r.slug}
@@ -186,7 +186,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                     >
                       <ProviderLogo slug={r.chain} name={r.name} size={18} />
                       <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
-                        {r.name}
+                        {r.name} <span className="font-normal text-ink-faint">RPC endpoints</span>
                       </span>
                       <ChevronRight
                         size={14}
