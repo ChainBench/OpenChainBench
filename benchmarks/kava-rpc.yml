@@ -2,8 +2,8 @@
 
 slug: kava-rpc
 number: "121"
-title: Fastest free Kava RPC, live no-key EVM endpoint latency
-seo_title: "Fastest free Kava RPC 2026"
+title: "Kava RPC endpoints: free public URLs ranked by latency"
+seo_title: "Kava RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Kava RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Kava EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"kava\"`. Provider coverage: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free Kava RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Kava RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing: the Kava Labs official endpoint (evm.kava.io), dRPC (kava.drpc.org), Thirdweb (kava.rpc.thirdweb.com), PublicNode (kava-evm-rpc.publicnode.com), and Ankr (rpc.ankr.com/kava_evm). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "How is Kava RPC latency measured here, technically?"

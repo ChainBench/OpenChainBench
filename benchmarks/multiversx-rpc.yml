@@ -2,8 +2,8 @@
 
 slug: multiversx-rpc
 number: "220"
-title: Fastest free MultiversX RPC, live no-key endpoint latency
-seo_title: "Fastest free MultiversX RPC 2026"
+title: "MultiversX RPC endpoints: free public URLs ranked by latency"
+seo_title: "MultiversX RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free MultiversX RPC at {{best_p50}} (metachain erd_nonce p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for GET /network/status/4294967295 (metachain nonce) against every available public MultiversX node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=multiversx. Provider coverage at launch: {{count}} endpoints (MultiversX Gateway, MultiversX API, Elrond API)."
 
 faq:
-  - q: "What is the fastest free MultiversX RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (MultiversX metachain nonce p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which MultiversX RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: the MultiversX Gateway (gateway.multiversx.com), the MultiversX API (api.multiversx.com), and the Elrond legacy API (api.elrond.com, maintained as a public alias by the MultiversX team). Every listed endpoint was live-verified with a GET /network/status/4294967295 returning a parsable erd_nonce before inclusion."
 

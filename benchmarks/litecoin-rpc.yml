@@ -2,8 +2,8 @@
 
 slug: litecoin-rpc
 number: "246"
-title: Fastest free Litecoin RPC, live no-key endpoint latency
-seo_title: "Fastest free Litecoin RPC 2026"
+title: "Litecoin RPC endpoints: free public URLs ranked by latency"
+seo_title: "Litecoin RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Litecoin RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for block-height queries against every available public Litecoin endpoint, audited every 60 seconds from 3 regions.
 
@@ -29,8 +29,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=litecoin. Provider coverage at launch: {{count}} endpoints (Tatum, BlockCypher, LitecoinSpace)."
 
 faq:
-  - q: "What is the fastest free Litecoin RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Litecoin block count p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Litecoin RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Tatum (litecoin-mainnet.gateway.tatum.io, JSON-RPC), BlockCypher (api.blockcypher.com/v1/ltc/main, REST GET) and LitecoinSpace (litecoinspace.org/api/blocks/tip/height, Esplora REST). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "Why does LitecoinSpace return a plain integer instead of JSON?"

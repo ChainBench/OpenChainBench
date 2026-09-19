@@ -2,8 +2,8 @@
 
 slug: starknet-rpc
 number: "209"
-title: Fastest free Starknet RPC, live no-key endpoint latency
-seo_title: "Fastest free Starknet RPC 2026"
+title: "Starknet RPC endpoints: free public URLs ranked by latency"
+seo_title: "Starknet RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Starknet RPC at {{best_p50}} (starknet_blockNumber p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for starknet_blockNumber against every free, no-key public Starknet RPC endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,10 +27,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=starknet. Provider coverage at launch: {{count}} no-key endpoints (dRPC, Lava, Nethermind, OnFinality, 1RPC)."
 
 faq:
-  - q: "What is the fastest free Starknet RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (starknet_blockNumber p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Starknet RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: dRPC, Lava Network, Nethermind, OnFinality and 1RPC. Every listed endpoint was live-verified with a starknet_blockNumber POST returning a parsable block number before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go. Every listed endpoint was live-verified with a `starknet_blockNumber` request before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

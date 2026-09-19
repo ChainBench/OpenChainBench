@@ -2,8 +2,8 @@
 
 slug: polkadot-rpc
 number: "086"
-title: Fastest free Polkadot RPC, live no-key endpoint latency
-seo_title: "Fastest free Polkadot RPC 2026"
+title: "Polkadot RPC endpoints: free public URLs ranked by latency"
+seo_title: "Polkadot RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Polkadot relay-chain endpoint, audited every 60 seconds from 3 regions.
 
@@ -42,8 +42,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"polkadot\"`. Provider coverage at launch: {{count}} no-key endpoints (Parity official, OnFinality public gateway, PublicNode). Excluded by the launch audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay; Dwellir returned 503 during the audit sweep; Ankr paid Polkadot tier only; Chainstack key-gated; RadiumBlock requires a referral header; Grove and Thirdweb return invalid-chain or key-gated."
 
 faq:
-  - q: "What is the fastest free Polkadot RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Polkadot RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Parity's official `rpc.polkadot.io`, OnFinality's public gateway and PublicNode (operated by Allnodes). Every listed endpoint was live-verified with four consecutive `chain_getHeader` probes returning a parsable hex block number before inclusion. Excluded by the audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay, Dwellir returned 503 Service Unavailable during the sweep (will be revisited once stable), Ankr requires a paid Polkadot key, Chainstack is key-gated on Substrate, and RadiumBlock rejects requests without a referral header."
   - q: "How is Polkadot RPC latency measured here, technically?"

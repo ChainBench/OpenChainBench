@@ -285,7 +285,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
-    const last = newestEditorial([`bench:${b.slug}`], b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME);
+    // Editorial change only. lastRunAt is a data timestamp, not a page
+    // change; with an empty manifest it stamped 857 of 879 entries with
+    // one day on production (2026-09-19). Fall back to the page module's
+    // mtime so a missing manifest degrades to "the template changed".
+    const last = newestEditorial([`bench:${b.slug}`], pageMtime("benchmarks/[slug]/page.tsx"));
     const entries: MetadataRoute.Sitemap = [
       {
         url: `${SITE.url}/benchmarks/${b.slug}`,

@@ -2,9 +2,9 @@
 
 slug: solana-rpc
 number: "075"
-title: Fastest free Solana RPC, live no-key endpoint latency
-seo_title: "Fastest free Solana RPC 2026"
-seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
+title: "Solana RPC endpoints: free public URLs ranked by latency"
+seo_title: "Solana RPC endpoints: free public URLs ranked by latency"
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h, 3 regions). URLs and success rates for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for getSlot at the processed commitment against every free, no-key public Solana RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -29,10 +29,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
 
 faq:
-  - q: "What is the fastest free Solana RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (getSlot p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples; use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Solana RPCs work without an API key?"
-    a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above.mainnet-beta.solana.com), PublicNode, Lava, LeoRPC (publicly documented FREE key) and Solana Vibe Station. Every endpoint was live-verified before inclusion. The famous names that do not work keyless anymore are listed in the methodology with their exact refusals: dRPC moved Solana to paid tiers, Ankr 403s, OnFinality's public quota is exhausted, Helius and Shyft are key-gated."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
   - q: "Is api.mainnet-beta.solana.com good enough for production?"
     a: "For development, demos and light read workloads, yes: Solana Labs documents roughly 100 requests per 10 seconds per IP. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason; this page measures the free tier so you know exactly what the default gets you before you decide."
   - q: "Why is there no archive-depth column like the EVM pages?"
@@ -55,7 +53,7 @@ dimensions:
 
 providers:
   - slug: solana
-    name: Solana
+    name: Solana Labs
     endpoint: https://api.mainnet-beta.solana.com
     tag: Chain-official api.mainnet-beta.solana.com, 100 req per 10s documented
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to api.mainnet-beta.solana.com."

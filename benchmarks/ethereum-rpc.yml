@@ -28,8 +28,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Cloudflare removed (persistent JSON-RPC -32603). MEV-protection RPCs (Flashbots, MEV Blocker, Blink, bloXroute) share this probe methodology but score on [mev-protect-rpc](/benchmarks/mev-protect-rpc), because their SLA optimises for send-tx privacy, not read speed."
 
 faq:
-  - q: "What is the fastest free Ethereum RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key public-read providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment. If you need MEV-protection endpoints instead of raw read speed, see [mev-protect-rpc](/benchmarks/mev-protect-rpc)."
   - q: "Which Ethereum RPCs work without an API key?"
     a: "The {{count}} public-read providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second probe cadence is excluded rather than listed with an asterisk. Cloudflare was removed after persistent JSON-RPC error -32603. MEV-protection RPCs (Flashbots, MEV Blocker, Blink, bloXroute) also expose no-key JSON-RPC but serve a different SLA and live on [mev-protect-rpc](/benchmarks/mev-protect-rpc)."
   - q: "Why was Cloudflare's Ethereum RPC removed?"
@@ -221,5 +219,4 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc", chain="ethereum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", chain="ethereum", region="sgp"}[1h])
-
 

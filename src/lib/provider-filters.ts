@@ -57,3 +57,24 @@ export const THIN_RPC_MIN_RESULTS = 3;
 export function isThinRpcBench(b: { category: string; results?: unknown[] | null }): boolean {
   return b.category === "RPCs" && (b.results?.length ?? 0) < THIN_RPC_MIN_RESULTS;
 }
+
+/** Age of a bench's data in hours, from `lastRunAt`; Infinity when unknown.
+ *  A chain RPC page whose harness stopped answering (chain dropped from the
+ *  probe roster, endpoint dead) keeps `status: live` and the old numbers
+ *  (Prometheus gauges hold their last value). Six such pages were indexed
+ *  on production on 2026-09-19 with "updated every 60s" in the snippet and
+ *  data 11 to 34 days old. */
+export function dataAgeHours(b: { lastRunAt?: string | null }): number {
+  const ms = Date.parse(b.lastRunAt ?? "");
+  return Number.isFinite(ms) ? (Date.now() - ms) / 3_600_000 : Number.POSITIVE_INFINITY;
+}
+/** Data older than a day: the snippet and the TL;DR must say so. */
+export const STALE_AFTER_HOURS = 24;
+/** Data older than a week: the page is noindex and leaves the sitemap. */
+export const NOINDEX_AFTER_HOURS = 168;
+export function isStaleBench(b: { lastRunAt?: string | null; status?: string }): boolean {
+  return b.status === "live" && dataAgeHours(b) > STALE_AFTER_HOURS;
+}
+export function isExpiredBench(b: { lastRunAt?: string | null; status?: string }): boolean {
+  return b.status === "live" && dataAgeHours(b) > NOINDEX_AFTER_HOURS;
+}

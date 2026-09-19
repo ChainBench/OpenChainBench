@@ -2,8 +2,8 @@
 
 slug: wax-rpc
 number: "226"
-title: Fastest free WAX RPC, live no-key endpoint latency
-seo_title: "Fastest free WAX RPC 2026"
+title: "WAX RPC endpoints: free public URLs ranked by latency"
+seo_title: "WAX RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free WAX RPC at {{best_p50}} (get_info head_block_num p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for GET /v1/chain/get_info against every available public WAX (Antelope) node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=wax. Provider coverage at launch: {{count}} endpoints (Greymass, EOSUSA, WAX Sweden)."
 
 faq:
-  - q: "What is the fastest free WAX RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (WAX head block number p50 over the last 24h), measured against {{count}} providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which WAX RPC endpoints work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
 

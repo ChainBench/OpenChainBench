@@ -2,8 +2,8 @@
 
 slug: tron-rpc
 number: "093"
-title: Fastest free TRON RPC, live no-key JSON-RPC endpoint latency
-seo_title: "Fastest free TRON RPC 2026"
+title: "TRON RPC endpoints: free public URLs ranked by latency"
+seo_title: "TRON RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free TRON RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for `eth_getBlockByNumber("latest", false)` against every free, no-key public TRON JSON-RPC-compatible endpoint, audited every 60 seconds from 3 regions.
 
@@ -44,8 +44,6 @@ methodology:
   - "Excluded by the launch audit: dRPC (method not available), Ankr (key required on tron_jsonrpc path), Chainstack / NOWNodes / GetBlock / Tatum / BlockPI (key required on JSON-RPC path), OnFinality + Blast API + AllThatNode (no public TRON JSON-RPC gateway), Tron Foundation's rpc.trongrid.io (DNS dead; correct host is api.trongrid.io/jsonrpc)."
 
 faq:
-  - q: "What is the fastest free TRON RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (eth_getBlockByNumber p50 over the last 24h), measured against {{count}} no-key JSON-RPC providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which TRON RPCs work without an API key?"
     a: "{{count}} JSON-RPC endpoints sustain continuous keyless probing: TronGrid (`api.trongrid.io/jsonrpc`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). dRPC was removed after the TRON JSON-RPC method became unavailable. Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway."
   - q: "Why only {{count}} providers when other RPC benches have 5+?"

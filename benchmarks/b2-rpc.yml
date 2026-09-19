@@ -27,10 +27,8 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"b2\"`. Provider coverage at launch: {{count}} no-key endpoints (B² Official, dRPC, Thirdweb)."
 
 faq:
-  - q: "What is the fastest free B² Network RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which B² Network RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: B² Official, dRPC, Thirdweb. Every listed endpoint was live-verified before inclusion."
+    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

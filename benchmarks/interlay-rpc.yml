@@ -2,8 +2,8 @@
 
 slug: interlay-rpc
 number: "249"
-title: Fastest free Interlay RPC, live no-key endpoint latency
-seo_title: "Fastest free Interlay RPC 2026"
+title: "Interlay RPC endpoints: free public URLs ranked by latency"
+seo_title: "Interlay RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Interlay RPC at {{best_p50}} (block height p50, 24h). {{count}} no-key endpoints measured, updated every 60s from 3 regions."
 subtitle: HTTP round-trip latency for Substrate chain_getHeader queries against every available public Interlay endpoint, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=interlay. Provider coverage at launch: {{count}} endpoint (Interlay official api.interlay.io/parachain)."
 
 faq:
-  - q: "What is the fastest free Interlay RPC right now?"
-    a: "The Interlay official node (api.interlay.io/parachain) is the primary keyless public endpoint, probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard updates continuously against fresh Prometheus samples."
   - q: "Which Interlay RPC endpoints work without an API key?"
     a: "The Interlay official node at api.interlay.io/parachain sustains continuous keyless probing. Other providers (OnFinality, Dwellir) were tested but returned connection errors; only the official node was live-verified before inclusion."
   - q: "What is Interlay and why does its RPC latency matter?"

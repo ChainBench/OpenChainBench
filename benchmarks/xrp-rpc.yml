@@ -2,8 +2,8 @@
 
 slug: xrp-rpc
 number: "213"
-title: Fastest free XRP Ledger RPC, live no-key endpoint latency
-seo_title: "Fastest free XRP Ledger RPC 2026"
+title: "XRP Ledger RPC endpoints: free public URLs ranked by latency"
+seo_title: "XRP Ledger RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free XRP Ledger RPC at {{best_p50}} (ledger_current p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for ledger_current against every free, no-key public XRP Ledger node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=xrp. Provider coverage at launch: {{count}} no-key endpoints (Ripple, XRPL Labs, PublicNode)."
 
 faq:
-  - q: "What is the fastest free XRP Ledger RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (XRPL ledger_current p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which XRP Ledger nodes work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: Ripple's public s1 node, XRPL Labs cluster and PublicNode. Every listed endpoint was live-verified with a ledger_current POST returning a parsable ledger index before inclusion."
 

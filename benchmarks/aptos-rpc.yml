@@ -2,8 +2,8 @@
 
 slug: aptos-rpc
 number: "212"
-title: Fastest free Aptos RPC, live no-key endpoint latency
-seo_title: "Fastest free Aptos RPC 2026"
+title: "Aptos RPC endpoints: free public URLs ranked by latency"
+seo_title: "Aptos RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Aptos RPC at {{best_p50}} (REST ledger block_height p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the Aptos REST ledger endpoint (block_height) against every free, no-key public Aptos node, audited every 60 seconds from 3 regions.
 
@@ -27,8 +27,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=aptos. Provider coverage at launch: {{count}} no-key endpoints (Aptos Labs api, Aptos Labs fullnode)."
 
 faq:
-  - q: "What is the fastest free Aptos RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (Aptos REST /v1/ block_height p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which Aptos nodes work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today: the Aptos Labs official API node and the Aptos Labs fullnode endpoint. Every listed endpoint was live-verified with a GET /v1/ returning a parsable block_height before inclusion."
 

@@ -2,8 +2,8 @@
 
 slug: rootstock-rpc
 number: "130"
-title: Fastest free Rootstock RPC, live no-key EVM endpoint latency
-seo_title: "Fastest free Rootstock RPC 2026"
+title: "Rootstock RPC endpoints: free public URLs ranked by latency"
+seo_title: "Rootstock RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Rootstock RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber("latest", false)` method against every free, no-key public Rootstock EVM endpoint, audited every 60 seconds from 3 regions.
 
@@ -33,8 +33,6 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"rootstock\"`. Provider coverage: {{count}} no-key endpoints."
 
 faq:
-  - q: "What is the fastest free Rootstock RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Rootstock RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing: Rootstock Foundation (https://public-node.rsk.co), dRPC (https://rootstock.drpc.org), and Thirdweb (https://30.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "How is Rootstock RPC latency measured here, technically?"
