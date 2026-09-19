@@ -220,7 +220,9 @@ func erc20(ctx context.Context, httpc *http.Client, c originChain, token string)
 	if len(erc20Cache.m) >= poolCacheMax {
 		erc20Cache.m = map[string]erc20Meta{}
 	}
-	erc20Cache.m[key] = m
+	if m.ok { // a transient RPC error must not brand the token for the process's life
+		erc20Cache.m[key] = m
+	}
 	erc20Cache.Unlock()
 	return m
 }
@@ -320,7 +322,7 @@ type evmSettlement struct {
 	PoolInUSD float64 // quote paid into the token pools, USD (sales: paid out to the route, after any hook fee)
 	HookUSD   float64 // sales: quote the pool's hook kept out of the swap's output (a pool cost)
 	OtherUSD  float64 // a launchpad's protocol fee on the trade (four.meme's 1 %), `other`
-	NativeUSD float64 // USD per wrapped gas coin at the rate this route's own stable ↔ wrapped hop got, 0 if none
+	NativeUSD float64 // USD per wrapped gas coin at the route's own stable ↔ wrapped hop pool's pre-trade mid (the executed rate as fallback), 0 if none
 	MidUSD    float64 // main pool's price before our swap, USD per token
 	RefSrc    string
 	GasUSD    float64 // destination gas (paid by the solver)
@@ -478,8 +480,10 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		// No pool paid the token out: a four.meme curve buy?
 		for _, tr := range fourTrades(rc.Logs, token) {
 			if tr.buy && tokenFrom[tr.manager] != nil {
-				out.NativeUSD, _ = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
+				var hc float64
+				out.NativeUSD, hc = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
 				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
+				out.PoolInUSD += hc // the stable-to-gas-coin hop's own cost
 				return out, nil
 			}
 		}
@@ -819,8 +823,12 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		// No pool took the token: a four.meme curve sale?
 		for _, tr := range fourTrades(rc.Logs, token) {
 			if !tr.buy && tokenTo[tr.manager] != nil {
-				out.NativeUSD, _ = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
+				var hc float64
+				out.NativeUSD, hc = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
 				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
+				if hc > 0 && out.PoolInUSD > hc {
+					out.PoolInUSD -= hc
+				}
 				return out, nil
 			}
 		}

@@ -72,7 +72,9 @@ func fourTokenInfo(ctx context.Context, httpc *http.Client, c originChain, manag
 	if len(fourCache.m) >= poolCacheMax {
 		fourCache.m = map[string]fourInfo{}
 	}
-	fourCache.m[key] = info
+	if info.ok {
+		fourCache.m[key] = info
+	}
 	fourCache.Unlock()
 	return info
 }

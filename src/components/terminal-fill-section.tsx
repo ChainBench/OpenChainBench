@@ -39,7 +39,8 @@ export async function TerminalFillSection({
   const me = focus ? f.terminals.find((t) => t.slug === focus) : null;
   if (focus && !me) return null;
   const meRank = me && me.ranked && me.loss ? ranked.findIndex((t) => t.slug === me.slug) + 1 : null;
-  const rows = compact ? ordered.slice(0, 8) : ordered;
+  const top = ordered.slice(0, 8);
+  const rows = compact ? (me && !top.some((t) => t.slug === me.slug) ? [...top, me] : top) : ordered;
   const cheapest = ranked[0];
   const priciest = ranked[ranked.length - 1];
   const totalPriced = f.terminals.reduce((s, t) => s + t.priced, 0);

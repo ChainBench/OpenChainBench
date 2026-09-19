@@ -339,6 +339,26 @@ func discover(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State
 	d.Source = "mobula trades/filters, three 20-minute windows over the last hour per chain"
 	resub := false
 	listed := cohortListed(st)
+	// A recipient with evidence on more than one platform (pump.fun's
+	// vaults, a shared tip relay) is never adopted as one platform's fee
+	// wallet: adopting it would subscribe that terminal to everyone's swaps.
+	denyAll := map[string]bool{}
+	for w := range deny {
+		denyAll[w] = true
+	}
+	{
+		seenBy := map[string]int{}
+		for _, l := range st.Learned {
+			for w := range l.Wallets {
+				seenBy[w]++
+			}
+		}
+		for w, n := range seenBy {
+			if n > 1 {
+				denyAll[w] = true
+			}
+		}
+	}
 	for chain := range mobulaPlatforms {
 		byPlat, err := mobulaTrades(ctx, httpc, key, chain)
 		if err != nil {
@@ -352,11 +372,11 @@ func discover(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State
 				st.Learned[slug] = l
 			}
 			if chain == "solana" {
-				if learnSolana(ctx, rpc, l, slug, txs, solUSD, now, deny, listed) {
+				if learnSolana(ctx, rpc, l, slug, txs, solUSD, now, denyAll, listed) {
 					resub = true
 					d.Adopted = append(d.Adopted, slug)
 				}
-			} else if learnEVM(ctx, httpc, l, slug, mobulaChainSlug[chain], txs, now, deny) {
+			} else if learnEVM(ctx, httpc, l, slug, mobulaChainSlug[chain], txs, now, denyAll) {
 				d.Adopted = append(d.Adopted, slug)
 			}
 		}

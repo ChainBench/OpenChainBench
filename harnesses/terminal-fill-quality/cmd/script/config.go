@@ -157,7 +157,9 @@ var tipAccounts = set(
 // app ("pfn"); a random base58 key starts with a given 5-letter prefix
 // once in ~6e8, with a 3-letter one once in ~2e5.
 func isTip(pubkey string) bool {
-	if tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz") || strings.HasPrefix(pubkey, "BBtip") || strings.HasPrefix(pubkey, "pfn") {
+	// ste11…: a relay family (Stellar) Maestro and Terminal's users tip; five
+	// accounts seen on 2026-09-19, one listed under Maestro, the rest by prefix.
+	if tipAccounts[pubkey] || strings.HasPrefix(pubkey, "noz") || strings.HasPrefix(pubkey, "BBtip") || strings.HasPrefix(pubkey, "pfn") || strings.HasPrefix(pubkey, "ste11") {
 		return true
 	}
 	return len(pubkey) > 5 && strings.EqualFold(pubkey[:5], "astra")
@@ -174,6 +176,7 @@ var pumpFeeRecipients = set(
 	"5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD", "9M4giFFMxmFGXtc3feFzRai56WbBqehoSeRE5GK7gf7", "GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL",
 	"3BpXnfJaUTiwXnJNe7Ej1rcbzqTTQUvLShZaWazebsVR", "5cjcW9wExnJJiqgLjq7DEG75Pm6JBgE1hNv4B2vHXUW6", "EHAAiTxcdDwQ3U4bU6YcMsQGaekdzLS3B5SmYo46kJtL",
 	"5eHhjP8JaYkz83CWwvGU2uMUXefd3AazWGx4gpcuEEYD",
+	"A7hAgCzFw14fejgCp387JUJRMNyz4j89JKnhtKU8piqW", // pump.fun fee program's vault, paid the same amount as CebN5W… on every curve buy (12 terminals, 2026-09-19)
 )
 
 const (
