@@ -478,7 +478,7 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		// No pool paid the token out: a four.meme curve buy?
 		for _, tr := range fourTrades(rc.Logs, token) {
 			if tr.buy && tokenFrom[tr.manager] != nil {
-				out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+				out.NativeUSD, _ = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
 				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
 				return out, nil
 			}
@@ -563,7 +563,11 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 		out.PoolInUSD += f(p.quote) * u
 	}
-	out.NativeUSD = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr)
+	// A buy paid in the gas coin: the native leg at the hop pool's mid
+	// before the hop, the hop's own cost into pool.
+	var hopCost float64
+	out.NativeUSD, hopCost = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr, out.BlockNum)
+	out.PoolInUSD += hopCost
 	// The main pool's price before our swap, raw quote per raw token.
 	var midRaw float64
 	switch main.ev.kind {
@@ -815,7 +819,7 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		// No pool took the token: a four.meme curve sale?
 		for _, tr := range fourTrades(rc.Logs, token) {
 			if !tr.buy && tokenTo[tr.manager] != nil {
-				out.NativeUSD = nativeRate(ctx, httpc, c, rc.Logs, evs, gas)
+				out.NativeUSD, _ = nativeRate(ctx, httpc, c, rc.Logs, evs, gas, out.BlockNum)
 				priceFourMeme(ctx, httpc, c, &out, tr, token, meta.dec, gas)
 				return out, nil
 			}
@@ -901,7 +905,13 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		out.PoolInUSD += f(q) * u // here: the quote the pools paid out to the route, USD
 		out.HookUSD += f(hook) * u
 	}
-	out.NativeUSD = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr)
+	// A sale paid out in the gas coin: the native leg at the hop pool's mid
+	// before the hop; the hop's own cost comes off what the pools paid.
+	var hopCost float64
+	out.NativeUSD, hopCost = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr, out.BlockNum)
+	if hopCost > 0 && out.PoolInUSD > hopCost {
+		out.PoolInUSD -= hopCost
+	}
 	var midRaw float64
 	switch main.ev.kind {
 	case "v2":
@@ -993,29 +1003,38 @@ func evmTrace(ctx context.Context, httpc *http.Client, c originChain, hash strin
 // valued at the exchange's gas price (a token pool quoted in WBNB /
 // WETH): then both legs share the exchange's print and the route's own
 // rate would move value between the buckets for nothing.
-func nativeRateFor(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64, upr float64) float64 {
+func nativeRateFor(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64, upr float64, block int64) (rate, hopCost float64) {
 	if p, ok := gas[c.gas]; ok && p > 0 && math.Abs(upr/(p*1e-18)-1) < 1e-9 {
-		return 0
+		return 0, 0
 	}
-	return nativeRate(ctx, httpc, c, logs, evs, gas)
+	return nativeRate(ctx, httpc, c, logs, evs, gas, block)
 }
 
-// nativeRate: USD per wrapped gas coin at the rate this route itself got on
-// its hop between a stable and the wrapped coin (a pair contract, or a v4
-// manager paying one and taking the other), so a native leg of the user
-// (BNB sent, ETH received) is valued like the pool leg it was swapped
-// against rather than at an exchange's print: the difference between the
-// two is not a cost of anyone. 0 when the route has no such hop, or the
-// rate is more than 5 % away from the exchange's (not a plain hop).
-func nativeRate(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64) float64 {
+// nativeRate: USD per wrapped gas coin for a native leg of the user (BNB
+// sent, ETH received), from the route's own hop between a stable and the
+// wrapped coin (a pair contract, or a v4 manager paying one and taking the
+// other). The rate is that hop pool's mid before the hop (v2: the Sync
+// reserves minus the hop's amounts; v3 / v4: the price left by the
+// previous swap on the pool), so the hop's own LP fee and impact stay a
+// cost of the trade: hopCost is that cost in USD (wrapped in × mid minus
+// stable out on a buy, stable in minus wrapped out × mid on a sale) and
+// the caller books it in pool. When the pool's state cannot be read the
+// hop's realized rate is used and hopCost is 0 (the hop's cost then leaves
+// the loss, as before). 0 when the route has no such hop, or the rate is
+// more than 5 % away from the exchange's (not a plain hop).
+func nativeRate(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, evs []*swapEv, gas map[string]float64, block int64) (rate, hopCost float64) {
 	if c.gas == "" {
-		return 0
+		return 0, 0
 	}
 	emit := map[string]bool{}
 	for _, ev := range evs {
 		emit[ev.pool] = true
 	}
-	type flow struct{ stIn, stOut, wIn, wOut float64 } // ui units
+	type flow struct {
+		stIn, stOut, wIn, wOut             float64 // ui units
+		stInRaw, stOutRaw, wInRaw, wOutRaw *big.Int
+		stDec, wDec                        int
+	}
 	flows := map[string]*flow{}
 	for i := range logs {
 		l := &logs[i]
@@ -1042,36 +1061,124 @@ func nativeRate(ctx context.Context, httpc *http.Client, c originChain, logs []e
 			}
 			fl := flows[a]
 			if fl == nil {
-				fl = &flow{}
+				fl = &flow{stInRaw: new(big.Int), stOutRaw: new(big.Int), wInRaw: new(big.Int), wOutRaw: new(big.Int)}
 				flows[a] = fl
 			}
 			switch {
 			case stable && a == to:
 				fl.stIn += ui
+				fl.stInRaw.Add(fl.stInRaw, amt)
+				fl.stDec = m.dec
 			case stable:
 				fl.stOut += ui
+				fl.stOutRaw.Add(fl.stOutRaw, amt)
+				fl.stDec = m.dec
 			case a == to:
 				fl.wIn += ui
+				fl.wInRaw.Add(fl.wInRaw, amt)
+				fl.wDec = m.dec
 			default:
 				fl.wOut += ui
+				fl.wOutRaw.Add(fl.wOutRaw, amt)
+				fl.wDec = m.dec
 			}
 		}
 	}
 	ref := gas[c.gas]
-	best, bestStable := 0.0, 0.0
-	for _, fl := range flows {
+	best, bestStable, bestPool, bestBuy := 0.0, 0.0, "", false
+	for pool, fl := range flows {
 		var r, st float64
+		buy := false
 		switch {
-		case fl.stIn > 0 && fl.wOut > 0 && fl.stOut == 0 && fl.wIn == 0: // stable in, wrapped out
+		case fl.stIn > 0 && fl.wOut > 0 && fl.stOut == 0 && fl.wIn == 0: // stable in, wrapped out (a sale's native leg)
 			r, st = fl.stIn/fl.wOut, fl.stIn
-		case fl.wIn > 0 && fl.stOut > 0 && fl.stIn == 0 && fl.wOut == 0: // wrapped in, stable out
-			r, st = fl.stOut/fl.wIn, fl.stOut
+		case fl.wIn > 0 && fl.stOut > 0 && fl.stIn == 0 && fl.wOut == 0: // wrapped in, stable out (a buy's native leg)
+			r, st, buy = fl.stOut/fl.wIn, fl.stOut, true
 		}
 		if r > 0 && (ref <= 0 || math.Abs(r/ref-1) <= 0.05) && st > bestStable {
-			best, bestStable = r, st
+			best, bestStable, bestPool, bestBuy = r, st, pool, buy
 		}
 	}
-	return best
+	if best == 0 {
+		return 0, 0
+	}
+	// The hop pool's mid before the hop: the swap event on that pool whose
+	// amounts are the hop's (a v4 manager emits every pool's events).
+	fl := flows[bestPool]
+	wRaw, stRaw := fl.wInRaw, fl.stOutRaw
+	if !bestBuy {
+		wRaw, stRaw = fl.wOutRaw, fl.stInRaw
+	}
+	var hop *swapEv
+	var sideW int
+	for _, ev := range evs {
+		if ev.pool != bestPool {
+			continue
+		}
+		for side := 0; side < 2; side++ {
+			inW, outSt := ev.in[side], ev.out[1-side]
+			if !bestBuy {
+				inW, outSt = ev.out[side], ev.in[1-side]
+			}
+			if inW != nil && outSt != nil && inW.Cmp(wRaw) == 0 && outSt.Cmp(stRaw) == 0 {
+				hop, sideW = ev, side
+			}
+		}
+	}
+	if hop == nil {
+		return best, 0
+	}
+	sideS := 1 - sideW
+	mid := 0.0 // ui stable per ui wrapped, before the hop
+	switch hop.kind {
+	case "v2":
+		var sync *evmLog
+		for i := range logs {
+			l := &logs[i]
+			if strings.ToLower(l.Address) == hop.pool && len(l.Topics) == 1 && (l.Topics[0] == topicV2Sync || l.Topics[0] == topicAeroSync) && hexInt(l.LogIndex) < hop.index {
+				sync = l
+			}
+		}
+		if sync == nil {
+			return best, 0
+		}
+		r := [2]*big.Int{word(sync.Data, 0), word(sync.Data, 1)}
+		var pre [2]*big.Int
+		for s := 0; s < 2; s++ {
+			pre[s] = new(big.Int).Add(new(big.Int).Sub(r[s], hop.in[s]), hop.out[s])
+			if pre[s].Sign() <= 0 {
+				return best, 0
+			}
+		}
+		mid = f(pre[sideS]) * math.Pow10(-fl.stDec) / (f(pre[sideW]) * math.Pow10(-fl.wDec))
+	default:
+		var extra []string
+		if hop.kind == "v4" {
+			extra = []string{hop.id}
+		}
+		sqrt, err := prevSqrtPrice(ctx, httpc, c, hop.pool, hop.log.Topics[0], extra, block, hop.index)
+		if err != nil || sqrt == nil || sqrt.Sign() == 0 {
+			return best, 0
+		}
+		p10 := sqrtToPrice(sqrt) // raw token1 per raw token0
+		if sideW == 0 {
+			mid = p10 * math.Pow10(fl.wDec-fl.stDec)
+		} else {
+			mid = math.Pow10(fl.wDec-fl.stDec) / p10
+		}
+	}
+	if mid <= 0 || (ref > 0 && math.Abs(mid/ref-1) > 0.05) {
+		return best, 0
+	}
+	if bestBuy {
+		hopCost = fl.wIn*mid - fl.stOut
+	} else {
+		hopCost = fl.stIn - fl.wOut*mid
+	}
+	if hopCost < 0 {
+		hopCost = 0
+	}
+	return mid, hopCost
 }
 
 // isWrappedGas: the wrapped gas coin of the chain (WBNB on BNB, WETH on

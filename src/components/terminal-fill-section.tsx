@@ -84,7 +84,7 @@ export async function TerminalFillSection({
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows, the app fee on Relay legs">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
-              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay; on the EVM rows a stable-to-gas-coin hop's own cost is excluded (its rate values the native leg)">Pool</Th>
+              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
               <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
               <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway unless the app sponsors gas (FOMO)">Failed</Th>
               <Th right title="90th percentile of the value lost">p90</Th>
