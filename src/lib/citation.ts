@@ -112,6 +112,13 @@ function windowSuffix(unit: string): string {
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
+/** "Head lag" reads "head lag" mid-sentence, but "RPC latency", "P/F ratio"
+ *  and "VAA finalization" keep their acronym: only a leading capital
+ *  followed by a lowercase letter is lowered. */
+export function metricInSentence(metric: string): string {
+  return /^[A-Z][a-z]/.test(metric) ? metric[0].toLowerCase() + metric.slice(1) : metric;
+}
+
 export function headlineSentence(b: Benchmark): string {
   const parts = headlineParts(b);
   return parts.claim ? `${parts.claim} ${parts.rest}` : parts.rest;
@@ -131,7 +138,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   const value = fmtUnit(top.value, b.unit);
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {
-    claim: `${top.name} ${verb} ${b.metric.toLowerCase()} at ${value}`,
+    claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
     rest: `${windowSuffix(b.unit)} on ${b.title}.`,
   };
 }
