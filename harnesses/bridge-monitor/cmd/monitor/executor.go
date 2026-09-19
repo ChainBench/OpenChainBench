@@ -33,23 +33,24 @@ type ExecutionConfig struct {
 
 // ExecutionResult holds the result of an execution test
 type ExecutionResult struct {
-	Bridge             string
-	Route              TestRoute
-	AmountUSD          float64
-	QuoteLatencyMs     int64
-	ExecutionLatencyMs int64 // Settlement latency: destination block timestamp minus source block timestamp (on-chain); wall clock when a hash is missing
-	ObservedLatencyMs  int64 // Wall clock from broadcast to the poll that saw the terminal status (the pre-2026-09-19 figure), kept for the audit trail
-	DestTxHash         string
-	LatencyMethod      string // "onchain" | "poll"
-	E2ELatencyMs       int64  // Time from quote start to funds received
-	Success            bool
-	Reverted           bool
-	Refunded           bool // subset of Reverted: provider returned capital (status "refunded")
-	Error              error
-	QuoteFeeUSD        float64 // Fee from quote
-	ActualFeeUSD       float64 // Actual fee paid (input - output)
-	TxHash             string
-	DryRun             bool
+	Bridge              string
+	Route               TestRoute
+	AmountUSD           float64
+	QuoteLatencyMs      int64
+	ExecutionLatencyMs  int64 // Settlement latency: destination block timestamp minus source block timestamp (on-chain); wall clock when a hash is missing
+	ObservedLatencyMs   int64 // Wall clock from broadcast to the poll that saw the terminal status (the pre-2026-09-19 figure), kept for the audit trail
+	DestTxHash          string
+	LatencyMethod       string // "watch" (credit observed minus source inclusion observed, ms) | "watch-broadcast" (credit minus broadcast) | "blocks" (block timestamp delta) | "poll"
+	OnchainBlockDeltaMs int64  // destination block timestamp minus source block timestamp, -1 when unknown
+	E2ELatencyMs        int64  // Time from quote start to funds received
+	Success             bool
+	Reverted            bool
+	Refunded            bool // subset of Reverted: provider returned capital (status "refunded")
+	Error               error
+	QuoteFeeUSD         float64 // Fee from quote
+	ActualFeeUSD        float64 // Actual fee paid (input - output)
+	TxHash              string
+	DryRun              bool
 	// For Slack notifications
 	FromChain   string
 	ToChain     string
@@ -74,8 +75,10 @@ type Executor struct {
 	debridge      *DebridgeBridge
 	nearIntents   *NearIntentsBridge
 	region        string
-	slack         *SlackNotifier
-	spend         *SpendTracker
+	// Millisecond watch of the leg in flight (fill_watcher.go).
+	watch *legWatch
+	slack *SlackNotifier
+	spend *SpendTracker
 }
 
 // DailySpent returns today's consumed budget via the mutex-guarded tracker.
@@ -378,6 +381,10 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	if preBalErr != nil {
 		log.Printf("    ⚠️  pre-execution balance read failed (%v) — falling back to quote-projected fill", preBalErr)
 	}
+	// Millisecond watch: destination balance from before the broadcast,
+	// source inclusion from the broadcast (markBroadcast in each executor).
+	e.startLegWatch(route.ToChain, route.ToToken, receiver, preBalanceRaw)
+	defer e.stopLegWatch()
 
 	// Source-chain native balance before execution, to measure the real gas we
 	// pay (approve + deposit) as the pre-minus-post delta. Single-flight (execMu)
@@ -597,6 +604,7 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	}
 
 	log.Printf("    [mobula] ✅ TX broadcast: %s", txHash)
+	e.markBroadcast(route.FromChain, txHash)
 	log.Printf("    [mobula] ⏳ Polling status (timeout: 5min)...")
 
 	// Mobula can take 2-5min to settle an intent even on EVM sources (solver backlog,
@@ -751,6 +759,7 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 	}
 
 	log.Printf("    [relay] ✅ TX broadcast: %s", txHash)
+	e.markBroadcast(route.FromChain, txHash)
 
 	// Poll status using request ID from the bridge step
 	requestID := bridgeStep.RequestId
@@ -888,6 +897,7 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 	}
 
 	log.Printf("    [lifi] ✅ TX broadcast: %s", txHash)
+	e.markBroadcast(route.FromChain, txHash)
 
 	// Poll status
 	fromChain := lifiChainID(route.FromChain)
@@ -951,7 +961,10 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 		if result.ObservedLatencyMs > 0 {
 			bridgeExecObservedMs.WithLabelValues(labels...).Set(float64(result.ObservedLatencyMs))
 		}
-		if result.LatencyMethod != "onchain" {
+		if result.OnchainBlockDeltaMs >= 0 && result.DestTxHash != "" {
+			bridgeExecOnchainMs.WithLabelValues(labels...).Set(float64(result.OnchainBlockDeltaMs))
+		}
+		if result.LatencyMethod == "poll" {
 			bridgeExecLatencyFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region).Inc()
 		}
 	}
