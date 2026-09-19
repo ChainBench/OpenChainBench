@@ -5,27 +5,42 @@
 // hour; serves the latest cached result every 15 minutes in between.
 //
 // Required env vars:
-//   DUNE_API_KEY     - Dune Analytics API key
-//   DUNE_QUERY_ID    - ID of the saved Dune query (see queries/unique_traders.sql)
-//                      If not set, the harness creates the query automatically and exits.
+//
+//	DUNE_API_KEY     - Dune Analytics API key
+//	DUNE_QUERY_ID    - ID of the saved Dune query (see queries/unique_traders.sql)
+//	                   If not set, the harness creates the query automatically and exits.
 //
 // Metrics on :2112/metrics:
-//   solana_platform_unique_traders_24h{platform}
-//   solana_platform_trader_health{platform}
+//
+//	solana_platform_unique_traders_24h{platform}
+//	solana_platform_trader_health{platform}
 package main
 
 import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
 
 const (
-	fetchInterval   = 15 * time.Minute
-	refreshInterval = 1 * time.Hour
+	fetchInterval = 15 * time.Minute
 )
+
+// refreshInterval is how often a fresh Dune execution is requested. Each
+// execution burns credits (26 for the unique-traders query, 38 for the
+// memecoin one on 2026-09-18 measurements); the plan is sized for one
+// execution a day per query. DUNE_REFRESH_HOURS overrides it.
+var refreshInterval = func() time.Duration {
+	if v := os.Getenv("DUNE_REFRESH_HOURS"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h > 0 {
+			return time.Duration(h) * time.Hour
+		}
+	}
+	return 24 * time.Hour
+}()
 
 func main() {
 	fmt.Println("=== solana-unique-traders harness ===")
@@ -64,14 +79,18 @@ func main() {
 
 	// On startup: fetch latest cached result immediately, then trigger a fresh execution.
 	runFetch(client, queryID)
-	go func() {
-		execID, err := client.execute(queryID)
-		if err != nil {
-			fmt.Printf("[refresh] execute failed: %v\n", err)
-			return
-		}
-		pollUntilDone(client, queryID, execID)
-	}()
+	if age := client.resultAge(); age < refreshInterval {
+		fmt.Printf("[init] cached Dune result is %s old (cadence %s), no execution on start\n", age.Round(time.Minute), refreshInterval)
+	} else {
+		go func() {
+			execID, err := client.execute(queryID)
+			if err != nil {
+				fmt.Printf("[refresh] execute failed: %v\n", err)
+				return
+			}
+			pollUntilDone(client, queryID, execID)
+		}()
+	}
 
 	fetchTick := time.NewTicker(fetchInterval)
 	refreshTick := time.NewTicker(refreshInterval)
