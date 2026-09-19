@@ -15,6 +15,8 @@ import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
+import { adHocPairs } from "@/lib/compare/adhoc-pairs";
+import { getProviders, type ProviderProfile } from "@/lib/providers";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
@@ -361,10 +363,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // A product page changes when one of the specs that name the provider
   // changes (cohort, copy) or when a bench is added; the newest such spec
-  // is its lastmod. Providers the blob does not map fall back to catalogTs.
+  // is its lastmod. Providers no live bench names (registry-only pages)
+  // take the registry file's last change: with catalogTs, one spec edit
+  // restamped 41 unrelated product URLs (2026-09-19).
+  const registryTs = newestEditorial(["provider-registry"], pageMtime("products/[slug]/page.tsx"));
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
-    lastModified: newestEditorial(benchesByProvider.get(slug) ?? [], catalogTs),
+    lastModified: newestEditorial(benchesByProvider.get(slug) ?? [], registryTs),
     changeFrequency: "daily",
     priority: 0.85,
   }));
@@ -425,6 +430,29 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
+  // Ad hoc pairs above the live-shared floor (the same enumeration the
+  // /compare index links, so none is an orphan). They come from the
+  // provider index the worker publishes (providers.json, about 1 MB,
+  // memoized), not the aggregate blob. lifi-vs-relay ranked at 4.0 with
+  // no sitemap entry (2026-09-19); 383 compare URLs carried impressions
+  // against 19 listed. lastmod: the newest spec among the shared benches.
+  const curatedCompareSlugs = new Set(COMPARE_PAIRS.map((p) => p.slug));
+  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  const benchSlugsByProvider = new Map(
+    profiles.map((p) => [p.slug, new Set(p.appearances.map((a) => a.benchmark.slug))]),
+  );
+  const adHocCompareRoutes: MetadataRoute.Sitemap = adHocPairs(profiles)
+    .filter((pair) => !curatedCompareSlugs.has(pair.slug))
+    .map((pair) => {
+      const aB = benchSlugsByProvider.get(pair.a) ?? new Set<string>();
+      const shared = [...(benchSlugsByProvider.get(pair.b) ?? [])].filter((s) => aB.has(s));
+      return {
+        url: `${SITE.url}/compare/${pair.slug}`,
+        lastModified: newestEditorial(shared.map((s) => `bench:${s}`), pageMtime("compare/[slug]/page.tsx")),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    });
 
   // Category hub pages. Filter to categories that have live benches.
   // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
@@ -454,6 +482,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...chainRoutes,
     ...categoryRoutes,
     ...compareRoutes,
+    ...adHocCompareRoutes,
   ];
 }
 

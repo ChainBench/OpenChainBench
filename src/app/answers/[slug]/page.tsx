@@ -14,6 +14,7 @@ import { citableAsOf, leader } from "@/lib/citation";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
+import { CompareThisBench } from "@/components/compare-this-bench";
 import { fmtAsOfUtc, fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
 import { SITE } from "@/data/site";
@@ -48,8 +49,16 @@ export async function generateMetadata({
   const ans = await loadAnswer(slug);
   if (!ans) return {};
   const url = `${SITE.url}/answers/${ans.slug}`;
-  const title = ans.seo_title ?? ans.question;
   const descSource = ans.seo_description ?? ans.short_answer;
+  const metaTop = leader(ans.bench);
+  // The title takes the same live placeholders as the description
+  // ({{best_name:chain:Base}} on the corridor answers); without a
+  // defensible leader it falls back to the plain question.
+  const titleSource = ans.seo_title ?? ans.question;
+  const title =
+    !metaTop && hasLiveDataTokens(titleSource)
+      ? ans.question
+      : cleanLeftoverTokens(renderTemplate(titleSource, ans.bench));
   // Clean leftover tokens AFTER renderTemplate so a draft bench never
   // leaks a literal `{{best_name}}` into the meta description,
   // og:description or twitter:description, all of which feed the SERP
@@ -57,7 +66,6 @@ export async function generateMetadata({
   // leader AND the source relies on live tokens, swap the meta
   // description for the "data pending" fallback so the SERP snippet
   // does not read as broken grammar.
-  const metaTop = leader(ans.bench);
   const metaDescription =
     !metaTop && hasLiveDataTokens(descSource)
       ? benchDataPendingFallback(
@@ -66,10 +74,27 @@ export async function generateMetadata({
         ).short_answer
       : cleanLeftoverTokens(renderTemplate(descSource, ans.bench));
   const description = capDescription(metaDescription, 158);
+  const asOfIso = citableAsOf(ans.bench);
   return {
     title,
     description,
     alternates: { canonical: url },
+    // Same Highwire citation_* block as the bench pages: the answer is
+    // the citable surface for its question, and scholarly-style crawlers
+    // (Scholar, Bing, Perplexity) key on these tags. The machine-readable
+    // artefact is the bench's /api/stat.
+    other: {
+      citation_title: title,
+      citation_author: "OpenChainBench",
+      citation_publisher: "OpenChainBench",
+      citation_publication_date: getBenchCreatedAt(ans.bench.slug).toISOString().slice(0, 10),
+      ...(asOfIso ? { citation_online_date: asOfIso.slice(0, 10) } : {}),
+      citation_doi: "10.5281/zenodo.20800312",
+      citation_pdf_url: `${SITE.url}/api/stat/${ans.bench.slug}`,
+      citation_public_url: url,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench",
+    },
     openGraph: {
       title,
       description,
@@ -377,6 +402,10 @@ export default async function AnswerPage({
             </Link>
             .
           </p>
+          {/* Head-to-head pages for the leaders of this bench. The compare
+              section earns a third of the site's clicks and, until this,
+              got no link from any answer (audit 2026-09-19, major 1). */}
+          <CompareThisBench benchmark={bench} />
         </section>
       )}
 

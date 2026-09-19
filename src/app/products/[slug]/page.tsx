@@ -90,11 +90,27 @@ function RowLink({
   );
 }
 
-/** "Arbitrum RPC" for a chain RPC bench, the title otherwise: the chain
- *  RPC titles are 55 to 65 characters and would eat the whole snippet. */
-function shortBenchLabel(b: { slug: string; title: string }): string {
+const CATEGORY_NOUN: Record<string, string> = {
+  Bridges: "bridge",
+  Aggregators: "aggregator",
+  Blockchains: "chain",
+  Trading: "trading",
+  Wallets: "wallet",
+  RPCs: "RPC",
+};
+
+/** "Arbitrum RPC" for a chain RPC bench; the title up to its first comma
+ *  or colon otherwise, and "bridge quote latency" (category noun plus
+ *  metric) when even that runs long. Full titles are 45 to 65 characters
+ *  and ate the whole 158-character snippet before the second value
+ *  (audit 2026-09-19, major 3: /products/relay cut mid-sentence). */
+function shortBenchLabel(b: { slug: string; title: string; category: string; metric: string }): string {
   const m = b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i) ?? b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i);
-  return m && b.slug.endsWith("-rpc") ? `${m[1]} RPC` : b.title;
+  if (m && b.slug.endsWith("-rpc")) return `${m[1]} RPC`;
+  const head = b.title.split(/[,:]/)[0].trim();
+  if (head.length <= 40) return head;
+  const noun = CATEGORY_NOUN[b.category] ?? b.category.toLowerCase();
+  return `${noun} ${b.metric.toLowerCase()}`;
 }
 
 export async function generateMetadata({

@@ -54,4 +54,8 @@ export type BridgeHubData = {
   fastestP50: number | null;
   bridgeCount: number;
   regionCount: number;
+  /** Regions with a live (not stale) quote variant; the hub table shows only these columns. */
+  liveRegions: RegionKey[];
+  /** Newest lastRunAt across the two benches, ISO string, null when both are missing. */
+  asOf: string | null;
 };

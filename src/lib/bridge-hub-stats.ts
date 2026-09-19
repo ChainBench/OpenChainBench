@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 import { filterSig } from "@/lib/materialize/load";
+import { dataAgeHours, STALE_AFTER_HOURS } from "@/lib/provider-filters";
 import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 import type { CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
 export type { CorridorKey, RegionKey, CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
@@ -61,16 +62,24 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
       )
   );
 
-  // Per-region latency: slug → p50
+  // Per-region latency: slug → p50. A region whose variant the worker no
+  // longer materializes (the region dimension was scoped to EU-West on
+  // 2026-09-10) keeps its last blob in KV: the US and Singapore columns
+  // showed 2026-09-09 figures as current for ten days. A variant older
+  // than the stale threshold is treated as absent.
   const regionMaps = regionVariants.map(
     (variant) =>
       new Map(
-        (variant?.results ?? []).map((r) => [
+        (variant && dataAgeHours(variant) <= STALE_AFTER_HOURS ? variant.results : []).map((r) => [
           r.slug,
           r.availability !== "unavailable" ? (r.ms.p50 ?? null) : null,
         ])
       )
   );
+  // Regions with at least one live cell; the table renders only these.
+  const liveRegions = REGIONS.filter((_, i) =>
+    [...regionMaps[i].values()].some((v) => v != null && Number.isFinite(v))
+  ).map((r) => r.value);
 
   const providers: BridgeProviderRow[] = [];
   for (const slug of slugSet) {
@@ -126,11 +135,14 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   const corridorsDisplay =
     feeBench?.dimensions?.chain ?? latencyBench?.dimensions?.chain ?? [];
 
-  const regionDimensions = latencyBench?.dimensions?.region ?? [];
-  const regionCount = Math.max(
-    1,
-    regionDimensions.filter((r) => r.value !== "all").length
-  );
+  const regionCount = Math.max(1, liveRegions.length);
+
+  // Newest measurement across the two benches, for the "as of" line.
+  const asOf =
+    [feeBench?.lastRunAt, latencyBench?.lastRunAt]
+      .filter((t): t is string => Boolean(t) && Number.isFinite(Date.parse(t as string)))
+      .sort()
+      .at(-1) ?? null;
 
   return {
     providers: active,
@@ -143,6 +155,8 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     fastestP50: fastest?.quotep50 ?? null,
     bridgeCount: active.length,
     regionCount,
+    liveRegions,
+    asOf,
   };
 }
 

@@ -201,7 +201,9 @@ export async function generateMetadata({
   const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
   const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
 
-  const title = `${a.name} vs ${b.name} Benchmark${sharedCount === 1 ? "" : "s"} ${currentYear}`;
+  // Title carries the count: `LI.FI vs Relay 2026: 2 live benchmarks compared`
+  // (audit 2026-09-19, major 4: the previous form named no number).
+  const title = `${a.name} vs ${b.name} ${currentYear}: ${sharedCount} live ${benchWord} compared`;
 
   // Thin-content gate (SEO audit 2026-07-08): a pair whose shared
   // benches carry live data for both providers on fewer than 2 of them
@@ -243,8 +245,15 @@ export async function generateMetadata({
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
   // Bing indexing 2 of 4938 compare pages. Also cites "as of DATE" for
-  // LLM citations.
-  const isoDate = new Date().toISOString().split("T")[0];
+  // LLM citations. The date is the newest measurement across the shared
+  // benches, not the render clock: a description that restamped itself
+  // on every ISR pass advertised freshness the data did not have.
+  const newestRun = [...a.appearances, ...b.appearances]
+    .filter((x) => sharedSlugsForMeta.includes(x.benchmark.slug))
+    .map((x) => Date.parse(x.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => y - x)[0];
+  const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
   const description = capDescription(
     `${a.name} vs ${b.name} on ${sharedCount} shared OpenChainBench ${benchWord}. Live measurements, reproducible methodology. As of ${isoDate}.`,
     158,
@@ -859,17 +868,26 @@ export default async function ComparePage({
     q: `${a.name} vs ${b.name}: which one is better?`,
     a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${aWinsBench.compareTitle ?? shortBenchTitle(aWinsBench.title)}.` : ""} ${bWinsBench ? `${b.name} leads on ${bWinsBench.compareTitle ?? shortBenchTitle(bWinsBench.title)}.` : ""} See the live table on this page for every metric.`.trim(),
   });
+  // When both winners share the verb ("faster" for every ms bench) the
+  // two questions collided and FAQPage carried a duplicate question
+  // (audit 2026-09-19, major 4); name the bench in the question then.
+  const sameVerb =
+    aWinsBench && bWinsBench && verbForBench(aWinsBench) === verbForBench(bWinsBench);
+  const whichQ = (bench: SharedBench) =>
+    sameVerb
+      ? `Which is ${verbForBench(bench)} on ${(bench.compareTitle ?? shortBenchTitle(bench.title)).toLowerCase()}, ${a.name} or ${b.name}?`
+      : `Which is ${verbForBench(bench)}, ${a.name} or ${b.name}?`;
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(aWinsBench)}, ${a.name} or ${b.name}?`,
+      q: whichQ(aWinsBench),
       a: `On the ${st} benchmark, ${a.name} leads at ${fmtResult(aWinsBench.aResult.p50, aWinsBench.unit, aWinsBench.aResult.sampleSize)} versus ${b.name} at ${fmtResult(aWinsBench.bResult.p50, aWinsBench.unit, aWinsBench.bResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     const st = shortBenchTitle(bWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(bWinsBench)}, ${a.name} or ${b.name}?`,
+      q: whichQ(bWinsBench),
       a: `On the ${st} benchmark, ${b.name} leads at ${fmtResult(bWinsBench.bResult.p50, bWinsBench.unit, bWinsBench.bResult.sampleSize)} versus ${a.name} at ${fmtResult(bWinsBench.aResult.p50, bWinsBench.unit, bWinsBench.aResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
@@ -877,6 +895,16 @@ export default async function ComparePage({
     q: `How is the ${a.name} vs ${b.name} comparison measured?`,
     a: `Every benchmark on this page uses the same open methodology, published at ${SITE.url}/methodology. Data is CC-BY-4.0. Measurement harnesses are MIT-licensed.`,
   });
+  // Belt and braces: FAQPage rejects duplicate questions.
+  const seenQ = new Set<string>();
+  const dedupedFaq = faqEntries.filter((f) => {
+    const k = f.q.trim().toLowerCase();
+    if (seenQ.has(k)) return false;
+    seenQ.add(k);
+    return true;
+  });
+  faqEntries.length = 0;
+  faqEntries.push(...dedupedFaq);
 
   const faqJsonLd = {
     "@context": "https://schema.org",
