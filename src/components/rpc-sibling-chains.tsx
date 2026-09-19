@@ -40,8 +40,10 @@ export async function RpcSiblingChains({ currentSlug }: { currentSlug: string })
             <Link
               href={`/benchmarks/${s.slug}`}
               className="inline-flex rounded-full border border-ink/15 px-2.5 py-0.5 text-ink-soft hover:text-ink hover:border-ink/30"
+              title={`${s.label} RPC endpoints`}
             >
               {s.label}
+              <span className="sr-only"> RPC endpoints</span>
             </Link>
           </li>
         ))}

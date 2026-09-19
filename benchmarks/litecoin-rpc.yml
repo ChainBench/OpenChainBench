@@ -4,7 +4,7 @@ slug: litecoin-rpc
 number: "246"
 title: Fastest free Litecoin RPC, live no-key endpoint latency
 seo_title: "Fastest free Litecoin RPC 2026"
-seo_description: "{{best_name}} leads free Litecoin RPC at {{best_p50}} (getblockcount p50, 24h). {{count}} providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Litecoin RPC at {{best_p50}} (getblockcount p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for block-height queries against every available public Litecoin endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -25,9 +25,7 @@ methodology:
   - "Payload (Tatum): {\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"getblockcount\",\"params\":[]}. Plain HTTP POST. The result is a decimal integer."
   - "Payload (BlockCypher): GET https://api.blockcypher.com/v1/ltc/main. Returns a JSON object with a height field containing the current block height."
   - "Payload (LitecoinSpace): GET https://litecoinspace.org/api/blocks/tip/height. Returns the block height as a plain ASCII integer with no JSON wrapping."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus quantile_over_time over the last 24 hours."
-  - "Call-result classification: ok (parsable block height returned), http_err, jsonrpc_err, stale (block more than 4 behind the cross-provider tip), timeout. Latency without reliability is a misleading ranking signal."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Litecoin-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=litecoin. Provider coverage at launch: {{count}} endpoints (Tatum, BlockCypher, LitecoinSpace)."
 
 faq:

@@ -586,6 +586,13 @@ export default async function BenchmarkPage({
         </section>
       )}
 
+      {/* Public endpoint URLs directly under the TL;DR: the "<chain> rpc"
+          searcher wants chain ID, URL and the provider list in the first
+          screen, before the intro prose (audit 2026-09-19 round 3: the
+          block started at word 1,145 on blast-rpc). Renders only when at
+          least two providers declare a public no-key `endpoint`. */}
+      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
+
       {/* Companion hub callout. A handful of benches have a curated
           landing page that sits next to (not in place of) the bench
           itself. For hyperliquid-frontends, /hyperliquid is the
@@ -723,17 +730,13 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
 
-      {/* Public endpoint URLs before the method: the "<chain> rpc" searcher
-          wants the URL and the provider list in the first screen. Renders
-          only when providers declare a public no-key `endpoint`. */}
-      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
-
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
       {!isDraft && (
         <details
           open
+          id="methodology"
           className="mt-8 group card-soft px-5 py-1"
         >
           <summary className="flex cursor-pointer items-center justify-between py-3 list-none">

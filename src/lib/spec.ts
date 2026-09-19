@@ -124,6 +124,12 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   const overlaid: Benchmark = {
     ...stored,
     results: prunedResults,
+    // `title` drives the H1, the breadcrumb, TechArticle and /api/stat;
+    // `seoTitle` drives <title>. Both come from the live YAML so a
+    // retitle never leaves the H1 on the blob's older string (audit
+    // 2026-09-19 round 3, blocker 1: 6 staging pages with <title> new
+    // and H1 old, 10 production pages the other way round).
+    title: spec.title ?? stored.title,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,

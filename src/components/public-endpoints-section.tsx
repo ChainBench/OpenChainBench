@@ -18,6 +18,7 @@ import { CopyButton } from "@/components/copy-button";
 import { fmtUnit } from "@/lib/format";
 import { canonicalize } from "@/lib/providers";
 import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
+import { CHAIN_BY_SLUG } from "@/lib/chains";
 import type { Benchmark } from "@/types/benchmark";
 
 /** The endpoints the section lists: a declared public URL with a live
@@ -40,7 +41,9 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
   const chainLabel =
     benchmark.dimensions?.chain?.find((c) => c.value !== "all")?.label ??
     (benchmark.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i)?.[1] ?? null);
-  const chainId = EVM_CHAIN_IDS[benchmark.slug.replace(/-rpc$/, "")];
+  const chainSlug = benchmark.slug.replace(/-rpc$/, "");
+  const chainId = EVM_CHAIN_IDS[chainSlug];
+  const symbol = CHAIN_BY_SLUG.get(chainSlug)?.nativeSymbol;
   const heading = chainLabel
     ? `Public ${chainLabel} RPC endpoints measured`
     : "Public endpoints measured";
@@ -51,7 +54,7 @@ export function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) 
         {heading}
       </h2>
       <p className="mt-2 text-sm text-ink-soft leading-snug">
-        {chainId ? <>Chain ID {chainId}. </> : null}
+        {chainId ? <>Chain ID {chainId}{symbol ? <>, currency {symbol}</> : null}. </> : null}
         The {rows.length} no-key endpoints answering our probes today, with
         their current 24h median. Paste one into a wallet or a client as is: no signup, no
         key. Providers that need an API key are compared on the keyed pages

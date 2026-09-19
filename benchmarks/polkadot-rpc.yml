@@ -4,7 +4,7 @@ slug: polkadot-rpc
 number: "086"
 title: Fastest free Polkadot RPC, live no-key endpoint latency
 seo_title: "Fastest free Polkadot RPC 2026"
-seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). URLs for all {{count}} no-key endpoints, updated every 60s."
 subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Polkadot relay-chain endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -36,11 +36,9 @@ abstract: |
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"chain_getHeader\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that would answer a bare head query without touching a node."
-  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
-  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 40 relay blocks behind the cross-provider tip, roughly 4 minutes at Polkadot's ~6 s block time), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Polkadot-scoped view of the same harness, with the same exclusion rules."
   - "No archive-depth loop on this chain. Polkadot's state model is accessed via `state_getStorage` keyed by a Blake2-hashed storage key rather than the EVM `eth_getBalance(address, height)` pattern, so the archive probe used on the EVM cluster is not applied here."
   - "No cross-provider hash quorum on this chain. `chain_getHeader` returns the parent-block hash rather than the current-block hash (the current hash is derived by Blake2 over the SCALE-encoded header). Bench 083's height-hash quorum check is therefore skipped for Polkadot; the same reliability signal is still captured via `ok` / `stale` classification against the rolling cross-provider tip."
-  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to `chain=\"polkadot\"`. Provider coverage at launch: {{count}} no-key endpoints (Parity official, OnFinality public gateway, PublicNode). Excluded by the launch audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay; Dwellir returned 503 during the audit sweep; Ankr paid Polkadot tier only; Chainstack key-gated; RadiumBlock requires a referral header; Grove and Thirdweb return invalid-chain or key-gated."
 
 faq:
