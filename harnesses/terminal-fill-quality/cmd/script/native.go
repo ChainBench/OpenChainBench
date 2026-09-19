@@ -61,9 +61,11 @@ var evmTerminals = []evmTerminal{
 		"0xcda14e87628317e4f90077750fbe9634b896a24f", "0x76a0e120631735845769e3de2606924af7716150", "0xc6cdc85a225236013ee9b3b47dd05c07aed1fabc", "0x105358a03c47706ad4697e227d5a8ddfacf85448",
 		"0xe3dc74b2d5b83916a1682777f1de8b2155ddfc38", "0xd9fc1771672f08f3abce96d033cc21d1e5a3ac7f", "0x578980d6cac7ab262c40dfca650b1d2d259c1cca", "0x4a86009a36fcec5aa341ffceb3205a911fcf6f60",
 		"0x9689992f5b5c09447f15906d8d11214944488341"}, Collector: "0x6fb4460e4bebf662fcd9bfa5ce6d6231732bb86c",
-		// Same pattern on Robinhood Chain: a fixed 0.001 ETH forwarded to
+		// Same pattern on Robinhood Chain, but the amount is the user's own
+		// setting (0.00005 to 0.001 ETH): priced from the call trace only,
+		// never from a fixed figure. Was: a fixed 0.001 ETH forwarded to
 		// this account on every transaction (traces of 2026-09-18).
-		Tip: 0.001, TipTo: "0x569319680e2f921a23340d9a223c48f7b07c55bd"},
+		Tip: 0, TipTo: "0x569319680e2f921a23340d9a223c48f7b07c55bd"},
 	// Banana Gun's EVM routers (DeFiLlama's dexs adapter); its fee is taken
 	// inside the router like the others.
 	// On the sampled Ethereum swaps the router's fee event (0x72015ace…,

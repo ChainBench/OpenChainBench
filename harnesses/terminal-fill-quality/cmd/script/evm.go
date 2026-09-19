@@ -85,7 +85,7 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 		req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0")
 		resp, err := httpc.Do(req)
 		if err != nil {
-			last = err
+			last = errors.New(redactURL(err.Error(), url))
 			continue
 		}
 		data, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
@@ -105,6 +105,28 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 		return json.Unmarshal(env.Result, out)
 	}
 	return last
+}
+
+// redactURL replaces a full endpoint URL inside an error message (Go's
+// url.Error carries the request URL, keyed path or query included) with its
+// host, so a keyed endpoint never reaches the log.
+func redactURL(msg, rawURL string) string {
+	if rawURL == "" {
+		return msg
+	}
+	host := rawURL
+	if i := strings.Index(host, "://"); i >= 0 {
+		host = host[i+3:]
+	}
+	if i := strings.IndexAny(host, "/?"); i >= 0 {
+		host = host[:i]
+	}
+	msg = strings.ReplaceAll(msg, rawURL, host)
+	// a keyed query or path segment quoted on its own
+	if i := strings.Index(rawURL, "?"); i >= 0 {
+		msg = strings.ReplaceAll(msg, rawURL[i:], "?<redacted>")
+	}
+	return msg
 }
 
 func hexInt(s string) int64 {

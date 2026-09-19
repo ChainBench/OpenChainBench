@@ -94,15 +94,16 @@ var (
 	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
 	}, []string{"terminal", "chain"})
-	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
-	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
-	gSol     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
-	cCalls   = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_calls_total", Help: "RPC calls"})
-	cErrors  = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_errors_total", Help: "RPC errors and rate limits"})
+	gRefresh   = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
+	gFeed      = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	gRelayFeed = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_relay_feed_up", Help: "1 when Relay's requests API answered the last polling round (the cross-chain rows' feed)"})
+	gSol       = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
+	cCalls     = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_calls_total", Help: "RPC calls"})
+	cErrors    = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_errors_total", Help: "RPC errors and rate limits"})
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gRefresh, gFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -297,7 +298,7 @@ func main() {
 		}
 	}
 	tick := time.Duration(envInt("TICK_SECONDS", 60)) * time.Second
-	dailyTarget := envInt("DAILY_TARGET", 300) // swaps read per terminal per day
+	dailyTarget := envInt("DAILY_TARGET", 400) // swaps read per terminal per day
 	perTick := float64(dailyTarget) * tick.Seconds() / 86400
 	evmDailyTarget := envInt("EVM_DAILY_TARGET", dailyTarget) // the Relay and native EVM rows: their own rate (one chain each)
 	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
@@ -779,12 +780,16 @@ const refMaxAgeS = 60
 // sampleFails reads a few of the tick's failed attempts (quota
 // FAIL_DAILY_TARGET per terminal per day) for the fee they paid.
 func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, failed []sigInfo, failQuota map[string]float64, perTickFail, solUSD float64, now int64) {
+	// The quota accrues every tick, failures seen or not (a terminal failing
+	// once every few minutes would otherwise never reach a whole sample),
+	// and a read that fails (the transaction not yet served at the
+	// commitment asked) gives its share back for the next tick.
+	failQuota[t.Slug] += perTickFail
+	if cap := math.Max(3*perTickFail, 2); failQuota[t.Slug] > cap {
+		failQuota[t.Slug] = cap
+	}
 	if len(failed) == 0 {
 		return
-	}
-	failQuota[t.Slug] += perTickFail
-	if cap := math.Max(3*perTickFail, 1); failQuota[t.Slug] > cap {
-		failQuota[t.Slug] = cap
 	}
 	n := int(failQuota[t.Slug])
 	if n > len(failed) {
@@ -799,6 +804,7 @@ func sampleFails(ctx context.Context, rpc *rpcClient, st *State, t Terminal, fai
 	for _, s := range failed[:n] {
 		tx, err := rpc.transaction(ctx, s.Signature)
 		if err != nil || tx == nil {
+			failQuota[t.Slug] += 1
 			continue
 		}
 		f := failSample{Terminal: t.Slug, Sig: s.Signature, Time: now, Err: errClass(tx.Meta.Err)}

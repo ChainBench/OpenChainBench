@@ -19,9 +19,9 @@ disclaimer: |
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
   fee plus the priority fee and the inclusion tip the app attaches, plus what
-  pump.fun or the pool keep on the way, plus the price move between the moment
-  the user clicked and the moment the swap landed, plus the swaps that fail
-  and still burn the priority fee. None of that is in the fee schedule, all of
+  pump.fun or the pool keep on the way, plus the price impact of the swap
+  itself against the pool's state just before it landed, plus the swaps that
+  fail and still burn the priority fee. None of that is in the fee schedule, all of
   it is in the transaction. This benchmark reads real user swaps on Solana and
   on the EVM chains they trade on for Axiom, GMGN, FOMO, Phantom, Photon,
   Trojan, Bloom, Maestro, Pepeboost, BONKbot, Banana Gun, Binance Wallet,
@@ -76,13 +76,13 @@ methodology:
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one swap router on the three chains, no event of its own, so its swaps are the transactions sent to it in the blocks read in full; valued and split like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: no fee visible on-chain, terminal 0."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
   - "Kept out of that residual: a fee the pool's own hook keeps (Uniswap v4 launchpad pools on Robinhood Chain, 1 %, and BNB, 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the rate the route itself swapped the gas coin at, not at an exchange's print; Axiom's inclusion tip on every transaction (a fixed 0.0025 BNB; on Robinhood Chain the user's own setting, read from the call trace) is network cost, like the Solana terminals' own tip relays."
-  - "Not in the table: BullX (trading suspended since 2026-06-01, its fee wallets only see marker transfers), Nova (no live fee wallet), BasedBot (its Relay requests are wallet funding: SOL from Solana, ETH or BNB into the user's wallet on Robinhood Chain, BNB, Base or Ethereum, no app fee; measured as a funding leg in the JSON, out of the table since a bridge is not a fill; its trades run in its own contracts there, not yet identified). Each joins the day a live flow is known."
+  - "Not in the table: BullX (trading suspended since June 2026, its fee wallets only see marker transfers), Nova (no live wallet). Listed unranked, bridge legs only: BasedBot (its Relay requests are wallet funding, SOL from Solana to ETH or BNB in the user's wallet on Robinhood Chain, BNB, Base or Ethereum, no app fee: a funding leg in the JSON; its trades run in its own contracts there, unidentified so far). Not read yet: GMGN's Ethereum, Base and Tron routers, HyperEVM (gas coin unpriced)."
 
 findings:
   - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's state before the trade, all costs included."
   - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 200 bps on curve and PumpSwap trades whichever terminal routes them."
   - "Network cost separates the Telegram bots: Bloom, Trojan and Maestro attach tips through Jito or their own relays worth tens of basis points on a median swap, Axiom and GMGN a few."
-  - "Failed swaps are a hidden cost: on the busiest terminals several percent of swap attempts fail on-chain and still pay the priority fee."
+  - "Failed swaps are a hidden cost: on the busiest terminals several percent of swap attempts fail on-chain and still pay the priority fee (unless the app sponsors gas, as FOMO does)."
 
 faq:
   - q: "What is the reference price and why does it matter?"
@@ -94,7 +94,7 @@ faq:
   - q: "Are sandwiches counted?"
     a: "Screened, not ranked. A sandwich's two legs both touch the pool, so they are the user's neighbours in the pool's own transaction sequence: another signer trading the same direction just before, and back just after, in the same slot or the next. Every hit is in the JSON with the attacker and both signatures. It is not a column because the share of swaps that can be screened depends on how busy the pool is, which differs per terminal. The victim's extra cost is not a separate line either: the front-run precedes the user's swap, so the arrival price already carries it inside the pool component."
   - q: "How is a swap attributed to a terminal?"
-    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. FOMO's gas sponsor signs every transaction and is excluded as user; pump.fun's app is recognised by its app program."
+    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. Where the fee wallet is not enough: pump.fun's app and Banana Gun by their programs, Phantom by its fee token account, FOMO by the vanity account every FOMO transaction carries (its gas sponsor signs and is excluded as user), the EVM rows by the router the transaction was sent to (Binance Wallet from blocks read in full), the cross-chain rows by Relay's referrer or fee recipient."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
 
@@ -155,7 +155,7 @@ metric_panels:
     label_key: terminal
     metric: tfq_trade_usd{chain="all",stat="median"}
     unit: usd
-    higher_is_better: true
+    higher_is_better: false
     tab: false
     description: "Median sampled trade size in USD."
   - id: fail_overhead
