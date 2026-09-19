@@ -168,7 +168,7 @@ Relay's valuation). `chain`, `relay_bps`, `relay_id`, `in_tx` per row,
 `by_chain` and `components_bps.relay` per app, `tfq_loss_bps_chain`.
 
 **Trading on another chain through Relay (`evm.go`)**: most of FOMO's
-cross-chain flow goes the other way: the user pays in SOL and a Relay
+cross-chain flow goes the other way: the user pays in USDC or SOL and a Relay
 solver buys the token on Robinhood Chain (87 % of it), BNB, Base,
 Ethereum or Arc. Rows `<app>-<chain>`. The Solana deposit gives the value
 given (SOL or a stable, tx fee inside); the destination receipt gives the
@@ -395,6 +395,9 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `TICK_SECONDS` | `60` | sweep interval |
 | `DAILY_TARGET` | `400` | swaps read per terminal per day (random draw from the feed) |
 | `EVM_DAILY_TARGET` | `DAILY_TARGET` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs them at 1,000 so the per-chain windows fill within hours) |
+| `PURGE_EVM_BEFORE` | unset | at load, drop the cross-chain and native EVM rows older than this unix time (once, after a pricing change); the variable stays in the container's env until the next deploy resets it |
+| `PURGE_TERMINALS` | unset | at load, drop every row of these slugs (comma-separated), once, after a feed or attribution change; same caveat |
+| `DISCOVER_DENY` | unset | comma-separated wallets or routers discovery must never adopt (also skipped when the state's adoptions are re-applied at start) |
 | `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
 | `WS_URL` | RPC URL | feed endpoint when different from the reads (the keyless public `wss://api.mainnet-beta.solana.com` works) |
 | `WINDOW_HOURS` | `24` | rolling window |

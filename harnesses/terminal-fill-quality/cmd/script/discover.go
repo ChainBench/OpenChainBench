@@ -635,9 +635,14 @@ func unattributedFees(ctx context.Context, rpc *rpcClient, st *State) []Unattrib
 	if len(out) > 12 {
 		out = out[:12]
 	}
+	kept := out[:0]
 	for i := range out {
 		prog, _ := solOwner(ctx, rpc, out[i].Pubkey)
 		out[i].Label = accountLabel(prog)
+		if strings.HasPrefix(prog, "pfee") {
+			continue // pump.fun's fee vaults are "other" by definition, not a terminal nobody listed
+		}
+		kept = append(kept, out[i])
 	}
-	return out
+	return kept
 }
