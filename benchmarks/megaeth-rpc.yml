@@ -4,7 +4,7 @@ slug: megaeth-rpc
 number: "072"
 title: Fastest free MegaETH RPC, live no-key endpoint latency
 seo_title: "Fastest free MegaETH RPC 2026"
-seo_description: "{{best_name}} leads free MegaETH RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free MegaETH RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public MegaETH RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -43,16 +43,11 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
-  - "Chain scope: every query on this page is pinned to chain=\"megaeth\" (chain id 4326, mainnet since February 2026). Provider coverage: 3 no-key endpoints (MegaETH Official, dRPC, Tenderly Gateway). Exclusions follow the cluster-wide rules documented on the parent benchmark."
-
-findings:
-  - "{{best_name}} currently leads the free MegaETH RPC field at {{best_p50}} (p50, 24h) across 3 measured providers."
-  - "{{name:megaeth-official}} answers at {{p50:megaeth-official}}. The official endpoint applies dynamic compute-unit limiting rather than a fixed rps cap; our 1 probe/30s/region load never approaches it."
-  - "A 1 s EVM block time means the stale classification window (20 blocks) is only 20 seconds here, the tightest honesty gate in the cluster."
+  - "Chain scope: every query on this page is pinned to chain=\"megaeth\" (chain id 4326, mainnet since February 2026). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 faq:
   - q: "What is the fastest free MegaETH RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50 over 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
   - q: "Which MegaETH RPCs work without an API key in 2026?"
     a: "Four endpoints sustain continuous keyless probing: the official mainnet.megaeth.com/rpc (dynamic compute-unit limiting), dRPC and Tenderly Gateway. All were live-verified (eth_chainId 4326 + anti-cache probe) before inclusion. The 10 ms mini-block realtime API is WebSocket-only and out of scope for this HTTP latency page."
   - q: "Does this page measure MegaETH's 10 ms real-time claim?"

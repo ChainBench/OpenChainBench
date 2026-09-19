@@ -4,7 +4,7 @@ slug: bandchain-rpc
 number: "256"
 title: Fastest free Band Protocol RPC, live no-key endpoint latency
 seo_title: "Fastest free Band Protocol RPC 2026"
-seo_description: "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (block height p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (block height p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for Tendermint /status queries against every available public Band Protocol (laozi-mainnet) endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=bandchain. Provider coverage at launch: 3 endpoints (Band Protocol official, High Stakes, Stakewolle)."
 
-findings:
-  - "{{best_name}} leads free Band Protocol RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Band Protocol RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Band Protocol block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: Band Protocol official (rpc.laozi1.bandchain.org), High Stakes (bandprotocol-rpc.highstakes.ch), and Stakewolle (public.stakewolle.com/cosmos/bandchain/rpc). Every listed endpoint was live-verified before inclusion."
   - q: "What is Band Protocol and why does its RPC latency matter?"
     a: "Band Protocol is a cross-chain data oracle that aggregates real-world data feeds and delivers them to smart contracts via oracle scripts. Validators running the Yoda daemon and DeFi protocols consuming Band price feeds both depend on low-latency reliable RPC access to the Band chain."
-  - q: "Does the fastest Band Protocol RPC change by region?"
-    a: "Yes. The official Band node and community validators are hosted in different regions. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your deployment geography."
   - q: "What is the BAND token?"
     a: "BAND is the native staking and governance token of Band Protocol (denominated as uband on-chain). It is used to stake as validators, pay for oracle data requests, and participate in on-chain governance of the laozi-mainnet."
 

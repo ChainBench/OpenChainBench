@@ -31,20 +31,13 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err`, `stale` (more than 20 blocks behind the cross-provider tip), `timeout`."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"ethereum-classic\"`. Provider coverage: 1 no-key endpoint (dRPC). ETCDesktop and ETCMC stopped responding to probes and have been removed."
-
-findings:
-  - "{{best_name}} currently leads free Ethereum Classic RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h), 1 measured provider."
+  - "Chain scope: every query on this page is pinned to `chain=\"ethereum-classic\"`. Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. ETCDesktop and ETCMC stopped responding to probes and have been removed."
 
 faq:
   - q: "What is the fastest free Ethereum Classic RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 1 no-key provider probed every 60 seconds from us-east, eu-west and Singapore."
   - q: "Which Ethereum Classic RPCs work without an API key?"
     a: "1 endpoint sustains continuous keyless probing: dRPC (etc.drpc.org). ETCDesktop and ETCMC stopped responding to probes and have been removed from the bench."
-  - q: "Does the fastest Ethereum Classic RPC change by region?"
-    a: "Often. The region tabs at the top of the page re-scope every number to a single origin."
-  - q: "How is Ethereum Classic RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

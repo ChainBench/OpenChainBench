@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=sentinel. Provider coverage at launch: 3 endpoints (Polkachu, PublicNode, Cosmos Directory)."
 
-findings:
-  - "{{best_name}} leads free Sentinel DVPN RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free Sentinel DVPN RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (Sentinel block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: Polkachu (sentinel-rpc.polkachu.com), PublicNode (sentinel-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/sentinel). Every listed endpoint was live-verified before inclusion."
   - q: "What is Sentinel and why does its RPC latency matter?"
     a: "Sentinel is a decentralized VPN network where node operators earn DVPN tokens for sharing bandwidth. Developers building dVPN clients, node management tools, or on-chain governance integrations require reliable low-latency RPC access to query bandwidth sessions, staking state, and transaction history."
-  - q: "Does the fastest Sentinel RPC change by region?"
-    a: "Often. Polkachu runs globally distributed infrastructure while PublicNode concentrates nodes near major internet exchange points. The region tabs re-scope every number to a single probe origin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

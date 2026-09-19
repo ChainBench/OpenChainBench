@@ -4,7 +4,7 @@ slug: lukso-rpc
 number: "260"
 title: Fastest free LUKSO RPC, live no-key endpoint latency
 seo_title: "Fastest free LUKSO RPC 2026"
-seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free LUKSO RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every available public LUKSO endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -28,11 +28,6 @@ methodology:
   - "Classification: ok (HTTP 200 with a usable block number), http_err, jsonrpc_err, stale (block more than 20 behind the cross-provider tip), timeout. Only ok responses contribute latency."
   - "Providers: LUKSO Foundation (rpc.mainnet.lukso.network), NOWNodes (public-lukso.nownodes.io, no key, 5 RPS), thirdweb (42.rpc.thirdweb.com)."
   - "Aggregation: p50/p90/p99 via Prometheus quantile_over_time over 24h; the headline cites the cross-region figure and the region tabs re-scope it."
-
-findings:
-  - "{{best_name}} leads at {{best_p50}} (eth_getBlockByNumber p50, 24h) across {{provider_count}} no-key LUKSO endpoints."
-  - "LUKSO targets a short EVM block time, so a stale tip is uncommon and the ranking is driven by each provider's regional edge placement."
-  - "{{name:nownodes}} serves LUKSO from its public no-key endpoint at {{p50:nownodes}} (p50, 24h), rate-limited to 5 requests per second."
 
 faq:
   - q: "Which free LUKSO RPC is fastest?"

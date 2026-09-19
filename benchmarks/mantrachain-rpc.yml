@@ -37,9 +37,6 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain rpc-capabilities benchmark; the identical harness, cadence and exclusion rules apply on every chain."
   - "Chain scope: every query on this page is pinned to chain=mantrachain. Provider coverage at launch: 3 endpoints (MANTRA official, ITRocket, Polkachu)."
 
-findings:
-  - "{{best_name}} leads free MANTRA Chain RPC at {{best_p50}} (Tendermint /status p50, 24h) across 3 measured providers."
-
 faq:
   - q: "What is the fastest free MANTRA Chain RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (MANTRA block height p50 over the last 24h), measured against 3 providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
@@ -47,8 +44,6 @@ faq:
     a: "3 endpoints sustain continuous keyless probing at launch: MANTRA official (rpc.mantrachain.io), ITRocket (mantra-mainnet-rpc.itrocket.net), and Polkachu (mantra-rpc.polkachu.com). Every listed endpoint was live-verified before inclusion."
   - q: "What is MANTRA Chain and why does its RPC latency matter?"
     a: "MANTRA Chain is a Cosmos SDK Layer 1 built for real-world asset tokenization under regulatory frameworks. It enables compliant issuance and trading of tokenized financial assets such as real estate, bonds, and commodities. Developers building RWA applications, compliance tooling, or DeFi protocols on MANTRA need reliable low-latency RPC access to query asset state, transactions, and governance."
-  - q: "Does the fastest MANTRA RPC change by region?"
-    a: "Often. The official MANTRA node and community validators are hosted across different regions. The region tabs re-scope every number to a single probe origin so you can pick the best endpoint for your user base."
   - q: "What is the OM token on MANTRA Chain?"
     a: "OM is the native staking and governance token of MANTRA Chain. It is used for validator staking, on-chain governance, and fee payment. The mantra-1 mainnet launched in 2024 with a focus on regulated RWA markets in the Middle East and Asia."
 

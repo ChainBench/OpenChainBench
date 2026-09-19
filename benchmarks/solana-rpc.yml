@@ -4,7 +4,7 @@ slug: solana-rpc
 number: "075"
 title: Fastest free Solana RPC, live no-key endpoint latency
 seo_title: "Fastest free Solana RPC 2026"
-seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h). 5 no-key providers measured every 60s from 3 regions, keyless."
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h). {{count}} no-key providers measured every 60s from 3 regions, keyless."
 subtitle: HTTP round-trip latency for getSlot at the processed commitment against every free, no-key public Solana RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -37,24 +37,15 @@ methodology:
   - "No archive-depth audit on Solana: the EVM chains probe `eth_getBalance` at historical heights, which has no equivalent on public Solana endpoints. Disclosed rather than faked."
   - "LeoRPC disclosure: the endpoint uses a publicly documented FREE query key (solana.leorpc.com/?api_key=FREE). It is admitted as keyless in practice since no signup is required; flagged here for transparency."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; identical harness and exclusion rules."
-  - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: 5 no-key endpoints (Solana Labs, PublicNode, Lava, LeoRPC, Solana Vibe Station). Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
-
-findings:
-  - "{{best_name}} currently leads free Solana RPC at {{best_p50}} (getSlot p50, 24h) across 5 measured providers."
-  - "{{name:solana}} ({{p50:solana}}) is the endpoint every tutorial pastes. Solana Labs documents its limits at 100 requests per 10 seconds per IP, generous for development and exactly the kind of endpoint this bench exists to sanity-check."
-  - "{{name:publicnode}} ({{p50:publicnode}}) extends its EVM cluster footprint to Solana from the same Allnodes infrastructure, and arrives with the credibility of leading a large share of the EVM per-chain boards."
-  - "{{name:lava}} ({{p50:lava}}) routes through the Lava gateway mesh, the same architecture as its Ethereum and Arbitrum endpoints; expect higher variance than single-origin providers."
-  - "{{name:leorpc}} ({{p50:leorpc}}) and {{name:solanavibestation}} ({{p50:solanavibestation}}) are the community tier: smaller operations whose continued keyless availability this bench monitors live rather than assumes."
+  - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
 
 faq:
   - q: "What is the fastest free Solana RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (getSlot p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples; use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (getSlot p50 over the last 24h), measured against {{count}} no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples; use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Solana RPCs work without an API key?"
     a: "The 5 providers on this page: Solana Labs (api.mainnet-beta.solana.com), PublicNode, Lava, LeoRPC (publicly documented FREE key) and Solana Vibe Station. Every endpoint was live-verified before inclusion. The famous names that do not work keyless anymore are listed in the methodology with their exact refusals: dRPC moved Solana to paid tiers, Ankr 403s, OnFinality's public quota is exhausted, Helius and Shyft are key-gated."
   - q: "Is api.mainnet-beta.solana.com good enough for production?"
     a: "For development, demos and light read workloads, yes: Solana Labs documents roughly 100 requests per 10 seconds per IP. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason; this page measures the free tier so you know exactly what the default gets you before you decide."
-  - q: "How is Solana RPC latency measured here?"
-    a: "One identical JSON-RPC POST (getSlot at the processed commitment) every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 come from Prometheus quantile_over_time over 24 hours. Responses are classified so an endpoint stuck behind the cross-provider slot tip or erroring behind HTTP 200 is never ranked as fastest. The harness is open source."
   - q: "Why is there no archive-depth column like the EVM pages?"
     a: "The EVM cluster probes eth_getBalance at historical block heights to expose which free endpoints serve archive state. Public Solana endpoints expose no comparable keyless historical-state query, so the audit is disclosed as not applicable rather than approximated."
 
