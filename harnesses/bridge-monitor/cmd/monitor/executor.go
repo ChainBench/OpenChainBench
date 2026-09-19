@@ -956,7 +956,7 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 
 	// Record latencies
-	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(result.QuoteLatencyMs))
+	bridgeExecQuoteLatency.WithLabelValues(labels...).Observe(float64(result.QuoteLatencyMs))
 	bridgeExecutionLatency.WithLabelValues(labels...).Observe(float64(result.ExecutionLatencyMs))
 	bridgeE2ELatency.WithLabelValues(labels...).Observe(float64(result.E2ELatencyMs))
 	// Exact latency gauge (only on a real fill): lets the bench read the true

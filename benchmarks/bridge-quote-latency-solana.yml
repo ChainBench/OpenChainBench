@@ -53,18 +53,18 @@ abstract: |
 methodology:
   - "Origin: Solana only. Every corridor in this bench starts from Solana USDC; the destination is the per-tab chain."
   - "Destinations: Base, Arbitrum, BNB, Ethereum and Robinhood Chain. A provider that does not quote a given destination simply does not appear on that tab."
-  - "Robinhood Chain (Arbitrum Orbit, chainId 4663) has no native USDC, so it is a cross-asset USDC to USDG (Global Dollar) corridor. On the live probe only Mobula returns a usable SOL to Robinhood quote; Relay, LI.FI and deBridge reject the USDC-to-USDG pair on this chain (invalid input/output currency), so they do not appear on the Robinhood tab."
-  - "Latency: wall-clock from request to a usable quote, in milliseconds. p50, p90 and p99 over a rolling 24h window via histogram_quantile on a from_chain=Solana-scoped recording rule."
+  - "Robinhood Chain (Arbitrum Orbit, chainId 4663) has no native USDC, so it is a cross-asset USDC to USDG (Global Dollar) corridor. Mobula, Relay, LI.FI and deBridge all quote it today (the pair was rejected by three of them at launch); Across and Near Intents are not attempted on this destination."
+  - "Latency: wall-clock from request to a fully read quote response, in milliseconds. p50, p90 and p99 over a rolling 24h window via histogram_quantile on a from_chain=Solana-scoped recording rule, summed over the destinations and notionals of the tab (the All tab pools every destination). Near Intents' dry quotes carry a fixed 3 s solver wait (quoteWaitingTimeMs: 3000), so its figures sit at about 3 s by construction; the histogram has 500 ms buckets between 1 and 5 s to resolve it."
   - "Cadence: every five minutes, at $5, $50 and $300 notional."
-  - "Region: EU-West only at present. The us-east and sgp probes are paused, so the figures reflect the EU-West (Paris) origin."
-  - "Cohort: Mobula, Relay, LI.FI, deBridge, Across and Near Intents. Squid and Socket are EVM-only aggregators with no Solana-source route and are excluded here (they remain in the general bridge-quote-latency bench)."
+  - "Region: every figure on this page is pinned to the EU-West (Paris) origin. A us-east probe also runs and its cells are kept in Prometheus, but they are not pooled into the headline; the sgp probe is down."
+  - "Cohort: Mobula, Relay, LI.FI, deBridge, Across and Near Intents. Squid and Socket are EVM-only aggregators with no Solana-source route and are excluded here (they remain in the general bridge-quote-latency bench). Across and Near Intents are probed on Base and Arbitrum only: the harness maps no BNB, Ethereum or Robinhood asset for them yet, so their absence from those tabs is ours, not theirs. The R4 meme route (TRUMP to BRETT) quoted by the same loop is excluded from every cell."
 
 findings:
   - "{{best_name}} returns the fastest Solana-origin quote at {{best_p50}} (p50, 24 h) across {{count}} providers, on the destinations it covers."
   - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). A thin price-discovery call against pre-quoted solvers keeps Solana-origin latency low even though the SPL resolution adds work the EVM-only corridors avoid."
   - "{{name:relay}} sits at {{p50:relay}} (p50, 24 h)."
-  - "{{name:near-intents}} clocks {{p50:near-intents}} (p50, 24 h); its 1Click flow is bimodal, sub-100ms on solver-cached corridors and up to the full auction window otherwise."
-  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h), the cost of a heavier route search on the Solana-origin path."
+  - "{{name:near-intents}} clocks {{p50:near-intents}} (p50, 24 h): its dry quote waits a fixed 3 s solver window by design, so this row measures that wait, not route search."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h)."
 
 faq:
   - q: "What is the fastest bridge to leave Solana?"
@@ -93,12 +93,12 @@ providers:
     tag: Aggregator + intent layer
     formula: "p50 over 24h of Solana-origin quote latency (ms) from Mobula, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="mobula"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="mobula"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="mobula"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="mobula"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="mobula", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", from_chain="Solana"}[1h])))
 
   - slug: relay
@@ -106,12 +106,12 @@ providers:
     tag: Cross-chain relay
     formula: "p50 over 24h of Solana-origin quote latency (ms) from Relay, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="relay"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="relay"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="relay"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="relay"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="relay", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", from_chain="Solana"}[1h])))
 
   - slug: lifi
@@ -119,12 +119,12 @@ providers:
     tag: Aggregator
     formula: "p50 over 24h of Solana-origin quote latency (ms) from LI.FI, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="lifi"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="lifi"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="lifi"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="lifi"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="lifi", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", from_chain="Solana"}[1h])))
 
   - slug: debridge
@@ -132,12 +132,12 @@ providers:
     tag: Native-token fees
     formula: "p50 over 24h of Solana-origin quote latency (ms) from deBridge, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="debridge"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="debridge"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="debridge"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="debridge"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="debridge", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", from_chain="Solana"}[1h])))
 
   - slug: across
@@ -145,12 +145,12 @@ providers:
     tag: Optimistic relay
     formula: "p50 over 24h of Solana-origin quote latency (ms) from Across, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="across"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="across"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="across"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="across"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="across", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across", from_chain="Solana"}[1h])))
 
   - slug: near-intents
@@ -158,10 +158,10 @@ providers:
     tag: Intent layer (NEAR)
     formula: "p50 over 24h of Solana-origin quote latency (ms) from the Near Intents 1Click API, at the selected destination and notional, sampled every 5 minutes from EU-West."
     queries:
-      p50: histogram_quantile(0.50, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents"})
-      p90: histogram_quantile(0.90, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents"})
-      p99: histogram_quantile(0.99, ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents"})
-      mean: ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="near-intents"} / clamp_min(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="near-intents"}, 1)
-      success: ocb:bridge_quote_success:sol_avg24h{bridge="near-intents"}
-      sample_size: ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="near-intents"}
+      p50: histogram_quantile(0.50, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:bridge_quote_latency_ms_bucket:sol_rate24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}))
+      mean: sum(ocb:bridge_quote_latency_ms_sum:sol_rate24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}) / clamp_min(sum(ocb:bridge_quote_latency_ms_count:sol_rate24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}), 1e-9)
+      success: avg(ocb:bridge_quote_success:sol_avg24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"})
+      sample_size: round(sum(ocb:bridge_quote_latency_ms_count:sol_increase24h{bridge="near-intents", region="eu-west", amount_usd=~"5|50|300"}))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", from_chain="Solana"}[1h])))

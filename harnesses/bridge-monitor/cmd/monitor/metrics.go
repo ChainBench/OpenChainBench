@@ -14,8 +14,20 @@ var (
 	// bucket. histogram_quantile then linearly interpolated to ~25ms
 	// regardless of the true value, hiding the real bimodality.
 	bridgeQuoteLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "bridge_quote_latency_ms",
-		Help:    "Latency to get bridge quote in milliseconds",
+		Name: "bridge_quote_latency_ms",
+		Help: "Latency to get bridge quote in milliseconds (quote loop only; execution-path quotes go to bridge_exec_quote_latency_ms)",
+		// Finer between 1 s and 5 s: Near Intents' dry quotes wait a fixed
+		// 3 s solver window, and with one bucket over (2000, 5000] every
+		// quantile was an interpolation of that edge.
+		Buckets: []float64{10, 25, 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 7500, 10000},
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Quote latency measured on the execution path (a different call, with
+	// signing payloads, at the execution tickets). Kept out of the quote
+	// benches' histogram so it does not create undeclared $3 / $30 cells.
+	bridgeExecQuoteLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "bridge_exec_quote_latency_ms",
+		Help:    "Quote latency on the execution path in milliseconds",
 		Buckets: []float64{10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000},
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
