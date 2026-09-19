@@ -252,8 +252,17 @@ type xfeed struct {
 	last     time.Time
 	up       bool
 	answered bool                        // a poll of this round got a page from Relay (read and reset by run)
-	pending  map[string]int64            // request id -> created, requests met before they were final (walked past on the next polls)
+	pending  map[string]pendingReq       // app:id -> the request as met before it was final (re-fetched by id each round)
 	funded   map[string]map[string]int64 // app -> wallet funded on another chain -> time, drained into the state each tick
+}
+
+// pendingReq: a request met on the feed before it was final; re-read by id
+// on the next rounds until final (refunds finalise last) or forgotten.
+type pendingReq struct {
+	app     xchainApp
+	chain   originChain
+	created int64
+	since   int64
 }
 
 type xinbox struct {
@@ -264,7 +273,7 @@ type xinbox struct {
 }
 
 func newXfeed(httpc *http.Client) *xfeed {
-	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]int64{}, funded: map[string]map[string]int64{}}
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}}
 }
 
 // xchainRows: every bench row the cross-chain apps can produce.
@@ -305,6 +314,7 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 		for _, c := range originChains {
 			n += f.poll(ctx, c)
 		}
+		n += f.refetchPending(ctx)
 		f.mu.Lock()
 		// Up only when Relay answered at least one poll this round: a dead
 		// API must not read as a quiet one (the rows would age with no sign).
@@ -316,12 +326,6 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 		gRelayFeed.Set(b2f(f.up))
 		// forget ids older than a day
 		cut := time.Now().Add(-24 * time.Hour).Unix()
-		pcut := time.Now().Add(-30 * time.Minute).Unix()
-		for id, t := range f.pending {
-			if t < pcut {
-				delete(f.pending, id)
-			}
-		}
 		for id, t := range f.seen {
 			if t < cut {
 				delete(f.seen, id)
@@ -387,69 +391,25 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				}
 				f.mu.Lock()
 				_, known := f.seen[key]
-				// A request met before it was final sits in pending: the walk
-				// goes past known requests until the oldest pending one is
-				// reached again, so a late finaliser (refunds finalise last)
-				// is counted on the poll where it is final.
-				// Only recent pending requests keep the walk going (a request
-				// stuck pending for long would otherwise drag every round to
-				// the page budget); past a quarter of an hour the walk stops
-				// at the first known request as before.
-				older := false
-				recent := time.Now().Add(-15 * time.Minute).Unix()
-				for _, pc := range f.pending {
-					if pc < created && pc >= recent {
-						older = true
-						break
-					}
-				}
 				f.mu.Unlock()
 				if known {
-					if !older || created < recent {
-						stop = true
-					}
+					stop = true
 					continue
 				}
 				if r.Status == "pending" || r.Status == "depositing" {
+					// Not final yet: remembered and re-read by id on the next
+					// rounds (a refund finalises last and would otherwise sit
+					// behind the first known request the walk stops at).
 					f.mu.Lock()
-					f.pending[key] = created
+					if _, ok := f.pending[key]; !ok {
+						f.pending[key] = pendingReq{app: a, chain: c, created: created, since: time.Now().Unix()}
+					}
 					f.mu.Unlock()
-					continue // not final yet; counted on a later poll
+					continue
 				}
-				x, ok := classify(a, c, r)
-				f.mu.Lock()
-				f.seen[key] = time.Now().Unix()
-				delete(f.pending, key)
-				if ok && x.Funding && x.Recipient != "" && strings.HasPrefix(x.Recipient, "0x") {
-					if f.funded[x.App] == nil {
-						f.funded[x.App] = map[string]int64{}
-					}
-					f.funded[x.App][strings.ToLower(x.Recipient)] = time.Now().Unix()
-				}
-				if ok {
-					b := f.box[x.rowSlug()]
-					if b == nil {
-						b = &xinbox{}
-						f.box[x.rowSlug()] = b
-					}
-					b.seen++
-					if x.Status != "success" {
-						b.failed++
-						if b.errs == nil {
-							b.errs = map[string]int{}
-						}
-						b.errs[x.Status]++
-					} else if x.OutTx != "" {
-						b.total++
-						if len(b.reservoir) < reservoirSize {
-							b.reservoir = append(b.reservoir, x)
-						} else if j := rand.Intn(b.total); j < reservoirSize {
-							b.reservoir[j] = x
-						}
-					}
+				if f.count(a, c, r) {
 					added++
 				}
-				f.mu.Unlock()
 			}
 			cont = rr.Continuation
 			if stop || cont == "" {
@@ -461,6 +421,105 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 		}
 	}
 	return added
+}
+
+// count takes one final request: marks it seen for the app, records the
+// wallet it funded, and feeds the row's counters and reservoir. True when
+// the request is the app's.
+func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
+	key := a.Slug + ":" + r.ID
+	x, ok := classify(a, c, r)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.seen[key] = time.Now().Unix()
+	delete(f.pending, key)
+	if !ok {
+		return false
+	}
+	if x.Funding && x.Recipient != "" && strings.HasPrefix(x.Recipient, "0x") {
+		if f.funded[x.App] == nil {
+			f.funded[x.App] = map[string]int64{}
+		}
+		f.funded[x.App][strings.ToLower(x.Recipient)] = time.Now().Unix()
+	}
+	b := f.box[x.rowSlug()]
+	if b == nil {
+		b = &xinbox{}
+		f.box[x.rowSlug()] = b
+	}
+	b.seen++
+	if x.Status != "success" {
+		b.failed++
+		if b.errs == nil {
+			b.errs = map[string]int{}
+		}
+		b.errs[x.Status]++
+	} else if x.OutTx != "" {
+		b.total++
+		if len(b.reservoir) < reservoirSize {
+			b.reservoir = append(b.reservoir, x)
+		} else if j := rand.Intn(b.total); j < reservoirSize {
+			b.reservoir[j] = x
+		}
+	}
+	return true
+}
+
+// refetchPending re-reads the requests met before they were final, by id
+// (Relay's /requests/v2?id=), at most 60 a round; final ones are counted,
+// ones pending for over 30 minutes are forgotten.
+func (f *xfeed) refetchPending(ctx context.Context) (counted int) {
+	f.mu.Lock()
+	keys := make([]string, 0, len(f.pending))
+	for k := range f.pending {
+		keys = append(keys, k)
+	}
+	f.mu.Unlock()
+	cut := time.Now().Add(-30 * time.Minute).Unix()
+	n := 0
+	for _, k := range keys {
+		f.mu.Lock()
+		p, ok := f.pending[k]
+		f.mu.Unlock()
+		if !ok {
+			continue
+		}
+		if p.since < cut {
+			f.mu.Lock()
+			delete(f.pending, k)
+			f.mu.Unlock()
+			continue
+		}
+		if n >= 60 {
+			break
+		}
+		n++
+		id := strings.TrimPrefix(k, p.app.Slug+":")
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.relay.link/requests/v2?id="+id, nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0 (+https://openchainbench.com)")
+		req.Header.Set("Accept", "application/json")
+		resp, err := f.http.Do(req)
+		if err != nil {
+			return counted
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			continue
+		}
+		var rr relayResp
+		if json.Unmarshal(body, &rr) != nil || len(rr.Requests) == 0 {
+			continue
+		}
+		var r relayRaw
+		if json.Unmarshal(rr.Requests[0], &r) != nil || r.ID == "" || r.Status == "pending" || r.Status == "depositing" {
+			continue
+		}
+		if f.count(p.app, p.chain, r) {
+			counted++
+		}
+	}
+	return counted
 }
 
 // classify decides whether a Relay request belongs to the app (its fee
