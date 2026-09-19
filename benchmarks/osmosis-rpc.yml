@@ -3,7 +3,8 @@
 slug: osmosis-rpc
 number: "091"
 title: Fastest free Osmosis RPC, live no-key endpoint latency
-seo_title: "Fastest free Osmosis RPC 2026"
+# seo_title test cohort (2026-09-19): endpoint-intent title; H1 keeps the measured claim.
+seo_title: "Osmosis RPC endpoints: free public URLs ranked by latency"
 seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). {{count}} no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public Osmosis Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
