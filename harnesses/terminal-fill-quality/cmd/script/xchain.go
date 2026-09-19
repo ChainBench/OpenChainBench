@@ -75,7 +75,7 @@ var originChains = []originChain{
 	{8453, "base", []string{"https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://base.drpc.org"}, "ETH-USD"},
 	{1, "ethereum", []string{"https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"}, "ETH-USD"},
 	{5042, "arc", []string{"https://rpc.mainnet.arc.io"}, ""},
-	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, ""},
+	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, "HYPE-USD"}, // priced from Hyperliquid's mids (Coinbase does not list HYPE)
 }
 
 const solanaChainID = 792703809
@@ -906,6 +906,19 @@ func gasPrices(ctx context.Context, httpc *http.Client) map[string]float64 {
 		resp.Body.Close()
 		if p := f64(cb.Data.Amount); p > 0 {
 			out[pair] = p
+		}
+	}
+	// HYPE: Hyperliquid's own spot mids (the only liquid print for it).
+	if req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.hyperliquid.xyz/info", strings.NewReader(`{"type":"allMids"}`)); err == nil {
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+		if resp, err := httpc.Do(req); err == nil {
+			var mids map[string]string
+			json.NewDecoder(resp.Body).Decode(&mids)
+			resp.Body.Close()
+			if p := f64(mids["HYPE"]); p > 0 {
+				out["HYPE-USD"] = p
+			}
 		}
 	}
 	return out

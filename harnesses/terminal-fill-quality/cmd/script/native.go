@@ -104,6 +104,22 @@ var evmTerminals = []evmTerminal{
 		FromSet:     "basedbot",
 		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1, "0xdcacba5e347ae7abd91cb519eb877af8fa7774e347b85dd3ddcd24a2ba8cdf37": 3},
 		Note:        "BasedBot's users on Robinhood Chain: the wallets it funded from Solana through Relay, trading on the chain's router (shared with other front ends: only those wallets' swaps count). Value given = what the wallet sent plus gas; received = the tokens at the pool's state before the swap; the router's transfers to its fee and referral accounts (about 1 % of the trade) are the fee, the residual after the pool and gas."},
+	// The same router family on Base (0xbce806…), Ethereum (0xf92807…) and
+	// BNB (0xeada78…): same swap event, sender in topic 1, same funded-set
+	// filter (2026-09-19: 9 of 40 senders on Base and 15 of 30 on BNB were
+	// BasedBot-funded wallets: shared routers).
+	{Slug: "basedbot-base", Name: "BasedBot · Base", Kind: "bot", Chain: "base",
+		Routers: []string{"0xbce80645b0e9b0ab52648b0d23f37db56616ea93"}, FromSet: "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
+		Note:        "BasedBot's users on Base: the wallets it funded from Solana through Relay, trading on its router family's contract there (shared with other front ends: only those wallets' swaps count); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas."},
+	{Slug: "basedbot-bnb", Name: "BasedBot · BNB", Kind: "bot", Chain: "bnb",
+		Routers: []string{"0xeada78153c3f0524663c9029faf0734d08dda599"}, FromSet: "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
+		Note:        "BasedBot's users on BNB: the wallets it funded from Solana through Relay, trading on its router family's contract there (shared with other front ends: only those wallets' swaps count); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas."},
+	{Slug: "basedbot-ethereum", Name: "BasedBot · Ethereum", Kind: "bot", Chain: "ethereum",
+		Routers: []string{"0xf9280799c85d376e0425f6fb38e4a674e8bedb56"}, FromSet: "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
+		Note:        "BasedBot's users on Ethereum: the wallets it funded from Solana through Relay, trading on its router family's contract there (a few swaps an hour); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas."},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
 		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
