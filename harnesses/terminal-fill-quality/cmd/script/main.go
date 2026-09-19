@@ -80,7 +80,7 @@ var (
 		Name: "tfq_loss_bps_chain", Help: "Cross-chain apps: median loss per swap by origin chain (bnb, robinhood, base, ethereum, arc)",
 	}, []string{"terminal", "chain", "origin"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_health", Help: "1 when the entry has at least MIN_PRICED priced samples in the window (a product on one chain: half that)",
+		Name: "tfq_health", Help: "1 when the entry has at least MIN_PRICED priced samples in the window (a product on one chain: half that), its main chain is not still filling, and its sample is not one side only with no fee",
 	}, []string{"terminal", "chain"})
 	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
@@ -94,8 +94,11 @@ var (
 	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
 	}, []string{"terminal", "chain"})
-	gRefresh   = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
-	gFeed      = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
+	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
+	}, []string{"terminal", "chain"})
 	gRelayFeed = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_relay_feed_up", Help: "1 when Relay's requests API answered the last polling round (the cross-chain rows' feed)"})
 	gSol       = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
 	cCalls     = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_calls_total", Help: "RPC calls"})
@@ -103,7 +106,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors)
 }
 
 func envInt(k string, def int) int {
@@ -130,6 +133,9 @@ type minuteBucket struct {
 	SampFailed int `json:"sf,omitempty"`
 	SampBlocks int `json:"sb,omitempty"` // blocks read in full this minute
 	SpanBlocks int `json:"sp,omitempty"` // blocks the chain made over the polled range
+	// Rej: draws rejected this minute, by reason (windowed with the bucket,
+	// unlike the legacy State.Rejects which grew for the life of the file).
+	Rej map[string]int `json:"rej,omitempty"`
 }
 
 // recordSample adds a block sample's attempts and reverts (native EVM)
@@ -258,7 +264,7 @@ type TerminalStats struct {
 	/** Healthy: at least MIN_PRICED priced swaps (figure published). Ranked: at least MIN_RANK (figure ranked). */
 	Healthy bool `json:"healthy"`
 	Ranked  bool `json:"ranked"`
-	// UnpricedShare: drawn swaps left unpriced over drawn swaps (cumulative rejects), informative.
+	// UnpricedShare: the window's drawn swaps left unpriced over drawn swaps, informative.
 	UnpricedShare float64 `json:"unpriced_share,omitempty"`
 }
 
@@ -562,10 +568,18 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 }
 
 func (st *State) reject(slug string, r parseReject) {
-	if st.Rejects[slug] == nil {
-		st.Rejects[slug] = map[string]int{}
+	now := time.Now().Unix()
+	m := now - now%60
+	b := st.Buckets[slug]
+	if len(b) == 0 || b[len(b)-1].T != m {
+		b = append(b, minuteBucket{T: m})
 	}
-	st.Rejects[slug][string(r)]++
+	last := &b[len(b)-1]
+	if last.Rej == nil {
+		last.Rej = map[string]int{}
+	}
+	last.Rej[string(r)]++
+	st.Buckets[slug] = b
 }
 
 // priceSwap sets the swap's reference price and runs the sandwich screen:
@@ -1093,7 +1107,7 @@ func seedFunded(st *State) {
 			st.Funded[app][w] = s.Time
 		}
 	}
-	cut := time.Now().Add(-7 * 24 * time.Hour).Unix()
+	cut := time.Now().Add(-14 * 24 * time.Hour).Unix()
 	for app, m := range st.Funded {
 		for w, t := range m {
 			if t < cut {
@@ -1303,6 +1317,13 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
 			ts.Healthy = true
 		}
+		// A native EVM row whose sample is one side only with no fee on it
+		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
+		// the fee sits on the side the feed never sees, the row waits.
+		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
+			ts.Healthy, ts.Ranked = false, false
+			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+		}
 		out = append(out, ts)
 		if ts.Chain == "funding" {
 			continue
@@ -1382,15 +1403,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 // product's rows on every chain).
 func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (TerminalStats, bool) {
 	member := set(slugs...)
-	rejects := map[string]int{}
-	for _, slug := range slugs {
-		for k, v := range st.Rejects[slug] {
-			rejects[k] += v
-		}
-	}
-	if len(rejects) == 0 {
-		rejects = nil
-	}
+	rejects := map[string]int{} // the window's rejected draws by reason (from the minute buckets)
 	{
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
@@ -1415,6 +1428,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				for k, v := range b.Errs {
 					errs[k] += v
 				}
+				for k, v := range b.Rej {
+					rejects[k] += v
+				}
 			}
 			ts.Seen += seen
 			ts.Failed += sfailed
@@ -1435,6 +1451,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 		}
 		ts.Attempts, ts.AttemptsFailed = int(math.Round(att)), int(math.Round(failed))
+		if len(rejects) == 0 {
+			ts.Rejects = nil
+		}
 		if att >= 20 {
 			fr := 100 * failed / att
 			ts.FailRate = &fr // percent
@@ -1454,6 +1473,36 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			for _, slug := range slugs {
 				if nrows[slug] > 0 && attOf[slug] > 0 {
 					weightOf[slug] = attOf[slug] / float64(nrows[slug])
+				}
+			}
+		}
+		// Farming loops on a row that drops them: a wallet trading the same
+		// token both ways four times or more in the window.
+		loopers := map[string]bool{}
+		for _, slug := range slugs {
+			if !dropsLoops(slug) {
+				continue
+			}
+			type um struct{ u, m string }
+			sides := map[um][2]int{}
+			count := map[string]int{}
+			for _, s := range st.Swaps {
+				if s.Terminal != slug || s.Method != methodVersion {
+					continue
+				}
+				k := um{s.User, s.Mint}
+				v := sides[k]
+				if s.Side == "buy" {
+					v[0]++
+				} else {
+					v[1]++
+				}
+				sides[k] = v
+				count[s.User]++
+			}
+			for k, v := range sides {
+				if v[0] > 0 && v[1] > 0 && count[k.u] >= 4 {
+					loopers[slug+":"+k.u] = true
 				}
 			}
 		}
@@ -1487,7 +1536,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		for _, s := range st.Swaps {
-			if !member[s.Terminal] || s.Method != methodVersion {
+			if !member[s.Terminal] || s.Method != methodVersion || loopers[s.Terminal+":"+s.User] {
 				continue
 			}
 			if s.Scanned {
@@ -1641,9 +1690,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			top = top[:8]
 		}
 		ts.OtherTop = top
-		// The share of the drawn swaps that could not be valued (cumulative
-		// rejects against parsed rows): large on the EVM rows, where routes
-		// through pools without a quote leg or undecoded venues stay out.
+		// The share of the window's drawn swaps that could not be valued:
+		// large on the EVM rows, where routes through pools without a quote
+		// leg or undecoded venues stay out.
 		if total := 0; rejects != nil {
 			unpriced := 0
 			for k, v := range rejects {
@@ -1708,7 +1757,7 @@ func publishGauges(stats []TerminalStats) {
 			for _, g := range []*prometheus.GaugeVec{gLoss, gComponent, gTrade, gVenue, gLossSize, gLossChain} {
 				g.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 			}
-			for _, g := range []*prometheus.GaugeVec{gFail, gBuy, gSandwich, gSandwichProfit, gFailCost, gFailOverhead, gLostUSD} {
+			for _, g := range []*prometheus.GaugeVec{gFail, gBuy, gSandwich, gSandwichProfit, gFailCost, gFailOverhead, gLostUSD, gUnpriced} {
 				g.DeleteLabelValues(ts.Product, ts.Chain)
 			}
 			gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
@@ -1782,6 +1831,11 @@ func publishGauges(stats []TerminalStats) {
 			gLostUSD.WithLabelValues(ts.Product, ts.Chain).Set(ts.TradeUSD.Median * ts.Loss.Median / 1e4)
 		} else {
 			gLostUSD.DeleteLabelValues(ts.Product, ts.Chain)
+		}
+		if ts.UnpricedShare > 0 {
+			gUnpriced.WithLabelValues(ts.Product, ts.Chain).Set(ts.UnpricedShare)
+		} else {
+			gUnpriced.DeleteLabelValues(ts.Product, ts.Chain)
 		}
 		gHealth.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Healthy))
 		gRanked.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Ranked))

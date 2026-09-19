@@ -82,7 +82,7 @@ var terminals = []Terminal{
 		Programs:         []string{"jitodontfront1111111111111111111TradeonFomo"},
 		Internal:         []string{"AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51"},
 		StableLegsAreFee: true,
-		Note:             "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Its fee is a router commission plus one or two user-signed USDC legs to per-trade accounts, all counted as terminal fee. Cross-chain trades routed through Relay are not swaps on Solana and are not sampled."},
+		Note:             "FOMO sponsors gas: its own signer pays the transaction fee, so the user's network cost is zero. Its fee is a router commission plus one or two user-signed USDC legs to per-trade accounts, all counted as terminal fee. Its cross-chain trades through Relay are read on the destination chains and pooled with this Solana row on All chains."},
 	{Slug: "photon", Name: "Photon", Kind: "app", Wallets: []string{"AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH"},
 		Tips: []string{"9Y6UXhkaf5vJGhsmdWYitceaEkRDsvVNTgtVp4acu57S", "7J7fe1H9bo1ScWxoUny3raqM1WHqfERvSvEQDU7APKLe"}},
 	{Slug: "trojan", Name: "Trojan", Kind: "bot", Wallets: []string{

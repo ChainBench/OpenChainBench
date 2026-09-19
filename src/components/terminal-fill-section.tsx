@@ -57,7 +57,7 @@ export async function TerminalFillSection({
                 : me.healthy && me.loss
                   ? `${ciText(me)} · ranked from ${f.minRank} swaps`
                   : me.priced > 0
-                    ? `${me.priced} priced swaps, ${f.minPriced} needed`
+                    ? whyUnpublished(me, f.minPriced)
                     : "no priced swap yet"
             }
           />
@@ -127,7 +127,7 @@ export async function TerminalFillSection({
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtPct(t.loss!.median)} · ${ciText(t)}` : undefined}>
-                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
+                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? whyUnpublished(t, f.minPriced) : "no priced swap yet"}>—</span>}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
                   <SplitCell t={t} part="terminal" pub={pub} />
@@ -257,6 +257,14 @@ function topReason(t: TerminalFillStats): string | undefined {
 }
 
 /** Stacked bar of the median cost components, on a shared scale. */
+/** Why an entry is not published: the harness's own reason when it holds one, else the count. */
+function whyUnpublished(t: TerminalFillStats, minPriced: number): string {
+  const n = t.note ?? "";
+  if (n.includes("still filling its window: the pooled figure waits")) return `${t.priced} priced swaps, but the chain carrying most of the flow is still filling: the pooled figure waits for it`;
+  if (n.includes("One side only in the sample")) return `${t.priced} priced swaps, one side only with no fee on it: the fee is taken on the side the feed never sees`;
+  return `${t.priced} priced swaps, ${minPriced} needed`;
+}
+
 /** Percent of the trade from basis points: 442 bps → "4.42 %". */
 function fmtPct(bps: number): string {
   const sign = bps < 0 ? "−" : "";
