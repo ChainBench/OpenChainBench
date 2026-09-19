@@ -30,6 +30,12 @@ jobs:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: scripts/emit-page-mtimes.ts (prebuild) reads each
+          # content file's last commit for the sitemap <lastmod>. A depth-1
+          # checkout dates only the files touched by HEAD and every other
+          # URL falls back to the build time (929 of 929 on 2026-09-19).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
