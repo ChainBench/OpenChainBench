@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 
 /**
  * Shared OG template for hub pages (/about, /methodology, /contribute,
@@ -30,7 +30,7 @@ export function renderHubOG({
   subline,
   accent = "#7a2e1f",
 }: HubOgArgs) {
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

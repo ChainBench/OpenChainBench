@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getComparePair } from "@/data/compare-pairs";
 import { canonicalize } from "@/lib/providers";
 
@@ -18,13 +18,13 @@ export default async function OG({
 }) {
   const { slug } = await params;
   const pair = getComparePair(slug);
-  if (!pair) return new ImageResponse(<div />, { ...size });
+  if (!pair) return ogResponse(<div />, { ...size });
 
   const a = canonicalize(pair.providerA).name;
   const b = canonicalize(pair.providerB).name;
   const title = `${a} vs ${b}`;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

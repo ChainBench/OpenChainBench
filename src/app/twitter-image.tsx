@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 
 export const runtime = "nodejs";
 // Share cards change slowly (title, leader, headline value); crawlers
@@ -10,7 +10,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function TwitterImage() {
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

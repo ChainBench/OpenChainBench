@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getProvider } from "@/lib/providers";
 import { OgHighlight } from "@/lib/og-claim";
 
@@ -25,7 +25,7 @@ export default async function OG({
 }) {
   const { slug } = await params;
   const p = await getProvider(slug);
-  if (!p) return new ImageResponse(<div />, { ...size });
+  if (!p) return ogResponse(<div />, { ...size });
 
   const top1Line =
     p.wins > 0
@@ -34,7 +34,7 @@ export default async function OG({
   const appearancesLine = `${p.appearances.length} benchmark${p.appearances.length === 1 ? "" : "s"} measured`;
   const accent = p.wins > 0 ? "#6a9466" : "#7a7166";
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

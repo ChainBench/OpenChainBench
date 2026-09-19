@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 import { getBenchmark } from "@/data/benchmarks";
 import { leader } from "@/lib/citation";
 import { OgClaimSentence } from "@/lib/og-claim";
@@ -65,7 +65,7 @@ export default async function TwitterImage({
   const b = chainId
     ? (await loadBenchmark(slug, { chain: chainId })) ?? (await getBenchmark(slug))
     : await getBenchmark(slug);
-  if (!b) return new ImageResponse(<div />, { ...size });
+  if (!b) return ogResponse(<div />, { ...size });
 
   const top = leader(b);
   const headline = top ? `${top.name} leads at ${fmtUnit(top.value, b.unit)}` : "Awaiting first run";
@@ -76,7 +76,7 @@ export default async function TwitterImage({
     : null;
   const titleText = chainLabel ? `${b.title} on ${chainLabel}` : b.title;
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{

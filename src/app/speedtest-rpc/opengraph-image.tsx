@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import { ogResponse } from "@/lib/og-response";
 
 export const runtime = "nodejs";
 // Share cards change slowly (title, leader, headline value); crawlers
@@ -65,7 +65,7 @@ export default function OG() {
   }
   const [nx, ny] = polar(210, 210, 128, angle);
 
-  return new ImageResponse(
+  return ogResponse(
     (
       <div
         style={{
