@@ -281,7 +281,7 @@ fee wallets (Ethereum `0xa74FA823…`, BSC `0x2b0A28A0…`, Base
 `0x16388de4…`); they last received on Ethereum on 2026-08-26 and on Base
 on 2026-09-06, the BSC one gains about 0.01 BNB a day, the trades went
 through Multicall3: no volume to measure. **BasedBot**: its Relay
-requests (about 130 an hour on 2026-09-19) are wallet funding the other
+requests (about 330 an hour on 2026-09-19) are wallet funding the other
 way round: SOL sent from Solana, ETH or BNB delivered to the user's own
 wallet on Robinhood Chain, BNB, Base or Ethereum (a few into its contract
 `0xb92fe925…`), with no app fee; `classify` keeps them as `Funding` and

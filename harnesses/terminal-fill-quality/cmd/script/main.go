@@ -1611,7 +1611,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			termW = append(termW, w)
 			net = append(net, s.NetworkBps)
 			netW = append(netW, w)
-			if s.Chain != "" {
+			if s.RelayID != "" {
 				relay = append(relay, s.RelayBps)
 				relayW = append(relayW, w)
 			}
@@ -1974,7 +1974,7 @@ func c2field(s Swap, c string) (float64, bool) {
 	case "network":
 		return s.NetworkBps, true
 	case "relay":
-		if s.Chain == "" {
+		if s.RelayID == "" {
 			return 0, false
 		}
 		return s.RelayBps, true
@@ -1993,13 +1993,15 @@ func c2field(s Swap, c string) (float64, bool) {
 }
 
 // chainMeanOfMedians: for a pooled entry, each component as the mean of
-// the rows' medians weighted by the rows' attempts (a row with no value
-// for a component, an EVM row without "other", counts as 0 there: its
-// users pay none of it).
+// the rows' medians weighted by the rows' attempts, over the rows that
+// carry the component (a Solana row whose swaps are all routed has no
+// "other": pump.fun's fees sit inside its pool figure); published only
+// when those rows carry at least half of the product's flow, else the
+// column stays blank rather than describing a minority.
 func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf map[string]float64, get func(Swap, string) (float64, bool)) map[string]float64 {
 	out := map[string]float64{}
 	for _, c := range []string{"terminal", "network", "relay", "other", "pool"} {
-		num, den := 0.0, 0.0
+		num, den, denAll := 0.0, 0.0, 0.0
 		any := false
 		for _, slug := range slugs {
 			var vals []float64
@@ -2020,15 +2022,15 @@ func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf
 			if w <= 0 {
 				w = float64(rows)
 			}
-			m := 0.0
-			if len(vals) > 0 {
-				m = median(vals)
-				any = true
+			denAll += w
+			if len(vals) == 0 {
+				continue
 			}
-			num += w * m
+			any = true
+			num += w * median(vals)
 			den += w
 		}
-		if any && den > 0 {
+		if any && den > 0 && den >= 0.5*denAll {
 			out[c] = num / den
 		}
 	}
