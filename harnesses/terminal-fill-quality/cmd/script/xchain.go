@@ -240,13 +240,14 @@ func f64(s string) float64 { v, _ := strconv.ParseFloat(s, 64); return v }
 // per app and per tick, the counts and a reservoir of successful
 // settlements on Solana, like the WebSocket feed does for native swaps.
 type xfeed struct {
-	http *http.Client
-	mu   sync.Mutex
-	seen map[string]int64 // request id -> first seen (dedupe across polls)
-	box  map[string]*xinbox
-	ok   map[string]int
-	last time.Time
-	up   bool
+	http     *http.Client
+	mu       sync.Mutex
+	seen     map[string]int64 // request id -> first seen (dedupe across polls)
+	box      map[string]*xinbox
+	ok       map[string]int
+	last     time.Time
+	up       bool
+	answered bool // a poll of this round got a page from Relay (read and reset by run)
 }
 
 type xinbox struct {
@@ -287,8 +288,14 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 			n += f.poll(ctx, c)
 		}
 		f.mu.Lock()
-		f.up = true
-		f.last = time.Now()
+		// Up only when Relay answered at least one poll this round: a dead
+		// API must not read as a quiet one (the rows would age with no sign).
+		f.up = f.answered
+		if f.answered {
+			f.last = time.Now()
+		}
+		f.answered = false
+		gRelayFeed.Set(b2f(f.up))
 		// forget ids older than a day
 		cut := time.Now().Add(-24 * time.Hour).Unix()
 		for id, t := range f.seen {
@@ -339,6 +346,7 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			if json.Unmarshal(body, &rr) != nil {
 				return added
 			}
+			f.answered = true
 			stop := len(rr.Requests) == 0
 			for _, raw := range rr.Requests {
 				var r relayRaw

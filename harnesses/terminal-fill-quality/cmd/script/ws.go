@@ -105,7 +105,7 @@ func (f *feed) run(ctx context.Context) {
 		if time.Since(started) > time.Minute {
 			backoff = time.Second
 		}
-		log.Printf("[ws] disconnected: %v (retry in %s)", err, backoff)
+		log.Printf("[ws] disconnected: %s (retry in %s)", redactURL(err.Error(), f.url), backoff)
 		time.Sleep(backoff)
 		if backoff < 60*time.Second {
 			backoff *= 2
