@@ -83,7 +83,7 @@ var evmTerminals = []evmTerminal{
 	// On the sampled Ethereum swaps the router's fee event (0x72015ace…,
 	// what DeFiLlama sums) reads 0 and the wallet pays nothing beyond the
 	// value and the gas in the block (balance N−1 → N): the fee is not in
-	// the swap transaction, so the terminal component reads 0 here.
+	// the swap transaction; the row waits (one side only, no fee on it).
 	{Slug: "banana-gun-ethereum", Name: "Banana Gun · Ethereum", Kind: "bot", Chain: "ethereum", Routers: []string{"0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49"},
 		Note: "Banana Gun's Ethereum router logs a fee of 0 on every sampled swap, the wallet pays nothing beyond the value sent and the gas, and its other transfers show no fee either: no fee is visible on-chain for these swaps, so the terminal component reads 0."},
 	{Slug: "banana-gun-base", Name: "Banana Gun · Base", Kind: "bot", Chain: "base", Routers: []string{"0x1fba6b0bbae2b74586fba407fb45bd4788b7b130"}},
@@ -679,7 +679,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if given <= 0 {
 			return &Swap{Flag: "unpriced_no_quote_in"}
 		}
-		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) > 0 {
+		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) >= 0 { // a buy paid in an ERC20 sends the tip alone as value
 			tipUSD := f(tip) / 1e18 * price
 			given -= tipUSD
 			sw.NetworkQ += tipUSD

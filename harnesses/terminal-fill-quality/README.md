@@ -22,8 +22,8 @@ venues, Jupiter, the terminals' routers): only those are swap attempts;
 wallet funding, fee sweeps and GMGN's 1-lamport markers are counted apart
 and never enter the fail rate. Each tick draws `DAILY_TARGET × tick /
 86400` of the tick's successful attempts per terminal at random
-(reservoir sample, weighted by the tick's activity so bursts are
-represented in proportion to their trades) and reads them with
+(reservoir sample, weighted by the tick's activity against its running
+mean, clamped between half and twice) and reads them with
 `getTransaction`. When the feed is down the harness polls the wallets
 instead (`WS=0` forces polling; without logs every signature counts as an
 attempt).
@@ -87,7 +87,7 @@ The token leg is valued at an **arrival price**, in this order:
 
 ```
 buy : loss = 1 − tokens × ref / user_q
-sell: loss = 1 − user_q / (tokens × ref)
+sell: loss = 1 − user_q / (tokens × ref)          (EVM sell: base = tokens × ref + the gas paid apart, user_q = gross proceeds)
 ```
 
 `loss_bps` is the whole shortfall the user suffered against that
@@ -246,9 +246,10 @@ router: the launchpad hooks on Robinhood Chain, 1 %, paid in every
 router's transactions, and on BNB, 3.8 %), is a cost of that pool
 (`delivered` in `priceEvmOriginSale`: the largest recipient's amount
 went on, the rest, at most a quarter, is the hook's); a **native leg**
-(BNB sent on a buy, ETH received on a sell) is valued at the rate the
-route itself swapped the gas coin at on its stable ↔ wrapped hop when it
-did (`nativeRate`, within 5 % of Coinbase), so an exchange's print
+(BNB sent on a buy, ETH received on a sell) is valued at the
+route's own stable ↔ wrapped hop pool's mid before the hop (`nativeRate`,
+within 5 % of Coinbase; the hop's own cost into pool; the executed rate as
+fallback), so an exchange's print
 against the pool's rate is no longer a "fee"; and Axiom's **inclusion
 tip**, forwarded from the router to its tip account on every
 transaction on top of its 1 % (BNB: a fixed 0.0025 BNB to `0xdd8431ce…`;
@@ -268,8 +269,8 @@ polled the same way (`banana-gun-<chain>`); on Ethereum its router's fee
 event (`0x72015ace…`, what DeFiLlama sums) reads 0 on every sampled
 swap, the wallet pays nothing beyond value and gas in the block, and the
 users' other transfers (Alchemy asset transfers, weeks back) go nowhere
-but the routers: no fee is visible on-chain, the terminal component
-reads 0 there (said in the row's note); Base and BNB see no Banana Gun
+but the routers: no fee is visible on-chain, so the row is held (one side
+only, no fee on it) until its sells and fee are read; Base and BNB see no Banana Gun
 swaps (Mobula attributes none either). **Binance Wallet** trades through
 one swap router on BSC, Ethereum and Base (`0xb300000b…`, the
 transactions' `to`; Mobula attributes ~75 an hour on BSC, ~30 on

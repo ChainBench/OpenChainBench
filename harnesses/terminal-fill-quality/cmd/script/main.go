@@ -77,7 +77,7 @@ var (
 		Name: "tfq_loss_bps_size", Help: "Median loss per swap by trade-size bucket (under25, 25to250, over250 USD)",
 	}, []string{"terminal", "chain", "bucket"})
 	gLossChain = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_loss_bps_chain", Help: "Cross-chain apps: median loss per swap by origin chain (bnb, robinhood, base, ethereum, arc)",
+		Name: "tfq_loss_bps_chain", Help: "A pooled product's median loss per swap by chain (origin = solana, bnb, robinhood, base, ethereum, arc, hyperevm)",
 	}, []string{"terminal", "chain", "origin"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_health", Help: "1 when the entry has at least MIN_PRICED priced samples in the window (a product on one chain: half that), its main chain is not still filling, and its sample is not one side only with no fee",
@@ -341,11 +341,6 @@ func main() {
 	st := loadState(stateFile)
 	applyLearned(st)
 	seedFunded(st)
-	{
-		sctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-		seedFundedFromRelay(sctx, httpc, st)
-		cancel()
-	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	quota := map[string]float64{}
 	failQuota := map[string]float64{}
@@ -383,6 +378,13 @@ func main() {
 		json.NewEncoder(w).Encode(pub)
 	})
 	go func() { log.Fatal(http.ListenAndServe(addr, nil)) }()
+	// The Relay seed walk (up to 3 min) runs with /metrics already served:
+	// Prometheus never sees the restart as a scrape gap.
+	{
+		sctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		seedFundedFromRelay(sctx, httpc, st)
+		cancel()
+	}
 
 	sol := 0.0
 	// Cohort discovery every DISCOVER_EVERY ticks (6 h at a 1-minute
@@ -1261,7 +1263,10 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 // cannot be right (a hop or quote matched to the wrong leg): a pool
 // component below −10 % or a Relay component above 30 % of the trade.
 func implausibleSplit(sw *Swap) {
-	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000) {
+	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
+		// A pool component under −100 bps on a route through several pools
+		// is a quote leg the matching missed, not a fill better than the
+		// mid (Binance's 7-pool route read terminal 1134 bps, pool −762).
 		sw.Flag, sw.Priced = "split_implausible", false
 	}
 }
