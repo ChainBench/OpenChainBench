@@ -12,6 +12,7 @@
  */
 
 import { promises as fs } from "node:fs";
+import { loadSpecsUncached } from "@/lib/materialize/load";
 import path from "node:path";
 import { cache } from "react";
 import yaml from "js-yaml";
@@ -116,8 +117,17 @@ export const loadAllAnswers = cache(async (): Promise<Answer[]> => {
       return result.data;
     }),
   );
+  // An answer whose bench spec is not in this deployment renders 404
+  // (loadAnswer returns undefined), yet it was listed, in the sitemap and
+  // in other answers' `related` lists: six such answers on staging and
+  // two dead links per Polymarket answer on 2026-09-19. Same rule as the
+  // provider index: only what this checkout can render.
+  const specSlugs = new Set(
+    (await loadSpecsUncached().catch(() => [])).map((sp) => sp.slug),
+  );
   return parsed
     .filter((a): a is Answer => a !== null && a.status === "live")
+    .filter((a) => specSlugs.size === 0 || specSlugs.has(a.benchmark))
     // Prod-only gate: answers built on staging-pipeline benches never
     // reach the prod listing, sitemap or tag clouds. Direct URL hits
     // get a 410 from middleware.
