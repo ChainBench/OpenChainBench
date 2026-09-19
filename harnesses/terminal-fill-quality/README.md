@@ -269,8 +269,10 @@ polled the same way (`banana-gun-<chain>`); on Ethereum its router's fee
 event (`0x72015ace…`, what DeFiLlama sums) reads 0 on every sampled
 swap, the wallet pays nothing beyond value and gas in the block, and the
 users' other transfers (Alchemy asset transfers, weeks back) go nowhere
-but the routers: no fee is visible on-chain, so the row is held (one side
-only, no fee on it) until its sells and fee are read; Base and BNB see no Banana Gun
+but the routers: no fee is visible on-chain, and its buyers sell straight
+through Uniswap's router (2 of 2 sellers among 14 recent buyers, the rest
+still holding, 2026-09-19), so the row is buys only by nature and stays
+held out of the product (one side, no fee); Base and BNB see no Banana Gun
 swaps (Mobula attributes none either). **Binance Wallet** trades through
 one swap router on BSC, Ethereum and Base (`0xb300000b…`, the
 transactions' `to`; Mobula attributes ~75 an hour on BSC, ~30 on
