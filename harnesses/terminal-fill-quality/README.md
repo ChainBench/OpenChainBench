@@ -94,7 +94,8 @@ sell: loss = 1 − user_q / (tokens × ref)
 reference; `terminal_bps` / `network_bps` are exact; `other_bps` is known
 on single-pool swaps without hops; `pool_bps` = loss − terminal − network
 − other, i.e. LP fee + price impact, plus the hop costs and unattributed
-fees on routed swaps. The four components always sum to the loss. All in
+fees on routed swaps. The components always sum to the loss (relay
+included on the Relay rows). All in
 basis points of the trade (buy: quote spent; sell: tokens × ref; unpriced
 sell: the larger of pool_q and what the user got back plus fees). Losses
 outside [−1000, 5000] bps are parsing or reference errors: the row keeps
@@ -235,7 +236,8 @@ received = a quote ERC20 to the user, else the user's native balance
 change across the block plus the gas paid (`eth_getBalance` at N−1 and
 N); pricing through `priceEvmOriginSale`. The terminal's fee is an
 internal native transfer to its collector, invisible in logs: it is the
-residual of given − pool − gas (buy) or pool − received − gas (sell),
+residual of given − pool − gas (buy) or pool − proceeds (sell, the gas
+already inside the proceeds),
 so a venue fee paid the same way would sit in it. Three things are kept
 out of that residual (call traces of 2026-09-18 on both chains):
 a **hook fee**, when a Uniswap v4 pool's hook keeps part of the swap's

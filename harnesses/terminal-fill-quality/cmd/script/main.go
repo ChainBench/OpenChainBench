@@ -50,7 +50,7 @@ var (
 		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi",
 	}, []string{"terminal", "chain", "stat"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_component_bps", Help: "Median cost component per swap, basis points of the trade",
+		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow",
 	}, []string{"terminal", "chain", "component"})
 	gFail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_rate_pct", Help: "Share of the terminal's swap attempts that failed on-chain, percent (rolling window, every attempt the feed saw)",
@@ -1102,7 +1102,7 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 
 // seedFunded rebuilds the funded-wallet sets from the window's funding legs
 // (the users an app funded on another chain: their trades on that chain's
-// shared router are the app's) and drops entries older than a week.
+// shared router are the app's) and drops entries older than two weeks.
 func seedFunded(st *State) {
 	if st.Funded == nil {
 		st.Funded = map[string]map[string]int64{}
@@ -1840,6 +1840,7 @@ func publishGauges(stats []TerminalStats) {
 		} else {
 			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
+		gComponent.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain}) // a component that dropped out stays out
 		for c, v := range ts.Components {
 			gComponent.WithLabelValues(ts.Product, ts.Chain, c).Set(v)
 		}

@@ -66,6 +66,19 @@ export type TerminalFillStats = {
   ranked: boolean;
 };
 
+/** USD value in and out of a swap: buy = quote spent (fee inside) against tokens at the reference; sell = tokens at the reference against quote received. */
+function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOutUsd?: number } {
+  const userQ = num(s.user_q);
+  const tokens = num(s.tokens);
+  const ref = num(s.ref_price);
+  const q = num(s.quote_usd);
+  if (userQ === undefined || q === undefined || q <= 0) return {};
+  const quoteUsd = Math.abs(userQ) * q;
+  const tokenUsd = tokens !== undefined && ref !== undefined && ref > 0 ? tokens * ref * q : undefined;
+  if (s.side === "sell") return { ...(tokenUsd !== undefined ? { valueInUsd: tokenUsd } : {}), valueOutUsd: quoteUsd };
+  return { valueInUsd: quoteUsd, ...(tokenUsd !== undefined ? { valueOutUsd: tokenUsd } : {}) };
+}
+
 export type FillSample = {
   sig: string;
   terminal: string;
@@ -94,6 +107,9 @@ export type FillSample = {
   terminalBps: number;
   networkBps: number;
   otherBps?: number;
+  /** The two sides in USD: what the user gave and what the user received (the token side at the reference). */
+  valueInUsd?: number;
+  valueOutUsd?: number;
 };
 
 export type TerminalFills = {
@@ -237,6 +253,7 @@ function parse(raw: unknown): TerminalFills | null {
         terminalBps: num(s.terminal_bps) ?? 0,
         networkBps: num(s.network_bps) ?? 0,
         ...(num(s.other_bps) !== undefined ? { otherBps: num(s.other_bps) } : {}),
+        ...valueSides(s),
       });
     }
   }
