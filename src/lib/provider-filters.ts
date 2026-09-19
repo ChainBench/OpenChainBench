@@ -17,9 +17,16 @@ import type { ProviderResult } from "@/types/benchmark";
  * changes (e.g. add a min sample-size threshold).
  */
 export function liveResults(results: ProviderResult[]): ProviderResult[] {
-  return results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
-  );
+  return results.filter((r) => {
+    if (r.availability === "unavailable") return false;
+    // Rows the loader marked live carry real aggregates whatever their
+    // sign (bridge-realized-cost: Mobula at -$0.0038 and LI.FI at
+    // -$0.00008 were dropped from the ranking on 2026-09-19 by the
+    // positive-only guard, and Relay was crowned). The `> 0` guard stays
+    // for legacy rows without the flag.
+    if (r.availability === "live") return Number.isFinite(r.ms.p50);
+    return r.ms.p50 > 0;
+  });
 }
 
 /**

@@ -998,6 +998,12 @@ async function tryLoadLive(
         tag: p.tag,
         type: p.type,
         layer: p.layer,
+        // Explicit: a row that reached this point has real aggregates,
+        // whatever their sign. liveResults() keeps such a row on a finite
+        // p50, so a signed metric (slippage vs quote: a bridge that beats
+        // its quote is negative) is not dropped by the legacy `p50 > 0`
+        // guard, which only applies to rows without the flag.
+        availability: "live",
         ms: { p50, p90, p99, mean: mean ?? p50 },
         slots:
           slotP50 != null && slotP99 != null

@@ -113,6 +113,9 @@ export function fmtUnit(value: number, unit: string) {
   }
   if (unit === "usd") {
     if (value === 0) return "$0";
+    // Signed amounts (slippage vs quote: a bridge that beats its quote is
+    // negative) read "-$0.0038", not "$-0.0038".
+    if (value < 0) return `-${fmtUnit(-value, unit)}`;
     const abs = Math.abs(value);
     // Fee-grade precision: network fees can be 6 decimals deep
     // ($0.000001 Avalanche transfer), so we can't collapse anything
