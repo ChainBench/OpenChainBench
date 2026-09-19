@@ -2,9 +2,9 @@
 
 slug: bridge-execution-latency
 number: "261"
-title: "Fastest on-chain bridge execution: real settlement latency, Mobula vs Relay vs LI.FI"
+title: "Fastest on-chain bridge execution: real settlement latency, Mobula vs Relay vs LI.FI vs Near Intents"
 seo_title: "Fastest bridge execution 2026: real on-chain settlement latency and success rate"
-seo_description: "Live on-chain bridge execution, not quotes: real millisecond settlement latency, success rate and realized fees for Mobula, Relay and LI.FI on a self-conserving USDC triangle across Solana, Base and Arbitrum."
+seo_description: "Live on-chain bridge execution, not quotes: real millisecond settlement latency, success rate and realized fees for Mobula, Relay, LI.FI and Near Intents on a self-conserving USDC triangle across Solana, Base and Arbitrum."
 subtitle: Real on-chain settlement latency (deposit included to credit observed, ms), success rate and realized fees for executed bridge transactions on a self-conserving USDC triangle (Solana, Base, Arbitrum), at $3 and $30, measured from EU-West.
 category: Bridges
 status: live
@@ -14,55 +14,55 @@ higher_is_better: false
 
 # Per-corridor breakdown. The chain label carries route.ToChain, so each tab
 # isolates one leg of the triangle: Sol to Base, Base to Arb, Arb to Sol. The
-# amount tab isolates the $3 and $30 ticket sizes. Every figure is a REAL
+# $3 and $30 tickets are pooled (labelled amount_usd in Prometheus). Every figure is a REAL
 # executed transaction (broadcast to on-chain settlement), never a quote.
 dimensions:
   chain:
     - { value: Base,     label: Sol to Base }
     - { value: Arbitrum, label: Base to Arb }
     - { value: Solana,   label: Arb to Sol }
-  amount_usd:
-    - { value: "3",  label: "$3" }
-    - { value: "30", label: "$30" }
 
 seo_intro: |
   Every other bridge comparison on the internet measures quotes. This one
   measures the transaction. We run a self-conserving USDC triangle (Solana
   to Base to Arbitrum and back) with real capital, broadcasting real
-  transfers through Mobula, Relay and LI.FI, and we time each one from
-  broadcast to the moment the funds actually land on the destination chain.
+  transfers through Mobula, Relay, LI.FI and Near Intents, and we time each
+  one from the moment the deposit is included on the source chain to the
+  moment the funds are credited on the destination chain.
   Quotes are a promise; settlement is the truth, and the gap between them is
   where slippage, failed fills and refunds live. This benchmark reports the
   real millisecond settlement latency, the success rate (fills versus
   reverts and refunds) and the realized fee (amount sent minus amount
-  received) for two ticket sizes, $3 and $30, per corridor, measured from
-  EU-West. Inventory is conserved across the cycle, so only fees burn.
+  received) at two ticket sizes, $3 and $30, pooled per corridor, measured
+  from EU-West. Inventory is conserved across the cycle, so only fees burn.
 
 abstract: |
   We execute real cross-chain transfers on a conserving USDC triangle
   (Solana to Base, Base to Arbitrum, Arbitrum to Solana) through Mobula,
-  Relay and LI.FI, at $3 and $30. For each executed transaction we record
-  the on-chain execution latency (deposit included to credit observed, ms), the
+  Relay, LI.FI and Near Intents, at $3 daily and $30 twice a week. For each executed transaction we record
+  the settlement latency (deposit included to credit observed, in milliseconds), the
   end-to-end latency (quote to funds received), the realized fee, and
-  whether it settled, reverted or was refunded. p50, p90 and p99 latency are
-  derived over a rolling 24-hour window; success rate is fills over fills
-  plus reverts and refunds. Reverted and refunded transactions are excluded
-  from the latency distribution and counted against the success rate.
+  whether it settled, reverted, was refunded or got stuck. With one execution
+  per corridor per day, p50, p90 and p99 are derived over a rolling 7-day
+  window (about 7 to 9 executions per bridge and corridor); success rate is
+  fills over fills plus reverts, refunds and stuck deposits. Only settled
+  transactions enter the latency distribution.
 
 methodology:
   - "Route: a self-conserving all-USDC triangle. Solana USDC to Base USDC, Base USDC to Arbitrum USDC, Arbitrum USDC to Solana USDC. Each executing bridge completes the full triangle before the next starts, so inventory returns to its origin and only fees burn."
-  - "Ticket sizes: $3 daily and $30 twice weekly, on fixed UTC schedules. Amounts are deliberately small: this measures settlement reliability, not large-ticket cost."
+  - "Ticket sizes: $3 daily and $30 twice weekly (Monday and Thursday), on fixed UTC schedules, pooled in every figure and labelled amount_usd in Prometheus. Amounts are deliberately small: this measures settlement reliability, not large-ticket cost. Window: 7 days, so each bridge and corridor carries about 7 to 9 executions; a 24-hour window would hold one."
   - "Latency: measured by the harness at both ends on one clock, every 100 ms on keyed RPCs. The recipient's balance is watched from before the deposit is broadcast (first read above the pre-execution balance = credit observed); the deposit's inclusion is watched from the broadcast (receipt on Base and Arbitrum, signature status on Solana = source included). Published figure = credit observed minus source included, in milliseconds."
   - "Latency precision: detection lag is at most 100 ms plus one RPC round-trip on each end. The destination block timestamp minus the source block timestamp is published alongside as bridge_exec_onchain_ms as a whole-second cross-check (the two chains' clocks can disagree by a block)."
-  - "Latency history: until 2026-09-19 the figure was the wall clock to a 5-second status poll, which floored every fill at 5.x s; that series stays as bridge_exec_observed_ms and the poll-era history was deleted from Prometheus. A settled execution the watch missed falls back to the block delta, then to the wall clock, counted in bridge_execution_latency_fallback_total."
-  - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts and refunds count against the success rate."
+  - "Latency history: until 2026-09-19 the figure was the wall clock to a 5-second status poll, which floored every fill at 5.x s; that series stays as bridge_exec_observed_ms and the poll-era history was deleted from Prometheus."
+  - "Latency fallbacks: a settled execution the watch missed falls back to credit minus broadcast, then to the block delta, then to the wall clock. Every published value carries a method label (watch, watch-broadcast, blocks, poll) and bridge_execution_latency_fallback_total counts the non-watch ones by method."
+  - "Outcome classification: settled (funds received), reverted or refunded (capital returned to source), or errored (never broadcast). Only settled transactions contribute to the latency distribution; reverts, refunds and stuck deposits count against the success rate."
   - "Region: EU-West only at present. The execution node runs a single wallet, so a second origin would race the same inventory; additional origins are not planned for the execution loop."
   - "Cohort: Mobula, Relay, LI.FI and Near Intents (Near Intents runs its own conserving USDC triangle via the 1Click flow). deBridge is quote-only in this loop. Providers without a symmetric route on all three legs are excluded so the triangle conserves."
   - "Cost metrics captured per real execution (beyond latency and success): realized output on-chain, execution slippage vs the quote (realized fee minus quote-projected fee), our own on-chain gas paid (approve + deposit, measured as source-chain native balance delta), and the refund rate split from hard-fail rate. These surface the true all-in cost and the gap between a quote and what actually settles."
   - "Reliability tail: cross-chain settlement is asynchronous, so a broadcast can end three ways beyond a clean fill. We split them: refunded (capital returned, with a refund-latency histogram for how fast it came back), reverted (on-chain failure), and stuck (a deposit whose status never resolved to a fill or refund in the poll window). The stuck rate is the share of swaps a user would have to chase manually: the honest measure of what is not automatically handled."
 
 findings:
-  - "{{name:mobula}} settles at {{p50:mobula}} (p50, broadcast to funds received) with a {{success:mobula}} success rate over the last 24 hours."
+  - "{{name:mobula}} settles at {{p50:mobula}} (p50, deposit included to credit observed) with a {{success:mobula}} success rate over the last 7 days."
   - "{{name:relay}} settles at {{p50:relay}} with a {{success:relay}} success rate."
   - "{{name:lifi}} settles at {{p50:lifi}} with a {{success:lifi}} success rate."
   - "{{name:near-intents}} settles at {{p50:near-intents}} with a {{success:near-intents}} success rate; intent settlement runs longer than lock-mint fills, so its latency sits above the others while staying reliable."
@@ -75,7 +75,7 @@ faq:
   - q: "Why only $3 and $30?"
     a: "The goal is settlement reliability and latency, which do not require large notionals. Small tickets keep the standing capital and the burned fees low while still exercising the full broadcast, settle and accounting path on every provider."
   - q: "How is the success rate computed?"
-    a: "Settled transactions divided by settled plus reverted and refunded. A transaction that never broadcast (a pre-flight or quote failure) is not counted against a provider; a broadcast that reverts or is refunded is."
+    a: "Settled transactions divided by settled plus reverted, refunded and stuck, over the last 7 days. A transaction that never broadcast (a pre-flight or quote failure) is not counted against a provider; a broadcast that reverts, is refunded, or never resolves in the 5-minute poll window is."
   - q: "Where does this run from?"
     a: "EU-West. The execution node holds a single wallet and signs every broadcast, so running a second origin would race the same inventory. The latency therefore reflects an EU-West vantage; the quote-latency benchmark on this site covers multi-region read latency separately."
 
@@ -88,74 +88,82 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-
 # (bridge_refunds_total, bridge_stuck_total, bridge_refund_latency_ms) and
 # are documented in the methodology until they accrue enough samples to panel.
 metric_panels:
+  - id: fee
+    label: Realized fee
+    metric: avg by (bridge) (ocb:bridge_fees_usd:avg_7d{region="eu-west"})
+    label_key: bridge
+    unit: usd
+    higher_is_better: false
+    description: "Amount sent minus amount actually received on the destination chain, in USD, averaged over the last 7 days of executions. The fee a user really paid, read on-chain rather than from the quote."
   - id: slippage
     label: Slippage vs quote
-    metric: avg by (bridge) (ocb:bridge_quote_slippage_usd:mean_24h{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_quote_slippage_usd:mean_7d{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
     description: "Realized fee minus quote-projected fee, in USD. The gap between what the quote promised and what actually settled."
   - id: gas
     label: All-in gas we paid
-    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_24h{region="eu-west"})
+    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_7d{region="eu-west"})
     label_key: bridge
     unit: usd
     higher_is_better: false
     description: "Our own on-chain gas (approve plus deposit), measured as the source-chain native balance delta. The cost the user bears on top of the bridge fee."
 
 prometheus:
-  window: 24h
-  freshness_metric: bridge_execution_latency_ms
+  window: 7d
+  freshness_timestamp_metric: bridge_last_execution_timestamp_seconds
+  expected_freshness_seconds: 172800
 
 providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
-    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Mobula from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over the last 7 days of settlement latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Mobula from EU-West, $3 and $30 tickets pooled, at the selected corridor."
     queries:
-      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="mobula", region="eu-west"})
-      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="mobula", region="eu-west"})
-      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="mobula", region="eu-west"})
-      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="mobula", region="eu-west"})
-      success: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h])), 1)
-      sample_size: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[24h]))
-      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="mobula", region="eu-west"}
+      p50: avg(ocb:bridge_exec_latency_ms:p50_7d{bridge="mobula", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_7d{bridge="mobula", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_7d{bridge="mobula", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_7d{bridge="mobula", region="eu-west"})
+      success: sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[7d])) / clamp_min(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="mobula", region="eu-west"}[7d])), 1)
+      sample_size: round(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="mobula", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="mobula", region="eu-west"}[7d])))
+      series: ocb:bridge_exec_latency_ms:p50_7d{bridge="mobula", region="eu-west"}
 
   - slug: relay
     name: Relay
     tag: Cross-chain relay
-    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Relay from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over the last 7 days of settlement latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through Relay from EU-West, $3 and $30 tickets pooled, at the selected corridor."
     queries:
-      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="relay", region="eu-west"})
-      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="relay", region="eu-west"})
-      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="relay", region="eu-west"})
-      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="relay", region="eu-west"})
-      success: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h])), 1)
-      sample_size: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[24h]))
-      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="relay", region="eu-west"}
+      p50: avg(ocb:bridge_exec_latency_ms:p50_7d{bridge="relay", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_7d{bridge="relay", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_7d{bridge="relay", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_7d{bridge="relay", region="eu-west"})
+      success: sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[7d])) / clamp_min(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="relay", region="eu-west"}[7d])), 1)
+      sample_size: round(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="relay", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="relay", region="eu-west"}[7d])))
+      series: ocb:bridge_exec_latency_ms:p50_7d{bridge="relay", region="eu-west"}
 
   - slug: lifi
     name: LI.FI
     tag: Aggregator
-    formula: "p50 over 24h of on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over the last 7 days of settlement latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through LI.FI from EU-West, $3 and $30 tickets pooled, at the selected corridor."
     queries:
-      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="lifi", region="eu-west"})
-      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="lifi", region="eu-west"})
-      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="lifi", region="eu-west"})
-      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="lifi", region="eu-west"})
-      success: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h])), 1)
-      sample_size: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[24h]))
-      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="lifi", region="eu-west"}
+      p50: avg(ocb:bridge_exec_latency_ms:p50_7d{bridge="lifi", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_7d{bridge="lifi", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_7d{bridge="lifi", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_7d{bridge="lifi", region="eu-west"})
+      success: sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[7d])) / clamp_min(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="lifi", region="eu-west"}[7d])), 1)
+      sample_size: round(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="lifi", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="lifi", region="eu-west"}[7d])))
+      series: ocb:bridge_exec_latency_ms:p50_7d{bridge="lifi", region="eu-west"}
 
   - slug: near-intents
     name: Near Intents
     tag: Intent layer (NEAR)
-    formula: "p50 over 24h of exact on-chain execution latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through the Near Intents 1Click flow from EU-West, at the selected ticket size and corridor."
+    formula: "p50 over the last 7 days of settlement latency (deposit included to credit observed, ms) for real USDC-triangle transfers executed through the Near Intents 1Click flow from EU-West, $3 and $30 tickets pooled, at the selected corridor."
     queries:
-      p50: avg(ocb:bridge_exec_latency_ms:p50_24h{bridge="near-intents", region="eu-west"})
-      p90: avg(ocb:bridge_exec_latency_ms:p90_24h{bridge="near-intents", region="eu-west"})
-      p99: avg(ocb:bridge_exec_latency_ms:p99_24h{bridge="near-intents", region="eu-west"})
-      mean: avg(ocb:bridge_exec_latency_ms:mean_24h{bridge="near-intents", region="eu-west"})
-      success: sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) / clamp_min(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[24h])), 1)
-      sample_size: sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[24h])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[24h]))
-      series: ocb:bridge_exec_latency_ms:p50_24h{bridge="near-intents", region="eu-west"}
+      p50: avg(ocb:bridge_exec_latency_ms:p50_7d{bridge="near-intents", region="eu-west"})
+      p90: avg(ocb:bridge_exec_latency_ms:p90_7d{bridge="near-intents", region="eu-west"})
+      p99: avg(ocb:bridge_exec_latency_ms:p99_7d{bridge="near-intents", region="eu-west"})
+      mean: avg(ocb:bridge_exec_latency_ms:mean_7d{bridge="near-intents", region="eu-west"})
+      success: sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[7d])) / clamp_min(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="near-intents", region="eu-west"}[7d])), 1)
+      sample_size: round(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[7d])) + sum(increase(bridge_reverts_total{bridge="near-intents", region="eu-west"}[7d])) + sum(increase(bridge_stuck_total{bridge="near-intents", region="eu-west"}[7d])))
+      series: ocb:bridge_exec_latency_ms:p50_7d{bridge="near-intents", region="eu-west"}

@@ -327,6 +327,10 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 	result.OutputUSD = outUsd
 	if inUsd > 0 && outUsd > 0 && inUsd >= outUsd {
 		result.ActualFeeUSD = inUsd - outUsd
+		// The quote-projected fee, so the slippage panel compares realized
+		// against quoted like the other bridges (it used to be 0 here, and
+		// the whole realized fee was published as slippage).
+		result.QuoteFeeUSD = inUsd - outUsd
 	}
 	return result, txHash, nil
 }

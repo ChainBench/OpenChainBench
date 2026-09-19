@@ -22,7 +22,7 @@ var (
 	// Execution latency (broadcast to funds received)
 	bridgeExecutionLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "bridge_execution_latency_ms",
-		Help:    "Latency from broadcast to funds received in milliseconds",
+		Help:    "Settlement latency of settled executions in milliseconds (same value as bridge_exec_latency_ms); refunds are observed separately in bridge_refund_latency_ms",
 		Buckets: []float64{1000, 5000, 10000, 30000, 60000, 120000, 300000, 600000},
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
@@ -112,10 +112,17 @@ var (
 	// take quantile_over_time / avg_over_time over the REAL observed latencies
 	// (same pattern as the gauge-backed fee + realized-cost benches), so the
 	// numbers are exact instead of bucketed.
+	// Per-execution "pulse" gauges. Set once per settled execution and
+	// deleted after pulseTTL (2 to 3 scrapes at 30 s), so every execution
+	// contributes the same handful of samples to a range query and the
+	// 7-day quantiles weigh executions equally. Before 2026-09-19 they were
+	// last-value gauges that persisted for days: quantile_over_time over
+	// them returned the last execution (p50 = p90 = p99 on every row) and
+	// the "24h" panels averaged Thursday's $30 legs into Saturday.
 	bridgeExecLatencyMs = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_exec_latency_ms",
-		Help: "Settlement latency in ms, last value per corridor: destination credit observed minus source inclusion observed, both read every 100 ms on one clock; block-timestamp delta or the poll wall clock only when the watch missed an end (see bridge_execution_latency_fallback_total)",
-	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+		Help: "Settlement latency of one execution in ms (pulse, deleted after pulseTTL): destination credit observed minus source inclusion observed, both read every 100 ms on one clock. method=watch|watch-broadcast|blocks|poll says which measurement produced the value",
+	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain", "method"})
 
 	// The pre-2026-09-19 figure (broadcast to the poll that saw the fill),
 	// kept next to the on-chain one so the two can be compared.
@@ -133,8 +140,15 @@ var (
 
 	bridgeExecLatencyFallback = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_execution_latency_fallback_total",
-		Help: "Settled executions whose latency had to use the poll wall clock (no destination hash or block time unavailable)",
-	}, []string{"bridge", "from_chain", "to_chain", "region"})
+		Help: "Settled executions whose published latency did not come from the two-ended watch, by method (watch-broadcast: source inclusion missed; blocks: block-timestamp delta; poll: wall clock to the status poll)",
+	}, []string{"bridge", "from_chain", "to_chain", "region", "method"})
+
+	// Persistent: unix time of the last completed execution per bridge and
+	// region, the site's freshness source (prometheus.freshness_timestamp_metric).
+	bridgeLastExecutionTs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_last_execution_timestamp_seconds",
+		Help: "Unix time of the last execution that reached a terminal state (settled, reverted, refunded or stuck), per bridge and region",
+	}, []string{"bridge", "region"})
 
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{

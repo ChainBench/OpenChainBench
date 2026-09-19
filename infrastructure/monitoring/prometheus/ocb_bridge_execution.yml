@@ -1,30 +1,39 @@
 # Recording rules for the bridge EXECUTION benches (261 latency, 263 realized
-# cost). These metrics come from real executions that run ~once/day, so the
-# raw gauges go Prom-stale between runs and instant queries see nothing. Each
-# rule re-evaluates the 24h window every 30s and emits a FRESH ocb: series,
-# so the site always has a current value to render (standard OCB pattern; the
-# labels are preserved so the chain / amount_usd / region tabs still filter).
+# cost). These metrics come from real executions that run once a day ($3) and
+# twice a week ($30), published by the harness as PULSE gauges: each execution
+# is exposed for about 75 s (2 to 3 scrapes) and then deleted, so every
+# execution weighs the same in a range query. The window is 7 DAYS: a 24h
+# window holds one execution per corridor and its p50, p90 and p99 were the
+# same number (audit 2026-09-19). Each rule re-evaluates every 30 s and emits
+# a FRESH ocb: series so the site always has a current value to render; the
+# labels are preserved so the chain / region tabs still filter.
 groups:
   - name: ocb_bridge_execution
     interval: 30s
     rules:
-      - record: ocb:bridge_exec_latency_ms:p50_24h
-        expr: quantile_over_time(0.50, bridge_exec_latency_ms[24h])
-      - record: ocb:bridge_exec_latency_ms:p90_24h
-        expr: quantile_over_time(0.90, bridge_exec_latency_ms[24h])
-      - record: ocb:bridge_exec_latency_ms:p99_24h
-        expr: quantile_over_time(0.99, bridge_exec_latency_ms[24h])
-      - record: ocb:bridge_exec_latency_ms:mean_24h
-        expr: avg_over_time(bridge_exec_latency_ms[24h])
-      - record: ocb:bridge_quote_slippage_usd:p50_24h
-        expr: quantile_over_time(0.50, bridge_quote_slippage_usd[24h])
-      - record: ocb:bridge_quote_slippage_usd:p90_24h
-        expr: quantile_over_time(0.90, bridge_quote_slippage_usd[24h])
-      - record: ocb:bridge_quote_slippage_usd:p99_24h
-        expr: quantile_over_time(0.99, bridge_quote_slippage_usd[24h])
-      - record: ocb:bridge_quote_slippage_usd:mean_24h
-        expr: avg_over_time(bridge_quote_slippage_usd[24h])
-      - record: ocb:bridge_exec_gas_usd:avg_24h
-        expr: avg_over_time(bridge_exec_gas_usd[24h])
-      - record: ocb:bridge_realized_output_usd:avg_24h
-        expr: avg_over_time(bridge_realized_output_usd[24h])
+      - record: ocb:bridge_exec_latency_ms:p50_7d
+        expr: quantile_over_time(0.50, bridge_exec_latency_ms[7d])
+      - record: ocb:bridge_exec_latency_ms:p90_7d
+        expr: quantile_over_time(0.90, bridge_exec_latency_ms[7d])
+      - record: ocb:bridge_exec_latency_ms:p99_7d
+        expr: quantile_over_time(0.99, bridge_exec_latency_ms[7d])
+      - record: ocb:bridge_exec_latency_ms:mean_7d
+        expr: avg_over_time(bridge_exec_latency_ms[7d])
+      - record: ocb:bridge_exec_latency_ms:last
+        expr: last_over_time(bridge_exec_latency_ms[7d])
+      - record: ocb:bridge_quote_slippage_usd:p50_7d
+        expr: quantile_over_time(0.50, bridge_quote_slippage_usd[7d])
+      - record: ocb:bridge_quote_slippage_usd:p90_7d
+        expr: quantile_over_time(0.90, bridge_quote_slippage_usd[7d])
+      - record: ocb:bridge_quote_slippage_usd:p99_7d
+        expr: quantile_over_time(0.99, bridge_quote_slippage_usd[7d])
+      - record: ocb:bridge_quote_slippage_usd:mean_7d
+        expr: avg_over_time(bridge_quote_slippage_usd[7d])
+      - record: ocb:bridge_exec_gas_usd:avg_7d
+        expr: avg_over_time(bridge_exec_gas_usd[7d])
+      - record: ocb:bridge_realized_output_usd:avg_7d
+        expr: avg_over_time(bridge_realized_output_usd[7d])
+      - record: ocb:bridge_fees_usd:avg_7d
+        expr: avg_over_time(bridge_fees_usd[7d])
+      - record: ocb:bridge_exec_onchain_ms:mean_7d
+        expr: avg_over_time(bridge_exec_onchain_ms[7d])

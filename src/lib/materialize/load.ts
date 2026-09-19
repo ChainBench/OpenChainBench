@@ -1217,7 +1217,20 @@ async function tryLoadLive(
     // mask the outage.
     let lastRunAt = new Date().toISOString();
     const freshnessMetric = spec.prometheus?.freshness_metric;
-    if (freshnessMetric) {
+    const freshnessTsMetric = spec.prometheus?.freshness_timestamp_metric;
+    if (freshnessTsMetric) {
+      // Value = unix time of the last run (bridge-execution-latency:
+      // executions are pulses, an instant query on them is empty between
+      // runs and used to fall back to "now", so a dead harness read as
+      // "updated 4 min ago" forever).
+      const lastTs = await prom.scalar(`max(${freshnessTsMetric})`);
+      if (lastTs != null && Number.isFinite(lastTs) && lastTs > 1_600_000_000) {
+        lastRunAt = new Date(lastTs * 1000).toISOString();
+      } else {
+        // No run recorded at all: say so rather than pretending.
+        lastRunAt = new Date(0).toISOString();
+      }
+    } else if (freshnessMetric) {
       const ageSec = await prom.dataAgeSec(freshnessMetric);
       if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
         lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
