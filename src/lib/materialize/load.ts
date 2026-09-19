@@ -1223,9 +1223,12 @@ async function tryLoadLive(
       // executions are pulses, an instant query on them is empty between
       // runs and used to fall back to "now", so a dead harness read as
       // "updated 4 min ago" forever).
-      const lastTs = await prom.scalar(`max(${freshnessTsMetric})`);
-      if (lastTs != null && Number.isFinite(lastTs) && lastTs > 1_600_000_000) {
-        lastRunAt = new Date(lastTs * 1000).toISOString();
+      // Ask Prometheus for the AGE, not the timestamp: prom.scalar keeps
+      // 6 significant digits, which rounds a unix time to the nearest
+      // ~1000 s (18:36:50 came back as 17:46:40 on 2026-09-19).
+      const ageSec = await prom.scalar(`time() - max(${freshnessTsMetric})`);
+      if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0 && ageSec < 10 * 365 * 86_400) {
+        lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
       } else {
         // No run recorded at all: say so rather than pretending.
         lastRunAt = new Date(0).toISOString();
