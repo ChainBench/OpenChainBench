@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { loadSitemapBlob } from "@/lib/sitemap-blob";
+import { isExpiredRpcPage } from "@/lib/provider-filters";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -62,6 +64,26 @@ type Params = { slug: string };
 // on first hit, and the OG image route follows the same behavior.
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return [];
+}
+
+/** A row that is a link when the target page is indexable, a div
+ *  otherwise (same layout, no anchor into a noindex page). */
+function RowLink({
+  href,
+  className,
+  children,
+}: {
+  href: string | null;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return href ? (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
 }
 
 /** "Arbitrum RPC" for a chain RPC bench, the title otherwise: the chain
@@ -205,6 +227,17 @@ export default async function ProviderPage({
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
+  // Bench pages this deployment indexes (worker sitemap minus expired
+  // chain pages). An appearance on a thin or expired chain RPC bench is
+  // still shown (it is a real measurement) but not linked: the product
+  // pages were a main source of crawl into noindex pages (2 to 7 per
+  // page on 2026-09-19).
+  const sitemapBlob = await loadSitemapBlob();
+  const linkableBench = sitemapBlob
+    ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
+    : null;
+  const canLink = (benchSlug: string) =>
+    !benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug);
 
   // Degraded-read tripwire: a provider listed on several benches never
   // loses EVERY rank in the same cycle — that signature means the store
@@ -487,7 +520,9 @@ export default async function ProviderPage({
           990,
         ),
         ...(sameAs.length > 0 ? { sameAs } : {}),
-        subjectOf: sorted.map((a) => ({
+        // Only indexable bench pages: a Dataset node pointing at a noindex
+        // URL is a crawl hint into a page we asked engines to skip.
+        subjectOf: sorted.filter((a) => canLink(a.benchmark.slug)).map((a) => ({
           "@type": "Dataset",
           // GSC + Google Dataset Search flag anonymous Datasets
           // ("Unnamed item" with recommended fields missing) when the
@@ -828,8 +863,8 @@ export default async function ProviderPage({
             const hasChainRanks = chainRanks.length > 0;
             return (
               <li key={a.benchmark.slug}>
-                <Link
-                  href={`/benchmarks/${a.benchmark.slug}`}
+                <RowLink
+                  href={canLink(a.benchmark.slug) ? `/benchmarks/${a.benchmark.slug}` : null}
                   className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
@@ -887,7 +922,7 @@ export default async function ProviderPage({
                       </p>
                     )}
                   </div>
-                </Link>
+                </RowLink>
               </li>
             );
           })}
