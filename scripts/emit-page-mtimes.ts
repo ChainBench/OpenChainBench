@@ -23,7 +23,7 @@
  * Regenerated on every build. Do NOT commit `data/page-mtimes.json`.
  */
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -44,6 +44,7 @@ const PAGES: string[] = [
   "compare/page.tsx",
   "alternatives/page.tsx",
   "team/page.tsx",
+  "reports/page.tsx",
 ];
 
 function gitMtimeSeconds(rel: string): number | null {
@@ -86,6 +87,62 @@ function buildTimeSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+// Editorial content files whose last commit is the honest <lastmod> of the
+// pages they feed: bench specs (bench pages, their chain pages, products,
+// categories, chain hubs), answers and alternatives YAMLs, the curated
+// compare pairs. Keys are namespaced ("bench:<slug>") so the sitemap can
+// ask for one without guessing paths. Before this, every bench URL carried
+// the last data run as lastmod (870 of 879 URLs on one day, Search Console
+// 2026-09-19), which Google discards as a signal.
+function gitMtimeSecondsAbs(absRel: string): number | null {
+  try {
+    const out = execSync(`git log -1 --format=%ct -- "${absRel}"`, {
+      cwd: ROOT,
+      encoding: "utf8",
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (!out) return null;
+    const secs = Number.parseInt(out, 10);
+    return Number.isFinite(secs) && secs > 0 ? secs : null;
+  } catch {
+    return null;
+  }
+}
+
+function listYaml(dir: string): string[] {
+  try {
+    return readdirSync(path.join(ROOT, dir))
+      .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+      .map((f) => f.replace(/\.ya?ml$/, ""));
+  } catch {
+    return [];
+  }
+}
+
+function addEditorialEntries(manifest: Record<string, number>): number {
+  // One `git log` per file is fine at prebuild (about 300 files, ~5 s);
+  // a single `git log --name-only` walk would be faster but harder to read.
+  let n = 0;
+  const groups: [string, string][] = [
+    ["bench", "benchmarks"],
+    ["answer", "answers"],
+    ["alt", "alternatives"],
+  ];
+  for (const [ns, dir] of groups) {
+    for (const slug of listYaml(dir)) {
+      const secs = gitMtimeSecondsAbs(`${dir}/${slug}.yml`) ?? gitMtimeSecondsAbs(`${dir}/${slug}.yaml`);
+      if (secs !== null) {
+        manifest[`${ns}:${slug}`] = secs;
+        n += 1;
+      }
+    }
+  }
+  const pairs = gitMtimeSecondsAbs("src/data/compare-pairs.ts");
+  if (pairs !== null) manifest["compare-pairs"] = pairs;
+  return n;
+}
+
 function main(): void {
   const manifest: Record<string, number> = {};
   const buildFallback = buildTimeSeconds();
@@ -102,10 +159,11 @@ function main(): void {
     }
     manifest[rel] = buildFallback;
   }
+  const editorial = addEditorialEntries(manifest);
   if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(OUT_FILE, `${JSON.stringify(manifest, null, 2)}\n`);
   const rel = path.relative(ROOT, OUT_FILE);
-  console.log(`wrote ${Object.keys(manifest).length} entries to ${rel}`);
+  console.log(`wrote ${Object.keys(manifest).length} entries to ${rel} (${editorial} editorial files)`);
 }
 
 main();
