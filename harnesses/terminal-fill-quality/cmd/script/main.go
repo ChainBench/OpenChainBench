@@ -31,6 +31,7 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"os"
@@ -46,7 +47,7 @@ import (
 
 var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|ci_lo|ci_hi",
+		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi",
 	}, []string{"terminal", "chain", "stat"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Median cost component per swap, basis points of the trade",
@@ -79,7 +80,7 @@ var (
 		Name: "tfq_loss_bps_chain", Help: "Cross-chain apps: median loss per swap by origin chain (bnb, robinhood, base, ethereum, arc)",
 	}, []string{"terminal", "chain", "origin"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_health", Help: "1 when the terminal has at least MIN_PRICED priced samples in the window",
+		Name: "tfq_health", Help: "1 when the entry has at least MIN_PRICED priced samples in the window (a product on one chain: half that)",
 	}, []string{"terminal", "chain"})
 	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
@@ -126,11 +127,14 @@ type minuteBucket struct {
 	// (transactions sent to the routers) and the reverted ones among them.
 	SampSeen   int `json:"ss,omitempty"`
 	SampFailed int `json:"sf,omitempty"`
+	SampBlocks int `json:"sb,omitempty"` // blocks read in full this minute
+	SpanBlocks int `json:"sp,omitempty"` // blocks the chain made over the polled range
 }
 
-// recordSample adds a block sample's attempts and reverts (native EVM).
-func (st *State) recordSample(slug string, now int64, seen, failed int) {
-	if seen == 0 {
+// recordSample adds a block sample's attempts and reverts (native EVM)
+// and the sample's coverage: blocks read over blocks in the polled range.
+func (st *State) recordSample(slug string, now int64, seen, failed, blocks, span int) {
+	if seen == 0 && blocks == 0 {
 		return
 	}
 	m := now - now%60
@@ -140,6 +144,8 @@ func (st *State) recordSample(slug string, now int64, seen, failed int) {
 	}
 	b[len(b)-1].SampSeen += seen
 	b[len(b)-1].SampFailed += failed
+	b[len(b)-1].SampBlocks += blocks
+	b[len(b)-1].SpanBlocks += span
 	st.Buckets[slug] = b
 }
 
@@ -261,6 +267,7 @@ type OtherRecipient struct {
 type Quantiles struct {
 	Median float64  `json:"median"`
 	P90    float64  `json:"p90"`
+	P99    float64  `json:"p99"`
 	N      int      `json:"n"`
 	CILo   *float64 `json:"ci_lo,omitempty"` // 95 % bootstrap interval of the median
 	CIHi   *float64 `json:"ci_hi,omitempty"`
@@ -636,7 +643,9 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				// Solana, the delivery and the pool's state on the destination),
 				// or a token sold on the origin chain and settled on Solana.
 				var sw *Swap
-				if x.DestChain != "" {
+				if x.Funding {
+					sw = evmFundingRow(ctx, rpc, t, x, solUSD, gas)
+				} else if x.DestChain != "" {
 					sw = evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
 				} else {
 					sw = evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
@@ -940,7 +949,7 @@ var chainNames = map[string]string{"bnb": "BNB", "robinhood": "Robinhood Chain",
 func cohort() []Terminal {
 	out := append([]Terminal{}, terminals...)
 	for _, a := range xchainApps {
-		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding leg through Relay: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (the token buy that follows is a native swap in the app's Solana row). Value given = the origin deposit plus its gas; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate."})
+		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or pays in SOL and receives the gas coin in a wallet on one of those chains (BasedBot). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
 		for _, c := range originChains {
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in SOL on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
@@ -1006,6 +1015,64 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	ref := s.MidUSD / q
 	sw.finalize(&ref, 0, s.RefSrc)
 	implausibleSplit(sw)
+	return sw
+}
+
+// evmFundingRow measures a request that left Solana as the gas coin (or
+// Arc's USDC) delivered to the user's wallet on another chain: a funding
+// leg the other way round (BasedBot funds its users' Robinhood Chain,
+// BNB, Base and Ethereum wallets this way, with no app fee). Value given
+// = the SOL sent, read on Solana (its fee apart); received = the native
+// amount delivered at the exchange's price; what Relay kept is the rest.
+func evmFundingRow(ctx context.Context, rpc *rpcClient, t Terminal, x relayRequest, solUSD float64, gas map[string]float64) *Swap {
+	dc := chainByID(0)
+	for i := range originChains {
+		if originChains[i].slug == x.DestChain {
+			dc = &originChains[i]
+		}
+	}
+	if dc == nil || x.InTx == "" || x.OutTx == "" {
+		return nil
+	}
+	wei, ok := new(big.Int).SetString(x.OutValueWei, 10)
+	if !ok || wei.Sign() <= 0 {
+		return &Swap{Flag: "no_quote_received"}
+	}
+	price, quote := 1.0, "USDC"
+	if dc.gas != "" {
+		p, ok := gas[dc.gas]
+		if !ok || p <= 0 {
+			return &Swap{Flag: "gas_unknown"}
+		}
+		price, quote = p, strings.TrimSuffix(dc.gas, "-USD")
+	}
+	inTx, err := rpc.transaction(ctx, x.InTx)
+	if err != nil || inTx == nil {
+		return nil
+	}
+	givenUSD, feeUSD, _ := solanaGiven(inTx, x.User, solUSD)
+	if givenUSD <= 0 {
+		return &Swap{Flag: "no_deposit"}
+	}
+	recv := f(wei) / 1e18
+	sw := &Swap{Method: methodVersion, Sig: x.OutTx, Terminal: t.Slug, Slot: inTx.Slot, User: x.Recipient, Side: "buy", Quote: quote, Venue: "relay", Mint: quote, Tokens: recv, QuoteUSD: price, Pools: 0,
+		Chain: x.DestChain, RelayID: x.ID, InTx: x.InTx}
+	if inTx.BlockTime != nil {
+		sw.Time = *inTx.BlockTime
+	}
+	sw.UserQ = givenUSD / price
+	sw.TerminalQ = x.AppFeeUsd / price
+	sw.NetworkQ = feeUSD / price
+	relay := givenUSD - feeUSD - recv*price - x.AppFeeUsd
+	if relay < 0 {
+		relay = 0
+	}
+	sw.RelayQ = relay / price
+	sw.PoolQ = recv
+	zero := 0.0
+	sw.OtherQ = &zero
+	one := 1.0
+	sw.finalize(&one, 0, "reserves") // quote per quote: exact by construction
 	return sw
 }
 
@@ -1196,31 +1263,74 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 	{
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
-		att, failed := 0, 0 // fail-rate base: the feed's attempts, or the block sample's on a native EVM row
+		pooled := len(slugs) > 1
+		// Fail-rate base: the feed's attempts, or the block sample's on a
+		// native EVM row. In a pooled entry the sample's counts are scaled
+		// by its coverage (blocks read over blocks in range), so a chain
+		// read at 5 % weighs like one read in full.
+		att, failed := 0.0, 0.0
+		attOf := map[string]float64{} // each row's attempts in the window (estimated on native rows)
 		for _, slug := range slugs {
 			native := isNativeEVM(slug)
+			var seen, sfailed, ss, sf, sb, sp int
 			for _, b := range st.Buckets[slug] {
-				ts.Seen += b.Seen
-				ts.Failed += b.Failed
+				seen += b.Seen
+				sfailed += b.Failed
 				ts.NonSwap += b.Other
-				ts.SampSeen += b.SampSeen
-				ts.SampFailed += b.SampFailed
-				if native {
-					att += b.SampSeen
-					failed += b.SampFailed
-				} else {
-					att += b.Seen
-					failed += b.Failed
-				}
+				ss += b.SampSeen
+				sf += b.SampFailed
+				sb += b.SampBlocks
+				sp += b.SpanBlocks
 				for k, v := range b.Errs {
 					errs[k] += v
 				}
 			}
+			ts.Seen += seen
+			ts.Failed += sfailed
+			ts.SampSeen += ss
+			ts.SampFailed += sf
+			if native {
+				cov := 1.0
+				if pooled && sb > 0 && sp > 0 {
+					cov = float64(sb) / float64(sp)
+				}
+				att += float64(ss) / cov
+				failed += float64(sf) / cov
+				attOf[slug] = math.Max(float64(ss)/cov, float64(seen))
+			} else {
+				att += float64(seen)
+				failed += float64(sfailed)
+				attOf[slug] = float64(seen)
+			}
 		}
-		ts.Attempts, ts.AttemptsFailed = att, failed
+		ts.Attempts, ts.AttemptsFailed = int(math.Round(att)), int(math.Round(failed))
 		if att >= 20 {
-			fr := 100 * float64(failed) / float64(att)
+			fr := 100 * failed / att
 			ts.FailRate = &fr // percent
+		}
+		// A pooled entry weighs each row's sampled swaps by the row's
+		// attempts per sample: the chains are sampled at a fixed daily
+		// rate each, not in proportion to their flow, and a median over the
+		// plain concatenation would describe the sampler, not the users.
+		weightOf := map[string]float64{}
+		if pooled {
+			nrows := map[string]int{}
+			for _, s := range st.Swaps {
+				if member[s.Terminal] && s.Method == methodVersion {
+					nrows[s.Terminal]++
+				}
+			}
+			for _, slug := range slugs {
+				if nrows[slug] > 0 && attOf[slug] > 0 {
+					weightOf[slug] = attOf[slug] / float64(nrows[slug])
+				}
+			}
+		}
+		wOf := func(s Swap) float64 {
+			if w := weightOf[s.Terminal]; w > 0 {
+				return w
+			}
+			return 1
 		}
 		if len(errs) > 0 {
 			ts.FailReasons = topN(errs, 6)
@@ -1236,6 +1346,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.FailCostUSD = quantiles(failFees, false)
 		}
 		var loss, pool, term, net, relay, other, trade, sandProfit []float64
+		var lossW, poolW, termW, netW, relayW, otherW, tradeW []float64 // the rows' weights, same order
 		bySize := map[string][]float64{}
 		byChain := map[string][]float64{}
 		refSrc := map[string]int{}
@@ -1271,16 +1382,22 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				r.Quote += v * s.QuoteUSD
 			}
 			ts.Parsed++
+			w := wOf(s)
 			term = append(term, s.TerminalBps)
+			termW = append(termW, w)
 			net = append(net, s.NetworkBps)
+			netW = append(netW, w)
 			if s.Chain != "" {
 				relay = append(relay, s.RelayBps)
+				relayW = append(relayW, w)
 			}
 			if s.OtherBps != nil {
 				other = append(other, *s.OtherBps)
+				otherW = append(otherW, w)
 			}
 			if s.TradeUSD > 0 {
 				trade = append(trade, s.TradeUSD)
+				tradeW = append(tradeW, w)
 			}
 			if s.Side == "buy" {
 				buys++
@@ -1297,6 +1414,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 				refSrc[s.RefSrc]++
 				loss = append(loss, *s.LossBps)
+				lossW = append(lossW, w)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
 				if s.Chain != "" {
 					byChain[s.Chain] = append(byChain[s.Chain], *s.LossBps)
@@ -1305,17 +1423,18 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 				if s.PoolBps != nil {
 					pool = append(pool, *s.PoolBps)
+					poolW = append(poolW, w)
 				}
 			}
 		}
 		if ts.Parsed > 0 {
-			ts.Components["terminal"] = median(term)
-			ts.Components["network"] = median(net)
+			ts.Components["terminal"] = wmedian(term, termW, pooled)
+			ts.Components["network"] = wmedian(net, netW, pooled)
 			if len(other) > 0 {
-				ts.Components["other"] = median(other)
+				ts.Components["other"] = wmedian(other, otherW, pooled)
 			}
 			if len(relay) > 0 {
-				ts.Components["relay"] = median(relay)
+				ts.Components["relay"] = wmedian(relay, relayW, pooled)
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
 			for v, c := range venues {
@@ -1326,7 +1445,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 		}
 		if len(trade) > 0 {
-			ts.TradeUSD = quantiles(trade, false)
+			ts.TradeUSD = wquantiles(trade, tradeW, false, pooled)
 		}
 		// Expected burn on failed attempts per successful swap: with fail
 		// rate r, a successful swap comes with r / (1 − r) failed ones on
@@ -1337,9 +1456,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.FailOverheadBps = &o
 		}
 		if ts.Priced > 0 {
-			ts.Loss = quantiles(loss, true)
+			ts.Loss = wquantiles(loss, lossW, true, pooled)
 			if len(pool) > 0 {
-				ts.Components["pool"] = median(pool)
+				ts.Components["pool"] = wmedian(pool, poolW, pooled)
 			}
 			ts.RefPoolPct = 100 * float64(refPool) / float64(ts.Priced)
 			ts.RefSrcPct = map[string]float64{}
@@ -1425,6 +1544,7 @@ func publishGauges(stats []TerminalStats) {
 		if ts.Loss != nil && ts.Healthy {
 			gLoss.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.Loss.Median)
 			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.Loss.P90)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p99").Set(ts.Loss.P99)
 			if ts.Loss.CILo != nil && ts.Loss.CIHi != nil {
 				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_lo").Set(*ts.Loss.CILo)
 				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_hi").Set(*ts.Loss.CIHi)
@@ -1446,6 +1566,7 @@ func publishGauges(stats []TerminalStats) {
 		if ts.TradeUSD != nil {
 			gTrade.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.TradeUSD.Median)
 			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.TradeUSD.P90)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p99").Set(ts.TradeUSD.P99)
 		}
 		gVenue.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		for v, p := range ts.Venues {
@@ -1523,7 +1644,7 @@ func quantiles(v []float64, ci bool) *Quantiles {
 	}
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
-	q := &Quantiles{Median: pct(s, 0.5), P90: pct(s, 0.9), N: len(s)}
+	q := &Quantiles{Median: pct(s, 0.5), P90: pct(s, 0.9), P99: pct(s, 0.99), N: len(s)}
 	if ci && len(s) >= 5 {
 		const rounds = 300
 		meds := make([]float64, rounds)
@@ -1549,6 +1670,85 @@ func median(v []float64) float64 {
 	s := append([]float64(nil), v...)
 	sort.Float64s(s)
 	return pct(s, 0.5)
+}
+
+// wpct: the weighted quantile (the value where the cumulative weight,
+// values sorted, first reaches the share p of the total).
+func wpct(v, w []float64, p float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	idx := make([]int, len(v))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return v[idx[a]] < v[idx[b]] })
+	total := 0.0
+	for _, x := range w {
+		total += x
+	}
+	if total <= 0 {
+		s := append([]float64(nil), v...)
+		sort.Float64s(s)
+		return pct(s, p)
+	}
+	acc := 0.0
+	for _, i := range idx {
+		acc += w[i]
+		if acc >= p*total {
+			return v[i]
+		}
+	}
+	return v[idx[len(idx)-1]]
+}
+
+// wmedian: the plain median, or the weighted one on a pooled entry.
+func wmedian(v, w []float64, weighted bool) float64 {
+	if !weighted {
+		return median(v)
+	}
+	return wpct(v, w, 0.5)
+}
+
+// wquantiles: quantiles, weighted on a pooled entry; the interval by a
+// bootstrap drawing rows in proportion to their weight.
+func wquantiles(v, w []float64, ci, weighted bool) *Quantiles {
+	if !weighted {
+		return quantiles(v, ci)
+	}
+	if len(v) == 0 {
+		return nil
+	}
+	q := &Quantiles{Median: wpct(v, w, 0.5), P90: wpct(v, w, 0.9), P99: wpct(v, w, 0.99), N: len(v)}
+	if ci && len(v) >= 5 {
+		cum := make([]float64, len(v))
+		acc := 0.0
+		for i := range v {
+			acc += w[i]
+			cum[i] = acc
+		}
+		if acc <= 0 {
+			return quantiles(v, ci)
+		}
+		const rounds = 300
+		meds := make([]float64, rounds)
+		tmp := make([]float64, len(v))
+		for r := range meds {
+			for i := range tmp {
+				j := sort.SearchFloat64s(cum, rand.Float64()*acc)
+				if j >= len(v) {
+					j = len(v) - 1
+				}
+				tmp[i] = v[j]
+			}
+			sort.Float64s(tmp)
+			meds[r] = pct(tmp, 0.5)
+		}
+		sort.Float64s(meds)
+		lo, hi := pct(meds, 0.025), pct(meds, 0.975)
+		q.CILo, q.CIHi = &lo, &hi
+	}
+	return q
 }
 
 // pct on a sorted slice, linear interpolation.

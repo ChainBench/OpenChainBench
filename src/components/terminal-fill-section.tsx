@@ -80,7 +80,7 @@ export async function TerminalFillSection({
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
               <Th right title="Median sampled swap size, dollars">Median swap</Th>
-              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, percent of the trade; hover for the basis points and the 95 % interval of the median">Value lost</Th>
+              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %); hover for the percent and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What reached the terminal's fee wallets, basis points of the trade (median)">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
@@ -114,7 +114,9 @@ export async function TerminalFillSection({
                           <span className="font-medium text-ink group-hover:underline underline-offset-2">{t.name}</span>
                         </Link>
                       )}
-                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? xchainLabel(t.slug) : t.kind}</span>
+                      {isXchain(t.slug) || !t.name.toLowerCase().endsWith(t.kind) ? (
+                        <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">{isXchain(t.slug) ? xchainLabel(t.slug) : t.kind}</span>
+                      ) : null}
                       {isXchain(t.slug) && Object.keys(t.byChain).length > 0 ? (
                         <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help" title={chainText(t)}>
                           by origin chain
@@ -124,8 +126,8 @@ export async function TerminalFillSection({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtBps(t.loss!.median)} · ${ciText(t)}` : undefined}>
-                    {pub ? fmtPct(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
+                  <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtPct(t.loss!.median)} · ${ciText(t)}` : undefined}>
+                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? `${t.priced} priced swaps, ${f.minPriced} needed` : "no priced swap yet"}>—</span>}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
                   <SplitCell t={t} part="terminal" pub={pub} />
@@ -144,7 +146,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-        <span className="text-ink-faint">Split columns are medians in basis points of the trade (100 bps = 1 %).</span>
+        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %); they do not sum to the median loss, the per-swap sums do (audit table).</span>
         {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />
@@ -182,7 +184,7 @@ export async function TerminalFillSection({
       </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain from each terminal&apos;s fee-wallet feed (300 drawn at random per terminal per day, every attempt
+        Real user swaps read on-chain from each terminal&apos;s fee-wallet feed (400 drawn at random per terminal per day, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; the split is exact from balance deltas, the tx fee
@@ -268,7 +270,7 @@ function SplitCell({ t, part, pub, relay = false }: { t: TerminalFillStats; part
   return (
     <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap" style={{ color: pub && v !== undefined ? COLORS[part] : undefined }} title={pub && v !== undefined ? `${LABELS[part]}: ${fmtBps(v)}${r !== undefined ? ` · relay ${fmtBps(r)}` : ""}` : undefined}>
       {pub && v !== undefined ? Math.round(v) : <span className="text-ink-faint">—</span>}
-      {pub && r !== undefined ? <span className="text-ink-faint text-[10px]"> +{Math.round(r)} relay</span> : null}
+      {pub && r !== undefined && r >= 0.5 ? <span className="text-ink-faint text-[10px]"> +{Math.round(r)} relay</span> : null}
     </td>
   );
 }
@@ -321,5 +323,7 @@ function Th({ children, right, title }: { children: React.ReactNode; right?: boo
 function fmtUsd(v: number): string {
   if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
-  return `$${v.toFixed(0)}`;
+  if (v >= 100) return `$${v.toFixed(0)}`;
+  if (v >= 10) return `$${v.toFixed(1)}`;
+  return `$${v.toFixed(2)}`;
 }

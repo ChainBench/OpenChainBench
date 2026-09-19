@@ -140,6 +140,9 @@ func chainByID(id int64) *originChain {
 // Solana for a token on another chain are the app's trading on that
 // chain (`<app>-<chain>`).
 func (x relayRequest) rowSlug() string {
+	if x.Funding {
+		return x.App + "-funding"
+	}
 	if x.DestChain == "" {
 		if x.InIsToken && x.Chain != "" && x.Chain != "solana" {
 			return x.App + "-" + x.Chain // a sale of a token on the origin chain, settled on Solana
@@ -153,9 +156,11 @@ func (x relayRequest) rowSlug() string {
 type relayRequest struct {
 	ID          string  `json:"id"`
 	App         string  `json:"app"`
-	Chain       string  `json:"chain"`      // origin chain slug ("solana" when leaving Solana)
-	DestChain   string  `json:"dest_chain"` // destination chain slug when not Solana
-	TokenOut    string  `json:"token_out"`  // destination token address when not Solana
+	Chain       string  `json:"chain"`                   // origin chain slug ("solana" when leaving Solana)
+	DestChain   string  `json:"dest_chain"`              // destination chain slug when not Solana
+	TokenOut    string  `json:"token_out"`               // destination token address when not Solana
+	Funding     bool    `json:"funding,omitempty"`       // the gas coin (or Arc's USDC) delivered to the user's wallet on the destination: a funding leg, not a trade
+	OutValueWei string  `json:"out_value_wei,omitempty"` // native amount delivered on the destination (Funding)
 	Status      string  `json:"status"`
 	User        string  `json:"user"`      // origin address
 	Recipient   string  `json:"recipient"` // destination wallet
@@ -213,6 +218,11 @@ type relayRaw struct {
 type relayTx struct {
 	ChainID int64  `json:"chainId"`
 	Hash    string `json:"hash"`
+	Data    struct {
+		To    string `json:"to"`
+		Data  string `json:"data"`
+		Value string `json:"value"` // wei, decimal string
+	} `json:"data"`
 }
 
 type relayAmount struct {
@@ -421,14 +431,18 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		}
 		x.DestChain, x.TokenOut = dc.slug, strings.ToLower(out.Address)
 		if x.TokenOut == "" || x.TokenOut == "0x0000000000000000000000000000000000000000" {
-			return relayRequest{}, false // a sell into the gas coin: not priced here
+			// The gas coin delivered to the user's wallet on the destination
+			// (BasedBot funds its users' Robinhood Chain, BNB, Base and
+			// Ethereum wallets from Solana this way; Arc's USDC is its gas):
+			// a funding leg, priced from the native amount delivered.
+			x.Funding, x.TokenOut = true, ""
 		}
 	} else if c.id == solanaChainID {
 		return relayRequest{}, false // Solana to Solana: a native swap, not a bridge
 	}
 	for _, tx := range r.Data.OutTxs {
 		if tx.ChainID == out.ChainID && tx.Hash != "" {
-			x.OutTx = tx.Hash
+			x.OutTx, x.OutValueWei = tx.Hash, tx.Data.Value
 			break
 		}
 	}

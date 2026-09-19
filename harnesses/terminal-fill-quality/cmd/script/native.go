@@ -152,6 +152,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			price = 1
 		}
 		seen, failed := map[string]int{}, map[string]int{}
+		read := 0 // blocks actually read: the sample's coverage of the range
 		for _, off := range rand.Perm(n)[:k] {
 			bn := rng[0] + int64(off)
 			var blk struct {
@@ -164,6 +165,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 				log.Printf("[native] %s block %d: %v", c.slug, bn, err)
 				continue
 			}
+			read++
 			for _, tx := range blk.Transactions {
 				slug := byRouter[strings.ToLower(tx.To)]
 				if slug == "" {
@@ -189,8 +191,16 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 				}
 			}
 		}
-		for slug, s := range seen {
-			st.recordSample(slug, now, s, failed[slug])
+		// Every terminal of the chain gets the sample's coverage (blocks read
+		// over blocks in the polled range), hits or not: the pooled entry
+		// scales its attempts and failures by it.
+		done := map[string]bool{}
+		for _, slug := range byRouter {
+			if done[slug] {
+				continue
+			}
+			done[slug] = true
+			st.recordSample(slug, now, seen[slug], failed[slug], read, n)
 		}
 	}
 }

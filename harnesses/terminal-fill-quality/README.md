@@ -218,8 +218,8 @@ event on every swap. Each tick polls `eth_getLogs` on those routers since
 the last block (`evm_cursor` in the state, at most 2,000 blocks a tick):
 every successful routed swap is seen (a failed transaction emits nothing:
 the **fail rate** comes from a sample of blocks read in full each tick,
-`failScan`, BNB 5 of ~80 a minute, Robinhood Chain 8 of ~590, Base 4,
-Ethereum 2, drawn at random from the range polled: every transaction
+`failScan`, BNB 8 of ~80 a minute, Robinhood Chain 30 of ~590, Base 8 of
+~30, Ethereum 2 of ~5, drawn at random from the range polled: every transaction
 sent to a terminal's routers is an attempt, a reverted one a failed
 attempt with its gas as the failed cost, `sampled_attempts` /
 `sampled_failed` in the JSON, published from 20 attempts), a random
@@ -277,10 +277,18 @@ Base), priced and split like the other native rows. **Terminal**
 fee wallets (Ethereum `0xa74FA823…`, BSC `0x2b0A28A0…`, Base
 `0x16388de4…`); they last received on Ethereum on 2026-08-26 and on Base
 on 2026-09-06, the BSC one gains about 0.01 BNB a day, the trades went
-through Multicall3: no volume to measure. **BasedBot**: the Solana
-wallets it funds through Relay swap through Jupiter and pump.fun with no
-recurring fee recipient (2026-09-19, 11 wallets, 69 swaps): its only
-measurable fee is Relay's app fee in `basedbot-funding`. A taxed token that swaps its own
+through Multicall3: no volume to measure. **BasedBot**: its Relay
+requests (about 130 an hour on 2026-09-19) are wallet funding the other
+way round: SOL sent from Solana, ETH or BNB delivered to the user's own
+wallet on Robinhood Chain, BNB, Base or Ethereum (a few into its contract
+`0xb92fe925…`), with no app fee; `classify` keeps them as `Funding` and
+`evmFundingRow` prices them (value given = the SOL read on Solana, received
+= the native amount at the exchange's price, relay = the rest) into
+`basedbot-funding`, out of the pooled figure. Its trades run in its own
+contracts on those chains (the funded wallets carry an EIP-7702
+delegation to `0xe6cae83b…` or `0x69007702…`), not identified yet; the
+Solana wallets it funds swap through Jupiter and pump.fun with no
+recurring fee recipient (11 wallets, 69 swaps). A taxed token that swaps its own
 tax on the same pool inside the user's transaction is not the user's
 pool: only the token flow from the user (sell) or to the user (buy),
 directly or through one forwarding address, selects the pools. Arc's
@@ -312,8 +320,14 @@ All of it is in the JSON under `discovery`, adoptions are logged
 median)`).
 
 **Publication thresholds**: `healthy` (figure published, `tfq_health`)
-from `MIN_PRICED` = 50 priced swaps in the window; `ranked` (`tfq_ranked`)
-from `MIN_RANK` = 100. `loss_bps` carries the median's 95 % bootstrap
+from `MIN_PRICED` = 50 priced swaps in the window (a product's entry on
+one chain from half that, 25); `ranked` (`tfq_ranked`) from `MIN_RANK` =
+100. **Pooled entries** (`chain="all"`): each chain is sampled at its own
+fixed daily rate, so the pooled medians weigh a row's sampled swaps by the
+row's swap attempts per sample (`weightOf` in `statsFor`; native EVM rows
+estimate their attempts from the block sample scaled by its coverage,
+blocks read over blocks in range) and the pooled fail rate uses the same
+scaling: the figure follows the users' flow, not the sampler. `loss_bps` carries the median's 95 % bootstrap
 interval (`ci_lo`, `ci_hi`, 300 resamples) so a gap between two terminals
 can be read against the sampling noise; the JSON orders ranked terminals
 by median, then published-but-not-ranked, then the rest.
@@ -344,8 +358,9 @@ Prometheus on `:2112/metrics`, rolling `WINDOW_HOURS`:
 
 | Gauge | Labels | Meaning |
 |---|---|---|
-| `tfq_loss_bps` | terminal, stat=median/p90/ci_lo/ci_hi | loss vs the pool's pre-trade state, priced samples; only when healthy |
-| `tfq_component_bps` | terminal, component=terminal/network/other/pool | median per component |
+| `tfq_loss_bps` | terminal, chain, stat=median/p90/p99/ci_lo/ci_hi | loss vs the pool's pre-trade state, priced samples; only when healthy. Every gauge carries `chain` (`all` = the product pooled, else the chain slug) |
+| `tfq_component_bps` | terminal, chain, component=terminal/network/other/pool/relay | median per component |
+| `tfq_lost_usd` | terminal, chain | median swap × median loss, dollars |
 | `tfq_fail_rate_pct` | terminal | failed / swap attempts, percent |
 | `tfq_sample_size` | terminal, kind=seen/parsed/priced | seen = swap attempts |
 | `tfq_trade_usd` | terminal, stat=median/p90 | |
