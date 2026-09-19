@@ -61,8 +61,8 @@ export async function TerminalFillSection({
                     : "no priced swap yet"
             }
           />
-          <Kpi label="Terminal fee" value={fmtBps(me.components.terminal)} sub={me.components.network !== undefined ? `network ${fmtBps(me.components.network)}` : undefined} />
-          <Kpi label="Failed swaps" value={me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={failSub(me)} />
+          <Kpi label="Terminal fee" value={me.healthy ? fmtBps(me.components.terminal) : "—"} sub={me.healthy ? (me.components.network !== undefined ? `network ${fmtBps(me.components.network)}` : undefined) : "published with the headline"} />
+          <Kpi label="Failed swaps" value={me.healthy && me.failRatePct !== undefined ? `${me.failRatePct.toFixed(1)}%` : "—"} sub={me.healthy ? failSub(me) : "published with the headline"} />
           <Kpi label="Swaps sampled" value={me.priced.toLocaleString("en-US")} sub={`${me.parsed} read · p90 ${me.healthy ? fmtBps(me.loss?.p90) : "—"}`} />
         </div>
       ) : (
@@ -82,7 +82,7 @@ export async function TerminalFillSection({
               <Th right title="Median sampled swap size, dollars">Median swap</Th>
               <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %); hover for the percent and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
-              <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs">Terminal</Th>
+              <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; on Solana a referral split paid inside the transaction sits in Other">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
               <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is in Relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
               <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
@@ -185,7 +185,7 @@ export async function TerminalFillSection({
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
         Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, 1,000 on the EVM rows, every attempt
-        counted for the fail rate), valued at the pool&apos;s state before the trade (exact from its reserves on PumpSwap and Raydium,
+        counted for the fail rate), valued at the pool&apos;s state before the trade (exact where the pool&apos;s formula is known: PumpSwap, Raydium, Launchpad, DLMM, four.meme, the EVM pools;
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee
         and inclusion tips included. Published from {f.minPriced} priced swaps, ranked from {f.minRank}.

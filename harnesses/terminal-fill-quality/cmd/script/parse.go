@@ -782,7 +782,9 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	// Banana Gun's buy fee: one SOL leg of about 1 % of the trade to an
 	// account no list holds (per user or per referrer); the sell fee goes
 	// to the listed wallet. The leg closest to 1 % moves from other to fee.
-	if t.SolLegIsFee && side == "buy" && userQ != 0 && terminalQ == 0 {
+	// Sells pay it too when the listed wallet is not the recipient (a
+	// per-user account takes 1 % of the pool's output on part of them).
+	if t.SolLegIsFee && userQ != 0 && terminalQ == 0 {
 		bestK, bestD := "", 1.0
 		for k, v := range others {
 			if pumpFeeRecipients[k] {
