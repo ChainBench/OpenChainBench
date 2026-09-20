@@ -1,29 +1,32 @@
 /**
- * One shared password, one cookie. The cookie value is an HMAC of a fixed
- * label under the password, so it is stable across restarts, carries no
- * secret, and rotating CRM_PASSWORD invalidates every session at once.
- * Web Crypto only: this runs in proxy.ts as well as in route handlers.
+ * One shared password, per-login sessions.
+ *
+ * The cookie is `nonce.expiry.signature`, signed with CRM_SESSION_SECRET (a
+ * random value, not the password: a leaked cookie gives nothing to brute
+ * force offline). A session is valid while its signature checks, its expiry
+ * is ahead and its nonce is still listed on the volume (lib/sessions.ts), so
+ * logout revokes it. Rotating either env logs everyone out. Web Crypto only:
+ * this runs in proxy.ts as well as in route handlers.
  */
-export const COOKIE = "ocb_crm";
-const LABEL = "ocb-crm-session-v1";
+import { listSession, sessionListed, unlistSession } from "@/lib/sessions";
 
-function password(): string {
-  return process.env.CRM_PASSWORD ?? "";
-}
+export const COOKIE = "ocb_crm";
+export const SESSION_DAYS = 30;
+const MIN_LEN = 16;
+
+const password = () => process.env.CRM_PASSWORD ?? "";
+const secret = () => process.env.CRM_SESSION_SECRET ?? "";
 
 export function authConfigured(): boolean {
-  return password().length >= 8;
+  return password().length >= MIN_LEN && secret().length >= MIN_LEN;
 }
 
+const enc = new TextEncoder();
+
 async function hmacHex(key: string, message: string): Promise<string> {
-  const enc = new TextEncoder();
   const k = await crypto.subtle.importKey("raw", enc.encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", k, enc.encode(message));
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export async function sessionToken(): Promise<string> {
-  return hmacHex(password(), LABEL);
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -33,15 +36,75 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function isValidSession(cookieValue: string | undefined): Promise<boolean> {
-  if (!authConfigured() || !cookieValue) return false;
-  return timingSafeEqual(cookieValue, await sessionToken());
-}
-
 export async function passwordMatches(candidate: string): Promise<boolean> {
   if (!authConfigured() || candidate.length === 0) return false;
-  // Compare HMACs rather than the strings: equal length, constant time.
-  return timingSafeEqual(await hmacHex(candidate, LABEL), await sessionToken());
+  // Compare HMACs of the two strings under the session secret: equal
+  // length whatever the input, constant time.
+  return timingSafeEqual(await hmacHex(secret(), candidate), await hmacHex(secret(), password()));
+}
+
+export type ParsedSession = { nonce: string; expiresAt: number; sig: string };
+
+export function parseSession(cookieValue: string | undefined): ParsedSession | null {
+  const parts = (cookieValue ?? "").split(".");
+  if (parts.length !== 3) return null;
+  const [nonce, expRaw, sig] = parts;
+  const expiresAt = Number.parseInt(expRaw, 10);
+  if (!/^[0-9a-f]{32}$/.test(nonce) || !Number.isFinite(expiresAt) || !/^[0-9a-f]{64}$/.test(sig)) return null;
+  return { nonce, expiresAt, sig };
+}
+
+const payload = (nonce: string, expiresAt: number) => `${nonce}.${expiresAt}`;
+
+/** Signature and expiry only; the listing check is separate so tests can cover each. */
+export async function sessionSigned(s: ParsedSession, now = Date.now()): Promise<boolean> {
+  if (!authConfigured() || s.expiresAt <= now) return false;
+  return timingSafeEqual(s.sig, await hmacHex(secret(), payload(s.nonce, s.expiresAt)));
+}
+
+export async function isValidSession(cookieValue: string | undefined, now = Date.now()): Promise<boolean> {
+  const s = parseSession(cookieValue);
+  if (!s) return false;
+  if (!(await sessionSigned(s, now))) return false;
+  return sessionListed(s.nonce, now);
+}
+
+export async function issueSession(now = Date.now()): Promise<string> {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const nonce = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  const expiresAt = now + SESSION_DAYS * 86_400_000;
+  const sig = await hmacHex(secret(), payload(nonce, expiresAt));
+  await listSession(nonce, expiresAt, now);
+  return `${payload(nonce, expiresAt)}.${sig}`;
+}
+
+export async function revokeSession(cookieValue: string | undefined): Promise<void> {
+  const s = parseSession(cookieValue);
+  if (s) await unlistSession(s.nonce);
+}
+
+/** Login attempts per client, in memory: 10 per 15 minutes. Kept on
+ *  globalThis so every bundler layer shares the same map. */
+const WINDOW_MS = 15 * 60_000;
+const MAX_ATTEMPTS = 10;
+const g = globalThis as unknown as { __ocbLoginAttempts?: Map<string, number[]> };
+const attempts = (g.__ocbLoginAttempts ??= new Map<string, number[]>());
+
+export function clientKey(request: Request): string {
+  const fwd = request.headers.get("x-forwarded-for") ?? "";
+  return fwd.split(",")[0].trim() || request.headers.get("x-real-ip") || "unknown";
+}
+
+export function loginAllowed(key: string, now = Date.now()): boolean {
+  const recent = (attempts.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
+  attempts.set(key, recent);
+  return recent.length < MAX_ATTEMPTS;
+}
+
+export function recordLoginAttempt(key: string, now = Date.now()): void {
+  const recent = (attempts.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
+  recent.push(now);
+  attempts.set(key, recent);
 }
 
 /** 303 to a same-origin path. The origin is rebuilt from the forwarded

@@ -57,7 +57,10 @@ export class Budget {
   }
 }
 
-export const budget = new Budget(HOURLY_BUDGET);
+// One budget and one queue per process, whatever the bundler layer.
+const g = globalThis as unknown as { __ocbPosthog?: { budget: Budget; chain: Promise<unknown> } };
+const shared = (g.__ocbPosthog ??= { budget: new Budget(HOURLY_BUDGET), chain: Promise.resolve() });
+export const budget = shared.budget;
 
 export class RateLimited extends Error {
   constructor(public readonly retryAfterMs: number) {
@@ -72,11 +75,9 @@ export class BudgetExhausted extends Error {
 }
 
 /** Serialises calls: two refreshes (interval plus manual) never run queries side by side. */
-let chain: Promise<unknown> = Promise.resolve();
-
 export function queryHogQL(name: string, query: string): Promise<HogQLRows> {
-  const run = chain.then(() => queryOnce(name, query));
-  chain = run.catch(() => undefined);
+  const run = shared.chain.then(() => queryOnce(name, query));
+  shared.chain = run.catch(() => undefined);
   return run;
 }
 

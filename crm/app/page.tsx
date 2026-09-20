@@ -17,8 +17,11 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const lastFull = weekly.length >= 2 ? weekly[weekly.length - 2] : null;
   const prevFull = weekly.length >= 3 ? weekly[weekly.length - 3] : null;
   const channels = channelTotals(t.referrers ?? []);
-  const ai = channels.find((c) => c.channel === "ai");
-  const search = channels.find((c) => c.channel === "search");
+  // Exact 7 d uniques for the two headline channels; the channel table
+  // below sums per-domain uniques and can count a visitor twice.
+  const ai = totals ? { visitors: totals.aiVisitors, prevVisitors: totals.prevAiVisitors } : undefined;
+  const search = totals ? { visitors: totals.searchVisitors, prevVisitors: totals.prevSearchVisitors } : undefined;
+  const fullWeeks = weekly.slice(0, -1);
   const sections = sectionTotals(t.pages ?? []);
   const aiDomains = (t.referrers ?? []).filter((r) => r.channel === "ai" && (r.visitors > 0 || r.prevVisitors > 0)).slice(0, 12);
   const b = snap.benches;
@@ -71,10 +74,10 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">Weekly visitors from AI assistants, 12 w</p>
-          {weekly.length > 1 ? (
+          <p className="label">Weekly visitors from AI assistants, full weeks</p>
+          {fullWeeks.length > 1 ? (
             <>
-              <Spark series={weekly.map((w) => w.ai)} color="var(--good)" />
+              <Spark series={fullWeeks.map((w) => w.ai)} color="var(--good)" />
               <p className="mono mt-1 text-[11px]" style={{ color: "var(--faint)" }}>
                 last full week {lastFull ? `${fmtInt(lastFull.ai)} AI · ${fmtInt(lastFull.search)} search · ${fmtInt(lastFull.visitors)} total` : "–"}
                 {lastFull && prevFull ? (
@@ -93,7 +96,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
 
       <section className="mt-6 grid gap-3 md:grid-cols-3">
         <div className="panel p-4 md:col-span-1">
-          <p className="label">Channels, 7 d (visitors)</p>
+          <p className="label">Channels, 7 d (per-domain visitors summed)</p>
           {channels.length > 0 ? (
             <table className="data mt-2">
               <tbody>

@@ -19,5 +19,6 @@ export async function POST(request: NextRequest) {
     return seeOther(request, `${back}?refresh=cooldown:${Math.ceil(MANUAL_COOLDOWN_MINUTES - age)}`);
   }
   const result = await refreshSnapshot("manual");
-  return seeOther(request, `${back}?refresh=${result.stoppedBy ? "partial" : result.failed.length ? "errors" : "ok"}`);
+  const flag = result.joined ? "joined" : result.stoppedBy ? "partial" : result.failed.length ? "errors" : "ok";
+  return seeOther(request, `${back}?refresh=${flag}`);
 }

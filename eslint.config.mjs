@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
     // in their own dedicated PRs.
     "infrastructure/**",
     "worker/**",
+    "crm/**",
   ]),
 ]);
 

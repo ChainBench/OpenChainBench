@@ -31,7 +31,19 @@ export type Traffic = {
   devices: NamedCount[];
   utm: { source: string; medium: string; visitors: number }[];
   audience: { newVisitors: number; returningVisitors: number };
-  totals: { visitors: number; prevVisitors: number; pageviews: number; prevPageviews: number; sessions: number; prevSessions: number };
+  totals: {
+    visitors: number;
+    prevVisitors: number;
+    pageviews: number;
+    prevPageviews: number;
+    sessions: number;
+    prevSessions: number;
+    /** Distinct visitors whose pageview carried an AI assistant referrer; exact uniques, unlike the per-domain sum. */
+    aiVisitors: number;
+    prevAiVisitors: number;
+    searchVisitors: number;
+    prevSearchVisitors: number;
+  };
   engagement: { pagesPerSession: number; bounceRate: number; sessions: number };
 };
 
@@ -48,7 +60,7 @@ export const QUERIES = {
            uniqIf(distinct_id, properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS search,
            count() AS pageviews
     FROM events
-    WHERE ${PV} AND timestamp >= toStartOfWeek(now() - INTERVAL 12 WEEK, 1)
+    WHERE ${PV} AND timestamp >= toStartOfWeek(now() - INTERVAL 11 WEEK, 1)
     GROUP BY week ORDER BY week`,
   pages: () => `
     SELECT properties.$pathname AS path,
@@ -57,7 +69,7 @@ export const QUERIES = {
            countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
     FROM events
     WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY
-    GROUP BY path ORDER BY visitors DESC, pageviews DESC LIMIT 2000`,
+    GROUP BY path ORDER BY greatest(visitors, prev_visitors) DESC, pageviews DESC LIMIT 2000`,
   entries: () => `
     SELECT path, count() AS sessions FROM (
       SELECT properties.$session_id AS s, argMin(properties.$pathname, timestamp) AS path
@@ -70,7 +82,7 @@ export const QUERIES = {
            countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
     FROM events
     WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY
-    GROUP BY domain ORDER BY visitors DESC LIMIT 400`,
+    GROUP BY domain ORDER BY greatest(visitors, prev_visitors) DESC LIMIT 400`,
   countries: () => `
     SELECT properties.$geoip_country_code AS country, uniq(distinct_id) AS visitors
     FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY
@@ -89,7 +101,11 @@ export const QUERIES = {
            countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews,
            countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_pageviews,
            uniqIf(properties.$session_id, timestamp >= now() - INTERVAL 7 DAY) AS sessions,
-           uniqIf(properties.$session_id, timestamp < now() - INTERVAL 7 DAY) AS prev_sessions
+           uniqIf(properties.$session_id, timestamp < now() - INTERVAL 7 DAY) AS prev_sessions,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(AI_DOMAINS)})) AS ai_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(AI_DOMAINS)})) AS prev_ai_visitors,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS search_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS prev_search_visitors
     FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY`,
   audience: () => `
     SELECT countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
@@ -141,6 +157,10 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
           prevPageviews: num(rows[0]?.[3]),
           sessions: num(rows[0]?.[4]),
           prevSessions: num(rows[0]?.[5]),
+          aiVisitors: num(rows[0]?.[6]),
+          prevAiVisitors: num(rows[0]?.[7]),
+          searchVisitors: num(rows[0]?.[8]),
+          prevSearchVisitors: num(rows[0]?.[9]),
         },
       };
     case "audience":

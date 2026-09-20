@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </p>
       {!authConfigured() ? (
         <p className="panel mt-6 px-3 py-2 text-xs" style={{ color: "var(--bad)" }}>
-          CRM_PASSWORD is not set (8 characters minimum). Nobody can log in until it is.
+          CRM_PASSWORD and CRM_SESSION_SECRET must both be set (16 characters minimum). Nobody can log in until they are.
         </p>
       ) : (
         <form action="/api/login" method="post" className="panel mt-6 space-y-3 p-4">
@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </label>
           {sp.error && (
             <p className="text-xs" style={{ color: "var(--bad)" }}>
-              Wrong password.
+              {sp.error === "limited" ? "Too many attempts; wait 15 minutes." : "Wrong password."}
             </p>
           )}
           <button type="submit" className="w-full rounded-md px-3 py-1.5 text-sm font-medium" style={{ background: "var(--accent)", color: "#0b0d10" }}>

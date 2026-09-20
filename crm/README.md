@@ -1,8 +1,8 @@
 # OCB CRM
 
 Internal dashboard for OpenChainBench: traffic (PostHog), data health (the
-worker's blob), harness health (Prometheus targets) and the Dune plan. One
-password, one Railway service, no database.
+worker's index blob), harness health (Prometheus targets) and the Dune plan.
+One shared password, per-login sessions, one Railway service, no database.
 
 ## What it shows
 
@@ -11,11 +11,16 @@ password, one Railway service, no database.
 | Overview | PostHog, blob, Prometheus | visitors, pageviews, sessions (7 d vs previous 7 d), **AI-referred visitors** (ChatGPT, Perplexity, Claude, Gemini, Copilot, …), search-referred visitors, 28 d daily series, 12 w weekly series with the AI share, channels, AI domains, sections |
 | Pages | PostHog | sections week over week, biggest gains and losses, top 100 pages (filter by section), entry pages |
 | Audience | PostHog | new vs returning, bounce, countries, devices, UTM sources, referring domains with their channel |
-| Data health | blob, Prometheus, Dune | live / stale (> 24 h) / expired (> 7 d) benches per category, benches needing attention, scrape targets down, Dune credits and period end, the daily history kept on the volume |
+| Data health | index blob, Prometheus, Dune | live / stale (> 24 h) / expired (> 7 d) benches per category, benches needing attention, scrape targets down, Dune credits and period end, the daily history kept on the volume |
 
-The site captures `$pageview` only (autocapture off, nobody identified), so
-every traffic number is a pageview aggregate and a visitor is a device cookie.
-Events from staging and localhost are excluded (`properties.$host`).
+The site captures `$pageview` and `$pageleave` only (autocapture off, nobody
+identified); every query reads `$pageview`, so every traffic number is a
+pageview aggregate and a visitor is a device cookie. Events from staging and
+localhost are excluded (`properties.$host`).
+
+Bench health reads `aggregate/index.json` (every bench with its status and
+last run), not the sitemap blob: the worker drops expired chain RPC benches
+from the sitemap before publishing, which is exactly what this page must show.
 
 ## How it stays under the PostHog rate limit
 
@@ -41,7 +46,7 @@ header, so an upstream blip never blanks the dashboard.
 ```bash
 cd crm
 pnpm install --ignore-workspace
-cp .env.example .env.local   # fill CRM_PASSWORD, POSTHOG_*, optionally DUNE_API_KEY
+cp .env.example .env.local   # fill CRM_PASSWORD, CRM_SESSION_SECRET, POSTHOG_*, optionally DUNE_API_KEY
 set -a; source .env.local; set +a
 SNAPSHOT_DIR=.snapshots pnpm refresh   # one refresh from the CLI
 SNAPSHOT_DIR=.snapshots pnpm dev       # http://localhost:3210
@@ -61,9 +66,22 @@ railway up --detach     # uploads this directory, builds the Dockerfile
 railway logs
 ```
 
-Variables (Railway service settings): `CRM_PASSWORD`, `POSTHOG_PERSONAL_API_KEY`,
+Variables (Railway service settings): `CRM_PASSWORD`, `CRM_SESSION_SECRET`, `POSTHOG_PERSONAL_API_KEY`,
 `POSTHOG_PROJECT_ID`, optionally `DUNE_API_KEY`, `POSTHOG_HOURLY_BUDGET`,
 `REFRESH_MINUTES`. `SNAPSHOT_DIR=/data` and `PORT` are set on the service.
+
+## Sessions
+
+The cookie is `nonce.expiry.signature`, signed with `CRM_SESSION_SECRET` (random,
+not the password, so a leaked cookie gives nothing to brute force) and valid
+only while its nonce is listed in `/data/sessions.json`: logout revokes it,
+rotating either variable logs everyone out. Login attempts are limited to 10
+per client per 15 minutes. Both variables must be 16 characters or more.
+
+Module state (snapshot cache, refresh mutex, PostHog budget, login counters)
+lives on `globalThis` and the snapshot file is re-read whenever its mtime
+moves: Next bundles `instrumentation.ts` and the routes in different layers,
+and each layer gets its own module instance otherwise.
 
 ## Adding a metric
 

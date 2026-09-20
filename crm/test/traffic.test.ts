@@ -12,9 +12,14 @@ describe("queries", () => {
   test("the refresh spends a bounded number of queries", () => {
     expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(12);
   });
-  test("the weekly series embeds the AI domain list", () => {
+  test("the weekly series and the totals embed the AI domain list", () => {
     expect(QUERIES.weekly()).toContain("'chatgpt.com'");
     expect(QUERIES.weekly()).toContain("'perplexity.ai'");
+    expect(QUERIES.totals()).toContain("'chatgpt.com'");
+  });
+  test("page and referrer rows are ranked on either week, so losses survive the LIMIT", () => {
+    expect(QUERIES.pages()).toContain("ORDER BY greatest(visitors, prev_visitors) DESC");
+    expect(QUERIES.referrers()).toContain("ORDER BY greatest(visitors, prev_visitors) DESC");
   });
 });
 

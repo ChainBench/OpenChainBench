@@ -46,77 +46,91 @@ function clampInt(raw: string | undefined, fallback: number, min: number, max: n
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
 
-let memory: Snapshot | null = null;
+// Module state lives on globalThis: Next bundles instrumentation.ts (the
+// scheduler) and the app routes in separate layers, and a module reached
+// from two layers is two instances. The file is the source of truth and is
+// re-read whenever its mtime moved, so a refresh from the scheduler, from
+// the CLI or from another process is seen by the next request.
+type Shared = { cache: { mtimeMs: number; snapshot: Snapshot } | null; running: Promise<Snapshot> | null };
+const g = globalThis as unknown as { __ocbSnapshot?: Shared };
+const shared: Shared = (g.__ocbSnapshot ??= { cache: null, running: null });
 
 export async function readSnapshot(): Promise<Snapshot> {
-  if (memory) return memory;
   try {
+    const st = await fs.stat(FILE);
+    if (shared.cache && shared.cache.mtimeMs === st.mtimeMs) return shared.cache.snapshot;
     const parsed = JSON.parse(await fs.readFile(FILE, "utf8")) as Snapshot;
     if (parsed && parsed.v === 1) {
-      memory = { ...EMPTY, ...parsed, posthogConfigured: posthogConfigured() };
-      return memory;
+      const snapshot = { ...EMPTY, ...parsed, posthogConfigured: posthogConfigured() };
+      shared.cache = { mtimeMs: st.mtimeMs, snapshot };
+      return snapshot;
     }
   } catch {
     // first boot, or an unreadable file: start empty
   }
-  memory = { ...EMPTY };
-  return memory;
+  return { ...EMPTY };
 }
 
 async function writeSnapshot(s: Snapshot): Promise<void> {
-  memory = s;
   await fs.mkdir(DIR, { recursive: true });
-  const tmp = `${FILE}.tmp`;
+  const tmp = `${FILE}.${process.pid}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(s));
   await fs.rename(tmp, FILE);
+  shared.cache = null;
+}
+
+/** Parses the journal: one JSON object per line, the last line of a day
+ *  wins, unparsable lines are skipped (never the whole file). */
+export function parseHistory(raw: string): HistoryLine[] {
+  const byDay = new Map<string, HistoryLine>();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const l = JSON.parse(line) as HistoryLine;
+      if (l && typeof l.day === "string") byDay.set(l.day, l);
+    } catch {
+      // a torn write; the other lines still count
+    }
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
 
 export async function readHistory(): Promise<HistoryLine[]> {
   try {
-    const raw = await fs.readFile(HISTORY, "utf8");
-    return raw
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l) as HistoryLine);
+    return parseHistory(await fs.readFile(HISTORY, "utf8"));
   } catch {
     return [];
   }
 }
 
-/** One line per UTC day; the last refresh of the day wins. */
+/** Append only: one line per refresh, deduped per UTC day on read. */
 async function appendHistory(s: Snapshot): Promise<void> {
-  const day = new Date().toISOString().slice(0, 10);
   const t = s.traffic;
-  const lastWeek = t.weekly?.at(-1);
   const line: HistoryLine = {
-    day,
+    day: new Date().toISOString().slice(0, 10),
     visitors7d: t.totals?.visitors ?? 0,
     pageviews7d: t.totals?.pageviews ?? 0,
-    aiVisitors7d: lastWeek?.ai ?? 0,
-    searchVisitors7d: lastWeek?.search ?? 0,
+    aiVisitors7d: t.totals?.aiVisitors ?? 0,
+    searchVisitors7d: t.totals?.searchVisitors ?? 0,
     benches: s.benches?.total ?? 0,
     stale: (s.benches?.stale ?? 0) + (s.benches?.expired ?? 0),
     targetsDown: s.harness?.down.length ?? 0,
   };
-  const lines = (await readHistory()).filter((l) => l.day !== day);
-  lines.push(line);
   await fs.mkdir(DIR, { recursive: true });
-  await fs.writeFile(HISTORY, `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+  await fs.appendFile(HISTORY, `${JSON.stringify(line)}\n`);
 }
 
-let running: Promise<Snapshot> | null = null;
+export type RefreshResult = { snapshot: Snapshot; ran: string[]; failed: string[]; stoppedBy: string | null; joined: boolean };
 
-export type RefreshResult = { snapshot: Snapshot; ran: string[]; failed: string[]; stoppedBy: string | null };
-
-/** Rebuilds the snapshot. Concurrent calls share one run. */
+/** Rebuilds the snapshot. Concurrent calls join the run in progress. */
 export function refreshSnapshot(reason: string): Promise<RefreshResult> {
-  if (running) return running.then((snapshot) => ({ snapshot, ran: [], failed: [], stoppedBy: "already running" }));
+  if (shared.running) return shared.running.then((snapshot) => ({ snapshot, ran: [], failed: [], stoppedBy: null, joined: true }));
   const p = doRefresh(reason);
-  running = p.then((r) => r.snapshot);
+  shared.running = p.then((r) => r.snapshot);
   // The shared promise is released whichever way the run ends; the caller
   // of `p` still sees the rejection.
-  void running.catch(() => undefined).finally(() => {
-    running = null;
+  void shared.running.catch(() => undefined).finally(() => {
+    shared.running = null;
   });
   return p;
 }
@@ -175,7 +189,7 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
   await writeSnapshot(next);
   await appendHistory(next).catch((e) => console.warn("[refresh] history:", e));
   console.log(`[refresh] ${reason}: ${ran.length} sections in ${Date.now() - started} ms, ${failed.length} failed${stoppedBy ? `, stopped: ${stoppedBy}` : ""}`);
-  return { snapshot: next, ran, failed, stoppedBy };
+  return { snapshot: next, ran, failed, stoppedBy, joined: false };
 }
 
 export function snapshotAgeMinutes(s: Snapshot, now = Date.now()): number | null {

@@ -2,7 +2,7 @@
  * The non-PostHog sections: what the site itself publishes. All public
  * endpoints except Dune, whose key is optional.
  *
- *  - Bench health: the sitemap blob the materialize worker publishes, one
+ *  - Bench health: the index blob the materialize worker publishes, one
  *    row per live bench with its last measurement. Same thresholds as the
  *    site: stale after 24 h (the page says so), expired after 168 h (the page
  *    is noindex and leaves the sitemap).
@@ -11,16 +11,22 @@
  */
 import { z } from "zod";
 
+// index.json lists every bench the worker knows with its status; the
+// sitemap blob would not do, the worker drops expired chain RPC benches and
+// thin ones from it before publishing, which is what this page must show.
+const INDEX_BLOB_URL = process.env.INDEX_BLOB_URL ?? "https://kv.openchainbench.com/aggregate/index.json";
 const SITEMAP_BLOB_URL = process.env.SITEMAP_BLOB_URL ?? "https://kv.openchainbench.com/aggregate/sitemap.json";
 const PROM_URL = (process.env.PROM_URL ?? "https://prom.openchainbench.com").replace(/\/$/, "");
 const STALE_AFTER_HOURS = 24;
 const EXPIRED_AFTER_HOURS = 168;
 
-const sitemapSchema = z.object({
+const indexSchema = z.object({
   builtAt: z.union([z.string(), z.number()]).optional(),
-  benches: z.array(z.object({ slug: z.string(), lastRunAt: z.string().nullable().optional(), category: z.string().optional() })),
-  providerSlugs: z.array(z.string()).optional(),
+  benches: z.array(
+    z.object({ slug: z.string(), status: z.string().optional(), lastRunAt: z.string().nullable().optional(), category: z.string().optional() }),
+  ),
 });
+const sitemapSchema = z.object({ providerSlugs: z.array(z.string()).optional() });
 
 export type BenchRow = { slug: string; category: string; lastRunAt: string | null; ageHours: number | null; state: "fresh" | "stale" | "expired" | "unknown" };
 export type BenchHealth = {
@@ -35,10 +41,14 @@ export type BenchHealth = {
 };
 
 export async function loadBenchHealth(now = Date.now()): Promise<BenchHealth> {
-  const res = await fetch(SITEMAP_BLOB_URL, { signal: AbortSignal.timeout(20_000), cache: "no-store" });
-  if (!res.ok) throw new Error(`sitemap blob ${res.status}`);
-  const blob = sitemapSchema.parse(await res.json());
-  const rows: BenchRow[] = blob.benches.map((b) => {
+  const [res, sm] = await Promise.all([
+    fetch(INDEX_BLOB_URL, { signal: AbortSignal.timeout(20_000), cache: "no-store" }),
+    fetch(SITEMAP_BLOB_URL, { signal: AbortSignal.timeout(20_000), cache: "no-store" }).catch(() => null),
+  ]);
+  if (!res.ok) throw new Error(`index blob ${res.status}`);
+  const blob = indexSchema.parse(await res.json());
+  const providers = sm && sm.ok ? (sitemapSchema.safeParse(await sm.json()).data?.providerSlugs?.length ?? 0) : 0;
+  const rows: BenchRow[] = blob.benches.filter((b) => b.status === "live").map((b) => {
     const t = Date.parse(b.lastRunAt ?? "");
     const ageHours = Number.isFinite(t) ? (now - t) / 3_600_000 : null;
     const state = ageHours == null ? "unknown" : ageHours > EXPIRED_AFTER_HOURS ? "expired" : ageHours > STALE_AFTER_HOURS ? "stale" : "fresh";
@@ -61,7 +71,7 @@ export async function loadBenchHealth(now = Date.now()): Promise<BenchHealth> {
     fresh: rows.filter((r) => r.state === "fresh").length,
     stale: rows.filter((r) => r.state === "stale").length,
     expired: rows.filter((r) => r.state === "expired" || r.state === "unknown").length,
-    providers: blob.providerSlugs?.length ?? 0,
+    providers,
     byCategory: [...cats.entries()].map(([category, v]) => ({ category, ...v })).sort((a, b) => b.total - a.total),
     attention: rows.filter((r) => r.state !== "fresh").sort((a, b) => (b.ageHours ?? Infinity) - (a.ageHours ?? Infinity)),
   };

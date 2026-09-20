@@ -58,6 +58,7 @@ export function Shell({ current, snapshot, refreshFlag, children }: { current: s
       {refreshFlag && (
         <p className="panel mb-4 px-3 py-2 text-xs" style={{ color: "var(--muted)" }}>
           {refreshFlag === "ok" && "Refreshed."}
+          {refreshFlag === "joined" && "A refresh was already running; this is its result."}
           {refreshFlag === "errors" && "Refreshed; some sections failed and kept their previous values (see below)."}
           {refreshFlag === "partial" && "Refresh stopped early (PostHog rate limit or local budget); the remaining sections kept their previous values."}
           {refreshFlag.startsWith("cooldown:") && `Last refresh is too recent; try again in ${refreshFlag.split(":")[1]} min.`}

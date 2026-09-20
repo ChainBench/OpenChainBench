@@ -61,7 +61,7 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
               </tbody>
             </table>
           ) : (
-            <Empty text="Sitemap blob not loaded yet." />
+            <Empty text="Index blob not loaded yet." />
           )}
         </div>
         <div className="panel p-4">
@@ -131,7 +131,7 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
         ) : b ? (
           <Empty text="Every live bench measured in the last 24 h." />
         ) : (
-          <Empty text="Sitemap blob not loaded yet." />
+          <Empty text="Index blob not loaded yet." />
         )}
       </section>
 
@@ -145,8 +145,8 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
                   <th>Day</th>
                   <th className="num">Visitors 7 d</th>
                   <th className="num">Pageviews 7 d</th>
-                  <th className="num">AI, current week</th>
-                  <th className="num">Search, current week</th>
+                  <th className="num">AI 7 d</th>
+                  <th className="num">Search 7 d</th>
                   <th className="num">Benches</th>
                   <th className="num">Stale + expired</th>
                   <th className="num">Targets down</th>
