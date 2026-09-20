@@ -26,7 +26,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 3600;
+export const revalidate = 300; // the fill rows' fetch revalidates at 300 s; an hour here printed a table an hour behind the bench page
 
 const BENCH_SLUGS = [
   "trading-app-daily-volume",

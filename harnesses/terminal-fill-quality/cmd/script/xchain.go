@@ -297,10 +297,10 @@ func xchainRows() []string {
 	return out
 }
 
-// seedFundedFromRelay walks a funding-only app's public requests from Solana
-// back about three days at start (200 pages) when the state holds fewer
-// than 5,000 of its funded wallets, so the app's row on a shared router
-// knows the users still trading from an earlier funding.
+// seedFundedFromRelay walks a funding-only app's public requests (every
+// origin) back about a day at start (200 pages) when the state holds fewer
+// than 5,000 of its wallets, so the app's row on a shared router knows the
+// users still trading from an earlier bridge leg.
 func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
 	for _, a := range xchainApps {
 		if !a.FundingOnly || a.Referrer == "" {
@@ -317,7 +317,7 @@ func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
 		}
 		cont, got := "", 0
 		for page := 0; page < 200; page++ { // about three days of the app's requests
-			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50&referrer=%s", solanaChainID, a.Referrer)
+			url := fmt.Sprintf("https://api.relay.link/requests/v2?limit=50&referrer=%s", a.Referrer) // every origin: both ends of every leg are the app's wallets
 			if cont != "" {
 				url += "&continuation=" + cont
 			}
@@ -339,14 +339,19 @@ func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
 				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
 					continue
 				}
-				x, ok := classify(a, solanaOrigin, r)
-				if !ok || !x.Funding || !strings.HasPrefix(x.Recipient, "0x") {
-					continue
+				created := int64(0)
+				if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+					created = t.Unix()
 				}
-				w := strings.ToLower(x.Recipient)
-				if st.Funded[a.Slug][w] < x.Created {
-					st.Funded[a.Slug][w] = x.Created
-					got++
+				for _, w := range []string{r.User, r.Recipient} {
+					if !strings.HasPrefix(w, "0x") || len(w) != 42 {
+						continue
+					}
+					w = strings.ToLower(w)
+					if st.Funded[a.Slug][w] < created {
+						st.Funded[a.Slug][w] = created
+						got++
+					}
 				}
 			}
 			cont = rr.Continuation
@@ -519,14 +524,21 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 			f.newest[nk] = t.Unix()
 		}
 	}
+	if a.FundingOnly && a.Referrer != "" {
+		// Every request of the referrer feed is the app's: both ends of
+		// any leg (Solana to EVM, EVM to Solana, EVM to EVM) name one of
+		// its EVM wallets.
+		for _, w := range []string{r.User, r.Recipient} {
+			if strings.HasPrefix(w, "0x") && len(w) == 42 {
+				if f.funded[a.Slug] == nil {
+					f.funded[a.Slug] = map[string]int64{}
+				}
+				f.funded[a.Slug][strings.ToLower(w)] = time.Now().Unix()
+			}
+		}
+	}
 	if !ok {
 		return false
-	}
-	if x.Funding && x.Recipient != "" && strings.HasPrefix(x.Recipient, "0x") {
-		if f.funded[x.App] == nil {
-			f.funded[x.App] = map[string]int64{}
-		}
-		f.funded[x.App][strings.ToLower(x.Recipient)] = time.Now().Unix()
 	}
 	b := f.box[x.rowSlug()]
 	if b == nil {

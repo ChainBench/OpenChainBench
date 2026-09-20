@@ -84,9 +84,9 @@ export async function TerminalFillSection({
               <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %); hover for the percent and the 95 % interval of the median">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; referral or cashback legs count as terminal fee where the terminal's list holds them, else they sit in Other">Terminal</Th>
-              <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median)">Network</Th>
-              <Th right title="LP fee and price impact, plus hop costs on routed swaps, basis points (median); on cross-chain products the bridge's take is shown next to it as relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
-              <Th right title="pump.fun protocol and creator fees, referral payouts, basis points (median)">Other</Th>
+              <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), basis points (median per chain; flow-weighted on All chains)">Network</Th>
+              <Th right title="The final pool's LP fee and price impact, basis points (median per chain; on All chains each chain's median weighted by its flow); on cross-chain products the bridge's take is shown next to it as relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
+              <Th right title="pump.fun protocol and creator fees, referral payouts, and on routed swaps the routers' cuts and hop leftovers, basis points (median per chain; flow-weighted on All chains)">Other</Th>
               <Th right title="Share of the terminal's swap attempts that failed on-chain; the priority fee is paid anyway unless the app sponsors gas (FOMO)">Failed</Th>
               <Th right title="90th percentile of the value lost">p90</Th>
               <Th right title="Priced swaps in the window">Swaps</Th>
@@ -147,7 +147,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %); they do not sum to the median loss, the per-swap sums do (audit table).</span>
+        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %), each chain's median weighted by its flow on a multi-chain product; they do not sum to the median loss, the per-swap sums do (audit table).</span>
         {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />
@@ -217,7 +217,7 @@ function xchainLabel(slug: string): string {
   const m = slug.match(XCHAIN_SUFFIX);
   if (!m) return "";
   if (m[1] === "funding") return "funding leg";
-  const viaRelay = slug.startsWith("fomo-") || slug.startsWith("basedbot-");
+  const viaRelay = slug.startsWith("fomo-"); // BasedBot's chain rows are native swaps on its router
   return `on ${CHAIN_NAMES[m[1]] ?? m[1]}${viaRelay ? " via Relay" : ""}`;
 }
 function chainText(t: TerminalFillStats): string {

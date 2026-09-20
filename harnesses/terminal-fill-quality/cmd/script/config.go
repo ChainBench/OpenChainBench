@@ -33,7 +33,7 @@ type Terminal struct {
 	// arrives as user-signed stable transfers to per-trade accounts (FOMO
 	// through the OKX router: commission leg plus one or two transferChecked
 	// legs, 2 % of the trade with a $0.10 minimum on its DFlow flow). Such legs, outside any pool
-	// instruction and under 2 % of the trade, count as terminal fee.
+	// instruction and under max(2 % of the trade, $0.12), count as terminal fee.
 	StableLegsAreFee bool `json:"stable_legs_are_fee,omitempty"`
 	// SolLegIsFee: the terminal's fee on buys is one SOL transfer of about
 	// 1 % of the trade to a per-user or per-referrer account (Banana Gun:

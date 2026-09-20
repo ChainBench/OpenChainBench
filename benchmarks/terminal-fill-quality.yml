@@ -14,7 +14,7 @@ unit: bp
 higher_is_better: false
 
 disclaimer: |
-  Random sample (up to 400 a day per terminal, 1,000 on EVM rows) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (its reserves, or the previous trade within 60 s); swaps without one keep their split, no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more (a single-chain product from 25), ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
+  Random sample (150 a day per row, Solana and EVM alike) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (its reserves, or the previous trade within 60 s); swaps without one keep their split, no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more (a single-chain product from 25), ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -35,7 +35,7 @@ abstract: |
   Each terminal takes its fee through known wallets. A live WebSocket feed of
   every transaction mentioning those wallets, with its program logs, says which
   ones attempted a swap and whether they failed; the harness counts them all
-  (fail rate) and reads 400 successful ones per terminal per day, drawn at
+  (fail rate) and reads 150 successful ones per row per day, drawn at
   random. From the pre/post balances of every account in the transaction it
   derives, in quote units (SOL or a $1 stable), what left the user, what the
   pool received, what reached the terminal's fee wallets (on the EVM rows: the
@@ -53,7 +53,7 @@ abstract: |
   terminal; published from 50 priced swaps, ranked from 100.
 
 methodology:
-  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters, Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, Terminal 2, the others 1; pump.fun's app and Banana Gun also by program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; up to 400 successful ones per terminal per day are read (1,000 on the EVM rows), drawn at random, weighted by the tick's activity (clamped). Rolling 24 h."
+  - "Sampling: a WebSocket feed of every transaction mentioning each terminal's fee wallets (DeFiLlama adapters, Dune's spellbook: Axiom 22, GMGN 9, Trojan 6, Terminal 2, the others 1; pump.fun's app and Banana Gun also by program). The logs say whether a swap program was invoked: only those count as attempts, all of them for the fail rate; 150 successful ones per row per day are read (Solana and EVM alike), drawn at random, weighted by the tick's activity (clamped). Rolling 24 h."
   - "The user is the signer whose token balance moved; when nobody signed for the user (limit, DCA and auto-sell orders executed by the terminal's keeper), the wallet whose token account moved against its SOL / stable balance, never a program-derived pool address. Quote assets: SOL, USDC, USDT, USD1, USDS, PYUSD; token-to-token swaps are not measured."
   - "Quote side, exact from balance deltas: user_q = what left or reached the user's SOL / WSOL / stable balance, the tx fee included when the user paid it, rent of accounts created or closed in the transaction excluded; pool_q = the pool's quote movement, converted to the user's quote unit when the pool is quoted differently; terminal_q = lamports, WSOL or stables landing in the fee wallets (FOMO: plus its user-signed USDC legs, 2 % of the trade or its $0.10 minimum)."
   - "network_q = tx fee if the user paid it + inclusion tips: Jito, 0slot, bloXroute, Astralane, Nozomi and each terminal's own relay accounts (Axiom, Trojan, Maestro, Photon, Pepeboost, pump.fun app). other_q = user_q minus pool_q, terminal_q and network_q on single-pool routes without hops (pump.fun protocol and creator fees, referral payouts); on routed swaps it stays inside pool."
@@ -88,7 +88,7 @@ findings:
 
 faq:
   - q: "What is the reference price and why does it matter?"
-    a: "The token side of a swap has no price of its own; it has to be valued at something. This bench values it at the pool's mid price just before the swap: exactly, from the pool's own pre-trade balances in the transaction, on PumpSwap (with the virtual quote reserve its migrated pools store), Raydium, Launchpad, Meteora DLMM, four.meme and the EVM pools; and, where the pool's formula is not known or the route crosses several pools, at the effective price of the previous trade on the same pool, at most 60 seconds earlier and usually under one. That is the arrival price a TCA desk would use. Valuing at the price after the swap would hide the trade's own impact. When neither is available the swap keeps its exact cost split but no loss figure; no off-chain token price is used (wrapped gas coins in an EVM pool and origin gas are valued at Coinbase spot)."
+    a: "The token side of a swap has no price of its own; it has to be valued at something. This bench values it at the pool's mid price just before the swap: exactly, from the pool's own pre-trade balances in the transaction, on PumpSwap (with the virtual quote reserve its migrated pools store), Raydium, Launchpad, Meteora DLMM, four.meme and the EVM pools; and, where the pool's formula is not known or the route crosses several pools, at the effective price of the previous trade on the same pool, at most 60 seconds earlier and usually under one. That is the arrival price a TCA desk would use. Valuing at the price after the swap would hide the trade's own impact. When neither is available the swap keeps its exact cost split but no loss figure; no off-chain token price is used for the token side; on the EVM rows the gas-coin leg is valued at the route's own stable-to-gas hop pre-trade mid (the executed rate as fallback), and origin gas at Coinbase spot."
   - q: "Why is the loss much larger than the terminal's 1 % fee?"
     a: "Because the fee is one of five costs. On a pump.fun curve or PumpSwap trade the protocol and creator fees add roughly 1 to 1.4 %, the pool keeps its LP fee and the price impact of the trade, the app attaches a priority fee and often an inclusion tip, and the pool's price may already have moved between the arrival trade and ours. The split is published per terminal so the terminal-attributable part is visible on its own."
   - q: "Is this comparable across terminals?"
@@ -129,7 +129,7 @@ metric_panels:
     metric: tfq_component_bps{component="pool",chain="all"}
     unit: bp
     higher_is_better: false
-    description: "Median of loss minus terminal, network, other and relay: LP fee and price impact, plus hop costs on routed swaps (on the EVM rows the stable-to-gas-coin hop's own cost included, the native leg being valued at that hop's pre-trade mid)."
+    description: "Median of loss minus terminal, network, other and relay: the final pool's LP fee and price impact (on the EVM rows the stable-to-gas-coin hop's own cost included, the native leg being valued at that hop's pre-trade mid)."
   - id: relay
     label: Relay
     label_key: terminal
@@ -137,7 +137,7 @@ metric_panels:
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow; blank where no bridge is used."
+    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow, blank when the bridged rows carry under half the product's flow (FOMO: most of its swaps are native on Solana)."
   - id: other
     label: Other fees
     label_key: terminal
@@ -145,7 +145,7 @@ metric_panels:
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Median quote that reached neither pool, terminal nor network on single-pool swaps: pump.fun protocol and creator fees, referral payouts."
+    description: "Median quote that reached neither the final pool, the terminal nor the network: pump.fun protocol and creator fees, referral payouts, and on routed swaps the routers' cuts and the hops' leftovers (a residual over a quarter of the trade stays in Pool: route not followed)."
   - id: fail_rate
     label: Failed swaps
     label_key: terminal
@@ -358,7 +358,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Telegram bot, Robinhood Chain + BNB + Base + Ethereum (wallets funded from Solana through Relay)"
-    formula: "Swaps of the wallets BasedBot bridged from Solana via Relay, on its router on Robinhood Chain, BNB, Base and Ethereum, valued at the pool's state before the swap; its fee and referral transfers (about 1 %) are the fee. Median over 24 h."
+    formula: "Swaps of the wallets on BasedBot's Relay legs (either end), on its router on Robinhood Chain, BNB, Base and Ethereum, valued at the pool's state before the swap; its fee and referral transfers (about 1 %) are the fee. Median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="basedbot",chain="all",stat="median"}
       p90: tfq_loss_bps{terminal="basedbot",chain="all",stat="p90"}
