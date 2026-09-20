@@ -808,8 +808,8 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				q := sw.QuoteUSD
 				sw.UserQ = (x.UsdIn + gasUSD) / q // what the user sent on the origin chain, plus its gas
 				sw.TerminalQ = x.AppFeeUsd / q
-				sw.RelayQ = x.RelayFeeUsd / q
-				sw.NetworkQ = gasUSD / q
+				sw.RelayQ = (x.RelayFeeUsd + relayDeclaredFees(x)) / q
+				sw.NetworkQ = (gasUSD + x.DestGasUsd) / q
 				sw.Others, sw.OtherQ = nil, nil
 				if sw.PoolQ > 0 && sw.Pools == 1 {
 					o := sw.UserQ - sw.PoolQ - sw.TerminalQ - sw.RelayQ - sw.NetworkQ
@@ -1066,7 +1066,7 @@ var chainNames = map[string]string{"bnb": "BNB", "robinhood": "Robinhood Chain",
 func cohort() []Terminal {
 	out := append([]Terminal{}, terminals...)
 	for _, a := range xchainApps {
-		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or moves funds between the Solana and EVM wallets of the same app account, either direction (BasedBot: an in-app bridge, not a deposit to trade). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
+		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or moves funds between the Solana and EVM wallets of the same app account, either direction (BasedBot: an in-app bridge, not a deposit to trade). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; network = origin gas plus the destination gas Relay charged (its fee breakdown); relay = the rest of what Relay kept (fixed and price fees, the solver's spread). Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
 		if a.FundingOnly {
 			continue
 		}
@@ -1082,6 +1082,12 @@ func cohort() []Terminal {
 		out = append(out, Terminal{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: note})
 	}
 	return out
+}
+
+// relayDeclaredFees: Relay's fixed and price fees (USD) from its breakdown,
+// for the rows whose relay figure is not a residual.
+func relayDeclaredFees(x relayRequest) float64 {
+	return x.RelayFixedUsd
 }
 
 // evmSaleRow measures a request that sold a token on its origin chain and
@@ -1117,9 +1123,9 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	}
 	sw.UserQ = recv.Tokens // quote received on Solana
 	sw.TerminalQ = x.AppFeeUsd / q
-	sw.NetworkQ = s.GasUSD / q // origin gas, paid by the user
-	sw.PoolQ = s.PoolInUSD / q // quote the origin pool paid out
-	relay := s.PoolInUSD - s.OtherUSD - x.AppFeeUsd - recv.Tokens*q
+	sw.NetworkQ = (s.GasUSD + x.DestGasUsd) / q // origin gas paid by the user, plus the destination gas Relay charged
+	sw.PoolQ = s.PoolInUSD / q                  // quote the origin pool paid out
+	relay := s.PoolInUSD - s.OtherUSD - x.AppFeeUsd - recv.Tokens*q - x.DestGasUsd
 	if relay < 0 {
 		relay = 0
 	}
@@ -1216,8 +1222,8 @@ func evmFundingRow(ctx context.Context, rpc *rpcClient, t Terminal, x relayReque
 	}
 	sw.UserQ = givenUSD / price
 	sw.TerminalQ = x.AppFeeUsd / price
-	sw.NetworkQ = feeUSD / price
-	relay := givenUSD - feeUSD - recv*price - x.AppFeeUsd
+	sw.NetworkQ = (feeUSD + x.DestGasUsd) / price
+	relay := givenUSD - feeUSD - recv*price - x.AppFeeUsd - x.DestGasUsd
 	if relay < 0 {
 		relay = 0
 	}
@@ -1268,9 +1274,9 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 	}
 	sw.UserQ = givenUSD / q
 	sw.TerminalQ = x.AppFeeUsd / q
-	sw.NetworkQ = feeUSD / q
+	sw.NetworkQ = (feeUSD + x.DestGasUsd) / q // origin gas, plus the destination gas Relay charged
 	sw.PoolQ = s.PoolInUSD / q
-	relay := givenUSD - feeUSD - x.AppFeeUsd - s.PoolInUSD - s.OtherUSD
+	relay := givenUSD - feeUSD - x.AppFeeUsd - s.PoolInUSD - s.OtherUSD - x.DestGasUsd
 	if relay < 0 {
 		relay = 0
 	}

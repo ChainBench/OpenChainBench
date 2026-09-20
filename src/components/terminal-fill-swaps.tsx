@@ -182,7 +182,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th("loss", "Loss", "1 − value received / value given, basis points of the trade; ! = out of bounds, excluded from the statistics")}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
               {th("terminal", "Fee", "terminal fee, bps")}
-              {th("network", "Net", "tx fee + inclusion tips, bps")}
+              {th("network", "Net", "tx fee + inclusion tips, bps; on Relay rows the destination gas Relay charged is included")}
               {th(undefined, "Other", "pump.fun / creator / referral fees, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
               {th(undefined, "Reference", "exact mid: the pool's reserves before the swap; previous trade: the trade before ours on the same pool, age in seconds", "left")}
