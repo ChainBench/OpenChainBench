@@ -280,6 +280,7 @@ export function EmbedBadgeButton({
                   <CopyButton
                     value={snippets?.[active] ?? ""}
                     label={`Copy ${active}`}
+                    event={{ kind: "embed", value: active, bench: benchSlug }}
                   />
                 </div>
               </div>

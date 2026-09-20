@@ -151,7 +151,7 @@ export default async function McpPage() {
             <code className="font-mono text-sm text-ink break-all">
               {MCP_URL}
             </code>
-            <CopyButton value={MCP_URL} label="Copy URL" />
+            <CopyButton value={MCP_URL} label="Copy URL" event={{ kind: "mcp_url" }} />
           </div>
         </div>
 
@@ -344,7 +344,7 @@ function CodeBlock({ value }: { value: string }) {
         <code>{value}</code>
       </pre>
       <div className="mt-2 flex justify-end">
-        <CopyButton value={value} label="Copy" />
+        <CopyButton value={value} label="Copy" event={{ kind: "mcp_url" }} />
       </div>
     </div>
   );
