@@ -172,6 +172,7 @@ export function buildEditorial(
     dimensions: spec.dimensions,
     aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
+    ledgerReliability: spec.ledger_reliability,
     providerNotes: spec.provider_notes,
   };
 }

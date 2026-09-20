@@ -614,6 +614,11 @@ export const SpecSchema = z
      * `panel` reads the values of a metric_panels entry by id. The first
      * column is the headline (sort key, data bar, mobile column).
      */
+    /** false when the providers' `success` query is a publication gate
+     *  (0 or 1) rather than a probe success rate: the ledger then hides
+     *  the Success and Reliability columns and describes an unpublished
+     *  row as under its threshold, not as a dead endpoint. */
+    ledger_reliability: z.boolean().default(true),
     ledger_columns: z
       .array(
         z
