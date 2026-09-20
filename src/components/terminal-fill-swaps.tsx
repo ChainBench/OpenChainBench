@@ -57,7 +57,17 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
     };
     return f.sort((a, b) => (v(a) - v(b)) * sort.dir);
   }, [swaps, terminal, side, venue, ref, sort]);
-  const nameOf = (slug: string) => terminals.find((t) => t.slug === slug)?.name ?? slug;
+  const nameOf = (slug: string) => terminals.find((t) => t.slug === slug)?.name ?? PRODUCT_NAMES[productOf(slug)] ?? productOf(slug);
+  // The row's product for the logo and the link, and what the slug's suffix means for the reader.
+  const productOf = (slug: string) => slug.replace(ROW_SUFFIX, "");
+  const legOf = (slug: string): { text: string; title: string } | null => {
+    const m = slug.match(ROW_SUFFIX);
+    if (!m) return null;
+    if (m[1] === "funding") return { text: "funding leg", title: "A bridge leg through Relay, not a swap: what the user sent on one chain against what was delivered on the other (FOMO: into its Solana wallet; BasedBot: the gas coin into its wallet on Robinhood Chain, BNB, Base or Ethereum). In the JSON, out of the product's published figure." };
+    const chain = CHAIN_NAMES[m[1]] ?? m[1];
+    if (slug.startsWith("fomo-")) return { text: `on ${chain} via Relay`, title: `A FOMO trade delivered on ${chain} by a Relay solver: the user paid from the FOMO wallet on Solana` };
+    return { text: chain, title: `A swap of this product on ${chain}, read from its router there` };
+  };
   const filtered = terminal !== (focus ?? "") || side || venue || ref;
   const reset = () => {
     setTerminal(focus ?? "");
@@ -185,8 +195,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 whitespace-nowrap text-ink-soft">{fmtTime(s.time)}</td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <span className="inline-flex items-center gap-2 font-medium text-ink">
-                    <ProviderLogo slug={s.terminal} name={nameOf(s.terminal)} size={16} />
+                    <ProviderLogo slug={productOf(s.terminal)} name={nameOf(s.terminal)} size={16} />
                     {nameOf(s.terminal)}
+                    {legOf(s.terminal) ? (
+                      <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help font-normal" title={legOf(s.terminal)!.title}>
+                        {legOf(s.terminal)!.text}
+                      </span>
+                    ) : null}
                   </span>
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
@@ -284,6 +299,8 @@ type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Other fees", pool: "Pool" } as const;
+const ROW_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
+const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app" };
 const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
 const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
 /** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
