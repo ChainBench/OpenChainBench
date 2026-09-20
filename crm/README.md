@@ -78,7 +78,8 @@ The cookie is `nonce.expiry.signature`, signed with `CRM_SESSION_SECRET` (random
 not the password, so a leaked cookie gives nothing to brute force) and valid
 only while its nonce is listed in `/data/sessions.json`: logout revokes it,
 rotating either variable logs everyone out. Login attempts are limited to 10
-per client per 15 minutes. Both variables must be 16 characters or more.
+per client per 15 minutes. The password needs 12 characters or more, the
+secret 16.
 
 Module state (snapshot cache, refresh mutex, PostHog budget, login counters)
 lives on `globalThis` and the snapshot file is re-read whenever its mtime
