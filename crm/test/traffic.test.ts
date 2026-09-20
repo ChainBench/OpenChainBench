@@ -2,15 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { channelTotals, QUERIES, sectionTotals, sumWindow, TRAFFIC_SECTIONS } from "../lib/traffic";
 
 describe("queries", () => {
-  test("every query is scoped to pageviews on the production host", () => {
+  test("every query is scoped to the production host and to a named event", () => {
     for (const name of TRAFFIC_SECTIONS) {
       const q = QUERIES[name]();
-      expect(q).toContain("event = '$pageview'");
       expect(q).toContain("properties.$host = 'openchainbench.com'");
+      expect(/event (= '\$pageview'|= '(outbound_click|search|copy)'|IN \('outbound_click', 'copy', 'search'\))/.test(q)).toBe(true);
     }
   });
   test("the refresh spends a bounded number of queries", () => {
-    expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(12);
+    expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(16);
   });
   test("the weekly series and the totals embed the AI domain list", () => {
     expect(QUERIES.weekly()).toContain("'chatgpt.com'");

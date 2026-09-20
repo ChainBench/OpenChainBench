@@ -110,7 +110,7 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
               <code className="flex-1 min-w-0 truncate font-mono text-[12px] text-ink-soft" title={r.endpoint}>
                 {r.endpoint}
               </code>
-              <CopyButton value={r.endpoint!} label="Copy" />
+              <CopyButton value={r.endpoint!} label="Copy" event={{ kind: "endpoint", value: r.endpoint!, bench: benchmark.slug }} />
               <span className="w-[72px] text-right tabular-nums text-ink-soft">
                 {fmtUnit(r.ms.p50, benchmark.unit)}
               </span>

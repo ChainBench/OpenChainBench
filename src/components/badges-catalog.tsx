@@ -449,6 +449,7 @@ function EmbedModal({
               <CopyButton
                 value={currentSnippet}
                 label={`Copy ${active}`}
+                event={{ kind: "embed", value: active, bench: pair.benchSlug }}
               />
             </div>
           </div>

@@ -11,11 +11,13 @@ One shared password, per-login sessions, one Railway service, no database.
 | Overview | PostHog, blob, Prometheus | visitors, pageviews, sessions (7 d vs previous 7 d), **AI-referred visitors** (ChatGPT, Perplexity, Claude, Gemini, Copilot, …), search-referred visitors, 28 d daily series, 12 w weekly series with the AI share, channels, AI domains, sections |
 | Pages | PostHog | sections week over week, biggest gains and losses, top 100 pages (filter by section), entry pages |
 | Audience | PostHog | new vs returning, bounce, countries, devices, UTM sources, referring domains with their channel |
+| Actions | PostHog custom events | outbound clicks by destination host (visitors sent to providers), copies (endpoint, API URL, MCP, embed) per bench, search queries with the result picked |
 | Data health | index blob, Prometheus, Dune | live / stale (> 24 h) / expired (> 7 d) benches per category, benches needing attention, scrape targets down, Dune credits and period end, the daily history kept on the volume |
 
-The site captures `$pageview` and `$pageleave` only (autocapture off, nobody
-identified); every query reads `$pageview`, so every traffic number is a
-pageview aggregate and a visitor is a device cookie. Events from staging and
+The site captures `$pageview`, `$pageleave` and three custom events
+(`outbound_click`, `copy`, `search`, see `src/lib/analytics.ts`; autocapture
+off, nobody identified). Traffic pages read `$pageview`, the Actions page the
+custom events; a visitor is a device cookie. Events from staging and
 localhost are excluded (`properties.$host`).
 
 Bench health reads `aggregate/index.json` (every bench with its status and
@@ -27,10 +29,10 @@ from the sitemap before publishing, which is exactly what this page must show.
 PostHog allows **2400 query requests per hour per organisation**, shared by
 every key and every team member. This app never queries in the request path:
 
-- a refresh runs a **fixed list of 11 HogQL queries**, one at a time
+- a refresh runs a **fixed list of 15 HogQL queries**, one at a time
   (`lib/traffic.ts`), and writes a snapshot; pages read the snapshot;
 - the scheduler (`instrumentation.ts`) refreshes every `REFRESH_MINUTES`
-  (default 60): **11 queries per hour, about 0.5 % of the organisation's
+  (default 60): **15 queries per hour, about 0.6 % of the organisation's
   budget**;
 - the Refresh button is refused for 10 minutes after any refresh;
 - a local budget (`POSTHOG_HOURLY_BUDGET`, default 300 per rolling hour) is a

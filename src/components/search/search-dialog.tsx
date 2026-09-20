@@ -1,6 +1,7 @@
 "use client";
 
 import { Command } from "cmdk";
+import { track } from "@/lib/analytics";
 import Fuse from "fuse.js";
 import {
   ArrowRight,
@@ -237,6 +238,9 @@ export default function SearchDialog() {
 
   function go(url: string, entry?: RecentEntry) {
     if (entry) pushRecent(entry);
+    // What people search for and where they land: the query column tells
+    // which benches and providers are asked for and missing.
+    track("search", { query: query.trim().slice(0, 80), kind: entry?.kind ?? "", url });
     close();
     router.push(url);
   }

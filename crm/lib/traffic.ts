@@ -1,8 +1,9 @@
 /**
  * The PostHog side of the snapshot: one fixed list of HogQL queries per
- * refresh (eleven today), each mapped to a plain JSON section. Every query is
+ * refresh (fifteen today), each mapped to a plain JSON section. Every query is
  * scoped to the production host, so staging and localhost never count, and
- * to `$pageview`, the only event the site captures today (autocapture is off).
+ * to one named event: `$pageview` for the traffic sections, the three custom
+ * events of src/lib/analytics.ts for the Actions sections (autocapture is off).
  *
  * Distinct id, not person id: the site runs `person_profiles: identified_only`
  * and never identifies anyone, so a visitor is a device cookie.
@@ -13,6 +14,8 @@ import { num, queryHogQL, str } from "@/lib/posthog";
 const SITE_HOST = process.env.SITE_HOST ?? "openchainbench.com";
 const HOST_FILTER = `properties.$host = '${SITE_HOST}'`;
 const PV = `event = '$pageview' AND ${HOST_FILTER}`;
+// The site's custom events (src/lib/analytics.ts): outbound_click, copy, search.
+const CUSTOM = `event IN ('outbound_click', 'copy', 'search') AND ${HOST_FILTER}`;
 
 export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number };
 export type WeeklyPoint = { week: string; visitors: number; ai: number; search: number; pageviews: number };
@@ -20,6 +23,10 @@ export type PageRow = { path: string; section: Section; visitors: number; prevVi
 export type ReferrerRow = { domain: string; channel: Channel; visitors: number; prevVisitors: number; pageviews: number };
 export type NamedCount = { name: string; visitors: number; share: number };
 export type EntryRow = { path: string; section: Section; sessions: number };
+export type ActionRow = { name: string; count: number; prevCount: number; visitors: number };
+export type OutboundRow = { host: string; clicks: number; prevClicks: number; visitors: number; topPage: string };
+export type SearchRow = { query: string; count: number; kind: string; url: string };
+export type CopyRow = { kind: string; value: string; bench: string; count: number };
 
 export type Traffic = {
   daily: DailyPoint[];
@@ -45,6 +52,10 @@ export type Traffic = {
     prevSearchVisitors: number;
   };
   engagement: { pagesPerSession: number; bounceRate: number; sessions: number };
+  actions: ActionRow[];
+  outbound: OutboundRow[];
+  searches: SearchRow[];
+  copies: CopyRow[];
 };
 
 export const QUERIES = {
@@ -119,6 +130,24 @@ export const QUERIES = {
       SELECT properties.$session_id AS s, count() AS n
       FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY AND s IS NOT NULL GROUP BY s
     )`,
+  actions: () => `
+    SELECT event, countIf(timestamp >= now() - INTERVAL 7 DAY) AS n, countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_n,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors
+    FROM events WHERE ${CUSTOM} AND timestamp >= now() - INTERVAL 14 DAY
+    GROUP BY event ORDER BY n DESC`,
+  outbound: () => `
+    SELECT properties.host AS host, countIf(timestamp >= now() - INTERVAL 7 DAY) AS clicks, countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_clicks,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors, topK(1)(properties.page) AS top_page
+    FROM events WHERE event = 'outbound_click' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 14 DAY
+    GROUP BY host ORDER BY greatest(clicks, prev_clicks) DESC LIMIT 40`,
+  searches: () => `
+    SELECT lower(properties.query) AS q, count() AS n, topK(1)(properties.kind) AS kind, topK(1)(properties.url) AS url
+    FROM events WHERE event = 'search' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
+    GROUP BY q ORDER BY n DESC LIMIT 40`,
+  copies: () => `
+    SELECT properties.kind AS kind, properties.value AS value, properties.bench AS bench, count() AS n
+    FROM events WHERE event = 'copy' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY kind, value, bench ORDER BY n DESC LIMIT 40`,
 } as const;
 
 export type TrafficSection = keyof typeof QUERIES;
@@ -165,6 +194,16 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
       };
     case "audience":
       return { audience: { newVisitors: num(rows[0]?.[0]), returningVisitors: num(rows[0]?.[1]) } };
+    case "actions":
+      return { actions: rows.map((r) => ({ name: str(r[0]), count: num(r[1]), prevCount: num(r[2]), visitors: num(r[3]) })) };
+    case "outbound":
+      return {
+        outbound: rows.map((r) => ({ host: str(r[0]) || "?", clicks: num(r[1]), prevClicks: num(r[2]), visitors: num(r[3]), topPage: str(Array.isArray(r[4]) ? r[4][0] : r[4]) })),
+      };
+    case "searches":
+      return { searches: rows.map((r) => ({ query: str(r[0]), count: num(r[1]), kind: str(Array.isArray(r[2]) ? r[2][0] : r[2]), url: str(Array.isArray(r[3]) ? r[3][0] : r[3]) })) };
+    case "copies":
+      return { copies: rows.map((r) => ({ kind: str(r[0]) || "other", value: str(r[1]), bench: str(r[2]), count: num(r[3]) })) };
     case "engagement":
       return { engagement: { pagesPerSession: num(rows[0]?.[0]), bounceRate: num(rows[0]?.[1]), sessions: num(rows[0]?.[2]) } };
   }
