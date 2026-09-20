@@ -32,9 +32,8 @@ every key and every team member. This app never queries in the request path:
 - a refresh runs a **fixed list of 15 HogQL queries**, one at a time
   (`lib/traffic.ts`), and writes a snapshot; pages read the snapshot;
 - the scheduler (`instrumentation.ts`) refreshes every `REFRESH_MINUTES`
-  (default 60): **15 queries per hour, about 0.6 % of the organisation's
-  budget**;
-- the Refresh button is refused for 10 minutes after any refresh;
+  (default 15): **60 queries per hour, 2.5 % of the organisation's budget**;
+- the Refresh button is refused for 5 minutes after any refresh;
 - a local budget (`POSTHOG_HOURLY_BUDGET`, default 300 per rolling hour) is a
   second guard; a 429 or an exhausted budget stops the batch, the sections that
   did not run keep their previous values, and the next scheduled refresh

@@ -15,9 +15,12 @@ import { budget, BudgetExhausted, HOURLY_BUDGET, posthogConfigured, RateLimited 
 import { loadBenchHealth, loadDuneUsage, loadHarnessHealth, type BenchHealth, type DuneUsage, type HarnessHealth } from "@/lib/ocb";
 import { loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
 
-export const REFRESH_MINUTES = clampInt(process.env.REFRESH_MINUTES, 60, 10, 24 * 60);
+// 15 min by default: 15 queries per pass, 60 per hour, 2.5 % of PostHog's
+// organisation budget; the Railway cost does not move with this number, the
+// container is always on and a pass is about 40 s of light CPU.
+export const REFRESH_MINUTES = clampInt(process.env.REFRESH_MINUTES, 15, 5, 24 * 60);
 /** A manual refresh is refused while the last one is younger than this. */
-export const MANUAL_COOLDOWN_MINUTES = 10;
+export const MANUAL_COOLDOWN_MINUTES = 5;
 
 const DIR = process.env.SNAPSHOT_DIR ?? path.join(process.cwd(), ".snapshots");
 const FILE = path.join(DIR, "snapshot.json");
