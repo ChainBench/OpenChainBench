@@ -142,6 +142,23 @@ depends on pool activity. The victim's extra cost is already inside
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
 over $250; median loss and n from 5 samples).
 
+**Launchpad curves (`rhcurve.go`)**: BasedBot's router family also trades
+bonding curves, one contract per token with the same bytecode, no Uniswap
+event: `buy 0xec36bf57…` [gas coin in, tokens out, fee 1, fee 2], `sell
+0x8113d738…` [tokens in, gas coin out, fee 1, fee 2], fees (1 % + 2 %) on the
+gross amount. The quote is the gas coin itself unless an ERC20 moved the
+amount to or from the curve (a stable, WETH, or a token the route bought on
+the way, priced through that swap). Reference = the previous trade on the
+curve at the reserve-side price, walked in 9,000-block chunks (the keyed
+node caps `eth_getLogs` at 10,000; Robinhood Chain makes ~590 blocks a
+minute) up to two hours back. A token launch's first buy (minted to the
+curve in the same transaction) is rejected as `launch_first_trade`. On
+2026-09-21, 15 of 40 router swaps on Robinhood Chain were curve trades and
+7 more were sells against ETH-quoted v4 pools (no ERC20 transfer for the
+quote leg: priced as the gas coin when no ERC20 of that order moved
+through the manager, `nativeV4Quote`): 8 of 40 priced before, 33 of 35
+fills after.
+
 **Cross-chain (`xchain.go`)**: FOMO's users pay on BNB, Robinhood Chain,
 Base, Ethereum or Arc and Relay delivers on Solana (BasedBot's requests are
 its in-app bridge between the user's Solana and EVM wallets, both

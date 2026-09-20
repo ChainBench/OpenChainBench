@@ -245,6 +245,29 @@ const (
 	arcPseudo = "0xfffffffffffffffffffffffffffffffffffffffe"
 )
 
+// nativeV4Quote: a v4 pool holds the gas coin itself, so a swap against
+// ETH logs no ERC20 transfer for the quote leg. When no ERC20 flow of the
+// manager matches the quote (to 0.5 %), the quote is the gas coin at the
+// exchange's price, USD per wei; any ERC20 flow of half the quote or more
+// through the manager means a token leg instead (left unpriced). Sells of
+// BasedBot's users on Robinhood Chain against ETH-quoted v4 pools read
+// no_quote_leg before this.
+func nativeV4Quote(c originChain, gas map[string]float64, ev *swapEv, quoteRaw *big.Int, flows map[string]*big.Int) (float64, bool) {
+	if ev.kind != "v4" || c.gas == "" || quoteRaw == nil || quoteRaw.Sign() <= 0 {
+		return 0, false
+	}
+	p, ok := gas[c.gas]
+	if !ok || p <= 0 {
+		return 0, false
+	}
+	for _, amt := range flows {
+		if amt != nil && amt.Cmp(new(big.Int).Div(quoteRaw, big.NewInt(2))) >= 0 {
+			return 0, false // an ERC20 of that order moved through the manager: the quote is a token leg the passes above could not price, not the gas coin
+		}
+	}
+	return p * 1e-18, true
+}
+
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
 // Coinbase spot of the chain's gas token.
 func quoteUSD(sym string, c originChain, gas map[string]float64) (float64, bool) {
@@ -487,6 +510,10 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 				return out, nil
 			}
 		}
+		for _, tr := range rhTrades(rc.Logs, true, tokenFrom) {
+			priceRHCurve(ctx, httpc, c, &out, tr, token, meta.dec, gas, rc.Logs)
+			return out, nil
+		}
 		out.Unpriced = "no_pool"
 		return out, nil
 	}
@@ -544,6 +571,9 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 					}
 				}
 			}
+		}
+		if u, ok := nativeV4Quote(c, gas, ev, quoteRaw, intoPool[ev.pool]); ok {
+			return u, 0, true
 		}
 		return 0, 0, false
 	}
@@ -832,6 +862,10 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 				return out, nil
 			}
 		}
+		for _, tr := range rhTrades(rc.Logs, false, tokenTo) {
+			priceRHCurve(ctx, httpc, c, &out, tr, token, meta.dec, gas, rc.Logs)
+			return out, nil
+		}
 		out.Unpriced = "no_pool"
 		return out, nil
 	}
@@ -889,6 +923,9 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 					}
 				}
 			}
+		}
+		if u, ok := nativeV4Quote(c, gas, ev, quoteRaw, outOfPool[ev.pool]); ok {
+			return u, 0, true
 		}
 		return 0, 0, false
 	}
