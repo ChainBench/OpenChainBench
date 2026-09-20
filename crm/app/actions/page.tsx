@@ -115,6 +115,24 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
       </section>
 
       <section className="panel mt-6 p-4">
+        <p className="label">Searches with no result, 7 d (content gaps)</p>
+        {(t.noResults ?? []).length > 0 ? (
+          <table className="data mt-2">
+            <tbody>
+              {(t.noResults ?? []).map((r) => (
+                <tr key={r.query}>
+                  <td className="mono">{r.query}</td>
+                  <td className="num mono">{fmtInt(r.count)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty text="No empty search recorded." />
+        )}
+      </section>
+
+      <section className="panel mt-6 p-4">
         <p className="label">What people search for, 7 d (a result was picked)</p>
         {searches.length > 0 ? (
           <table className="data mt-2">

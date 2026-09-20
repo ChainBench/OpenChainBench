@@ -261,6 +261,14 @@ export default function SearchDialog() {
   const isSearching = trimmed.length > 0;
   const showEmpty = isSearching && results.length === 0;
 
+  // A query that matched nothing, once the visitor stopped typing (800 ms),
+  // once per query: the content gaps the search box reveals.
+  useEffect(() => {
+    if (!showEmpty || indexStatus !== "ready" || trimmed.length < 3) return;
+    const t = window.setTimeout(() => track("search_no_result", { query: trimmed.slice(0, 80) }), 800);
+    return () => window.clearTimeout(t);
+  }, [showEmpty, indexStatus, trimmed]);
+
   return (
     <div
       className={[

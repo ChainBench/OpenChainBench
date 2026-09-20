@@ -6,6 +6,8 @@ const NAV = [
   ["/pages", "Pages"],
   ["/audience", "Audience"],
   ["/actions", "Actions"],
+  ["/search", "Search"],
+  ["/crawlers", "Crawlers"],
   ["/health", "Data health"],
 ] as const;
 
@@ -19,7 +21,7 @@ export function fmtAge(min: number | null): string {
 
 export function Shell({ current, snapshot, refreshFlag, children }: { current: string; snapshot: Snapshot; refreshFlag?: string; children: React.ReactNode }) {
   const age = snapshotAgeMinutes(snapshot);
-  const errors = Object.entries(snapshot.status).filter(([, s]) => s.error);
+  const errors = Object.entries(snapshot.status).filter(([k, s]) => s.error && k !== "gsc");
   const canRefresh = age == null || age >= MANUAL_COOLDOWN_MINUTES;
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-5">

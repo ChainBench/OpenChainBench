@@ -14,6 +14,7 @@ import path from "node:path";
 import { budget, BudgetExhausted, HOURLY_BUDGET, posthogConfigured, RateLimited } from "@/lib/posthog";
 import { loadBenchHealth, loadDuneUsage, loadHarnessHealth, type BenchHealth, type DuneUsage, type HarnessHealth } from "@/lib/ocb";
 import { loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
+import { gscConfigured, loadGsc, type Gsc } from "@/lib/gsc";
 
 // 15 min by default: 15 queries per pass, 60 per hour, 2.5 % of PostHog's
 // organisation budget; the Railway cost does not move with this number, the
@@ -36,13 +37,25 @@ export type Snapshot = {
   benches: BenchHealth | null;
   harness: HarnessHealth | null;
   dune: DuneUsage | null;
+  gsc: Gsc | null;
   status: Record<string, SectionStatus>;
   budget: { used: number; limit: number };
 };
 
-export type HistoryLine = { day: string; visitors7d: number; pageviews7d: number; aiVisitors7d: number; searchVisitors7d: number; benches: number; stale: number; targetsDown: number };
+export type HistoryLine = {
+  day: string;
+  visitors7d: number;
+  pageviews7d: number;
+  aiVisitors7d: number;
+  searchVisitors7d: number;
+  benches: number;
+  stale: number;
+  targetsDown: number;
+  gscClicks7d?: number;
+  gscImpressions7d?: number;
+};
 
-const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, benches: null, harness: null, dune: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
+const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, benches: null, harness: null, dune: null, gsc: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
 
 function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
   const n = Number.parseInt(raw ?? "", 10);
@@ -118,6 +131,7 @@ async function appendHistory(s: Snapshot): Promise<void> {
     benches: s.benches?.total ?? 0,
     stale: (s.benches?.stale ?? 0) + (s.benches?.expired ?? 0),
     targetsDown: s.harness?.down.length ?? 0,
+    ...(s.gsc ? { gscClicks7d: s.gsc.totals.clicks, gscImpressions7d: s.gsc.totals.impressions } : {}),
   };
   await fs.mkdir(DIR, { recursive: true });
   await fs.appendFile(HISTORY, `${JSON.stringify(line)}\n`);
@@ -170,6 +184,14 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
   await step("dune", async () => {
     next.dune = await loadDuneUsage();
   });
+  if (gscConfigured()) {
+    delete next.status.gsc;
+    await step("search-console", async () => {
+      next.gsc = await loadGsc();
+    });
+  } else {
+    next.status.gsc = { at: null, error: "GSC_SERVICE_ACCOUNT_JSON not set (Search Console panel empty)" };
+  }
 
   if (posthogConfigured()) {
     // The "not configured" note from earlier refreshes must not outlive the fix.
