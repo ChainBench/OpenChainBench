@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MANUAL_COOLDOWN_MINUTES, snapshotAgeMinutes, type Snapshot } from "@/lib/snapshot";
+import { MANUAL_COOLDOWN_MINUTES, REFRESH_MINUTES, snapshotAgeMinutes, type Snapshot } from "@/lib/snapshot";
 
 const NAV = [
   ["/", "Overview"],
@@ -36,7 +36,9 @@ export function Shell({ current, snapshot, refreshFlag, children }: { current: s
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs" style={{ color: "var(--muted)" }}>
           <span title={snapshot.refreshedAt ?? ""}>
-            Snapshot {fmtAge(age)} · PostHog budget {snapshot.budget.used}/{snapshot.budget.limit} per hour
+            Snapshot {fmtAge(age)}
+            {age != null && age < REFRESH_MINUTES ? ` · next in ${Math.max(1, Math.round(REFRESH_MINUTES - age))} min` : ` · refreshes every ${REFRESH_MINUTES} min`}
+            {" "}· PostHog {snapshot.budget.used}/{snapshot.budget.limit} queries per hour
           </span>
           <form action="/api/refresh" method="post">
             <button
