@@ -54,6 +54,14 @@ jobs:
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build
+        # NEXT_PUBLIC_POSTHOG_KEY comes from a repository variable: `vercel pull`
+        # writes the literal "[SENSITIVE]" for env vars flagged sensitive on
+        # Vercel, and that string was compiled into the bundle as the PostHog
+        # token (no event reached PostHog from 2026-08-24 to 2026-09-20).
+        # process.env wins over the pulled .env file. The token is public by
+        # nature (it ships to every browser), so a variable, not a secret.
+        env:
+          NEXT_PUBLIC_POSTHOG_KEY: ${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Production
