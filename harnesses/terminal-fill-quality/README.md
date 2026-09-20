@@ -143,9 +143,10 @@ depends on pool activity. The victim's extra cost is already inside
 over $250; median loss and n from 5 samples).
 
 **Cross-chain (`xchain.go`)**: FOMO's users pay on BNB, Robinhood Chain,
-Base, Ethereum or Arc and Relay delivers on Solana (BasedBot's requests go
-the other way: SOL in, the gas coin into the user's EVM wallet, a funding
-leg; its trades are read on Robinhood Chain, see the native rows);
+Base, Ethereum or Arc and Relay delivers on Solana (BasedBot's requests are
+its in-app bridge between the user's Solana and EVM wallets, both
+directions, a funding leg; its trades are read on Robinhood Chain, BNB,
+Base and Ethereum, see the native rows);
 nothing on Solana pays the app's fee wallet, so the WebSocket feed never
 sees these. Relay's public requests feed (`/requests/v2?originChainId=`,
 no key; the `referrer` filter works for BasedBot, FOMO's referrer is
@@ -286,10 +287,12 @@ fee wallets (Ethereum `0xa74FA823…`, BSC `0x2b0A28A0…`, Base
 `0x16388de4…`); they last received on Ethereum on 2026-08-26 and on Base
 on 2026-09-06, the BSC one gains about 0.01 BNB a day, the trades went
 through Multicall3: no volume to measure. **BasedBot**: its Relay
-requests (about 330 an hour on 2026-09-19) are wallet funding the other
-way round: SOL sent from Solana, ETH or BNB delivered to the user's own
-wallet on Robinhood Chain, BNB, Base or Ethereum (a few into its contract
-`0xb92fe925…`), with no app fee; `classify` keeps them as `Funding` and
+requests (about 330 an hour on 2026-09-19) are its in-app bridge between
+the user's Solana and EVM wallets, both directions (of the last 50 on
+2026-09-20: 18 Robinhood Chain to Solana, 10 Solana to Robinhood Chain, the
+rest EVM to EVM), ETH or BNB delivered to the user's own wallet on Robinhood
+Chain, BNB, Base or Ethereum (a few into its contract `0xb92fe925…`), with
+no app fee, not a deposit mechanism to trade on Solana (FOMO's); `classify` keeps them as `Funding` and
 `evmFundingRow` prices them (value given = the SOL read on Solana, received
 = the native amount at the exchange's price, relay = the rest) into
 `basedbot-funding`, out of the pooled figure. Its trades run in its own

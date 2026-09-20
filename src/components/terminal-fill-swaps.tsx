@@ -63,7 +63,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const legOf = (slug: string): { text: string; title: string } | null => {
     const m = slug.match(ROW_SUFFIX);
     if (!m) return null;
-    if (m[1] === "funding") return { text: "funding leg", title: "A bridge leg through Relay, not a swap: what the user sent on one chain against what was delivered on the other (FOMO: into its Solana wallet; BasedBot: the gas coin into its wallet on Robinhood Chain, BNB, Base or Ethereum). In the JSON, out of the product's published figure." };
+    if (m[1] === "funding") return { text: "funding leg", title: "A bridge leg through Relay, not a swap: what the user sent on one chain against what was delivered on the other (FOMO: a deposit into its Solana wallet to trade there; BasedBot: its in-app bridge between the user's Solana and Robinhood Chain, BNB, Base or Ethereum wallets, either direction). In the JSON, out of the product's published figure." };
     const chain = CHAIN_NAMES[m[1]] ?? m[1];
     if (slug.startsWith("fomo-")) return { text: `on ${chain} via Relay`, title: `A FOMO trade delivered on ${chain} by a Relay solver: the user paid from the FOMO wallet on Solana` };
     return { text: chain, title: `A swap of this product on ${chain}, read from its router there` };
