@@ -105,9 +105,9 @@ func fetchAll(cfg *Config) {
 func fetchOne(v VenueConfig, ref float64) MarkSample {
 	switch v.Slug {
 	case "gains":
-		return fetchOracleVenue(v, ref, "gains")
+		return fetchGainsMark(v, ref)
 	case "gmx":
-		return fetchOracleVenue(v, ref, "gmx")
+		return fetchGmxMark(v, ref)
 	case "hyperliquid":
 		return fetchHyperliquidMark(v, ref)
 	case "dydx":

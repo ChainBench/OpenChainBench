@@ -12,13 +12,6 @@ import (
 	"time"
 )
 
-// Pyth price feed IDs for ETH/USD, BTC/USD, SOL/USD.
-var pythFeedIDs = map[string]string{
-	"ETH": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
-	"BTC": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
-	"SOL": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
-}
-
 // Binance spot symbols for each asset.
 var binanceSymbols = map[string]string{
 	"ETH": "ETHUSDT",
@@ -106,21 +99,106 @@ func fetchBinanceRef(asset string) (float64, error) {
 	return (bid + ask) / 2, nil
 }
 
-// fetchOracleVenue fetches the Pyth price as a proxy for gains/gmx oracle mark.
-func fetchOracleVenue(v VenueConfig, ref float64, slug string) MarkSample {
+// Gains and GMX publish their own mark; until 2026-09-20 both were read
+// through a Pyth Hermes proxy, and hermes.pyth.network has answered 401 to
+// unauthenticated calls since 2026-08-27 (Pyth put Hermes behind API keys),
+// which zeroed both venues' success rate for 24 days. The venue feeds are
+// the better source anyway: they are the price the venue actually marks at.
+
+// Gains pair indices in the pricing backend's arrays (trading-variables order).
+var gainsPairIndex = map[string]int{"BTC": 0, "ETH": 1, "SOL": 33}
+
+// gainsCharts is fetched once per cycle for the three assets (one call,
+// 493 pairs); the cache lives for the cycle only.
+var gainsChartsCache struct {
+	sync.Mutex
+	at     time.Time
+	closes []float64
+	err    string
+}
+
+func gainsCloses() ([]float64, string) {
+	gainsChartsCache.Lock()
+	defer gainsChartsCache.Unlock()
+	if time.Since(gainsChartsCache.at) < 5*time.Second && (gainsChartsCache.closes != nil || gainsChartsCache.err != "") {
+		return gainsChartsCache.closes, gainsChartsCache.err
+	}
+	gainsChartsCache.at = time.Now()
+	gainsChartsCache.closes, gainsChartsCache.err = nil, ""
+	resp, err := newClient().Get("https://backend-pricing.eu.gains.trade/charts")
+	if err != nil {
+		gainsChartsCache.err = fmt.Sprintf("fetch: %v", err)
+		return nil, gainsChartsCache.err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		gainsChartsCache.err = fmt.Sprintf("status_%d", resp.StatusCode)
+		return nil, gainsChartsCache.err
+	}
+	var r struct {
+		Time   int64      `json:"time"`
+		Closes []*float64 `json:"closes"`
+	}
+	if err := json.Unmarshal(body, &r); err != nil || len(r.Closes) == 0 {
+		gainsChartsCache.err = "parse_error"
+		return nil, gainsChartsCache.err
+	}
+	// The backend stamps the snapshot; a feed older than a minute is stale,
+	// not a price the venue marks at right now.
+	if r.Time > 0 && time.Since(time.UnixMilli(r.Time)) > time.Minute {
+		gainsChartsCache.err = "stale_feed"
+		return nil, gainsChartsCache.err
+	}
+	closes := make([]float64, len(r.Closes))
+	for i, c := range r.Closes {
+		if c != nil {
+			closes[i] = *c
+		}
+	}
+	gainsChartsCache.closes = closes
+	return closes, ""
+}
+
+// fetchGainsMark reads the venue's own mark from its pricing backend.
+func fetchGainsMark(v VenueConfig, ref float64) MarkSample {
 	s := MarkSample{Venue: v.Slug, Asset: v.Asset}
 	start := time.Now()
-
-	feedID, ok := pythFeedIDs[v.Asset]
+	idx, ok := gainsPairIndex[v.Asset]
 	if !ok {
-		s.Err = "no_pyth_feed"
+		s.Err = "no_pair"
 		s.FetchLatMs = time.Since(start).Milliseconds()
 		return s
 	}
+	closes, errStr := gainsCloses()
+	if errStr != "" {
+		s.Err = errStr
+		s.FetchLatMs = time.Since(start).Milliseconds()
+		return s
+	}
+	if idx >= len(closes) {
+		s.Err = "parse_error"
+		s.FetchLatMs = time.Since(start).Milliseconds()
+		return s
+	}
+	return finishSample(s, closes[idx], ref, start)
+}
 
-	url := "https://hermes.pyth.network/v2/updates/price/latest?ids[]=" + feedID
-	client := newClient()
-	resp, err := client.Get(url)
+// GMX v2 oracle prices are integers scaled to 30 minus the token's decimals.
+var gmxPriceScale = map[string]float64{"ETH": 1e12, "BTC": 1e22, "SOL": 1e21}
+
+// fetchGmxMark reads the venue's oracle price (mid of min and max) from the
+// GMX v2 API on Arbitrum.
+func fetchGmxMark(v VenueConfig, ref float64) MarkSample {
+	s := MarkSample{Venue: v.Slug, Asset: v.Asset}
+	start := time.Now()
+	scale, ok := gmxPriceScale[v.Asset]
+	if !ok {
+		s.Err = "no_pair"
+		s.FetchLatMs = time.Since(start).Milliseconds()
+		return s
+	}
+	resp, err := newClient().Get("https://arbitrum-api.gmxinfra.io/prices/tickers")
 	if err != nil {
 		s.Err = fmt.Sprintf("fetch: %v", err)
 		s.FetchLatMs = time.Since(start).Milliseconds()
@@ -133,31 +211,40 @@ func fetchOracleVenue(v VenueConfig, ref float64, slug string) MarkSample {
 		s.FetchLatMs = time.Since(start).Milliseconds()
 		return s
 	}
-
-	var r struct {
-		Parsed []struct {
-			Price struct {
-				Price string `json:"price"`
-				Expo  int    `json:"expo"`
-			} `json:"price"`
-		} `json:"parsed"`
+	var tickers []struct {
+		TokenSymbol string `json:"tokenSymbol"`
+		MinPrice    string `json:"minPrice"`
+		MaxPrice    string `json:"maxPrice"`
 	}
-	if err := json.Unmarshal(body, &r); err != nil || len(r.Parsed) == 0 {
+	if err := json.Unmarshal(body, &tickers); err != nil {
 		s.Err = "parse_error"
 		s.FetchLatMs = time.Since(start).Milliseconds()
 		return s
 	}
+	for _, t := range tickers {
+		if t.TokenSymbol != v.Asset {
+			continue
+		}
+		minP, err1 := strconv.ParseFloat(t.MinPrice, 64)
+		maxP, err2 := strconv.ParseFloat(t.MaxPrice, 64)
+		if err1 != nil || err2 != nil {
+			s.Err = "parse_error"
+			s.FetchLatMs = time.Since(start).Milliseconds()
+			return s
+		}
+		return finishSample(s, (minP+maxP)/2/scale, ref, start)
+	}
+	s.Err = "no_pair"
+	s.FetchLatMs = time.Since(start).Milliseconds()
+	return s
+}
 
-	rawPrice, _ := strconv.ParseFloat(r.Parsed[0].Price.Price, 64)
-	expo := r.Parsed[0].Price.Expo
-	mark := rawPrice * math.Pow10(expo)
-
+func finishSample(s MarkSample, mark, ref float64, start time.Time) MarkSample {
 	if mark <= 0 || ref <= 0 {
 		s.Err = "bad_price"
 		s.FetchLatMs = time.Since(start).Milliseconds()
 		return s
 	}
-
 	s.MarkPrice = mark
 	s.RefPrice = ref
 	s.SignedBps = (mark - ref) / ref * 10000
@@ -192,7 +279,9 @@ func fetchHyperliquidMark(v VenueConfig, ref float64) MarkSample {
 	}
 
 	var meta struct {
-		Universe []struct{ Name string `json:"name"` } `json:"universe"`
+		Universe []struct {
+			Name string `json:"name"`
+		} `json:"universe"`
 	}
 	var ctxs []struct {
 		MarkPx string `json:"markPx"`
@@ -318,8 +407,12 @@ func fetchLighterMark(v VenueConfig, ref float64) MarkSample {
 	}
 
 	var r struct {
-		Bids []struct{ Price string `json:"price"` } `json:"bids"`
-		Asks []struct{ Price string `json:"price"` } `json:"asks"`
+		Bids []struct {
+			Price string `json:"price"`
+		} `json:"bids"`
+		Asks []struct {
+			Price string `json:"price"`
+		} `json:"asks"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		s.Err = "parse"
