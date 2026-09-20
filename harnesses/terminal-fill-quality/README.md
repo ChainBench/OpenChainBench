@@ -223,8 +223,9 @@ event on every swap. Each tick polls `eth_getLogs` on those routers since
 the last block (`evm_cursor` in the state, at most 2,000 blocks a tick):
 every successful routed swap is seen (a failed transaction emits nothing:
 the **fail rate** comes from a sample of blocks read in full each tick,
-`failScan`, BNB 8 of ~80 a minute, Robinhood Chain 30 of ~590, Base 8 of
-~30, Ethereum 2 of ~5, drawn at random from the range polled: every transaction
+`failScan`, per poll BNB 3 blocks, Base 2, Ethereum 1, none on Robinhood Chain
+(`FAIL_SCAN_BLOCKS` in production, polls every 3 ticks: about 1 % of BNB's
+blocks, 3 % of Base's, 7 % of Ethereum's), drawn at random from the range polled: every transaction
 sent to a terminal's routers is an attempt, a reverted one a failed
 attempt with its gas as the failed cost, `sampled_attempts` /
 `sampled_failed` in the JSON, published from 20 attempts), a random
@@ -276,12 +277,13 @@ still holding, 2026-09-19), so the row is buys only by nature and stays
 held out of the product (one side, no fee); Base and BNB see no Banana Gun
 swaps (Mobula attributes none either). **Binance Wallet** trades through
 one swap router on BSC, Ethereum and Base (`0xb300000b…`, the
-transactions' `to`; Mobula attributes ~75 an hour on BSC, ~30 on
-Ethereum, ~10 on Base) that emits no event of its own (an executor
+transactions' `to`; the harness counts about 6,500 transactions an hour to
+it on BSC, far more than the ~75 Mobula attributes, a few hundred on Ethereum
+and Base) that emits no event of its own (an executor
 contract does), so its swaps are the successful transactions sent to it
 in the blocks the fail-rate sample reads in full (`NoEvents` on the
-terminal: 8 of ~80 BNB blocks a minute, 2 of ~5 on Ethereum, 8 of ~30 on
-Base), priced and split like the other native rows. **Terminal**
+terminal: the production block sample above), priced and split like the
+other native rows. **Terminal**
 (Padre) on EVM: DeFiLlama's `trading-terminal` fees adapter lists its
 fee wallets (Ethereum `0xa74FA823…`, BSC `0x2b0A28A0…`, Base
 `0x16388de4…`); they last received on Ethereum on 2026-08-26 and on Base
@@ -401,11 +403,11 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `SOLANA_RPC` | public RPC | comma-separated endpoints for the Solana reads, tried in order (the next on a rate limit or a transport error); `HELIUS_API_KEY`, when set, appends Helius after them, the public node comes last. Production: Chainstack, Alchemy free, Helius |
 | `RPC_RPS` | `8` | pacing, calls per second |
 | `TICK_SECONDS` | `60` | sweep interval |
-| `DAILY_TARGET` | `400` | swaps read per terminal per day (random draw from the feed) |
+| `DAILY_TARGET` | `400` | swaps read per terminal per day (random draw from the feed); production runs 150 (the minimal RPC profile) |
 | `SANDWICH` | `1` | `0` turns the sandwich screen off and skips the pool neighbourhood read when the exact mid is known (about a fifth of the Solana reads) |
 | `FAIL_SCAN_BLOCKS` | code defaults | blocks read in full per chain per poll for the EVM fail rate, e.g. `bnb=3,robinhood=0,base=2,ethereum=1` (0 = no fail rate on that chain's event-fed rows; Binance's rows need at least a few, the block sample is their feed) |
 | `NATIVE_POLL_EVERY` | `1` | the EVM log feed polls every N ticks (one `eth_getLogs` per chain per poll) |
-| `EVM_DAILY_TARGET` | `1000` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs them at 1,000 so the per-chain windows fill within hours) |
+| `EVM_DAILY_TARGET` | `1000` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs 150, the same as the Solana rows) |
 | `PURGE_EVM_BEFORE` | unset | at load, drop the cross-chain and native EVM rows older than this unix time (once, after a pricing change); the variable stays in the container's env until the next deploy resets it |
 | `PURGE_TERMINALS` | unset | at load, drop every row of these slugs (comma-separated), once, after a feed or attribution change; same caveat |
 | `DISCOVER_DENY` | unset | comma-separated wallets or routers discovery must never adopt (also skipped when the state's adoptions are re-applied at start) |
@@ -422,7 +424,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 Budget: about 4 to 5 RPC calls per sampled swap (transaction, two
 signature pages on the pool vault, previous trade when the reserves give
 no mid, pool account once per pool, back-run only on a sandwich
-candidate) and no polling, so 400 swaps × 13 Solana terminals ≈ 26k calls a day, plus ~400 reads per discovery run.
+candidate) and no polling, so 150 swaps × 13 Solana terminals ≈ 10k calls a day, plus ~400 reads per discovery run.
 Fits Helius's free tier; WebSocket notifications on the public endpoint
 are not metered.
 

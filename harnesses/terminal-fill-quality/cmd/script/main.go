@@ -1547,9 +1547,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		if len(rejects) == 0 {
 			ts.Rejects = nil
 		}
-		if att >= 20 {
+		if att >= 20 && (ts.SampSeen == 0 || ts.SampSeen >= 20) {
 			fr := 100 * failed / att
-			ts.FailRate = &fr // percent
+			ts.FailRate = &fr // percent (a native row: from 20 sampled transactions, not 20 scaled ones)
 		}
 		// A pooled entry weighs each row's sampled swaps by the row's
 		// attempts per sample: the chains are sampled at a fixed daily
@@ -1722,8 +1722,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				ts.Components["relay"] = wmedian(relay, relayW, pooled)
 			}
 			if pooled {
-				for c, v := range chainMeanOfMedians(st, member, slugs, attOf, c2field) {
+				cm := chainMeanOfMedians(st, member, slugs, attOf, c2field)
+				for c, v := range cm {
 					ts.Components[c] = v
+				}
+				for _, c := range []string{"relay", "other"} {
+					if _, ok := cm[c]; !ok {
+						delete(ts.Components, c) // carried by under half the product's flow: blank, not a minority's median
+					}
 				}
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
@@ -1823,6 +1829,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.Healthy = false // the pooled median rests on too few effective swaps
 		}
 		ts.Ranked = ts.Priced >= minRank
+		if pooled && ts.NEff > 0 && ts.NEff < float64(minRank) {
+			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
+		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
 			return ts, false // a cross-chain row nobody used in the window
 		}
@@ -1879,6 +1888,9 @@ func publishGauges(stats []TerminalStats) {
 			gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
 			gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
 			gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
+			if ts.NEff > 0 {
+				gSamples.WithLabelValues(ts.Product, ts.Chain, "effective").Set(math.Round(ts.NEff))
+			}
 			gHealth.WithLabelValues(ts.Product, ts.Chain).Set(0)
 			gRanked.WithLabelValues(ts.Product, ts.Chain).Set(0)
 			continue

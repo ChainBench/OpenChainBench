@@ -21,10 +21,11 @@ import (
 //	          its user-signed stable fee legs)
 //	NetworkQ  tx fee the user paid (0 when the terminal sponsors gas) +
 //	          inclusion tips (Jito and the other relays, the terminal's own)
-//	OtherQ    quote that left the user and reached neither pool, terminal
-//	          nor network (pump.fun protocol / creator fees, referrals…);
-//	          only on single-pool routes without hops, where it is exactly
-//	          UserQ − PoolQ − TerminalQ − NetworkQ
+//	OtherQ    quote that left the user and reached neither the final pool,
+//	          the terminal nor the network: UserQ − PoolQ − TerminalQ − NetworkQ
+//	          (pump.fun protocol / creator fees, referrals; on routed swaps
+//	          the routers' cuts and the hops' leftovers); nil when a routed
+//	          swap's residual exceeds a quarter of the trade (route not followed)
 //
 // The token leg (Tokens of Mint) is valued at the pool's own state before
 // the swap (reserves, or the previous trade on the pool), see finalize:
@@ -812,10 +813,14 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	if tx.BlockTime != nil {
 		s.Time = *tx.BlockTime
 	}
-	// "other" is exact on single-pool routes without hops: what the user
-	// paid minus pool, terminal and network. Elsewhere the hop pools hide
-	// it; it stays inside the derived pool figure.
-	if poolQ > 0 && len(pools) == 1 && hops == 0 && xMint == "" && main.venue != "unknown" {
+	// "other": what the user paid minus what the final pool received,
+	// the terminal and the network. Exact on single-pool routes (pump.fun
+	// protocol and creator fees, referrals). On routed swaps the final
+	// pool's input is known through the hop rate, so the same residual
+	// holds what the routers and the accounts along the route kept; a
+	// residual over a quarter of the trade means a route the parser did
+	// not follow, left inside the pool figure as before.
+	if poolQ > 0 && main.venue != "unknown" {
 		var o float64
 		if side == "buy" {
 			o = s.UserQ - poolQ - terminalQ - networkQ
@@ -825,7 +830,10 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		if o < 0 {
 			o = 0
 		}
-		s.OtherQ = &o
+		routed := len(pools) != 1 || hops != 0 || xMint != ""
+		if !routed || o <= 0.25*math.Max(s.UserQ, poolQ) {
+			s.OtherQ = &o
+		}
 	}
 	if s.UserQ <= 0 && poolQ <= 0 {
 		return nil, rejectDegenerate
