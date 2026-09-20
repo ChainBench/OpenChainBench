@@ -232,6 +232,9 @@ type relayRaw struct {
 					UserPays struct {
 						AmountUsd string `json:"amountUsd"`
 					} `json:"userPays"`
+					Sponsored struct {
+						AmountUsd string `json:"amountUsd"`
+					} `json:"sponsored"`
 				} `json:"components"`
 			} `json:"quoted"`
 		} `json:"feeSponsorship"`
@@ -724,10 +727,24 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 			}
 		}
 		if v, ok := comps["execution"]; ok {
-			x.DestGasUsd = f64(v.UserPays.AmountUsd)
+			x.DestGasUsd = f64(v.UserPays.AmountUsd) // the quoted gas the user paid; replaced by the actual below when reported
 		}
 	} else {
 		x.AppFeeUsd = appFee
+	}
+	// The gas actually spent on the destination (Relay's actual execution),
+	// less the part the app sponsored: what the user really paid for gas.
+	// The quoted gas above overstates it (quoted 0.204 $, actual 0.126 $ on
+	// a pump.fun app buy on Robinhood Chain); the difference is Relay's.
+	if v, ok := r.Data.ExpandedPriceImpact.Actual["execution"]; ok && f64(v.Usd) != 0 {
+		actual := math.Abs(f64(v.Usd))
+		if c, ok := comps["execution"]; ok {
+			actual -= f64(c.Sponsored.AmountUsd)
+		}
+		if actual < 0 {
+			actual = 0
+		}
+		x.DestGasUsd = actual
 	}
 	for _, k := range []string{"fixed", "price"} {
 		if v, ok := r.Data.FeesUsd[k]; ok {
