@@ -12,13 +12,16 @@ import { listSession, sessionListed, unlistSession } from "@/lib/sessions";
 
 export const COOKIE = "ocb_crm";
 export const SESSION_DAYS = 30;
-const MIN_LEN = 16;
+// 12 for the password (a memorable one, behind the per-client and global
+// login limits), 16 for the signing secret (random, never typed).
+const MIN_PASSWORD_LEN = 12;
+const MIN_SECRET_LEN = 16;
 
 const password = () => process.env.CRM_PASSWORD ?? "";
 const secret = () => process.env.CRM_SESSION_SECRET ?? "";
 
 export function authConfigured(): boolean {
-  return password().length >= MIN_LEN && secret().length >= MIN_LEN;
+  return password().length >= MIN_PASSWORD_LEN && secret().length >= MIN_SECRET_LEN;
 }
 
 const enc = new TextEncoder();

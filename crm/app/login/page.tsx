@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </p>
       {!authConfigured() ? (
         <p className="panel mt-6 px-3 py-2 text-xs" style={{ color: "var(--bad)" }}>
-          CRM_PASSWORD and CRM_SESSION_SECRET must both be set (16 characters minimum). Nobody can log in until they are.
+          CRM_PASSWORD (12 characters minimum) and CRM_SESSION_SECRET (16 minimum) must both be set. Nobody can log in until they are.
         </p>
       ) : (
         <form action="/api/login" method="post" className="panel mt-6 space-y-3 p-4">
