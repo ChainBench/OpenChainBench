@@ -186,6 +186,7 @@ metric_panels:
     tab: false
     description: "Priced swaps in the rolling window."
 
+ledger_reliability: false
 ledger_columns:
   - { label: "Value lost", slot: p50 }
   - { label: "Median swap", panel: trade_usd }

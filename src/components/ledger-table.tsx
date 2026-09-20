@@ -123,6 +123,9 @@ export function LedgerTable({
   // story), tightens cell padding and keeps the tag and embed button for
   // xl screens.
   const dense = !!customCols && customCols.length >= 5;
+  // Reliability columns (Success, Errors) only when the success query is a
+  // probe success rate; a publication gate reads 100 % or 0 % everywhere.
+  const showRel = benchmark.ledgerReliability !== false;
   const cellPad = dense ? "px-2" : "px-3";
   const panelById = useMemo(
     () => new Map((benchmark.metricPanels ?? []).map((p) => [p.id, p])),
@@ -363,7 +366,7 @@ export function LedgerTable({
 
   return (
     <div
-      className={`overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 ${dense ? "xl:-mx-20 2xl:-mx-32" : ""}`}
+      className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0"
     >
       {hasWindows && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
@@ -433,13 +436,15 @@ export function LedgerTable({
             >
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
-            <th
-              colSpan={dense ? 1 : 2}
-              scope="colgroup"
-              className={`border-y-2 border-ink py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
-            >
-              Reliability
-            </th>
+            {showRel && (
+              <th
+                colSpan={dense ? 1 : 2}
+                scope="colgroup"
+                className={`border-y-2 border-ink py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
+              >
+                Reliability
+              </th>
+            )}
             <th
               scope="col"
               className={`border-y-2 border-ink py-2 pl-3 text-right ${dense ? "hidden xl:table-cell" : ""}`}
@@ -565,17 +570,19 @@ export function LedgerTable({
                 Δ field
               </SortableHeader>
             )}
-            <SortableHeader
-              sortKey="success"
-              activeKey={sortKey}
-              dir={sortDir}
-              onClick={handleHeaderClick}
-              align="right"
-              className={`py-2 px-3 ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
-            >
-              Success
-            </SortableHeader>
-            {!dense && (
+            {showRel && (
+              <SortableHeader
+                sortKey="success"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={handleHeaderClick}
+                align="right"
+                className={`py-2 px-3 ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
+              >
+                Success
+              </SortableHeader>
+            )}
+            {!dense && showRel && (
               <SortableHeader
                 sortKey="errors"
                 activeKey={sortKey}
@@ -617,7 +624,7 @@ export function LedgerTable({
             <td
               colSpan={
                 (customCols
-                  ? 7 + customCols.length - (dense ? 2 : 0)
+                  ? 7 + customCols.length - (dense ? 2 : 0) - (showRel ? 0 : 1)
                   : panelActive || singleValueColumn
                     ? 8
                     : 11) +
@@ -643,6 +650,7 @@ export function LedgerTable({
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
               dense={dense}
+              showRel={showRel}
               customCells={customCols?.map((c) => ({
                 v: colValueW(r, c),
                 unit: colUnit(c),
@@ -727,6 +735,7 @@ export function LedgerTable({
 
 function Row({
   dense = false,
+  showRel = true,
   r,
   i,
   unit,
@@ -747,6 +756,8 @@ function Row({
   embedRegion,
   embedKind,
 }: {
+  /** false: hide the Success and Errors cells (publication-gate benches). */
+  showRel?: boolean;
   r: ProviderResult;
   i: number;
   unit: string;
@@ -902,10 +913,10 @@ function Row({
               </Hint>
             )}
             {isUnresponsive && (
-              <Hint label="No successful probes in the current window. The endpoint is still probed on schedule, but every call fails, so no latency percentile exists. Success rate comes from the call counters, which keep recording through the outage. The row rejoins the ranking as soon as calls succeed again.">
+              <Hint label={showRel ? "No successful probes in the current window. The endpoint is still probed on schedule, but every call fails, so no latency percentile exists. Success rate comes from the call counters, which keep recording through the outage. The row rejoins the ranking as soon as calls succeed again." : "Not published yet: under the bench's publication threshold in the current window (the sample is still filling, or the harness holds the entry for a reason given in its methodology). The row joins the ranking as soon as the threshold is met."}>
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-danger,#b0402e)]" aria-hidden />
-                  Unresponsive
+                  {showRel ? "Unresponsive" : "Filling"}
                 </span>
               </Hint>
             )}
@@ -969,7 +980,7 @@ function Row({
       {isOffline ? (
         <td
           colSpan={
-            (customCells ? customCells.length + (dense ? 2 : 4) : 8) +
+            (customCells ? customCells.length + (dense ? 2 : 4) - (showRel ? 0 : 1) : 8) +
             (hasSlots ? 1 : 0) +
             (hasSecondary ? 1 : 0)
           }
@@ -1012,10 +1023,12 @@ function Row({
               —
             </td>
           )}
-          <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-            {r.successRate.toFixed(2)}%
-          </td>
-          {!dense && (
+          {showRel && (
+            <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
+              {r.successRate.toFixed(2)}%
+            </td>
+          )}
+          {!dense && showRel && (
             <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
               {errorCount(r)?.toLocaleString("en-US") ?? "—"}
             </td>
@@ -1082,10 +1095,12 @@ function Row({
               {isUnranked ? "—" : fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
             </td>
           )}
-          <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-            {isUnranked ? "—" : `${r.successRate.toFixed(2)}%`}
-          </td>
-          {!dense && (
+          {showRel && (
+            <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
+              {isUnranked ? "—" : `${r.successRate.toFixed(2)}%`}
+            </td>
+          )}
+          {!dense && showRel && (
             <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
               {isUnranked ? "—" : (errorCount(r)?.toLocaleString("en-US") ?? "—")}
             </td>

@@ -377,6 +377,8 @@ export type Benchmark = {
    *  so the table headers describe what each slot actually holds. The
    *  first column is the headline (sort key, data bar, mobile column). */
   ledgerColumns?: LedgerColumn[];
+  /** false: the success query is a publication gate; hide Success and Reliability. */
+  ledgerReliability?: boolean;
 };
 
 export type LedgerColumn = {
