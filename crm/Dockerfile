@@ -16,6 +16,10 @@ FROM node:22-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
+# Next's standalone server exits on SIGTERM on its own; with this set it leaves
+# the signal to instrumentation.node.ts, which flushes the log-drain
+# accumulator to the volume before exiting.
+ENV NEXT_MANUAL_SIG_HANDLE=1
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public

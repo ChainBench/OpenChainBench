@@ -1,6 +1,6 @@
 /**
  * The PostHog side of the snapshot: one fixed list of HogQL queries per
- * refresh (fifteen today), each mapped to a plain JSON section. Every query is
+ * refresh (nineteen today), each mapped to a plain JSON section. Every query is
  * scoped to the production host, so staging and localhost never count, and
  * to one named event: `$pageview` for the traffic sections, the three custom
  * events of src/lib/analytics.ts for the Actions sections (autocapture is off).
@@ -16,6 +16,7 @@ const HOST_FILTER = `properties.$host = '${SITE_HOST}'`;
 const PV = `event = '$pageview' AND ${HOST_FILTER}`;
 // The site's custom events (src/lib/analytics.ts): outbound_click, copy, search.
 const CUSTOM = `event IN ('outbound_click', 'copy', 'search') AND ${HOST_FILTER}`;
+const PL = `event = '$pageleave' AND ${HOST_FILTER}`;
 
 export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number };
 export type WeeklyPoint = { week: string; visitors: number; ai: number; search: number; pageviews: number };
@@ -27,6 +28,11 @@ export type ActionRow = { name: string; count: number; prevCount: number; visito
 export type OutboundRow = { host: string; clicks: number; prevClicks: number; visitors: number; topPage: string };
 export type SearchRow = { query: string; count: number; kind: string; url: string };
 export type CopyRow = { kind: string; value: string; bench: string; count: number };
+export type VitalsRow = { device: string; samples: number; lcpP75: number; inpP75: number; clsP75: number; fcpP75: number };
+export type EngagedRow = { section: Section; leaves: number; medianSec: number; p75Sec: number };
+export type EngagedPageRow = { path: string; section: Section; leaves: number; medianSec: number };
+export type NotFoundRow = { path: string; hits: number; visitors: number; topReferrer: string };
+export type NoResultRow = { query: string; count: number };
 
 export type Traffic = {
   daily: DailyPoint[];
@@ -56,6 +62,11 @@ export type Traffic = {
   outbound: OutboundRow[];
   searches: SearchRow[];
   copies: CopyRow[];
+  vitals: VitalsRow[];
+  engaged: EngagedRow[];
+  engagedPages: EngagedPageRow[];
+  notFound: NotFoundRow[];
+  noResults: NoResultRow[];
 };
 
 export const QUERIES = {
@@ -148,6 +159,29 @@ export const QUERIES = {
     SELECT properties.kind AS kind, properties.value AS value, properties.bench AS bench, count() AS n
     FROM events WHERE event = 'copy' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
     GROUP BY kind, value, bench ORDER BY n DESC LIMIT 40`,
+  vitals: () => `
+    SELECT properties.$device_type AS device, count() AS samples,
+           quantile(0.75)(toFloat(properties.$web_vitals_LCP_value)) AS lcp,
+           quantile(0.75)(toFloat(properties.$web_vitals_INP_value)) AS inp,
+           quantile(0.75)(toFloat(properties.$web_vitals_CLS_value)) AS cls,
+           quantile(0.75)(toFloat(properties.$web_vitals_FCP_value)) AS fcp
+    FROM events WHERE event = '$web_vitals' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY device ORDER BY samples DESC LIMIT 4`,
+  engaged: () => `
+    SELECT properties.$prev_pageview_pathname AS path, count() AS leaves,
+           quantile(0.5)(toFloat(properties.$prev_pageview_duration)) AS med,
+           quantile(0.75)(toFloat(properties.$prev_pageview_duration)) AS p75
+    FROM events WHERE ${PL} AND timestamp >= now() - INTERVAL 7 DAY
+      AND properties.$prev_pageview_duration IS NOT NULL AND toFloat(properties.$prev_pageview_duration) BETWEEN 0 AND 1800
+    GROUP BY path ORDER BY leaves DESC LIMIT 1500`,
+  notFound: () => `
+    SELECT properties.path AS path, count() AS hits, uniq(distinct_id) AS visitors, topK(1)(properties.referrer) AS ref
+    FROM events WHERE event = 'not_found' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY path ORDER BY hits DESC LIMIT 40`,
+  noResults: () => `
+    SELECT lower(properties.query) AS q, count() AS n
+    FROM events WHERE event = 'search_no_result' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
+    GROUP BY q ORDER BY n DESC LIMIT 40`,
 } as const;
 
 export type TrafficSection = keyof typeof QUERIES;
@@ -204,9 +238,46 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
       return { searches: rows.map((r) => ({ query: str(r[0]), count: num(r[1]), kind: str(Array.isArray(r[2]) ? r[2][0] : r[2]), url: str(Array.isArray(r[3]) ? r[3][0] : r[3]) })) };
     case "copies":
       return { copies: rows.map((r) => ({ kind: str(r[0]) || "other", value: str(r[1]), bench: str(r[2]), count: num(r[3]) })) };
+    case "vitals":
+      return { vitals: rows.map((r) => ({ device: str(r[0]) || "unknown", samples: num(r[1]), lcpP75: num(r[2]), inpP75: num(r[3]), clsP75: num(r[4]), fcpP75: num(r[5]) })) };
+    case "engaged": {
+      const pages = rows.map((r) => ({ path: str(r[0]) || "/", section: classifyPath(str(r[0])), leaves: num(r[1]), medianSec: num(r[2]), p75Sec: num(r[3]) }));
+      return { engagedPages: pages.filter((p) => p.leaves >= 3).slice(0, 40), engaged: engagedBySection(pages) };
+    }
+    case "notFound":
+      return { notFound: rows.map((r) => ({ path: str(r[0]) || "/", hits: num(r[1]), visitors: num(r[2]), topReferrer: str(Array.isArray(r[3]) ? r[3][0] : r[3]) })) };
+    case "noResults":
+      return { noResults: rows.map((r) => ({ query: str(r[0]), count: num(r[1]) })) };
     case "engagement":
       return { engagement: { pagesPerSession: num(rows[0]?.[0]), bounceRate: num(rows[0]?.[1]), sessions: num(rows[0]?.[2]) } };
   }
+}
+
+/** Per-section engaged time: the leave-weighted median of the page medians
+ *  (the exact section median would need every duration, 1500 page rows is the
+ *  budget). Good enough to rank sections, labelled as such on the page. */
+export function engagedBySection(pages: { section: Section; leaves: number; medianSec: number; p75Sec: number }[]): EngagedRow[] {
+  const by = new Map<Section, { leaves: number; meds: [number, number][]; p75s: [number, number][] }>();
+  for (const p of pages) {
+    const cur = by.get(p.section) ?? { leaves: 0, meds: [], p75s: [] };
+    cur.leaves += p.leaves;
+    cur.meds.push([p.medianSec, p.leaves]);
+    cur.p75s.push([p.p75Sec, p.leaves]);
+    by.set(p.section, cur);
+  }
+  const wmedian = (xs: [number, number][]) => {
+    const sorted = [...xs].sort((a, b) => a[0] - b[0]);
+    const total = sorted.reduce((a, x) => a + x[1], 0);
+    let acc = 0;
+    for (const [v, w] of sorted) {
+      acc += w;
+      if (acc >= total / 2) return v;
+    }
+    return sorted.at(-1)?.[0] ?? 0;
+  };
+  return [...by.entries()]
+    .map(([section, v]) => ({ section, leaves: v.leaves, medianSec: wmedian(v.meds), p75Sec: wmedian(v.p75s) }))
+    .sort((a, b) => b.leaves - a.leaves);
 }
 
 function withShare(rows: { name: string; visitors: number }[]): NamedCount[] {
