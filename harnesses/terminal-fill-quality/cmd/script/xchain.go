@@ -55,6 +55,14 @@ var xchainApps = []xchainApp{
 	// natively on Solana (join on Mobula's FOMO-attributed trades, 133 of
 	// 2,000 settlements on 2026-09-18); FOMO's referrer is private (403).
 	{Slug: "fomo", Name: "FOMO", FeeRecipients: []string{"0x9fc4e320a181e88644a302d11f1f158ef0699e37"}},
+	// pump.fun app's multichain trading (since 2026-05-26: pay in SOL, gas
+	// sponsored): its Relay app fee, 15 bps, to one recipient, every request
+	// subsidized; the Solana users behind it trade through the app's
+	// program 6Vo3245e… (29 of 96 recent transactions of 12 users, none of
+	// the users behind the other recipients do). 313 of 6,000 Solana-origin
+	// requests to EVM tokens on 2026-09-21: Robinhood Chain 225, BNB 52,
+	// HyperEVM 10, Arc 10.
+	{Slug: "pump-fun", Name: "pump.fun app", FeeRecipients: []string{"0xdab3f5fcd43211345f1789bf734b5fc5aef1adf7"}},
 	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
 	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
 	// funded wallets' swaps on Robinhood Chain's router (native.go).
