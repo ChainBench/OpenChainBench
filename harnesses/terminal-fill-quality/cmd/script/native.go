@@ -468,6 +468,10 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 				st.reject(t.Slug, rejectNotSwap)
 				continue
 			}
+			if sw.Flag == "launch_first_trade" {
+				st.reject(t.Slug, parseReject(sw.Flag)) // a token launch's first curve buy: no reference, not a user's fill
+				continue
+			}
 			if sw.Flag != "" && !sw.Priced && strings.HasPrefix(sw.Flag, "unpriced_") {
 				st.reject(t.Slug, parseReject(sw.Flag))
 				continue
@@ -706,7 +710,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		sw.TerminalQ = fee
 		if !s.Priced {
 			sw.finalize(nil, 0, "")
-			sw.Flag = "unpriced_" + s.Unpriced
+			sw.Flag = unpricedFlag(s.Unpriced)
 			return sw
 		}
 		ref := s.MidUSD
@@ -757,7 +761,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		sw.TerminalQ = fee
 		if !s.Priced {
 			sw.finalize(nil, 0, "")
-			sw.Flag = "unpriced_" + s.Unpriced
+			sw.Flag = unpricedFlag(s.Unpriced)
 			return sw
 		}
 		ref := s.MidUSD
@@ -766,4 +770,13 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return sw
 	}
 	return &Swap{Flag: "unpriced_no_token_leg"}
+}
+
+// unpricedFlag: a settlement's reason as the row's flag; a token launch
+// (the creator's first curve buy) is its own reject, not an unpriced fill.
+func unpricedFlag(reason string) string {
+	if reason == "launch" {
+		return "launch_first_trade"
+	}
+	return "unpriced_" + reason
 }
