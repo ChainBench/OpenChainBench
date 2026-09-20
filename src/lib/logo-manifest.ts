@@ -254,7 +254,7 @@ const RAW: Record<string, string> = {
   parity: "/logos/parity.png",
   polkadot: "/logos/polkadot.png",
   "base-official": "/logos/base.jpeg",
-  binance: "/logos/binance.png",
+  binance: "/logos/binance.svg",
   lava: "/logos/lava.png",
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
