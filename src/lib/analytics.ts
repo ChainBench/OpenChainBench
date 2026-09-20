@@ -4,7 +4,7 @@
  * sites never guard.
  *
  *   outbound_click  {href, host, text, page}   a link to another site, delegated listener
- *   copy            {kind, value?, bench?}     endpoint / API URL / MCP URL / embed / brief
+ *   copy            {kind, value?, bench?}     endpoint / API URL / MCP URL or config / embed / brief
  *   search          {query, kind, url}         a result picked in the search dialog
  *
  * Properties carry no personal data: URLs of our own pages and of public
@@ -14,10 +14,11 @@ import posthog from "posthog-js";
 
 export type SiteEvent =
   | { name: "outbound_click"; props: { href: string; host: string; text: string; page: string } }
-  | { name: "copy"; props: { kind: "endpoint" | "api_url" | "mcp_url" | "embed" | "brief" | "other"; value?: string; bench?: string } }
+  | { name: "copy"; props: { kind: "endpoint" | "api_url" | "mcp_url" | "mcp_config" | "embed" | "brief" | "other"; value?: string; bench?: string } }
   | { name: "search"; props: { query: string; kind: string; url: string } };
 
-export function track<E extends SiteEvent>(name: E["name"], props: E["props"]): void {
+/** Typed per event: `track("search", { kind: "endpoint" })` does not compile. */
+export function track<N extends SiteEvent["name"]>(name: N, props: Extract<SiteEvent, { name: N }>["props"]): void {
   if (typeof window === "undefined") return;
   try {
     if (!posthog.__loaded) return;

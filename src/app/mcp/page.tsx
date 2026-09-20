@@ -177,7 +177,7 @@ export default async function McpPage() {
           </code>{" "}
           (macOS) or the equivalent on your OS, then restart the app.
         </p>
-        <CodeBlock value={CLAUDE_DESKTOP_CONFIG} />
+        <CodeBlock value={CLAUDE_DESKTOP_CONFIG} name="claude_desktop" />
         <p className="mt-3 text-xs text-ink-muted leading-relaxed">
           Once connected, the three tools appear under the 🔌 icon in the
           chat input. Ask Claude{" "}
@@ -205,7 +205,7 @@ export default async function McpPage() {
           </code>
           :
         </p>
-        <CodeBlock value={CURSOR_CONFIG} />
+        <CodeBlock value={CURSOR_CONFIG} name="cursor" />
       </section>
 
       {/* Other clients */}
@@ -226,7 +226,7 @@ export default async function McpPage() {
           : all accept the same URL with the streamable-HTTP transport. SSE
           is intentionally disabled. Anything else, raw curl works:
         </p>
-        <CodeBlock value={CURL_EXAMPLE} />
+        <CodeBlock value={CURL_EXAMPLE} name="curl" />
       </section>
 
       {/* What's exposed */}
@@ -337,14 +337,14 @@ export default async function McpPage() {
   );
 }
 
-function CodeBlock({ value }: { value: string }) {
+function CodeBlock({ value, name }: { value: string; name: string }) {
   return (
     <div className="mt-4 relative">
       <pre className="overflow-x-auto border border-ink/20 bg-ink/5 px-4 py-3 font-mono text-[11px] sm:text-xs text-ink leading-relaxed">
         <code>{value}</code>
       </pre>
       <div className="mt-2 flex justify-end">
-        <CopyButton value={value} label="Copy" event={{ kind: "mcp_url" }} />
+        <CopyButton value={value} label="Copy" event={{ kind: "mcp_config", value: name }} />
       </div>
     </div>
   );

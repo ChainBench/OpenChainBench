@@ -2,7 +2,8 @@
  * The PostHog side of the snapshot: one fixed list of HogQL queries per
  * refresh (fifteen today), each mapped to a plain JSON section. Every query is
  * scoped to the production host, so staging and localhost never count, and
- * to `$pageview`, the only event the site captures today (autocapture is off).
+ * to one named event: `$pageview` for the traffic sections, the three custom
+ * events of src/lib/analytics.ts for the Actions sections (autocapture is off).
  *
  * Distinct id, not person id: the site runs `person_profiles: identified_only`
  * and never identifies anyone, so a visitor is a device cookie.

@@ -6,9 +6,9 @@ export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
 const ACTION_LABEL: Record<string, string> = {
-  outbound_click: "Outbound clicks (left for a provider or another site)",
-  copy: "Copies (endpoint, API URL, MCP URL, embed)",
-  search: "Searches with a result picked",
+  outbound_click: "Outbound clicks",
+  copy: "Copies",
+  search: "Searches",
 };
 
 export default async function ActionsPage({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
@@ -28,7 +28,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
           return (
             <Kpi
               key={n}
-              label={`${n.replace("_", " ")}, 7 d`}
+              label={`${ACTION_LABEL[n]}, 7 d`}
               value={fmtInt(a?.count)}
               delta={a && { now: a.count, prev: a.prevCount }}
               sub={a ? `${fmtInt(a.visitors)} visitors` : "no event yet"}
