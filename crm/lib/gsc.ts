@@ -83,6 +83,17 @@ export type Gsc = {
   opportunities: GscDim[];
 };
 
+/** Page keys come back as absolute URLs; for a domain property Google reports
+ *  every host and scheme (www, http). All of them map to the site path. */
+export function pageKeyStripper(siteUrl: string): (k: string) => string {
+  const domain = siteUrl.startsWith("sc-domain:") ? siteUrl.slice("sc-domain:".length) : new URL(siteUrl).host.replace(/^www\./, "");
+  const re = new RegExp(`^https?://(?:[a-z0-9-]+\\.)*${domain.replace(/\./g, "\\.")}(?::\\d+)?`, "i");
+  return (k: string) => {
+    const stripped = k.replace(re, "");
+    return stripped === k ? k : stripped || "/";
+  };
+}
+
 function totals(rows: Row[]): GscTotals {
   const clicks = rows.reduce((a, r) => a + r.clicks, 0);
   const impressions = rows.reduce((a, r) => a + r.impressions, 0);
@@ -90,13 +101,29 @@ function totals(rows: Row[]): GscTotals {
   return { clicks, impressions, ctr: impressions > 0 ? clicks / impressions : 0, position };
 }
 
+/** Rows keyed after stripping (www and http variants of a page fold into one),
+ *  clicks and impressions summed, position impression-weighted. */
+function foldRows(rows: Row[], strip: (k: string) => string): Map<string, GscTotals> {
+  const out = new Map<string, { clicks: number; impressions: number; posW: number }>();
+  for (const r of rows) {
+    const k = strip(r.keys?.[0] ?? "");
+    const cur = out.get(k) ?? { clicks: 0, impressions: 0, posW: 0 };
+    cur.clicks += r.clicks;
+    cur.impressions += r.impressions;
+    cur.posW += r.position * r.impressions;
+    out.set(k, cur);
+  }
+  return new Map(
+    [...out.entries()].map(([k, v]) => [k, { clicks: v.clicks, impressions: v.impressions, ctr: v.impressions > 0 ? v.clicks / v.impressions : 0, position: v.impressions > 0 ? v.posW / v.impressions : 0 }]),
+  );
+}
+
 function joinWindows(cur: Row[], prev: Row[], strip: (k: string) => string): GscDim[] {
-  const prevBy = new Map(prev.map((r) => [r.keys?.[0] ?? "", r]));
-  return cur
-    .map((r) => {
-      const k = r.keys?.[0] ?? "";
-      const p = prevBy.get(k);
-      return { key: strip(k), clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position, prevClicks: p?.clicks ?? 0, prevImpressions: p?.impressions ?? 0, prevPosition: p?.position ?? 0 };
+  const prevBy = foldRows(prev, strip);
+  return [...foldRows(cur, strip).entries()]
+    .map(([key, v]) => {
+      const p = prevBy.get(key);
+      return { key, ...v, prevClicks: p?.clicks ?? 0, prevImpressions: p?.impressions ?? 0, prevPosition: p?.position ?? 0 };
     })
     .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions);
 }
@@ -107,8 +134,7 @@ export async function loadGsc(now = Date.now()): Promise<Gsc> {
   const prevEnd = daysAgo(DELAY_DAYS + WINDOW_DAYS, now);
   const prevStart = daysAgo(DELAY_DAYS + 2 * WINDOW_DAYS - 1, now);
   const seriesStart = daysAgo(DELAY_DAYS + 27, now);
-  const origin = SITE_URL.startsWith("sc-domain:") ? `https://${SITE_URL.slice("sc-domain:".length)}` : SITE_URL.replace(/\/$/, "");
-  const stripOrigin = (k: string) => (k.startsWith(origin) ? k.slice(origin.length) || "/" : k);
+  const stripOrigin = pageKeyStripper(SITE_URL);
 
   const daily = await query({ startDate: seriesStart, endDate: end, dimensions: ["date"], rowLimit: 60 });
   const pagesCur = await query({ startDate: start, endDate: end, dimensions: ["page"], rowLimit: 500 });

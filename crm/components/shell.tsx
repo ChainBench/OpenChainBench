@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MANUAL_COOLDOWN_MINUTES, REFRESH_MINUTES, snapshotAgeMinutes, type Snapshot } from "@/lib/snapshot";
+import { GSC_UNSET, MANUAL_COOLDOWN_MINUTES, REFRESH_MINUTES, snapshotAgeMinutes, type Snapshot } from "@/lib/snapshot";
 
 const NAV = [
   ["/", "Overview"],
@@ -21,7 +21,8 @@ export function fmtAge(min: number | null): string {
 
 export function Shell({ current, snapshot, refreshFlag, children }: { current: string; snapshot: Snapshot; refreshFlag?: string; children: React.ReactNode }) {
   const age = snapshotAgeMinutes(snapshot);
-  const errors = Object.entries(snapshot.status).filter(([k, s]) => s.error && k !== "gsc");
+  // A missing optional integration is a note on its own page, not a failure.
+  const errors = Object.entries(snapshot.status).filter(([, s]) => s.error && s.error !== GSC_UNSET);
   const canRefresh = age == null || age >= MANUAL_COOLDOWN_MINUTES;
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-5">

@@ -11,9 +11,15 @@ import { readSnapshot, refreshSnapshot, REFRESH_MINUTES, snapshotAgeMinutes } fr
 import { flush } from "@/lib/vercel-logs";
 
 export async function start(): Promise<void> {
+  // NEXT_MANUAL_SIG_HANDLE=1 (Dockerfile) keeps Next from exiting on its own
+  // signal handler before this flush has run. Hard stop after 8 s regardless.
   for (const sig of ["SIGTERM", "SIGINT"] as const) {
     process.once(sig, () => {
-      flush().finally(() => process.exit(0));
+      const stop = setTimeout(() => process.exit(0), 8_000);
+      stop.unref();
+      flush()
+        .catch((e) => console.warn("[shutdown] flush:", e))
+        .finally(() => process.exit(0));
     });
   }
   if (process.env.CRM_DISABLE_SCHEDULER === "1") return;

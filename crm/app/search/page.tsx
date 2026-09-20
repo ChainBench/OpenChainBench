@@ -1,6 +1,6 @@
 import { Shell } from "@/components/shell";
 import { Delta, Empty, fmtInt, fmtPct, Kpi, Spark } from "@/components/ui";
-import { readSnapshot } from "@/lib/snapshot";
+import { GSC_UNSET, readSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
@@ -20,9 +20,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             property in Search Console, then set <code className="mono">GSC_SERVICE_ACCOUNT_JSON</code> (the key file on one line) and{" "}
             <code className="mono">GSC_SITE_URL</code> on the Railway service. The refresh after that fills this page.
           </p>
-          {snap.status.gsc?.error && !snap.status.gsc.error.startsWith("GSC_SERVICE_ACCOUNT_JSON") && (
+          {snap.status.gsc?.error && snap.status.gsc.error !== GSC_UNSET && (
             <p className="mono mt-3 text-xs" style={{ color: "var(--bad)" }}>
-              {snap.status.gsc.error}
+              Last attempt failed: {snap.status.gsc.error}
             </p>
           )}
         </section>

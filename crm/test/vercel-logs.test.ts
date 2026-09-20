@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { apiFamily, classifyUserAgent, emptyDay, foldEntry, mergeDay, parseBody } from "../lib/vercel-logs";
+import { apiFamily, capMap, classifyUserAgent, emptyDay, foldEntry, mergeDay, NOT_FOUND_KEEP, parseBody } from "../lib/vercel-logs";
 
 describe("classifyUserAgent", () => {
   test("AI, search, other, human", () => {
@@ -55,6 +55,22 @@ describe("foldEntry and mergeDay", () => {
     expect(m.requests).toBe(3);
     expect(m.aiBots).toEqual({ GPTBot: 2 });
     expect(m.api["/api/citable"]).toEqual({ other_bot: 1 });
+  });
+});
+
+describe("capMap", () => {
+  test("keeps the top N and sums the rest under (other), in fold, merge and read", () => {
+    const m: Record<string, number> = {};
+    for (let i = 0; i < 1000; i += 1) m[`/scan/${i}`] = i % 7 === 0 ? 5 : 1;
+    const c = capMap(m, 10);
+    expect(Object.keys(c).length).toBe(11);
+    expect(c["(other)"]).toBe(Object.values(m).reduce((a, b) => a + b, 0) - 50);
+    const a = emptyDay("2026-09-20");
+    const b = emptyDay("2026-09-20");
+    for (let i = 0; i < 700; i += 1) foldEntry(a, { proxy: { path: `/a/${i}`, userAgent: ["curl/8"], statusCode: 404, host: "openchainbench.com" } });
+    for (let i = 0; i < 700; i += 1) foldEntry(b, { proxy: { path: `/b/${i}`, userAgent: ["curl/8"], statusCode: 404, host: "openchainbench.com" } });
+    expect(Object.keys(mergeDay(a, b).notFound).length).toBeLessThanOrEqual(NOT_FOUND_KEEP + 1);
+    expect(Object.values(mergeDay(a, b).notFound).reduce((x, y) => x + y, 0)).toBe(1400);
   });
 });
 

@@ -21,6 +21,8 @@ export async function HEAD() {
 
 export async function POST(request: Request) {
   if (!drainConfigured()) return new Response("drain not configured", { status: 503, headers: verifyHeaders() });
+  const declared = Number.parseInt(request.headers.get("content-length") ?? "", 10);
+  if (Number.isFinite(declared) && declared > MAX_BODY) return new Response("too large", { status: 413 });
   const raw = await request.text();
   if (raw.length > MAX_BODY) return new Response("too large", { status: 413 });
   if (!verifySignature(raw, request.headers.get("x-vercel-signature"))) {

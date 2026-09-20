@@ -153,10 +153,26 @@ export function foldEntry(agg: DayAggregate, e: DrainEntry): boolean {
   } else if (cls.kind === "human" && !fam) {
     inc(agg.humanBySection, section);
   }
-  if (status === 404 && Object.keys(agg.notFound).length < 500) inc(agg.notFound, rawPath.slice(0, 160));
-  else if (status === 404) inc(agg.notFound, "(other)");
+  if (status === 404) {
+    inc(agg.notFound, rawPath.slice(0, 160));
+    if (Object.keys(agg.notFound).length > NOT_FOUND_KEEP * 2) agg.notFound = capMap(agg.notFound, NOT_FOUND_KEEP);
+  }
   agg.updatedAt = new Date().toISOString();
   return true;
+}
+
+/** The map is bounded wherever it is built: live fold, merge on flush, merge on
+ *  read. A scanner walking distinct paths otherwise grows a day file without
+ *  limit. The top N by count survive, the rest is summed under "(other)". */
+export const NOT_FOUND_KEEP = 300;
+export function capMap(m: Record<string, number>, keep: number): Record<string, number> {
+  const entries = Object.entries(m).filter(([k]) => k !== "(other)");
+  if (entries.length <= keep) return m;
+  entries.sort((a, b) => b[1] - a[1]);
+  const out: Record<string, number> = Object.fromEntries(entries.slice(0, keep));
+  const rest = entries.slice(keep).reduce((a, [, v]) => a + v, 0) + (m["(other)"] ?? 0);
+  if (rest > 0) out["(other)"] = rest;
+  return out;
 }
 
 export function mergeDay(a: DayAggregate, b: DayAggregate): DayAggregate {
@@ -173,7 +189,7 @@ export function mergeDay(a: DayAggregate, b: DayAggregate): DayAggregate {
   out.aiBySection = mergeMap(a.aiBySection, b.aiBySection);
   out.humanBySection = mergeMap(a.humanBySection, b.humanBySection);
   out.status = mergeMap(a.status, b.status);
-  out.notFound = mergeMap(a.notFound, b.notFound);
+  out.notFound = capMap(mergeMap(a.notFound, b.notFound), NOT_FOUND_KEEP);
   out.cache = mergeMap(a.cache, b.cache);
   for (const fam of new Set([...Object.keys(a.api), ...Object.keys(b.api)])) out.api[fam] = mergeMap(a.api[fam] ?? {}, b.api[fam] ?? {});
   out.updatedAt = a.updatedAt > b.updatedAt ? a.updatedAt : b.updatedAt;
@@ -183,9 +199,17 @@ export function mergeDay(a: DayAggregate, b: DayAggregate): DayAggregate {
 // In-memory accumulator on globalThis (route handlers and the flusher can
 // live in different bundler layers), plus a bounded request-id set so a
 // request that produces two entries (proxy plus function log) counts once.
-type State = { days: Map<string, DayAggregate>; seen: Set<string>; seenOrder: string[]; flushTimer: ReturnType<typeof setInterval> | null; received: number };
+type State = {
+  days: Map<string, DayAggregate>;
+  seen: Set<string>;
+  seenOrder: string[];
+  flushTimer: ReturnType<typeof setInterval> | null;
+  received: number;
+  flushing: Promise<void> | null;
+  tmpCounter: number;
+};
 const g = globalThis as unknown as { __ocbVercelLogs?: State };
-const state: State = (g.__ocbVercelLogs ??= { days: new Map(), seen: new Set(), seenOrder: [], flushTimer: null, received: 0 });
+const state: State = (g.__ocbVercelLogs ??= { days: new Map(), seen: new Set(), seenOrder: [], flushTimer: null, received: 0, flushing: null, tmpCounter: 0 });
 const SEEN_MAX = 100_000;
 
 export function ingestEntries(entries: DrainEntry[], now = Date.now()): number {
@@ -222,23 +246,44 @@ function armFlush(): void {
   state.flushTimer.unref?.();
 }
 
-export async function flush(): Promise<void> {
+/** Writes the pending days to disk. A day leaves memory only once its file
+ *  is renamed into place, so a failed write keeps the minute for the next
+ *  pass; overlapping calls (interval plus shutdown) share one run. */
+export function flush(): Promise<void> {
+  if (state.flushing) return state.flushing;
+  const run = doFlush().finally(() => {
+    state.flushing = null;
+  });
+  state.flushing = run;
+  return run;
+}
+
+async function doFlush(): Promise<void> {
   if (state.days.size === 0) return;
-  const pending = [...state.days.values()];
-  state.days.clear();
   await fs.mkdir(DIR, { recursive: true });
-  for (const agg of pending) {
-    const file = path.join(DIR, `${agg.day}.json`);
-    let onDisk: DayAggregate | null = null;
+  for (const day of [...state.days.keys()]) {
+    // Swap the live object out first: entries folded during the write land in
+    // a fresh aggregate, the one being written is never mutated. On a failed
+    // write it is merged back, so the minute is retried, never counted twice.
+    const pending = state.days.get(day)!;
+    state.days.delete(day);
     try {
-      onDisk = JSON.parse(await fs.readFile(file, "utf8")) as DayAggregate;
-    } catch {
-      // first write of the day
+      const file = path.join(DIR, `${day}.json`);
+      let onDisk: DayAggregate | null = null;
+      try {
+        onDisk = JSON.parse(await fs.readFile(file, "utf8")) as DayAggregate;
+      } catch {
+        // first write of the day
+      }
+      const merged = onDisk ? mergeDay(onDisk, pending) : pending;
+      const tmp = `${file}.${process.pid}.${++state.tmpCounter}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(merged));
+      await fs.rename(tmp, file);
+    } catch (err) {
+      const live = state.days.get(day);
+      state.days.set(day, live ? mergeDay(live, pending) : pending);
+      throw err;
     }
-    const merged = onDisk ? mergeDay(onDisk, agg) : agg;
-    const tmp = `${file}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(merged));
-    await fs.rename(tmp, file);
   }
 }
 
@@ -255,7 +300,7 @@ export async function readDays(n = 28, now = Date.now()): Promise<DayAggregate[]
     const live = state.days.get(day);
     if (agg && live) agg = mergeDay(agg, live);
     else if (live) agg = live;
-    if (agg) out.push(agg);
+    if (agg) out.push({ ...agg, notFound: capMap(agg.notFound, NOT_FOUND_KEEP) });
   }
   return out;
 }

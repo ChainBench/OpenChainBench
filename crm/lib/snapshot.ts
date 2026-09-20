@@ -16,6 +16,8 @@ import { loadBenchHealth, loadDuneUsage, loadHarnessHealth, type BenchHealth, ty
 import { loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
 import { gscConfigured, loadGsc, type Gsc } from "@/lib/gsc";
 
+export const GSC_UNSET = "GSC_SERVICE_ACCOUNT_JSON not set";
+
 // 15 min by default: 15 queries per pass, 60 per hour, 2.5 % of PostHog's
 // organisation budget; the Railway cost does not move with this number, the
 // container is always on and a pass is about 40 s of light CPU.
@@ -185,12 +187,14 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
     next.dune = await loadDuneUsage();
   });
   if (gscConfigured()) {
-    delete next.status.gsc;
-    await step("search-console", async () => {
+    await step("gsc", async () => {
       next.gsc = await loadGsc();
     });
   } else {
-    next.status.gsc = { at: null, error: "GSC_SERVICE_ACCOUNT_JSON not set (Search Console panel empty)" };
+    // Unconfigured is a note, not a failure (the header filters this key);
+    // a previously loaded panel is dropped so it cannot go stale silently.
+    next.gsc = null;
+    next.status.gsc = { at: null, error: GSC_UNSET };
   }
 
   if (posthogConfigured()) {
