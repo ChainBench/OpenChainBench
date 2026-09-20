@@ -1918,6 +1918,11 @@ func publishGauges(stats []TerminalStats) {
 		gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
 		gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
 		gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
+		if ts.NEff > 0 {
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "effective").Set(math.Round(ts.NEff))
+		} else {
+			gSamples.DeleteLabelValues(ts.Product, ts.Chain, "effective")
+		}
 		if ts.TradeUSD != nil {
 			gTrade.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.TradeUSD.Median)
 			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.TradeUSD.P90)
