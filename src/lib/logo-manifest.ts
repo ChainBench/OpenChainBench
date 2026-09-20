@@ -659,6 +659,7 @@ const ALIASES: Record<string, string> = {
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
   "publicnode-feehistory": "publicnode",
+  "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`
   // Same brand split across two HL builder addresses; one logo is enough.
   "metamask-alt": "metamask",
 
