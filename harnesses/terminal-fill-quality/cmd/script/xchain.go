@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -158,26 +159,28 @@ func (x relayRequest) rowSlug() string {
 
 // relayRequest is one settled (or failed) Relay request of a cohort app.
 type relayRequest struct {
-	ID          string  `json:"id"`
-	App         string  `json:"app"`
-	Chain       string  `json:"chain"`                   // origin chain slug ("solana" when leaving Solana)
-	DestChain   string  `json:"dest_chain"`              // destination chain slug when not Solana
-	TokenOut    string  `json:"token_out"`               // destination token address when not Solana
-	Funding     bool    `json:"funding,omitempty"`       // the gas coin (or Arc's USDC) delivered to the user's wallet on the destination: a funding leg, not a trade
-	OutValueWei string  `json:"out_value_wei,omitempty"` // native amount delivered on the destination (Funding)
-	Status      string  `json:"status"`
-	User        string  `json:"user"`      // origin address
-	Recipient   string  `json:"recipient"` // destination wallet
-	InTx        string  `json:"in_tx"`
-	OutTx       string  `json:"out_tx"` // destination transaction (Solana signature or EVM hash)
-	UsdIn       float64 `json:"usd_in"`
-	UsdOut      float64 `json:"usd_out"` // Relay's own valuation of the output, cross-check only
-	AppFeeUsd   float64 `json:"app_fee_usd"`
-	RelayFeeUsd float64 `json:"relay_fee_usd"`
-	OutIsToken  bool    `json:"out_is_token"` // Solana side delivers a token (not SOL / a stable)
-	InIsToken   bool    `json:"in_is_token"`  // origin side was a token (not the gas coin / a stable): usd_in is Relay's valuation, not an on-chain mid
-	TokenIn     string  `json:"token_in"`     // origin token address when InIsToken
-	Created     int64   `json:"created"`
+	ID            string  `json:"id"`
+	App           string  `json:"app"`
+	Chain         string  `json:"chain"`                   // origin chain slug ("solana" when leaving Solana)
+	DestChain     string  `json:"dest_chain"`              // destination chain slug when not Solana
+	TokenOut      string  `json:"token_out"`               // destination token address when not Solana
+	Funding       bool    `json:"funding,omitempty"`       // the gas coin (or Arc's USDC) delivered to the user's wallet on the destination: a funding leg, not a trade
+	OutValueWei   string  `json:"out_value_wei,omitempty"` // native amount delivered on the destination (Funding)
+	Status        string  `json:"status"`
+	User          string  `json:"user"`      // origin address
+	Recipient     string  `json:"recipient"` // destination wallet
+	InTx          string  `json:"in_tx"`
+	OutTx         string  `json:"out_tx"` // destination transaction (Solana signature or EVM hash)
+	UsdIn         float64 `json:"usd_in"`
+	UsdOut        float64 `json:"usd_out"` // Relay's own valuation of the output, cross-check only
+	AppFeeUsd     float64 `json:"app_fee_usd"`
+	RelayFeeUsd   float64 `json:"relay_fee_usd"`
+	DestGasUsd    float64 `json:"dest_gas_usd,omitempty"`
+	RelayFixedUsd float64 `json:"relay_fixed_usd,omitempty"` // Relay's fixed + price fees from its breakdown // destination gas Relay charged the user (actual execution when reported, else the quoted gas fee): network cost
+	OutIsToken    bool    `json:"out_is_token"`              // Solana side delivers a token (not SOL / a stable)
+	InIsToken     bool    `json:"in_is_token"`               // origin side was a token (not the gas coin / a stable): usd_in is Relay's valuation, not an on-chain mid
+	TokenIn       string  `json:"token_in"`                  // origin token address when InIsToken
+	Created       int64   `json:"created"`
 }
 
 type relayResp struct {
@@ -198,8 +201,16 @@ type relayRaw struct {
 			Bps       string `json:"bps"`
 			AmountUsd string `json:"amountUsd"`
 		} `json:"appFees"`
-		InTxs    []relayTx `json:"inTxs"`
-		OutTxs   []relayTx `json:"outTxs"`
+		InTxs  []relayTx `json:"inTxs"`
+		OutTxs []relayTx `json:"outTxs"`
+		// Relay's own fee breakdown, USD: gas (destination execution), fixed (the relayer), price (the swap).
+		FeesUsd map[string]string `json:"feesUsd"`
+		// What actually happened, USD, signed from the user's side: execution (gas, negative), app, swap, relay.
+		ExpandedPriceImpact struct {
+			Actual map[string]struct {
+				Usd string `json:"usd"`
+			} `json:"actual"`
+		} `json:"expandedPriceImpact"`
 		Metadata struct {
 			CurrencyIn  relayAmount `json:"currencyIn"`
 			CurrencyOut relayAmount `json:"currencyOut"`
@@ -699,13 +710,29 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		} else {
 			x.AppFeeUsd = appFee
 		}
-		for _, k := range []string{"execution", "swap", "relay", "rent"} {
+		for _, k := range []string{"swap", "relay", "rent"} {
 			if v, ok := comps[k]; ok {
 				x.RelayFeeUsd += f64(v.UserPays.AmountUsd)
 			}
 		}
+		if v, ok := comps["execution"]; ok {
+			x.DestGasUsd = f64(v.UserPays.AmountUsd)
+		}
 	} else {
 		x.AppFeeUsd = appFee
+	}
+	for _, k := range []string{"fixed", "price"} {
+		if v, ok := r.Data.FeesUsd[k]; ok {
+			x.RelayFixedUsd += math.Abs(f64(v))
+		}
+	}
+	// Relay's breakdown: the destination gas is network cost, not the bridge's take.
+	if x.DestGasUsd == 0 {
+		if v, ok := r.Data.ExpandedPriceImpact.Actual["execution"]; ok {
+			x.DestGasUsd = math.Abs(f64(v.Usd))
+		} else if g, ok := r.Data.FeesUsd["gas"]; ok {
+			x.DestGasUsd = math.Abs(f64(g))
+		}
 	}
 	return x, true
 }
@@ -782,8 +809,8 @@ func bridgeRow(t Terminal, x relayRequest, tx *parsedTx, solUSD, gasUSD float64)
 	}
 	sw.UserQ = (x.UsdIn + gasUSD) / q
 	sw.TerminalQ = x.AppFeeUsd / q
-	sw.NetworkQ = gasUSD / q
-	relay := x.UsdIn - recv*q - x.AppFeeUsd
+	sw.NetworkQ = (gasUSD + x.DestGasUsd) / q // origin gas plus the destination gas Relay charged
+	relay := x.UsdIn - recv*q - x.AppFeeUsd - x.DestGasUsd
 	if relay < 0 {
 		relay = 0
 	}

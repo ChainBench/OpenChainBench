@@ -68,7 +68,7 @@ methodology:
   - "Trade-size buckets (under $25, $25 to $250, over $250): median loss per bucket in the public JSON and on each product page, so terminals with different typical trade sizes are compared at equal size."
   - "One row per product; the chain selector shows the product on one chain (Solana and five EVM chains), All chains pools its swaps across chains (bridge funding legs stay out). Each chain is sampled at a fixed daily rate, so All chains weighs a chain's sampled swaps by its swap attempts per sample: the pooled figure follows the users, not the sampler. Published from 50 priced swaps pooled over the chains at 25 or more; it waits while the chain carrying most of the flow fills."
   - "Cross-chain (FOMO): the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and Relay delivers on Solana. Relay's public requests feed identifies the app's requests (fee address or referrer) with what the user sent in USD, the fees, both hashes and the status. Value received = what the settlement delivered on Solana: USDC / SOL exactly (FOMO funds the wallet this way; the token buy that follows is a native swap in the FOMO row) or a token at the pool's state before the swap."
-  - "Cross-chain split: terminal = the app fee the user paid; network = the origin gas (receipt on the chain's public RPC); relay = Relay's fees and spread (deposit minus received minus app fee); pool only when a token was delivered. A token sold on the origin chain is priced at that chain's pool state in its per-chain row; a token deposit from Solana keeps Relay's valuation, shown, not counted. Refunds and failures count in the fail rate. Perps are not measured; swaps under $2 are dropped."
+  - "Cross-chain split: terminal = the app fee the user paid; network = origin gas plus the destination gas Relay charged (its fee breakdown); relay = Relay's fixed and price fees plus the solver's spread (deposit minus received minus app fee minus that gas); pool only when a token was delivered. A token sold on the origin chain is priced at that chain's pool state in its per-chain row. Refunds and failures count in the fail rate. Perps are not measured; swaps under $2 are dropped."
   - "Trading on another chain (FOMO on Robinhood Chain, BNB, Base, Ethereum, Arc): the user pays in USDC or SOL from the FOMO wallet, a Relay solver buys the token there. Value given = what was sent (tx fee inside); value received = the tokens delivered at the pool's state before the settlement swap: v2 forks from the Sync reserves minus the swap, v3 forks and Uniswap v4 from the price left by the previous swap on the pool, all from the pool's own logs on public RPCs."
   - "Which side of an EVM pool is the token is settled by matching the swap event's amounts with the receipt's transfers, not the pool's token order. Split: terminal = the app fee; relay = what Relay kept (fees, spread, gas); pool = the settlement swap's impact and LP fee; network = the Solana tx fee (0 when the app's sponsor signs). Sales the other way (a token sold on that chain, USDC or SOL delivered on Solana) sit in the same per-chain row, priced at the origin pool's state before the sale."
   - "FOMO sponsors gas: its own signer pays the tx fee, so the user's network cost is zero; its fee is a router commission plus user-signed USDC legs, all counted as terminal fee. pump.fun's app takes no fee; the fixed 0.001 SOL it forwards on some swaps is counted as network."
@@ -122,7 +122,7 @@ metric_panels:
     metric: tfq_component_bps{component="network",chain="all"}
     unit: bp
     higher_is_better: false
-    description: "Median transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), share of the trade. Zero when the terminal sponsors gas."
+    description: "Median transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay), share of the trade; on cross-chain rows the destination gas Relay charged (its fee breakdown) is included. Zero when the terminal sponsors gas."
   - id: pool
     label: Pool
     label_key: terminal
@@ -137,7 +137,7 @@ metric_panels:
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Relay's fees and spread (deposit minus received minus app fee), share of the trade: the median on a chain row; on All chains, each chain's median weighted by its flow, blank when the bridged rows carry under half the product's flow (FOMO: most of its swaps are native on Solana)."
+    description: "Relay's fixed and price fees plus the solver's spread (deposit minus received minus app fee minus the destination gas, which is in Network), share of the trade: the chain row's median; on All chains flow-weighted, blank when the bridged rows carry under half the flow."
   - id: other
     label: Other fees
     label_key: terminal
