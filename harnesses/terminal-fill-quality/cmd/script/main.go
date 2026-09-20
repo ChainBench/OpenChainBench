@@ -1066,7 +1066,7 @@ var chainNames = map[string]string{"bnb": "BNB", "robinhood": "Robinhood Chain",
 func cohort() []Terminal {
 	out := append([]Terminal{}, terminals...)
 	for _, a := range xchainApps {
-		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or pays in SOL and receives the gas coin in a wallet on one of those chains (BasedBot). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
+		out = append(out, Terminal{Slug: a.Slug + "-funding", Name: a.Name + " · funding", Kind: "app", Note: "Funding legs through Relay, either way: the user pays on BNB, Robinhood Chain, Base, Ethereum or Arc and receives USDC or SOL on Solana (FOMO; the token buy that follows is a native swap in the app's Solana row), or moves funds between the Solana and EVM wallets of the same app account, either direction (BasedBot: an in-app bridge, not a deposit to trade). Value given = the origin deposit plus its gas; received = the amount delivered; terminal = the app fee the user paid; relay = what Relay kept (fees and spread); network = origin gas. Refunded and failed requests count in the fail rate. Out of the product's pooled figure: a bridge, not a fill."})
 		if a.FundingOnly {
 			continue
 		}
