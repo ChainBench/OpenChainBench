@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AI_DOMAINS, classifyPath, classifyReferrer, domainInList, SEARCH_DOMAINS } from "../lib/channels";
+import { AI_DOMAINS, classifyPath, classifyReferrer, referrerPredicate } from "../lib/channels";
 
 describe("classifyReferrer", () => {
   test("AI assistants", () => {
@@ -37,12 +37,18 @@ describe("classifyReferrer", () => {
   });
 });
 
-describe("domainInList", () => {
-  test("renders a SQL list with every domain quoted", () => {
-    const sql = domainInList(AI_DOMAINS);
-    expect(sql.startsWith("'chatgpt.com'")).toBe(true);
-    expect(sql.split(", ").length).toBe(AI_DOMAINS.length);
-    expect(domainInList(SEARCH_DOMAINS)).toContain("'duckduckgo.com'");
+describe("referrerPredicate", () => {
+  test("AI: exact list plus subdomains", () => {
+    const sql = referrerPredicate("ai");
+    expect(sql).toContain("'chatgpt.com'");
+    expect(sql).toContain("endsWith(properties.$referring_domain, '.perplexity.ai')");
+    expect(sql.split("'").length).toBeGreaterThan(AI_DOMAINS.length * 2);
+  });
+  test("search: Google and Bing country hosts, Gemini excluded", () => {
+    const sql = referrerPredicate("search");
+    expect(sql).toContain("google[.][a-z.]+$");
+    expect(sql).toContain("bing[.]com$");
+    expect(sql).toContain("NOT (properties.$referring_domain IN ('gemini.google.com'");
   });
 });
 

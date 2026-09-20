@@ -27,7 +27,7 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
         <Kpi
           label="Dune credits"
           value={d ? `${fmtInt(d.creditsUsed)}/${fmtInt(d.creditsIncluded)}` : "–"}
-          sub={d ? `period ends ${d.periodEnd ?? "?"}${duneDaysLeft != null ? ` (${duneDaysLeft} d)` : ""}` : "DUNE_API_KEY not set"}
+          sub={d ? `period ends ${d.periodEnd ?? "?"}${duneDaysLeft != null ? ` (${duneDaysLeft} d)` : ""}` : snap.status.dune?.error ? "usage call failed, see header" : "DUNE_API_KEY not set"}
         />
         <Kpi label="Providers in the index" value={b ? fmtInt(b.providers) : "–"} />
       </section>

@@ -26,12 +26,23 @@ async function read(): Promise<Store> {
   }
 }
 
+let counter = 0;
 async function write(data: Store): Promise<void> {
   await fs.mkdir(DIR, { recursive: true });
-  const tmp = `${FILE}.${process.pid}.tmp`;
+  const tmp = `${FILE}.${process.pid}.${++counter}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(data));
   await fs.rename(tmp, FILE);
   cache = null;
+}
+
+// Read-modify-write under one in-process queue, so two logins in the same
+// second cannot drop each other's nonce.
+const g = globalThis as unknown as { __ocbSessionsChain?: Promise<unknown> };
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const prev = g.__ocbSessionsChain ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  g.__ocbSessionsChain = run.catch(() => undefined);
+  return run;
 }
 
 function prune(data: Store, now: number): Store {
@@ -45,14 +56,18 @@ export async function sessionListed(nonce: string, now = Date.now()): Promise<bo
   return typeof exp === "number" && exp > now;
 }
 
-export async function listSession(nonce: string, expiresAtMs: number, now = Date.now()): Promise<void> {
-  const data = prune(await read(), now);
-  data[nonce] = expiresAtMs;
-  await write(data);
+export function listSession(nonce: string, expiresAtMs: number, now = Date.now()): Promise<void> {
+  return serial(async () => {
+    const data = prune(await read(), now);
+    data[nonce] = expiresAtMs;
+    await write(data);
+  });
 }
 
-export async function unlistSession(nonce: string, now = Date.now()): Promise<void> {
-  const data = prune(await read(), now);
-  delete data[nonce];
-  await write(data);
+export function unlistSession(nonce: string, now = Date.now()): Promise<void> {
+  return serial(async () => {
+    const data = prune(await read(), now);
+    delete data[nonce];
+    await write(data);
+  });
 }

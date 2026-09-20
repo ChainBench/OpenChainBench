@@ -16,6 +16,7 @@ describe("queries", () => {
     expect(QUERIES.weekly()).toContain("'chatgpt.com'");
     expect(QUERIES.weekly()).toContain("'perplexity.ai'");
     expect(QUERIES.totals()).toContain("'chatgpt.com'");
+    expect(QUERIES.totals()).toContain("google[.][a-z.]+$");
   });
   test("page and referrer rows are ranked on either week, so losses survive the LIMIT", () => {
     expect(QUERIES.pages()).toContain("ORDER BY greatest(visitors, prev_visitors) DESC");

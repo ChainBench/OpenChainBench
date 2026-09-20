@@ -99,9 +99,23 @@ export function classifyReferrer(domain: string | null | undefined): Channel {
   return "referral";
 }
 
-/** SQL fragment: `properties.$referring_domain IN ('a', 'b')` for the AI and search lists. */
-export function domainInList(list: readonly string[]): string {
-  return list.map((x) => `'${x.replace(/'/g, "")}'`).join(", ");
+/** HogQL predicate on `properties.$referring_domain` mirroring classifyReferrer's
+ *  rules for one channel: exact or subdomain match on the list, plus, for
+ *  search, Google's and Bing's country hosts. Kept next to the TS rule so
+ *  the KPI (SQL) and the channel table (TS) count the same visitors. */
+export function referrerPredicate(channel: "ai" | "search", column = "properties.$referring_domain"): string {
+  const list = channel === "ai" ? AI_DOMAINS : SEARCH_DOMAINS;
+  const quoted = list.map((x) => `'${x.replace(/'/g, "")}'`);
+  const exact = `${column} IN (${quoted.join(", ")})`;
+  const suffix = list.map((x) => `endsWith(${column}, '.${x.replace(/'/g, "")}')`).join(" OR ");
+  const extra =
+    channel === "search"
+      // Character classes instead of backslash escapes: HogQL strings reject `\.`.
+      ? ` OR match(${column}, '^(www[.])?google[.][a-z.]+$') OR match(${column}, '^([a-z]+[.])?bing[.]com$')`
+      : "";
+  // gemini.google.com is AI, never search: excluded here, listed in AI_DOMAINS.
+  const notAi = channel === "search" ? ` AND NOT (${column} IN ('gemini.google.com', 'bard.google.com'))` : "";
+  return `((${exact} OR ${suffix}${extra})${notAi})`;
 }
 
 export type Section =

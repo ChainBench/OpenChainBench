@@ -1,13 +1,13 @@
 /**
  * The PostHog side of the snapshot: one fixed list of HogQL queries per
- * refresh (ten today), each mapped to a plain JSON section. Every query is
+ * refresh (eleven today), each mapped to a plain JSON section. Every query is
  * scoped to the production host, so staging and localhost never count, and
  * to `$pageview`, the only event the site captures today (autocapture is off).
  *
  * Distinct id, not person id: the site runs `person_profiles: identified_only`
  * and never identifies anyone, so a visitor is a device cookie.
  */
-import { AI_DOMAINS, SEARCH_DOMAINS, classifyPath, classifyReferrer, domainInList, type Channel, type Section } from "@/lib/channels";
+import { classifyPath, classifyReferrer, referrerPredicate, type Channel, type Section } from "@/lib/channels";
 import { num, queryHogQL, str } from "@/lib/posthog";
 
 const SITE_HOST = process.env.SITE_HOST ?? "openchainbench.com";
@@ -56,8 +56,8 @@ export const QUERIES = {
   weekly: () => `
     SELECT toStartOfWeek(timestamp, 1) AS week,
            uniq(distinct_id) AS visitors,
-           uniqIf(distinct_id, properties.$referring_domain IN (${domainInList(AI_DOMAINS)})) AS ai,
-           uniqIf(distinct_id, properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS search,
+           uniqIf(distinct_id, ${referrerPredicate("ai")}) AS ai,
+           uniqIf(distinct_id, ${referrerPredicate("search")}) AS search,
            count() AS pageviews
     FROM events
     WHERE ${PV} AND timestamp >= toStartOfWeek(now() - INTERVAL 11 WEEK, 1)
@@ -102,10 +102,10 @@ export const QUERIES = {
            countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_pageviews,
            uniqIf(properties.$session_id, timestamp >= now() - INTERVAL 7 DAY) AS sessions,
            uniqIf(properties.$session_id, timestamp < now() - INTERVAL 7 DAY) AS prev_sessions,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(AI_DOMAINS)})) AS ai_visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(AI_DOMAINS)})) AS prev_ai_visitors,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS search_visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND properties.$referring_domain IN (${domainInList(SEARCH_DOMAINS)})) AS prev_search_visitors
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND ${referrerPredicate("ai")}) AS ai_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("ai")}) AS prev_ai_visitors,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS search_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS prev_search_visitors
     FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY`,
   audience: () => `
     SELECT countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,

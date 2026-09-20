@@ -83,28 +83,51 @@ export async function revokeSession(cookieValue: string | undefined): Promise<vo
   if (s) await unlistSession(s.nonce);
 }
 
-/** Login attempts per client, in memory: 10 per 15 minutes. Kept on
- *  globalThis so every bundler layer shares the same map. */
+/** Login attempts, in memory, on globalThis so every bundler layer shares
+ *  the map. Two brakes: per client (10 per 15 minutes) and global (60 per
+ *  15 minutes, whatever the keys), because the client key is only as good as
+ *  the edge's forwarded header. Keys are evicted when their window is empty. */
 const WINDOW_MS = 15 * 60_000;
 const MAX_ATTEMPTS = 10;
-const g = globalThis as unknown as { __ocbLoginAttempts?: Map<string, number[]> };
-const attempts = (g.__ocbLoginAttempts ??= new Map<string, number[]>());
+const MAX_ATTEMPTS_GLOBAL = 60;
+const MAX_KEYS = 1000;
+type Attempts = { byKey: Map<string, number[]>; all: number[] };
+const g = globalThis as unknown as { __ocbLoginAttempts?: Attempts };
+const attempts: Attempts = (g.__ocbLoginAttempts ??= { byKey: new Map(), all: [] });
 
+/** The hop the edge appended, i.e. the last X-Forwarded-For entry: the
+ *  first entry is whatever the client wrote. No x-real-ip fallback, the
+ *  platform is not known to set it. */
 export function clientKey(request: Request): string {
-  const fwd = request.headers.get("x-forwarded-for") ?? "";
-  return fwd.split(",")[0].trim() || request.headers.get("x-real-ip") || "unknown";
+  const hops = (request.headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+  return hops.at(-1) ?? "unknown";
+}
+
+function sweep(now: number): void {
+  attempts.all = attempts.all.filter((t) => now - t < WINDOW_MS);
+  for (const [k, list] of attempts.byKey) {
+    const recent = list.filter((t) => now - t < WINDOW_MS);
+    if (recent.length === 0) attempts.byKey.delete(k);
+    else attempts.byKey.set(k, recent);
+  }
 }
 
 export function loginAllowed(key: string, now = Date.now()): boolean {
-  const recent = (attempts.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  attempts.set(key, recent);
-  return recent.length < MAX_ATTEMPTS;
+  sweep(now);
+  if (attempts.all.length >= MAX_ATTEMPTS_GLOBAL) return false;
+  if (attempts.byKey.size >= MAX_KEYS && !attempts.byKey.has(key)) return false;
+  return (attempts.byKey.get(key) ?? []).length < MAX_ATTEMPTS;
 }
 
 export function recordLoginAttempt(key: string, now = Date.now()): void {
-  const recent = (attempts.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  attempts.set(key, recent);
+  attempts.all.push(now);
+  attempts.byKey.set(key, [...(attempts.byKey.get(key) ?? []), now]);
+}
+
+/** Test seam. */
+export function resetLoginAttempts(): void {
+  attempts.byKey.clear();
+  attempts.all = [];
 }
 
 /** 303 to a same-origin path. The origin is rebuilt from the forwarded

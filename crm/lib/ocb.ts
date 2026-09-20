@@ -47,7 +47,14 @@ export async function loadBenchHealth(now = Date.now()): Promise<BenchHealth> {
   ]);
   if (!res.ok) throw new Error(`index blob ${res.status}`);
   const blob = indexSchema.parse(await res.json());
-  const providers = sm && sm.ok ? (sitemapSchema.safeParse(await sm.json()).data?.providerSlugs?.length ?? 0) : 0;
+  // Providers count is decoration; a bad sitemap body must not fail the section.
+  const providers = await (async () => {
+    try {
+      return sm && sm.ok ? (sitemapSchema.safeParse(await sm.json()).data?.providerSlugs?.length ?? 0) : 0;
+    } catch {
+      return 0;
+    }
+  })();
   const rows: BenchRow[] = blob.benches.filter((b) => b.status === "live").map((b) => {
     const t = Date.parse(b.lastRunAt ?? "");
     const ageHours = Number.isFinite(t) ? (now - t) / 3_600_000 : null;
