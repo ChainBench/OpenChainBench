@@ -169,6 +169,8 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
   });
 
   if (posthogConfigured()) {
+    // The "not configured" note from earlier refreshes must not outlive the fix.
+    delete next.status.posthog;
     try {
       for (const section of TRAFFIC_SECTIONS) {
         await step(`traffic.${section}`, async () => {
