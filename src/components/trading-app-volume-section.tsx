@@ -86,8 +86,8 @@ export async function TradingAppVolumeSection({
           <Kpi label="Cohort volume 30d" value={fmtUsd(totals.d30)} />
           <Kpi
             label="Leader, last day"
-            value={stats[0]?.app.name ?? "—"}
-            sub={stats[0] ? `${fmtUsd(stats[0].d1)} · ${totals.d1 > 0 && stats[0].d1 != null ? ((stats[0].d1 / totals.d1) * 100).toFixed(0) : "—"}% of cohort` : undefined}
+            value={stats[0]?.app.name ?? "n/a"}
+            sub={stats[0] ? `${fmtUsd(stats[0].d1)} · ${totals.d1 > 0 && stats[0].d1 != null ? ((stats[0].d1 / totals.d1) * 100).toFixed(0) : "n/a"}% of cohort` : undefined}
             logo={stats[0]?.app.slug}
           />
         </div>
@@ -159,7 +159,7 @@ export async function TradingAppVolumeSection({
                     {s.d30 != null && s.d30days < 30 && <Cov days={s.d30days} of={30} />}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">
-                    {s.share30d != null ? `${s.share30d.toFixed(1)}%` : "—"}
+                    {s.share30d != null ? `${s.share30d.toFixed(1)}%` : "n/a"}
                   </td>
                   <td className="py-2 pl-3">
                     <TrendSparkline id={s.app.slug} values={s.last30} width={compact ? 96 : 140} height={26} color={colorOf(s.app.slug, lines, i)} />
@@ -251,7 +251,7 @@ function coverageCaption(stats: TradingAppStats[]): string {
   for (const x of early) parts.push(`${x.name} since ${fmtDay(x.first)}`);
   if (late.length > 0) {
     parts.push(
-      `${late.length} others since ${fmtDay(late[0].first)}–${fmtDay(late[late.length - 1].first)}, when DeFiLlama added their adapters (not backfilled)`,
+      `${late.length} others since ${fmtDay(late[0].first)} to ${fmtDay(late[late.length - 1].first)}, when DeFiLlama added their adapters (not backfilled)`,
     );
   }
   return `Series start where DeFiLlama's data starts: ${parts.join("; ")}. Earlier years are not published for these apps.`;
@@ -290,7 +290,7 @@ function Th({ children, right, title }: { children: React.ReactNode; right?: boo
 
 /** 7-day change: arrow glyph, percentage, coloured; em dash when the window is short. */
 function Delta({ pct }: { pct: number | null }) {
-  if (pct == null) return <span className="text-ink-faint">—</span>;
+  if (pct == null) return <span className="text-ink-faint">n/a</span>;
   const up = pct >= 0;
   return (
     <span
@@ -317,7 +317,7 @@ function trendTone(pct: number | null): "up" | "down" | undefined {
 }
 
 function fmtUsd(v: number | null): string {
-  if (v == null) return "—";
+  if (v == null) return "n/a";
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;

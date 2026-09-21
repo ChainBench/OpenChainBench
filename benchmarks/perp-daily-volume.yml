@@ -4,7 +4,7 @@ slug: perp-daily-volume
 number: "266"
 title: "Perp DEX daily volume 2026: Hyperliquid, Aster, Lighter, GMX, Gains, dYdX by UTC day, backfilled"
 seo_title: "Perp DEX daily volume: {{best_name}} leads at {{best_p50}}"
-seo_description: "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional. Daily perpetual DEX volume for {{count}} venues, DeFiLlama day buckets rebuilt from each venue's own data, with 7 and 30 day totals and a year of history."
+seo_description: "{{best_name}} led the last closed UTC day at {{best_p50}} of perp notional. Daily volume for {{count}} venues, 7 and 30 day totals, a year of history."
 subtitle: Perpetual futures notional per closed UTC day for 11 rows across 10 decentralized venues (Hyperliquid's HIP-3 dexs are their own row), the same day buckets DeFiLlama's derivatives page uses, read from the sources its adapters read. Headline is the last closed day; 7 day and 30 day totals and cohort share sit next to it. History backfilled over a year and refreshed hourly.
 
 category: Trading

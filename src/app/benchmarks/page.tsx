@@ -7,10 +7,10 @@ import { safeJsonLd } from "@/lib/jsonld";
 export const revalidate = 3600;
 
 const DESCRIPTION =
-  "Comprehensive registry of open, reproducible benchmarks running across major protocols, bridges and indexers.";
+  "Live benchmarks on RPC latency, perp DEX fees and volume, bridge cost, L1 finality and oracle deviation, measured continuously with an open methodology.";
 
 export const metadata: Metadata = {
-  title: "All benchmarks",
+  title: "Crypto infrastructure benchmarks 2026: RPC, perps, bridges",
   description: DESCRIPTION,
   alternates: { canonical: "https://openchainbench.com/benchmarks" },
   openGraph: {

@@ -19,11 +19,11 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Cross-chain daily volume for trading apps and Telegram bots (GMGN, Axiom, FOMO, Terminal, Photon, Trojan and more) on closed UTC days with per-chain split and trends, plus on-chain activity, fee rates and app store ratings.";
+  "Daily cross-chain volume of trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan) on closed UTC days, per-chain split, trends, fees and ratings.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Trading app volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, cross-chain daily",
+  title: "Trading app volume 2026: GMGN vs Axiom vs FOMO, per UTC day",
   description: DESCRIPTION,
 });
 
@@ -211,22 +211,22 @@ export default async function TradingAppsHubPage() {
       </header>
 
       <section className="mb-14">
-        <p
+        <h2
           className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           Cross-chain daily volume · bench 267
-        </p>
+        </h2>
         <TradingAppVolumeSection />
       </section>
 
       <section className="mb-14">
-        <p
+        <h2
           className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           Fill quality · bench 268
-        </p>
+        </h2>
         <p className="text-sm text-ink-soft max-w-2xl mb-4">
           What a swap really costs on each terminal: real user transactions read on-chain, valued at the pool&apos;s
           arrival price, split into terminal fee, network, pump.fun and pool costs, plus the share of transactions that fail.
@@ -235,12 +235,12 @@ export default async function TradingAppsHubPage() {
       </section>
 
       <section className="mb-6">
-        <p
+        <h2
           className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           On-chain activity · Dune datasets, per platform
-        </p>
+        </h2>
         <p className="text-sm text-ink-soft max-w-2xl mb-6">
           Swap transactions, average trade size, active wallets and fee rates
           from each platform&apos;s Dune community dataset. Scope follows the
@@ -273,12 +273,12 @@ export default async function TradingAppsHubPage() {
       </section>
 
       <section className="mb-14">
-        <p
+        <h2
           className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           Platform comparison
-        </p>
+        </h2>
         <div className="overflow-x-auto rounded-lg border border-ink/10">
           <table className="w-full text-sm border-collapse min-w-[560px]">
             <thead>
@@ -378,12 +378,12 @@ const BENCH_SLUGS = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
       </section>
 
       <section>
-        <p
+        <h2
           className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
           All benchmarks
-        </p>
+        </h2>
         <div className="grid sm:grid-cols-2 gap-x-10 gap-y-8">
           {GROUPS.map((group) => (
             <div key={group.label}>

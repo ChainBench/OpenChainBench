@@ -185,6 +185,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/rpc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     ...(isDevOnlyRoute("/speedtest-rpc")
       ? []
@@ -291,8 +292,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Benchmark routes. Blob benches are already filtered to live+live by
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
+  // Benches this build serves: the worker publishes from dev, so the blob
+  // carries specs a production checkout may not have yet (arc-rpc and
+  // robinhood-rpc were listed in the production sitemap while 404ing,
+  // audit 2026-09-21).
+  const servedSlugs = new Set((await getSpecs()).map((s) => s.slug));
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    if (!servedSlugs.has(b.slug)) return [];
     // The worker publishes every dev bench; production must not list a
     // page it does not serve.
     if (isDevOnlyBench(b.slug)) return [];
