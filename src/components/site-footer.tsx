@@ -1,3 +1,4 @@
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
 import { SITE } from "@/data/site";
@@ -32,7 +33,7 @@ export function SiteFooter() {
               { label: "Chains", href: "/chains" },
               { label: "Prediction markets", href: "/prediction-markets" },
               { label: "RPC", href: "/rpc" },
-              { label: "RPC Speed Test", href: "/speedtest-rpc" },
+              ...(isDevOnlyRoute("/speedtest-rpc") ? [] : [{ label: "RPC Speed Test", href: "/speedtest-rpc" }]),
               { label: "Data APIs", href: "/data-api" },
               { label: "Perpetuals", href: "/perps" },
               { label: "Bridge", href: "/bridge" },

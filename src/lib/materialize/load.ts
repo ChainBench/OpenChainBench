@@ -19,7 +19,7 @@ import type {
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
-import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import {
@@ -138,7 +138,7 @@ async function loadSpecsFromDisk(): Promise<Spec[]> {
   // catalog, hubs, feeds or citable API. Direct URL hits get a 410
   // from middleware. Staging/preview/dev render everything.
   if (process.env.VERCEL_ENV === "production") {
-    return specs.filter((s) => !REMOVED_BENCH_SLUGS.has(s.slug));
+    return specs.filter((s) => !REMOVED_BENCH_SLUGS.has(s.slug) && !DEV_ONLY_BENCH_SLUGS.has(s.slug));
   }
   return specs;
 }

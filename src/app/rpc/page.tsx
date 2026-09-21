@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
@@ -168,6 +169,7 @@ export default async function RpcHubPage() {
         </div>
       </header>
 
+      {!isDevOnlyRoute("/speedtest-rpc") && (
       <section className="mb-8 rounded-lg border border-ink/10 card-soft px-4 py-3 flex items-start gap-3">
         <span className="mt-0.5 inline-block w-2 h-2 rounded-full shrink-0" style={{ background: "var(--color-good)" }} aria-hidden />
         <p className="text-sm text-ink leading-snug">
@@ -180,6 +182,7 @@ export default async function RpcHubPage() {
           </span>
         </p>
       </section>
+      )}
 
       {snapshot ? (
         <>
