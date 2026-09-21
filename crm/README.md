@@ -12,8 +12,6 @@ One shared password, per-login sessions, one Railway service, no database.
 | Pages | PostHog | sections week over week, biggest gains and losses, top 100 pages (filter by section), entry pages |
 | Audience | PostHog | new vs returning, bounce, Core Web Vitals p75 by device, time on page by section, countries, devices, UTM sources, referring domains with their channel |
 | Actions | PostHog custom events | outbound clicks by destination host (visitors sent to providers), copies (endpoint, API URL, MCP, embed) per bench, searches with no result (content gaps), search queries with the result picked |
-| Search | Google Search Console (service account) | clicks, impressions, CTR, position 7 d vs previous 7 d, 28 d series, opportunities (many impressions, CTR < 1 %, position ≤ 15), top pages and queries |
-| Crawlers | Vercel Log Drain | AI crawler hits by bot (GPTBot, ClaudeBot, PerplexityBot, …) and the sections they read, search bots, human requests by section, who calls /api/stat, /api/citable, llms.txt, top 404 paths, cache hit ratio |
 | Data health | index blob, Prometheus, Dune | live / stale (> 24 h) / expired (> 7 d) benches per category, benches needing attention, scrape targets down, Dune credits and period end, the daily history kept on the volume |
 
 The site captures `$pageview`, `$pageleave` and three custom events
@@ -95,28 +93,7 @@ and each layer gets its own module instance otherwise.
 3. `pnpm test`: the query test checks every query stays scoped to
    `$pageview` on the production host.
 
-Non-PostHog sources go in `lib/ocb.ts` (or their own module: `lib/gsc.ts`,
-`lib/vercel-logs.ts`) and get a `step()` in `lib/snapshot.ts`.
+Non-PostHog sources go in `lib/ocb.ts` (or their own module) and get a
+`step()` in `lib/snapshot.ts`.
 
-## Connecting Search Console
 
-1. Google Cloud console → a project → APIs → enable **Google Search Console API**.
-2. IAM → Service accounts → create one, add a JSON key, download it.
-3. Search Console → property `openchainbench.com` → Settings → Users and
-   permissions → add the service account e-mail (Full or Restricted, read is enough).
-4. Railway service variables: `GSC_SERVICE_ACCOUNT_JSON` = the key file's
-   content on one line, `GSC_SITE_URL` = `sc-domain:openchainbench.com` (or the
-   URL-prefix property as listed in Search Console). Five API calls per refresh.
-
-## Connecting the Vercel Log Drain
-
-1. Railway variables: `VERCEL_LOG_DRAIN_SECRET` (random, 16+ chars),
-   `VERCEL_LOG_DRAIN_VERIFY` (the verification token Vercel displays when you add
-   the drain; set it, redeploy, then click Verify).
-2. Vercel → team settings → **Log Drains** → Add: project `openchainbench-mobula`,
-   sources **Request logs** (proxy) only, format **JSON**, endpoint
-   `https://<crm host>/api/ingest/vercel`, custom secret = the value above.
-3. Requests are folded per UTC day into `/data/vercel/YYYY-MM-DD.json`
-   (counts only: bot names, sections, status codes, path families; no IPs, no
-   raw user agents). One log line per request; a busy day is a few thousand
-   POSTs of batched entries, negligible for the service.
