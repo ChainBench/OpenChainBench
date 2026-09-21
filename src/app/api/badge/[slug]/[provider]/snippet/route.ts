@@ -68,11 +68,13 @@ export async function GET(
   if (rawTier && !tierOption) {
     return NextResponse.json({ error: "unknown_tier" }, { status: 400 });
   }
-  const tier = tierOption?.value ?? "";
-  const benchmark =
-    tierOption && tierOption.value !== aggregate.aggregateFilters?.tier
-      ? ((await getBenchmark(slug, { tier: tierOption.value })) ?? aggregate)
-      : aggregate;
+  // The headline tier is the aggregate: no variant, no tier in the URLs.
+  const headlineTier =
+    aggregate.aggregateFilters?.tier ?? aggregate.dimensions?.tier?.[0]?.value;
+  const tier = tierOption && tierOption.value !== headlineTier ? tierOption.value : "";
+  const benchmark = tier
+    ? ((await getBenchmark(slug, { tier })) ?? aggregate)
+    : aggregate;
   const result = benchmark.results.find((p) => p.slug === provider);
   if (!result) {
     return NextResponse.json({ error: "provider_not_found" }, { status: 404 });

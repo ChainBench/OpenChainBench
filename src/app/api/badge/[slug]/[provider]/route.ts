@@ -194,10 +194,14 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const b =
-    tierOption && tierOption.value !== aggregate.aggregateFilters?.tier
-      ? ((await getBenchmark(slug, { tier: tierOption.value })) ?? aggregate)
-      : aggregate;
+  // The headline tier (aggregate pin, else the first declared value) is
+  // the aggregate itself: no variant blob, no scope label.
+  const headlineTier =
+    aggregate.aggregateFilters?.tier ?? aggregate.dimensions?.tier?.[0]?.value;
+  const cohortOption = tierOption && tierOption.value !== headlineTier ? tierOption : null;
+  const b = cohortOption
+    ? ((await getBenchmark(slug, { tier: cohortOption.value })) ?? aggregate)
+    : aggregate;
 
   // Scope params are normalized to lowercase and validated against the
   // bench's declared dimensions; an unknown value is treated as a 400
@@ -248,7 +252,7 @@ export async function GET(
     scopeLabel = [
       chainParam ? chainLabel(b, chainParam) : null,
       regionParam ? regionLabel(b, regionParam) : null,
-      tierOption ? tierOption.label : null,
+      cohortOption ? cohortOption.label : null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -265,7 +269,7 @@ export async function GET(
       (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0
         ? "all regions"
         : null,
-      tierOption ? tierOption.label : null,
+      cohortOption ? cohortOption.label : null,
     ]
       .filter(Boolean)
       .join(" · ");

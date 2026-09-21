@@ -251,3 +251,20 @@ describe("renderTemplate, access tiers, gates and gaps", () => {
     ).toBe("PublicNode leads free Base RPC at 44 ms (p50, 24h). URLs for all 2 no-key endpoints.");
   });
 });
+
+describe("renderTemplate, a cohort with no citable row", () => {
+  test("names nobody: the keyed clause is pruned, the public claim stays", () => {
+    // A chain RPC page: the citation gate has no fallback there (a 40 %
+    // success endpoint is never crowned), so the stash follows suit.
+    const b: Benchmark = {
+      ...bench([{ ...r("publicnode", "PublicNode", 44), tier: "public" }, { ...r("drpc", "dRPC", 61), tier: "public" }]),
+      slug: "base-rpc",
+      title: "Base RPC endpoints: free public URLs and API-key providers by latency",
+      dimensions: { tier: [{ value: "public", label: "Public" }, { value: "keyed", label: "API key" }] },
+      tierResults: { keyed: [{ ...r("chainstack", "Chainstack", 30), successRate: 40 }] },
+    };
+    expect(
+      renderTemplate("{{best_name}} leads at {{best_p50}}; {{best_name:tier:keyed}} leads the API-key cohort.", b),
+    ).toBe("PublicNode leads at 44 ms.");
+  });
+});

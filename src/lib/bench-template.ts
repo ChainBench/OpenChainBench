@@ -124,10 +124,11 @@ function tierRows(b: Benchmark, tier: string, own: ProviderResult[]): ProviderRe
   const key = Object.keys(stash).find((k) => k.toLowerCase() === lower);
   if (!key) return [];
   // Same gate as the headline cohort (success floor, Provisional rows
-  // never lead): rank the stash as if it were the bench's results.
+  // never lead): rank the stash as if it were the bench's results. No
+  // ungated fallback: a cohort with no citable row yields no leader, and
+  // the clause quoting it is pruned, like the keyed tab that names nobody.
   const cohort: Benchmark = { ...b, results: stash[key] };
-  const pool = citationCandidates(cohort);
-  return rankResults(pool.length > 0 ? pool : liveResults(stash[key]), b.higherIsBetter);
+  return rankResults(citationCandidates(cohort), b.higherIsBetter);
 }
 
 /** Per-chain leader / trailer lookups against the Benchmark stash

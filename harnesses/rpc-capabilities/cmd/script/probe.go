@@ -349,9 +349,6 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			tips.update(c.Slug, block)
 			tip := tips.get(c.Slug)
 			gap := staleBlockGap
-			if c.StaleGap > 0 {
-				gap = c.StaleGap
-			}
 			switch c.Kind {
 			case "solana":
 				gap = solanaStaleSlotGap
@@ -403,6 +400,10 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = veChainStaleBlockGap
 			case "icon":
 				gap = iconStaleBlockGap
+			}
+			// Per-chain override wins over the Kind default (config.go).
+			if c.StaleGap > 0 {
+				gap = c.StaleGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
