@@ -3,7 +3,7 @@
 slug: perp-volume-share
 number: "041"
 title: Perp DEX volume share, live 24h notional ranked
-seo_title: "Perp DEX volume 24h ranking 2026"
+seo_title: "Perp DEX 24h volume: {{best_name}} leads at {{best_p50}}, live"
 seo_description: "{{best_name}} leads perp DEX volume at {{best_p50}} in 24h across {{count}} venues (Hyperliquid, Aster, Lighter, Ondo Perps, GMX, Gains, dYdX, Paradex and more), read from each venue's API every 5 minutes."
 subtitle: 24h rolling perpetual futures notional volume in USD across the major decentralized venues, Ondo Perps included. Higher means more flow. Read live from each venue's public API.
 category: Trading

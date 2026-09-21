@@ -3,7 +3,7 @@
 slug: perp-mark-price-lag
 number: "118"
 title: "Perp DEX mark price fidelity: deviation from CEX spot reference, live"
-seo_title: "Perp DEX mark price accuracy 2026"
+seo_title: "Perp mark price accuracy: {{best_name}} at {{best_p50}} off spot"
 seo_description: "{{best_name}} leads mark price fidelity at {{best_p50}} deviation from CEX spot (24h p50). Oracle-priced venues vs orderbook venues on ETH, BTC and SOL. Gains, GMX, Hyperliquid, dYdX, Lighter, Paradex ranked live."
 subtitle: "Median absolute deviation in basis points between each venue's mark price and a Binance spot reference, measured every 60 seconds on ETH, BTC and SOL. Lower means the venue's mark price stays closer to the CEX spot consensus. Oracle-priced venues use a real-time price feed anchored to CEX spot; orderbook venues derive their mark from their own book."
 category: Trading
