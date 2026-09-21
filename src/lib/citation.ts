@@ -39,7 +39,12 @@ export const LEADER_MIN_SUCCESS_PCT = 50;
  *  should not simultaneously rank Owlracle first in its `rankings`
  *  array. */
 export function citationCandidates(b: Benchmark): ProviderResult[] {
-  const live = liveResults(b.results);
+  // A row the spec's own rank gate left unranked (`queries.ranked` = 0,
+  // shown as Provisional, or a declared unranked member) is published
+  // but never a leader: the ledger already skips it, and until this the
+  // template ({{best_name}}), /api/stat and the citation did not (Ondo
+  // Perps at 0 stddev led perp-funding-stability, 2026-09-21).
+  const live = liveResults(b.results).filter((r) => !r.unrankedLabel);
   const reliable = live.filter(
     (r) => (r.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT,
   );
