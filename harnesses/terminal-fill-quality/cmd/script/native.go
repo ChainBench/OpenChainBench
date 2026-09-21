@@ -120,6 +120,21 @@ var evmTerminals = []evmTerminal{
 		Routers: []string{"0xf9280799c85d376e0425f6fb38e4a674e8bedb56"}, FromSet: "basedbot",
 		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
 		Note:        "BasedBot's users on Ethereum: the wallets it funded from Solana through Relay, trading on its router family's contract there (a few swaps an hour); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas."},
+	// GMGN's Ethereum and Base routers: the parent transactions of the
+	// internal transfers to its fee collector (DeFiLlama's gmgnai adapter,
+	// Alchemy asset transfers on 2026-09-21: 94 an hour on Ethereum, 126 on
+	// Base), the same swap-end events as on BNB (0x205442d6…, 0x3145c7c5…).
+	{Slug: "gmgn-ethereum", Name: "GMGN · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0x4313c378cc91ea583c91387b9216e2c03096b27f"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
+	{Slug: "gmgn-base", Name: "GMGN · Base", Kind: "app", Chain: "base", Routers: []string{"0xd8ba9d1a99fc21f0eca24e9b85737c28a194a4e2"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
+	// Maestro's EVM router, one vanity address on every chain, emits one
+	// event per swap (0x86c70604…) and forwards the fee to Maestro's wallet
+	// (DeFiLlama's maestro adapter: 0xB0999731…) as an internal transfer:
+	// the residual after the pool and gas. 2026-09-21: Robinhood Chain 57
+	// swaps an hour, BNB 31, Base 9, Ethereum 7.
+	{Slug: "maestro-bnb", Name: "Maestro · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	{Slug: "maestro-ethereum", Name: "Maestro · Ethereum", Kind: "bot", Chain: "ethereum", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	{Slug: "maestro-base", Name: "Maestro · Base", Kind: "bot", Chain: "base", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	{Slug: "maestro-robinhood", Name: "Maestro · Robinhood Chain", Kind: "bot", Chain: "robinhood", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
 		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
