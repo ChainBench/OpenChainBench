@@ -4,6 +4,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
 import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
 import { TerminalFillSection } from "@/components/terminal-fill-section";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import { ChainBar } from "@/components/chain-bar";
 import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-history";
 import {
@@ -28,7 +29,7 @@ export const metadata: import("next").Metadata = pageMetadata({
 
 export const revalidate = 300; // the fill rows' fetch revalidates at 300 s; an hour here printed a table an hour behind the bench page
 
-const BENCH_SLUGS = [
+const ALL_BENCH_SLUGS = [
   "trading-app-daily-volume",
   "terminal-fill-quality",
   "solana-trading-platform-wars",
@@ -40,6 +41,9 @@ const BENCH_SLUGS = [
   "memecoin-platforms",
   "app-store-ratings",
 ] as const;
+// The ItemList and the "Active benchmarks" count name only the benches this
+// deployment serves (bench 268 is dev-only on production).
+const BENCH_SLUGS: string[] = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
 
 function indexBySlug(results: ProviderResult[] | undefined): Record<string, number> {
   const out: Record<string, number> = {};
@@ -335,6 +339,9 @@ export default async function TradingAppsHubPage() {
                   </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
+// The ItemList and the "Active benchmarks" count name only the benches this
+// deployment serves (bench 268 is dev-only on production).
+const BENCH_SLUGS = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
                     const isBest = val !== null && val === bests[col.key];
                     const formula = formulaOf(col.key, row.slug);
                     const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";

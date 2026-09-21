@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
@@ -54,6 +56,8 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default function SpeedtestRpcPage() {
+  // Dev / staging only for now (DEV_ONLY_ROUTES).
+  if (isDevOnlyRoute("/speedtest-rpc")) notFound();
   const pageUrl = `${SITE.url}/speedtest-rpc`;
   const jsonLd = {
     "@context": "https://schema.org",

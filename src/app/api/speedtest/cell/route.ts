@@ -1,3 +1,4 @@
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { redisPipeline, storeConfigured } from "@/lib/materialize/store";
@@ -79,6 +80,7 @@ const cachedCell = unstable_cache(
 );
 
 export async function GET(req: NextRequest) {
+  if (isDevOnlyRoute("/rpc-map")) return new NextResponse("not found", { status: 404 });
   const chain = req.nextUrl.searchParams.get("chain") ?? "";
   const gh = req.nextUrl.searchParams.get("gh") ?? "";
   if (!KNOWN_CHAINS.has(chain) || !GH_RE.test(gh)) {

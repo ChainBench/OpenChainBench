@@ -1,3 +1,4 @@
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { redisPipeline, storeConfigured } from "@/lib/materialize/store";
@@ -112,6 +113,7 @@ const cachedMap = unstable_cache(
 );
 
 export async function GET(req: NextRequest) {
+  if (isDevOnlyRoute("/rpc-map")) return new NextResponse("not found", { status: 404 });
   const chain = req.nextUrl.searchParams.get("chain") ?? "ethereum";
   if (!KNOWN_CHAINS.has(chain)) {
     return NextResponse.json({ error: "unknown_chain" }, { status: 400 });

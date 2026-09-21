@@ -1,3 +1,4 @@
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
  * private and uncacheable by design.
  */
 export async function GET(req: NextRequest) {
+  if (isDevOnlyRoute("/rpc-map")) return new NextResponse("not found", { status: 404 });
   const h = req.headers;
   let lat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
   let lon = parseFloat(h.get("x-vercel-ip-longitude") ?? "");

@@ -1,3 +1,4 @@
+import { isDevOnlyBench } from "@/lib/removed-benches";
 /**
  * Reader for the terminal-fill-quality harness output (bench 268): what a
  * swap costs the user on each trading terminal, wallet app or Telegram bot
@@ -280,6 +281,11 @@ function parse(raw: unknown): TerminalFills | null {
 
 /** Fetches the fills JSON (5 min revalidate). Null when unavailable. */
 export async function getTerminalFills(): Promise<TerminalFills | null> {
+  // The rows come straight from the harness JSON on the shared store, not
+  // from the bench blob, so the deployment gate has to be applied here:
+  // on production while bench 268 is dev-only, every section built on
+  // these rows (hub, product pages, audit table) stays hidden.
+  if (isDevOnlyBench("terminal-fill-quality")) return null;
   const url = process.env.TERMINAL_FILLS_URL || DEFAULT_URL;
   try {
     const res = await fetch(url, { next: { revalidate: 300 }, signal: AbortSignal.timeout(8000) });

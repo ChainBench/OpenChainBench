@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { isDevOnlyBench, isDevOnlyRoute } from "@/lib/removed-benches";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import { getSpecs } from "@/lib/spec";
 import { PROVIDER_REGISTRY } from "@/data/provider-registry";
@@ -185,8 +186,12 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${SITE.url}/speedtest-rpc`, lastModified: pageMtime("speedtest-rpc/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily", priority: 0.8 },
+    ...(isDevOnlyRoute("/speedtest-rpc")
+      ? []
+      : [{ url: `${SITE.url}/speedtest-rpc`, lastModified: pageMtime("speedtest-rpc/page.tsx"), changeFrequency: "monthly" as const, priority: 0.8 }]),
+    ...(isDevOnlyRoute("/rpc-map")
+      ? []
+      : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
@@ -288,6 +293,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    // The worker publishes every dev bench; production must not list a
+    // page it does not serve.
+    if (isDevOnlyBench(b.slug)) return [];
     // Expired chain RPC pages render noindex; never list them even if the
     // blob still carries them.
     if (isExpiredRpcPage(b)) return [];
@@ -470,7 +478,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Category hub pages. Filter to categories that have live benches.
   // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
   // prod) don't keep their category hub alive in the sitemap.
-  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug));
+  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug) && !isDevOnlyBench(b.slug));
   const liveCategoryLabels = new Set(activeBlobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))

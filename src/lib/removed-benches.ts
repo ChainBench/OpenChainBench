@@ -71,6 +71,55 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   "which-prediction-market-data-api-is-the-freshest",
 ]);
 
+/**
+ * Benches that stay on dev / staging / preview and never reach production
+ * (VERCEL_ENV === "production"): still being validated, or held back on
+ * purpose. Enforced generically, so a release needs no per-file surgery:
+ *  1. src/lib/materialize/load.ts drops the specs at loader level on prod,
+ *     so pages 404, and hubs, category pages, /rpc, compare pairs,
+ *     /api/citable, llms.txt, MCP and RSS never list or cite them.
+ *  2. src/lib/sitemap-builder.ts drops them from the worker's blob (the
+ *     worker runs from dev and publishes every bench) and from the
+ *     product recount.
+ *  3. Components tied to one of these benches check that the bench is
+ *     served by this deployment before rendering (TerminalFillSection).
+ * Moving a bench to production = remove its slug here.
+ */
+export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // bridges: 261 on-chain execution, 263 realized cost, 264 SOL->X quotes
+  // (2026-09-22: held on dev with the rest of the bridge work)
+  "bridge-execution-latency",
+  "bridge-realized-cost",
+  "bridge-quote-latency-solana",
+  // 268 terminal fill quality: method still moving (13 audits, last change
+  // 2026-09-21)
+  "terminal-fill-quality",
+]);
+
+/**
+ * Routes (whole pages, with their API) that stay off production the same
+ * way: the page renders notFound() on prod, the sitemap, the footer,
+ * llms.txt and the /rpc hub stop linking them there. Staging shows them.
+ */
+export const DEV_ONLY_ROUTES = new Set([
+  // browser RPC speed test and the crowdsourced latency map (2 cells,
+  // 32 samples on 2026-09-21: not ready for an audience)
+  "/speedtest-rpc",
+  "/rpc-map",
+]);
+
+export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
+
+/** True when this deployment must not serve the bench. */
+export function isDevOnlyBench(slug: string): boolean {
+  return IS_PRODUCTION && DEV_ONLY_BENCH_SLUGS.has(slug);
+}
+
+/** True when this deployment must not serve the route. */
+export function isDevOnlyRoute(path: string): boolean {
+  return IS_PRODUCTION && DEV_ONLY_ROUTES.has(path);
+}
+
 export const REMOVED_BENCH_SLUGS = new Set([
   // retired for good
   "bridge-revenue",

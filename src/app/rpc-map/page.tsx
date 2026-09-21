@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -15,6 +17,8 @@ export const metadata: Metadata = pageMetadata({
 export const revalidate = 3600;
 
 export default function RpcMapPage() {
+  // Dev / staging only for now (DEV_ONLY_ROUTES).
+  if (isDevOnlyRoute("/rpc-map")) notFound();
   const pageUrl = `${SITE.url}/rpc-map`;
   const jsonLd = {
     "@context": "https://schema.org",

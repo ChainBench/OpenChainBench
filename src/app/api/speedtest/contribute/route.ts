@@ -1,3 +1,4 @@
+import { isDevOnlyRoute } from "@/lib/removed-benches";
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { redisPipeline, storeConfigured } from "@/lib/materialize/store";
@@ -61,6 +62,7 @@ function parseBody(raw: unknown): { chain: string; entries: Entry[] } | null {
 }
 
 export async function POST(req: NextRequest) {
+  if (isDevOnlyRoute("/speedtest-rpc")) return new NextResponse("not found", { status: 404 });
   if (!storeConfigured()) {
     return NextResponse.json({ ok: false, reason: "store_off" }, { status: 503 });
   }
