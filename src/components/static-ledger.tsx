@@ -11,6 +11,8 @@
 import { displayResults, isStaleBench } from "@/lib/provider-filters";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
+import { isRegion } from "@/lib/brand";
+import { isHexAddressSlug } from "@/lib/providers";
 import { rpcChainLabel } from "@/lib/citation";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -50,7 +52,19 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
             {rows.map((r, i) => (
               <tr key={r.slug} className="border-b border-ink/10">
                 <td className="py-2 pr-3 tabular-nums text-ink-faint">{i + 1}</td>
-                <td className="py-2 pr-3 font-medium text-ink">{r.name}</td>
+                <td className="py-2 pr-3 font-medium text-ink">
+                  {/* Crawlable path from a ranking to the venue page: the
+                      interactive ledger links on mount, this server-rendered
+                      table did not, so bench HTML carried no /products link
+                      (audit 2026-09-21). Same guard as the interactive row. */}
+                  {isRegion(r.slug) || isHexAddressSlug(r.slug) ? (
+                    r.name
+                  ) : (
+                    <a href={`/products/${r.slug}`} className="hover:underline underline-offset-2">
+                      {r.name}
+                    </a>
+                  )}
+                </td>
                 <td className="py-2 px-3 text-right tabular-nums">{fmtUnit(r.ms.p50, benchmark.unit)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p99, benchmark.unit)}</td>}

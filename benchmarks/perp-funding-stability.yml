@@ -4,7 +4,7 @@ slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
 seo_title: "Perp funding stability 2026: ETH stddev"
-seo_description: "{{best_name}} has the steadiest ETH perp funding, {{best_p50}} bps stddev over 24h, across {{count}} venues (DEXs and CEXs, Ondo Perps included). Deepest book, smoothest rate."
+seo_description: "{{best_name}} has the tightest ETH funding band, {{best_p50}} stddev over 24h, across {{count}} ranked venues (DEXs and CEXs). Venues without 24h of moving funding history show as provisional, never as leader."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
@@ -13,7 +13,7 @@ unit: bps
 higher_is_better: false
 
 disclaimer: |
-  Stability is not directionality. A venue with persistently positive but tight-banded funding ranks better here than one that flips between positive and negative every settlement, even if the second venue offers better average carry. Read alongside perp-funding for direction and average level.
+  Ranked only with 24 hours of funding history (288 samples) and a stddev above zero: a young listing, or a venue whose rate has not moved since listing (Ondo Perps at launch, Polymarket in July), reads artificially stable and shows as Provisional, never as the leader. Stability is not directionality: a persistently positive but tight band ranks above a rate that flips every settlement.
 
 seo_intro: |
   This benchmark ranks perp venues by how tightly their ETH funding
@@ -90,6 +90,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="hyperliquid"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h]) > bool 0)
 
   - slug: bybit
     name: Bybit
@@ -103,6 +104,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="bybit"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h]) > bool 0)
 
   - slug: dydx
     name: dYdX v4
@@ -116,6 +118,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="dydx"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h]) > bool 0)
 
   - slug: binance
     name: Binance
@@ -129,6 +132,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="binance"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h]) > bool 0)
 
   - slug: okx
     name: OKX
@@ -142,6 +146,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="okx"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h]) > bool 0)
 
   - slug: paradex
     name: Paradex
@@ -155,6 +160,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="paradex"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h]) > bool 0)
 
   - slug: polymarket
     name: Polymarket
@@ -168,6 +174,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="polymarket"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h]) > bool 0)
 
   - slug: aster
     name: Aster
@@ -181,6 +188,7 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h]) > bool 0)
 
   - slug: ondo
     name: Ondo Perps
@@ -194,6 +202,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="ondo",source="ondo_native"} > bool (time() - 900))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h]) > bool 0)
 
   # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
   # Same metric semantics as perp_funding_hold_24h_bps but normalized
@@ -212,6 +221,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="bitget"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h]) > bool 0)
 
   - slug: coinbase
     name: Coinbase
@@ -225,6 +235,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="coinbase"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h]) > bool 0)
 
   - slug: gate
     name: Gate
@@ -238,6 +249,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="gate"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h]) > bool 0)
 
   - slug: kraken
     name: Kraken
@@ -251,6 +263,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="kraken"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h]) > bool 0)
 
   - slug: kucoin
     name: KuCoin
@@ -264,6 +277,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="kucoin"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h]) > bool 0)
 
   - slug: lighter
     name: Lighter
@@ -277,6 +291,7 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="lighter"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h]) > bool 0)
 
   - slug: mexc
     name: MEXC
@@ -290,3 +305,4 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="mexc"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h]) > bool 0)

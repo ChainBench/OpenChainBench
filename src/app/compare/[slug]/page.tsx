@@ -319,12 +319,26 @@ const COMPARE_BENCH_TITLES: Record<string, string> = {
 /** Maps a bench to the right comparative verb for FAQ questions. */
 function verbForBench(bench: SharedBench): string {
   const unit = (bench.unit ?? "").toLowerCase();
+  // Direction first: a higher-is-better USD bench (24h perp volume) is
+  // not "cheaper", a lower-is-better ratio (P/E) is not "faster"
+  // (audit 2026-09-21: "Which is cheaper on 24h perp volume").
+  if (bench.higherIsBetter && (unit === "usd" || unit === "count" || unit === "bps" || unit === "bp")) return "higher on";
+  if (!bench.higherIsBetter && unit === "x") return "lower on";
   if (unit === "usd" || unit === "gwei" || unit === "bps" || unit === "bp") return "cheaper";
   if ((unit === "pct" || unit === "sol") && !bench.higherIsBetter) return "cheaper";
   if (unit === "x" && bench.higherIsBetter) return "higher-rated";
   if (unit === "count" && bench.higherIsBetter) return "more active";
   if (bench.higherIsBetter) return "more reliable";
   return "faster";
+}
+
+/** "Which is faster, A or B?" / "Which has the higher 24h volume, A or B?" */
+function whichQuestion(verb: string, metric: string | null, a: string, b: string): string {
+  if (verb === "higher on" || verb === "lower on") {
+    const adj = verb === "higher on" ? "higher" : "lower";
+    return `Which has the ${adj} ${(metric ?? "value").toLowerCase()}, ${a} or ${b}?`;
+  }
+  return metric ? `Which is ${verb} on ${metric.toLowerCase()}, ${a} or ${b}?` : `Which is ${verb}, ${a} or ${b}?`;
 }
 
 /** Strips provider-list suffixes from bench titles for use in FAQ and
@@ -873,10 +887,11 @@ export default async function ComparePage({
   // (audit 2026-09-19, major 4); name the bench in the question then.
   const sameVerb =
     aWinsBench && bWinsBench && verbForBench(aWinsBench) === verbForBench(bWinsBench);
-  const whichQ = (bench: SharedBench) =>
-    sameVerb
-      ? `Which is ${verbForBench(bench)} on ${bench.metric.toLowerCase()}, ${a.name} or ${b.name}?`
-      : `Which is ${verbForBench(bench)}, ${a.name} or ${b.name}?`;
+  const whichQ = (bench: SharedBench) => {
+    const verb = verbForBench(bench);
+    const needsMetric = sameVerb || verb === "higher on" || verb === "lower on";
+    return whichQuestion(verb, needsMetric ? bench.metric : null, a.name, b.name);
+  };
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
     faqEntries.push({
@@ -1099,7 +1114,7 @@ export default async function ComparePage({
           per provider, observable third-party search demand, and a
           public <code>/products/[slug]</code> page on OCB. Editorially
           curated pairs (like this one) may publish early when search
-          demand is high and data is accruing — panels with fewer than
+          demand is high and data is accruing; panels with fewer than
           100 samples are shown as provisional. The full pair ledger is
           versioned in the public repo.
         </p>

@@ -225,7 +225,7 @@ export function PerpVolumeRatioChart({
             }}
           >
             <p className="text-ink-muted">
-              {fmtDate(shown.start)} – {fmtDate(shown.end)}
+              {fmtDate(shown.start)} to {fmtDate(shown.end)}
             </p>
             <table className="mt-1 tabular-nums">
               <tbody>
