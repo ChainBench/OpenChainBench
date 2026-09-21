@@ -3,7 +3,7 @@
 slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
-seo_title: "Perp funding stability 2026: ETH stddev"
+seo_title: "Perp funding stability: {{best_name}} tightest at {{best_p50}}"
 seo_description: "{{best_name}} has the tightest ETH funding band, {{best_p50}} stddev over 24h, across {{count}} ranked venues (DEXs and CEXs). Venues without 24h of moving funding history show as provisional, never as leader."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading

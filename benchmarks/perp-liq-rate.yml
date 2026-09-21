@@ -3,7 +3,7 @@
 slug: perp-liq-rate
 number: "208"
 title: "Perp DEX liquidation rate: 24h liquidated notional as % of open interest, live"
-seo_title: "Perp DEX liquidation rate 2026"
+seo_title: "Perp DEX liquidation rate: {{best_name}} lowest at {{best_p50}}"
 seo_description: "{{best_name}} shows the lowest 24h liquidation rate at {{best_p50}} of open interest. Live comparison of liquidated notional over OI across Hyperliquid, GMX, dYdX, Lighter, Gains, Aevo and Paradex on ETH and BTC."
 subtitle: "Liquidated notional over the trailing 24 hours divided by current open interest, in percent. Higher means more positions are being forcibly closed relative to the venue's total exposure. Measured live every 5 minutes on ETH and BTC across 7 perpetual DEX venues."
 category: Trading
