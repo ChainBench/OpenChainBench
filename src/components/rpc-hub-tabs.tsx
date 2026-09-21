@@ -65,12 +65,12 @@ export function RpcHubTabs({
               onClick={() => setCohort("keyed")}
               count={keyed.totals.chains}
             >
-              API key
+              Private, API key
             </TabButton>
           </div>
           <span className="text-[12px] text-ink-faint">
             {cohort === "keyed"
-              ? "Alchemy, Chainstack and QuickNode on their keyed endpoints, probed every 120 s. Ranked on their own, never against the public gateways."
+              ? "Private endpoints (API key): Alchemy, Chainstack and QuickNode, probed every 120 s. Ranked on their own, never against the public gateways."
               : "Free, no-key endpoints probed every 60 s."}
           </span>
         </div>
@@ -85,11 +85,11 @@ export function RpcHubTabs({
           tip="us-east (N. Virginia), eu-west (Amsterdam), Singapore. Every provider is probed from all three."
         />
         <SummaryCard
-          label={cohort === "keyed" ? "Lowest keyed median" : "Fastest provider overall"}
+          label={cohort === "keyed" ? "Lowest private median" : "Fastest provider overall"}
           value={fastest ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}` : "..."}
           tip={
             fastest
-              ? `Best chain leader across the ${cohort === "keyed" ? "API-key" : "public"} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
+              ? `Best chain leader across the ${cohort === "keyed" ? "private" : "public"} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
               : undefined
           }
         />

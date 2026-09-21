@@ -198,7 +198,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     const below = listed - ranked;
     // The keyed variant of a chain page names its cohort: "API-key
     // Arbitrum RPC endpoints", never "free public".
-    const cohort = nonHeadlineTier(b) === "keyed" ? "API-key" : "free public";
+    const cohort = nonHeadlineTier(b) === "keyed" ? "private (API-key)" : "free public";
     const claim =
       ranked === 1 && listed === 1
         ? `${top.name} is the only ${cohort} ${chain} RPC endpoint measured, at ${value}`

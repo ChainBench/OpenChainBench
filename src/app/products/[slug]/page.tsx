@@ -945,7 +945,7 @@ export default async function ProviderPage({
                     </h3>
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
-                      {a.tier ? <> · {a.tier === "keyed" ? "API-key cohort" : `${a.tier} cohort`}, ranked separately</> : null}
+                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier} cohort`}, ranked separately</> : null}
                     </p>
                     {hasChainRanks && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
@@ -1011,7 +1011,7 @@ export default async function ProviderPage({
               const badgePath = `/api/badge/${card.benchSlug}/${card.providerSlug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
-              const tierLabel = card.tier ? (card.tier === "keyed" ? "API-key cohort" : `${card.tier} cohort`) : null;
+              const tierLabel = card.tier ? (card.tier === "keyed" ? "private cohort" : `${card.tier} cohort`) : null;
               const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}`;
               const scopeLabels = [card.chain?.label, card.region?.label, tierLabel]
                 .filter(Boolean)

@@ -115,8 +115,8 @@ export async function RpcProviderChainsSection({
       <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
         {keyedOnly ? (
           <>
-            Where {providerName}&apos;s API-key endpoint ranks among the keyed
-            providers measured on each chain (Alchemy, Chainstack, QuickNode,
+            Where {providerName}&apos;s private (API-key) endpoint ranks among the
+            private providers measured on each chain (Alchemy, Chainstack, QuickNode,
             probed every 120 s): 24h p50 across 3 probe regions, success rate
             and failed probes. Never ranked against the free public gateways.
           </>
@@ -125,7 +125,7 @@ export async function RpcProviderChainsSection({
             Where {providerName}&apos;s free endpoint ranks on each measured
             chain: 24h p50 across 3 probe regions, success rate and failed
             probes.
-            {mixed ? " Rows marked API key are ranked within the keyed cohort of that chain, apart from the public gateways." : ""}
+            {mixed ? " Rows marked Private are ranked within the private cohort of that chain, apart from the public gateways." : ""}
           </>
         )}{" "}
         Full field on{" "}
@@ -167,7 +167,7 @@ export async function RpcProviderChainsSection({
                   )}
                   {r.tier === "keyed" && !keyedOnly ? (
                     <span className="ml-2 rounded-full border border-ink/15 px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.12em] text-ink-faint">
-                      API key
+                      Private
                     </span>
                   ) : null}
                 </td>

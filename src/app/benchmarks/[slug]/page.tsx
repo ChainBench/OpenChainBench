@@ -620,13 +620,6 @@ export default async function BenchmarkPage({
         </section>
       )}
 
-      {/* Public endpoint URLs directly under the TL;DR: the "<chain> rpc"
-          searcher wants chain ID, URL and the provider list in the first
-          screen, before the intro prose (audit 2026-09-19 round 3: the
-          block started at word 1,145 on blast-rpc). Renders only when at
-          least two providers declare a public no-key `endpoint`. */}
-      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
-
       {/* Companion hub callout. A handful of benches have a curated
           landing page that sits next to (not in place of) the bench
           itself. For hyperliquid-frontends, /hyperliquid is the
@@ -795,7 +788,18 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <Suspense fallback={<StaticLedger benchmark={benchmark} />}>
+        <Suspense
+          // The served HTML is this fallback (useSearchParams in the body
+          // bails out of static rendering): the endpoint URLs must be in
+          // it too, under the static ledger, where the body renders them
+          // after hydration.
+          fallback={
+            <>
+              <StaticLedger benchmark={benchmark} />
+              <PublicEndpointsSection benchmark={benchmark} />
+            </>
+          }
+        >
           <BenchmarkBody
             variants={variants}
             chainOptions={chainOptions}
@@ -810,6 +814,13 @@ export default async function BenchmarkPage({
             initialVenue={venue ?? null}
             initialTier={headlineTier}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
+            // Public endpoint URLs right under the ranked table (the
+            // "<chain> rpc" searcher wants chain ID, URL and the provider
+            // list next to the numbers), hidden on the Private tab whose
+            // rows have no listable URL. Server-rendered, so the URLs are
+            // in the HTML; renders only when at least two providers
+            // declare a public no-key `endpoint`.
+            headlineCohortBlock={<PublicEndpointsSection benchmark={benchmark} />}
             pageActions={
               !isDraft ? (
                 <>
