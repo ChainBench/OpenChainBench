@@ -656,7 +656,11 @@ export default async function BenchmarkPage({
             <LiveIndicator
               lastRunAt={benchmark.lastRunAt}
               slug={benchmark.slug}
-              staleAfterSec={Math.max(300, benchmark.expectedFreshnessSec ?? 300)}
+              // Above the data cache (300 s) plus the page ISR (600 s): a
+              // render served 5 to 15 min after the last sweep is the normal
+              // cache path, not a stale bench (SSR printed "Stale · updated
+              // 5m ago" between breadcrumb and H1, audit 2026-09-21).
+              staleAfterSec={Math.max(900, benchmark.expectedFreshnessSec ?? 900)}
             />
           </span>
         )}

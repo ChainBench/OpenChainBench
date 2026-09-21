@@ -176,7 +176,10 @@ export async function generateMetadata({
   // in 22 characters of the snippet.
   const metaRanked = [...p.appearances]
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
-    .sort((a, b) => a.rank - b.rank || a.benchmark.title.localeCompare(b.benchmark.title))
+    // Tie-break on the size of the field a rank was earned in (#1 of 6
+    // before #1 of 2), then the title; the alphabetical break opened
+    // PublicNode's snippet with Akash and Arbitrum Nova (audit 2026-09-21).
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))
     .slice(0, 2)
     // Always the denominator and, on a tier-dimensioned bench, the cohort:
     // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
@@ -347,6 +350,8 @@ export default async function ProviderPage({
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
+    // Larger field first (see metaRanked), then the title.
+    if (a.totalRanked !== b.totalRanked) return b.totalRanked - a.totalRanked;
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
 
@@ -362,7 +367,7 @@ export default async function ProviderPage({
   for (const a of rankedAppearances.slice(0, 4)) {
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
-    topLines.push(`${a.benchmark.title} (${rankStr}, ${p50Str} p50)`);
+    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} p50)`);
   }
   const proseParts: string[] = [];
   if (topLines.length > 0) {

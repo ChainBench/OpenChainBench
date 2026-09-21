@@ -28,7 +28,9 @@ import { AnswersForBench } from "@/components/answers-for-bench";
 // never typed (audit 2026-09-21: "16 perpetual DEXes" against a header
 // saying 18 of 19).
 function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
-  const n = cohort?.venues.length ?? 0;
+  // Same number as the lede and the H2: tracked venues, not the cohort
+  // array length (19 vs 18 on 2026-09-21).
+  const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
   const lead = cohort?.venues[0];
   // 158 characters at most: the SERP truncates beyond that.
   return lead && lead.volume30d != null

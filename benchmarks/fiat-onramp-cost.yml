@@ -3,8 +3,8 @@
 slug: fiat-onramp-cost
 number: "262"
 title: Fiat on-ramp all-in cost, EUR to BTC premium over exchange mid
-seo_title: "Fiat on-ramp cost 2026: MoonPay vs Transak, all-in premium over spot in bps"
-seo_description: "{{best_name}} quotes the lowest all-in cost for 500 EUR of BTC by card at {{best_p50}} over the Kraken mid. Declared fee plus hidden spread for MoonPay and Transak, quoted every 5 minutes from France."
+seo_title: "Fiat on-ramp cost 2026: MoonPay vs Transak, all-in over spot"
+seo_description: "{{best_name}} quotes the lowest all-in cost for 500 EUR of BTC by card at {{best_p50}} over the Kraken mid. Declared fee plus hidden spread, quoted every 5 minutes."
 subtitle: What a French retail buyer actually pays per bitcoin, in basis points over the Kraken EUR mid, once the declared fee, the network fee and the spread hidden in the provider's rate are folded into one number. 500 EUR by card, quoted every 5 minutes. Lower is better.
 category: On-ramps
 status: live

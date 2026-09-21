@@ -3,8 +3,8 @@
 slug: trading-app-daily-volume
 number: "267"
 title: "Trading app daily volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, Trojan by UTC day, every chain"
-seo_title: "Trading app volume 2026: GMGN vs Axiom vs FOMO vs Terminal vs Photon, cross-chain daily"
-seo_description: "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}}. Cross-chain daily volume for {{count}} trading apps and Telegram bots from DeFiLlama's day buckets, with per-chain split, 7 and 30 day totals and a year of history."
+seo_title: "Trading app volume 2026: GMGN vs Axiom vs FOMO, per UTC day"
+seo_description: "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}}. Cross-chain daily volume for {{count}} apps and bots, per-chain split, a year of history."
 subtitle: Swap volume routed through each trading app or Telegram bot per closed UTC day, summed over every chain the app runs on (Solana, BSC, Base, Ethereum, Robinhood Chain, Monad and more), from the same DeFiLlama day buckets defillama.com shows. 14 apps, per-chain breakdown, 7 and 30 day totals, share of the cohort, daily history.
 
 category: Trading
