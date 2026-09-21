@@ -132,7 +132,7 @@ export default async function RpcHubPage() {
               On {keyedChains.length} chains ({keyedChains.join(", ")}) the same
               page also ranks the private (API-key) endpoints of Alchemy,
               Chainstack and QuickNode, probed every 120 seconds with plan tiers disclosed;
-              the Endpoints selector below switches between the two cohorts,
+              the Access selector below switches between the two cohorts,
               which are never ranked against each other.
             </>
           ) : null}{" "}

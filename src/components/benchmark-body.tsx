@@ -780,7 +780,7 @@ export function BenchmarkBody({
         <div className="mt-8 space-y-3">
           {tierOptions.length > 0 && (
             <DimensionRow
-              label="Endpoints"
+              label="Access"
               options={tierOptions}
               selected={tier ?? headlineTier}
               onSelect={setTier}

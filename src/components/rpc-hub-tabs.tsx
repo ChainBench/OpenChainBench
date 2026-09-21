@@ -51,7 +51,7 @@ export function RpcHubTabs({
       {keyed && (
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
-            Endpoints
+            Access
           </span>
           <div
             className="inline-flex rounded-lg border border-ink/15 p-1 bg-paper-soft/40"
