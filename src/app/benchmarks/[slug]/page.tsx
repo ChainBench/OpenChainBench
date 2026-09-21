@@ -14,7 +14,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
 import { AnswersForBench } from "@/components/answers-for-bench";
-import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults } from "@/lib/provider-filters";
+import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults, liveResults } from "@/lib/provider-filters";
+import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
 import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
 import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
@@ -453,24 +454,29 @@ export default async function BenchmarkPage({
     : null;
   // Other access cohorts (chain RPC pages: the private, API-key
   // providers ranked behind the Endpoints selector). Each gets its own
-  // Dataset part (url ?tier=<t>) and, when it has a citable leader, its
+  // Dataset part (@id #tier=<t>, url clean) and, when it has a citable leader, its
   // own StatisticalReport, so an answer engine reading this page finds
   // "fastest private Base RPC" as a distinct, dated claim and never
   // folds it into the public one.
   const cohortNodes = cohortViews(benchmark)
     .filter((v) => !v.headline)
     .flatMap((v) => {
-      const url = `${benchmarkUrl}?tier=${v.tier}`;
+      // One document, two cohorts: the page URL with a fragment for
+      // `url` (the tab that ranks these rows), distinct `@id`s on the
+      // clean URL so the graph never mints a second document.
+      const url = `${benchmarkUrl}#tier=${v.tier}`;
+      const partId = `${benchmarkUrl}#tier-${v.tier}-dataset`;
+      const reportId = `${benchmarkUrl}#tier-${v.tier}-report`;
       const top = leader(v.bench);
       const name = `${benchmark.seoTitle ?? benchmark.title}, ${v.label.toLowerCase()} cohort`;
       const description = groundingTraceLine(v.bench, SITE.url);
       const part = {
         "@type": "Dataset",
-        "@id": `${url}#dataset`,
+        "@id": partId,
         name,
         description,
         url,
-        identifier: `${benchmark.slug}?tier=${v.tier}`,
+        identifier: `${benchmark.slug}#tier=${v.tier}`,
         isPartOf: { "@id": `${benchmarkUrl}#dataset` },
         sameAs: [`${SITE.url}/api/stat/${benchmark.slug}?tier=${v.tier}`],
         creator: CREATOR_PUBLISHER,
@@ -482,7 +488,7 @@ export default async function BenchmarkPage({
         variableMeasured,
         measurementTechnique: benchmark.methodology.join(" "),
       };
-      const report = top
+      const built = top
         ? buildBenchStatReportJsonLd({
             slug: benchmark.slug,
             benchTitle: name,
@@ -496,6 +502,13 @@ export default async function BenchmarkPage({
             measurementTechnique: benchmark.methodology[0] ?? benchmark.metric,
             description,
           })
+        : null;
+      const report = built
+        ? {
+            ...built,
+            "@id": reportId,
+            isBasedOn: { ...(built.isBasedOn as Record<string, unknown>), "@id": partId },
+          }
         : null;
       return report ? [part, report] : [part];
     });
@@ -553,8 +566,20 @@ export default async function BenchmarkPage({
   // don't leak into the SERP snippet. The visible FAQ section below
   // mirrors every question/answer, satisfying Google's "content visible
   // on the page" requirement.
+  // Template questions shared by 80+ chain RPC specs ("Which <chain> RPCs
+  // work without an API key?", "How is <chain> RPC latency measured
+  // here?") stay visible but leave the FAQPage node: 112 near-identical
+  // FAQPage graphs read as scaled content (audit 2026-09-21). The
+  // chain-specific questions (official endpoint, removals, the private
+  // cohort's leader) keep the rich result.
+  const SHARED_RPC_FAQ_RE =
+    /^(which .+? rpcs? (?:endpoints )?work without an api key|how is .+? rpc latency measured)/i;
+  const faqForJsonLd =
+    benchmark.slug.endsWith("-rpc")
+      ? (benchmark.faq ?? []).filter((f) => !SHARED_RPC_FAQ_RE.test(f.q))
+      : benchmark.faq;
   const faqJsonLd = buildFaqPageJsonLd(
-    benchmark.faq,
+    faqForJsonLd,
     benchmarkUrl,
     null,
     `${benchmark.title}: frequently asked questions`,
@@ -563,6 +588,22 @@ export default async function BenchmarkPage({
   // The RPC TL;DR announces the endpoints table (the "<chain> rpc"
   // searcher's question), with the count that table shows.
   const publicEndpointCount = isDraft ? 0 : publicEndpointRows(benchmark).length;
+  // Hostnames of the public endpoints and the private providers, for the
+  // TL;DR's first-screen answer. Hosts only: the copyable URLs live in
+  // the endpoints block under the table.
+  const publicEndpointHosts = isDraft
+    ? []
+    : publicEndpointRows(benchmark).map((r) => {
+        try {
+          return new URL(r.endpoint as string).host;
+        } catch {
+          return r.name;
+        }
+      });
+  const rpcChainId = benchmark.slug.endsWith("-rpc")
+    ? EVM_CHAIN_IDS[benchmark.slug.replace(/-rpc$/, "")]
+    : undefined;
+  const keyedNames = liveResults(benchmark.tierResults?.keyed ?? []).map((r) => r.name);
   return (
     <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
@@ -664,8 +705,21 @@ export default async function BenchmarkPage({
             {publicEndpointCount >= 2 && (
               <>
                 {" "}
-                Endpoint URLs for the {publicEndpointCount} public providers
-                are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>.
+                {/* The "<chain> rpc" searcher's answer in the first screen
+                    (audit 2026-09-21: the URL list started at word 600):
+                    chain id and the hostnames here, the full URLs with
+                    copy buttons under the ranked table. */}
+                {rpcChainId ? <>Chain ID {rpcChainId}. </> : null}
+                {publicEndpointCount} public endpoints, no key:{" "}
+                {publicEndpointHosts.join(", ")}. Full URLs with their 24h
+                median are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>
+                {keyedNames.length > 0 ? (
+                  <>
+                    ; {keyedNames.join(", ")} (private, API key) are ranked apart under the{" "}
+                    <a href="#tier=keyed" className="underline underline-offset-2">Private tab</a>
+                  </>
+                ) : null}
+                .
               </>
             )}
           </p>

@@ -220,8 +220,10 @@ export function BenchmarkBody({
   venueOptions?: ChainOption[];
   /** Access tiers (public / keyed), headline cohort first. The first
    *  option is the aggregate itself: it never hits the variant API and
-   *  never appears in the URL, so the canonical page stays the clean
-   *  public view and `?tier=keyed` is the only shareable variant. */
+   *  never appears in the URL. Another tier rides in the URL fragment
+   *  (`#tier=keyed`), not the query string: one document for crawlers,
+   *  the Private tab for readers (product pages, the hub and the
+   *  citations link that form; `?tier=keyed` is still accepted). */
   tierOptions?: ChainOption[];
   /** Per-chain venue availability map. When present, venue tabs are filtered
    *  to only show venues that have data for the currently selected chain. */
@@ -281,6 +283,22 @@ export function BenchmarkBody({
   const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
   const [tier, setTier] = useState<string | null>(resolvedInitialTier);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
+  // `#tier=<t>` is invisible to the server and to useSearchParams: read
+  // it once after mount.
+  useEffect(() => {
+    if (tierOptions.length === 0) return;
+    const apply = () => {
+      const m = /(?:^#|[#&])tier=([A-Za-z0-9_-]+)/.exec(window.location.hash);
+      const fromHash = m ? tierOptions.find((t) => t.value === m[1])?.value : undefined;
+      if (fromHash) setTier(fromHash);
+    };
+    apply();
+    // Same-page links (the TL;DR's "Private tab") change the hash
+    // without a remount.
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Active companion-metric panel. null = main spec metric (default chart
   // data, default unit, default header). When a panel id is set, the
   // chart pulls its per-provider series from panel.seriesByProvider,
@@ -305,7 +323,13 @@ export function BenchmarkBody({
     syncParam(url, "region", region, regionOptions);
     syncParam(url, "kind", kind, kindOptions);
     syncParam(url, "venue", venue, venueOptions);
-    syncParam(url, "tier", tier, tierOptions);
+    // Tier travels in the fragment (see tierOptions above); a legacy
+    // ?tier= in the address bar is folded into it.
+    url.searchParams.delete("tier");
+    const tierFragment =
+      tierOptions.length > 0 && tier && tier !== tierOptions[0].value ? `tier=${tier}` : "";
+    // Leave a plain anchor (#public-endpoints, #methodology) alone.
+    if (tierFragment || /tier=/.test(url.hash)) url.hash = tierFragment;
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
@@ -313,8 +337,8 @@ export function BenchmarkBody({
     // no param (canonical URL stays clean when no view has been picked).
     if (activePanelId) url.searchParams.set("view", activePanelId);
     else url.searchParams.delete("view");
-    const next = url.pathname + (url.search ? url.search : "");
-    if (next !== window.location.pathname + window.location.search) {
+    const next = url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+    if (next !== window.location.pathname + window.location.search + window.location.hash) {
       window.history.replaceState(null, "", next);
     }
   }, [chain, region, kind, venue, tier, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, tierOptions]);

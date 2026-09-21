@@ -151,14 +151,16 @@ export function nonHeadlineTier(
 }
 
 /** Canonical page path for a Benchmark object: the clean URL for the
- *  headline cohort, `?tier=<t>` for another cohort, so every citation
+ *  headline cohort, `#tier=<t>` for another cohort, so every citation
  *  URL (quote, grounding trace, cite bundle, /api/stat pageUrl) points
- *  at the tab that ranks the rows it quotes. */
+ *  at the tab that ranks the rows it quotes while staying one URL for
+ *  crawlers (the fragment is not a distinct document; `?tier=` was, and
+ *  every keyed link was a link to a duplicate of the canonical page). */
 export function benchPath(
   b: Pick<Benchmark, "slug" | "results" | "dimensions" | "aggregateFilters">,
 ): string {
   const tier = nonHeadlineTier(b);
-  return `/benchmarks/${b.slug}${tier ? `?tier=${tier}` : ""}`;
+  return `/benchmarks/${b.slug}${tier ? `#tier=${tier}` : ""}`;
 }
 
 export function headlineSentence(b: Benchmark): string {
@@ -421,7 +423,7 @@ export function isInsufficient(b: InsufficientCheckInput): boolean {
  * One shape for every machine surface (/api/stat, /api/citable,
  * /api/llm-context, llms.txt, MCP, the page JSON-LD): an agent asked
  * "which private Base RPC is fastest" finds the answer on the public
- * page's record instead of having to know about `?tier=keyed`.
+ * page's record instead of having to know about `#tier=keyed`.
  */
 export type CohortView = {
   tier: string;

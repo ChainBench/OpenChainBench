@@ -89,7 +89,7 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
             {keyedNames.slice(0, -1).join(", ")}
             {keyedNames.length > 1 ? " and " : ""}
             {keyedNames[keyedNames.length - 1]}, private endpoints that need an API key, are ranked separately under the{" "}
-            <Link href={`/benchmarks/${keyed.slug}?tier=keyed`} className="underline underline-offset-2">
+            <Link href={`/benchmarks/${keyed.slug}#tier=keyed`} className="underline underline-offset-2">
               Private tab
             </Link>
             ; keyed URLs are never listed.

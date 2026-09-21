@@ -580,7 +580,7 @@ const mcpHandler = createMcpHandler(
           const cohortRanked = rankedCandidates(c.bench);
           md.push(`## ${c.label} cohort (ranked separately)`);
           md.push("");
-          md.push(`Never compared with the rows above: different endpoints, 120 s cadence. Page: ${SITE.url}/benchmarks/${b.slug}?tier=${c.tier}, JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
+          md.push(`Never compared with the rows above: different endpoints, 120 s cadence. Page: ${SITE.url}/benchmarks/${b.slug}#tier=${c.tier}, JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
           md.push("");
           md.push(`**Headline.** ${headlineSentence(c.bench)}`);
           md.push("");

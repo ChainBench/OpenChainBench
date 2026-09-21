@@ -5,6 +5,7 @@ import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
+import { capDescription } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
@@ -27,7 +28,7 @@ const DESCRIPTION =
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
   title: "RPC providers by chain: public and private endpoints, by latency",
-  description: DESCRIPTION,
+  description: capDescription(DESCRIPTION, 158),
 });
 
 export const revalidate = 3600;
