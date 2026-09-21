@@ -189,6 +189,9 @@ export default async function RpcHubPage() {
           {/* Summary cards, the Endpoints (public / API key) selector and
               the chain × provider tabs live in the client component so
               one click swaps the whole block between the two cohorts. */}
+          <h2 className="label-mono text-ink-muted mb-3">
+            Lowest 24h median per chain and region, public and private cohorts
+          </h2>
           <RpcHubTabs snapshot={snapshot} linkableSlugs={linkableSlugs} />
 
           {/* Every indexable chain page as a plain link: the leaderboard

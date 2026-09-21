@@ -21,7 +21,7 @@ const DESCRIPTION =
 // previewed as a blank.
 export const metadata: Metadata = pageMetadata({
   path: "/compare",
-  title: "Compare providers head to head",
+  title: "Head to head comparisons 2026: RPC, perp DEX, bridges",
   description: DESCRIPTION,
 });
 

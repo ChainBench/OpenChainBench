@@ -188,12 +188,21 @@ export async function generateMetadata({
   // Compute shared bench count from appearances (already loaded via
   // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
   const sharedSlugsForMeta = sharedBenchSlugs(pair, a.appearances, b.appearances);
+  // Title and description count the benches with live data for both
+  // sides (the lede's number), not every shared slug: the two read as one
+  // fact on the page (11 vs 9 on gains-vs-gmx, audit 2026-09-21).
   const sharedCount = sharedSlugsForMeta.length;
-  const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
+  const liveForMeta = sharedSlugsForMeta.filter((s) => {
+    const okA = a.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
+    const okB = b.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
+    return okA && okB;
+  }).length;
+  const metaCount = liveForMeta > 0 ? liveForMeta : sharedCount;
+  const benchWord = metaCount === 1 ? "benchmark" : "benchmarks";
 
   // Title carries the count: `LI.FI vs Relay 2026: 2 live benchmarks compared`
   // (audit 2026-09-19, major 4: the previous form named no number).
-  const title = `${a.name} vs ${b.name} ${currentYear}: ${sharedCount} live ${benchWord} compared`;
+  const title = `${a.name} vs ${b.name} ${currentYear}: ${metaCount} live ${benchWord} compared`;
 
   // Thin-content gate (SEO audit 2026-07-08): a pair whose shared
   // benches carry live data for both providers on fewer than 2 of them
@@ -245,7 +254,7 @@ export async function generateMetadata({
     .sort((x, y) => y - x)[0];
   const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
   const description = capDescription(
-    `${a.name} vs ${b.name} on ${sharedCount} shared OpenChainBench ${benchWord}. Live measurements, reproducible methodology. As of ${isoDate}.`,
+    `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
     158,
   );
 

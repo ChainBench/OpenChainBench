@@ -1,3 +1,4 @@
+import { isExpiredRpcPage, isThinRpcBench } from "@/lib/provider-filters";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
@@ -16,7 +17,11 @@ import { fmtValue, unitSuffix } from "@/lib/format";
  * card grid that lives at /benchmarks.
  */
 export function HomeBenchTable({ benchmarks }: { benchmarks: Benchmark[] }) {
+  // Only pages a crawler may index: no drafts, no thin or expired chain
+  // RPC pages (the rail linked two noindex ws-head-latency pages from the
+  // home, audit 2026-09-21).
   const top = [...benchmarks]
+    .filter((b) => b.status !== "draft" && !isThinRpcBench(b) && !isExpiredRpcPage(b))
     .sort((a, b) => (b.lastRunAt ?? "").localeCompare(a.lastRunAt ?? ""))
     .slice(0, 5);
 
