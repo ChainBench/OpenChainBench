@@ -91,7 +91,7 @@ var originChains = []originChain{
 	{8453, "base", []string{"https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://base.drpc.org"}, "ETH-USD"},
 	{1, "ethereum", []string{"https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"}, "ETH-USD"},
 	{5042, "arc", []string{"https://rpc.mainnet.arc.io"}, ""},
-	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, "HYPE-USD"}, // priced from Hyperliquid's mids (Coinbase does not list HYPE)
+	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm", "https://hyperliquid.drpc.org"}, "HYPE-USD"}, // drpc as fallback for receipts and calls (its eth_getLogs is capped at 50 blocks) // priced from Hyperliquid's mids (Coinbase does not list HYPE)
 }
 
 const solanaChainID = 792703809

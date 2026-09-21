@@ -142,6 +142,21 @@ var evmTerminals = []evmTerminal{
 	// Robinhood Chain 53 swaps an hour, BNB 4, Base 1, Ethereum none.
 	{Slug: "bloom-robinhood", Name: "Bloom · Robinhood Chain", Kind: "bot", Chain: "robinhood", Routers: []string{"0xb1000000096bd2f8ca9b6883182eccaf31e7c3fd"}},
 	{Slug: "bloom-bnb", Name: "Bloom · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0xb1000000096bd2f8ca9b6883182eccaf31e7c3fd"}},
+	// Arc and HyperEVM (2026-09-21, the chains' logs searched by the routers'
+	// own event topics): GMGN's routers there (the same swap-end events as
+	// on BNB), BasedBot's router family (shared: filtered on its funded
+	// wallets), Maestro's and Bloom's vanity routers.
+	{Slug: "gmgn-arc", Name: "GMGN · Arc", Kind: "app", Chain: "arc", Routers: []string{"0x53dea4f7783c1de84cecc5c989bc37a557154827", "0x40fe100d34b6a552d49ad8cc252795ccead48277"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
+	{Slug: "gmgn-hyperevm", Name: "GMGN · HyperEVM", Kind: "app", Chain: "hyperevm", Routers: []string{"0xfcacd2f51fc8fa0fe1ff3e781ce9f97584e62d99", "0x0556dd0302c2d4deaef4d76d0d3e2c3a0522a762"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
+	{Slug: "basedbot-arc", Name: "BasedBot · Arc", Kind: "bot", Chain: "arc", Routers: []string{"0xd7d3181cff1fd948b4829cd2c16946f1fa13db20"}, FromSet: "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
+		Note:        "BasedBot's users on Arc: the wallets on its Relay legs, trading on its router family's contract there (shared with other front ends: only those wallets' swaps count); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas. Arc's gas is USDC."},
+	{Slug: "basedbot-hyperevm", Name: "BasedBot · HyperEVM", Kind: "bot", Chain: "hyperevm", Routers: []string{"0x3aa9bcd8f955589baa29dd832d345d4bfe380ae9", "0x227be0f88ecb7899a0e6e0347888b909d622c8e1", "0x0f2730c4b0c279c8c7e3e5f9b7032eb7d42d06c0"}, FromSet: "basedbot",
+		SenderTopic: map[string]int{"0x2ed5a8749a7e3a68a074750cc77850912a0708dc62ab7ea42b0c3e5beb36f017": 1},
+		Note:        "BasedBot's users on HyperEVM: the wallets on its Relay legs, trading on its router family's contracts there (shared with other front ends: only those wallets' swaps count); the router's fee and referral transfers (about 1 %) are the fee, the residual after the pool and gas. HYPE priced from Hyperliquid's mids."},
+	{Slug: "maestro-arc", Name: "Maestro · Arc", Kind: "bot", Chain: "arc", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	{Slug: "maestro-hyperevm", Name: "Maestro · HyperEVM", Kind: "bot", Chain: "hyperevm", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	{Slug: "bloom-arc", Name: "Bloom · Arc", Kind: "bot", Chain: "arc", Routers: []string{"0xb1000000096bd2f8ca9b6883182eccaf31e7c3fd"}},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
 		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
