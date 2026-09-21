@@ -637,7 +637,14 @@ func (st *State) reject(slug string, r parseReject) {
 // Meteora DLMM), else the previous trade on the pool (at most 60 s
 // earlier); the pool neighbourhood is read anyway for the screen.
 func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pools *poolCache, solUSD float64, now int64) {
-	if sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
+	// The pump.fun curve's own event first: its virtual reserves are not
+	// constants, so the cached account constants can be stale.
+	if sw.Venue == "pump-curve" {
+		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
+			sw.finalize(&p, 0, "reserves")
+		}
+	}
+	if sw.RefSrc == "" && sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
 		if p, ok := reservePrice(ctx, rpc, sw, pools, solUSD); ok {
 			sw.finalize(&p, 0, "reserves")
 		}
