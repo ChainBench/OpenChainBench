@@ -365,6 +365,7 @@ func main() {
 	applyLearned(st)
 	seedFunded(st)
 	pools := &poolCache{m: map[string]poolParams{}}
+	repriced := false
 	quota := map[string]float64{}
 	failQuota := map[string]float64{}
 	activity := map[string]float64{} // running successful attempts per tick, per terminal
@@ -436,6 +437,10 @@ func main() {
 			log.Printf("[price] no SOL price, retrying in 30s")
 			time.Sleep(30 * time.Second)
 			continue
+		}
+		if !repriced {
+			repriced = true
+			repriceVenues(ctx, rpc, st, pools, sol, time.Now().Unix())
 		}
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
@@ -2358,4 +2363,36 @@ func feeTxSwap(ctx context.Context, rpc *rpcClient, t Terminal, feeSig string, f
 	}
 	sw.FeeSig = feeSig
 	return sw, swapTx, ""
+}
+
+// repriceVenues: REPRICE_VENUES (comma-separated venues) prices the
+// window's stored Solana rows of those venues again with the current
+// code, one transaction read each, on the first tick after a start: a
+// reference fix then applies to the whole window at once (the pump.fun
+// curve's TradeEvent reference on 2026-09-21) instead of waiting for the
+// window to turn over. The variable stays in the container's env until
+// the next deploy resets it, like the purge variables; a second pass
+// after a restart re-reads the same rows, harmless.
+func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCache, solUSD float64, now int64) {
+	venues := set(strings.Split(os.Getenv("REPRICE_VENUES"), ",")...)
+	delete(venues, "")
+	if len(venues) == 0 {
+		return
+	}
+	done, failed := 0, 0
+	for i := range st.Swaps {
+		s := &st.Swaps[i]
+		if !venues[s.Venue] || s.Chain != "" || s.RelayID != "" {
+			continue
+		}
+		tx, err := rpc.transaction(ctx, s.Sig)
+		if err != nil || tx == nil {
+			failed++
+			continue
+		}
+		s.RefPrice, s.RefSrc, s.RefAgeS, s.LossBps, s.PoolBps, s.Priced, s.Flag = nil, "", nil, nil, nil, false, ""
+		priceSwap(ctx, rpc, s, tx, pools, solUSD, now)
+		done++
+	}
+	log.Printf("[state] REPRICE_VENUES=%q: %d rows priced again, %d unreadable", os.Getenv("REPRICE_VENUES"), done, failed)
 }
