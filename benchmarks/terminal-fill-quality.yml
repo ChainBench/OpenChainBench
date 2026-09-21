@@ -218,6 +218,7 @@ providers:
       p90: tfq_loss_bps{terminal="axiom",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="axiom",chain="all",stat="p99"}
       success: tfq_health{terminal="axiom",chain="all"}
+      ranked: tfq_ranked{terminal="axiom",chain="all"}
       sample_size: tfq_sample_size{terminal="axiom",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="axiom",chain="all",stat="median"}
 
@@ -230,6 +231,7 @@ providers:
       p90: tfq_loss_bps{terminal="gmgn",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="gmgn",chain="all",stat="p99"}
       success: tfq_health{terminal="gmgn",chain="all"}
+      ranked: tfq_ranked{terminal="gmgn",chain="all"}
       sample_size: tfq_sample_size{terminal="gmgn",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="gmgn",chain="all",stat="median"}
 
@@ -242,6 +244,7 @@ providers:
       p90: tfq_loss_bps{terminal="fomo",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="fomo",chain="all",stat="p99"}
       success: tfq_health{terminal="fomo",chain="all"}
+      ranked: tfq_ranked{terminal="fomo",chain="all"}
       sample_size: tfq_sample_size{terminal="fomo",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="fomo",chain="all",stat="median"}
 
@@ -254,6 +257,7 @@ providers:
       p90: tfq_loss_bps{terminal="phantom",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="phantom",chain="all",stat="p99"}
       success: tfq_health{terminal="phantom",chain="all"}
+      ranked: tfq_ranked{terminal="phantom",chain="all"}
       sample_size: tfq_sample_size{terminal="phantom",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="phantom",chain="all",stat="median"}
 
@@ -266,6 +270,7 @@ providers:
       p90: tfq_loss_bps{terminal="photon",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="photon",chain="all",stat="p99"}
       success: tfq_health{terminal="photon",chain="all"}
+      ranked: tfq_ranked{terminal="photon",chain="all"}
       sample_size: tfq_sample_size{terminal="photon",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="photon",chain="all",stat="median"}
 
@@ -278,6 +283,7 @@ providers:
       p90: tfq_loss_bps{terminal="trojan",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="trojan",chain="all",stat="p99"}
       success: tfq_health{terminal="trojan",chain="all"}
+      ranked: tfq_ranked{terminal="trojan",chain="all"}
       sample_size: tfq_sample_size{terminal="trojan",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="trojan",chain="all",stat="median"}
 
@@ -290,6 +296,7 @@ providers:
       p90: tfq_loss_bps{terminal="bloom",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="bloom",chain="all",stat="p99"}
       success: tfq_health{terminal="bloom",chain="all"}
+      ranked: tfq_ranked{terminal="bloom",chain="all"}
       sample_size: tfq_sample_size{terminal="bloom",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="bloom",chain="all",stat="median"}
 
@@ -302,6 +309,7 @@ providers:
       p90: tfq_loss_bps{terminal="maestro",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="maestro",chain="all",stat="p99"}
       success: tfq_health{terminal="maestro",chain="all"}
+      ranked: tfq_ranked{terminal="maestro",chain="all"}
       sample_size: tfq_sample_size{terminal="maestro",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="maestro",chain="all",stat="median"}
 
@@ -314,6 +322,7 @@ providers:
       p90: tfq_loss_bps{terminal="pepeboost",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="pepeboost",chain="all",stat="p99"}
       success: tfq_health{terminal="pepeboost",chain="all"}
+      ranked: tfq_ranked{terminal="pepeboost",chain="all"}
       sample_size: tfq_sample_size{terminal="pepeboost",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="pepeboost",chain="all",stat="median"}
 
@@ -326,6 +335,7 @@ providers:
       p90: tfq_loss_bps{terminal="bonkbot",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="bonkbot",chain="all",stat="p99"}
       success: tfq_health{terminal="bonkbot",chain="all"}
+      ranked: tfq_ranked{terminal="bonkbot",chain="all"}
       sample_size: tfq_sample_size{terminal="bonkbot",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="bonkbot",chain="all",stat="median"}
 
@@ -338,6 +348,7 @@ providers:
       p90: tfq_loss_bps{terminal="banana-gun",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="banana-gun",chain="all",stat="p99"}
       success: tfq_health{terminal="banana-gun",chain="all"}
+      ranked: tfq_ranked{terminal="banana-gun",chain="all"}
       sample_size: tfq_sample_size{terminal="banana-gun",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median"}
 
@@ -352,6 +363,7 @@ providers:
       p90: tfq_loss_bps{terminal="binance",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="binance",chain="all",stat="p99"}
       success: tfq_health{terminal="binance",chain="all"}
+      ranked: tfq_ranked{terminal="binance",chain="all"}
       sample_size: tfq_sample_size{terminal="binance",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="binance",chain="all",stat="median"}
 
@@ -364,6 +376,7 @@ providers:
       p90: tfq_loss_bps{terminal="basedbot",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="basedbot",chain="all",stat="p99"}
       success: tfq_health{terminal="basedbot",chain="all"}
+      ranked: tfq_ranked{terminal="basedbot",chain="all"}
       sample_size: tfq_sample_size{terminal="basedbot",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="basedbot",chain="all",stat="median"}
 
@@ -376,6 +389,7 @@ providers:
       p90: tfq_loss_bps{terminal="padre",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="padre",chain="all",stat="p99"}
       success: tfq_health{terminal="padre",chain="all"}
+      ranked: tfq_ranked{terminal="padre",chain="all"}
       sample_size: tfq_sample_size{terminal="padre",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="padre",chain="all",stat="median"}
 
@@ -388,5 +402,6 @@ providers:
       p90: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90"}
       p99: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p99"}
       success: tfq_health{terminal="pump-fun",chain="all"}
+      ranked: tfq_ranked{terminal="pump-fun",chain="all"}
       sample_size: tfq_sample_size{terminal="pump-fun",chain="all",kind="priced"}
       series: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median"}
