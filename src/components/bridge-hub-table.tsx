@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { BridgeProviderRow, CorridorKey, RegionKey } from "@/lib/bridge-hub-types";
+import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
 import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -55,21 +55,12 @@ function CorridorDot({
 }
 
 /** Main leaderboard — sorted by fee p50, quote speed per region when multi-region data is available */
-export function BridgeHubTable({
-  rows,
-  liveRegions,
-}: {
-  rows: BridgeProviderRow[];
-  liveRegions?: RegionKey[];
-}) {
+export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
-  // Only regions with live data get a column: a paused probe used to show
-  // as a column of dashes (or of ten-day-old figures, see bridge-hub-stats).
-  const regions = liveRegions ? REGIONS.filter((r) => liveRegions.includes(r.value)) : REGIONS;
 
   // Per-region: find fastest and slowest slug among rows with data
   const regionRank: Record<string, { fastest: string | null; slowest: string | null }> = {};
-  for (const r of regions) {
+  for (const r of REGIONS) {
     const withData = rows
       .map((row) => ({ slug: row.slug, v: row.regions.find((x) => x.region === r.value)?.quotep50 ?? null }))
       .filter((x) => x.v != null && Number.isFinite(x.v));
@@ -91,7 +82,7 @@ export function BridgeHubTable({
             <th className="text-left px-3 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">Type</th>
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Fee p50</th>
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Fee p99</th>
-            {regions.map((r) => (
+            {REGIONS.map((r) => (
               <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
                 {r.short}
               </th>
@@ -105,7 +96,7 @@ export function BridgeHubTable({
               all-in fee · $300 USDC
             </td>
             <td className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden md:table-cell lg:hidden" />
-            {regions.map((r) => (
+            {REGIONS.map((r) => (
               <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
                 quote p50
               </td>
@@ -150,7 +141,7 @@ export function BridgeHubTable({
                 <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden lg:table-cell">
                   {fmtPct(row.feep99)}
                 </td>
-                {regions.map((r) => {
+                {REGIONS.map((r) => {
                   const regionData = row.regions.find((x) => x.region === r.value);
                   const val = regionData?.quotep50 ?? null;
                   const isFastest = val != null && regionRank[r.value]?.fastest === row.slug;

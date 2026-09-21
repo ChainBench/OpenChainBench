@@ -388,21 +388,6 @@ func main() {
 	// corrective transfers only in production and unpaused.
 	StartReaper(balanceChecker, rebalancer, slackNotifier, config.ExecutionMode, paused)
 
-	// EXEC_RUN_ON_START=3 fires one $3 tier right after start-up, in
-	// addition to the schedule: used to validate a measurement change or to
-	// repopulate the 24h window after a data reset without waiting for
-	// 10:00 UTC. Unset in normal operation (a redeploy must not spend).
-	if scheduler != nil && os.Getenv("EXEC_RUN_ON_START") == "3" {
-		go func() {
-			time.Sleep(20 * time.Second)
-			log.Println("▶️  EXEC_RUN_ON_START=3: running one $3 tier now")
-			select {
-			case scheduler.exec3Chan <- struct{}{}:
-			default:
-			}
-		}()
-	}
-
 	// Main loop — scheduler-only (quote loop now lives in its own goroutine).
 	// Two tiers: $3 daily, $30 Mon+Thu. Each tick equalizes the stable legs,
 	// runs the conserving triangle, then the opt-in R4/R5 round-trips.
