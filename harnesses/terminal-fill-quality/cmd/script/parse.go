@@ -20,7 +20,8 @@ import (
 //	TerminalQ what landed in the terminal's fee wallets (and, for FOMO,
 //	          its user-signed stable fee legs)
 //	NetworkQ  tx fee the user paid (0 when the terminal sponsors gas) +
-//	          inclusion tips (Jito and the other relays, the terminal's own)
+//	          inclusion tips (Jito and the other relays, the terminal's own) +
+//	          the deposit of the token accounts the swap created (rent)
 //	OtherQ    quote that left the user and reached neither the final pool,
 //	          the terminal nor the network: UserQ − PoolQ − TerminalQ − NetworkQ
 //	          (pump.fun protocol / creator fees, referrals; on routed swaps
@@ -80,7 +81,7 @@ type Swap struct {
 	Chain    string  `json:"chain,omitempty"`
 	RelayQ   float64 `json:"relay_q,omitempty"`
 	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
-	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created (net of those it closed): refundable on close, out of the loss, shown
+	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
 	RelayID  string  `json:"relay_id,omitempty"`
 	InTx     string  `json:"in_tx,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
@@ -419,7 +420,17 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	// User's quote movements: lamports + WSOL (SOL), and each stable. The
 	// tx fee stays inside: it is part of what the swap cost.
 	quoteDelta := map[string]float64{}
-	quoteDelta["SOL"] = float64(lam[user])/1e9 + rent
+	// A deposit paid for a new token account is network cost (Sacha,
+	// 2026-09-21: "rent is part of network fees"): it stays in what the
+	// user gave and joins the tx fee below. A refund on close is not
+	// credited (added back here), so a round trip reads the deposit once.
+	rentPaidQ := 0.0
+	if rent > 0 {
+		rentPaidQ = rent
+		quoteDelta["SOL"] = float64(lam[user]) / 1e9
+	} else {
+		quoteDelta["SOL"] = float64(lam[user])/1e9 + rent
+	}
 	for _, e := range tok {
 		if e.owner != user {
 			continue
@@ -478,7 +489,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 		return quoteName(mint)
 	}
-	networkQ := toQuote("SOL", network)
+	networkQ := toQuote("SOL", network+rentPaidQ)
 	userQ := quoteDelta[quote] // negative on a buy, positive on a sell
 
 	// Pools: the counterparties of the token leg, one per token vault
@@ -815,8 +826,8 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	if tx.BlockTime != nil {
 		s.Time = *tx.BlockTime
 	}
-	if rent > 0 {
-		s.RentQ = rent
+	if rentPaidQ > 0 {
+		s.RentQ = rentPaidQ
 	}
 	// "other": what the user paid minus what the final pool received,
 	// the terminal and the network. Exact on single-pool routes (pump.fun
