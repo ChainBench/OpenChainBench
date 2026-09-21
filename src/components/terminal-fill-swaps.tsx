@@ -183,7 +183,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
               {th("terminal", "Fee", "terminal fee, bps")}
               {th("network", "Net", "tx fee + inclusion tips, bps; on Relay rows the destination gas Relay charged is included")}
-              {th(undefined, "Other", "pump.fun / creator / referral fees, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
+              {th(undefined, "Protocol", "launchpad / curve / creator fees (pump.fun, the EVM launchpads), referral payouts, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
               {th(undefined, "Reference", "exact mid: the pool's reserves before the swap; previous trade: the trade before ours on the same pool, age in seconds", "left")}
               {th(undefined, "Sandwich", "neighbours on the pool screened; a hit links to the front-run, hover for the attacker", "left")}
@@ -298,7 +298,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
 type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
-const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Other fees", pool: "Pool" } as const;
+const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Protocol fees", pool: "Pool" } as const;
 const ROW_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
 const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app", phantom: "Phantom", maestro: "Maestro", bloom: "Bloom" };
 const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
