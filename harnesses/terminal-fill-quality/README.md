@@ -447,6 +447,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `EVM_DAILY_TARGET` | `1000` | the same rate for the Relay and native EVM rows (one chain each, so a product's per-chain entry fills at this rate; production runs 150, the same as the Solana rows) |
 | `PURGE_EVM_BEFORE` | unset | at load, drop the cross-chain and native EVM rows older than this unix time (once, after a pricing change); the variable stays in the container's env until the next deploy resets it |
 | `PURGE_TERMINALS` | unset | at load, drop every row of these slugs (comma-separated), once, after a feed or attribution change; same caveat |
+| `REPRICE_VENUES` | unset | on the first tick, price the window's stored Solana rows of these venues (comma-separated) again with the current code, one transaction read each (a reference fix applied to the whole window at once); same caveat |
 | `DISCOVER_DENY` | unset | comma-separated wallets or routers discovery must never adopt (also skipped when the state's adoptions are re-applied at start) |
 | `WS` | `1` | live feed via logsSubscribe; `0` = poll the wallets |
 | `WS_URL` | RPC URL | feed endpoint when different from the reads (the keyless public `wss://api.mainnet-beta.solana.com` works) |
