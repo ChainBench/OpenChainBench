@@ -195,6 +195,11 @@ providers:
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
 
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+
   - slug: bitget
     name: Bitget
     tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding
