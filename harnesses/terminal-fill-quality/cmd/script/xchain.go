@@ -457,16 +457,36 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 
 func (f *xfeed) poll(ctx context.Context, c originChain) int {
 	added := 0
+	// One walk per stream: the referrer apps each have their own filtered
+	// stream; the fee-recipient apps (FOMO, pump.fun app, Phantom) all
+	// read the unfiltered stream of the origin, walked once for them all
+	// (seen, resume and pending stay per app).
+	type stream struct {
+		referrer string
+		apps     []xchainApp
+	}
+	var streams []stream
+	var shared stream
 	for _, a := range xchainApps {
 		if a.Referrer == "" && len(a.FeeRecipients) == 0 {
 			continue
 		}
+		if a.Referrer != "" {
+			streams = append(streams, stream{referrer: a.Referrer, apps: []xchainApp{a}})
+		} else {
+			shared.apps = append(shared.apps, a)
+		}
+	}
+	if len(shared.apps) > 0 {
+		streams = append([]stream{shared}, streams...)
+	}
+	for _, st := range streams {
 		cont := ""
 		const pages = 60 // 3,000 requests a round: one page in steady state, the gap of a deploy (build, seed walk) after a restart; logged when it binds
 		for page := 0; page < pages; page++ {
 			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50", c.id)
-			if a.Referrer != "" {
-				url += "&referrer=" + a.Referrer
+			if st.referrer != "" {
+				url += "&referrer=" + st.referrer
 			}
 			if cont != "" {
 				url += "&continuation=" + cont
@@ -494,36 +514,43 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
 					continue
 				}
-				// Seen is per app: FOMO's walk of the same origin feed must not
-				// hide BasedBot's requests from BasedBot's walk.
-				key := a.Slug + ":" + r.ID
 				created := int64(0)
 				if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
 					created = t.Unix()
 				}
-				f.mu.Lock()
-				_, known := f.seen[key]
-				if !known && created > 0 && created <= f.resume[a.Slug+":"+c.slug] {
-					known = true // counted by the previous instance (the state carries its newest created)
-				}
-				f.mu.Unlock()
-				if known {
-					stop = true
-					continue
-				}
-				if r.Status == "pending" || r.Status == "depositing" {
-					// Not final yet: remembered and re-read by id on the next
-					// rounds (a refund finalises last and would otherwise sit
-					// behind the first known request the walk stops at).
+				// Seen is per app: one app's earlier walk of the same stream
+				// must not hide the request from another; the walk stops
+				// once every app of the stream knows the request.
+				allKnown := true
+				for _, a := range st.apps {
+					key := a.Slug + ":" + r.ID
 					f.mu.Lock()
-					if _, ok := f.pending[key]; !ok {
-						f.pending[key] = pendingReq{app: a, chain: c, created: created, since: time.Now().Unix()}
+					_, known := f.seen[key]
+					if !known && created > 0 && created <= f.resume[a.Slug+":"+c.slug] {
+						known = true // counted by the previous instance (the state carries its newest created)
 					}
 					f.mu.Unlock()
-					continue
+					if known {
+						continue
+					}
+					allKnown = false
+					if r.Status == "pending" || r.Status == "depositing" {
+						// Not final yet: remembered and re-read by id on the next
+						// rounds (a refund finalises last and would otherwise sit
+						// behind the first known request the walk stops at).
+						f.mu.Lock()
+						if _, ok := f.pending[key]; !ok {
+							f.pending[key] = pendingReq{app: a, chain: c, created: created, since: time.Now().Unix()}
+						}
+						f.mu.Unlock()
+						continue
+					}
+					if f.count(a, c, r) {
+						added++
+					}
 				}
-				if f.count(a, c, r) {
-					added++
+				if allKnown {
+					stop = true
 				}
 			}
 			cont = rr.Continuation
@@ -531,7 +558,11 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 				break
 			}
 			if page == pages-1 {
-				log.Printf("[relay] %s from %s: page budget reached (%d pages), older requests of this round skipped", a.Slug, c.slug, pages)
+				var names []string
+				for _, a := range st.apps {
+					names = append(names, a.Slug)
+				}
+				log.Printf("[relay] %s from %s: page budget reached (%d pages), older requests of this round skipped", strings.Join(names, "+"), c.slug, pages)
 			}
 		}
 	}
