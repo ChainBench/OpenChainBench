@@ -135,6 +135,13 @@ var evmTerminals = []evmTerminal{
 	{Slug: "maestro-ethereum", Name: "Maestro · Ethereum", Kind: "bot", Chain: "ethereum", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
 	{Slug: "maestro-base", Name: "Maestro · Base", Kind: "bot", Chain: "base", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
 	{Slug: "maestro-robinhood", Name: "Maestro · Robinhood Chain", Kind: "bot", Chain: "robinhood", Routers: []string{"0x00000000e91fc5bad977c0cc4ad60557c06886a2"}, Collector: "0xb0999731f7c2581844658a9d2ced1be0077b7397"},
+	// Bloom's EVM bot: one vanity router on every chain, one event per swap
+	// (0x2d720abb…, the topic DeFiLlama's bloom adapter reads), the 1 % fee
+	// kept inside the router (Florent's test buy on Base, 2026-09-21: 0.001
+	// ETH in, 0.00099 to the pool): the residual after the pool and gas.
+	// Robinhood Chain 53 swaps an hour, BNB 4, Base 1, Ethereum none.
+	{Slug: "bloom-robinhood", Name: "Bloom · Robinhood Chain", Kind: "bot", Chain: "robinhood", Routers: []string{"0xb1000000096bd2f8ca9b6883182eccaf31e7c3fd"}},
+	{Slug: "bloom-bnb", Name: "Bloom · BNB", Kind: "bot", Chain: "bnb", Routers: []string{"0xb1000000096bd2f8ca9b6883182eccaf31e7c3fd"}},
 	{Slug: "binance-wallet-bnb", Name: "Binance Wallet · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,
 		Note: "Wallets trading the same token both ways four times or more in the window (farming loops) are left out of this row; the share left out is in the JSON."},
 	{Slug: "binance-wallet-ethereum", Name: "Binance Wallet · Ethereum", Kind: "app", Chain: "ethereum", Routers: []string{"0xb300000b72deaeb607a12d5f54773d1c19c7028d"}, NoEvents: true, DropLoops: true,

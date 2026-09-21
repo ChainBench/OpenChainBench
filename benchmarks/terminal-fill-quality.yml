@@ -78,7 +78,7 @@ methodology:
   - "Phantom (Solana): its in-wallet swap pays 0.85 % to its fee wallet in SOL or WSOL, sampled like the other Solana terminals. Binance Wallet (BSC, Ethereum, Base): one router on the three chains, no event of its own, so its swaps are the transactions sent to it in blocks read in full; valued like the other native EVM rows. Terminal's EVM fee wallets get under $10 a day: not measured. Banana Gun on Ethereum: buys only, no fee, its users sell on Uniswap directly; held out (one side)."
   - "four.meme's bonding curve on BNB is priced exactly: the curve is a constant product on virtual reserves (checked on consecutive trades to 1e-12), its constants come from the TokenManager's token info, so the mid before the trade is known; the launchpad's 1 % fee is 'other', like pump.fun's on Solana."
   - "Kept out of that residual: a fee the pool's own hook keeps (v4 launchpad pools on Robinhood Chain 1 %, BNB 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the mid of the route's own stable-to-gas-coin hop before that hop, so the hop's LP fee and impact stay a pool cost; Axiom's inclusion tip (0.0025 BNB fixed; on Robinhood Chain the user's setting, from the call trace) is network cost, like the Solana tip relays."
-  - "Not in the table: BullX (suspended June 2026), Nova (no live fee wallet), Bloom's and Photon's EVM swappers (routers unknown). BasedBot's Relay requests are its in-app bridge between the user's Solana and EVM wallets, both ways, no app fee (a bridge leg, not a trade); its EVM rows are those wallets' swaps on its router. On Solana its fee is a separate transaction after the swap, so failed swaps are not seen: no fail rate there. HyperEVM rows (pump.fun app, Phantom via Relay): no tab yet."
+  - "Not in the table: BullX (suspended June 2026), Nova (no live fee wallet), Bloom on Base and Ethereum (a swap an hour), Photon on EVM. BasedBot's Relay requests are its in-app bridge between the user's Solana and EVM wallets, both ways, no app fee (a bridge leg, not a trade); its EVM rows are those wallets' swaps on its router. On Solana its fee is a separate transaction after the swap, so failed swaps are not seen: no fail rate there. HyperEVM rows: no tab yet."
 
 findings:
   - "{{best_name}} fills cheapest: a median {{best_p50}} lost per swap against the pool's state before the trade, all costs included."
@@ -289,8 +289,8 @@ providers:
 
   - slug: bloom
     name: Bloom
-    tag: "Telegram bot, Solana"
-    formula: "Random sample of the swaps paying Bloom's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    tag: "Telegram bot, Solana + Robinhood Chain + BNB"
+    formula: "Solana: random sample of the swaps paying Bloom's fee wallet. Robinhood Chain, BNB: swaps through its EVM router (one address on every chain), its 1 % kept inside. Valued at the pool's state before the trade; median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="bloom",chain="all",stat="median"}
       p90: tfq_loss_bps{terminal="bloom",chain="all",stat="p90"}
