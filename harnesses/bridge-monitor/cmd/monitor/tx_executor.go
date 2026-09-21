@@ -11,7 +11,6 @@ import (
 	"log"
 	"math/big"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -110,8 +109,7 @@ func NewTxExecutor(solPrivKey, evmPrivKey, mobulaAPIKey string, dryRun bool) (*T
 			return nil, fmt.Errorf("failed to connect to Arbitrum RPC: %w", err)
 		}
 
-		// Hosts only: the keyed URLs carry the provider token in the path.
-		log.Printf("✅ Connected to Solana (%s), Base (%s), Arbitrum (%s)", rpcHost(solURL), rpcHost(baseURL), rpcHost(arbURL))
+		log.Printf("✅ Connected to Solana (%s), Base (%s), Arbitrum (%s)", solURL, baseURL, arbURL)
 	}
 
 	return tx, nil
@@ -451,28 +449,21 @@ func (tx *TxExecutor) getMobulaStatus(txHash string) (*BridgeStatus, error) {
 		return nil, fmt.Errorf("status API error %d: %s", resp.StatusCode, string(body))
 	}
 
-	// The settled payload carries depositTxHash (origin) and fillTxHash
-	// (destination); toTxHash is the older field name, kept as a fallback.
 	var result struct {
 		Data struct {
-			Status     string `json:"status"`
-			LatencyMs  int64  `json:"latencyMs"`
-			ToTxHash   string `json:"toTxHash"`
-			FillTxHash string `json:"fillTxHash"`
+			Status    string `json:"status"`
+			LatencyMs int64  `json:"latencyMs"`
+			ToTxHash  string `json:"toTxHash"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
-	toTx := result.Data.FillTxHash
-	if toTx == "" {
-		toTx = result.Data.ToTxHash
-	}
 
 	return &BridgeStatus{
 		Status:    result.Data.Status,
 		TxHash:    txHash,
-		ToTxHash:  toTx,
+		ToTxHash:  result.Data.ToTxHash,
 		LatencyMs: result.Data.LatencyMs,
 	}, nil
 }
@@ -531,9 +522,6 @@ func (tx *TxExecutor) getLiFiStatus(txHash, fromChain, toChain string) (*BridgeS
 		Sending struct {
 			TxHash string `json:"txHash"`
 		} `json:"sending"`
-		Receiving struct {
-			TxHash string `json:"txHash"`
-		} `json:"receiving"`
 		Received struct {
 			TxHash string `json:"txHash"`
 		} `json:"received"`
@@ -541,15 +529,11 @@ func (tx *TxExecutor) getLiFiStatus(txHash, fromChain, toChain string) (*BridgeS
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
-	toTx := result.Receiving.TxHash
-	if toTx == "" {
-		toTx = result.Received.TxHash
-	}
 
 	return &BridgeStatus{
 		Status:   result.Status,
 		TxHash:   result.Sending.TxHash,
-		ToTxHash: toTx,
+		ToTxHash: result.Received.TxHash,
 	}, nil
 }
 
@@ -600,30 +584,17 @@ func (tx *TxExecutor) getRelayStatus(requestID string) (*BridgeStatus, error) {
 		return nil, fmt.Errorf("status API error %d: %s", resp.StatusCode, string(body))
 	}
 
-	// v3: inTxHashes are the deposit(s) on the origin chain, txHashes the
-	// fill(s) on the destination chain.
 	var result struct {
-		Status     string   `json:"status"`
-		TxHash     string   `json:"txHash"`
-		InTxHashes []string `json:"inTxHashes"`
-		TxHashes   []string `json:"txHashes"`
+		Status string `json:"status"`
+		TxHash string `json:"txHash"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
-	toTx := ""
-	if len(result.TxHashes) > 0 {
-		toTx = result.TxHashes[0]
-	}
-	srcTx := result.TxHash
-	if srcTx == "" && len(result.InTxHashes) > 0 {
-		srcTx = result.InTxHashes[0]
-	}
 
 	return &BridgeStatus{
-		Status:   result.Status,
-		TxHash:   srcTx,
-		ToTxHash: toTx,
+		Status: result.Status,
+		TxHash: result.TxHash,
 	}, nil
 }
 
@@ -658,13 +629,4 @@ func (tx *TxExecutor) Close() {
 	if tx.arbitrumClient != nil {
 		tx.arbitrumClient.Close()
 	}
-}
-
-// rpcHost returns the host of an RPC URL, never its path (keyed endpoints
-// carry the token there).
-func rpcHost(raw string) string {
-	if u, err := url.Parse(raw); err == nil && u.Host != "" {
-		return u.Host
-	}
-	return "invalid-url"
 }
