@@ -17,7 +17,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
-import { getProviders, type ProviderProfile } from "@/lib/providers";
+import { getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
@@ -375,6 +375,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;
+    // Same blacklist as the product index: hex builder addresses and dead
+    // composite slugs 404 on /products/<slug> (nine 0x... URLs in the
+    // production sitemap failed the deploy smoke on 2026-09-21; they are
+    // declared providers of hyperliquid-frontends, so the spec check let
+    // them through).
+    if (isBlacklistedSlug(slug)) return false;
     // Chains canonicalize to /chains/<slug>, except the perp venues that
     // are also chains (hyperliquid, dydx): their product page is its own
     // entity and self-canonical.
