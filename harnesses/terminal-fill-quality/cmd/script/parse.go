@@ -79,6 +79,7 @@ type Swap struct {
 	// NetworkQ the origin gas.
 	Chain    string  `json:"chain,omitempty"`
 	RelayQ   float64 `json:"relay_q,omitempty"`
+	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
 	RelayID  string  `json:"relay_id,omitempty"`
 	InTx     string  `json:"in_tx,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing

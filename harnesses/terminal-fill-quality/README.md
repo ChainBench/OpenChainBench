@@ -142,6 +142,21 @@ depends on pool activity. The victim's extra cost is already inside
 **Trade-size buckets**: `by_size` per terminal (under $25, $25 to $250,
 over $250; median loss and n from 5 samples).
 
+**BasedBot on Solana (`FeeTx`)**: the swap runs through Jupiter (or another
+router) with nothing inside; right after, the user signs a second transaction
+with 1 % of the SOL spent (buys) or received (sells), a ~$0.10 minimum,
+split between BasedBot's wallet `HR6xhpJY…` (12 to 85 %, ~2,600
+transactions an hour on 2026-09-21) and per-user or referrer accounts.
+Found with a test trade of Florent's (`2Z375icD…` then `3s9JYYT6…`) and
+checked on 12 other payers (12/12: the payer's previous transaction is the
+swap, fee / spent = 1.00 % above the minimum). The WebSocket feed counts a
+successful mention of the wallet with no swap program as an attempt; the
+sampler reads the fee transaction, walks one signature back on the payer
+(`getSignaturesForAddress` with `before`), parses that swap, then adds the
+fee transaction's SOL out as terminal fee and its transaction fee as
+network (`feeTxSwap`). Failed swaps leave no fee transaction: the row has
+no fail rate. `fee_sig` in the JSON names the fee transaction.
+
 **Launchpad curves (`rhcurve.go`)**: BasedBot's router family also trades
 bonding curves, one contract per token with the same bytecode, no Uniswap
 event: `buy 0xec36bf57…` [gas coin in, tokens out, fee 1, fee 2], `sell

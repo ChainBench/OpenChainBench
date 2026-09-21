@@ -35,9 +35,12 @@ type feed struct {
 	reqs map[int64]string // request id -> terminal slug (until confirmed)
 	box  map[string]*inbox
 	ok   map[string]int // successful attempts of the last drained tick
-	up   bool
-	last time.Time
-	conn *websocket.Conn // the live session, closed by resubscribe
+	// feeTx: the terminals whose fee is a separate transaction (no swap
+	// program in the mention): every successful mention is an attempt.
+	feeTx map[string]bool
+	up    bool
+	last  time.Time
+	conn  *websocket.Conn // the live session, closed by resubscribe
 }
 
 // resubscribe closes the live session so the next one subscribes to the
@@ -226,7 +229,7 @@ func (f *feed) handle(data []byte) {
 		return
 	}
 	b.sigs[v.Signature] = true
-	if !isSwapAttempt(v.Logs) {
+	if !isSwapAttempt(v.Logs) && !(f.feeTx[slug] && !(sigInfo{Err: v.Err}).failed()) {
 		b.other++
 		return
 	}

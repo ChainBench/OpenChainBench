@@ -377,6 +377,12 @@ func main() {
 			wsURL = "wss://api.mainnet-beta.solana.com"
 		}
 		fd = newFeed(wsURL)
+		fd.feeTx = map[string]bool{}
+		for _, t := range terminals {
+			if t.FeeTx {
+				fd.feeTx[t.Slug] = true
+			}
+		}
 		go fd.run(context.Background())
 	}
 	if st.EvmCursor == nil {
@@ -588,7 +594,13 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				st.reject(t.Slug, "unreadable")
 				continue
 			}
-			sw, reject := parseSwap(t, s.Signature, tx, solUSD, "")
+			var sw *Swap
+			var reject parseReject
+			if t.FeeTx {
+				sw, tx, reject = feeTxSwap(ctx, rpc, t, s.Signature, tx, solUSD)
+			} else {
+				sw, reject = parseSwap(t, s.Signature, tx, solUSD, "")
+			}
 			if reject != "" {
 				st.reject(t.Slug, reject)
 				continue
@@ -2286,4 +2298,57 @@ func loopersOf(st *State, slugs []string) map[string]bool {
 		}
 	}
 	return loopers
+}
+
+// feeTxSwap: a terminal whose fee is a separate transaction (BasedBot on
+// Solana). feeTx is the sampled fee transaction; the swap is the payer's
+// previous transaction. The swap is parsed as usual (the fee wallet is
+// not in it, so its terminal fee reads 0), then the fee transaction's SOL
+// out (every lamport that left the payer, less the transaction fee) is
+// added as terminal fee, its transaction fee as network, both to what the
+// user gave. Returns the swap's transaction for the pricing step.
+func feeTxSwap(ctx context.Context, rpc *rpcClient, t Terminal, feeSig string, feeTx *parsedTx, solUSD float64) (*Swap, *parsedTx, parseReject) {
+	msg := feeTx.Transaction.Message
+	if len(msg.AccountKeys) == 0 || len(feeTx.Meta.PreBalances) != len(msg.AccountKeys) {
+		return nil, nil, rejectNotSwap
+	}
+	payer := msg.AccountKeys[0].Pubkey
+	feeOut := float64(int64(feeTx.Meta.PreBalances[0])-int64(feeTx.Meta.PostBalances[0])) / 1e9
+	txFee := float64(feeTx.Meta.Fee) / 1e9
+	feeOut -= txFee
+	if feeOut <= 0 {
+		return nil, nil, rejectNotSwap
+	}
+	prev, err := rpc.signaturesBefore(ctx, payer, feeSig, 1)
+	if err != nil || len(prev) == 0 {
+		return nil, nil, "no_swap_before_fee"
+	}
+	if prev[0].failed() {
+		return nil, nil, "swap_before_fee_failed"
+	}
+	if prev[0].BlockTime != nil && feeTx.BlockTime != nil && *feeTx.BlockTime-*prev[0].BlockTime > 300 {
+		return nil, nil, "no_swap_before_fee" // the fee transaction did not follow a swap within five minutes
+	}
+	swapTx, err := rpc.transaction(ctx, prev[0].Signature)
+	if err != nil || swapTx == nil {
+		return nil, nil, "unreadable"
+	}
+	sw, reject := parseSwap(t, prev[0].Signature, swapTx, solUSD, payer)
+	if reject != "" {
+		return nil, nil, reject
+	}
+	// The fee transaction's amounts in the swap's quote unit.
+	q := 1.0
+	if sw.Quote != "SOL" && sw.QuoteUSD > 0 {
+		q = solUSD / sw.QuoteUSD
+	}
+	sw.TerminalQ += feeOut * q
+	sw.NetworkQ += txFee * q
+	if sw.Side == "buy" {
+		sw.UserQ += (feeOut + txFee) * q
+	} else {
+		sw.UserQ -= (feeOut + txFee) * q // received net of the fee paid right after
+	}
+	sw.FeeSig = feeSig
+	return sw, swapTx, ""
 }
