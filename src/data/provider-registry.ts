@@ -1853,6 +1853,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Paradex is a perps-focused L2 exchange built on Starknet tech, with USD-settled perpetuals and funding accrued continuously over an 8 hour period.",
     twitter: "@paradex",
   },
+  ondo: {
+    url: "https://ondoperps.xyz",
+    description:
+      "Ondo Perps is Ondo Finance's perpetuals exchange (live since June 2026): an off-chain matching engine running in Intel SGX enclaves with on-chain custody on Ethereum and Arbitrum, USDC and Ondo tokenized stocks as collateral, and 60+ markets across US equities, ETFs, commodities, indices, FX and crypto.",
+    twitter: "@OndoPerps",
+    docs: "https://docs.ondoperps.xyz/",
+  },
   aster: {
     url: "https://www.asterdex.com",
     description:

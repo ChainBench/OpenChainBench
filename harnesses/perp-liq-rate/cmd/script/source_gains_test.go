@@ -4,110 +4,133 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-// buildGainsData builds a 26-word (or 28-word if leadingWords>0) ABI-encoded
-// TradeClosed event data blob for testing decodeGainsTradeClosed.
-func buildGainsData(pairIdx uint32, leverage uint16, collateralUsdc uint64, cancelReason byte, leadingWords int) string {
-	total := 26 + leadingWords
-	data := make([]byte, total*32)
-	base := leadingWords * 32 // tupleA starts after any leading words
-
-	// word 1 of tupleA = pairIndex (uint32)
-	binary.BigEndian.PutUint32(data[base+1*32+28:base+1*32+32], pairIdx)
-	// word 4 of tupleA = leverage (uint16, 1e3 fixed point)
-	binary.BigEndian.PutUint16(data[base+4*32+30:base+4*32+32], leverage)
-	// word 5 of tupleA = collateral (USDC, 6 dp)
-	binary.BigEndian.PutUint64(data[base+5*32+24:base+5*32+32], collateralUsdc)
-	// last word = cancelReason
-	data[total*32-1] = cancelReason
-
+// buildGainsLimitExecuted encodes the 25 data words of a LimitExecuted log
+// with the fields the decoder reads. Amounts are in collateral units.
+func buildGainsLimitExecuted(pairIdx uint32, leverage1e3 uint32, collateralIdx uint8, collateralAmount uint64, orderType uint8, collateralPriceUsd1e8 uint64) string {
+	data := make([]byte, gainsLimitExecutedWords*32)
+	put := func(word int, v uint64) { binary.BigEndian.PutUint64(data[word*32+24:word*32+32], v) }
+	put(gainsWordPairIndex, uint64(pairIdx))
+	put(gainsWordLeverage, uint64(leverage1e3))
+	put(gainsWordCollateralIndex, uint64(collateralIdx))
+	put(gainsWordCollateralAmount, collateralAmount)
+	put(gainsWordOrderType, uint64(orderType))
+	put(gainsWordCollateralPriceUS, collateralPriceUsd1e8)
 	return "0x" + hex.EncodeToString(data)
 }
 
 func makeEthLog(data, blockNum string) ethLog {
-	return ethLog{
-		Data:        data,
-		BlockNumber: blockNum,
-		TxHash:      "0xtxhash",
-		LogIndex:    "0x0",
-	}
+	return ethLog{Data: data, BlockNumber: blockNum, TxHash: "0xtxhash", LogIndex: "0x0"}
 }
 
-func TestDecodeGainsTradeClosed_Liquidation(t *testing.T) {
-	// leverage=10000 (10x, 1e3 precision), collateral=1000000000 (1000 USDC at 6dp)
-	// notional = 1000000000/1e6 * 10000/1e3 = 1000 * 10 = 10000
-	data := buildGainsData(0, 10000, 1000000000, 1, 0)
-	lg := makeEthLog(data, "0x100")
-	ev, matched, err := decodeGainsTradeClosed(lg, 0, 0x100, 0)
+var testDecimals = map[uint64]int{1: 18, 3: 6}
+
+func TestGainsTopicIsLimitExecuted(t *testing.T) {
+	// keccak256 of the ABI signature; a wrong signature matched nothing on
+	// the diamond for a month, so the topic is pinned here.
+	if len(gainsLimitExecutedTopic) != 66 {
+		t.Fatalf("bad topic %q", gainsLimitExecutedTopic)
+	}
+	t.Logf("LimitExecuted topic0 = %s", gainsLimitExecutedTopic)
+}
+
+func TestDecodeGainsLimitExecuted_USDCLiquidation(t *testing.T) {
+	// 1,000 USDC collateral (6 dp) at 10x, collateral price $1.00 -> $10,000.
+	data := buildGainsLimitExecuted(1, 10_000, 3, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000)
+	ev, matched, err := decodeGainsLimitExecuted(makeEthLog(data, "0x64"), 1, 0x100, 0, gainsBlockTimeMs, testDecimals)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
 	if !matched {
-		t.Fatal("expected matched=true")
+		t.Fatal("expected a match")
 	}
 	if ev.NotionalUSD < 9999 || ev.NotionalUSD > 10001 {
 		t.Errorf("notional = %v, want ~10000", ev.NotionalUSD)
 	}
+	if ev.Key != "0xtxhash:0x0" {
+		t.Errorf("key = %q", ev.Key)
+	}
 }
 
-func TestDecodeGainsTradeClosed_NotLiquidation(t *testing.T) {
-	data := buildGainsData(0, 10000, 1000000000, 0, 0) // cancelReason=0
-	lg := makeEthLog(data, "0x100")
-	_, matched, err := decodeGainsTradeClosed(lg, 0, 0x100, 0)
+func TestDecodeGainsLimitExecuted_DAICollateralUsesDecimalsAndPrice(t *testing.T) {
+	// 2 DAI (18 dp) at 50x, DAI at $0.999 -> 2 * 50 * 0.999 = $99.9.
+	data := buildGainsLimitExecuted(0, 50_000, 1, 2_000_000_000_000_000_000, gainsOrderTypeLiqClose, 99_900_000)
+	ev, matched, err := decodeGainsLimitExecuted(makeEthLog(data, "0x64"), 0, 0x100, 0, gainsBlockTimeMs, testDecimals)
+	if err != nil || !matched {
+		t.Fatalf("err=%v matched=%v", err, matched)
+	}
+	if ev.NotionalUSD < 99.8 || ev.NotionalUSD > 100 {
+		t.Errorf("notional = %v, want ~99.9", ev.NotionalUSD)
+	}
+}
+
+func TestDecodeGainsLimitExecuted_SkipsOtherOrderTypesAndPairs(t *testing.T) {
+	tpClose := buildGainsLimitExecuted(1, 10_000, 3, 1_000_000_000, 4, 100_000_000)
+	if _, matched, err := decodeGainsLimitExecuted(makeEthLog(tpClose, "0x64"), 1, 0x100, 0, gainsBlockTimeMs, testDecimals); err != nil || matched {
+		t.Fatalf("TP_CLOSE must not match: err=%v matched=%v", err, matched)
+	}
+	otherPair := buildGainsLimitExecuted(7, 10_000, 3, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000)
+	if _, matched, err := decodeGainsLimitExecuted(makeEthLog(otherPair, "0x64"), 1, 0x100, 0, gainsBlockTimeMs, testDecimals); err != nil || matched {
+		t.Fatalf("other pair must not match: err=%v matched=%v", err, matched)
+	}
+}
+
+func TestDecodeGainsLimitExecuted_RejectsWrongLengthAndUnknownCollateral(t *testing.T) {
+	short := "0x" + hex.EncodeToString(make([]byte, 10*32))
+	if _, _, err := decodeGainsLimitExecuted(makeEthLog(short, "0x64"), 1, 0x100, 0, gainsBlockTimeMs, testDecimals); err == nil {
+		t.Fatal("expected an error for a 10-word log")
+	}
+	unknown := buildGainsLimitExecuted(1, 10_000, 9, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000)
+	if _, _, err := decodeGainsLimitExecuted(makeEthLog(unknown, "0x64"), 1, 0x100, 0, gainsBlockTimeMs, testDecimals); err == nil {
+		t.Fatal("expected an error for an unknown collateral index")
+	}
+}
+
+func TestDecodeGainsLimitExecuted_TimestampFromBlockDistance(t *testing.T) {
+	data := buildGainsLimitExecuted(1, 10_000, 3, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000)
+	now := int64(1_000_000_000_000)
+	ev, _, err := decodeGainsLimitExecuted(makeEthLog(data, "0x60"), 1, 0x64, now, 250, testDecimals)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if matched {
-		t.Fatal("expected matched=false for cancelReason=0")
-	}
-}
-
-func TestDecodeGainsTradeClosed_WrongPair(t *testing.T) {
-	// pairIndex=1, wantPair=0
-	data := buildGainsData(1, 10000, 1000000000, 1, 0)
-	lg := makeEthLog(data, "0x100")
-	_, matched, err := decodeGainsTradeClosed(lg, 0, 0x100, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if matched {
-		t.Fatal("expected matched=false for wrong pair")
+	if ev.TimestampMs != now-4*250 {
+		t.Errorf("timestamp = %d, want %d", ev.TimestampMs, now-4*250)
 	}
 }
 
-func TestDecodeGainsTradeClosed_ShortData(t *testing.T) {
-	// Only 10 words — less than gainsTailWords (26)
-	data := "0x" + hex.EncodeToString(make([]byte, 10*32))
-	lg := makeEthLog(data, "0x100")
-	_, _, err := decodeGainsTradeClosed(lg, 0, 0x100, 0)
-	if err == nil {
-		t.Fatal("expected error for short data, got nil")
+// --- mock servers ---
+
+func tradingVarsBody(pairs []map[string]any, collaterals []map[string]any) map[string]any {
+	return map[string]any{"pairs": pairs, "collaterals": collaterals}
+}
+
+func gainsCollateral(idx int, symbol string, decimals int, priceUsd float64, pairOis []map[string]any) map[string]any {
+	return map[string]any{
+		"collateralIndex":  idx,
+		"symbol":           symbol,
+		"prices":           map[string]any{"collateralPriceUsd": priceUsd},
+		"collateralConfig": map[string]any{"decimals": decimals},
+		"pairOis":          pairOis,
 	}
 }
 
-func TestDecodeGainsTradeClosed_28Words(t *testing.T) {
-	// 28-word data (leading 2 words for address+uint32 inline, not indexed)
-	data := buildGainsData(0, 10000, 1000000000, 1, 2)
-	lg := makeEthLog(data, "0x100")
-	ev, matched, err := decodeGainsTradeClosed(lg, 0, 0x100, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !matched {
-		t.Fatal("expected matched=true for 28-word data")
-	}
-	if ev.NotionalUSD < 9999 || ev.NotionalUSD > 10001 {
-		t.Errorf("notional = %v, want ~10000", ev.NotionalUSD)
-	}
+func gainsPairOI(oiLong, oiShort string) map[string]any {
+	return map[string]any{"collateral": map[string]any{"oiLongCollateral": oiLong, "oiShortCollateral": oiShort}}
 }
 
-// mockRPCServer returns a simple JSON-RPC server handling eth_blockNumber and eth_getLogs.
-// All eth_getLogs calls return the provided logs slice.
+func tvServer(t *testing.T, body map[string]any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+}
+
+// mockRPCServer answers eth_blockNumber and eth_getLogs (every getLogs call
+// returns the same logs).
 func mockRPCServer(t *testing.T, blockHex string, logs []map[string]any) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -122,76 +145,58 @@ func mockRPCServer(t *testing.T, blockHex string, logs []map[string]any) *httpte
 			result = blockHex
 		case "eth_getLogs":
 			result = logs
-		default:
-			result = nil
 		}
-		resp := map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": result}
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": result})
 	}))
 }
 
+func testGains(rpcURL, tvURL string) *Gains {
+	g := NewGains(rpcURL)
+	g.tradingVarsURL = tvURL
+	return g
+}
+
+var usdcOnly = []map[string]any{
+	gainsCollateral(3, "USDC", 6, 1.0, []map[string]any{gainsPairOI("1", "1"), gainsPairOI("1", "1")}),
+}
+var btcEthPairs = []map[string]any{{"from": "BTC"}, {"from": "ETH"}}
+
 func TestGains_FetchLiquidationsSince_HappyPath(t *testing.T) {
-	// Build 2 valid liquidation log data blobs for ETH (pair 1 on Base deployment)
-	data1 := buildGainsData(1, 10000, 1000000000, 1, 0)
-	data2 := buildGainsData(1, 5000, 2000000000, 1, 0)
-
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
 	logs := []map[string]any{
-		{
-			"address":          gainsDiamond,
-			"topics":           []string{gainsTradeClosedTopic},
-			"data":             data1,
-			"blockNumber":      "0x64",
-			"transactionHash":  "0xtx1",
-			"logIndex":         "0x0",
-			"removed":          false,
-		},
-		{
-			"address":          gainsDiamond,
-			"topics":           []string{gainsTradeClosedTopic},
-			"data":             data2,
-			"blockNumber":      "0x64",
-			"transactionHash":  "0xtx2",
-			"logIndex":         "0x1",
-			"removed":          false,
-		},
+		{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(1, 10_000, 3, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx1", "logIndex": "0x0", "removed": false},
+		{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(1, 5_000, 3, 2_000_000_000, gainsOrderTypeLiqClose, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx2", "logIndex": "0x1", "removed": false},
+		{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(1, 5_000, 3, 2_000_000_000, 5, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx3", "logIndex": "0x0", "removed": false},
 	}
-
-	// Use block 100 — small enough that the entire range [1..100] fits in one
-	// getLogs call (< gainsMaxLogRangeBlocks=5000), so the server returns the
-	// 2 logs exactly once.
-	srv := mockRPCServer(t, "0x64", logs) // block 100
+	srv := mockRPCServer(t, "0x64", logs) // block 100: one getLogs call
 	defer srv.Close()
-
-	g := NewGains(srv.URL)
-	events, err := g.FetchLiquidationsSince("ETH", 0)
+	events, err := testGains(srv.URL, tv.URL).FetchLiquidationsSince("ETH", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(events) != 2 {
-		t.Fatalf("expected 2 events, got %d", len(events))
+		t.Fatalf("expected 2 liquidations (the SL_CLOSE skipped), got %d", len(events))
 	}
 }
 
 func TestGains_FetchLiquidationsSince_RPCError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
 	defer srv.Close()
-
-	g := NewGains(srv.URL)
-	_, err := g.FetchLiquidationsSince("ETH", 0)
-	if err == nil {
+	if _, err := testGains(srv.URL, tv.URL).FetchLiquidationsSince("ETH", 0); err == nil {
 		t.Fatal("expected error from RPC failure, got nil")
 	}
 }
 
 func TestGains_FetchLiquidationsSince_LastBlockAdvances(t *testing.T) {
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
 	srv := mockRPCServer(t, "0x100", []map[string]any{})
 	defer srv.Close()
-
-	g := NewGains(srv.URL)
-	_, err := g.FetchLiquidationsSince("ETH", 0)
-	if err != nil {
+	g := testGains(srv.URL, tv.URL)
+	if _, err := g.FetchLiquidationsSince("ETH", 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	g.mu.Lock()
@@ -202,150 +207,46 @@ func TestGains_FetchLiquidationsSince_LastBlockAdvances(t *testing.T) {
 	}
 }
 
-func buildGainsTVResponse(pairs []map[string]any, collaterals []map[string]any) map[string]any {
-	return map[string]any{"pairs": pairs, "collaterals": collaterals}
-}
-
-func gainsUSDCCollateral(pairOis []map[string]any) map[string]any {
-	return map[string]any{"symbol": "USDC", "pairOis": pairOis}
-}
-
-func gainsPairOI(oiLong, oiShort string) map[string]any {
-	return map[string]any{"collateral": map[string]any{
-		"oiLongCollateral":  oiLong,
-		"oiShortCollateral": oiShort,
-	}}
-}
-
-func TestGains_FetchOI_HappyPath(t *testing.T) {
-	// pairs: BTC=0, ETH=1 (matches live API ordering)
-	// ETH USDC OI: long=28438439935, short=27484847710 → (55923287645)/1e6 ≈ 55923.29 USD
-	pairs := []map[string]any{{"from": "BTC"}, {"from": "ETH"}}
-	pairOis := []map[string]any{
-		gainsPairOI("74229636084", "86846986430"), // BTC
-		gainsPairOI("28438439935", "27484847710"), // ETH
+func TestGains_FetchOI_SumsCollateralsInUSD(t *testing.T) {
+	// ETH: USDC long 28,438.44 + short 27,484.85 = 55,923.29 USD at $1;
+	// WETH (18 dp) long 1 + short 1 = 2 WETH at $2,500 = 5,000 USD.
+	collaterals := []map[string]any{
+		gainsCollateral(3, "USDC", 6, 1.0, []map[string]any{gainsPairOI("74229636084", "86846986430"), gainsPairOI("28438439935", "27484847710")}),
+		gainsCollateral(2, "WETH", 18, 2500, []map[string]any{gainsPairOI("0", "0"), gainsPairOI("1000000000000000000", "1000000000000000000")}),
 	}
-	collaterals := []map[string]any{gainsUSDCCollateral(pairOis)}
-	body := buildGainsTVResponse(pairs, collaterals)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-
-	g := &Gains{rpcURL: "unused", tradingVarsURL: srv.URL, lastBlock: make(map[string]uint64)}
-	oi, err := g.FetchOI("ETH")
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, collaterals))
+	defer tv.Close()
+	oi, err := testGains("unused", tv.URL).FetchOI("eth")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	// (28438439935 + 27484847710) / 1e6 = 55923.287645
-	if oi < 55923 || oi > 55924 {
-		t.Errorf("OI = %v, want ~55923", oi)
-	}
-}
-
-func TestGains_FetchOI_AssetCaseInsensitive(t *testing.T) {
-	pairs := []map[string]any{{"from": "eth"}}
-	pairOis := []map[string]any{gainsPairOI("10000000", "5000000")} // 15 USD
-	collaterals := []map[string]any{gainsUSDCCollateral(pairOis)}
-	body := buildGainsTVResponse(pairs, collaterals)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-
-	g := &Gains{rpcURL: "unused", tradingVarsURL: srv.URL, lastBlock: make(map[string]uint64)}
-	oi, err := g.FetchOI("ETH")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// (10000000 + 5000000) / 1e6 = 15
-	if oi < 14.9 || oi > 15.1 {
-		t.Errorf("OI = %v, want ~15", oi)
+	if oi < 60_923 || oi > 60_924 {
+		t.Errorf("oi = %v, want ~60923.29", oi)
 	}
 }
 
 func TestGains_FetchOI_UnknownAsset(t *testing.T) {
-	pairs := []map[string]any{{"from": "BTC"}}
-	pairOis := []map[string]any{gainsPairOI("1000000", "1000000")}
-	collaterals := []map[string]any{gainsUSDCCollateral(pairOis)}
-	body := buildGainsTVResponse(pairs, collaterals)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-
-	g := &Gains{rpcURL: "unused", tradingVarsURL: srv.URL, lastBlock: make(map[string]uint64)}
-	_, err := g.FetchOI("ETH")
-	if err == nil {
-		t.Fatal("expected error for unknown asset, got nil")
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
+	if _, err := testGains("unused", tv.URL).FetchOI("DOGE"); err == nil {
+		t.Fatal("expected error for unknown asset")
 	}
 }
 
-func TestGains_FetchOI_SkipsNonUSDCCollateral(t *testing.T) {
-	pairs := []map[string]any{{"from": "ETH"}}
-	// Only a non-USDC collateral — should return error (no USDC OI found)
-	pairOis := []map[string]any{gainsPairOI("5000000", "3000000")}
-	collaterals := []map[string]any{{"symbol": "BtcUSD", "pairOis": pairOis}}
-	body := buildGainsTVResponse(pairs, collaterals)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(body)
-	}))
-	defer srv.Close()
-
-	g := &Gains{rpcURL: "unused", tradingVarsURL: srv.URL, lastBlock: make(map[string]uint64)}
-	_, err := g.FetchOI("ETH")
-	if err == nil {
-		t.Fatal("expected error when no USDC collateral found")
+func TestGainsMulti_SumsChainsAndFailsClosed(t *testing.T) {
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
+	a := testGains("unused", tv.URL)
+	b := testGains("unused", tv.URL)
+	m := NewGainsMulti(a, b)
+	oi, err := m.FetchOI("ETH")
+	if err != nil || oi != 4e-6 {
+		t.Fatalf("oi=%v err=%v, want the two chains summed (2 x 2 units / 1e6)", oi, err)
 	}
-}
-
-func TestGains_FetchLiquidationsSince_LastBlockNoAdvanceOnError(t *testing.T) {
-	callCount := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req rpcRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		callCount++
-		if req.Method == "eth_blockNumber" {
-			resp := map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": "0x100"}
-			_ = json.NewEncoder(w).Encode(resp)
-			return
-		}
-		// eth_getLogs fails
-		resp := map[string]any{
-			"jsonrpc": "2.0",
-			"id":      req.ID,
-			"error":   map[string]any{"code": -32000, "message": "getLogs error"},
-		}
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	defer srv.Close()
-
-	g := NewGains(srv.URL)
-	_, err := g.FetchLiquidationsSince("ETH", 0)
-	if err == nil {
-		t.Fatal("expected error from getLogs failure")
+	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(500) }))
+	defer broken.Close()
+	m2 := NewGainsMulti(a, testGains("unused", broken.URL))
+	if _, err := m2.FetchOI("ETH"); err == nil {
+		t.Fatal("one deployment failing must fail the venue, not publish a partial OI")
 	}
-	g.mu.Lock()
-	lb := g.lastBlock["ETH"]
-	g.mu.Unlock()
-	if lb != 0 {
-		t.Errorf("lastBlock should not advance on error, got %d", lb)
-	}
-}
-
-func TestGains_FetchLiquidationsSince_UnknownAsset(t *testing.T) {
-	g := NewGains("http://unused")
-	_, err := g.FetchLiquidationsSince("DOGE", 0)
-	if err == nil {
-		t.Fatal("expected error for unsupported asset")
-	}
-}
-
-func init() {
-	// Suppress log output in tests
-	_ = fmt.Sprintf // keep fmt imported
 }
