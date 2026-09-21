@@ -3,7 +3,7 @@
 slug: hyperliquid-rpc
 number: "092"
 title: "Hyperliquid RPC endpoints: free public URLs and API-key providers by latency"
-seo_title: "Hyperliquid RPC endpoints: public URLs and API-key providers by latency"
+seo_title: "Hyperliquid RPC endpoints: public and API-key, ranked by latency"
 seo_description: "{{best_name}} leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Hyperliquid RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
