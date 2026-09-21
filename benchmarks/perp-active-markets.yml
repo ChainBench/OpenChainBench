@@ -13,15 +13,16 @@ unit: count
 higher_is_better: true
 
 seo_intro: |
-  This benchmark ranks 14 major onchain perp venues by total active markets.
-  Market count is the fastest proxy for breadth: a venue with 364 pairs gives
+  This benchmark ranks the major onchain perp venues by total active markets.
+  Market count is the fastest proxy for breadth: a venue with hundreds of pairs gives
   traders access to crypto, forex (EUR/USD, GBP/USD), tokenized stocks, commodities
   and stock indices alongside BTC and ETH. We poll each venue's public API every
-  5 minutes and publish one gauge per venue. Gains lists 364 pairs, the
-  widest catalog among EVM perp DEXes, vs Hyperliquid at 177 and dYdX at 114.
+  5 minutes and publish one gauge per venue. {{best_name}} lists the most today at
+  {{best_p50}}; Gains at {{p50:gains}} spans crypto, forex, stocks and commodities,
+  Ondo Perps at {{p50:ondo}} is mostly stocks and ETFs, Hyperliquid at {{p50:hyperliquid}} is crypto only.
 
 abstract: |
-  The bench polls 14 perp DEX venues every 5 minutes and publishes a live count
+  The bench polls the perp DEX cohort every 5 minutes and publishes a live count
   of active markets per venue. Sources: native API for most venues (Hyperliquid
   info metaAndAssetCtxs, Lighter orderBookDetails with market_type==perp filter,
   dYdX v4 indexer perpetualMarkets, Paradex markets summary, edgeX native markets,
@@ -80,7 +81,7 @@ faq:
   - q: "Why does Gains use Mobula as a source instead of its native API?"
     a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory Gains exposes on its interface."
   - q: "Is market count a good proxy for venue breadth?"
-    a: "It is the fastest proxy. A venue with 364 markets covering crypto, forex, stocks and commodities gives traders far more choice than one with 177 crypto-only markets. Depth per market is a separate signal; pair this bench with perp-open-interest and perp-fees for the full picture."
+    a: "It is the fastest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
   - q: "Why is Aster first if Gains covers more asset classes?"
     a: "Aster lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
 

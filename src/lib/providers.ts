@@ -117,6 +117,16 @@ const CANONICAL_NAMES: Record<string, string> = {
   // Blobs materialized before the rename still carry the old name on
   // some appearances; the override wins over every one of them.
   gains: "Gains",
+  // Perp venues whose spec name equals the title-cased slug: without an
+  // entry here the "upgrade a fallback name" rule below let the token
+  // valuation benches rename them to their ticker (HYPE, LIT, ASTER, DIME)
+  // on /products and every compare page (audit 2026-09-21).
+  hyperliquid: "Hyperliquid",
+  lighter: "Lighter",
+  aster: "Aster",
+  paradex: "Paradex",
+  extended: "Extended",
+  ondo: "Ondo Perps",
   // Brand casings the title-case fallback butchers ("Drpc", "Usdc",
   // "Meowrpc" — SEO audit 2026-07-08). Profiles built from bench specs
   // now inherit the spec's provider `name` field, but canonicalize() is
@@ -616,7 +626,7 @@ const buildProvidersCached = unstable_cache(
   // v6: profile names now inherit bench spec casing (dRPC, USDC, dYdX)
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
-  ["providers-v6"],
+  ["providers-v7"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
