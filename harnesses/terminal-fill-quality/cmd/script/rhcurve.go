@@ -107,8 +107,9 @@ func priceRHCurve(ctx context.Context, httpc *http.Client, c originChain, out *e
 	// eight of them (two hours); a curve quiet for longer stays unpriced.
 	var prev *rhTrade
 	to := tr.block
+	span := c.logsSpan()
 	for chunk := 0; chunk < 8 && prev == nil && to > 0; chunk++ {
-		from := to - 9000
+		from := to - span
 		if from < 0 {
 			from = 0
 		}

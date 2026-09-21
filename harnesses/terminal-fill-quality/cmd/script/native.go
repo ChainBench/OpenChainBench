@@ -235,6 +235,13 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 		}
 		seen, failed := map[string]int{}, map[string]int{}
 		read := 0 // blocks actually read: the sample's coverage of the range
+		var loopSlugs []string
+		for slug := range termOf {
+			if dropsLoops(slug) {
+				loopSlugs = append(loopSlugs, slug)
+			}
+		}
+		loopers := loopersOf(st, loopSlugs) // farming wallets stay out of the attempts too, as they do of the loss sample
 		for _, off := range rand.Perm(n)[:k] {
 			bn := rng[0] + int64(off)
 			var blk struct {
@@ -251,7 +258,7 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			read++
 			for _, tx := range blk.Transactions {
 				slug := byRouter[strings.ToLower(tx.To)]
-				if slug == "" || !f.mine(termOf[slug], tx.From) {
+				if slug == "" || !f.mine(termOf[slug], tx.From) || loopers[slug+":"+strings.ToLower(tx.From)] {
 					continue
 				}
 				var rc evmReceipt
@@ -352,6 +359,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		if from == 1 || head-from > 2000 {
 			if from != 1 {
 				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-200 (the gap is not read nor sampled)", c.slug, from-1, head-from, head)
+				cSkipped.WithLabelValues(c.slug).Add(float64(head - 200 - from))
 			}
 			from = head - 200 // first run, or too far behind: start from the recent past
 		}
