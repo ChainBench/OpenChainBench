@@ -2,9 +2,9 @@
 
 slug: perp-active-markets
 number: "116"
-title: Most tradable markets on a perp DEX, live count across 14 venues
+title: Most tradable markets on a perp DEX, live count per venue
 seo_title: "Perp DEX market count 2026"
-seo_description: "Live count of active perpetual futures markets across 14 DEX venues: Aster, Gains, edgeX, Extended, Aevo, Lighter, Hyperliquid, GRVT, dYdX, Ostium, Pacifica, Paradex, Vertex, Polymarket. Refreshed every 5 minutes."
+seo_description: "{{best_name}} lists the most perpetual markets, {{best_p50}} live, across {{count}} venues (Hyperliquid, Aster, Lighter, Ondo Perps, dYdX, Paradex, edgeX and more), counted from each venue's API every 5 minutes."
 subtitle: Live count of active perpetual futures markets per venue, polled every 5 minutes from each venue's public API. Higher means more tradable instruments across crypto, forex, stocks, indices and commodities.
 category: Trading
 status: live
@@ -52,7 +52,7 @@ methodology:
   - "Failures: a venue that errors keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} leads the cohort with {{best_p50}} active markets across 14 measured perp DEX venues."
+  - "{{best_name}} leads the cohort with {{best_p50}} active markets across the {{count}} measured perp DEX venues."
   - "{{name:gains}} lists {{p50:gains}} active markets, spanning crypto, forex, stocks, indices and commodities. The widest multi-asset catalog among EVM perp DEXes."
   - "{{name:aster}} lists {{p50:aster}} active markets. BNB Chain perps with a Binance-compatible API."
   - "{{name:edgex}} lists {{p50:edgex}} active markets. zkSync-based offchain CLOB."
@@ -98,6 +98,18 @@ providers:
       sample_size: count_over_time(perp_venue_active_markets{venue="aster"}[24h])
       series: perp_venue_active_markets{venue="aster"}
 
+  - slug: ondo
+    name: Ondo Perps
+    tag: SGX off-chain matching, custody on Ethereum and Arbitrum, stocks and commodities perps
+    formula: "Count of enabled perpetual markets from the Ondo Perps /v1/perps/contracts endpoint. Mostly US equities, ETFs, commodities, indices and FX, plus nine crypto pairs."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="ondo"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="ondo"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="ondo"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="ondo"}[24h])
+      success: avg_over_time(perp_venue_health{venue="ondo"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="ondo"}[24h])
+      series: perp_venue_active_markets{venue="ondo"}
   - slug: gains
     name: Gains
     tag: Synthetic perps on Arbitrum, Base, Polygon and ApeChain, multi-asset

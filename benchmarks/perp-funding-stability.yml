@@ -4,7 +4,7 @@ slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
 seo_title: "Perp funding stability 2026: ETH stddev"
-seo_description: "Live 24h stddev of ETH perpetual funding rate in bps across 15 major venues. Deepest book = smoothest rate."
+seo_description: "{{best_name}} has the steadiest ETH perp funding, {{best_p50}} bps stddev over 24h, across {{count}} venues (DEXs and CEXs, Ondo Perps included). Deepest book, smoothest rate."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
@@ -24,9 +24,9 @@ seo_intro: |
   same number. The bench reads the same normalized series as
   perp-funding (per-venue hold cost in bps per 24h) and exposes
   stddev_over_time of that series on a 24 hour window for ETH.
-  Cohort is 15 venues across two sources: 7 polled directly by the
+  Cohort is {{count}} venues across two sources: 8 polled directly by the
   harness (Hyperliquid onchain, Bybit, dYdX v4 Cosmos appchain,
-  Binance, OKX, Paradex Starknet L2, Aster BNB Chain) and 8 sourced
+  Binance, OKX, Paradex Starknet L2, Aster BNB Chain, Ondo Perps) and 8 sourced
   through Mobula's CEFI funding aggregator (Bitget, Coinbase,
   Deribit, Gate, Kraken, KuCoin, Lighter, MEXC). Lower is better.
 
@@ -45,7 +45,7 @@ methodology:
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
   - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[24h]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
-  - "Cohort. 15 venues across two sources. 7 polled directly (perp_funding_hold_24h_bps): Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex, Aster. 8 via Mobula CEFI aggregator (perp_venue_funding_24h_bps): Bitget, Coinbase, Deribit, Gate, Kraken, KuCoin, Lighter, MEXC. Both normalize to bps per 24h hold, sign preserved, so the unsigned stddev compares cleanly across the full cohort."
+  - "Cohort. Two sources. 8 polled directly (perp_funding_hold_24h_bps): Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex, Aster, Ondo Perps. 8 via Mobula CEFI aggregator (perp_venue_funding_24h_bps): Bitget, Coinbase, Deribit, Gate, Kraken, KuCoin, Lighter, MEXC. Both normalize to bps per 24h hold, sign preserved, so the unsigned stddev compares cleanly across the full cohort."
   - "Success. Same freshness signal as perp-funding: perp_funding_venue_ok_unix advancing within the last 5 minutes. A venue whose scrape stalls is tagged stale on the row."
   - "Cadence. The upstream funding harness polls every 60 seconds; Prometheus scrapes every 30 seconds. The 7 day stddev refreshes on every scrape."
   - "Failures. A venue whose upstream funding feed errors keeps its last gauge value; the leaderboard tags the row stale once the success gauge drops to 0."
@@ -181,6 +181,19 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+
+  - slug: ondo
+    name: Ondo Perps
+    tag: SGX off-chain matching, custody on Ethereum and Arbitrum, hourly funding read from the venue API
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"ondo\",asset=\"ETH\"} over a 24h window. Source: Ondo Perps /v1/perps/contracts (hourly fundingRate x 24), polled by the cohort harness every 5 minutes."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="ondo",source="ondo_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
 
   # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
   # Same metric semantics as perp_funding_hold_24h_bps but normalized

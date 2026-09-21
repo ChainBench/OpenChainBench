@@ -54,6 +54,10 @@ func loadConfig() *Config {
 		// hardcoded because no fee schedule API is published — disclosed
 		// in the spec formula.
 		{slug: "aster", display: "Aster", assets: []string{"ETH", "BTC", "SOL"}},
+		// Ondo Perps (SGX off-chain matching, custody on Ethereum and
+		// Arbitrum). Taker fee and hourly funding from the contract row,
+		// depth endpoint (10 levels per side) for the walk.
+		{slug: "ondo", display: "Ondo Perps", assets: []string{"ETH", "BTC", "SOL"}},
 		// edgeX (offchain CLOB perp DEX). Public depth endpoint keyed by
 		// contractId (map hardcoded after a one-time getMetaData lookup);
 		// taker fee (3.8 bps, edgex-1.gitbook.io) hardcoded because no
