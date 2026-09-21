@@ -182,10 +182,10 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th("loss", "Loss", "1 − value received / value given, basis points of the trade; ! = out of bounds, excluded from the statistics")}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
               {th("terminal", "Fee", "terminal fee, bps")}
-              {th("network", "Net", "tx fee + inclusion tips, bps; on Relay rows the destination gas Relay charged is included")}
+              {th("network", "Net", "tx fee + inclusion tips + the deposit of new token accounts, bps; on Relay rows the destination gas Relay charged is included")}
               {th(undefined, "Protocol", "launchpad / curve / creator fees (pump.fun, the EVM launchpads), referral payouts, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
-              {th(undefined, "Rent", "SOL deposit of the token accounts the swap created (about 0.002 SOL each), in $: refundable when the account is closed, so not in the loss; on a small trade it can exceed every fee")}
+              {th(undefined, "Rent", "SOL deposit of the token accounts the swap created (about 0.002 SOL each), in $: counted in Net (a refund when the account is closed is not credited); on a small trade it can exceed every fee")}
               {th(undefined, "Reference", "exact mid: the pool's reserves before the swap; previous trade: the trade before ours on the same pool, age in seconds", "left")}
               {th(undefined, "Sandwich", "neighbours on the pool screened; a hit links to the front-run, hover for the attacker", "left")}
             </tr>
