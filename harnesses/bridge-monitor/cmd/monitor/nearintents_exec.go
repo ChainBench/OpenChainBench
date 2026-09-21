@@ -220,10 +220,18 @@ func (n *NearIntentsBridge) Status(depositAddress, memo string) (string, error) 
 		return "", fmt.Errorf("status %d: %s", resp.StatusCode, truncateNI(string(raw), 200))
 	}
 	var out struct {
-		Status string `json:"status"`
+		Status      string `json:"status"`
+		SwapDetails struct {
+			DestinationChainTxHashes []struct {
+				Hash string `json:"hash"`
+			} `json:"destinationChainTxHashes"`
+		} `json:"swapDetails"`
 	}
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return "", fmt.Errorf("status decode: %w", err)
+	}
+	if len(out.SwapDetails.DestinationChainTxHashes) > 0 {
+		n.lastDestTx = out.SwapDetails.DestinationChainTxHashes[0].Hash
 	}
 	return out.Status, nil
 }
@@ -286,6 +294,7 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 		return result, txHash, fmt.Errorf("near-intents deposit transfer failed: %w", err)
 	}
 	result.TxHash = txHash
+	e.markBroadcast(route.FromChain, txHash)
 
 	// Best-effort notify; the solver also detects the deposit on-chain.
 	if serr := e.nearIntents.SubmitDeposit(txHash, quote.Quote.DepositAddress, quote.Quote.DepositMemo); serr != nil {
@@ -293,14 +302,17 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 	}
 
 	// Poll to settlement.
+	e.nearIntents.lastDestTx = ""
 	status := e.pollNearIntentsSettle(quote.Quote.DepositAddress, quote.Quote.DepositMemo, 5*time.Minute)
 	now := time.Now()
 	result.ExecutionLatencyMs = now.Sub(broadcastStart).Milliseconds()
 	result.E2ELatencyMs = now.Sub(quoteStart).Milliseconds()
+	nearDestTx := e.nearIntents.lastDestTx
 
 	switch status {
 	case "SUCCESS":
 		result.Success = true
+		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, nearDestTx)
 	case "REFUNDED", "FAILED":
 		result.Reverted = true
 		result.Refunded = status == "REFUNDED"
@@ -315,6 +327,10 @@ func (e *Executor) executeNearIntents(route TestRoute, amountUSD float64, rawUni
 	result.OutputUSD = outUsd
 	if inUsd > 0 && outUsd > 0 && inUsd >= outUsd {
 		result.ActualFeeUSD = inUsd - outUsd
+		// The quote-projected fee, so the slippage panel compares realized
+		// against quoted like the other bridges (it used to be 0 here, and
+		// the whole realized fee was published as slippage).
+		result.QuoteFeeUSD = inUsd - outUsd
 	}
 	return result, txHash, nil
 }
