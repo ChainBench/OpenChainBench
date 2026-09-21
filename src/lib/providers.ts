@@ -637,7 +637,7 @@ export function isHexAddressSlug(slug: string): boolean {
   return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
 }
 
-function isBlacklistedSlug(slug: string): boolean {
+export function isBlacklistedSlug(slug: string): boolean {
   const lc = slug.toLowerCase();
   return DEAD_COMPOSITE_SLUGS.has(lc) || HEX_ADDRESS_SLUG.test(lc);
 }
