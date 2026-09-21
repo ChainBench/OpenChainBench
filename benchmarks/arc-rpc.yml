@@ -4,7 +4,7 @@ slug: arc-rpc
 number: "270"
 title: "Arc RPC endpoints: free public URLs and API-key providers by latency"
 seo_title: "Arc RPC endpoints: public URLs and API-key providers by latency"
-seo_description: "{{best_name}} leads free Arc RPC at {{best_p50}}, {{best_name:tier:keyed}} the API-key cohort at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints."
+seo_description: "{{best_name}} leads free Arc RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Arc RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
@@ -27,7 +27,7 @@ seo_intro: |
 
 abstract: |
   Arc: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the Circle-operated endpoint measures {{p50:arc-official}}. The same page carries the API-key cohort, Alchemy, Chainstack and QuickNode on their keyed Arc endpoints every 120 seconds: switch the Endpoints selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
-  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Arc endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore, and against the keyed endpoints of Alchemy, Chainstack and QuickNode every 120 seconds. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) so the leaderboard rewards sustained, honest availability rather than a fast error message. Arc produces blocks in well under a second; the stale check tolerates 20 blocks.
+  We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Arc endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore, and against the keyed endpoints of Alchemy, Chainstack and QuickNode every 120 seconds. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) so the leaderboard rewards sustained, honest availability rather than a fast error message. Arc produces blocks in well under a second; the stale check tolerates 40 blocks (20 s) on the public cohort and 20 on the keyed one.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
@@ -51,7 +51,7 @@ faq:
   - q: "Which Arc RPC provider is fastest with an API key?"
     a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to API key for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
   - q: "Is a keyed Arc RPC faster than a free public one?"
-    a: "Compare the two leaders, measured on the same call from the same three regions: {{best_name}} at {{best_p50}} on the free cohort against {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} with an API key (p50, 24h). They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Arc, the success rate whether it buys reliability."
+    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the API-key cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Arc, the success rate whether it buys reliability."
   - q: "What is Arc?"
     a: "Arc (chain ID 5042) is Circle's EVM Layer 1 for stablecoin finance: USDC is the gas token, consensus is Malachite BFT with sub-second deterministic finality, and the validator set is permissioned (BlackRock, DTCC, Visa, Mastercard and ICE among the founding validators). Mainnet opened on 2026-09-16; it supports standard EVM tooling and eth_ JSON-RPC methods."
 

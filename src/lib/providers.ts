@@ -16,7 +16,6 @@ import { loadSpecsUncached } from "@/lib/materialize/load";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { liveResults } from "@/lib/provider-filters";
 import { citationCandidates } from "@/lib/citation";
-import { rankResults } from "@/lib/ranking";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -478,7 +477,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
     // consumers key off `tier` to ignore its cellRanks / bestPerChain,
     // which describe the headline cohort only.
     for (const [tier, rows] of Object.entries(b.tierResults ?? {})) {
-      const cohortRanked = b.status === "live" ? rankResults(liveResults(rows), b.higherIsBetter) : [];
+      // Same reliability gate as the headline cohort (rankProviders).
+      const cohortRanked = b.status === "live" ? rankProviders({ ...b, results: rows }) : [];
       const cohortRankBySlug = new Map<string, number>();
       cohortRanked.forEach((r, idx) => cohortRankBySlug.set(r.slug.toLowerCase(), idx));
       for (const r of rows) {

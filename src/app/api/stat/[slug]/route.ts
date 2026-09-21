@@ -4,6 +4,7 @@ import { SITE } from "@/data/site";
 import {
   citableAsOf,
   citationQuote,
+  benchPath,
   citeBundle,
   fieldValue,
   headlineSentence,
@@ -62,7 +63,24 @@ export async function GET(
   if (regionParam && regionParam !== "all") filters.region = regionParam;
   if (kindParam && kindParam !== "all") filters.kind = kindParam;
   if (venueParam && venueParam !== "all") filters.venue = venueParam;
-  if (tierParam && tierParam !== "all") filters.tier = tierParam;
+  // Tier is resolved against the declared values like the variant route:
+  // an unknown tier must not build an empty cohort and answer from it.
+  if (tierParam && tierParam !== "all") {
+    const aggregate = await getBenchmark(slug);
+    const known = aggregate?.dimensions?.tier?.find(
+      (t) => t.value.toLowerCase() === tierParam.toLowerCase().trim(),
+    );
+    if (!known) {
+      return NextResponse.json(
+        { error: "unknown_tier", tier: tierParam },
+        { status: 400, headers: { "cache-control": "public, s-maxage=60" } },
+      );
+    }
+    // The headline tier is the aggregate itself (no variant blob exists
+    // for it): resolve it to no filter like the variant route does.
+    const headline = aggregate?.aggregateFilters?.tier ?? aggregate?.dimensions?.tier?.[0]?.value;
+    if (known.value !== headline) filters.tier = known.value;
+  }
   const b = await getBenchmark(slug, filters);
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
@@ -135,7 +153,7 @@ export async function GET(
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
-    pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
+    pageUrl: `${SITE.url}${benchPath(b)}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,
     source: b.source,
     methodology: b.methodology,

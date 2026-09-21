@@ -111,3 +111,41 @@ describe("citation reliability threshold", () => {
     expect(top?.value).toBe(ranks[0].ms.p50);
   });
 });
+
+import { headlineSentence, citationQuote, benchPath, nonHeadlineTier } from "./citation";
+
+describe("citation, access tiers", () => {
+  const tiers = [
+    { value: "public", label: "Public, no key" },
+    { value: "keyed", label: "API key" },
+  ];
+  const rpc = (results: ProviderResult[]): Benchmark => ({
+    ...bench(results),
+    slug: "robinhood-rpc",
+    title: "Robinhood Chain RPC endpoints: free public URLs and API-key providers by latency",
+    dimensions: { tier: tiers },
+  });
+
+  test("the headline cohort keeps the clean URL and the free public wording", () => {
+    const b = rpc([{ ...r("publicnode", "PublicNode", 40), tier: "public" }, { ...r("drpc", "dRPC", 55), tier: "public" }]);
+    expect(nonHeadlineTier(b)).toBeNull();
+    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc");
+    expect(headlineSentence(b)).toContain("free public Robinhood Chain RPC endpoints");
+  });
+
+  test("the keyed variant names its cohort and links its tab", () => {
+    const b = rpc([
+      { ...r("chainstack", "Chainstack", 3), tier: "keyed" },
+      { ...r("alchemy", "Alchemy", 9), tier: "keyed" },
+      { ...r("quicknode", "QuickNode", 12), tier: "keyed" },
+    ]);
+    expect(nonHeadlineTier(b)).toBe("keyed");
+    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc?tier=keyed");
+    const sentence = headlineSentence(b);
+    expect(sentence).toContain("of the 3 API-key Robinhood Chain RPC endpoints measured");
+    expect(sentence).not.toContain("free public");
+    expect(citationQuote(b, "https://openchainbench.com")).toContain(
+      "https://openchainbench.com/benchmarks/robinhood-rpc?tier=keyed",
+    );
+  });
+});

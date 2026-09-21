@@ -613,7 +613,7 @@ async function buildSharedBenches(
       const bEntry = bByBench.get(benchSlug);
       if (!aEntry || !bEntry) return null;
       const tier = aEntry.tier;
-      const fullBench = await loadBenchmark(benchSlug);
+      const fullBench = await loadBenchmark(benchSlug, tier ? { tier } : {});
       if (!fullBench) return null;
 
       const higherIsBetter = fullBench.higherIsBetter === true;

@@ -350,7 +350,7 @@ export async function buildSharedBenches(
       // Both rows sit in the same cohort; a non-headline one (keyed RPC
       // providers) scopes every breakdown load to that tier.
       const tier = aEntry.tier;
-      const fullBench = await loadBenchmark(benchSlug);
+      const fullBench = await loadBenchmark(benchSlug, tier ? { tier } : {});
       if (!fullBench) return null;
 
       const higherIsBetter = fullBench.higherIsBetter === true;

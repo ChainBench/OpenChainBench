@@ -4,7 +4,7 @@ slug: ethereum-rpc
 number: "044"
 title: "Ethereum RPC endpoints: free public URLs and API-key providers by latency"
 seo_title: "Ethereum RPC endpoints: public URLs and API-key providers by latency"
-seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}}, {{best_name:tier:keyed}} the API-key cohort at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50, 24h). URLs for all {{count}} no-key endpoints."
+seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
@@ -48,7 +48,7 @@ faq:
   - q: "Which Ethereum RPC provider is fastest with an API key?"
     a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to API key for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
   - q: "Is a keyed Ethereum RPC faster than a free public one?"
-    a: "Compare the two leaders, measured on the same call from the same three regions: {{best_name}} at {{best_p50}} on the free cohort against {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} with an API key (p50, 24h). They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Ethereum, the success rate whether it buys reliability."
+    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the API-key cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Ethereum, the success rate whether it buys reliability."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
