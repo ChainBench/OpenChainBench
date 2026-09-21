@@ -217,7 +217,7 @@ function xchainLabel(slug: string): string {
   const m = slug.match(XCHAIN_SUFFIX);
   if (!m) return "";
   if (m[1] === "funding") return "funding leg";
-  const viaRelay = slug.startsWith("fomo-") || slug.startsWith("pump-fun-"); // BasedBot's chain rows are native swaps on its router
+  const viaRelay = slug.startsWith("fomo-") || slug.startsWith("pump-fun-") || slug.startsWith("phantom-"); // BasedBot's chain rows are native swaps on its router
   return `on ${CHAIN_NAMES[m[1]] ?? m[1]}${viaRelay ? " via Relay" : ""}`;
 }
 function chainText(t: TerminalFillStats): string {
