@@ -139,13 +139,13 @@ metric_panels:
     tab: false
     description: "Relay's fixed and price fees plus the solver's spread (deposit minus received minus app fee minus the destination gas, which is in Network), share of the trade: the chain row's median; on All chains flow-weighted, blank when the bridged rows carry under half the flow."
   - id: other
-    label: Other fees
+    label: Protocol fees
     label_key: terminal
     metric: tfq_component_bps{component="other",chain="all"}
     unit: bp
     higher_is_better: false
     tab: false
-    description: "Median quote that reached neither the final pool, the terminal nor the network: pump.fun protocol and creator fees, referral payouts, and on routed swaps the routers' cuts and the hops' leftovers (a residual over a quarter of the trade stays in Pool: route not followed)."
+    description: "What the protocol took, median share of the trade: launchpad and curve fees (pump.fun; the EVM launchpads' 1 % plus a creator fee set per token), referral payouts, and on routed swaps the routers' cuts and hop leftovers (a residual over a quarter of the trade stays in Pool)."
   - id: fail_rate
     label: Failed swaps
     label_key: terminal
@@ -195,7 +195,7 @@ ledger_columns:
   - { label: "Network", panel: network }
   - { label: "Pool", panel: pool }
   - { label: "Relay", panel: relay }
-  - { label: "Other fees", panel: other }
+  - { label: "Protocol fees", panel: other }
   - { label: "Failed swaps", panel: fail_rate }
 
 dimensions:
