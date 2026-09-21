@@ -2,10 +2,10 @@
 
 slug: polygon-rpc
 number: "050"
-title: "Polygon RPC endpoints: free public URLs and API-key providers by latency"
-seo_title: "Polygon RPC endpoints: public and API-key, ranked by latency"
-seo_description: "{{best_name}} leads free Polygon RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Polygon RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
+title: "Polygon RPC endpoints: free public URLs and private API-key providers by latency"
+seo_title: "Polygon RPC endpoints: public and private, ranked by latency"
+seo_description: "{{best_name}} leads free Polygon RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the private (API-key) cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Polygon RPC endpoint (probed every 60 seconds) and, under the Endpoints selector (Private), against the API-key endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
 status: live
@@ -17,7 +17,7 @@ seo_intro: |
   Polygon has no chain-official endpoint in the free tier, so this is the purest gateway-versus-gateway comparison in the cluster: PublicNode, dRPC, Tenderly and Nodies, all answering the same `eth_getBlockByNumber` probe every 60 seconds from three regions. With no house endpoint to anchor expectations, the regional flips between gateways decide the ranking, and they flip often.
 
 abstract: |
-  Polygon: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the API-key cohort, Alchemy, Chainstack and QuickNode on their keyed Polygon endpoints every 120 seconds: switch the Endpoints selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
+  Polygon: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the private cohort (API key), Alchemy, Chainstack and QuickNode on their keyed Polygon endpoints every 120 seconds: switch the Endpoints selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
   We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Polygon endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Polygon-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -25,20 +25,20 @@ methodology:
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Polygon-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"polygon\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
-  - "API-key cohort (Endpoints selector, API key): Alchemy, Chainstack and QuickNode probed on their keyed Polygon endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Private cohort (Endpoints selector, Private): Alchemy, Chainstack and QuickNode probed on their keyed Polygon endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet. GetBlock is listed under exclusions until a key exists."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
 excluded_providers:
   - { name: Ankr, reason: "public endpoint requires an API key" }
   - { name: NodeReal, reason: "requires an API key" }
-  - { name: GetBlock, reason: "requires an API key; no key held yet, so it is not in the API-key cohort either" }
+  - { name: GetBlock, reason: "requires an API key; no key held yet, so it is not in the private cohort either" }
   - { name: 1RPC, reason: "delisted for reliability: under 13 % success at one probe per minute", since: "2026-07-09" }
   - { name: gateway.fm, reason: "29 requests per IP budget, too small for continuous probing" }
   - { name: LlamaRPC, reason: "Cloudflare 521 from the probe regions" }
   - { name: BlockPI, reason: "Cloudflare 521 from the probe regions" }
   - { name: OmniaTech, reason: "Cloudflare 521 from the probe regions" }
-  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; Alchemy's keyed endpoint is in the API-key cohort on this page" }
+  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; Alchemy's keyed endpoint is in the private cohort on this page" }
 
 faq:
   - q: "Which Polygon RPCs work without an API key?"
@@ -46,9 +46,9 @@ faq:
   - q: "Why is there no official Polygon RPC in this benchmark?"
     a: "Polygon's historically documented public endpoint (`polygon-rpc.com`) is operated by a third party and has moved in and out of key-gating and rate-limit regimes that break our 60-second probe cadence. The bench includes only endpoints that sustain continuous no-key probing; the multi-chain gateways above all pass that bar on Polygon."
   - q: "Which Polygon RPC provider is fastest with an API key?"
-    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to API key for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to Private for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
   - q: "Is a keyed Polygon RPC faster than a free public one?"
-    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the API-key cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Polygon, the success rate whether it buys reliability."
+    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the private cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Polygon, the success rate whether it buys reliability."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -71,7 +71,7 @@ dimensions:
   # first value is the headline cohort; ?tier=keyed reaches the other.
   tier:
     - { value: public, label: "Public, no key" }
-    - { value: keyed,  label: "API key" }
+    - { value: keyed,  label: "Private, API key" }
 
 providers:
   - slug: publicnode

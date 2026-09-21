@@ -22,11 +22,11 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "RPC providers ranked per chain from 3 regions: free public endpoints with URLs, plus Alchemy, Chainstack and QuickNode on API-key endpoints, ranked apart.";
+  "RPC providers ranked per chain from 3 regions: free public endpoints with URLs, plus Alchemy, Chainstack and QuickNode on private (API-key) endpoints, ranked apart.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "RPC providers by chain: public and API-key endpoints, by latency",
+  title: "RPC providers by chain: public and private endpoints, by latency",
   description: DESCRIPTION,
 });
 
@@ -82,7 +82,7 @@ export default async function RpcHubPage() {
           "@type": "ItemList",
           name: "Per-chain RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from 3 regions, and on the major chains an API-key cohort (Alchemy, Chainstack, QuickNode) measured every 120 seconds and ranked separately.",
+            "Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from 3 regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, QuickNode) measured every 120 seconds and ranked separately.",
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -117,7 +117,7 @@ export default async function RpcHubPage() {
       <header className="mb-8">
         <p className="label-mono text-sky-600 mb-2">RPC nodes</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          RPC providers by chain: public and API-key endpoints, ranked by latency
+          RPC providers by chain: public and private endpoints, ranked by latency
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Every free, no-key public RPC endpoint, measured per chain with
@@ -129,8 +129,8 @@ export default async function RpcHubPage() {
             <>
               {" "}
               On {keyedChains.length} chains ({keyedChains.join(", ")}) the same
-              page also ranks the API-key endpoints of Alchemy, Chainstack and
-              QuickNode, probed every 120 seconds with plan tiers disclosed;
+              page also ranks the private (API-key) endpoints of Alchemy,
+              Chainstack and QuickNode, probed every 120 seconds with plan tiers disclosed;
               the Endpoints selector below switches between the two cohorts,
               which are never ranked against each other.
             </>
@@ -265,7 +265,7 @@ export default async function RpcHubPage() {
           are excluded rather than listed with an asterisk.
         </p>
         <p className="mt-3">
-          API-key cohort: on the chains that carry one, Alchemy, Chainstack
+          Private cohort (API key): on the chains that carry one, Alchemy, Chainstack
           and QuickNode are probed on their keyed endpoints every 120
           seconds from the same three regions with the same payload and
           classification; keys never leave the probe environment and the

@@ -142,7 +142,7 @@ describe("citation, access tiers", () => {
     expect(nonHeadlineTier(b)).toBe("keyed");
     expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc?tier=keyed");
     const sentence = headlineSentence(b);
-    expect(sentence).toContain("of the 3 API-key Robinhood Chain RPC endpoints measured");
+    expect(sentence).toContain("of the 3 private (API-key) Robinhood Chain RPC endpoints measured");
     expect(sentence).not.toContain("free public");
     expect(citationQuote(b, "https://openchainbench.com")).toContain(
       "https://openchainbench.com/benchmarks/robinhood-rpc?tier=keyed",

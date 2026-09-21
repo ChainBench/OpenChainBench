@@ -211,6 +211,7 @@ export function BenchmarkBody({
   initialTier = null,
   hasLongHistory = false,
   pageActions,
+  headlineCohortBlock,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
@@ -239,6 +240,11 @@ export function BenchmarkBody({
    *  affordances sit visually next to the per-chart Copy / Download
    *  button instead of floating alone at the top of the page. */
   pageActions?: import("react").ReactNode;
+  /** Server-rendered block that belongs to the headline cohort only
+   *  (the public endpoint URLs of a chain RPC page). Rendered under the
+   *  ledger and hidden while another tier (Private) is selected: keyed
+   *  URLs are never listed, so the block would contradict the table. */
+  headlineCohortBlock?: import("react").ReactNode;
 }) {
   // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
@@ -1081,6 +1087,7 @@ export function BenchmarkBody({
                 <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
+          {!effectiveTier && headlineCohortBlock}
         </>
       )}
     </>
