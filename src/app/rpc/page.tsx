@@ -22,11 +22,11 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "RPC providers ranked per chain from 3 regions: free public endpoints with their URLs, and Alchemy, Chainstack, QuickNode on API-key endpoints, ranked separately. Live 24h p50 latency.";
+  "RPC providers ranked per chain from 3 regions: free public endpoints with URLs, plus Alchemy, Chainstack and QuickNode on API-key endpoints, ranked apart.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "RPC providers by chain: public endpoints and API-key providers ranked by latency",
+  title: "RPC providers by chain: public and API-key endpoints, by latency",
   description: DESCRIPTION,
 });
 
@@ -117,7 +117,7 @@ export default async function RpcHubPage() {
       <header className="mb-8">
         <p className="label-mono text-sky-600 mb-2">RPC nodes</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          RPC providers by chain: public endpoints and API-key providers, ranked by latency
+          RPC providers by chain: public and API-key endpoints, ranked by latency
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Every free, no-key public RPC endpoint, measured per chain with
@@ -249,7 +249,7 @@ export default async function RpcHubPage() {
       )}
 
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
-        <p className="label-mono text-ink-faint mb-2">Methodology</p>
+        <h2 className="label-mono text-ink-faint mb-2">Methodology</h2>
         <p>
           Each chain row aggregates that chain&apos;s dedicated bench: an
           identical JSON-RPC POST (<code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> with

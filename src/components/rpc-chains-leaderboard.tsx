@@ -152,7 +152,7 @@ export function RpcChainsLeaderboard({
                 dir={sortDir}
                 onClick={() => setSort("bestP90")}
               >
-                <span title="p90 latency of the same overall-best provider — the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
+                <span title="p90 latency of the same overall-best provider, the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
                   Best p90
                 </span>
               </ThSort>
