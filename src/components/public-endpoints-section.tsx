@@ -10,7 +10,9 @@
  *
  * Keyed providers never appear here: `provider.endpoint` is refused by
  * the spec schema when the URL carries a token, so nothing from the
- * keyed benches can leak through this component.
+ * API-key cohort (tier: keyed, same page behind the Endpoints selector)
+ * can leak through this component. They are named, with a link to the
+ * keyed tab, never with a URL.
  */
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -19,8 +21,7 @@ import { fmtUnit } from "@/lib/format";
 import { canonicalize } from "@/lib/providers";
 import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
 import { LEADER_MIN_SUCCESS_PCT, rpcChainLabel } from "@/lib/citation";
-import { displayResults } from "@/lib/provider-filters";
-import { getSpecs } from "@/lib/spec";
+import { displayResults, liveResults } from "@/lib/provider-filters";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -58,13 +59,14 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
   const belowFloor = rows.filter((r) => (r.successRate ?? 100) < LEADER_MIN_SUCCESS_PCT).length;
 
   // The "<chain> rpc provider" searcher (414 impressions, 0 clicks on
-  // 2026-09-19) wants the keyed providers named too. They are compared on
-  // the keyed page when this deployment has one; named here, never with
-  // a URL.
-  const keyed = (await getSpecs().catch(() => [])).find(
-    (sp) => sp.slug === `keyed-rpc-${chainSlug}`,
-  );
-  const keyedNames = keyed ? keyed.providers.map((pv) => pv.name) : [];
+  // 2026-09-19) wants the keyed providers named too. They are the bench's
+  // own API-key cohort (tier dimension), ranked behind the Endpoints
+  // selector; named here with a link to that tab, never with a URL.
+  const keyedTier = benchmark.dimensions?.tier?.find((t) => t.value === "keyed");
+  const keyedNames = keyedTier
+    ? liveResults(benchmark.tierResults?.keyed ?? []).map((r) => r.name)
+    : [];
+  const keyed = keyedTier && keyedNames.length > 0 ? { slug: benchmark.slug } : null;
   const heading = chainLabel
     ? `Public ${chainLabel} RPC endpoints measured`
     : "Public endpoints measured";
@@ -86,9 +88,9 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
           <>
             {keyedNames.slice(0, -1).join(", ")}
             {keyedNames.length > 1 ? " and " : ""}
-            {keyedNames[keyedNames.length - 1]}, which need an API key, are compared on the{" "}
-            <Link href={`/benchmarks/${keyed.slug}`} className="underline underline-offset-2">
-              keyed {chainLabel ?? ""} RPC page
+            {keyedNames[keyedNames.length - 1]}, which need an API key, are ranked separately under the{" "}
+            <Link href={`/benchmarks/${keyed.slug}?tier=keyed`} className="underline underline-offset-2">
+              API key tab
             </Link>
             ; keyed URLs are never listed.
           </>

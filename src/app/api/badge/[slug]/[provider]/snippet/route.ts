@@ -50,13 +50,9 @@ export async function GET(
     return NextResponse.json({ error: "invalid_slug" }, { status: 400 });
   }
 
-  const benchmark = await getBenchmark(slug);
-  if (!benchmark) {
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate) {
     return NextResponse.json({ error: "bench_not_found" }, { status: 404 });
-  }
-  const result = benchmark.results.find((p) => p.slug === provider);
-  if (!result) {
-    return NextResponse.json({ error: "provider_not_found" }, { status: 404 });
   }
 
   const sp = req.nextUrl.searchParams;
@@ -64,11 +60,29 @@ export async function GET(
   const chain = sp.get("chain")?.trim() || "";
   const region = sp.get("region")?.trim() || "";
   const kind = sp.get("kind")?.trim() || "";
+  // Access tier: the provider lives in another cohort's bench object.
+  const rawTier = sp.get("tier")?.trim().toLowerCase() || "";
+  const tierOption = rawTier
+    ? aggregate.dimensions?.tier?.find((t) => t.value.toLowerCase() === rawTier)
+    : undefined;
+  if (rawTier && !tierOption) {
+    return NextResponse.json({ error: "unknown_tier" }, { status: 400 });
+  }
+  const tier = tierOption?.value ?? "";
+  const benchmark =
+    tierOption && tierOption.value !== aggregate.aggregateFilters?.tier
+      ? ((await getBenchmark(slug, { tier: tierOption.value })) ?? aggregate)
+      : aggregate;
+  const result = benchmark.results.find((p) => p.slug === provider);
+  if (!result) {
+    return NextResponse.json({ error: "provider_not_found" }, { status: 404 });
+  }
 
   const scopeQs = new URLSearchParams();
   if (chain) scopeQs.set("chain", chain);
   if (region) scopeQs.set("region", region);
   if (kind) scopeQs.set("kind", kind);
+  if (tier) scopeQs.set("tier", tier);
   const scopeSuffix = scopeQs.toString();
 
   const badgeUrl =
@@ -93,7 +107,7 @@ export async function GET(
         provider: { slug: provider, name: result.name },
         badge_url: badgeUrl,
         snippets,
-        scope: { chain: chain || null, region: region || null, kind: kind || null },
+        scope: { chain: chain || null, region: region || null, kind: kind || null, tier: tier || null },
         license: "CC-BY-4.0",
       },
       {

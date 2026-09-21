@@ -27,6 +27,7 @@ import {
   readPairCache,
   writePairCache,
 } from "@/lib/compare-cache";
+import { sharedBenchSlugs } from "@/lib/compare-compute";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -148,13 +149,7 @@ function hasSharedBenches(
   bAppearances: Awaited<ReturnType<typeof getProvider>>,
 ): boolean {
   if (!aAppearances || !bAppearances) return false;
-  const aSlugs = new Set(aAppearances.appearances.map((x) => x.benchmark.slug));
-  const bSlugs = new Set(bAppearances.appearances.map((x) => x.benchmark.slug));
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
-    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  return candidateSlugs.some((s) => !excluded.has(s));
+  return sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances).length > 0;
 }
 
 export async function generateMetadata({
@@ -192,13 +187,8 @@ export async function generateMetadata({
 
   // Compute shared bench count from appearances (already loaded via
   // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
-  const aSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
-  const bSlugs = new Set(b.appearances.map((x) => x.benchmark.slug));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugsForMeta = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
-    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
-  const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
+  const sharedSlugsForMeta = sharedBenchSlugs(pair, a.appearances, b.appearances);
+  const sharedCount = sharedSlugsForMeta.length;
   const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
 
   // Title carries the count: `LI.FI vs Relay 2026: 2 live benchmarks compared`
@@ -229,7 +219,7 @@ export async function generateMetadata({
       .map((x) => x.benchmark.slug),
   );
   const liveSharedCount = sharedSlugsForMeta.filter(
-    (s) => !excluded.has(s) && aLive.has(s) && bLive.has(s),
+    (s) => aLive.has(s) && bLive.has(s),
   ).length;
   // Curated pairs are hand-picked head-term targets like usdc-vs-usdt
   // and carry editorial framing beyond the ledger, so they stay
@@ -444,6 +434,7 @@ async function loadBreakdown(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<BreakdownRow[]> {
   const filtered = options.filter(
     (o) => o.value.toLowerCase() !== "all",
@@ -453,6 +444,7 @@ async function loadBreakdown(
     filtered.map(async (opt) => {
       const variant = await loadBenchmark(benchSlug, {
         [axis]: opt.value,
+        ...(tier ? { tier } : {}),
       });
       if (!variant) return null;
       const aRes = variant.results.find((r) => r.slug === providerA);
@@ -494,19 +486,22 @@ async function loadChainRegionMatrix(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<ChainRegionEntry[]> {
   const chains = chainOpts.filter((c) => c.value.toLowerCase() !== "all");
   const regions = regionOpts.filter((r) => r.value.toLowerCase() !== "all");
   if (chains.length === 0 || regions.length === 0) return [];
 
+  const scope = tier ? { tier } : {};
   const chainTasks = chains.map((c) =>
-    loadBenchmark(benchSlug, { chain: c.value }),
+    loadBenchmark(benchSlug, { chain: c.value, ...scope }),
   );
   const regionTasks = chains.flatMap((c) =>
     regions.map((r) =>
       loadBenchmark(benchSlug, {
         chain: c.value,
         region: r.value,
+        ...scope,
       }).then((variant) => ({ chain: c.value, region: r.value, variant })),
     ),
   );
@@ -597,11 +592,8 @@ async function buildSharedBenches(
   //   2. Otherwise take the natural intersection of both providers'
   //      appearances (the default for any new pair).
   //   3. In both cases, subtract anything in `excludeBenchmarks`.
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aByBench.has(s) && bByBench.has(s))
-    : Array.from(aByBench.keys()).filter((s) => bByBench.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
+  // Same access cohort only: see sharedBenchSlugs.
+  const sharedSlugs = sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances);
 
   // KV cache lookup before the fan out. Hash mixes provider slugs, the
   // shared bench list and the deploy SHA so any drift (new bench, new
@@ -620,6 +612,7 @@ async function buildSharedBenches(
       const aEntry = aByBench.get(benchSlug);
       const bEntry = bByBench.get(benchSlug);
       if (!aEntry || !bEntry) return null;
+      const tier = aEntry.tier;
       const fullBench = await loadBenchmark(benchSlug);
       if (!fullBench) return null;
 
@@ -662,6 +655,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? Promise.resolve<BreakdownRow[]>([])
@@ -672,6 +666,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? loadChainRegionMatrix(
@@ -681,6 +676,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               )
             : Promise.resolve<ChainRegionEntry[]>([]),
         ]);

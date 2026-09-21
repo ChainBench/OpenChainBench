@@ -53,12 +53,16 @@ const INITIAL_ROWS = 40;
 export function RpcChainsLeaderboard({
   rows,
   linkableSlugs,
+  benchQuery = "",
 }: {
   rows: RpcHubChain[];
   /** Bench slugs whose page is indexable (worker sitemap). When given it
    *  replaces the declared-count gate, so an expired chain (data older
    *  than a week, noindex) is shown but not linked. */
   linkableSlugs?: string[];
+  /** Query string appended to every bench link ("?tier=keyed" on the
+   *  API-key view, so the row opens the cohort it ranks). */
+  benchQuery?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
   const linkableSet = useMemo(
@@ -192,7 +196,7 @@ export function RpcChainsLeaderboard({
               return (
               <tr
                 key={r.slug}
-                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}`) : undefined}
+                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}${benchQuery}`) : undefined}
                 className={`border-t border-ink/5 transition-colors ${linkable ? "hover:bg-paper-soft/40 cursor-pointer" : ""}`}
               >
                 <Td muted mono>
@@ -202,7 +206,7 @@ export function RpcChainsLeaderboard({
                   <div className="flex items-center gap-2 min-w-0">
                     {linkable ? (
                     <Link
-                      href={`/benchmarks/${r.slug}`}
+                      href={`/benchmarks/${r.slug}${benchQuery}`}
                       className="flex items-center gap-2 min-w-0 group"
                       onClick={(e) => e.stopPropagation()}
                     >

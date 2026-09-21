@@ -50,6 +50,14 @@ type Chain struct {
 	//     like EVM, but a first pass ships without it to keep the
 	//     initial Osmosis add-on isolated to latency + reliability.
 	Kind string
+	// StaleGap overrides the Kind-based staleness tolerance (blocks
+	// behind the cross-provider tip before a response is classified
+	// stale). Zero keeps the default. Set on sub-second EVM chains so
+	// the tolerance stays around 20 s of wall clock like every other
+	// chain: at 20 blocks Robinhood Chain (100 ms blocks) would flag an
+	// endpoint 2 s behind the tip, which the 60 s probe stagger alone
+	// can produce.
+	StaleGap uint64
 }
 
 // chains is the source of truth for the (chain × provider) probe
@@ -235,6 +243,39 @@ func chains() []Chain {
 				{Slug: "megaeth-official", Name: "MegaETH Official", URL: envDefault("RPC_URL_MEGAETH_OFFICIAL", "https://mainnet.megaeth.com/rpc")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MEGAETH_DRPC", "https://megaeth.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MEGAETH_TENDERLY", "https://megaeth.gateway.tenderly.co")},
+			},
+		},
+		// ─── Robinhood Chain (chain 4663, Arbitrum Orbit, ~100 ms blocks)
+		// added 2026-09-21 with the keyed cohort merge. Live-verified
+		// no-key: the Robinhood-operated endpoint (documented as rate
+		// limited, wallet connectivity and testing), dRPC, PublicNode,
+		// bloXroute. Nodies and OnFinality resolve nothing, Tenderly has
+		// no gateway. StaleGap 200 = 20 s at 100 ms blocks.
+		{
+			Slug:     "robinhood",
+			Name:     "Robinhood Chain",
+			StaleGap: 200,
+			Providers: []Provider{
+				{Slug: "robinhood-official", Name: "Robinhood", URL: envDefault("RPC_URL_ROBINHOOD_OFFICIAL", "https://rpc.mainnet.chain.robinhood.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ROBINHOOD_DRPC", "https://robinhood.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ROBINHOOD_PUBLICNODE", "https://robinhood-rpc.publicnode.com")},
+				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ROBINHOOD_BLOXROUTE", "https://robinhood.rpc.blxrbdn.com")},
+			},
+		},
+		// ─── Arc (chain 5042, Circle's USDC-gas L1, ~0.5 s blocks) added
+		// 2026-09-21. Live-verified no-key: rpc.mainnet.arc.io (Circle),
+		// dRPC, PublicNode, Tenderly Gateway. Blockdaemon 401, Ankr 403,
+		// Lava discontinued, bloXroute / OnFinality / Nodies no host.
+		// StaleGap 40 = 20 s at 0.5 s blocks.
+		{
+			Slug:     "arc",
+			Name:     "Arc",
+			StaleGap: 40,
+			Providers: []Provider{
+				{Slug: "arc-official", Name: "Arc", URL: envDefault("RPC_URL_ARC_OFFICIAL", "https://rpc.mainnet.arc.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARC_DRPC", "https://arc.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARC_PUBLICNODE", "https://arc-rpc.publicnode.com")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARC_TENDERLY", "https://arc.gateway.tenderly.co")},
 			},
 		},
 		// ─── Ethereum mainnet (9 providers) ────────────────────────

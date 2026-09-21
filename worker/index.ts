@@ -21,6 +21,7 @@
 import {
   loadSpecsUncached,
   specToBenchmark,
+  defaultTier,
   filterSig,
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
@@ -52,7 +53,7 @@ import {
   fetchHlHistoryFresh,
 } from "@/lib/hl-builder-stats";
 import { fetchPmCohortFresh } from "@/lib/pm-stats";
-import { buildRpcHubSnapshotFresh } from "@/lib/rpc-hub-stats";
+import { buildRpcHubSnapshotFresh, RPC_HUB_KEY } from "@/lib/rpc-hub-stats";
 import { fetchChainKpisFresh } from "@/lib/chain-kpis";
 import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
@@ -216,6 +217,11 @@ export function variantCombos(spec: Spec): BenchmarkFilters[] {
   const kinds = (dims.kind ?? []).map((d) => d.value).filter((v) => v !== "all");
   const venues = (dims.venue ?? []).map((d) => d.value).filter((v) => v !== "all");
   const amounts = (dims.amount_usd ?? []).map((d) => d.value);
+  // Access tiers: the headline tier IS the aggregate (sig "" is built
+  // with it pinned), so only the other cohorts get their own variants,
+  // crossed with every label dimension like any other filter.
+  const headlineTier = defaultTier(spec);
+  const tiers = (dims.tier ?? []).map((d) => d.value).filter((v) => v !== headlineTier);
   const opt = <T,>(xs: T[]): (T | undefined)[] => (xs.length ? [undefined, ...xs] : [undefined]);
   const combos: BenchmarkFilters[] = [];
   for (const chain of opt(chains)) {
@@ -223,14 +229,17 @@ export function variantCombos(spec: Spec): BenchmarkFilters[] {
       for (const kind of opt(kinds)) {
         for (const venue of opt(venues)) {
           for (const amount_usd of opt(amounts)) {
-            if (!chain && !region && !kind && !venue && !amount_usd) continue; // the aggregate is tier A
-            combos.push({
-              ...(chain ? { chain } : {}),
-              ...(region ? { region } : {}),
-              ...(kind ? { kind } : {}),
-              ...(venue ? { venue } : {}),
-              ...(amount_usd ? { amount_usd } : {}),
-            });
+            for (const tier of opt(tiers)) {
+              if (!chain && !region && !kind && !venue && !amount_usd && !tier) continue; // the aggregate is tier A
+              combos.push({
+                ...(chain ? { chain } : {}),
+                ...(region ? { region } : {}),
+                ...(kind ? { kind } : {}),
+                ...(venue ? { venue } : {}),
+                ...(amount_usd ? { amount_usd } : {}),
+                ...(tier ? { tier } : {}),
+              });
+            }
           }
         }
       }
@@ -329,6 +338,7 @@ function variantPath(slug: string, f: BenchmarkFilters): string {
   if (f.region) qs.set("region", f.region);
   if (f.kind) qs.set("kind", f.kind);
   if (f.venue) qs.set("venue", f.venue);
+  if (f.tier) qs.set("tier", f.tier);
   return `/api/bench/${slug}/variant${qs.size ? `?${qs.toString()}` : ""}`;
 }
 
@@ -405,7 +415,7 @@ async function sweep(iteration: number): Promise<void> {
       // Cross-chain RPC hub (/rpc). Store-only builder: folds the
       // `-rpc` bench blobs this sweep just published into one snapshot,
       // so it must run AFTER the tier-A materialization above.
-      { key: "rpc-hub", build: () => buildRpcHubSnapshotFresh() },
+      { key: RPC_HUB_KEY, build: () => buildRpcHubSnapshotFresh() },
       { key: "search-featured", build: () => buildFeaturedLeadersFromStore() },
       // One blob per chain slug so a stale reading on one chain doesn't
       // pollute the others. Small enough that the Promise.allSettled loop

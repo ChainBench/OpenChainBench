@@ -16,6 +16,7 @@ import { loadSpecsUncached } from "@/lib/materialize/load";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { liveResults } from "@/lib/provider-filters";
 import { citationCandidates } from "@/lib/citation";
+import { rankResults } from "@/lib/ranking";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -225,6 +226,11 @@ export type ProviderAppearance = {
   result: ProviderResult;
   rank: number;
   totalRanked: number;
+  /** Access cohort this appearance was ranked in, when it is not the
+   *  bench's headline cohort (a keyed RPC provider on a chain page whose
+   *  default view is the public cohort). `rank` / `totalRanked` are then
+   *  within that cohort and the bench link needs `?tier=<value>`. */
+  tier?: string;
   /** Per-chain leadership for this provider on this bench. Populated only
    *  for chains this provider *leads*, so `rank` is always 1 and an absent
    *  key means "does not lead here", never "ranked lower here". Key = chain
@@ -462,6 +468,69 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
         });
       }
     });
+
+    // Other access cohorts of a tier-dimensioned bench (the keyed RPC
+    // providers behind the Endpoints selector). Each cohort is ranked on
+    // its own, exactly as its tab renders it; a #1 there is a win like
+    // any aggregate #1 on a bench without chain dimensions. The
+    // `benchmark` block is the same object as the headline appearances
+    // (the providers blob dedupes it per bench slug, first one wins);
+    // consumers key off `tier` to ignore its cellRanks / bestPerChain,
+    // which describe the headline cohort only.
+    for (const [tier, rows] of Object.entries(b.tierResults ?? {})) {
+      const cohortRanked = b.status === "live" ? rankResults(liveResults(rows), b.higherIsBetter) : [];
+      const cohortRankBySlug = new Map<string, number>();
+      cohortRanked.forEach((r, idx) => cohortRankBySlug.set(r.slug.toLowerCase(), idx));
+      for (const r of rows) {
+        const canon = canonicalize(r.slug);
+        const key = canon.slug;
+        const existing = byKey.get(key);
+        const idx = cohortRankBySlug.get(r.slug.toLowerCase());
+        const isRanked = idx !== undefined;
+        const winsEarned = isRanked && idx === 0 ? 1 : 0;
+        const appearance: ProviderAppearance = {
+          benchmark: {
+            slug: b.slug,
+            title: b.title,
+            subtitle: b.subtitle,
+            category: b.category,
+            metric: b.metric,
+            unit: b.unit,
+            higherIsBetter: b.higherIsBetter,
+            status: b.status,
+            lastRunAt: b.lastRunAt,
+            hasDistribution: b.hasDistribution,
+            chainDimensions: b.dimensions?.chain,
+            bestPerChain: benchBestPerChain,
+            regionDimensions: b.dimensions?.region,
+            cellRanks: b.cellRanks,
+          },
+          result: r,
+          rank: isRanked ? (idx as number) + 1 : 0,
+          totalRanked: cohortRanked.length,
+          tier,
+        };
+        if (existing) {
+          existing.appearances.push(appearance);
+          if (!existing.categories.includes(b.category)) existing.categories.push(b.category);
+          existing.wins += winsEarned;
+          if (!existing.type && r.type) existing.type = r.type;
+          if (existing.name === titleCaseSlug(key)) {
+            const better = profileDisplayName(key, r);
+            if (better !== existing.name) existing.name = better;
+          }
+        } else {
+          byKey.set(key, {
+            slug: canon.slug,
+            name: profileDisplayName(canon.slug, r),
+            type: r.type,
+            appearances: [appearance],
+            wins: winsEarned,
+            categories: [b.category],
+          });
+        }
+      }
+    }
   }
 
   // Seed stub profiles for cohort venues that don't yet have a bench

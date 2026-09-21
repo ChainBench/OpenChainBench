@@ -283,6 +283,16 @@ export default async function BenchmarkPage({
       : (aggregate.dimensions?.venue ?? []).filter(
           (v) => v.value === "all" || venuesWithData.has(v.value),
         );
+  // Access tiers: the headline cohort (aggregate pin, else the first
+  // declared value) leads the selector so the clean URL is that tab.
+  const declaredTiers = aggregate.dimensions?.tier ?? [];
+  const headlineTier = aggregate.aggregateFilters?.tier ?? declaredTiers[0]?.value ?? null;
+  const tierOptions = headlineTier
+    ? [
+        ...declaredTiers.filter((t) => t.value === headlineTier),
+        ...declaredTiers.filter((t) => t.value !== headlineTier),
+      ]
+    : [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
@@ -660,8 +670,7 @@ export default async function BenchmarkPage({
         </div>
       )}
       {(benchmark.slug.endsWith("-rpc") ||
-        benchmark.slug === "rpc-capabilities" ||
-        benchmark.slug.startsWith("keyed-rpc-")) && (
+        benchmark.slug === "rpc-capabilities") && (
         <div
           className="mt-6 max-w-3xl rounded-lg border border-ink/15 px-4 py-3 flex items-start gap-3 flex-wrap"
           style={{
@@ -793,11 +802,13 @@ export default async function BenchmarkPage({
             regionOptions={regionOptions}
             kindOptions={kindOptions}
             venueOptions={venueOptions}
+            tierOptions={tierOptions}
             venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
             initialVenue={venue ?? null}
+            initialTier={headlineTier}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
             pageActions={
               !isDraft ? (

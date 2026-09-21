@@ -349,6 +349,9 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			tips.update(c.Slug, block)
 			tip := tips.get(c.Slug)
 			gap := staleBlockGap
+			if c.StaleGap > 0 {
+				gap = c.StaleGap
+			}
 			switch c.Kind {
 			case "solana":
 				gap = solanaStaleSlotGap

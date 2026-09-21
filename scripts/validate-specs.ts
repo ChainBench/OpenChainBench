@@ -19,13 +19,15 @@ const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?
 const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_p50", "worst_name", "worst_p50", "count"]);
 
 /** Every `{{...}}` in `fields` names a known keyword, a provider slug of
- *  the bench for per-provider lookups, or a declared chain value. */
+ *  the bench for per-provider lookups, a declared chain value, or a
+ *  declared access tier (`{{best_name:tier:keyed}}`, `{{count:tier:keyed}}`). */
 function lintPlaceholders(
   issues: Issue[],
   file: string,
   fields: [string, string | undefined][],
   providerSlugs: Set<string>,
   chainValues: Set<string>,
+  tierValues: Set<string> = new Set(),
 ) {
   for (const [name, text] of fields) {
     if (!text) continue;
@@ -37,6 +39,12 @@ function lintPlaceholders(
       } else if (a === "chain") {
         if (!b || !chainValues.has(b.toLowerCase())) {
           issues.push({ file, level: "error", message: `${name}: ${whole} names a chain value the spec does not declare` });
+        }
+      } else if (a === "tier") {
+        if (!b || !tierValues.has(b.toLowerCase())) {
+          issues.push({ file, level: "error", message: `${name}: ${whole} names a tier the spec does not declare` });
+        } else if (!["best_name", "best_p50", "worst_name", "worst_p50", "count"].includes(k)) {
+          issues.push({ file, level: "error", message: `${name}: ${whole} cannot be tier-scoped` });
         }
       } else if (["p50", "p90", "p99", "mean", "success", "name"].includes(k)) {
         if (!a || !providerSlugs.has(a)) {
@@ -65,7 +73,7 @@ async function main() {
   const seenNumbers = new Map<string, string>();
   // Per spec, what its templates may reference; the answers pass below
   // resolves an answer's placeholders against its bench.
-  const specRefs = new Map<string, { providers: Set<string>; chains: Set<string>; rpc: boolean }>();
+  const specRefs = new Map<string, { providers: Set<string>; chains: Set<string>; tiers: Set<string>; rpc: boolean }>();
 
   for (const f of files) {
     const filePath = path.join(SPECS_DIR, f);
@@ -168,6 +176,7 @@ async function main() {
     // it cannot resolve at request time (an endpoint down today), so a
     // typo would vanish silently on the page; it is caught here instead.
     const chainValues = new Set((spec.dimensions?.chain ?? []).map((c) => c.value.toLowerCase()));
+    const tierValues = new Set((spec.dimensions?.tier ?? []).map((t) => t.value.toLowerCase()));
     const templated: [string, string | undefined][] = [
       ["subtitle", spec.subtitle],
       ["seo_title", spec.seo_title],
@@ -179,8 +188,8 @@ async function main() {
       ...(spec.methodology ?? []).map((t, i) => [`methodology[${i}]`, t] as [string, string]),
       ...(spec.faq ?? []).flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string][]),
     ];
-    lintPlaceholders(issues, f, templated, providerSlugs, chainValues);
-    specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, rpc: spec.slug.endsWith("-rpc") });
+    lintPlaceholders(issues, f, templated, providerSlugs, chainValues, tierValues);
+    specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, tiers: tierValues, rpc: spec.slug.endsWith("-rpc") });
   }
 
   // answers/*.yml render through the same template engine against the
@@ -217,7 +226,7 @@ async function main() {
       ["expert_take", str("expert_take")],
       ...faq.flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string | undefined][]),
     ];
-    lintPlaceholders(issues, file, templated, refs.providers, refs.chains);
+    lintPlaceholders(issues, file, templated, refs.providers, refs.chains, refs.tiers);
     // "{{count}} bridges (Mobula, Relay, LI.FI, deBridge, ...)": a live
     // count followed by a typed enumeration of four or more names.
     const typedCohort = /\{\{\s*count\s*\}\}\s+\w+\s*\((?:[^()]*,){3,}[^()]*\)/;

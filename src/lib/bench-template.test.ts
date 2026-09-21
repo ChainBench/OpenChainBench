@@ -168,3 +168,46 @@ describe("renderTemplate", () => {
     });
   });
 });
+
+describe("renderTemplate, access tiers", () => {
+  const keyedRows = [r("alchemy", "Alchemy", 38), r("quicknode", "QuickNode", 29)];
+  const withTiers: Benchmark = {
+    ...bench([
+      { ...r("publicnode", "PublicNode", 44), tier: "public" },
+      { ...r("drpc", "dRPC", 61), tier: "public" },
+    ]),
+    dimensions: {
+      tier: [
+        { value: "public", label: "Public, no key" },
+        { value: "keyed", label: "API key" },
+      ],
+    },
+    tierResults: { keyed: keyedRows },
+  };
+
+  test("best_name / best_p50 stay the active cohort's leader", () => {
+    expect(renderTemplate("{{best_name}} at {{best_p50}}", withTiers)).toBe("PublicNode at 44 ms");
+  });
+
+  test("tier-scoped presets read the other cohort's stash", () => {
+    expect(
+      renderTemplate("{{best_name:tier:keyed}} at {{best_p50:tier:keyed}}, {{count:tier:keyed}} keyed", withTiers),
+    ).toBe("QuickNode at 29 ms, 2 keyed");
+    expect(renderTemplate("{{worst_name:tier:keyed}}", withTiers)).toBe("Alchemy");
+  });
+
+  test("tier-scoped presets naming the active cohort resolve against it", () => {
+    expect(renderTemplate("{{best_name:tier:public}}", withTiers)).toBe("PublicNode");
+  });
+
+  test("per-slug lookups fall through to the other cohorts", () => {
+    expect(renderTemplate("Alchemy: {{p50:alchemy}}", withTiers)).toBe("Alchemy: 38 ms");
+    expect(renderTemplate("{{name:quicknode}}", withTiers)).toBe("QuickNode");
+  });
+
+  test("an undeclared tier drops its clause instead of printing the token", () => {
+    expect(
+      renderTemplate("PublicNode leads; the keyed leader is {{best_name:tier:premium}}.", withTiers),
+    ).toBe("PublicNode leads.");
+  });
+});

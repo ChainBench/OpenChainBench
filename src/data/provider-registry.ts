@@ -961,6 +961,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Cloudflare's public Ethereum gateway. Recently switched to a permissioned mode for many JSON-RPC methods, returning `-32046 Cannot fulfill request` for most endpoints.",
     twitter: "@Cloudflare",
   },
+  "robinhood-official": {
+    url: "https://docs.robinhood.com/chain/connecting",
+    description:
+      "Robinhood Chain's public RPC (rpc.mainnet.chain.robinhood.com), operated by Robinhood. Free and no-key, documented as rate limited and intended for wallet connectivity and testing: no throughput guarantee, no archive, no SLA.",
+    twitter: "@RobinhoodApp",
+    parent: "robinhood",
+  },
+  "arc-official": {
+    url: "https://docs.arc.network",
+    description:
+      "Arc's public mainnet RPC (rpc.mainnet.arc.io), operated by Circle for the USDC-gas Layer 1 (chain id 5042, mainnet 2026-09-16). No-key access; production traffic is pointed at the listed node providers (Alchemy, Blockdaemon, dRPC, QuickNode).",
+    twitter: "@arc",
+  },
   "base-official": {
     url: "https://mainnet.base.org",
     description:

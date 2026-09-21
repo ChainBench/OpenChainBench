@@ -80,6 +80,16 @@ type Props = {
   scopeKind?: string | null;
 };
 
+/** Access tier the row's badge must be scoped to: the row's cohort when
+ *  it is not the bench's headline one (a keyed provider on an RPC page),
+ *  else nothing, so the public rows keep their unscoped badge URL. */
+function embedTierOf(b: Benchmark, r: ProviderResult): string | null {
+  const tiers = b.dimensions?.tier ?? [];
+  if (tiers.length === 0 || !r.tier) return null;
+  const headline = b.aggregateFilters?.tier ?? tiers[0].value;
+  return r.tier === headline ? null : r.tier;
+}
+
 /**
  * Dense KPI ledger. every provider rendered in its signature color
  * (matched to the time-series chart) so a reader can scan rows and lines
@@ -957,6 +967,7 @@ function Row({
                   chain={embedChain}
                   region={embedRegion}
                   kind={embedKind}
+                  tier={embedTierOf(benchmark, r)}
                 />
               </span>
             )}

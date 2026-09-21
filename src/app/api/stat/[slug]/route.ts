@@ -51,15 +51,18 @@ export async function GET(
     region?: string;
     kind?: string;
     venue?: string;
+    tier?: string;
   } = {};
   const chainParam = url.searchParams.get("chain");
   const regionParam = url.searchParams.get("region");
   const kindParam = url.searchParams.get("kind");
   const venueParam = url.searchParams.get("venue");
+  const tierParam = url.searchParams.get("tier");
   if (chainParam && chainParam !== "all") filters.chain = chainParam;
   if (regionParam && regionParam !== "all") filters.region = regionParam;
   if (kindParam && kindParam !== "all") filters.kind = kindParam;
   if (venueParam && venueParam !== "all") filters.venue = venueParam;
+  if (tierParam && tierParam !== "all") filters.tier = tierParam;
   const b = await getBenchmark(slug, filters);
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(

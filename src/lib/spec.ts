@@ -426,7 +426,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v70: bench 268 method v3: unit bp, Sandwiched panel and ledger column
   // removed, BullX and Nova out of the cohort; cached v69 entries keep the
   // old panels and providers.
-  ["bench-unfiltered-v70", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v71: keyed RPC cohort folded into the chain pages (tier dimension):
+  // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
+  // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
+  ["bench-unfiltered-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -644,7 +647,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v61: lockstep with bench-unfiltered-v66 (Benchmark.chart).
   // v62: lockstep with bench-unfiltered-v67 (add bench 267 trading-app-daily-volume).
   // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
-  ["all-benchmarks-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
+  ["all-benchmarks-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -743,7 +747,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
   // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
-  ["bench-filters-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v31: lockstep with bench-unfiltered-v71 (tier variants).
+  ["bench-filters-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
