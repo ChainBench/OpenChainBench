@@ -1348,16 +1348,13 @@ export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   // moonbeam, unichain, soneium, berachain, fraxtal, cronos) drop out of
   // the /chains/<slug> hub and had to be filtered from the sitemap by
   // hand (see prior fix #910). New per-chain bench conventions land here.
+  // The keyed cohort lives on the same `<chain>-rpc` page since
+  // 2026-09-21 (tier dimension), so the suffix is the only convention.
   const conventionSuffixes = ["-rpc"];
-  // Keyed RPC benches (`keyed-rpc-<chain>`) name the chain as a prefix.
-  const conventionPrefixes = ["keyed-rpc-"];
   const acceptedSlugPatterns = new Set<string>();
   for (const slug of accept) {
     for (const suffix of conventionSuffixes) {
       acceptedSlugPatterns.add(`${slug}${suffix}`);
-    }
-    for (const prefix of conventionPrefixes) {
-      acceptedSlugPatterns.add(`${prefix}${slug}`);
     }
   }
 

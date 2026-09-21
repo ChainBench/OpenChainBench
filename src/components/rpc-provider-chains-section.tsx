@@ -31,6 +31,9 @@ type Row = {
   p50Ms: number | null;
   successPct?: number;
   sampleSize?: number;
+  /** "keyed" when the row comes from the API-key cohort (ranked among
+   *  the keyed providers of that chain, linked to the keyed tab). */
+  tier?: "keyed";
 };
 
 function errorCount(row: Row): number | null {
@@ -59,37 +62,50 @@ export async function RpcProviderChainsSection({
   if (!snapshot) return null;
 
   const rows: Row[] = [];
-  for (const c of snapshot.chains) {
-    const idx = c.providers.findIndex((p) => p.provider === providerSlug);
-    if (idx >= 0) {
-      const p = c.providers[idx];
-      rows.push({
-        chain: c.chain,
-        chainName: c.name,
-        benchSlug: c.slug,
-        rank: idx + 1,
-        totalRanked: c.providers.length,
-        p50Ms: p.p50Ms,
-        successPct: p.successPct,
-        sampleSize: p.sampleSize,
-      });
-      continue;
-    }
-    const dead = c.unresponsive?.find((u) => u.provider === providerSlug);
-    if (dead) {
-      rows.push({
-        chain: c.chain,
-        chainName: c.name,
-        benchSlug: c.slug,
-        rank: null,
-        totalRanked: c.providers.length,
-        p50Ms: null,
-        successPct: dead.successPct,
-        sampleSize: dead.sampleSize,
-      });
+  // Public cohort first, then the API-key cohort (Alchemy, Chainstack,
+  // QuickNode): a provider sits in one of the two per chain, each ranked
+  // on its own, so the rows never mix the two fields.
+  const cohorts: Array<{ chains: typeof snapshot.chains; tier?: "keyed" }> = [
+    { chains: snapshot.chains },
+    ...(snapshot.keyed ? [{ chains: snapshot.keyed.chains, tier: "keyed" as const }] : []),
+  ];
+  for (const { chains, tier } of cohorts) {
+    for (const c of chains) {
+      const idx = c.providers.findIndex((p) => p.provider === providerSlug);
+      if (idx >= 0) {
+        const p = c.providers[idx];
+        rows.push({
+          chain: c.chain,
+          chainName: c.name,
+          benchSlug: c.slug,
+          rank: idx + 1,
+          totalRanked: c.providers.length,
+          p50Ms: p.p50Ms,
+          successPct: p.successPct,
+          sampleSize: p.sampleSize,
+          ...(tier ? { tier } : {}),
+        });
+        continue;
+      }
+      const dead = c.unresponsive?.find((u) => u.provider === providerSlug);
+      if (dead) {
+        rows.push({
+          chain: c.chain,
+          chainName: c.name,
+          benchSlug: c.slug,
+          rank: null,
+          totalRanked: c.providers.length,
+          p50Ms: null,
+          successPct: dead.successPct,
+          sampleSize: dead.sampleSize,
+          ...(tier ? { tier } : {}),
+        });
+      }
     }
   }
   if (rows.length === 0) return null;
+  const keyedOnly = rows.every((r) => r.tier === "keyed");
+  const mixed = !keyedOnly && rows.some((r) => r.tier === "keyed");
 
   return (
     <section className="mt-12">
@@ -97,9 +113,22 @@ export async function RpcProviderChainsSection({
         RPC performance by chain
       </h2>
       <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
-        Where {providerName}&apos;s free endpoint ranks on each measured
-        chain: 24h p50 across 3 probe regions, success rate and failed
-        probes. Full field on{" "}
+        {keyedOnly ? (
+          <>
+            Where {providerName}&apos;s API-key endpoint ranks among the keyed
+            providers measured on each chain (Alchemy, Chainstack, QuickNode,
+            probed every 120 s): 24h p50 across 3 probe regions, success rate
+            and failed probes. Never ranked against the free public gateways.
+          </>
+        ) : (
+          <>
+            Where {providerName}&apos;s free endpoint ranks on each measured
+            chain: 24h p50 across 3 probe regions, success rate and failed
+            probes.
+            {mixed ? " Rows marked API key are ranked within the keyed cohort of that chain, apart from the public gateways." : ""}
+          </>
+        )}{" "}
+        Full field on{" "}
         <Link href="/rpc" className="lnk">
           /rpc
         </Link>
@@ -118,11 +147,11 @@ export async function RpcProviderChainsSection({
           </thead>
           <tbody className="divide-y divide-rule">
             {rows.map((r) => (
-              <tr key={r.chain} className="hover:bg-paper-soft/60 transition-colors">
+              <tr key={`${r.chain}-${r.tier ?? "public"}`} className="hover:bg-paper-soft/60 transition-colors">
                 <td className="py-2.5 pr-3">
                   {!linkable || linkable.has(r.benchSlug) ? (
                     <Link
-                      href={`/benchmarks/${r.benchSlug}`}
+                      href={`/benchmarks/${r.benchSlug}${r.tier ? `?tier=${r.tier}` : ""}`}
                       className="inline-flex items-center gap-2 group"
                     >
                       <ProviderLogo slug={r.chain} name={r.chainName} size={18} />
@@ -136,6 +165,11 @@ export async function RpcProviderChainsSection({
                       <span className="font-medium text-ink">{r.chainName}</span>
                     </span>
                   )}
+                  {r.tier === "keyed" && !keyedOnly ? (
+                    <span className="ml-2 rounded-full border border-ink/15 px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.12em] text-ink-faint">
+                      API key
+                    </span>
+                  ) : null}
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
                   {r.rank != null && r.rank > 0 ? (

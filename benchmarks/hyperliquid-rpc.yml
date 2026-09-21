@@ -2,10 +2,10 @@
 
 slug: hyperliquid-rpc
 number: "092"
-title: "Hyperliquid RPC endpoints: free public URLs by latency"
-seo_title: "Hyperliquid RPC endpoints: free public URLs by latency"
-seo_description: "{{best_name}} leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
-subtitle: HTTP round-trip latency for `eth_getBlockByNumber("latest", false)` against every free, no-key public HyperEVM endpoint, audited every 60 seconds from 3 regions.
+title: "Hyperliquid RPC endpoints: free public URLs and API-key providers by latency"
+seo_title: "Hyperliquid RPC endpoints: public URLs and API-key providers by latency"
+seo_description: "{{best_name}} leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Hyperliquid RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
 status: live
@@ -27,7 +27,7 @@ seo_intro: |
   revisited when a stable no-key path reappears.
 
 abstract: |
-  Hyperliquid: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:hyperliquid-official}}.
+  Hyperliquid: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:hyperliquid-official}}. The same page carries the API-key cohort, Alchemy, Chainstack and QuickNode on their keyed Hyperliquid endpoints every 120 seconds: switch the Endpoints selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
   We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber("latest", false)`) against every no-key public HyperEVM endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with the standard EVM staleness gap (block gap = 25 blocks ≈ 50 seconds at HyperEVM's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Hyperliquid-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -36,6 +36,12 @@ methodology:
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Hyperliquid-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to `chain=\"hyperliquid\"`. Provider coverage today: {{count}} no-key endpoints (Hyperliquid Labs official, dRPC, Stakely, Purroof Group, Hypurrscan)."
   - "Excluded by the launch audit: Alchemy demo path (rate-limited dead), thirdweb (`Invalid chain` on HyperEVM), Grove/Pocket public LB (requires an app id at the LB path), AllThatNode + Blast API + Chainstack + Gelato + Imperator HyperEVM paths (DNS-fail or 401 without a key), PublicNode (no HyperEVM subdomain yet). HyperEVM is a young chain (mainnet Feb 2025) so this list will shift quickly."
+  - "API-key cohort (Endpoints selector, API key): Alchemy, Chainstack and QuickNode probed on their keyed Hyperliquid endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: the Mobula enterprise-tier key; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet. GetBlock is listed under exclusions until a key exists."
+  - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
+
+excluded_providers:
+  - { name: GetBlock, reason: "requires an API key; no key held yet, so it is not in the API-key cohort either" }
 
 faq:
   - q: "Which HyperEVM RPCs work without an API key?"
@@ -44,6 +50,10 @@ faq:
     a: "One identical JSON-RPC POST (`eth_getBlockByNumber(\"latest\", false)`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the EVM cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
   - q: "Why is the probe `eth_getBlockByNumber` and not `eth_blockNumber`?"
     a: "Two reasons. First, `eth_getBlockByNumber(\"latest\", false)` forces the node to actually assemble the block header (timestamp, hash, gas metrics) which a polite CDN cannot synthesise from a stale integer , `eth_blockNumber` on its own can be answered from an edge cache without touching a node, defeating the point of a latency probe. Second, the returned header lets the harness populate the `latest_block_hash` and `timestamp` fields the cross-provider tip machinery uses to detect stale endpoints. Both together mean the number on this page is what your app actually pays when it fetches a fresh head."
+  - q: "Which Hyperliquid RPC provider is fastest with an API key?"
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to API key for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
+  - q: "Is a keyed Hyperliquid RPC faster than a free public one?"
+    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the API-key cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Hyperliquid, the success rate whether it buys reliability."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -55,13 +65,18 @@ prometheus:
 # fixed for the whole bench, so cells key on region alone.
 rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="hyperliquid"})
 
-# Region is the only dimension: chain is baked into every query.
+# Region and access tier: chain is baked into every query.
 dimensions:
   region:
     - { value: all,     label: All regions }
     - { value: us-east, label: US-East }
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
+  # Access tier: partitions the provider list (no PromQL label). The
+  # first value is the headline cohort; ?tier=keyed reaches the other.
+  tier:
+    - { value: public, label: "Public, no key" }
+    - { value: keyed,  label: "API key" }
 
 providers:
   - slug: hyperliquid-official
@@ -183,3 +198,77 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hypurrscan", chain="hyperliquid", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="hypurrscan", chain="hyperliquid", region="sgp"}[1h])
+
+  # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
+  # rpc-keyed-latency harness emits; the public rows above carry no tier label.
+  - slug: alchemy
+    name: Alchemy
+    tier: keyed
+    tag: Enterprise-tier key (Mobula account), plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Alchemy's keyed HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tier: keyed
+    tag: Growth plan Global Node, sponsored access, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Chainstack's keyed HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+
+  - slug: quicknode
+    name: QuickNode
+    tier: keyed
+    tag: Enterprise-tier endpoint (Mobula account), plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on QuickNode's keyed HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))

@@ -38,6 +38,7 @@ const getSeriesMapCached = unstable_cache(
     kind: string | undefined,
     venue: string | undefined,
     panelId: string | undefined,
+    tier: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
     // ── Harness-backfilled history (bench 266 and friends) ──────────────
     // Prom only holds samples since the first scrape; a bench whose
@@ -58,7 +59,7 @@ const getSeriesMapCached = unstable_cache(
 
     // ── Standard ranges (7d / 30d): blob → Redis → live build ──────────
     if (range === "7d" || range === "30d") {
-      const sig = filterSig({ chain, region, kind, venue });
+      const sig = filterSig({ chain, region, kind, venue, tier });
       const stored =
         (await loadSnapshotFromBlob(slug, sig)) ??
         (await readMaterialized(slug, sig));
@@ -108,7 +109,7 @@ const getSeriesMapCached = unstable_cache(
         return Object.keys(result).length > 0 ? result : null;
       }
 
-      const b = await specToBenchmark(spec, { chain, region, kind, venue });
+      const b = await specToBenchmark(spec, { chain, region, kind, venue, tier });
       return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
     }
 
@@ -240,8 +241,8 @@ export async function GET(
     );
   }
 
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
-  for (const dim of ["chain", "region", "kind", "venue"] as const) {
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
     // Canonical-aware matching: the chain dimension may still hold the
@@ -280,6 +281,7 @@ export async function GET(
         filters.kind,
         filters.venue,
         panelId,
+        filters.tier,
       ),
       hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
     ]);

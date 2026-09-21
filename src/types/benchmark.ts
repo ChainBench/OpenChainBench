@@ -113,6 +113,11 @@ export type ProviderResult = {
   /** Public no-key endpoint URL probed for this provider (spec
    *  provider.endpoint). Never a keyed URL: the spec schema rejects them. */
   endpoint?: string;
+  /** Access cohort on a bench that declares `dimensions.tier` (spec
+   *  provider.tier, defaulted to the first declared value). Rows of one
+   *  Benchmark object all share the active tier; the field exists so
+   *  cross-bench consumers (product pages, hubs) keep the cohort. */
+  tier?: string;
   /** Short-window liveness verdict derived at load time from the spec's
    *  `queries.live_activity` scalar and the bench-level `probe_ok`
    *  gate. Only populated when the spec declares those queries.
@@ -282,6 +287,9 @@ export type Benchmark = {
     region?: { value: string; label: string }[];
     kind?: { value: string; label: string }[];
     venue?: { value: string; label: string }[];
+    /** Access tier (public / keyed). Partitions providers instead of
+     *  injecting a PromQL label; the first value is the headline cohort. */
+    tier?: { value: string; label: string }[];
   };
   /** Default dimension scope for the unfiltered build (spec
    *  `aggregate_filters`). Presentation surfaces (e.g. the by-region
@@ -291,6 +299,7 @@ export type Benchmark = {
     region?: string;
     kind?: string;
     venue?: string;
+    tier?: string;
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers" | "RWA" | "On-ramps";
   results: ProviderResult[];
@@ -326,6 +335,14 @@ export type Benchmark = {
    *  of inheriting their aggregate position on every chain in the
    *  bench. */
   providersPerChain?: Record<string, string[]>;
+  /** Live rows of every OTHER tier cohort, computed only on the
+   *  unfiltered build of a bench that declares `dimensions.tier`.
+   *  Key = tier value (never the active one). Powers the
+   *  `{{best_name:tier:<t>}}` / `{{p50:<slug>}}` placeholders that quote
+   *  the keyed cohort from the public page's copy, the product-page
+   *  appearances of keyed providers and the /rpc hub's keyed view,
+   *  without a second bench object per cohort. */
+  tierResults?: Record<string, ProviderResult[]>;
   /** Full per-cell rankings from the spec's `rank_matrix_query`, computed
    *  only on the unfiltered view. Key = `<chain>|<region>` where a side is
    *  "all" when the bench doesn't declare that dimension OR for derived

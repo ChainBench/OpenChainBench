@@ -404,11 +404,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       chainsWithBenches.add(canonicalChainSlug(chainSlug));
     }
   }
-  // Same slug conventions as getBenchmarksForChain: `<chain>-rpc` and
-  // `keyed-rpc-<chain>` benches carry the chain in their slug, not in a
-  // dimension (Arc's only prod-side bench today is keyed-rpc-arc).
+  // Same slug convention as getBenchmarksForChain: `<chain>-rpc` benches
+  // carry the chain in their slug, not in a dimension.
   for (const c of CHAINS) {
-    if (blobSlugs.has(`${c.slug}-rpc`) || blobSlugs.has(`keyed-rpc-${c.slug}`)) chainsWithBenches.add(c.slug);
+    if (blobSlugs.has(`${c.slug}-rpc`)) chainsWithBenches.add(c.slug);
   }
   const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
     if (!chainsWithBenches.has(c.slug)) return [];

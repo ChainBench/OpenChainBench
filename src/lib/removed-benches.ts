@@ -38,6 +38,20 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
   // dex-network-coverage bench via the cross-link at the top of the
   // successor page.
   "network-coverage": "asset-registry-coverage",
+  // Keyed RPC cohort folded into the per-chain RPC pages (2026-09-21):
+  // one page per chain, the API-key providers behind the Endpoints
+  // selector (`?tier=keyed`). A value may carry a query string; the
+  // redirect keeps it. Only robinhood was ever on production, the
+  // other eight were dev-only, but their URLs were shared.
+  "keyed-rpc-ethereum": "ethereum-rpc?tier=keyed",
+  "keyed-rpc-arbitrum": "arbitrum-rpc?tier=keyed",
+  "keyed-rpc-base": "base-rpc?tier=keyed",
+  "keyed-rpc-bnb": "bnb-rpc?tier=keyed",
+  "keyed-rpc-polygon": "polygon-rpc?tier=keyed",
+  "keyed-rpc-solana": "solana-rpc?tier=keyed",
+  "keyed-rpc-hyperliquid": "hyperliquid-rpc?tier=keyed",
+  "keyed-rpc-robinhood": "robinhood-rpc?tier=keyed",
+  "keyed-rpc-arc": "arc-rpc?tier=keyed",
 };
 
 /**

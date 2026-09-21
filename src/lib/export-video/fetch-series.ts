@@ -16,6 +16,7 @@ export type SeriesFilters = {
   region?: string | null;
   kind?: string | null;
   venue?: string | null;
+  tier?: string | null;
   /** Metric panel id — when set, returns series for that companion metric. */
   panel?: string | null;
 };
@@ -66,7 +67,7 @@ export async function fetchBenchSeries(
   filters: SeriesFilters = {},
 ): Promise<BenchPayload> {
   const qs = new URLSearchParams({ range });
-  for (const dim of ["chain", "region", "kind", "venue"] as const) {
+  for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const v = filters[dim];
     if (v && v !== "all") qs.set(dim, v);
   }

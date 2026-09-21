@@ -2,10 +2,10 @@
 
 slug: solana-rpc
 number: "075"
-title: "Solana RPC endpoints: free public URLs by latency"
-seo_title: "Solana RPC endpoints: free public URLs by latency"
-seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h, 3 regions). URLs and success rates for all {{count}} no-key endpoints, probed every 60 s."
-subtitle: HTTP round-trip latency for getSlot at the processed commitment against every free, no-key public Solana RPC endpoint, audited every 60 seconds from 3 regions.
+title: "Solana RPC endpoints: free public URLs and API-key providers by latency"
+seo_title: "Solana RPC endpoints: public URLs and API-key providers by latency"
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints."
+subtitle: HTTP round-trip latency for getSlot against every free, no-key public Solana RPC endpoint (probed every 60 seconds) and, under the Endpoints selector, against the keyed endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
 status: live
@@ -17,7 +17,7 @@ seo_intro: |
   Solana is the first non-EVM member of the RPC latency cluster, and the chain where the free-RPC question is asked most and answered worst: most "best Solana RPC" roundups list endpoints that key-gated or died years ago. This page probes the {{count}} endpoints that actually answer keyless today, including the Solana Labs official api.mainnet-beta.solana.com that every tutorial pastes, with the same rules as the 20 EVM chains in the cluster: one identical probe (getSlot at the processed commitment) every 60 seconds from us-east, eu-west and Singapore, stale-slot detection against the cross-provider tip, and result classification so a fast error never ranks as a fast answer. The candidates that failed the keyless audit are listed with their exact refusals: dRPC moved Solana to paid tiers, Ankr returns 403 without a key, OnFinality's shared public quota is permanently exhausted.
 
 abstract: |
-  Solana: {{count}} free public RPC endpoints answering `getSlot` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
+  Solana: {{count}} free public RPC endpoints answering `getSlot` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the API-key cohort, Alchemy, Chainstack and QuickNode on their keyed Solana endpoints every 120 seconds: switch the Endpoints selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
   We measure round-trip latency of a single identical JSON-RPC call (getSlot at the processed commitment) against every no-key public Solana endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. Responses are classified (ok / http_err / jsonrpc_err / stale / timeout) with staleness measured in slots against the cross-provider tip. The archive-depth audit run on EVM chains has no keyless Solana equivalent and is not performed. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Solana-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -27,11 +27,16 @@ methodology:
   - "No archive-depth audit on Solana: the EVM chains probe `eth_getBalance` at historical heights, which has no equivalent on public Solana endpoints. Disclosed rather than faked."
   - "LeoRPC disclosure: the endpoint uses a publicly documented FREE query key (solana.leorpc.com/?api_key=FREE). It is admitted as keyless in practice since no signup is required; flagged here for transparency."
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
+  - "API-key cohort (Endpoints selector, API key): Alchemy, Chainstack and QuickNode probed on their keyed Solana endpoints every 120 seconds from the same 3 regions, same call (getSlot, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet. GetBlock is listed under exclusions until a key exists."
+  - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
 excluded_providers:
   - { name: dRPC, reason: "Solana moved to paid tiers, no keyless endpoint" }
   - { name: Ankr, reason: "returns 403 without an API key" }
   - { name: OnFinality, reason: "shared public quota permanently exhausted" }
+  - { name: Helius, reason: "requires an API key; no key held yet, so it is not in the API-key cohort either" }
+  - { name: GetBlock, reason: "requires an API key; no key held yet, so it is not in the API-key cohort either" }
 
 faq:
   - q: "Which Solana RPCs work without an API key?"
@@ -40,6 +45,10 @@ faq:
     a: "For development, demos and light read workloads, yes: Solana Labs documents roughly 100 requests per 10 seconds per IP. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason; this page measures the free tier so you know exactly what the default gets you before you decide."
   - q: "Why is there no archive-depth column like the EVM pages?"
     a: "The EVM cluster probes eth_getBalance at historical block heights to expose which free endpoints serve archive state. Public Solana endpoints expose no comparable keyless historical-state query, so the audit is disclosed as not applicable rather than approximated."
+  - q: "Which Solana RPC provider is fastest with an API key?"
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (getSlot p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. Switch the Endpoints selector to API key for the region tabs and the p99 column; the ranking is origin-dependent and the plan tier of every key is disclosed in the methodology."
+  - q: "Is a keyed Solana RPC faster than a free public one?"
+    a: "Compare the two leaders, measured on the same call from the same three regions: the free cohort's is {{best_name}} at {{best_p50}} (p50, 24h); the API-key cohort's is {{best_name:tier:keyed}} at {{best_p50:tier:keyed}}. They are never ranked in one table because the public probe runs every 60 seconds against shared gateways and the keyed probe every 120 seconds against metered endpoints; the median tells you whether the key buys latency on Solana, the success rate whether it buys reliability."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -47,7 +56,7 @@ prometheus:
   window: 24h
   freshness_metric: rpc_latency_milliseconds
 
-rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{provider=~"solana|publicnode|lava|leorpc|solanavibestation", chain="solana"})
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="solana"})
 
 dimensions:
   region:
@@ -55,6 +64,11 @@ dimensions:
     - { value: us-east, label: US-East }
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
+  # Access tier: partitions the provider list (no PromQL label). The
+  # first value is the headline cohort; ?tier=keyed reaches the other.
+  tier:
+    - { value: public, label: "Public, no key" }
+    - { value: keyed,  label: "API key" }
 
 providers:
   - slug: solana
@@ -176,3 +190,77 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solanavibestation", chain="solana", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="solanavibestation", chain="solana", region="sgp"}[1h])
+
+  # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
+  # rpc-keyed-latency harness emits; the public rows above carry no tier label.
+  - slug: alchemy
+    name: Alchemy
+    tier: keyed
+    tag: Free plan key, 30M CU per month, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot probed every 120 s from us-east, eu-west and Singapore on Alchemy's keyed Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tier: keyed
+    tag: Growth plan Global Node, sponsored access, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot probed every 120 s from us-east, eu-west and Singapore on Chainstack's keyed Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="solana",tier="keyed",region="sgp"}[1h]))
+
+  - slug: quicknode
+    name: QuickNode
+    tier: keyed
+    tag: Enterprise-tier endpoint (Mobula account), plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot probed every 120 s from us-east, eu-west and Singapore on QuickNode's keyed Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h]))

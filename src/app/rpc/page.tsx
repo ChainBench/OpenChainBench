@@ -22,11 +22,11 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "Free public RPC endpoints benchmarked per chain from 3 regions. Live 24h p50 latency, per-region leaders and cross-chain provider coverage.";
+  "RPC providers ranked per chain from 3 regions: free public endpoints with their URLs, and Alchemy, Chainstack, QuickNode on API-key endpoints, ranked separately. Live 24h p50 latency.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "Fastest RPC Providers 2026, by Chain & Region",
+  title: "RPC providers by chain: public endpoints and API-key providers ranked by latency",
   description: DESCRIPTION,
 });
 
@@ -60,14 +60,12 @@ export default async function RpcHubPage() {
     (s): s is (typeof rpcSpecs)[number] => Boolean(s),
   );
   const linkableSlugs = rpcSpecs.map((s) => s.slug);
-  // Keyed / API-key RPC benches (e.g. keyed-rpc-robinhood). These do NOT
-  // belong in the no-key chain matrix above (different tier, and the
-  // slug->chain derivation `replace(/-rpc$/,'')` doesn't apply), so we
-  // surface them in a dedicated aside. Without this they were orphaned
-  // from the RPC cluster with no inbound link from the hub.
-  const keyedRpcSpecs = specs
-    .filter((s) => s.slug.startsWith("keyed-rpc-"))
-    .sort((a, b) => a.slug.localeCompare(b.slug));
+  // Chains whose page carries the API-key cohort (tier dimension): named
+  // in the intro so the "<chain> rpc provider" searcher sees Alchemy,
+  // Chainstack and QuickNode are measured too, behind the selector.
+  const keyedChains = rpcSpecs
+    .filter((s) => (s.dimensions?.tier ?? []).some((t) => t.value === "keyed"))
+    .map(chainLabelOf);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -82,9 +80,9 @@ export default async function RpcHubPage() {
       ? {
           "@context": "https://schema.org",
           "@type": "ItemList",
-          name: "Per-chain free RPC benchmarks by OpenChainBench",
+          name: "Per-chain RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of free, no-key public RPC endpoints: latency, reliability and archive depth measured every 60 seconds from 3 regions.",
+            "Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from 3 regions, and on the major chains an API-key cohort (Alchemy, Chainstack, QuickNode) measured every 120 seconds and ranked separately.",
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -94,23 +92,6 @@ export default async function RpcHubPage() {
           })),
         }
       : null;
-
-  // Fastest provider overall: best chain leader across the whole matrix.
-  const fastest = snapshot
-    ? snapshot.chains.reduce<
-        { chain: string; provider: string; p50Ms: number } | null
-      >((acc, c) => {
-        if (!c.best) return acc;
-        if (!acc || c.best.p50Ms < acc.p50Ms) {
-          return {
-            chain: c.name,
-            provider: c.best.providerName,
-            p50Ms: c.best.p50Ms,
-          };
-        }
-        return acc;
-      }, null)
-    : null;
 
   return (
     <article
@@ -136,15 +117,26 @@ export default async function RpcHubPage() {
       <header className="mb-8">
         <p className="label-mono text-sky-600 mb-2">RPC nodes</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Fastest RPC providers, by chain and region
+          RPC providers by chain: public endpoints and API-key providers, ranked by latency
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Every free, no-key public RPC endpoint, measured per chain with
           the same probe: one identical{" "}
           <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
           rotating request id (defeats CDN body-keyed caches) every 60
-          seconds from 3 regions (N. Virginia, Amsterdam, Singapore). The matrix below folds the per-chain leaderboards
-          into one view: fastest provider per chain, fastest per region,
+          seconds from 3 regions (N. Virginia, Amsterdam, Singapore).
+          {keyedChains.length > 0 ? (
+            <>
+              {" "}
+              On {keyedChains.length} chains ({keyedChains.join(", ")}) the same
+              page also ranks the API-key endpoints of Alchemy, Chainstack and
+              QuickNode, probed every 120 seconds with plan tiers disclosed;
+              the Endpoints selector below switches between the two cohorts,
+              which are never ranked against each other.
+            </>
+          ) : null}{" "}
+          The matrix folds the per-chain leaderboards
+          into one view: the lowest median per chain, per region,
           and which gateway covers your whole multichain stack. Headline
           numbers are 24h p50 round-trip latency; methodology and
           exclusion rules live on the{" "}
@@ -188,63 +180,11 @@ export default async function RpcHubPage() {
         </p>
       </section>
 
-      {keyedRpcSpecs.length > 0 && (
-        <section className="mb-8 rounded-lg border border-ink/10 card-soft px-4 py-3">
-          <p className="label-mono text-[10px] text-ink-faint mb-2">
-            Keyed &amp; premium endpoints
-          </p>
-          <p className="text-sm text-ink-soft leading-snug mb-3 max-w-2xl">
-            The matrix above ranks free, no-key public RPCs. Newer chains
-            served only through API-key endpoints get their own keyed
-            benchmark:
-          </p>
-          <ul className="flex flex-wrap gap-2 text-[12.5px]">
-            {keyedRpcSpecs.map((s) => (
-              <li key={s.slug}>
-                <Link
-                  href={`/benchmarks/${s.slug}`}
-                  className="inline-flex rounded-full border border-ink/15 px-3 py-1 text-ink-soft hover:text-ink hover:border-ink/30"
-                >
-                  {s.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {snapshot ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <SummaryCard
-              label="Chains benched"
-              value={String(snapshot.totals.chains)}
-              accent="#0ea5e9"
-            />
-            <SummaryCard
-              label="Unique providers"
-              value={String(snapshot.totals.uniqueProviders)}
-            />
-            <SummaryCard
-              label="Probe regions"
-              value={String(snapshot.totals.regions)}
-              tip="us-east (N. Virginia), eu-west (Amsterdam), Singapore. Every provider is probed from all three."
-            />
-            <SummaryCard
-              label="Fastest provider overall"
-              value={
-                fastest
-                  ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}`
-                  : "..."
-              }
-              tip={
-                fastest
-                  ? `Best chain leader across the matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
-                  : undefined
-              }
-            />
-          </section>
-
+          {/* Summary cards, the Endpoints (public / API key) selector and
+              the chain × provider tabs live in the client component so
+              one click swaps the whole block between the two cohorts. */}
           <RpcHubTabs snapshot={snapshot} linkableSlugs={linkableSlugs} />
 
           {/* Every indexable chain page as a plain link: the leaderboard
@@ -325,6 +265,16 @@ export default async function RpcHubPage() {
           are excluded rather than listed with an asterisk.
         </p>
         <p className="mt-3">
+          API-key cohort: on the chains that carry one, Alchemy, Chainstack
+          and QuickNode are probed on their keyed endpoints every 120
+          seconds from the same three regions with the same payload and
+          classification; keys never leave the probe environment and the
+          plan tier of every key is disclosed on the chain page. The two
+          cohorts share a page per chain and a selector, not a table:
+          shared gateways at 60 s and metered endpoints at 120 s are not
+          the same measurement.
+        </p>
+        <p className="mt-3">
           MEV-protection gateways (Flashbots Protect, MEV Blocker, Blink,
           bloXroute Protect) share this probe surface but are optimised
           for send-tx privacy, not read speed. They are ranked against
@@ -354,45 +304,4 @@ export default async function RpcHubPage() {
       </footer>
     </article>
   );
-}
-
-function SummaryCard({
-  label,
-  value,
-  accent,
-  tip,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-  tip?: string;
-}) {
-  return (
-    <div
-      className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15"
-      title={tip}
-    >
-      <p
-        className="label-mono text-[10px] text-ink-faint mb-1 flex items-center gap-1.5"
-        style={{ fontFamily: "var(--font-mono, monospace)" }}
-      >
-        {accent && (
-          <span
-            className="inline-block w-2 h-2 rounded-full"
-            style={{ background: accent }}
-          />
-        )}
-        {label}
-      </p>
-      <p className="text-lg sm:text-2xl font-semibold tabular-nums leading-tight">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function fmtMs(v: number): string {
-  if (!Number.isFinite(v)) return "...";
-  if (v < 1000) return `${Math.round(v)} ms`;
-  return `${(v / 1000).toFixed(2)} s`;
 }

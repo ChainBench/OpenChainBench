@@ -32,7 +32,18 @@
  *   {{best_p50:chain:<x>}}     p50 of the per-chain leader, formatted.
  *   {{worst_name:chain:<x>}}   trailing provider on chain <x>.
  *   {{worst_p50:chain:<x>}}    p50 of the trailing provider on chain <x>.
+ *   {{best_name:tier:<t>}}     leader of another access cohort on a bench
+ *                              that declares `dimensions.tier` (the public
+ *                              RPC page quoting its keyed cohort). Reads the
+ *                              `tierResults` stash; the active cohort's own
+ *                              leader stays {{best_name}}.
+ *   {{best_p50:tier:<t>}}      p50 of that cohort's leader, formatted.
+ *   {{count:tier:<t>}}         live providers in that cohort.
  *   {{count}}                  number of providers with live data.
+ *
+ * Per-slug lookups ({{p50:<slug>}}, {{name:<slug>}}...) search the
+ * active cohort first and then every other tier's stash, so the public
+ * page can quote a keyed provider by slug without a tier prefix.
  *
  * Unknown placeholders are left untouched so a typo in the YAML can't
  * silently erase a sentence. A known placeholder that cannot resolve
@@ -98,6 +109,27 @@ export function pruneUnresolved(text: string): string {
 
 const CHAIN_TEMPLATE_RE =
   /\{\{\s*(best_name|best_p50|worst_name|worst_p50):chain:([a-z0-9_-]+)\s*\}\}/gi;
+const TIER_TEMPLATE_RE =
+  /\{\{\s*(best_name|best_p50|worst_name|worst_p50|count):tier:([a-z0-9_-]+)\s*\}\}/gi;
+
+/** Ranked live rows of another tier cohort (see Benchmark.tierResults),
+ *  or the active cohort itself (`own`, already ranked with the citation
+ *  floor) when `tier` names it: a spec author can then write
+ *  {{best_name:tier:public}} in copy shared by both tabs. */
+function tierRows(b: Benchmark, tier: string, own: ProviderResult[]): ProviderResult[] {
+  const lower = tier.toLowerCase();
+  const ownTier = b.results.find((r) => r.tier)?.tier;
+  if (ownTier && ownTier.toLowerCase() === lower) return own;
+  const stash = b.tierResults ?? {};
+  const key = Object.keys(stash).find((k) => k.toLowerCase() === lower);
+  if (!key) return [];
+  // Same gate as the headline cohort (success floor, Provisional rows
+  // never lead): rank the stash as if it were the bench's results. No
+  // ungated fallback: a cohort with no citable row yields no leader, and
+  // the clause quoting it is pruned, like the keyed tab that names nobody.
+  const cohort: Benchmark = { ...b, results: stash[key] };
+  return rankResults(citationCandidates(cohort), b.higherIsBetter);
+}
 
 /** Per-chain leader / trailer lookups against the Benchmark stash
  *  populated by spec.ts. Inlined (not re-imported from spec.ts) to
@@ -173,7 +205,27 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
     },
   );
 
-  const rendered = withChain.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
+  const withTier = withChain.replace(
+    TIER_TEMPLATE_RE,
+    (whole, keyword: string, tier: string) => {
+      const k = keyword.toLowerCase();
+      const rows = tierRows(benchmark, tier, sorted);
+      if (k === "count") return rows.length > 0 ? String(rows.length) : UNRESOLVED;
+      const lead = rows[0];
+      const trailer = rows[rows.length - 1];
+      if (k === "best_name") return lead ? lead.name : UNRESOLVED;
+      if (k === "best_p50") return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
+      if (k === "worst_name") return trailer ? trailer.name : UNRESOLVED;
+      if (k === "worst_p50") return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : UNRESOLVED;
+      return whole;
+    },
+  );
+  // Per-slug lookups reach every cohort: the active one first.
+  const otherTierRows = Object.values(benchmark.tierResults ?? {}).flatMap((rows) =>
+    liveResults(rows),
+  );
+
+  const rendered = withTier.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
     const k = keyword.toLowerCase();
     switch (k) {
       case "p50":
@@ -183,9 +235,9 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       case "success":
       case "name": {
         if (!arg) return whole;
-        const provider = live.find(
-          (r) => r.slug.toLowerCase() === arg.toLowerCase()
-        );
+        const provider =
+          live.find((r) => r.slug.toLowerCase() === arg.toLowerCase()) ??
+          otherTierRows.find((r) => r.slug.toLowerCase() === arg.toLowerCase());
         if (!provider) return UNRESOLVED;
         if (k === "name") return provider.name;
         if (k === "success") {

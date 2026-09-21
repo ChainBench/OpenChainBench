@@ -1,7 +1,7 @@
 /**
  * On-demand bench variant for the client-side chain/region/kind tabs.
  *
- * GET /api/bench/<slug>/variant?chain=<c>&region=<r>&kind=<k>
+ * GET /api/bench/<slug>/variant?chain=<c>&region=<r>&kind=<k>&tier=<t>
  *
  * Returns the filtered Benchmark as JSON. Exists so the bench page can
  * ship ONLY the aggregate view (the old embedded variant map multiplied
@@ -46,8 +46,8 @@ export async function GET(
   // Validate every filter against the declared dimensions and use the
   // canonical value: these end up in PromQL label selectors downstream.
   const url = new URL(req.url);
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
-  for (const dim of ["chain", "region", "kind", "venue"] as const) {
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
     // Canonical-aware matching: the chain dimension may still hold the

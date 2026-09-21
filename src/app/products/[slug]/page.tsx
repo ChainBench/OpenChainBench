@@ -386,6 +386,8 @@ export default async function ProviderPage({
     title: string;
     chain?: { value: string; label: string };
     region?: { value: string; label: string };
+    /** Access cohort the rank was earned in (keyed RPC providers). */
+    tier?: string;
     benchSlug: string;
     providerSlug: string;
   };
@@ -409,7 +411,9 @@ export default async function ProviderPage({
     const providerSlug = a.result.slug;
 
     let handledByCells = false;
-    if (cellRanks && regionDims.length > 0) {
+    // cellRanks describe the bench's headline cohort; a tiered appearance
+    // (keyed RPC provider) is ranked within its cohort below instead.
+    if (cellRanks && regionDims.length > 0 && !a.tier) {
       const finestKeys = Object.keys(cellRanks).filter((k) => {
         const [c, r] = k.split("|");
         const chainOk = chainDims.length > 0 ? c !== "all" : c === "all";
@@ -491,7 +495,13 @@ export default async function ProviderPage({
     const isGlobalNumberOne = a.rank === 1;
     if (chainDims.length === 0) {
       if (isGlobalNumberOne) {
-        badgeCards.push({ key: benchSlug, title, benchSlug, providerSlug });
+        badgeCards.push({
+          key: a.tier ? `${benchSlug}-t-${a.tier}` : benchSlug,
+          title,
+          ...(a.tier ? { tier: a.tier } : {}),
+          benchSlug,
+          providerSlug,
+        });
       }
       continue;
     }
@@ -900,9 +910,13 @@ export default async function ProviderPage({
                 : [];
             const hasChainRanks = chainRanks.length > 0;
             return (
-              <li key={a.benchmark.slug}>
+              <li key={a.tier ? `${a.benchmark.slug}?tier=${a.tier}` : a.benchmark.slug}>
                 <RowLink
-                  href={canLink(a.benchmark.slug) ? `/benchmarks/${a.benchmark.slug}` : null}
+                  href={
+                    canLink(a.benchmark.slug)
+                      ? `/benchmarks/${a.benchmark.slug}${a.tier ? `?tier=${a.tier}` : ""}`
+                      : null
+                  }
                   className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
@@ -931,6 +945,7 @@ export default async function ProviderPage({
                     </h3>
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
+                      {a.tier ? <> · {a.tier === "keyed" ? "API-key cohort" : `${a.tier} cohort`}, ranked separately</> : null}
                     </p>
                     {hasChainRanks && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
@@ -991,12 +1006,14 @@ export default async function ProviderPage({
               const scopeParams = new URLSearchParams();
               if (card.chain) scopeParams.set("chain", card.chain.value);
               if (card.region) scopeParams.set("region", card.region.value);
+              if (card.tier) scopeParams.set("tier", card.tier);
               const qs = scopeParams.size > 0 ? `?${scopeParams.toString()}` : "";
               const badgePath = `/api/badge/${card.benchSlug}/${card.providerSlug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
-              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}`;
-              const scopeLabels = [card.chain?.label, card.region?.label]
+              const tierLabel = card.tier ? (card.tier === "keyed" ? "API-key cohort" : `${card.tier} cohort`) : null;
+              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}`;
+              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel]
                 .filter(Boolean)
                 .join(" · ");
               const cardTitle = scopeLabels

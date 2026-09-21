@@ -175,6 +175,12 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  /** Access cohort this provider belongs to on a bench that declares
+   *  `dimensions.tier` (RPC pages: `public` no-key endpoints next to
+   *  `keyed` API-key providers). The tier selector partitions the
+   *  provider list; each cohort is ranked on its own and never against
+   *  the other. Absent = the first declared tier value. */
+  tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
   /** Declares a cohort member that has no headline value by design
    *  (a perp DEX with no token yet on a valuation bench). The ledger
    *  lists it in an "Unranked · <label>" block below the field with
@@ -452,6 +458,24 @@ export const SpecSchema = z
             })
           )
           .optional(),
+        /* Access tier. Unlike the other dimensions it injects no PromQL
+         * label: it partitions the provider list by `provider.tier`, so
+         * each cohort keeps its own queries (the keyed harness pins
+         * tier="keyed" itself, the public one carries no tier label).
+         * The first value is the headline cohort (canonical URL, title,
+         * citation); the others are reachable through ?tier=<value>.
+         * No `all` value: the cohorts are measured on different
+         * endpoints and cadences and are never ranked together. */
+        tier: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .min(2)
+          .refine((vals) => vals.every((v) => v.value !== "all"), "dimensions.tier: no `all` value, cohorts are never pooled")
+          .optional(),
       })
       .optional(),
 
@@ -493,6 +517,7 @@ export const SpecSchema = z
         region: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
         kind: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
         venue: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+        tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
       })
       .strict()
       .optional(),
@@ -672,6 +697,56 @@ export const SpecSchema = z
         message:
           "Benches declaring dimensions.region must provide rank_matrix_query so badge claims are scoped per region",
       });
+    }
+
+    // Tier cohorts: every provider tier must be declared, every declared
+    // tier must have at least one provider (an empty tab is a broken
+    // selector), and the aggregate pin, when set, must be a declared
+    // value. A provider `tier` on a bench without the dimension is a
+    // typo that would silently do nothing.
+    const tiers = spec.dimensions?.tier ?? [];
+    const tierValues = new Set(tiers.map((t) => t.value));
+    if (tiers.length === 0) {
+      spec.providers.forEach((p, i) => {
+        if (p.tier) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["providers", i, "tier"],
+            message: "provider.tier requires dimensions.tier on the bench",
+          });
+        }
+      });
+    } else {
+      const defaultTier = tiers[0].value;
+      const seen = new Set<string>();
+      spec.providers.forEach((p, i) => {
+        const t = p.tier ?? defaultTier;
+        seen.add(t);
+        if (!tierValues.has(t)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["providers", i, "tier"],
+            message: `Unknown tier "${t}" (declared: ${[...tierValues].join(", ")})`,
+          });
+        }
+      });
+      for (const t of tierValues) {
+        if (!seen.has(t)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["dimensions", "tier"],
+            message: `Tier "${t}" has no provider`,
+          });
+        }
+      }
+      const pinned = spec.aggregate_filters?.tier;
+      if (pinned && !tierValues.has(pinned)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["aggregate_filters", "tier"],
+          message: `aggregate_filters.tier "${pinned}" is not a declared tier`,
+        });
+      }
     }
 
     // A ledger column referencing a panel id that doesn't exist would

@@ -136,6 +136,31 @@ export function rpcChainLabel(b: Pick<Benchmark, "slug" | "category" | "title">)
   return m ? m[1] : null;
 }
 
+/** The access cohort a Benchmark object holds when it is not the bench's
+ *  headline one (the keyed RPC variant), else null. Read from the rows:
+ *  every row of one object shares the active tier. */
+export function nonHeadlineTier(
+  b: Pick<Benchmark, "results" | "dimensions" | "aggregateFilters">,
+): string | null {
+  const tiers = b.dimensions?.tier ?? [];
+  if (tiers.length === 0) return null;
+  const own = b.results.find((r) => r.tier)?.tier;
+  if (!own) return null;
+  const headline = b.aggregateFilters?.tier ?? tiers[0].value;
+  return own === headline ? null : own;
+}
+
+/** Canonical page path for a Benchmark object: the clean URL for the
+ *  headline cohort, `?tier=<t>` for another cohort, so every citation
+ *  URL (quote, grounding trace, cite bundle, /api/stat pageUrl) points
+ *  at the tab that ranks the rows it quotes. */
+export function benchPath(
+  b: Pick<Benchmark, "slug" | "results" | "dimensions" | "aggregateFilters">,
+): string {
+  const tier = nonHeadlineTier(b);
+  return `/benchmarks/${b.slug}${tier ? `?tier=${tier}` : ""}`;
+}
+
 export function headlineSentence(b: Benchmark): string {
   const parts = headlineParts(b);
   return parts.claim ? `${parts.claim} ${parts.rest}` : parts.rest;
@@ -171,12 +196,15 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     const listed = displayResults(b.results).length;
     const ranked = rankedCandidates(b).length;
     const below = listed - ranked;
+    // The keyed variant of a chain page names its cohort: "API-key
+    // Arbitrum RPC endpoints", never "free public".
+    const cohort = nonHeadlineTier(b) === "keyed" ? "API-key" : "free public";
     const claim =
       ranked === 1 && listed === 1
-        ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
+        ? `${top.name} is the only ${cohort} ${chain} RPC endpoint measured, at ${value}`
         : ranked === 1
-          ? `${top.name} is the only one of the ${listed} free public ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
-          : `${top.name} has the lowest median latency of the ${ranked} free public ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
+          ? `${top.name} is the only one of the ${listed} ${cohort} ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
+          : `${top.name} has the lowest median latency of the ${ranked} ${cohort} ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
     return { claim, rest: `(p50, 24h, 3 regions).` };
   }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
@@ -189,7 +217,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */
 export function citationQuote(b: Benchmark, origin: string): string {
   const sentence = headlineSentence(b);
-  return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
+  return `${sentence} Source: OpenChainBench (${origin}${benchPath(b)}).`;
 }
 
 /**
@@ -223,7 +251,7 @@ export function groundingTraceLine(
   const isoDate = (Number.isFinite(dataMs) ? new Date(dataMs) : now)
     .toISOString()
     .slice(0, 10);
-  const url = `${origin}/benchmarks/${b.slug}`;
+  const url = `${origin}${benchPath(b)}`;
   return `As of ${isoDate}, ${trimTrailingPeriod(sentence)}. Source: OpenChainBench, ${url}.`;
 }
 
@@ -256,7 +284,7 @@ export function groundingTraceParts(
       .toISOString()
       .slice(0, 10),
     claim: trimTrailingPeriod(sentence),
-    url: `${origin}/benchmarks/${b.slug}`,
+    url: `${origin}${benchPath(b)}`,
   };
 }
 
@@ -298,11 +326,11 @@ const MONTHS = [
 ];
 
 export function citeBundle(
-  b: Pick<Benchmark, "slug" | "title">,
+  b: Pick<Benchmark, "slug" | "title"> & Partial<Pick<Benchmark, "results" | "dimensions" | "aggregateFilters">>,
   origin: string,
   now: Date = new Date(),
 ): CiteBundle {
-  const url = `${origin}/benchmarks/${b.slug}`;
+  const url = `${origin}${b.results ? benchPath({ slug: b.slug, results: b.results, dimensions: b.dimensions, aggregateFilters: b.aggregateFilters }) : `/benchmarks/${b.slug}`}`;
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(now.getUTCDate()).padStart(2, "0");

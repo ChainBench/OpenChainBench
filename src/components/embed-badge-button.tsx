@@ -23,6 +23,7 @@ type Props = {
   chain?: string | null;
   region?: string | null;
   kind?: string | null;
+  tier?: string | null;
 };
 
 /**
@@ -44,6 +45,7 @@ export function EmbedBadgeButton({
   chain = null,
   region = null,
   kind = null,
+  tier = null,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<Format>("html");
@@ -59,9 +61,10 @@ export function EmbedBadgeButton({
     if (chain) qs.set("chain", chain);
     if (region) qs.set("region", region);
     if (kind) qs.set("kind", kind);
+    if (tier) qs.set("tier", tier);
     const s = qs.toString();
     return s ? `&${s}` : "";
-  }, [chain, region, kind]);
+  }, [chain, region, kind, tier]);
 
   // Reset cached snippet state during render whenever the identity of the
   // fetch (open + scope) changes, instead of dispatching setState inside

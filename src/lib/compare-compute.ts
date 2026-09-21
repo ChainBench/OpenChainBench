@@ -121,6 +121,7 @@ export async function loadBreakdown(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<BreakdownRow[]> {
   const filtered = nonAllValues(options);
   if (filtered.length === 0) return [];
@@ -128,6 +129,7 @@ export async function loadBreakdown(
     filtered.map(async (opt) => {
       const variant = await loadBenchmark(benchSlug, {
         [axis]: opt.value,
+        ...(tier ? { tier } : {}),
       });
       if (!variant) return null;
       const aRes = variant.results.find((r) => r.slug === providerA);
@@ -169,19 +171,22 @@ export async function loadChainRegionMatrix(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<ChainRegionEntry[]> {
   const chains = nonAllValues(chainOpts);
   const regions = nonAllValues(regionOpts);
   if (chains.length === 0 || regions.length === 0) return [];
 
+  const scope = tier ? { tier } : {};
   const chainTasks = chains.map((c) =>
-    loadBenchmark(benchSlug, { chain: c.value }),
+    loadBenchmark(benchSlug, { chain: c.value, ...scope }),
   );
   const regionTasks = chains.flatMap((c) =>
     regions.map((r) =>
       loadBenchmark(benchSlug, {
         chain: c.value,
         region: r.value,
+        ...scope,
       }).then((variant) => ({ chain: c.value, region: r.value, variant })),
     ),
   );
@@ -271,13 +276,35 @@ export function hasSharedBenches(
   bAppearances: Awaited<ReturnType<typeof getProvider>>,
 ): boolean {
   if (!aAppearances || !bAppearances) return false;
-  const aSlugs = new Set(aAppearances.appearances.map((x) => x.benchmark.slug));
-  const bSlugs = new Set(bAppearances.appearances.map((x) => x.benchmark.slug));
+  return sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances).length > 0;
+}
+
+type AppearanceLike = { benchmark: { slug: string }; tier?: string };
+
+/** Bench slugs both providers appear on, after the pair's whitelist and
+ *  exclude rules, keeping only the benches where the two rows sit in the
+ *  same access cohort: on a chain RPC page a public gateway and a keyed
+ *  provider are measured on different endpoints and cadences and the
+ *  page itself never ranks them together, so a compare page must not
+ *  either. Single source for hasSharedBenches, buildSharedBenches and
+ *  the compare page's own copies. */
+export function sharedBenchSlugs(
+  pair: ComparePair,
+  aAppearances: readonly AppearanceLike[],
+  bAppearances: readonly AppearanceLike[],
+): string[] {
+  const aByBench = new Map(aAppearances.map((x) => [x.benchmark.slug, x] as const));
+  const bByBench = new Map(bAppearances.map((x) => [x.benchmark.slug, x] as const));
+  const sameCohort = (s: string) => {
+    const a = aByBench.get(s);
+    const b = bByBench.get(s);
+    return !!a && !!b && (a.tier ?? null) === (b.tier ?? null);
+  };
   const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
-    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
+    ? pair.benchmarks.filter(sameCohort)
+    : Array.from(aByBench.keys()).filter(sameCohort);
   const excluded = new Set(pair.excludeBenchmarks ?? []);
-  return candidateSlugs.some((s) => !excluded.has(s));
+  return candidateSlugs.filter((s) => !excluded.has(s));
 }
 
 /** Resolves the intersection of two providers' bench appearances, then
@@ -298,17 +325,10 @@ export async function buildSharedBenches(
     bAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
   );
 
-  // Bench selection order:
-  //   1. If `benchmarks` whitelist is set, take that list as the
-  //      candidate set (legacy editorial pin).
-  //   2. Otherwise take the natural intersection of both providers'
-  //      appearances (the default for any new pair).
-  //   3. In both cases, subtract anything in `excludeBenchmarks`.
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aByBench.has(s) && bByBench.has(s))
-    : Array.from(aByBench.keys()).filter((s) => bByBench.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
+  // Bench selection: the pair's whitelist when set, else the natural
+  // intersection of both providers' appearances; minus the exclude
+  // list; same access cohort only (see sharedBenchSlugs).
+  const sharedSlugs = sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances);
 
   // KV cache lookup before the fan out. Hash mixes provider slugs, the
   // shared bench list and the deploy SHA so any drift (new bench, new
@@ -327,7 +347,10 @@ export async function buildSharedBenches(
       const aEntry = aByBench.get(benchSlug);
       const bEntry = bByBench.get(benchSlug);
       if (!aEntry || !bEntry) return null;
-      const fullBench = await loadBenchmark(benchSlug);
+      // Both rows sit in the same cohort; a non-headline one (keyed RPC
+      // providers) scopes every breakdown load to that tier.
+      const tier = aEntry.tier;
+      const fullBench = await loadBenchmark(benchSlug, tier ? { tier } : {});
       if (!fullBench) return null;
 
       const higherIsBetter = fullBench.higherIsBetter === true;
@@ -369,6 +392,7 @@ export async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? Promise.resolve<BreakdownRow[]>([])
@@ -379,6 +403,7 @@ export async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? loadChainRegionMatrix(
@@ -388,6 +413,7 @@ export async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               )
             : Promise.resolve<ChainRegionEntry[]>([]),
         ]);

@@ -8,6 +8,9 @@ type Props = {
   bench: string;
   chain?: string;
   region?: string;
+  /** Access cohort of a tier-dimensioned bench ("keyed" for the
+   *  API-key providers of a chain RPC page). */
+  tier?: string;
   caption?: string;
   showSuccessRate?: boolean;
 };
@@ -16,15 +19,16 @@ export async function StatTable({
   bench,
   chain,
   region,
+  tier,
   caption,
   showSuccessRate = true,
 }: Props) {
-  const b = await getBenchmark(bench, { chain, region }).catch(() => undefined);
+  const b = await getBenchmark(bench, { chain, region, tier }).catch(() => undefined);
   if (!b || b.editorialStatus !== "live") {
     return (
       <p className="my-6 text-sm text-ink-muted italic">
         Live data temporarily unavailable. See{" "}
-        <Link className="lnk" href={`/benchmarks/${bench}`}>
+        <Link className="lnk" href={`/benchmarks/${bench}${tier ? `?tier=${tier}` : ""}`}>
           /benchmarks/{bench}
         </Link>
         .
