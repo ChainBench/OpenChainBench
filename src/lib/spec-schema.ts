@@ -80,6 +80,12 @@ const queries = z
     success: promql.optional(),
     sample_size: promql.optional(),
     series: promql.optional(),
+    /** Optional 0/1 rank gate. An instant query reading 0 lists the row
+     *  as "Provisional" on the ledger: its figures are shown, it takes
+     *  no rank and never leads (a harness that publishes a median from a
+     *  sample too small to rank, e.g. bench 268's tfq_ranked on the
+     *  effective sample size). Absent or 1: ranked as usual. */
+    ranked: promql.optional(),
     /** Short-window "is this provider's live feed producing new events
      *  right now" probe. Instant query returning a scalar count > 0 when
      *  fresh events arrived in the past few minutes, 0 when the source

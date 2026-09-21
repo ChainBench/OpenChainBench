@@ -905,7 +905,7 @@ function Row({
               </Hint>
             )}
             {isUnranked && (
-              <Hint label="Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader.">
+              <Hint label={r.unrankedLabel === "Provisional" ? "Published, not ranked: the figure stands on a sample the bench's own gate finds too small to rank yet (one chain's few swaps carrying most of a pooled median, for example). It takes a rank as soon as the gate opens." : "Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader."}>
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink-faint" aria-hidden />
                   {r.unrankedLabel}

@@ -749,6 +749,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
             success: inject(p.queries.success),
             sample_size: inject(p.queries.sample_size),
             series: inject(p.queries.series),
+            ranked: inject(p.queries.ranked),
             live_activity: inject(p.queries.live_activity),
             regions: p.queries.regions?.map((r) => ({
               ...r,
@@ -902,13 +903,14 @@ async function tryLoadLive(
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
       ]);
-      const [mean, success, sampleSize, slotP50, slotP99, liveActivity] = await Promise.all([
+      const [mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
         q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
+        q.ranked ? prom.scalar(q.ranked) : Promise.resolve(null),
       ]);
 
       // One retry on the load-bearing percentiles. A null here is either
@@ -1014,6 +1016,9 @@ async function tryLoadLive(
             : undefined,
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
+        // The rank gate read 0: published (its figures stand), listed
+        // as provisional below the ranked field, never a leader.
+        unrankedLabel: q.ranked && rankGate != null && rankGate <= 0 ? "Provisional" : undefined,
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
