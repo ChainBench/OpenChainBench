@@ -30,11 +30,10 @@ import { AnswersForBench } from "@/components/answers-for-bench";
 function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
   const n = cohort?.venues.length ?? 0;
   const lead = cohort?.venues[0];
-  const head =
-    lead && lead.volume30d != null
-      ? `${lead.name} leads ${n} perpetual DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. `
-      : "";
-  return `${head}Live volume, open interest, fees, all-in cost and funding rate${n ? ` across ${n} perpetual DEXes` : ""}, reproducible methodology, refreshed every minute, sources public.`;
+  // 158 characters at most: the SERP truncates beyond that.
+  return lead && lead.volume30d != null
+    ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
+    : `Live volume, open interest, fees, all-in cost and funding rate${n ? ` across ${n} perp DEXes` : ""}, reproducible methodology, sources public.`;
 }
 
 export async function generateMetadata(): Promise<import("next").Metadata> {
