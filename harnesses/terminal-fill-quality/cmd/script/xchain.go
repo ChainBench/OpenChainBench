@@ -63,6 +63,13 @@ var xchainApps = []xchainApp{
 	// requests to EVM tokens on 2026-09-21: Robinhood Chain 225, BNB 52,
 	// HyperEVM 10, Arc 10.
 	{Slug: "pump-fun", Name: "pump.fun app", FeeRecipients: []string{"0xdab3f5fcd43211345f1789bf734b5fc5aef1adf7"}},
+	// Phantom's cross-chain swap: one Relay app-fee recipient at 85 bps
+	// (its 0.85 % swap fee), paid from Solana in CASH (Phantom's dollar
+	// token: 40 of 57 requests on 2026-09-21), SOL or USDC, delivered on
+	// Robinhood Chain (mostly), Ethereum, Base and Arc, gas not
+	// sponsored; the Solana users behind it touch Phantom's fee account
+	// and no other terminal's.
+	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{"0x74f9cb25fd81db31b4daf97ec121c01873581a57"}},
 	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
 	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
 	// funded wallets' swaps on Robinhood Chain's router (native.go).

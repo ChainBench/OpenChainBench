@@ -65,7 +65,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
     if (!m) return null;
     if (m[1] === "funding") return { text: "funding leg", title: "A bridge leg through Relay, not a swap: what the user sent on one chain against what was delivered on the other (FOMO: a deposit into its Solana wallet to trade there; BasedBot: its in-app bridge between the user's Solana and Robinhood Chain, BNB, Base or Ethereum wallets, either direction). In the JSON, out of the product's published figure." };
     const chain = CHAIN_NAMES[m[1]] ?? m[1];
-    if (slug.startsWith("fomo-") || slug.startsWith("pump-fun-")) return { text: `on ${chain} via Relay`, title: `A trade delivered on ${chain} by a Relay solver: the user paid from the app's wallet on Solana` };
+    if (slug.startsWith("fomo-") || slug.startsWith("pump-fun-") || slug.startsWith("phantom-")) return { text: `on ${chain} via Relay`, title: `A trade delivered on ${chain} by a Relay solver: the user paid from the app's wallet on Solana` };
     return { text: chain, title: `A swap of this product on ${chain}, read from its router there` };
   };
   const filtered = terminal !== (focus ?? "") || side || venue || ref;
@@ -300,14 +300,14 @@ type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Other fees", pool: "Pool" } as const;
 const ROW_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
-const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app" };
+const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app", phantom: "Phantom" };
 const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
 const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://explorer.mainnet.chain.robinhood.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
 /** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
 function txExplorer(s: FillSample): string {
   if (s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain)) {
     // A Relay sale settles on Solana (sig is the Solana signature); everything else on that chain is native or a Relay buy
-    if (s.side === "sell" && (s.terminal.startsWith("fomo-") || s.terminal.startsWith("pump-fun-") || s.terminal.startsWith("basedbot-"))) return "https://solscan.io/tx/";
+    if (s.side === "sell" && (s.terminal.startsWith("fomo-") || s.terminal.startsWith("pump-fun-") || s.terminal.startsWith("phantom-") || s.terminal.startsWith("basedbot-"))) return "https://solscan.io/tx/";
     return EXPLORERS[s.chain];
   }
   return "https://solscan.io/tx/";

@@ -250,8 +250,8 @@ providers:
 
   - slug: phantom
     name: Phantom
-    tag: "Wallet, Solana"
-    formula: "Random sample of the swaps paying Phantom's in-wallet swap fee (0.85 % to its fee wallet, SOL or WSOL), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    tag: "Wallet, Solana + Robinhood Chain + Ethereum + Base + Arc"
+    formula: "Solana: random sample of the swaps paying Phantom's in-wallet fee (0.85 %). Other chains: its swaps through Relay (CASH, SOL or USDC in, tokens delivered there, 85 bps app fee). Valued at the pool's state before the trade; median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="phantom",chain="all",stat="median"}
       p90: tfq_loss_bps{terminal="phantom",chain="all",stat="p90"}
