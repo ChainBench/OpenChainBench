@@ -29,6 +29,13 @@ type Terminal struct {
 	Internal []string `json:"internal,omitempty"`
 	Tips     []string `json:"tips,omitempty"`
 	Programs []string `json:"programs,omitempty"`
+	// FeeTx: the terminal's fee is a separate transaction the user signs
+	// right after the swap (BasedBot on Solana: the swap runs through
+	// Jupiter with nothing inside, then 1 % of the SOL spent or received,
+	// a ~$0.10 minimum, goes out in system transfers to the wallet and to
+	// per-user or referrer accounts). A mention of the wallet with no swap
+	// program is the attempt; the payer's previous transaction is the swap.
+	FeeTx bool `json:"fee_tx,omitempty"`
 	// StableLegsAreFee: besides its main fee wallet, the terminal's fee
 	// arrives as user-signed stable transfers to per-trade accounts (FOMO
 	// through the OKX router: commission leg plus one or two transferChecked
@@ -123,6 +130,14 @@ var terminals = []Terminal{
 	// same transaction (DeFiLlama's pumpfun-app adapter attributes on it).
 	// The fixed 0.001 SOL it forwards to its pfn… accounts on every swap is
 	// an inclusion tip (network), like the other terminals' relays.
+	// BasedBot on Solana (2026-09-21, a test trade of Florent's and 12 other
+	// payers): Jupiter swap with no fee inside, then a separate transaction
+	// with 1 % of the SOL spent (buys) or received (sells), a ~$0.10 minimum,
+	// split between this wallet (12 to 85 %, ~2,600 transactions an hour) and
+	// per-user or referrer accounts. Failed swaps leave no fee transaction:
+	// the fail rate is not measured on this row.
+	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"}, FeeTx: true,
+		Note: "BasedBot's Solana swap runs through Jupiter with no fee inside; its 1 % fee (about $0.10 minimum) is a separate transaction right after, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. The fee is charged after a successful swap only, so failed swaps are not seen: no fail rate on this row."},
 	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
 		Note: "pump.fun's mobile app takes no fee of its own; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
 	// Not in the cohort: BullX (trading suspended 2026-06-01; its wallets

@@ -147,6 +147,13 @@ func (c *rpcClient) signatures(ctx context.Context, address string, limit int, u
 	return out, err
 }
 
+// signaturesBefore: the address's signatures older than `before`, newest first.
+func (c *rpcClient) signaturesBefore(ctx context.Context, address, before string, limit int) ([]sigInfo, error) {
+	var out []sigInfo
+	err := c.call(ctx, "getSignaturesForAddress", []any{address, map[string]any{"limit": limit, "before": before, "commitment": "confirmed"}}, &out)
+	return out, err
+}
+
 // instruction in a jsonParsed transaction: program-owned instructions
 // carry their account list (pubkeys); the ones the RPC decodes (system,
 // spl-token, associated-token…) carry `parsed` instead.
