@@ -102,11 +102,12 @@ var (
 	gRelayFeed = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_relay_feed_up", Help: "1 when Relay's requests API answered the last polling round (the cross-chain rows' feed)"})
 	gSol       = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_sol_usd", Help: "SOL/USD used for sizing"})
 	cCalls     = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_calls_total", Help: "RPC calls"})
+	cSkipped   = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "tfq_native_skipped_blocks_total", Help: "Blocks the EVM log feed skipped when its cursor fell over 2,000 blocks behind the head (a restart, a slow node): neither read nor sampled"}, []string{"chain"})
 	cErrors    = prometheus.NewCounter(prometheus.CounterOpts{Name: "tfq_rpc_errors_total", Help: "RPC errors and rate limits"})
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors)
+	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -1577,34 +1578,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		}
 		// Farming loops on a row that drops them: a wallet trading the same
 		// token both ways four times or more in the window.
-		loopers := map[string]bool{}
-		for _, slug := range slugs {
-			if !dropsLoops(slug) {
-				continue
-			}
-			type um struct{ u, m string }
-			sides := map[um][2]int{}
-			count := map[string]int{}
-			for _, s := range st.Swaps {
-				if s.Terminal != slug || s.Method != methodVersion {
-					continue
-				}
-				k := um{s.User, s.Mint}
-				v := sides[k]
-				if s.Side == "buy" {
-					v[0]++
-				} else {
-					v[1]++
-				}
-				sides[k] = v
-				count[s.User]++
-			}
-			for k, v := range sides {
-				if v[0] > 0 && v[1] > 0 && count[k.u] >= 4 {
-					loopers[slug+":"+k.u] = true
-				}
-			}
-		}
+		loopers := loopersOf(st, slugs)
 		wOf := func(s Swap) float64 {
 			if w := weightOf[s.Terminal]; w > 0 {
 				return w
@@ -2277,4 +2251,39 @@ func writeAtomic(path string, v any) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// loopersOf: "<slug>:<wallet>" for the wallets farming loops on the rows
+// that drop them (the same token both ways, four swaps or more in the
+// window); shared by the statistics and the block sample's attempts.
+func loopersOf(st *State, slugs []string) map[string]bool {
+	loopers := map[string]bool{}
+	for _, slug := range slugs {
+		if !dropsLoops(slug) {
+			continue
+		}
+		type um struct{ u, m string }
+		sides := map[um][2]int{}
+		count := map[string]int{}
+		for _, s := range st.Swaps {
+			if s.Terminal != slug || s.Method != methodVersion {
+				continue
+			}
+			k := um{s.User, s.Mint}
+			v := sides[k]
+			if s.Side == "buy" {
+				v[0]++
+			} else {
+				v[1]++
+			}
+			sides[k] = v
+			count[s.User]++
+		}
+		for k, v := range sides {
+			if v[0] > 0 && v[1] > 0 && count[k.u] >= 4 {
+				loopers[slug+":"+k.u] = true
+			}
+		}
+	}
+	return loopers
 }

@@ -128,7 +128,7 @@ export async function TerminalFillSection({
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtPct(t.loss!.median)} · ${ciText(t)}` : undefined}>
-                    {pub ? fmtBps(t.loss!.median) : <span className="text-ink-faint" title={t.priced > 0 ? whyUnpublished(t, f.minPriced) : "no priced swap yet"}>—</span>}
+                    {pub ? <>{fmtBps(t.loss!.median)} <span className="text-[10px] font-normal text-ink-faint">{fmtPct(t.loss!.median)}</span></> : <span className="text-ink-faint" title={t.priced > 0 ? whyUnpublished(t, f.minPriced) : "no priced swap yet"}>—</span>}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
                   <SplitCell t={t} part="terminal" pub={pub} />

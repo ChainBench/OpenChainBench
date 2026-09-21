@@ -268,6 +268,19 @@ func nativeV4Quote(c originChain, gas map[string]float64, ev *swapEv, quoteRaw *
 	return p * 1e-18, true
 }
 
+// logsSpan: the widest eth_getLogs block range the chain's log node
+// accepts (HyperEVM's public RPC 1,000; the keyed Robinhood Chain node
+// 10,000; 3,000 elsewhere, the public nodes' comfortable range).
+func (c originChain) logsSpan() int64 {
+	switch c.slug {
+	case "hyperevm":
+		return 1000
+	case "robinhood":
+		return 9000
+	}
+	return 3000
+}
+
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
 // Coinbase spot of the chain's gas token.
 func quoteUSD(sym string, c originChain, gas map[string]float64) (float64, bool) {
@@ -1264,22 +1277,26 @@ func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool,
 	for _, e := range extra {
 		topics = append(topics, e)
 	}
-	// 3,000 blocks back first; a quiet pool (Arc, small v4 pools) gets a
-	// second, ten times wider pass, the filter by pool and id keeping it
-	// light.
+	// Back in chunks the chain's node accepts (HyperEVM's public RPC caps
+	// eth_getLogs at 1,000 blocks, the keyed Robinhood Chain node at
+	// 10,000): the first chunk covers most pools, a quiet one (Arc, small
+	// v4 pools) gets up to ten, the filter by pool and id keeping it light.
 	var logs []evmLog
-	for _, lookback := range []int64{3000, 30000} {
-		from := block - lookback
+	span := c.logsSpan()
+	to := block
+	for chunk := 0; chunk < 10 && to >= 0; chunk++ {
+		from := to - span
 		if from < 0 {
 			from = 0
 		}
-		logs = nil
-		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(block).Text(16)}}, &logs); err != nil {
+		var part []evmLog
+		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &part); err != nil && !strings.Contains(err.Error(), "empty result") {
 			return nil, err
 		}
+		logs = append(logs, part...)
 		found := false
-		for i := range logs {
-			b, ix := hexInt(logs[i].BlockNumber), hexInt(logs[i].LogIndex)
+		for i := range part {
+			b, ix := hexInt(part[i].BlockNumber), hexInt(part[i].LogIndex)
 			if b < block || (b == block && ix < logIndex) {
 				found = true
 			}
@@ -1287,6 +1304,7 @@ func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool,
 		if found || from == 0 {
 			break
 		}
+		to = from - 1
 	}
 	sort.Slice(logs, func(i, j int) bool {
 		bi, bj := hexInt(logs[i].BlockNumber), hexInt(logs[j].BlockNumber)

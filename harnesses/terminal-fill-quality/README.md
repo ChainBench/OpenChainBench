@@ -168,7 +168,12 @@ nothing on Solana pays the app's fee wallet, so the WebSocket feed never
 sees these. Relay's public requests feed (`/requests/v2?originChainId=`,
 no key; the `referrer` filter works for BasedBot, FOMO's referrer is
 private but its fee address `0x9fc4e320…` is in every request's
-`appFees`) is polled every tick per origin chain until a known id: every
+`appFees`; on about a quarter of them the 50 bps is split 30 bps to it
+and 20 bps to a second recipient, `0x8a71697c…`, `0x0c175c6a…`,
+`0xdd0cc0a9…`, `0xd3375d0f…`, `0xbdce13a1…` on 2026-09-21, FOMO's
+referral share like the 0.8 % on Solana; `classify` sums every appFee of
+a FOMO request, so both halves are terminal fee) is polled every tick
+per origin chain until a known id: every
 final request is counted (`success` vs `refund` / `failure` for the fail
 rate) and successful ones go to a reservoir. A sampled request is read
 on Solana (`outTxs`): when it delivered USDC / SOL (FOMO's case: the
