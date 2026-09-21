@@ -1,7 +1,7 @@
 slug: which-perp-dex-has-the-lowest-fees
 question: "Which perpetual DEX has the lowest all in fees on ETH?"
 short_answer: |
-  OpenChainBench ranks eight perp DEXes on the same $1000 ETH long 10x open cost (taker fee plus half spread plus impact): Lighter, Hyperliquid, dYdX, GMX, Gains, Paradex, Extended and Polymarket. The 24h aggregate leader plus per venue breakdown is at openchainbench.com/benchmarks/perp-fees.
+  {{best_name}} has the lowest all in cost to open a $1000 ETH long at {{best_p50}} (taker fee plus half spread plus impact, 24h average) across {{count}} perp DEXes measured by OpenChainBench on the same order; the most expensive is {{worst_name}} at {{worst_p50}}. The ranking re-sorts every 5 minutes, with $100k and $1M tiers on the bench page.
 
 benchmark: perp-fees
 
@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "What is the cheapest perpetual DEX right now?"
-    a: "The 24h aggregate all in leader on a $1000 ETH long 10x is at openchainbench.com/benchmarks/perp-fees. Eight venues compete on identical measurement (Lighter, Hyperliquid, dYdX, GMX, Gains, Paradex, Extended and Polymarket) and the leaderboard re-sorts every 5 minutes against fresh Prometheus samples; the 24h window smooths intraday spread volatility so the headline reflects sustained competitiveness."
+    a: "{{best_name}} at {{best_p50}} all in on a $1000 ETH long (24h average). {{count}} venues compete on identical measurement and the leaderboard re-sorts every 5 minutes against fresh Prometheus samples; the 24h window smooths intraday spread volatility so the headline reflects sustained competitiveness."
   - q: "Is Lighter really zero fees on perp trading?"
     a: "The taker fee on Lighter is 0 bps, confirmed live via `/orderBookDetails` rather than a marketing page. The all in cost is not zero, however, because every market order still crosses the half spread and eats price impact at notional. The Lighter line on this leaderboard shows what that residual cost actually is at $1000, which is the right number to compare against a paid venue's all in figure."
   - q: "Why include spread and impact instead of just the taker fee?"
@@ -39,8 +39,8 @@ related:
   - which-crypto-oracle-is-the-most-accurate
   - which-hyperliquid-frontend-has-the-most-builder-revenue
 
-seo_title: "Which perpetual DEX has the lowest all in fees on ETH in 2026?"
-seo_description: "OpenChainBench ranks eight perp DEXes (Lighter, Hyperliquid, dYdX, GMX, Gains, Paradex, Extended, Polymarket) on the same $1000 ETH 10x long all in cost. Live 24h leader on the bench page."
+seo_title: "Lowest-fee perp DEX on ETH: {{best_name}} at {{best_p50}} all in"
+seo_description: "{{best_name}} opens a $1000 ETH long for {{best_p50}} all in (taker fee, half spread, impact; 24h average), {{worst_name}} for {{worst_p50}}. {{count}} perp DEXes measured on the same order, live."
 status: live
 
 expert_take: |

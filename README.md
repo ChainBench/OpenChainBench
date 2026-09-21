@@ -62,12 +62,12 @@ Source: OpenChainBench (https://openchainbench.com/benchmarks/aggregator-head-la
 | [`/`](https://openchainbench.com/) | Hero + Latest benchmarks table + Live dashboard |
 | [`/benchmarks`](https://openchainbench.com/benchmarks) · `/benchmarks/[slug]` | Catalog grid + per-bench leaderboard with chart, ledger, chain/region filters, share cards, FAQ |
 | [`/benchmarks/[slug]/[chain]`](https://openchainbench.com/benchmarks/aggregator-head-lag/solana) | Chain-scoped bench view with per-chain explainer |
-| [`/products/[slug]`](https://openchainbench.com/products/mobula) | Per-provider aggregated profile: every bench they appear in, top-1 counts, related products |
+| [`/products/[slug]`](https://openchainbench.com/products/mobula) | The one page per product: every bench it appears in, top-1 counts, related products, and a view per category it belongs to (Trading app, Perpetuals, Prediction markets, Data API, Bridge, RPC, Hyperliquid) selectable by pill or URL hash |
 | [`/chains/[slug]`](https://openchainbench.com/chains/ethereum) | Per-chain hub: live native price, TVL history, every bench that touches this chain grouped by category |
 | [`/compare/[a]-vs-[b]`](https://openchainbench.com/compare/codex-vs-mobula) | Head-to-head comparison across shared benches, canonical alphabetical order enforced at the edge |
 | [`/alternatives/[slug]`](https://openchainbench.com/alternatives/alchemy) | "Alternatives to X" landing pages with live leaderboard from the referenced bench |
 | [`/answers/[slug]`](https://openchainbench.com/answers/which-crypto-data-api-covers-the-most-blockchains) | Q&A pages backed by a live bench, formatted for AI answer engines |
-| [`/hyperliquid`](https://openchainbench.com/hyperliquid) · `/hyperliquid/[slug]` | HyperLiquid frontends cohort + per-builder dashboard (revenue, volume, first-active date) |
+| [`/hyperliquid`](https://openchainbench.com/hyperliquid) | HyperLiquid frontends cohort; each builder's dashboard (revenue, volume, first-active date) is the Hyperliquid view on its `/products/[slug]` page |
 | [`/perps`](https://openchainbench.com/perps) · [`/prediction-markets`](https://openchainbench.com/prediction-markets) · [`/rpc`](https://openchainbench.com/rpc) | Vertical hubs aggregating multiple benches per topic |
 | [`/mcp`](https://openchainbench.com/mcp) | MCP server docs + install instructions |
 | [`/methodology`](https://openchainbench.com/methodology) · [`/contribute`](https://openchainbench.com/contribute) · [`/team`](https://openchainbench.com/team) · [`/about`](https://openchainbench.com/about) · [`/press`](https://openchainbench.com/press) · [`/badges`](https://openchainbench.com/badges) | Static |

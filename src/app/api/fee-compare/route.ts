@@ -84,7 +84,7 @@ let gainsFeeCache: {
   ts: number;
 } | null = null;
 
-type RateCacheEntry = { rate: number; note: string; ts: number };
+type RateCacheEntry = { rate: number; makerRate: number; note: string; ts: number };
 const rateCache: Partial<Record<string, RateCacheEntry>> = {};
 
 type CarryRates = {
@@ -112,7 +112,7 @@ type HlFill = {
 
 type HlFundingEvent = {
   time: number;
-  delta: { usdc: string };
+  delta: { usdc: string; coin?: string };
 };
 
 type GainsApiTrade = {
@@ -188,6 +188,8 @@ type GainsWalletData = {
   netCostUsdc: number;
   positionSizeUsdc: number;
   avgFeeRateBps: number;
+  gainsExclusiveFeesUsdc?: number; // fees on coins not available on the other venue
+  comparableNotionalUsdc?: number; // notional of HL-comparable trades only
   recentTrades: Array<{
     date: string;
     pair: string;
@@ -196,7 +198,8 @@ type GainsWalletData = {
     tradingFee: number;
     fundingFee: number;
     borrowingFee: number;
-    equivFee?: number;   // equivalent fee on the other venue
+    equivFee?: number;
+    hlComparable?: boolean; // false = coin not listed on HL
     pnl_net: number;
   }>;
 };
@@ -210,7 +213,9 @@ type RawGmxTrade = {
   fundingFeeAmount: string | null;
   pnlUsd: string | null;
   orderType: number;
-  indexToken: { symbol: string } | null;
+  // The subsquid schema dropped the indexToken relation; coins resolve from
+  // marketAddress via GMX_MARKETS instead.
+  marketAddress: string | null;
 };
 
 type GmxWalletData = {
@@ -369,7 +374,7 @@ async function fetchGainsFeeRates(): Promise<{
   return gainsFeeCache;
 }
 
-async function fetchHlRate(): Promise<{ rate: number; note: string }> {
+async function fetchHlRate(): Promise<{ rate: number; makerRate: number; note: string }> {
   const cached = rateCache["hyperliquid"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   const res = await fetch(HL_API, {
@@ -378,25 +383,28 @@ async function fetchHlRate(): Promise<{ rate: number; note: string }> {
     body: JSON.stringify({ type: "userFees", user: "0x0000000000000000000000000000000000000000" }),
     signal: AbortSignal.timeout(8000),
   });
-  const data = (await res.json()) as { userCrossRate?: string };
+  const data = (await res.json()) as { userCrossRate?: string; userAddRate?: string };
   const rate = parseFloat(data.userCrossRate ?? String(HL_TAKER_FALLBACK));
-  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from HL fee schedule)`, ts: Date.now() };
+  // userAddRate = maker (add-liquidity) rate; base tier is ~1.0 bps
+  const makerRate = parseFloat(data.userAddRate ?? String(rate));
+  const entry = { rate, makerRate, note: `${(rate * 10000).toFixed(2)} bps taker (live from HL fee schedule)`, ts: Date.now() };
   rateCache["hyperliquid"] = entry;
   return entry;
 }
 
-async function fetchParadexRate(): Promise<{ rate: number; note: string }> {
+async function fetchParadexRate(): Promise<{ rate: number; makerRate: number; note: string }> {
   const cached = rateCache["paradex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   const res = await fetch("https://api.prod.paradex.trade/v1/markets?market=BTC-USD-PERP", {
     signal: AbortSignal.timeout(8000),
   });
   const data = (await res.json()) as {
-    results?: Array<{ fee_config?: { api_fee?: { taker_fee?: { fee?: string } } } }>;
+    results?: Array<{ fee_config?: { api_fee?: { taker_fee?: { fee?: string }; maker_fee?: { fee?: string } } } }>;
   };
-  const rawRate = data.results?.[0]?.fee_config?.api_fee?.taker_fee?.fee ?? "0.0002";
-  const rate = parseFloat(rawRate);
-  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from Paradex)`, ts: Date.now() };
+  const feeCfg = data.results?.[0]?.fee_config?.api_fee;
+  const rate = parseFloat(feeCfg?.taker_fee?.fee ?? "0.0002");
+  const makerRate = parseFloat(feeCfg?.maker_fee?.fee ?? String(rate));
+  const entry = { rate, makerRate, note: `${(rate * 10000).toFixed(2)} bps taker (live from Paradex)`, ts: Date.now() };
   rateCache["paradex"] = entry;
   return entry;
 }
@@ -427,40 +435,62 @@ async function fetchDydxCarryRates(): Promise<CarryRates> {
 async function fetchParadexCarryRates(): Promise<CarryRates> {
   const cached = carryRateCache["paradex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
-  const res = await fetch("https://api.prod.paradex.trade/v1/markets", {
-    signal: AbortSignal.timeout(8000),
-    next: { revalidate: 3600 },
-  });
-  const data = (await res.json()) as {
-    results: Array<{ symbol: string; interest_rate?: string; funding_period_hours?: number | string }>;
+  // markets/summary carries the SIGNED per-period funding_rate (positive = longs pay).
+  // The plain /markets interest_rate is unsigned — feeding it into the signed carry
+  // model would systematically credit shorts, so it must not be used here.
+  const [summaryRes, marketsRes] = await Promise.all([
+    fetch("https://api.prod.paradex.trade/v1/markets/summary?market=ALL", {
+      signal: AbortSignal.timeout(8000),
+      next: { revalidate: 3600 },
+    }),
+    fetch("https://api.prod.paradex.trade/v1/markets", {
+      signal: AbortSignal.timeout(8000),
+      next: { revalidate: 3600 },
+    }),
+  ]);
+  const summary = (await summaryRes.json()) as {
+    results: Array<{ symbol: string; funding_rate?: string }>;
   };
+  const markets = (await marketsRes.json()) as {
+    results: Array<{ symbol: string; funding_period_hours?: number | string }>;
+  };
+  const periodBySymbol: Record<string, number> = {};
+  for (const mkt of markets.results ?? []) {
+    periodBySymbol[mkt.symbol] = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
+  }
   const fundingPerSecPerCoin: Record<string, number> = {};
-  for (const mkt of data.results ?? []) {
+  for (const mkt of summary.results ?? []) {
     if (!mkt.symbol.endsWith("-PERP")) continue;
     // "BTC-USD-PERP" → "BTC"
     const coin = mkt.symbol.replace(/-USD-PERP$/, "").replace(/-PERP$/, "");
-    const periodHours = parseFloat(String(mkt.funding_period_hours ?? "8")) || 8;
-    const rate = parseFloat(mkt.interest_rate ?? "0") / (periodHours * 3600);
-    if (rate > 0) fundingPerSecPerCoin[coin] = rate;
+    const periodHours = periodBySymbol[mkt.symbol] ?? 8;
+    const rate = parseFloat(mkt.funding_rate ?? "") / (periodHours * 3600);
+    if (Number.isFinite(rate) && rate !== 0) fundingPerSecPerCoin[coin] = rate;
   }
   const result: CarryRates = { fundingPerSecPerCoin, borrowPerSecPerCoin: {}, ts: Date.now() };
   carryRateCache["paradex"] = result;
   return result;
 }
 
-async function fetchEdgeXRate(): Promise<{ rate: number; note: string }> {
+async function fetchEdgeXRate(): Promise<{ rate: number; makerRate: number; note: string }> {
   const cached = rateCache["edgex"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   const res = await fetch("https://edgex-prod-v2.edgex.exchange/api/v2/public/meta/getMetaData", {
     signal: AbortSignal.timeout(8000),
   });
   const data = (await res.json()) as {
-    data?: { contractList?: Array<{ defaultTakerFeeRate?: string | number }> };
+    data?: { contractList?: Array<{ defaultTakerFeeRate?: string | number; defaultMakerFeeRate?: string | number }> };
   };
   const contracts = data.data?.contractList ?? [];
   const rates = contracts.map((c) => parseFloat(String(c.defaultTakerFeeRate ?? "0"))).filter((r) => r > 0);
+  // Zero is a legitimate maker rate (fee promos); only drop absent/unparsable values.
+  const makerRates = contracts
+    .filter((c) => c.defaultMakerFeeRate !== undefined && c.defaultMakerFeeRate !== null)
+    .map((c) => parseFloat(String(c.defaultMakerFeeRate)))
+    .filter((r) => Number.isFinite(r) && r >= 0);
   const rate = rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0.00038;
-  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
+  const makerRate = makerRates.length > 0 ? makerRates.reduce((a, b) => a + b, 0) / makerRates.length : rate;
+  const entry = { rate, makerRate, note: `${(rate * 10000).toFixed(2)} bps taker (live from EdgeX)`, ts: Date.now() };
   rateCache["edgex"] = entry;
   return entry;
 }
@@ -627,10 +657,14 @@ async function fetchGmxCarryRates(): Promise<CarryRates> {
 
         if (totalOI === BigInt(0) || fundingFactorRaw === BigInt(0)) return { coin, rate: 0 };
 
-        const imbalance = longsOI > shortsOI ? longsOI - shortsOI : shortsOI - longsOI;
-        // rate = fundingFactor × (imbalance / totalOI) / 1e30
-        const rateScaled = fundingFactorRaw * imbalance / totalOI;
-        const rate = Number(rateScaled) / 1e30;
+        // SIGNED imbalance: longs crowded (>0) → longs pay → positive rate.
+        // Shorts crowded (<0) → shorts pay → negative rate. Keeping the sign lets the
+        // carry projection charge the correct side (a long is only charged when longs pay).
+        const signedImbalance = longsOI - shortsOI;
+        const magnitude = signedImbalance < BigInt(0) ? -signedImbalance : signedImbalance;
+        // rate = fundingFactor × (|imbalance| / totalOI) / 1e30, re-signed afterwards
+        const rateScaled = fundingFactorRaw * magnitude / totalOI;
+        const rate = (Number(rateScaled) / 1e30) * (signedImbalance < BigInt(0) ? -1 : 1);
 
         return { coin, rate };
       })
@@ -639,8 +673,8 @@ async function fetchGmxCarryRates(): Promise<CarryRates> {
     for (const r of fundingReads) {
       if (r.status !== "fulfilled" || !r.value) continue;
       const { coin, rate } = r.value;
-      // Sanity check: GMX funding should be between 1e-12 and 1e-6 /sec
-      if (rate > 1e-12 && rate < 1e-6) {
+      // Sanity check: |GMX funding| should be between 1e-12 and 1e-6 /sec
+      if (Math.abs(rate) > 1e-12 && Math.abs(rate) < 1e-6) {
         fundingPerSecPerCoin[coin] = rate;
       }
     }
@@ -655,7 +689,7 @@ async function fetchGmxCarryRates(): Promise<CarryRates> {
   }
 }
 
-async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
+async function fetchGmxLiveRate(): Promise<{ rate: number; makerRate: number; note: string }> {
   const cached = rateCache["gmx-v2"];
   if (cached && Date.now() - cached.ts < RATE_CACHE_TTL_MS) return cached;
   // Filter to USDC-collateral only: other tokens have different decimals,
@@ -696,34 +730,38 @@ async function fetchGmxLiveRate(): Promise<{ rate: number; note: string }> {
     totalNotional += notional;
   }
   const rate = totalNotional > 0 ? totalFees / totalNotional : 0.0005;
-  const entry = { rate, note: `${(rate * 10000).toFixed(2)} bps (live avg from recent GMX v2 trades)`, ts: Date.now() };
+  // GMX v2 is an AMM-style venue: the position fee is charged regardless of
+  // whether the order added or removed liquidity, so maker == taker.
+  const entry = { rate, makerRate: rate, note: `${(rate * 10000).toFixed(2)} bps (live avg from recent GMX v2 trades)`, ts: Date.now() };
   rateCache["gmx-v2"] = entry;
   return entry;
 }
 
-async function resolveRate(slug: string): Promise<{ rate: number; note: string; rateIsLive: boolean }> {
+async function resolveRate(slug: string): Promise<{ rate: number; makerRate: number; note: string; rateIsLive: boolean }> {
   if (slug === "gains") {
+    // AMM-style: same position-size fee whether the order adds or removes liquidity.
     const d = await fetchGainsFeeRates();
-    return { rate: d.avgPerSide, note: "Live per-coin taker rate (avg across pairs)", rateIsLive: true };
+    return { rate: d.avgPerSide, makerRate: d.avgPerSide, note: "Live per-coin taker rate (avg across pairs)", rateIsLive: true };
   }
   if (slug === "hyperliquid") {
-    const r = await fetchHlRate().catch(() => ({ rate: HL_TAKER_FALLBACK, note: "3.50 bps taker (HL base tier)" }));
+    const r = await fetchHlRate().catch(() => ({ rate: HL_TAKER_FALLBACK, makerRate: 0.0001, note: "3.50 bps taker (HL base tier)" }));
     return { ...r, rateIsLive: true };
   }
   if (slug === "paradex") {
-    const r = await fetchParadexRate().catch(() => ({ rate: 0.0002, note: "2.00 bps taker (Paradex api-tier)" }));
+    const r = await fetchParadexRate().catch(() => ({ rate: 0.0002, makerRate: 0.00005, note: "2.00 bps taker (Paradex api-tier)" }));
     return { ...r, rateIsLive: true };
   }
   if (slug === "edgex") {
-    const r = await fetchEdgeXRate().catch(() => ({ rate: 0.00038, note: "3.80 bps taker (EdgeX)" }));
+    const r = await fetchEdgeXRate().catch(() => ({ rate: 0.00038, makerRate: 0.0001, note: "3.80 bps taker (EdgeX)" }));
     return { ...r, rateIsLive: true };
   }
   if (slug === "gmx-v2") {
-    const r = await fetchGmxLiveRate().catch(() => ({ rate: 0.0005, note: "5.00 bps taker (GMX v2 fallback)" }));
+    const r = await fetchGmxLiveRate().catch(() => ({ rate: 0.0005, makerRate: 0.0005, note: "5.00 bps taker (GMX v2 fallback)" }));
     return { ...r, rateIsLive: true };
   }
-  if (slug === "dydx") return { rate: 0.0005, note: "5.00 bps taker (tier-0, protocol-governed)", rateIsLive: false };
-  return { rate: 0.0005, note: "Documented rate", rateIsLive: false };
+  // dYdX v4 tier-0: 5.0 bps taker / 1.0 bps maker (protocol-governed schedule)
+  if (slug === "dydx") return { rate: 0.0005, makerRate: 0.0001, note: "5.00 bps taker (tier-0, protocol-governed)", rateIsLive: false };
+  return { rate: 0.0005, makerRate: 0.0005, note: "Documented rate", rateIsLive: false };
 }
 
 type HlOpenPos = {
@@ -802,7 +840,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
               sizeDeltaUsd
               isLong
               orderType
-              indexToken { symbol }
+              marketAddress
               positionFeeAmount
               borrowingFeeAmount
               fundingFeeAmount
@@ -867,7 +905,7 @@ async function fetchGmxTrades(wallet: string, cutoffMs: number): Promise<GmxWall
         borrowingFee,
         fundingFee,
         pnlUsd,
-        indexToken: t.indexToken?.symbol,
+        indexToken: t.marketAddress ? GMX_MARKETS[t.marketAddress] : undefined,
         orderType: t.orderType,
       });
     }
@@ -1109,38 +1147,80 @@ function augmentWithHlOpenPositions(
 }
 
 function reconstructGainsPositions(trades: GainsApiTrade[], cutoffMs: number): PositionSlice[] {
-  // v5 names: MarketOpened, LimitOrderExecuted — v6 names: TradeOpenedMarket, TradeOpenedLimit
   const OPEN_ACTIONS = new Set(["MarketOpened", "LimitOrderExecuted", "TradeOpenedMarket", "TradeOpenedLimit"]);
-  // TradePosSizeIncrease updates the position size; use latest size as notional
   const INCREASE_ACTIONS = new Set(["TradePosSizeIncrease"]);
   const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
 
-  const byId = new Map<number, { open?: GainsApiTrade; close?: GainsApiTrade }>();
-  for (const t of trades) {
-    if (!byId.has(t.id)) byId.set(t.id, {});
+  // Sort oldest-first so increases appear after their open event
+  const sorted = [...trades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  type Entry = {
+    open?: GainsApiTrade;
+    close?: GainsApiTrade;
+    increases: GainsApiTrade[];
+    lastIncrease?: GainsApiTrade; // earliest increase, fallback anchor for pre-window positions
+  };
+  const byId = new Map<number, Entry>();
+
+  for (const t of sorted) {
+    if (!byId.has(t.id)) byId.set(t.id, { increases: [] });
     const e = byId.get(t.id)!;
-    if (OPEN_ACTIONS.has(t.action)) e.open = t;
-    else if (INCREASE_ACTIONS.has(t.action) && e.open) {
-      e.open = { ...e.open, size: t.size, leverage: t.leverage };
+    if (OPEN_ACTIONS.has(t.action)) {
+      e.open = t;
+    } else if (INCREASE_ACTIONS.has(t.action)) {
+      e.increases.push(t);
+      if (!e.open) {
+        // Track earliest increase as anchor for positions opened before the window
+        if (!e.lastIncrease || new Date(t.date).getTime() < new Date(e.lastIncrease.date).getTime()) {
+          e.lastIncrease = t;
+        }
+      }
+    } else if (CLOSE_ACTIONS.has(t.action)) {
+      e.close = t;
     }
-    else if (CLOSE_ACTIONS.has(t.action)) e.close = t;
   }
 
   const now = Date.now();
   const slices: PositionSlice[] = [];
-  for (const { open, close } of byId.values()) {
-    if (!open) continue;
-    const openMs = new Date(open.date).getTime();
-    if (openMs < cutoffMs) continue;
-    // Still-open positions use now as close time (same as reconstructHlPositions)
+
+  for (const { open, close, increases, lastIncrease } of byId.values()) {
+    const anchor = open ?? lastIncrease;
+    if (!anchor) continue;
+
     const closeMs = close ? new Date(close.date).getTime() : now;
-    slices.push({
-      coin: open.pair.split("/")[0],
-      notionalUsd: open.size * open.leverage,
-      openMs,
-      closeMs,
-      isLong: open.buy !== false,
-    });
+    if (closeMs < cutoffMs) continue;
+
+    const isLong = anchor.buy !== false;
+    const coin = anchor.pair.split("/")[0];
+
+    // Build a size timeline: each entry = { ms, notionalUsd } when size changed.
+    // This lets us create one funding slice per size period instead of one for the whole position.
+    const timeline: Array<{ ms: number; notionalUsd: number }> = [
+      { ms: new Date(anchor.date).getTime(), notionalUsd: anchor.size * anchor.leverage },
+    ];
+    for (const inc of increases) {
+      const incMs = new Date(inc.date).getTime();
+      // Only track increases that happened after the anchor (skip pre-anchor increases already folded in)
+      if (incMs > new Date(anchor.date).getTime()) {
+        timeline.push({ ms: incMs, notionalUsd: inc.size * inc.leverage });
+      }
+    }
+    // Already sorted oldest-first since increases was pushed in order
+
+    // Emit one slice per size period
+    for (let i = 0; i < timeline.length; i++) {
+      const sliceOpen  = Math.max(timeline[i].ms, cutoffMs);
+      const sliceClose = i + 1 < timeline.length ? timeline[i + 1].ms : closeMs;
+      if (sliceClose <= cutoffMs) continue;  // period entirely before window
+      if (sliceOpen >= sliceClose) continue; // zero-duration
+      slices.push({
+        coin,
+        notionalUsd: timeline[i].notionalUsd,
+        openMs: sliceOpen,
+        closeMs: sliceClose,
+        isLong,
+      });
+    }
   }
 
   return slices;
@@ -1162,7 +1242,7 @@ function reconstructGmxPositions(rawTrades: RawGmxTrade[], cutoffMs: number): Po
   const slices: PositionSlice[] = [];
 
   for (const t of sorted) {
-    const coin = t.indexToken?.symbol ?? "UNKNOWN";
+    const coin = (t.marketAddress && GMX_MARKETS[t.marketAddress]) || "UNKNOWN";
     const isLong = t.isLong;
     const key = `${coin}:${isLong ? "L" : "S"}`;
     const notionalDelta =
@@ -1211,41 +1291,35 @@ function reconstructGmxPositions(rawTrades: RawGmxTrade[], cutoffMs: number): Po
   return slices;
 }
 
-// Estimate GMX borrow fees for a set of position slices.
-function estimateGmxBorrowFees(
-  positions: PositionSlice[],
-  borrowPerSecPerCoin: Record<string, number>
-): number {
-  const fallbackRate = borrowPerSecPerCoin["BTC"] ?? 1.4e-8;
-  let total = 0;
-  for (const pos of positions) {
-    const rate = borrowPerSecPerCoin[pos.coin] ?? fallbackRate;
-    const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
-    total += pos.notionalUsd * rate * durationSec;
-  }
-  return total;
-}
-
 // Fetch HL 8h funding rate history for a set of coins over a period.
-// Returns map of coin → array of { time, rate (as fraction) }.
+// Paginates automatically: the HL API returns at most 500 entries per request.
+// At 3 entries/day, 500 covers ~167 days. Windows >167d need multiple pages.
 async function fetchHlFundingHistory(
   coins: string[],
   startMs: number
 ): Promise<Map<string, Array<{ time: number; rate: number }>>> {
+  const now = Date.now();
   const results = await Promise.allSettled(
     coins.map(async (coin) => {
-      const res = await fetch(HL_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "fundingHistory", coin, startTime: startMs }),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) return [coin, []] as [string, Array<{ time: number; rate: number }>];
-      const data = (await res.json()) as Array<{ time: number; fundingRate: string }>;
-      return [coin, data.map((d) => ({ time: d.time, rate: parseFloat(d.fundingRate) }))] as [
-        string,
-        Array<{ time: number; rate: number }>
-      ];
+      const rates: Array<{ time: number; rate: number }> = [];
+      let cursor = startMs;
+      for (let page = 0; page < 5; page++) {
+        const res = await fetch(HL_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "fundingHistory", coin, startTime: cursor }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) break;
+        const data = (await res.json()) as Array<{ time: number; fundingRate: string }>;
+        if (!Array.isArray(data) || data.length === 0) break;
+        rates.push(...data.map((d) => ({ time: d.time, rate: parseFloat(d.fundingRate) })));
+        // If the response is truncated (exactly 500), fetch the next page
+        if (data.length < 500) break;
+        cursor = data[data.length - 1].time + 1;
+        if (cursor >= now) break;
+      }
+      return [coin, rates] as [string, Array<{ time: number; rate: number }>];
     })
   );
 
@@ -1272,8 +1346,9 @@ function computeHlFunding(
     );
     // Each HL funding entry = one 8h interval. Rate > 0 = longs pay; < 0 = shorts pay.
     for (const r of rates) {
+      // Signed: positive = wallet pays, negative = wallet receives funding
       const cost = pos.isLong ? r.rate : -r.rate;
-      total += pos.notionalUsd * Math.max(0, cost);
+      total += pos.notionalUsd * cost;
     }
   }
   return total;
@@ -1297,7 +1372,9 @@ function estimateGainsBorrowFees(
 
 // Estimate Gains funding fees for a set of position slices.
 // Uses the current (last known) per-second funding rate as a proxy for the period.
-// Rate is absolute (direction already irrelevant for cost estimation).
+// SIGNED: a long pays when rate>0 and receives when rate<0 (and vice-versa for shorts).
+// Keeping the sign is what makes the projection apple-to-apple with HL's realized
+// funding, which also credits the wallet when it was on the paid-to side.
 function estimateGainsFundingFees(
   positions: PositionSlice[],
   fundingPerSecPerCoin: Record<string, number>
@@ -1307,9 +1384,9 @@ function estimateGainsFundingFees(
     const rate = fundingPerSecPerCoin[pos.coin];
     if (!rate) continue;
     const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
-    // positive rate = longs pay; negative rate = shorts pay
-    const effectiveRate = pos.isLong ? Math.max(0, rate) : Math.max(0, -rate);
-    total += pos.notionalUsd * effectiveRate * durationSec;
+    // positive rate = longs pay shorts; a long's cost is +rate, a short's is -rate
+    const signedRate = pos.isLong ? rate : -rate;
+    total += pos.notionalUsd * signedRate * durationSec;
   }
   return total;
 }
@@ -1324,9 +1401,10 @@ function estimateCarryFees(
     const durationSec = Math.max(0, (pos.closeMs - pos.openMs) / 1000);
     borrowFees += pos.notionalUsd * (rates.borrowPerSecPerCoin[pos.coin] ?? 0) * durationSec;
     const fundingRate = rates.fundingPerSecPerCoin[pos.coin] ?? 0;
-    // positive rate = longs pay; negative rate = shorts pay
-    const fundingCost = pos.isLong ? Math.max(0, fundingRate) : Math.max(0, -fundingRate);
-    fundingFees += pos.notionalUsd * fundingCost * durationSec;
+    // SIGNED: positive rate = longs pay shorts. A long's cost is +rate, a short's is -rate.
+    // Signed carry lets a wallet on the receiving side show a funding credit.
+    const signedRate = pos.isLong ? fundingRate : -fundingRate;
+    fundingFees += pos.notionalUsd * signedRate * durationSec;
   }
   return { borrowFees, fundingFees };
 }
@@ -1342,14 +1420,20 @@ function toChecksumAddress(address: string): string {
   return "0x" + result;
 }
 
-function walletStats(slug: string, w: AnyWallet): { notional: number; fees: number } | null {
+function walletStats(slug: string, w: AnyWallet, otherSlug?: string): { notional: number; fees: number } | null {
   if (slug === "hyperliquid") {
     const x = w as HlWalletData;
     return x.fills > 0 ? { notional: x.notionalUsd, fees: x.netCostUsd } : null;
   }
   if (slug === "gains") {
     const x = w as GainsWalletData;
-    return x.events > 0 ? { notional: x.positionSizeUsdc, fees: x.netCostUsdc } : null;
+    // When comparing against HL: exclude exclusive fees AND use comparable-only notional
+    // so the HL equiv fee isn't inflated by PONS/other non-HL notional
+    const exclusiveFees = otherSlug === "hyperliquid" ? (x.gainsExclusiveFeesUsdc ?? 0) : 0;
+    const notional = (otherSlug === "hyperliquid" && x.comparableNotionalUsdc !== undefined)
+      ? x.comparableNotionalUsdc
+      : x.positionSizeUsdc;
+    return x.events > 0 ? { notional, fees: x.netCostUsdc - exclusiveFees } : null;
   }
   if (slug === "gmx-v2") {
     const x = w as GmxWalletData;
@@ -1360,6 +1444,91 @@ function walletStats(slug: string, w: AnyWallet): { notional: number; fees: numb
     return x.fills > 0 ? { notional: x.notionalUsd, fees: x.netCostUsdc } : null;
   }
   return null;
+}
+
+type GainsRateData = {
+  perSide: Record<string, number>;
+  avgPerSide: number;
+  borrowPerSecPerCoin: Record<string, number>;
+  avgBorrowPerSec: number;
+  fundingPerSecPerCoin: Record<string, number>;
+};
+
+// Maker/taker-aware taker-equivalent for a set of HL fills projected onto an
+// order-book venue: a fill that added liquidity on HL (crossed=false) is assumed
+// to add liquidity on the target too, so it gets the maker rate. On AMM targets
+// pass makerRate === takerRate and every fill is charged the same.
+function hlMakerAwareEquiv(fills: HlFill[], takerRate: number, makerRate: number): number {
+  let sum = 0;
+  for (const f of fills) {
+    const notional = parseFloat(f.px) * parseFloat(f.sz);
+    sum += notional * (f.crossed ? takerRate : makerRate);
+  }
+  return sum;
+}
+
+// Shared HL ↔ Gains projection. Restricts to coins Gains actually lists (apple to
+// apple), keeps HL funding signed, and projects Gains carry from reconstructed HL
+// positions. Returns null when the wallet has no HL fills on Gains-listed coins.
+function computeHlGainsSim(
+  hlFills: HlFill[],
+  hlFundingEvents: HlFundingEvent[],
+  hlOpenPositions: HlOpenPos[],
+  cutoffMs: number,
+  gainsData: GainsRateData
+): { sim: SimResult; hlNetBps: number; gainsEffBps: number } | null {
+  const inGains = (coin: string) => gainsData.perSide[coin] !== undefined;
+  const recent = hlFills.filter((f) => f.time >= cutoffMs && inGains(f.coin));
+  if (recent.length === 0) return null;
+
+  let takerEquiv = 0;
+  let notional = 0;
+  let hlFees = 0;
+  for (const fill of recent) {
+    const n = parseFloat(fill.px) * parseFloat(fill.sz);
+    // Gains is AMM-style: same fee regardless of maker/taker, so per-coin rate applies to all.
+    // `recent` is pre-filtered to Gains-listed coins, so perSide[coin] always exists here.
+    takerEquiv += n * gainsData.perSide[fill.coin];
+    notional += n;
+    hlFees += parseFloat(fill.fee);
+  }
+  if (notional <= 0) return null;
+
+  // HL realized funding restricted to Gains-comparable coins (delta may omit coin → keep it).
+  const hlFunding = hlFundingEvents
+    .filter((f) => f.time >= cutoffMs && (f.delta.coin === undefined || inGains(f.delta.coin)))
+    .reduce((s, f) => s + parseFloat(f.delta?.usdc ?? "0"), 0);
+  const hlNet = hlFees - hlFunding;
+
+  // Project Gains carry from HL positions on comparable coins only.
+  const positions = augmentWithHlOpenPositions(
+    reconstructHlPositions(hlFills, cutoffMs),
+    hlOpenPositions,
+    cutoffMs
+  ).filter((p) => inGains(p.coin));
+  const gainsBorrow = estimateGainsBorrowFees(positions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
+  const gainsFunding = estimateGainsFundingFees(positions, gainsData.fundingPerSecPerCoin);
+  const equiv = takerEquiv + gainsBorrow + gainsFunding;
+
+  return {
+    sim: {
+      notionalUsed: notional,
+      feesActual: hlNet,
+      equivFees: equiv,
+      saved: equiv - hlNet,
+      multiple: hlNet > 0 ? equiv / hlNet : null,
+      fundingUsd: hlFunding,
+      projectedCarry: {
+        takerFees: takerEquiv,
+        borrowFees: gainsBorrow,
+        fundingFees: gainsFunding,
+        borrowProjected: gainsBorrow > 0.01,
+        fundingProjected: Math.abs(gainsFunding) > 0.01,
+      },
+    },
+    hlNetBps: (hlNet / notional) * 10000,
+    gainsEffBps: (equiv / notional) * 10000,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1403,8 +1572,8 @@ export async function GET(req: Request) {
 
   try {
     const [
-      { rate: rateA, note: noteA, rateIsLive: rateIsLiveA },
-      { rate: rateB, note: noteB, rateIsLive: rateIsLiveB },
+      { rate: rateA, makerRate: makerRateA, note: noteA, rateIsLive: rateIsLiveA },
+      { rate: rateB, makerRate: makerRateB, note: noteB, rateIsLive: rateIsLiveB },
       gainsData,
       dydxCarryData,
       paradexCarryData,
@@ -1429,6 +1598,7 @@ export async function GET(req: Request) {
     let hlFillsData: HlFill[] = [];
     let hlFundingData: HlFundingEvent[] = [];
     let hlOpenPositions: HlOpenPos[] = [];
+    let hlAvailableCoins = new Set<string>();
     let gainsTradesData: GainsApiTrade[] = [];
     let gmxWalletData: GmxWalletData | null = null;
     let dydxWalletData: DydxWalletData | null = null;
@@ -1456,6 +1626,21 @@ export async function GET(req: Request) {
         fetches.push(
           fetchGainsTrades(wallet, cutoffMs).then((d) => { gainsTradesData = d; }).catch(() => {})
         );
+        if (venueA === "hyperliquid" || venueB === "hyperliquid") {
+          fetches.push(
+            fetch(HL_API, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type: "meta" }),
+              signal: AbortSignal.timeout(5000),
+            })
+              .then((r) => r.json())
+              .then((d: { universe: Array<{ name: string }> }) => {
+                hlAvailableCoins = new Set(d.universe.map((c) => c.name));
+              })
+              .catch(() => {})
+          );
+        }
       }
       if (venueA === "gmx-v2" || venueB === "gmx-v2") {
         fetches.push(
@@ -1480,8 +1665,11 @@ export async function GET(req: Request) {
 
     await Promise.all(fetches);
 
-    // Phase 2: fetch HL funding history for Gains positions (Gains→HL carry projection)
+    // Phase 2: fetch HL funding history + extended Gains history for position reconstruction
     let hlFundingHistoryByCoins: Map<string, Array<{ time: number; rate: number }>> = new Map();
+    // Extended Gains history (1 year) used only for HL funding projection reconstruction —
+    // the fee accounting (taker/borrow/funding fees) still uses gainsTradesData (cutoffMs window).
+    let gainsPositionData: GainsApiTrade[] = gainsTradesData;
     if (
       fetchEvmWallet &&
       (venueA === "gains" || venueB === "gains") &&
@@ -1491,10 +1679,18 @@ export async function GET(req: Request) {
       const gainsCoinSet = new Set(
         gainsTradesData
           .filter((t) => t.collateralIndex === 3)
+          // Only fetch funding history for coins that actually exist on HL
+          .filter((t) => hlAvailableCoins.size === 0 || hlAvailableCoins.has(t.pair.split("/")[0]))
           .map((t) => t.pair.split("/")[0])
       );
-      const coinsToFetch = [...gainsCoinSet].slice(0, 6);
-      hlFundingHistoryByCoins = await fetchHlFundingHistory(coinsToFetch, cutoffMs).catch(() => new Map());
+      const coinsToFetch = [...gainsCoinSet].slice(0, 20);
+      const extendedCutoffMs = cutoffMs - 365 * 24 * 60 * 60 * 1000;
+      const [fundingHistory, extendedTrades] = await Promise.all([
+        fetchHlFundingHistory(coinsToFetch, cutoffMs).catch(() => new Map<string, Array<{ time: number; rate: number }>>()),
+        fetchGainsTrades(wallet, extendedCutoffMs).catch(() => gainsTradesData),
+      ]);
+      hlFundingHistoryByCoins = fundingHistory;
+      gainsPositionData = extendedTrades;
     }
 
     function buildVenueResult(slug: string, rate: number, note: string, rateIsLive: boolean): VenueResult {
@@ -1508,18 +1704,22 @@ export async function GET(req: Request) {
           0
         );
         walletData = buildHlWalletData(recentFills, fundingTotal);
-        // Annotate each fill with the equivalent fee on the other venue
+        // Annotate each fill with the equivalent fee on the other venue.
         const otherSlug = slug === venueA ? venueB : venueA;
         const otherRate = slug === venueA ? rateB : rateA;
+        const otherMakerRate = slug === venueA ? makerRateB : makerRateA;
         const hlW = walletData as HlWalletData;
-        hlW.recentFills = hlW.recentFills.map((fill) => ({
-          ...fill,
-          equivFee: otherSlug === "gains"
-            ? fill.notional * (gainsData.perSide[fill.coin] ?? gainsData.avgPerSide)
-            : fill.notional * otherRate,
-        }));
+        hlW.recentFills = hlW.recentFills.map((fill) => {
+          if (otherSlug === "gains") {
+            // Only comparable when Gains lists the coin; else leave undefined (n/a).
+            const coinRate = gainsData.perSide[fill.coin];
+            return { ...fill, equivFee: coinRate !== undefined ? fill.notional * coinRate : undefined };
+          }
+          // Order-book / AMM target: preserve execution style (maker fills → maker rate).
+          const targetRate = fill.isTaker ? otherRate : otherMakerRate;
+          return { ...fill, equivFee: fill.notional * targetRate };
+        });
       } else if (fetchEvmWallet && slug === "gains") {
-        const CLOSE_ACTIONS = new Set(["TradeClosedMarket", "TradeClosedTP", "TradeClosedSL", "TradeClosedLIQ"]);
         const usdcTrades = gainsTradesData.filter((t) => t.collateralIndex === 3);
         const otherSlug = slug === venueA ? venueB : venueA;
         const otherRate = slug === venueA ? rateB : rateA;
@@ -1527,6 +1727,9 @@ export async function GET(req: Request) {
         let fundingFeesUsdc = 0;
         let borrowingFeesUsdc = 0;
         let notionalUsd = 0;
+        let comparableNotionalUsdc = 0;
+        let gainsExclusiveFeesUsdc = 0;
+        const checkHlComparable = otherSlug === "hyperliquid" && hlAvailableCoins.size > 0;
         const recentTrades: GainsWalletData["recentTrades"] = [];
 
         for (const t of usdcTrades) {
@@ -1542,21 +1745,33 @@ export async function GET(req: Request) {
           borrowingFeesUsdc += borrowingFee;
           const tradeNotional = t.size * t.leverage;
           notionalUsd += tradeNotional;
+          const coin = t.pair.split("/")[0];
+          const hlComparable = checkHlComparable ? hlAvailableCoins.has(coin) : undefined;
+          if (hlComparable === false) {
+            gainsExclusiveFeesUsdc += takerFee + fundingFee + borrowingFee;
+          } else {
+            comparableNotionalUsdc += tradeNotional;
+          }
           if (recentTrades.length < 50) {
-            const equivFee = otherSlug === "hyperliquid"
-              ? tradeNotional * (gainsData.perSide[t.pair.split("/")[0]] ?? otherRate)
+            // Don't show equivFee for Gains-exclusive coins — the coin doesn't exist on HL
+            // equivFee = what the other venue would charge for this same notional.
+            // HL has a uniform taker rate (no per-coin lookup); Gains has per-coin rates.
+            const equivFee = hlComparable === false
+              ? undefined
               : tradeNotional * otherRate;
-            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, pnl_net: t.pnl_net });
+            recentTrades.push({ date: t.date, pair: t.pair, action: t.action, notional: tradeNotional, tradingFee: takerFee, fundingFee, borrowingFee, equivFee, hlComparable, pnl_net: t.pnl_net });
           }
         }
 
         // When the API doesn't return per-trade funding (meta absent or zero), fall back to
         // the same per-second rate estimation used in the crossSim projection.
+        // The estimate is signed — a wallet on the receiving side gets a credit, matching
+        // how realized funding from the API would report it.
         let fundingEstimated = false;
-        if (fundingFeesUsdc >= 0 && fundingFeesUsdc < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
+        if (Math.abs(fundingFeesUsdc) < 0.01 && Object.keys(gainsData.fundingPerSecPerCoin).length > 0) {
           const gainsPositions = reconstructGainsPositions(usdcTrades, cutoffMs);
           const est = estimateGainsFundingFees(gainsPositions, gainsData.fundingPerSecPerCoin);
-          if (est > 0.01) {
+          if (Math.abs(est) > 0.01) {
             fundingFeesUsdc = est;
             fundingEstimated = true;
           }
@@ -1572,6 +1787,8 @@ export async function GET(req: Request) {
           netCostUsdc,
           positionSizeUsdc: notionalUsd,
           avgFeeRateBps: notionalUsd > 0 ? (netCostUsdc / notionalUsd) * 10000 : 0,
+          gainsExclusiveFeesUsdc: checkHlComparable ? gainsExclusiveFeesUsdc : undefined,
+          comparableNotionalUsdc: checkHlComparable ? comparableNotionalUsdc : undefined,
           recentTrades,
         } satisfies GainsWalletData;
       } else if (fetchEvmWallet && slug === "gmx-v2" && gmxWalletData) {
@@ -1595,64 +1812,29 @@ export async function GET(req: Request) {
     const venueBResult = buildVenueResult(venueB, rateB, noteB, rateIsLiveB);
 
     const comparison: ComparisonResult = { aToBSim: null, bToASim: null };
+    // An effective rate derived from the wallet's OWN fills on a venue must not be
+    // overwritten by a projection computed from the other venue's history.
+    let aActualRateSet = false;
 
     // aToBSim: venueA actual fills vs simulated venueB cost (with carry projection)
     if (venueAResult.wallet !== null) {
       if (venueA === "hyperliquid" && venueB === "gains") {
-        // Per-coin Gains taker rates on HL fills + estimated Gains borrow
-        const hlW = venueAResult.wallet as HlWalletData;
-        if (hlW.fills > 0) {
-          let takerEquiv = 0, aNotional = 0, aFees = 0;
-          for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
-            const notional = parseFloat(fill.px) * parseFloat(fill.sz);
-            const fee = parseFloat(fill.fee);
-            const coinRate = gainsData.perSide[fill.coin] ?? gainsData.avgPerSide;
-            takerEquiv += notional * coinRate;
-            aNotional += notional;
-            aFees += fee;
-          }
-          const aFunding = hlW.fundingUsd;
-          const aNetCost = aFees - aFunding;
-
-          // Estimate Gains carry (borrow + funding) by reconstructing HL positions.
-          // augmentWithHlOpenPositions fills in positions whose open fill is older than the
-          // 2000-fill API cap — they still generate real HL funding but are invisible to
-          // fill-only reconstruction.
-          const hlPositions = augmentWithHlOpenPositions(
-            reconstructHlPositions(hlFillsData, cutoffMs),
-            hlOpenPositions,
-            cutoffMs
-          );
-          const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
-          const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
-          const bEquiv = takerEquiv + gainsBorrow + gainsFunding;
-
-          comparison.aToBSim = {
-            notionalUsed: aNotional,
-            feesActual: aNetCost,
-            equivFees: bEquiv,
-            saved: bEquiv - aNetCost,
-            multiple: aNetCost > 0 ? bEquiv / aNetCost : null,
-            fundingUsd: aFunding,
-            projectedCarry: {
-              takerFees: takerEquiv,
-              borrowFees: gainsBorrow,
-              fundingFees: gainsFunding,
-              borrowProjected: gainsBorrow > 0.01,
-              fundingProjected: gainsFunding > 0.01,
-            },
-          };
-          if (aNotional > 0) {
-            venueAResult.effectiveRateBps = (aNetCost / aNotional) * 10000;
-            venueAResult.effectiveRateNote = `${((aNetCost / aNotional) * 10000).toFixed(2)} bps net (fees + funding)`;
-            venueBResult.effectiveRateBps = (bEquiv / aNotional) * 10000;
-            venueBResult.effectiveRateNote = `${((bEquiv / aNotional) * 10000).toFixed(2)} bps effective (your coins)`;
-          }
+        const r = computeHlGainsSim(hlFillsData, hlFundingData, hlOpenPositions, cutoffMs, gainsData);
+        if (r) {
+          comparison.aToBSim = r.sim;
+          venueAResult.effectiveRateBps = r.hlNetBps;
+          venueAResult.effectiveRateNote = `${r.hlNetBps.toFixed(2)} bps net (fees + funding)`;
+          aActualRateSet = true;
+          venueBResult.effectiveRateBps = r.gainsEffBps;
+          venueBResult.effectiveRateNote = `${r.gainsEffBps.toFixed(2)} bps effective (your coins)`;
         }
       } else {
-        const stats = walletStats(venueA, venueAResult.wallet);
+        const stats = walletStats(venueA, venueAResult.wallet, venueB);
         if (stats) {
-          let equivFees = stats.notional * rateB;
+          // HL source: preserve maker/taker style per fill; other sources are AMM (single fee).
+          let equivFees = venueA === "hyperliquid"
+            ? hlMakerAwareEquiv(hlFillsData.filter((f) => f.time >= cutoffMs), rateB, makerRateB)
+            : stats.notional * rateB;
           let projectedCarry: SimResult["projectedCarry"];
 
           // Reconstruct positions from venueA for carry projection
@@ -1663,9 +1845,12 @@ export async function GET(req: Request) {
               hlOpenPositions,
               cutoffMs
             );
-          } else if (venueA === "gains" && gainsTradesData.length > 0) {
+          } else if (venueA === "gains" && gainsPositionData.length > 0) {
             positions = reconstructGainsPositions(
-              gainsTradesData.filter((t) => t.collateralIndex === 3),
+              gainsPositionData.filter(
+                (t) => t.collateralIndex === 3 &&
+                  (hlAvailableCoins.size === 0 || hlAvailableCoins.has(t.pair.split("/")[0]))
+              ),
               cutoffMs
             );
           } else if (venueA === "gmx-v2" && gmxWalletData) {
@@ -1683,17 +1868,17 @@ export async function GET(req: Request) {
               borrowFees: 0,
               fundingFees: hlFunding,
               borrowProjected: false,
-              fundingProjected: hlFunding > 0.01,
+              fundingProjected: Math.abs(hlFunding) > 0.01,
             };
           }
 
-          // HL→GMX: use wallet's own GMX history as carry proxy
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          // HL→GMX: use wallet's own GMX history as carry proxy.
+          // Funding stays SIGNED: net funding received on GMX projects as a credit.
           const gmxForA = gmxWalletData as GmxWalletData | null;
           if (venueA === "hyperliquid" && venueB === "gmx-v2" && gmxForA !== null && gmxForA.notionalUsd > 0) {
             const takerFees = equivFees;
             const gmxBorrowRate = gmxForA.borrowingFeesUsdc / gmxForA.notionalUsd;
-            const gmxFundingRate = Math.max(0, gmxForA.fundingFeesUsdc) / gmxForA.notionalUsd;
+            const gmxFundingRate = gmxForA.fundingFeesUsdc / gmxForA.notionalUsd;
             const gmxBorrowProj = stats.notional * gmxBorrowRate;
             const gmxFundingProj = stats.notional * gmxFundingRate;
             equivFees += gmxBorrowProj + gmxFundingProj;
@@ -1702,15 +1887,17 @@ export async function GET(req: Request) {
               borrowFees: gmxBorrowProj,
               fundingFees: gmxFundingProj,
               borrowProjected: gmxBorrowProj > 0.01,
-              fundingProjected: gmxFundingProj > 0.01,
+              fundingProjected: Math.abs(gmxFundingProj) > 0.01,
             };
           }
 
-          // Generic carry: dYdX, Paradex, and any future venue with rate data
+          // Generic carry: dYdX, Paradex, and any future venue with rate data.
+          // Math.abs on funding: a pure credit (negative fundingFees) must still be
+          // projected — dropping it would bias the comparison toward the source venue.
           if (!projectedCarry && positions.length > 0) {
             const bCarry = getVenueCarryRates(venueB);
             const { borrowFees, fundingFees } = estimateCarryFees(positions, bCarry);
-            if (borrowFees > 0.001 || fundingFees > 0.001) {
+            if (borrowFees > 0.001 || Math.abs(fundingFees) > 0.001) {
               const takerFees = equivFees;
               equivFees += borrowFees + fundingFees;
               projectedCarry = {
@@ -1718,7 +1905,7 @@ export async function GET(req: Request) {
                 borrowFees,
                 fundingFees,
                 borrowProjected: borrowFees > 0.01,
-                fundingProjected: fundingFees > 0.01,
+                fundingProjected: Math.abs(fundingFees) > 0.01,
               };
             }
           }
@@ -1732,9 +1919,12 @@ export async function GET(req: Request) {
             projectedCarry,
           };
           if (stats.notional > 0) {
+            const bBps = (equivFees / stats.notional) * 10000;
             venueAResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
             venueAResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
-            venueBResult.effectiveRateBps = (equivFees / stats.notional) * 10000;
+            aActualRateSet = true;
+            venueBResult.effectiveRateBps = bBps;
+            venueBResult.effectiveRateNote = `${bBps.toFixed(2)} bps projected (your ${venueAResult.name} trades)`;
           }
         }
       }
@@ -1743,56 +1933,24 @@ export async function GET(req: Request) {
     // bToASim: venueB actual fills vs simulated venueA cost (with carry projection)
     if (venueBResult.wallet !== null) {
       if (venueB === "hyperliquid" && venueA === "gains") {
-        // Per-coin Gains taker rates on HL fills + estimated Gains borrow
-        const hlW = venueBResult.wallet as HlWalletData;
-        if (hlW.fills > 0) {
-          let takerEquiv = 0, bNotional = 0, bFees = 0;
-          for (const fill of hlFillsData.filter((f) => f.time >= cutoffMs)) {
-            const notional = parseFloat(fill.px) * parseFloat(fill.sz);
-            const fee = parseFloat(fill.fee);
-            const coinRate = gainsData.perSide[fill.coin] ?? gainsData.avgPerSide;
-            takerEquiv += notional * coinRate;
-            bNotional += notional;
-            bFees += fee;
-          }
-          const bFunding = hlW.fundingUsd;
-          const bNetCost = bFees - bFunding;
-
-          const hlPositions = augmentWithHlOpenPositions(
-            reconstructHlPositions(hlFillsData, cutoffMs),
-            hlOpenPositions,
-            cutoffMs
-          );
-          const gainsBorrow = estimateGainsBorrowFees(hlPositions, gainsData.borrowPerSecPerCoin, gainsData.avgBorrowPerSec);
-          const gainsFunding = estimateGainsFundingFees(hlPositions, gainsData.fundingPerSecPerCoin);
-          const aEquiv = takerEquiv + gainsBorrow + gainsFunding;
-
-          comparison.bToASim = {
-            notionalUsed: bNotional,
-            feesActual: bNetCost,
-            equivFees: aEquiv,
-            saved: aEquiv - bNetCost,
-            multiple: bNetCost > 0 ? aEquiv / bNetCost : null,
-            fundingUsd: bFunding,
-            projectedCarry: {
-              takerFees: takerEquiv,
-              borrowFees: gainsBorrow,
-              fundingFees: gainsFunding,
-              borrowProjected: gainsBorrow > 0.01,
-              fundingProjected: gainsFunding > 0.01,
-            },
-          };
-          if (bNotional > 0) {
-            venueBResult.effectiveRateBps = (bNetCost / bNotional) * 10000;
-            venueBResult.effectiveRateNote = `${((bNetCost / bNotional) * 10000).toFixed(2)} bps net (fees + funding)`;
-            venueAResult.effectiveRateBps = (aEquiv / bNotional) * 10000;
-            venueAResult.effectiveRateNote = `${((aEquiv / bNotional) * 10000).toFixed(2)} bps effective (your coins)`;
+        const r = computeHlGainsSim(hlFillsData, hlFundingData, hlOpenPositions, cutoffMs, gainsData);
+        if (r) {
+          comparison.bToASim = r.sim;
+          venueBResult.effectiveRateBps = r.hlNetBps;
+          venueBResult.effectiveRateNote = `${r.hlNetBps.toFixed(2)} bps net (fees + funding)`;
+          // Don't overwrite the Gains wallet's own-fills rate with the HL-derived projection.
+          if (!aActualRateSet) {
+            venueAResult.effectiveRateBps = r.gainsEffBps;
+            venueAResult.effectiveRateNote = `${r.gainsEffBps.toFixed(2)} bps effective (your coins)`;
           }
         }
       } else {
-        const stats = walletStats(venueB, venueBResult.wallet);
+        const stats = walletStats(venueB, venueBResult.wallet, venueA);
         if (stats) {
-          let equivFees = stats.notional * rateA;
+          // HL source: preserve maker/taker style per fill; other sources are AMM (single fee).
+          let equivFees = venueB === "hyperliquid"
+            ? hlMakerAwareEquiv(hlFillsData.filter((f) => f.time >= cutoffMs), rateA, makerRateA)
+            : stats.notional * rateA;
           let projectedCarry: SimResult["projectedCarry"];
 
           // Reconstruct positions from venueB
@@ -1803,9 +1961,12 @@ export async function GET(req: Request) {
               hlOpenPositions,
               cutoffMs
             );
-          } else if (venueB === "gains" && gainsTradesData.length > 0) {
+          } else if (venueB === "gains" && gainsPositionData.length > 0) {
             positions = reconstructGainsPositions(
-              gainsTradesData.filter((t) => t.collateralIndex === 3),
+              gainsPositionData.filter(
+                (t) => t.collateralIndex === 3 &&
+                  (hlAvailableCoins.size === 0 || hlAvailableCoins.has(t.pair.split("/")[0]))
+              ),
               cutoffMs
             );
           } else if (venueB === "gmx-v2" && gmxWalletData) {
@@ -1823,17 +1984,17 @@ export async function GET(req: Request) {
               borrowFees: 0,
               fundingFees: hlFunding,
               borrowProjected: false,
-              fundingProjected: hlFunding > 0.01,
+              fundingProjected: Math.abs(hlFunding) > 0.01,
             };
           }
 
           // HL→GMX (venueB=HL, venueA=GMX)
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+          // Funding stays SIGNED: net funding received on GMX projects as a credit.
           const gmxForB = gmxWalletData as GmxWalletData | null;
           if (venueB === "hyperliquid" && venueA === "gmx-v2" && gmxForB !== null && gmxForB.notionalUsd > 0) {
             const takerFees = equivFees;
             const gmxBorrowRate = gmxForB.borrowingFeesUsdc / gmxForB.notionalUsd;
-            const gmxFundingRate = Math.max(0, gmxForB.fundingFeesUsdc) / gmxForB.notionalUsd;
+            const gmxFundingRate = gmxForB.fundingFeesUsdc / gmxForB.notionalUsd;
             const gmxBorrowProj = stats.notional * gmxBorrowRate;
             const gmxFundingProj = stats.notional * gmxFundingRate;
             equivFees += gmxBorrowProj + gmxFundingProj;
@@ -1842,15 +2003,17 @@ export async function GET(req: Request) {
               borrowFees: gmxBorrowProj,
               fundingFees: gmxFundingProj,
               borrowProjected: gmxBorrowProj > 0.01,
-              fundingProjected: gmxFundingProj > 0.01,
+              fundingProjected: Math.abs(gmxFundingProj) > 0.01,
             };
           }
 
-          // Generic carry projection
+          // Generic carry projection.
+          // Math.abs on funding: a pure credit (negative fundingFees) must still be
+          // projected — dropping it would bias the comparison toward the source venue.
           if (!projectedCarry && positions.length > 0) {
             const aCarry = getVenueCarryRates(venueA);
             const { borrowFees, fundingFees } = estimateCarryFees(positions, aCarry);
-            if (borrowFees > 0.001 || fundingFees > 0.001) {
+            if (borrowFees > 0.001 || Math.abs(fundingFees) > 0.001) {
               const takerFees = equivFees;
               equivFees += borrowFees + fundingFees;
               projectedCarry = {
@@ -1858,7 +2021,7 @@ export async function GET(req: Request) {
                 borrowFees,
                 fundingFees,
                 borrowProjected: borrowFees > 0.01,
-                fundingProjected: fundingFees > 0.01,
+                fundingProjected: Math.abs(fundingFees) > 0.01,
               };
             }
           }
@@ -1874,7 +2037,12 @@ export async function GET(req: Request) {
           if (stats.notional > 0) {
             venueBResult.effectiveRateBps = (stats.fees / stats.notional) * 10000;
             venueBResult.effectiveRateNote = `${((stats.fees / stats.notional) * 10000).toFixed(2)} bps actual (your fills)`;
-            venueAResult.effectiveRateBps = (equivFees / stats.notional) * 10000;
+            // Don't overwrite venueA's own-fills rate with a projection from venueB's history.
+            if (!aActualRateSet) {
+              const aBps = (equivFees / stats.notional) * 10000;
+              venueAResult.effectiveRateBps = aBps;
+              venueAResult.effectiveRateNote = `${aBps.toFixed(2)} bps projected (your ${venueBResult.name} trades)`;
+            }
           }
         }
       }

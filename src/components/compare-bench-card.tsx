@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import { CompareTrendChart, type TrendView } from "@/components/compare-trend-chart";
 import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
@@ -71,12 +72,25 @@ export function CompareBenchCard({
   bench,
   aName,
   bName,
+  aSlug,
+  bSlug,
 }: {
   bench: CompareBench;
   aName: string;
   bName: string;
+  /** Provider slugs for the trend chart's /api/series filter. The chart
+   *  renders only when both are given. */
+  aSlug?: string;
+  bSlug?: string;
 }) {
   const hasScopes = bench.panelScopes.length > 0;
+  // Chart views mirror the bench page: headline metric first, then every
+  // metric panel that has a tab (panelScopes already applies that filter
+  // and prepends "main" when panels exist).
+  const trendViews: TrendView[] =
+    bench.panelScopes.length > 0
+      ? bench.panelScopes.map((p) => ({ id: p.id, label: p.label, unit: p.unit }))
+      : [{ id: "main", label: bench.metric, unit: bench.unit }];
 
   return (
     <article className="border border-rule rounded-2xl p-5 sm:p-6">
@@ -144,6 +158,17 @@ export function CompareBenchCard({
             </>
           )}
         </>
+      )}
+
+      {aSlug && bSlug && (
+        <CompareTrendChart
+          benchSlug={bench.slug}
+          views={trendViews}
+          aSlug={aSlug}
+          bSlug={bSlug}
+          aName={aName}
+          bName={bName}
+        />
       )}
 
       {bench.note && (

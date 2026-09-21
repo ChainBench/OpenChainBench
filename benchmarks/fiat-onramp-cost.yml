@@ -1,0 +1,181 @@
+# OpenChainBench. Bench № 262
+
+slug: fiat-onramp-cost
+number: "262"
+title: Fiat on-ramp all-in cost, EUR to BTC premium over exchange mid
+seo_title: "Fiat on-ramp cost 2026: MoonPay vs Transak, all-in over spot"
+seo_description: "{{best_name}} quotes the lowest all-in cost for 500 EUR of BTC by card at {{best_p50}} over the Kraken mid. Declared fee plus hidden spread, quoted every 5 minutes."
+subtitle: What a French retail buyer actually pays per bitcoin, in basis points over the Kraken EUR mid, once the declared fee, the network fee and the spread hidden in the provider's rate are folded into one number. 500 EUR by card, quoted every 5 minutes. Lower is better.
+category: On-ramps
+status: live
+metric: All-in premium over spot
+unit: bps
+higher_is_better: false
+expected_n: 288
+
+disclaimer: |
+  Quotes, not executions. The harness asks each provider's quote API what a 500 EUR card purchase would return and compares that to an exchange mid sampled in the same cycle. A real purchase can differ by KYC tier, first-order promotions, card issuer surcharges and settlement timing. No card is charged and no bank transfer is sent.
+
+seo_intro: |
+  Every on-ramp advertises a fee. Almost none of them tells you the
+  rate they apply that fee to. This benchmark folds both into one
+  number: the all-in premium, in basis points, between the effective
+  price you pay per unit of crypto and the Kraken EUR mid at the same
+  moment. A provider quoting a 1 percent fee on a rate that already
+  sits 1.5 percent above the market costs 250 bps, not 100. The bench
+  publishes the all-in number, the declared fee and the difference
+  between the two (the hidden spread) for every quote, so a reader can
+  see where the cost actually lives. One persona: a retail buyer in
+  France paying EUR, 500 EUR by card into bitcoin, quoted every five
+  minutes from an EU vantage; SEPA, USDC and ETH cells are measured on
+  the same grid and published as their own series. MoonPay and Transak
+  are quoted today; Ramp, and the aggregators Onramper and Meld, join
+  the table as their API keys are granted. Direct providers and
+  aggregators are two cohorts and are never ranked against each other:
+  an aggregator's row is the best member ramp it returned, which is a
+  different product from a single provider's own price. Lower is better.
+
+abstract: |
+  The harness quotes each provider on a fixed grid every five minutes:
+  three assets (BTC on Bitcoin, USDC on Base with Arbitrum as fallback,
+  ETH on Ethereum), two notionals (100 and 500 EUR), two payment
+  methods (card and SEPA). Each answer is normalized into fiat_in (what
+  the buyer pays), crypto_out (what lands in the wallet) and the fees
+  the provider declares. The headline value is the 24 hour median of
+  all_in_premium_bps = (fiat_in / crypto_out minus spot) / spot times
+  10 000 on the BTC, card, 500 EUR cell, with spot the Kraken EUR mid
+  (best bid plus best ask over two) fetched in the same cycle. A Pyth
+  Hermes cross-reference (USD feeds divided by EUR/USD) is recorded on
+  every quote under a separate label and the divergence between the two
+  references is published so the reader can judge how much the choice
+  of reference moves the result. The declared fee (provider fee plus
+  network fee plus partner fee, over fiat_in) and the hidden spread
+  (all-in minus declared) are emitted alongside. Aggregators are
+  scored on the best member ramp they return and tagged as a separate
+  cohort.
+
+methodology:
+  - "Persona. One buyer profile: country France, fiat EUR, region eu-west. Providers whose API takes a country code receive FR (Transak, Ramp, Onramper, Meld); providers that geolocate the request are quoted from an EU vantage (MoonPay, Mercuryo). The country_source label on every sample says which."
+  - "Headline cell. BTC on Bitcoin, card, 500 EUR, premium measured against the Kraken EUR mid. Card and BTC are the one method and the one asset every provider in the cohort quotes, so every row is scored on the same cell. The other grid cells (USDC on Base or Arbitrum, ETH, SEPA, 100 EUR) are emitted with their own labels and will become drill-down tabs once the site renders non-chain dimensions."
+  - "Metric. all_in_premium_bps = (fiat_in / crypto_out minus spot) / spot times 10 000. fiat_in is the total the buyer pays including every fee the provider adds; crypto_out is the amount the provider says will be delivered. Positive means the buyer pays above the exchange mid. A value near zero means the provider's rate plus fees matched the mid."
+  - "Spot reference. Kraken public Ticker, EUR pairs, mid of best bid and ask, fetched in the same cycle as the quotes (within two seconds). A second reference from Pyth Hermes (BTC/USD, ETH/USD, USDC/USD divided by EUR/USD) is recorded on every quote under spot_ref=pyth and the gap between the two is published as spot_reference_divergence_bps. Kraken is the headline because it has no FX leg."
+  - "Declared versus hidden. declared_fee_bps = (provider fee plus network fee plus partner fee) / fiat_in times 10 000 as the provider itemizes them. hidden_spread_bps = all_in minus declared, the part of the cost that lives in the rate rather than in the fee line."
+  - "Cohorts. Direct providers (MoonPay and Transak today; Ramp and Mercuryo once keyed) are one cohort. Aggregators (Onramper, Meld, once keyed) are another: one request returns one quote per member ramp, each member sample is labelled provider=member and via=aggregator, and the aggregator's row is the minimum across its members. The two cohorts are not ranked against each other."
+  - "Cadence. Every 5 minutes with a plus or minus 10 percent jitter, 12 cells per provider per cycle, at most 2 requests in flight per provider. Ramp documents 100 requests per minute per IP; the harness stays two orders of magnitude below that. A 4xx is never retried; a 5xx or timeout is retried once."
+  - "Failures. A provider that answers without a usable quote counts as success 0 on that cell and its gauges are deleted rather than frozen. A provider whose key is not configured is skipped, not failed. Errors are counted by reason: no_quote, http_4xx, http_5xx, rate_limited, timeout, network, parse."
+  - "Sample size. The harness increments a counter per usable quote; the table reads increase() over 24h so the count is quote events, not Prometheus scrapes of a gauge. Expected 288 per cell per day."
+  - "Reproducibility. Every sample carries the SHA-256 of the raw provider response in the harness log. The adapters are written against each provider's documented schema; the parameters not yet exercised with a live key are listed in harnesses/fiat-onramp-cost/CHECKLIST.md and stay marked UNVERIFIED until they are."
+  - "Not measured yet. Ramp, Onramper and Meld have adapters in the harness and enter the table when their keys are granted (requested 2026-09-14). Coinbase Onramp is excluded pending a read of the CDP terms on benchmarking. Apple Pay and Google Pay cells need a wallet session and are not quotable server-side. ATM operators publish no quote API. Banxa and Alchemy Pay reach the bench only through the aggregators in this version."
+
+findings:
+  - "{{best_name}} currently quotes the lowest all-in premium on the headline cell at {{best_p50}} over the Kraken EUR mid (24h median, 500 EUR by card into BTC)."
+  - "{{name:moonpay}} sits at {{p50:moonpay}}. MoonPay prices by request IP, so the number is what an EU vantage sees, not a country parameter."
+  - "{{name:transak}} sits at {{p50:transak}}. Transak takes the country as a parameter and itemizes the network fee separately from its own fee."
+  - "Read the hidden spread next to the declared fee: a provider whose declared fee looks low can still sit high on the all-in number when its rate carries the margin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/fiat-onramp-cost
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 900
+
+faq:
+  - q: "What is the all-in premium?"
+    a: "The gap, in basis points, between the effective price you pay per unit of crypto (fiat paid divided by crypto received) and the exchange mid at the same moment. It folds the declared fee, the network fee and whatever margin sits in the provider's rate into one number. 100 bps means you paid 1 percent above the mid."
+  - q: "Why compare against Kraken and not the provider's own market rate?"
+    a: "The provider's market rate is the thing being tested. Some on-ramps quote a fair mid and charge a visible fee; others quote a rate already above the market and charge a small fee. Only an external reference sampled at the same time shows the total. Kraken's EUR pairs are keyless, deep and have no FX leg. Pyth is recorded as a second reference so the reader can check the choice does not drive the result."
+  - q: "Why is the headline card and BTC, not SEPA and USDC?"
+    a: "Card is the one payment method every on-ramp in the cohort quotes, and BTC the one asset every one of them lists, so the headline scores every row on the same cell. SEPA is cheaper where it exists (MoonPay quotes it, Transak's quote endpoint does not) and USDC on Base is not quotable on every key. Both are measured on the same grid, emitted with their own labels, and will get a tab once the site renders them; for now they are readable directly in the Prometheus series."
+  - q: "Why are aggregators a separate cohort?"
+    a: "An aggregator's answer is the best of several member ramps, sometimes including the direct providers in the other cohort at a different partner fee. Ranking the best member of five against a single provider's own price would compare two different products. The aggregator row shows what the aggregator would route you to; the direct rows show what each provider quotes on its own."
+  - q: "Is this a real purchase?"
+    a: "No. The harness calls each provider's quote endpoint with a fixed notional and reads the answer. No payment is made. Real orders can differ by KYC tier, promotions, issuer surcharges and settlement timing, which is why the disclaimer sits above the table."
+  - q: "Why does a provider show no data?"
+    a: "Three reasons. The provider's key is not configured on the harness, so it is skipped. The provider does not list the headline cell. Or the provider answered without a usable quote, in which case its success rate drops and the cell is purged rather than left at a stale value."
+
+panel_main_description: "All-in premium over the Kraken EUR mid for 500 EUR of BTC by card: declared fee, network fee and the spread hidden in the rate, folded into one number. 24h median. Lower is better."
+
+# One panel per grid cell (24h median of the same all-in premium) plus the
+# fee split of the headline cell. Cells a provider does not quote (Transak
+# has no SEPA, MoonPay's test key has no USDC) render as no data.
+metric_panels:
+  - id: declared_fee
+    label: Declared fee
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_declared_fee_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500"}[24h])
+    unit: bps
+    description: "The part of the headline cost the provider itemizes: its own fee plus network fee plus partner fee, over the fiat paid. What the checkout screen shows."
+  - id: hidden_spread
+    label: Hidden spread
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_hidden_spread_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "All-in premium minus declared fee: the margin that lives in the provider's exchange rate rather than on the fee line."
+  - id: btc_sepa_500
+    label: BTC, SEPA, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="btc",network="bitcoin",payment_method="sepa",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "Same buyer, same 500 EUR of BTC, paid by SEPA bank transfer instead of card. Transak's quote endpoint does not offer SEPA."
+  - id: btc_card_100
+    label: BTC, card, 100 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="btc",network="bitcoin",payment_method="card",notional="100",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "The headline cell at a 100 EUR ticket: fixed minimum fees weigh more on small orders."
+  - id: eth_card_500
+    label: ETH, card, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="eth",network="ethereum",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of ETH on Ethereum mainnet by card, premium over the Kraken ETH/EUR mid."
+  - id: eth_sepa_500
+    label: ETH, SEPA, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="eth",network="ethereum",payment_method="sepa",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of ETH on Ethereum mainnet by SEPA. MoonPay only, for now."
+  - id: usdc_card_500
+    label: USDC, card, 500 EUR
+    label_key: provider
+    metric: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{via="direct",asset="usdc",network="base",payment_method="card",notional="500",spot_ref="kraken_eur"}[24h])
+    unit: bps
+    description: "500 EUR of USDC on Base by card, premium over the Kraken USDC/EUR mid. Transak only until MoonPay is quoted with a production key."
+
+ledger_columns:
+  - { label: "All-in", slot: p50 }
+  - { label: "Declared fee", panel: declared_fee }
+  - { label: "Hidden spread", panel: hidden_spread }
+  - { label: "BTC SEPA", panel: btc_sepa_500 }
+  - { label: "ETH card", panel: eth_card_500 }
+  - { label: "USDC card", panel: usdc_card_500 }
+
+dimensions: {}
+
+providers:
+  - slug: moonpay
+    name: MoonPay
+    tag: Direct on-ramp, card and SEPA, pricing by request IP
+    type: protocol
+    formula: "24h median of the all-in premium over Kraken EUR mid on the headline cell (BTC, card, 500 EUR, France), quoted directly through MoonPay's own API."
+    queries:
+      p50: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p90: quantile_over_time(0.90, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p99: quantile_over_time(0.99, onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      mean: avg_over_time(onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      success: avg_over_time(onramp_quote_success{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: increase(onramp_quote_samples_total{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      series: onramp_quote_all_in_premium_bps{provider="moonpay",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}
+  - slug: transak
+    name: Transak
+    tag: Direct on-ramp, card (no SEPA on the quote endpoint), country passed as a parameter
+    type: protocol
+    formula: "24h median of the all-in premium over Kraken EUR mid on the headline cell (BTC, card, 500 EUR, France), quoted directly through Transak's own API."
+    queries:
+      p50: quantile_over_time(0.50, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p90: quantile_over_time(0.90, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      p99: quantile_over_time(0.99, onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      mean: avg_over_time(onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}[24h])
+      success: avg_over_time(onramp_quote_success{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      sample_size: increase(onramp_quote_samples_total{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west"}[24h])
+      series: onramp_quote_all_in_premium_bps{provider="transak",via="direct",asset="btc",network="bitcoin",payment_method="card",notional="500",fiat="EUR",country="FR",region="eu-west",spot_ref="kraken_eur"}

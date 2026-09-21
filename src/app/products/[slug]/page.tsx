@@ -8,7 +8,7 @@ import { getProvider } from "@/lib/providers";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { fmtUnit } from "@/lib/format";
+import { fmtUnit, valueWindowLabel } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
@@ -19,11 +19,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import {
-  fetchHlBuilderStats,
-  isHlBuilderSlug,
-} from "@/lib/hl-builder-stats";
-import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { HlFrontendSection } from "@/components/hl-frontend-section";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
@@ -38,6 +35,13 @@ import { PerpVenueSection } from "@/components/perp-venue-section";
 import { VenueKpiToggle } from "@/components/venue-kpi-toggle";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 import { RpcProviderChainsSection } from "@/components/rpc-provider-chains-section";
+import { TradingAppSection } from "@/components/trading-app-section";
+import { DataApiProviderSection } from "@/components/data-api-provider-section";
+import { BridgeProviderSection } from "@/components/bridge-provider-section";
+import { loadTradingAppMatrix, TRADING_APP_SLUGS, TRADING_APP_COLUMNS } from "@/lib/trading-apps";
+import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
+import { getTradingAppHistory } from "@/lib/trading-app-history";
+import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 
 export const revalidate = 3600;
 
@@ -86,11 +90,27 @@ function RowLink({
   );
 }
 
-/** "Arbitrum RPC" for a chain RPC bench, the title otherwise: the chain
- *  RPC titles are 55 to 65 characters and would eat the whole snippet. */
-function shortBenchLabel(b: { slug: string; title: string }): string {
+const CATEGORY_NOUN: Record<string, string> = {
+  Bridges: "bridge",
+  Aggregators: "aggregator",
+  Blockchains: "chain",
+  Trading: "trading",
+  Wallets: "wallet",
+  RPCs: "RPC",
+};
+
+/** "Arbitrum RPC" for a chain RPC bench; the title up to its first comma
+ *  or colon otherwise, and "bridge quote latency" (category noun plus
+ *  metric) when even that runs long. Full titles are 45 to 65 characters
+ *  and ate the whole 158-character snippet before the second value
+ *  (audit 2026-09-19, major 3: /products/relay cut mid-sentence). */
+function shortBenchLabel(b: { slug: string; title: string; category: string; metric: string }): string {
   const m = b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i) ?? b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i);
-  return m && b.slug.endsWith("-rpc") ? `${m[1]} RPC` : b.title;
+  if (m && b.slug.endsWith("-rpc")) return `${m[1]} RPC`;
+  const head = b.title.split(/[,:]/)[0].trim();
+  if (head.length <= 40) return head;
+  const noun = CATEGORY_NOUN[b.category] ?? b.category.toLowerCase();
+  return `${noun} ${b.metric.toLowerCase()}`;
 }
 
 export async function generateMetadata({
@@ -99,11 +119,6 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  // Tracked Hyperliquid frontends live under /hyperliquid/<slug> now. The
-  // page component 308-redirects, but generateMetadata runs first for the
-  // <head> injection — return the canonical + redirect-safe metadata so
-  // crawlers that peek at the response before the 308 fires still see the
-  // right canonical target.
   // Merkle rebranded to Blink Labs and went keyed-only; the provider was
   // fully delisted 2026-07-10 from the keyless RPC benches; bench 074
   // (mev-protect-rpc) lists them under the new name, so the old URL's
@@ -111,18 +126,11 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
-  if (await isHlBuilderSlug(slug)) {
-    const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
-    return {
-      alternates: { canonical: canonicalUrl },
-    };
-  }
-  // Perp venue pages have a richer dedicated route at /perp/<slug>.
-  // Polymarket is excluded because it also carries a PM venue section
-  // on the products page that the perp route does not cover.
-  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
-    return { alternates: { canonical: `${SITE.url}/perp/${slug}` } };
-  }
+  // /products/<slug> is the one canonical page per product since
+  // 2026-09-17. The former /hyperliquid/<slug> and /perp/<slug> detail
+  // routes 308 here (next.config redirects) and their content is a view
+  // behind the pill bar below: a product belongs to several categories,
+  // so no category may own its page.
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
@@ -168,9 +176,15 @@ export async function generateMetadata({
   // in 22 characters of the snippet.
   const metaRanked = [...p.appearances]
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
-    .sort((a, b) => a.rank - b.rank || a.benchmark.title.localeCompare(b.benchmark.title))
+    // Tie-break on the size of the field a rank was earned in (#1 of 6
+    // before #1 of 2), then the title; the alphabetical break opened
+    // PublicNode's snippet with Akash and Arbitrum Nova (audit 2026-09-21).
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))
     .slice(0, 2)
-    .map((a) => `${a.rank === 1 ? "#1" : `#${a.rank} of ${a.totalRanked}`} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+    // Always the denominator and, on a tier-dimensioned bench, the cohort:
+    // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
+    // cohort and Alchemy the private one (audit 2026-09-21).
+    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
   const measuredLead =
     metaRanked.length > 0
       ? `${p.name} ranks ${metaRanked.join(", ")} (p50, 24h). ${benchCount} live ${benchWord}${winSuffix}.`
@@ -185,7 +199,10 @@ export async function generateMetadata({
   // canonical straight to the final 200 surface. Otherwise Ahrefs + GSC
   // flag "canonical points to redirect" and Google may split rank between
   // source + final instead of consolidating.
-  const isChain = CHAIN_BY_SLUG.has(p.slug);
+  // Hyperliquid and dYdX are chains AND perp venues with 14-17 benches
+  // of their own; their product page (Perpetuals view) is a distinct
+  // entity from the chain page and keeps its own canonical.
+  const isChain = CHAIN_BY_SLUG.has(p.slug) && !PERP_PRODUCT_PILL_SLUGS.has(p.slug);
   const canonicalUrl = isChain
     ? `${SITE.url}/chains/${p.slug}`
     : `${SITE.url}/products/${p.slug}`;
@@ -196,6 +213,15 @@ export async function generateMetadata({
     openGraph: { title, description, type: "profile", url: canonicalUrl },
     twitter: { card: "summary_large_image", site: SITE.twitter, title, description },
   };
+}
+
+/** " public endpoints" / " private (API-key) providers" for a rank on a
+ *  tier-dimensioned bench, "" elsewhere: a rank is always stated within
+ *  the cohort it was earned in. */
+function cohortWord(a: { tier?: string; benchmark: { slug: string } }): string {
+  if (!a.benchmark.slug.endsWith("-rpc")) return "";
+  if (a.tier === "keyed") return " private (API-key) providers";
+  return " public endpoints";
 }
 
 export default async function ProviderPage({
@@ -210,19 +236,6 @@ export default async function ProviderPage({
   // left a cached 404 behind (seen live 2026-07-11).
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
-  }
-  // /hyperliquid/<slug> is the canonical detail surface for tracked HL
-  // frontends (12-month focus chart + peer group + KPI strip). Redirect
-  // /products/<hl-slug> straight there so backlinks + old SERP entries
-  // land on the richer hub without splitting rank signal across two URLs.
-  if (await isHlBuilderSlug(slug)) {
-    permanentRedirect(`/hyperliquid/${slug}`);
-  }
-  // Perp venue pages have a dedicated /perp/<slug> route with richer
-  // stats (charts, all-time totals, vault breakdown). Polymarket is
-  // excluded here because it also carries a PM venue section on this page.
-  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
-    permanentRedirect(`/perp/${slug}`);
   }
   const p = await getProvider(slug);
   if (!p) notFound();
@@ -280,14 +293,11 @@ export default async function ProviderPage({
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
   }
 
-  // HyperTracker-parity dashboard for the 104 Hyperliquid frontends. The
-  // strip renders inline between the product header and the bench
-  // appearances list, only when the slug actually maps to a builder the
-  // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
-  // gracefully degrades to a hidden section when Prom is unreachable or
-  // the slug isn't an HL builder.
+  // Hyperliquid frontend view (the former /hyperliquid/<slug> page) for
+  // every builder on the hyperliquid-frontends bench. The section itself
+  // degrades when Prom or the history blob is unavailable, so membership
+  // is the only gate.
   const isHlBuilder = await isHlBuilderSlug(p.slug);
-  const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   // Prediction-market deep-dive: if the slug is a tracked PM venue or
   // data feed, getPmVenueContext returns the per-venue / per-feed
@@ -320,9 +330,28 @@ export default async function ProviderPage({
         (await fetchPmDataFeedKpis(pmContext.slug)) !== null
       : false;
   const hasRpcData = await hasRpcProviderData(p.slug);
+  // Trading app / data API / bridge views: same hide-if-empty rule, each
+  // check reads the cached snapshot its section reads.
+  const tradingAppHasData =
+    (await getTradingAppHistory().then((h) => !!h?.apps.some((a) => a.slug === p.slug))) ||
+    (TRADING_APP_SLUGS.has(p.slug)
+      ? await loadTradingAppMatrix().then((m) => {
+          const me = m.rows.find((r) => r.slug === p.slug);
+          return !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+        })
+      : false);
+  const dataApiHasData = await fetchDataApiSnapshot().then(
+    (s) => !!s?.providers.find((r) => r.slug === p.slug && r.cells.length > 0),
+  );
+  const bridgeHasData = await fetchBridgeHub().then((h) => {
+    const r = h?.providers.find((x) => x.slug === p.slug);
+    return !!r && (r.feep50 != null || r.quotep50 != null);
+  });
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
+    // Larger field first (see metaRanked), then the title.
+    if (a.totalRanked !== b.totalRanked) return b.totalRanked - a.totalRanked;
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
 
@@ -337,8 +366,8 @@ export default async function ProviderPage({
   const topLines: string[] = [];
   for (const a of rankedAppearances.slice(0, 4)) {
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
-    const rankStr = a.rank === 1 ? "ranks #1" : `ranks #${a.rank} of ${a.totalRanked}`;
-    topLines.push(`${a.benchmark.title} (${rankStr}, ${p50Str} p50)`);
+    const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
+    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} p50)`);
   }
   const proseParts: string[] = [];
   if (topLines.length > 0) {
@@ -374,6 +403,8 @@ export default async function ProviderPage({
     title: string;
     chain?: { value: string; label: string };
     region?: { value: string; label: string };
+    /** Access cohort the rank was earned in (keyed RPC providers). */
+    tier?: string;
     benchSlug: string;
     providerSlug: string;
   };
@@ -397,7 +428,9 @@ export default async function ProviderPage({
     const providerSlug = a.result.slug;
 
     let handledByCells = false;
-    if (cellRanks && regionDims.length > 0) {
+    // cellRanks describe the bench's headline cohort; a tiered appearance
+    // (keyed RPC provider) is ranked within its cohort below instead.
+    if (cellRanks && regionDims.length > 0 && !a.tier) {
       const finestKeys = Object.keys(cellRanks).filter((k) => {
         const [c, r] = k.split("|");
         const chainOk = chainDims.length > 0 ? c !== "all" : c === "all";
@@ -479,7 +512,13 @@ export default async function ProviderPage({
     const isGlobalNumberOne = a.rank === 1;
     if (chainDims.length === 0) {
       if (isGlobalNumberOne) {
-        badgeCards.push({ key: benchSlug, title, benchSlug, providerSlug });
+        badgeCards.push({
+          key: a.tier ? `${benchSlug}-t-${a.tier}` : benchSlug,
+          title,
+          ...(a.tier ? { tier: a.tier } : {}),
+          benchSlug,
+          providerSlug,
+        });
       }
       continue;
     }
@@ -696,14 +735,14 @@ export default async function ProviderPage({
       })()}
 
       {(() => {
-        // KPI domain sections. A product can belong to up to five KPI
-        // domains (perp venue, PM venue, PM data feed, HL builder, RPC
-        // provider). Every domain with data joins ONE pill bar so all
-        // stay reachable on the same page; the bar renders even for a
-        // single domain so the section is always labeled with its KPI
-        // family. Availability is resolved before render:
-        // perpContext / pmContext / hlStats above, hasRpcData for the
-        // rpc-hub snapshot.
+        // Category views. A product can belong to several categories
+        // (perp venue, PM venue, PM data feed, Hyperliquid frontend, RPC
+        // provider, trading app, data API, bridge); every one with data joins ONE pill bar so all stay
+        // reachable on the same page, and the URL hash (#perp, #hl, ...)
+        // deep-links a view. The bar renders even for a single view so
+        // the section is always labeled with its family. Availability is
+        // resolved before render: perpContext / pmContext / isHlBuilder
+        // above, hasRpcData for the rpc-hub snapshot.
         const sections: { id: string; label: string; content: React.ReactNode }[] = [];
         if (perpContext && perpHasData) {
           sections.push({
@@ -752,11 +791,11 @@ export default async function ProviderPage({
             ),
           });
         }
-        if (hlStats) {
+        if (isHlBuilder) {
           sections.push({
             id: "hl",
             label: "Hyperliquid",
-            content: <HlBuilderDashboard stats={hlStats} name={p.name} />,
+            content: <HlFrontendSection slug={p.slug} name={p.name} />,
           });
         }
         if (hasRpcData) {
@@ -771,6 +810,32 @@ export default async function ProviderPage({
             ),
           });
         }
+        if (tradingAppHasData) {
+          sections.push({
+            id: "trading-app",
+            label: "Trading app",
+            content: <TradingAppSection slug={p.slug} name={p.name} />,
+          });
+        }
+        if (dataApiHasData) {
+          sections.push({
+            id: "data-api",
+            label: "Data API",
+            content: <DataApiProviderSection slug={p.slug} name={p.name} />,
+          });
+        }
+        if (bridgeHasData) {
+          sections.push({
+            id: "bridge",
+            label: "Bridge",
+            content: <BridgeProviderSection slug={p.slug} name={p.name} />,
+          });
+        }
+        // Pill order: what the product IS first (trading app, perp venue,
+        // prediction market, data API, bridge, RPC), the Hyperliquid
+        // frontend numbers last. FOMO reads "Trading app | Hyperliquid".
+        const ORDER = ["trading-app", "perp", "pm", "pm-feed", "data-api", "bridge", "rpc", "hl"];
+        sections.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
         return <VenueKpiToggle sections={sections} />;
       })()}
 
@@ -862,9 +927,13 @@ export default async function ProviderPage({
                 : [];
             const hasChainRanks = chainRanks.length > 0;
             return (
-              <li key={a.benchmark.slug}>
+              <li key={a.tier ? `${a.benchmark.slug}#tier=${a.tier}` : a.benchmark.slug}>
                 <RowLink
-                  href={canLink(a.benchmark.slug) ? `/benchmarks/${a.benchmark.slug}` : null}
+                  href={
+                    canLink(a.benchmark.slug)
+                      ? `/benchmarks/${a.benchmark.slug}${a.tier ? `#tier=${a.tier}` : ""}`
+                      : null
+                  }
                   className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
@@ -893,6 +962,7 @@ export default async function ProviderPage({
                     </h3>
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
+                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier} cohort`}, ranked separately</> : null}
                     </p>
                     {hasChainRanks && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
@@ -913,7 +983,7 @@ export default async function ProviderPage({
                       <>
                         <p className="font-sans tabular text-base text-ink">{value}</p>
                         <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                          p50 · 24h
+                          {valueWindowLabel(a.benchmark)}
                         </p>
                       </>
                     ) : (
@@ -953,12 +1023,14 @@ export default async function ProviderPage({
               const scopeParams = new URLSearchParams();
               if (card.chain) scopeParams.set("chain", card.chain.value);
               if (card.region) scopeParams.set("region", card.region.value);
+              if (card.tier) scopeParams.set("tier", card.tier);
               const qs = scopeParams.size > 0 ? `?${scopeParams.toString()}` : "";
               const badgePath = `/api/badge/${card.benchSlug}/${card.providerSlug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
-              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}`;
-              const scopeLabels = [card.chain?.label, card.region?.label]
+              const tierLabel = card.tier ? (card.tier === "keyed" ? "private cohort" : `${card.tier} cohort`) : null;
+              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}`;
+              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel]
                 .filter(Boolean)
                 .join(" · ");
               const cardTitle = scopeLabels

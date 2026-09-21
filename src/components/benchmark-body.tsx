@@ -115,8 +115,9 @@ function variantKey(
   region: string | null,
   kind: string | null,
   venue: string | null = null,
+  tier: string | null = null,
 ): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}`;
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}`;
 }
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
@@ -201,19 +202,29 @@ export function BenchmarkBody({
   regionOptions,
   kindOptions = [],
   venueOptions = [],
+  tierOptions = [],
   venuesForChain,
   initialChain,
   initialRegion,
   initialKind = null,
   initialVenue = null,
+  initialTier = null,
   hasLongHistory = false,
   pageActions,
+  headlineCohortBlock,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
   regionOptions: ChainOption[];
   kindOptions?: ChainOption[];
   venueOptions?: ChainOption[];
+  /** Access tiers (public / keyed), headline cohort first. The first
+   *  option is the aggregate itself: it never hits the variant API and
+   *  never appears in the URL. Another tier rides in the URL fragment
+   *  (`#tier=keyed`), not the query string: one document for crawlers,
+   *  the Private tab for readers (product pages, the hub and the
+   *  citations link that form; `?tier=keyed` is still accepted). */
+  tierOptions?: ChainOption[];
   /** Per-chain venue availability map. When present, venue tabs are filtered
    *  to only show venues that have data for the currently selected chain. */
   venuesForChain?: Record<string, string[]>;
@@ -221,6 +232,7 @@ export function BenchmarkBody({
   initialRegion: string | null;
   initialKind?: string | null;
   initialVenue?: string | null;
+  initialTier?: string | null;
   /** When true, render the long-window archive toggle (24h..All time)
    *  below the main ledger. Only set on benches whose harness ships a
    *  long-window archive blob (currently: hyperliquid-frontends). */
@@ -230,6 +242,11 @@ export function BenchmarkBody({
    *  affordances sit visually next to the per-chart Copy / Download
    *  button instead of floating alone at the top of the page. */
   pageActions?: import("react").ReactNode;
+  /** Server-rendered block that belongs to the headline cohort only
+   *  (the public endpoint URLs of a chain RPC page). Rendered under the
+   *  ledger and hidden while another tier (Private) is selected: keyed
+   *  URLs are never listed, so the block would contradict the table. */
+  headlineCohortBlock?: import("react").ReactNode;
 }) {
   // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
@@ -241,6 +258,7 @@ export function BenchmarkBody({
   const urlRegion = searchParams.get("region");
   const urlKind = searchParams.get("kind");
   const urlVenue = searchParams.get("venue");
+  const urlTier = searchParams.get("tier");
   const urlLayer = searchParams.get("layer");
   // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
   // still selects the dimension whose YAML value is the legacy "ton".
@@ -254,6 +272,8 @@ export function BenchmarkBody({
     (urlKind && kindOptions.find((k) => k.value === urlKind)?.value) ?? initialKind;
   const resolvedInitialVenue =
     (urlVenue && venueOptions.find((v) => v.value === urlVenue)?.value) ?? initialVenue;
+  const resolvedInitialTier =
+    (urlTier && tierOptions.find((t) => t.value === urlTier)?.value) ?? initialTier;
   const resolvedInitialLayer: ProviderLayer =
     urlLayer === "l2" ? "l2" : "l1";
 
@@ -261,7 +281,24 @@ export function BenchmarkBody({
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
   const [kind, setKind] = useState<string | null>(resolvedInitialKind);
   const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
+  const [tier, setTier] = useState<string | null>(resolvedInitialTier);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
+  // `#tier=<t>` is invisible to the server and to useSearchParams: read
+  // it once after mount.
+  useEffect(() => {
+    if (tierOptions.length === 0) return;
+    const apply = () => {
+      const m = /(?:^#|[#&])tier=([A-Za-z0-9_-]+)/.exec(window.location.hash);
+      const fromHash = m ? tierOptions.find((t) => t.value === m[1])?.value : undefined;
+      if (fromHash) setTier(fromHash);
+    };
+    apply();
+    // Same-page links (the TL;DR's "Private tab") change the hash
+    // without a remount.
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Active companion-metric panel. null = main spec metric (default chart
   // data, default unit, default header). When a panel id is set, the
   // chart pulls its per-provider series from panel.seriesByProvider,
@@ -286,6 +323,13 @@ export function BenchmarkBody({
     syncParam(url, "region", region, regionOptions);
     syncParam(url, "kind", kind, kindOptions);
     syncParam(url, "venue", venue, venueOptions);
+    // Tier travels in the fragment (see tierOptions above); a legacy
+    // ?tier= in the address bar is folded into it.
+    url.searchParams.delete("tier");
+    const tierFragment =
+      tierOptions.length > 0 && tier && tier !== tierOptions[0].value ? `tier=${tier}` : "";
+    // Leave a plain anchor (#public-endpoints, #methodology) alone.
+    if (tierFragment || /tier=/.test(url.hash)) url.hash = tierFragment;
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
@@ -293,16 +337,21 @@ export function BenchmarkBody({
     // no param (canonical URL stays clean when no view has been picked).
     if (activePanelId) url.searchParams.set("view", activePanelId);
     else url.searchParams.delete("view");
-    const next = url.pathname + (url.search ? url.search : "");
-    if (next !== window.location.pathname + window.location.search) {
+    const next = url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+    if (next !== window.location.pathname + window.location.search + window.location.hash) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, kind, venue, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions]);
+  }, [chain, region, kind, venue, tier, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, tierOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
   const fallbackKind = kindOptions[0]?.value ?? null;
   const fallbackVenue = venueOptions[0]?.value ?? null;
+  // The headline tier is the aggregate: represented as null in the
+  // variant key and absent from the variant query string.
+  const headlineTier = tierOptions[0]?.value ?? null;
+  const tierParam = (t: string | null): string | null =>
+    t && t !== headlineTier ? t : null;
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
 
   // Per-chain default view (spec chart.default_panel_by_chain). Applied
@@ -335,6 +384,7 @@ export function BenchmarkBody({
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;
+  const effectiveTier = tierOptions.length > 0 ? tierParam(tier ?? headlineTier) : null;
 
   // Cross-dimension filtering: hide venue tabs with no data for the active
   // chain, and hide chain tabs with no data for the active venue.
@@ -369,14 +419,15 @@ export function BenchmarkBody({
   // tab still works, numbers stay cross-dimension) and may retry on the
   // next flip.
   const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
-  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue);
+  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier);
   const aggregateBench =
-    variants[variantKey(null, null, null, null)] ?? Object.values(variants)[0];
+    variants[variantKey(null, null, null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
     (!effectiveChain || effectiveChain === "all") &&
     (!effectiveRegion || effectiveRegion === "all") &&
     (!effectiveKind || effectiveKind === "all") &&
-    (!effectiveVenue || effectiveVenue === "all");
+    (!effectiveVenue || effectiveVenue === "all") &&
+    !effectiveTier;
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
     // The all/all/all selection IS the aggregate: derived at render time,
@@ -388,6 +439,7 @@ export function BenchmarkBody({
     if (!isAll(effectiveRegion)) qs.set("region", effectiveRegion!);
     if (!isAll(effectiveKind)) qs.set("kind", effectiveKind!);
     if (!isAll(effectiveVenue)) qs.set("venue", effectiveVenue!);
+    if (effectiveTier) qs.set("tier", effectiveTier);
     let cancelled = false;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -413,24 +465,26 @@ export function BenchmarkBody({
   useEffect(() => {
     if (!aggregateBench) return;
     const isAll = (v: string | null) => !v || v === "all";
-    type Combo = [string | null, string | null, string | null, string | null];
+    type Combo = [string | null, string | null, string | null, string | null, string | null];
     const combos: Combo[] = [
-      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue] as Combo),
-      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue] as Combo),
-      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value] as Combo),
+      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier] as Combo),
+      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue, effectiveTier] as Combo),
+      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value, effectiveTier] as Combo),
+      ...tierOptions.map((t) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(t.value)] as Combo),
     ];
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     let i = 0;
-    for (const [c, r, k, vn] of combos) {
-      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn)) continue;
-      const key = variantKey(c, r, k, vn);
+    for (const [c, r, k, vn, t] of combos) {
+      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn) && !t) continue;
+      const key = variantKey(c, r, k, vn, t);
       if (variantMap[key]) continue;
       const qs = new URLSearchParams();
       if (!isAll(c)) qs.set("chain", c!);
       if (!isAll(r)) qs.set("region", r!);
       if (!isAll(k)) qs.set("kind", k!);
       if (!isAll(vn)) qs.set("venue", vn!);
+      if (t) qs.set("tier", t);
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
@@ -452,7 +506,7 @@ export function BenchmarkBody({
     // variantMap intentionally omitted: presence is re-checked inside the
     // functional setState, a duplicate in-flight fetch is harmless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, aggregateBench]);
+  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   // True while the selected chain/region/kind variant is still loading:
@@ -551,7 +605,11 @@ export function BenchmarkBody({
   // short ranges keep the existing visual exactly. When the bench has
   // long-window archive history, this state is also passed to the
   // leaderboard below so chart pills + ledger source stay in sync.
-  const [chartRange, setChartRange] = useState<ChartRange>("24h");
+  // A daily-cadence bench (spec `chart.default_range`) opens on its own
+  // window instead; the chart hides the sub-day pills in that case.
+  const [chartRange, setChartRange] = useState<ChartRange>(
+    (benchmark.chart?.defaultRange as ChartRange | undefined) ?? "24h",
+  );
 
   // Per-window cache of the long-window archive payload. Populated lazily
   // when the user clicks a 90d/180d/1y/all pill, and used both to feed
@@ -691,7 +749,12 @@ export function BenchmarkBody({
   const pendingCls = variantPending
     ? " opacity-40 animate-pulse pointer-events-none"
     : "";
-  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
+  const pendingLabel = [
+    effectiveChain,
+    effectiveRegion,
+    effectiveKind,
+    effectiveTier ? tierOptions.find((t) => t.value === effectiveTier)?.label ?? effectiveTier : null,
+  ]
     .filter((v): v is string => !!v && v !== "all")
     .join(" · ");
   const isDraft = viewBenchmark.status === "draft";
@@ -712,8 +775,29 @@ export function BenchmarkBody({
         filteredChainOptions.length > 0 ||
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
+        tierOptions.length > 0 ||
         filteredVenueOptions.length > 0) && (
         <div className="mt-8 space-y-3">
+          {tierOptions.length > 0 && (
+            <DimensionRow
+              label="Access"
+              options={tierOptions}
+              selected={tier ?? headlineTier}
+              onSelect={setTier}
+              metaByValue={Object.fromEntries(
+                tierOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(
+                      variantMap[
+                        variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value))
+                      ],
+                    ),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
           {hasLayerSplit && (
             <DimensionRow
               label="Layer"
@@ -736,7 +820,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -754,7 +838,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -771,7 +855,7 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue)]),
+                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -787,7 +871,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue)]),
+                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1027,6 +1111,7 @@ export function BenchmarkBody({
                 <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
+          {!effectiveTier && headlineCohortBlock}
         </>
       )}
     </>

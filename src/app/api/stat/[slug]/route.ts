@@ -4,6 +4,8 @@ import { SITE } from "@/data/site";
 import {
   citableAsOf,
   citationQuote,
+  benchPath,
+  cohortSummaries,
   citeBundle,
   fieldValue,
   headlineSentence,
@@ -51,15 +53,35 @@ export async function GET(
     region?: string;
     kind?: string;
     venue?: string;
+    tier?: string;
   } = {};
   const chainParam = url.searchParams.get("chain");
   const regionParam = url.searchParams.get("region");
   const kindParam = url.searchParams.get("kind");
   const venueParam = url.searchParams.get("venue");
+  const tierParam = url.searchParams.get("tier");
   if (chainParam && chainParam !== "all") filters.chain = chainParam;
   if (regionParam && regionParam !== "all") filters.region = regionParam;
   if (kindParam && kindParam !== "all") filters.kind = kindParam;
   if (venueParam && venueParam !== "all") filters.venue = venueParam;
+  // Tier is resolved against the declared values like the variant route:
+  // an unknown tier must not build an empty cohort and answer from it.
+  if (tierParam && tierParam !== "all") {
+    const aggregate = await getBenchmark(slug);
+    const known = aggregate?.dimensions?.tier?.find(
+      (t) => t.value.toLowerCase() === tierParam.toLowerCase().trim(),
+    );
+    if (!known) {
+      return NextResponse.json(
+        { error: "unknown_tier", tier: tierParam },
+        { status: 400, headers: { "cache-control": "public, s-maxage=60" } },
+      );
+    }
+    // The headline tier is the aggregate itself (no variant blob exists
+    // for it): resolve it to no filter like the variant route does.
+    const headline = aggregate?.aggregateFilters?.tier ?? aggregate?.dimensions?.tier?.[0]?.value;
+    if (known.value !== headline) filters.tier = known.value;
+  }
   const b = await getBenchmark(slug, filters);
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
@@ -90,6 +112,12 @@ export async function GET(
     // Missing key = "all" for that dimension.
     filters:
       Object.keys(filters).length > 0 ? filters : null,
+    // Access cohorts of a tier-dimensioned bench (chain RPC pages: the
+    // public endpoints and the private, API-key providers), each with its
+    // own leader, sentence, rankings and URL, ranked apart. Present on
+    // the headline record so one call answers both questions; the
+    // record's own value/leader/rankings describe the requested cohort.
+    ...(cohortSummaries(b, SITE.url).length > 0 ? { cohorts: cohortSummaries(b, SITE.url) } : {}),
     // Aggregate is "insufficient" (median per-provider sample health
     // below 10 percent of expected_n): refuse to publish a value or
     // leader; the headline is rewritten by headlineSentence so the
@@ -132,7 +160,7 @@ export async function GET(
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
-    pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
+    pageUrl: `${SITE.url}${benchPath(b)}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,
     source: b.source,
     methodology: b.methodology,

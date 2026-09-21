@@ -3,8 +3,8 @@
 slug: perp-funding
 number: "036"
 title: Cheapest perp venue to hold a position, live funding normalized
-seo_title: "Perp funding rates live 2026"
-seo_description: "Live perp funding rates across Hyperliquid, Binance, Bybit, OKX, dYdX, Paradex, Aster and Polymarket, normalized hourly."
+seo_title: "Perp funding rates: {{best_name}} cheapest at {{best_p50}} per 24h"
+seo_description: "{{best_name}} is the cheapest venue to hold a perp long right now at {{best_p50}} per 24h. Live funding across {{count}} venues, normalized hourly."
 subtitle: Funding cost in basis points to hold a long position for 24 hours at the current rate, normalized across venues that settle funding on 1 hour, 4 hour and 8 hour periods. Negative means longs get paid.
 category: Trading
 status: live
@@ -205,6 +205,18 @@ providers:
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
 
+  - slug: ondo
+    name: Ondo Perps
+    tag: SGX off-chain matching, custody on Ethereum and Arbitrum, hourly funding read from the venue API
+    formula: "fundingRate from the Ondo Perps /v1/perps/contracts row (an hourly rate) x 24 x 10000, in bps per 24h hold, polled every 5 minutes by the cohort harness; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="ondo",source="ondo_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
 metric_panels:
   - id: annualized
     label: Annualized (ETH)

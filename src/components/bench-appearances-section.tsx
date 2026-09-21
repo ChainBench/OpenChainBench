@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getProviders } from "@/lib/providers";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { fmtUnit } from "@/lib/format";
+import { fmtUnit, valueWindowLabel } from "@/lib/format";
 
 interface Props {
   providerSlug: string;
@@ -45,9 +45,9 @@ export async function BenchAppearancesSection({ providerSlug }: Props) {
               : [];
           const hasChainRanks = chainRanks.length > 0;
           return (
-            <li key={a.benchmark.slug}>
+            <li key={a.tier ? `${a.benchmark.slug}#tier=${a.tier}` : a.benchmark.slug}>
               <Link
-                href={`/benchmarks/${a.benchmark.slug}`}
+                href={`/benchmarks/${a.benchmark.slug}${a.tier ? `#tier=${a.tier}` : ""}`}
                 className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
               >
                 <span
@@ -96,7 +96,7 @@ export async function BenchAppearancesSection({ providerSlug }: Props) {
                     <>
                       <p className="font-sans tabular text-base text-ink">{value}</p>
                       <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                        p50 · 24h
+                        {valueWindowLabel(a.benchmark)}
                       </p>
                     </>
                   ) : (

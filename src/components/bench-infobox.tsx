@@ -122,7 +122,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
             ) : null}
           </InfoPair>
           {top && (
-            <InfoPair label="Leader (24h)">
+            <InfoPair label={`Leader (${benchmark.window ?? "24h"})`}>
               <span className="font-medium text-ink">{top.name}</span>
               <span className="text-ink-faint">
                 {" "}

@@ -2,20 +2,26 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { track, type SiteEvent } from "@/lib/analytics";
 
 /**
  * Inline "Copy to clipboard" button. Toggles to "Copied" for 1.5 s after
  * a successful write. Shared by the contribute / mcp / docs pages so every
  * copy-able snippet on the site looks identical.
  */
+type CopyProps = Extract<SiteEvent, { name: "copy" }>["props"];
+
 export function CopyButton({
   value,
   label,
   mono,
+  event,
 }: {
   value: string;
   label: string;
   mono?: boolean;
+  /** What was copied, for the `copy` event; omitted means "other" with no value. */
+  event?: CopyProps;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -24,6 +30,7 @@ export function CopyButton({
       type="button"
       onClick={() => {
         navigator.clipboard.writeText(value).then(() => {
+          track("copy", event ?? { kind: "other" });
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1500);
         });

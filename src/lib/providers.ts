@@ -55,6 +55,13 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // than a synthetic "Polkadot Foundation RPC" entry (there is no such
   // separate operator).
   "polkadot-official": "parity",
+  // Bench 041 and the perp AMM share bench label the GMX V2 venue
+  // "gmx-v2"; every other perp bench and the product page use "gmx".
+  // One brand, one product page, one compare entry.
+  "gmx-v2": "gmx",
+  // Bench 268 measured the Binance Wallet swap as "binance-wallet" for a
+  // day (2026-09-18); the row and the product page are "binance".
+  "binance-wallet": "binance",
   // Oracle pair → underlying chain / asset
   "eth-usd": "ethereum",
   "sol-usd": "solana",
@@ -110,6 +117,16 @@ const CANONICAL_NAMES: Record<string, string> = {
   // Blobs materialized before the rename still carry the old name on
   // some appearances; the override wins over every one of them.
   gains: "Gains",
+  // Perp venues whose spec name equals the title-cased slug: without an
+  // entry here the "upgrade a fallback name" rule below let the token
+  // valuation benches rename them to their ticker (HYPE, LIT, ASTER, DIME)
+  // on /products and every compare page (audit 2026-09-21).
+  hyperliquid: "Hyperliquid",
+  lighter: "Lighter",
+  aster: "Aster",
+  paradex: "Paradex",
+  extended: "Extended",
+  ondo: "Ondo Perps",
   // Brand casings the title-case fallback butchers ("Drpc", "Usdc",
   // "Meowrpc" — SEO audit 2026-07-08). Profiles built from bench specs
   // now inherit the spec's provider `name` field, but canonicalize() is
@@ -184,6 +201,7 @@ export type ProviderAppearance = {
     | "higherIsBetter"
     | "status"
     | "lastRunAt"
+    | "hasDistribution"
   > & {
     /** Chain dimension values from the spec, when present. Stored on the
      *  appearance so /products/[slug] can render chain-aware chips without
@@ -207,6 +225,11 @@ export type ProviderAppearance = {
   result: ProviderResult;
   rank: number;
   totalRanked: number;
+  /** Access cohort this appearance was ranked in, when it is not the
+   *  bench's headline cohort (a keyed RPC provider on a chain page whose
+   *  default view is the public cohort). `rank` / `totalRanked` are then
+   *  within that cohort and the bench link needs `?tier=<value>`. */
+  tier?: string;
   /** Per-chain leadership for this provider on this bench. Populated only
    *  for chains this provider *leads*, so `rank` is always 1 and an absent
    *  key means "does not lead here", never "ranked lower here". Key = chain
@@ -388,6 +411,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           higherIsBetter: b.higherIsBetter,
           status: b.status,
           lastRunAt: b.lastRunAt,
+          hasDistribution: b.hasDistribution,
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
@@ -443,6 +467,70 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
         });
       }
     });
+
+    // Other access cohorts of a tier-dimensioned bench (the keyed RPC
+    // providers behind the Endpoints selector). Each cohort is ranked on
+    // its own, exactly as its tab renders it; a #1 there is a win like
+    // any aggregate #1 on a bench without chain dimensions. The
+    // `benchmark` block is the same object as the headline appearances
+    // (the providers blob dedupes it per bench slug, first one wins);
+    // consumers key off `tier` to ignore its cellRanks / bestPerChain,
+    // which describe the headline cohort only.
+    for (const [tier, rows] of Object.entries(b.tierResults ?? {})) {
+      // Same reliability gate as the headline cohort (rankProviders).
+      const cohortRanked = b.status === "live" ? rankProviders({ ...b, results: rows }) : [];
+      const cohortRankBySlug = new Map<string, number>();
+      cohortRanked.forEach((r, idx) => cohortRankBySlug.set(r.slug.toLowerCase(), idx));
+      for (const r of rows) {
+        const canon = canonicalize(r.slug);
+        const key = canon.slug;
+        const existing = byKey.get(key);
+        const idx = cohortRankBySlug.get(r.slug.toLowerCase());
+        const isRanked = idx !== undefined;
+        const winsEarned = isRanked && idx === 0 ? 1 : 0;
+        const appearance: ProviderAppearance = {
+          benchmark: {
+            slug: b.slug,
+            title: b.title,
+            subtitle: b.subtitle,
+            category: b.category,
+            metric: b.metric,
+            unit: b.unit,
+            higherIsBetter: b.higherIsBetter,
+            status: b.status,
+            lastRunAt: b.lastRunAt,
+            hasDistribution: b.hasDistribution,
+            chainDimensions: b.dimensions?.chain,
+            bestPerChain: benchBestPerChain,
+            regionDimensions: b.dimensions?.region,
+            cellRanks: b.cellRanks,
+          },
+          result: r,
+          rank: isRanked ? (idx as number) + 1 : 0,
+          totalRanked: cohortRanked.length,
+          tier,
+        };
+        if (existing) {
+          existing.appearances.push(appearance);
+          if (!existing.categories.includes(b.category)) existing.categories.push(b.category);
+          existing.wins += winsEarned;
+          if (!existing.type && r.type) existing.type = r.type;
+          if (existing.name === titleCaseSlug(key)) {
+            const better = profileDisplayName(key, r);
+            if (better !== existing.name) existing.name = better;
+          }
+        } else {
+          byKey.set(key, {
+            slug: canon.slug,
+            name: profileDisplayName(canon.slug, r),
+            type: r.type,
+            appearances: [appearance],
+            wins: winsEarned,
+            categories: [b.category],
+          });
+        }
+      }
+    }
   }
 
   // Seed stub profiles for cohort venues that don't yet have a bench
@@ -607,7 +695,7 @@ const buildProvidersCached = unstable_cache(
   // v6: profile names now inherit bench spec casing (dRPC, USDC, dYdX)
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
-  ["providers-v6"],
+  ["providers-v7"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

@@ -205,3 +205,47 @@ export async function readMaterialized(
     return null;
   }
 }
+
+// ─── Shared low-level access for other KV consumers ──────────────────
+// The speedtest contribution store (src/app/api/speedtest/*) reuses this
+// transport instead of dragging in a second Redis client.
+
+/** Single command. Exported alias of the private helper above. */
+export const redisCommand = redis;
+
+/** Batched commands. Uses the Upstash REST /pipeline endpoint (one HTTP
+ *  round trip for N commands); falls back to sequential execution on the
+ *  TCP transport (VPS worker context, where latency is sub-ms anyway). */
+export async function redisPipeline(
+  cmds: (string | number)[][],
+  timeoutMs = 6000,
+): Promise<unknown[]> {
+  if (cmds.length === 0) return [];
+  if (tcpUrl()) {
+    const out: unknown[] = [];
+    for (const cmd of cmds) out.push(await redis(cmd, timeoutMs));
+    return out;
+  }
+  const c = creds();
+  if (!c) throw new Error("materialize store: no redis configured");
+  const res = await fetch(`${c.url}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${c.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(cmds),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `materialize store: pipeline http ${res.status}: ${detail.slice(0, 200)}`,
+    );
+  }
+  const body = (await res.json()) as { result?: unknown; error?: string }[];
+  return body.map((b) => {
+    if (b.error) throw new Error(`materialize store: ${b.error}`);
+    return b.result;
+  });
+}

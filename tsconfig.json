@@ -38,6 +38,8 @@
     // SITE's src/ and breaks `next build` (Cannot find module
     // '@/lib/promote' — 2026-07-03 staging+prod deploy outage).
     "infrastructure",
-    "harnesses"
+    "harnesses",
+    // crm/ is the internal dashboard (own package, Railway); same rule.
+    "crm"
   ]
 }

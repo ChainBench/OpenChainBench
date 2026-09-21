@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { deltaBarsFromCumulative } from "./perp-venue-external";
+import { dailyBarsFromRing, deltaBarsFromCumulative } from "./perp-venue-external";
 
 describe("deltaBarsFromCumulative", () => {
   test("drops re-index jumps in a cumulative counter (real Gains series, Sep 2026)", () => {
@@ -55,5 +55,27 @@ describe("deltaBarsFromCumulative", () => {
       { date: "2026-09-04", valueUsd: 60 },
       { date: "2026-09-05", valueUsd: 50 },
     ]);
+  });
+});
+
+describe("dailyBarsFromRing", () => {
+  test("one bar per finished UTC day, last sample of the day, current day dropped", () => {
+    // 7 points at 12 h cadence ending 2026-09-14T18:00Z:
+    // 09-11T18, 09-12T06, 09-12T18, 09-13T06, 09-13T18, 09-14T06, 09-14T18
+    const points = [10, 20, 21, 30, 31, 40, 41];
+    const bars = dailyBarsFromRing(points, "2026-09-14T18:00:00.000Z");
+    expect(bars).toEqual([
+      { date: "2026-09-11", valueUsd: 10 },
+      { date: "2026-09-12", valueUsd: 21 },
+      { date: "2026-09-13", valueUsd: 31 },
+    ]);
+  });
+
+  test("skips nulls and zeros, tolerates a bad end timestamp", () => {
+    expect(dailyBarsFromRing([null, 0, 5, null], "2026-09-14T00:00:00.000Z")).toEqual([
+      { date: "2026-09-13", valueUsd: 5 },
+    ]);
+    expect(dailyBarsFromRing([1, 2, 3], "not-a-date")).toEqual([]);
+    expect(dailyBarsFromRing([], "2026-09-14T00:00:00.000Z")).toEqual([]);
   });
 });

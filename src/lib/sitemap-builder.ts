@@ -4,9 +4,8 @@ import type { MetadataRoute } from "next";
 import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
-import { DEV_ONLY_BENCH_SLUGS } from "@/lib/removed-benches";
+import { isDevOnlyBench, isDevOnlyRoute } from "@/lib/removed-benches";
 import { REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { getSpecs } from "@/lib/spec";
 import { PROVIDER_REGISTRY } from "@/data/provider-registry";
 import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
@@ -17,6 +16,8 @@ import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
+import { adHocPairs } from "@/lib/compare/adhoc-pairs";
+import { getProviders, type ProviderProfile } from "@/lib/providers";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
@@ -184,7 +185,14 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/rpc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
+    ...(isDevOnlyRoute("/speedtest-rpc")
+      ? []
+      : [{ url: `${SITE.url}/speedtest-rpc`, lastModified: pageMtime("speedtest-rpc/page.tsx"), changeFrequency: "monthly" as const, priority: 0.8 }]),
+    ...(isDevOnlyRoute("/rpc-map")
+      ? []
+      : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
@@ -284,11 +292,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Benchmark routes. Blob benches are already filtered to live+live by
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).
+  // Benches this build serves: the worker publishes from dev, so the blob
+  // carries specs a production checkout may not have yet (arc-rpc and
+  // robinhood-rpc were listed in the production sitemap while 404ing,
+  // audit 2026-09-21).
+  const servedSlugs = new Set((await getSpecs()).map((s) => s.slug));
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
-    // REMOVED_BENCH_SLUGS: 410'd, gone for good. DEV_ONLY_BENCH_SLUGS: live on
-    // dev but not on prod (the blob is dev-based and lists them, but the prod
-    // page 404s), so drop them here or the prod sitemap smoke 404s.
-    if (REMOVED_BENCH_SLUGS.has(b.slug) || DEV_ONLY_BENCH_SLUGS.has(b.slug)) return [];
+    if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
+    if (!servedSlugs.has(b.slug)) return [];
+    // The worker publishes every dev bench; production must not list a
+    // page it does not serve.
+    if (isDevOnlyBench(b.slug)) return [];
     // Expired chain RPC pages render noindex; never list them even if the
     // blob still carries them.
     if (isExpiredRpcPage(b)) return [];
@@ -320,12 +334,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return entries;
   });
 
-  // Provider routes. The worker pre-filters providerSlugs to exclude chain
-  // slugs, HL builder slugs, perp venue slugs, and removed slugs. Apply the
-  // same checks here as a safety net. isHlBuilderSlug reads the spec (not
-  // Prom) so it's safe async — no OOM risk (unlike the old getProvider fan-out).
-  // It also catches dormant HL frontends missing from the Prom cohort that
-  // the worker couldn't filter without the spec provider list.
+  // Provider routes. Since 2026-09-17 /products/<slug> is the one page per
+  // product, so HL builders and perp venues are listed here (their old
+  // /hyperliquid/<slug> and /perp/<slug> URLs 308 to it and must not be
+  // in the sitemap). Older worker blobs pre-filtered those slugs out of
+  // providerSlugs; union them back in from hlBuilderSlugs and the perp
+  // pill set so the sitemap does not depend on the worker's build.
   // Only list product pages this build can actually serve. The blob is
   // produced by the worker from its own checkout, so it can name providers
   // that a spec on THIS branch does not declare yet; /products/<slug> then
@@ -336,53 +350,51 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // for the product pages' lastmod below.
   const benchesByProvider = new Map<string, string[]>();
   const liveBenchSlugs = new Set(blobBenches.map((b) => b.slug));
+  // Providers of another access cohort on a live tier-dimensioned bench
+  // (the keyed RPC providers): the worker's providerSlugs come from the
+  // headline blob's rows, public only, so quicknode and chainstack were
+  // missing from the sitemap while their product pages rendered.
+  const cohortProviderSlugs = new Set<string>();
   for (const spec of await getSpecs()) {
+    const tiers = spec.dimensions?.tier ?? [];
     for (const p of spec.providers ?? []) {
       declaredProviderSlugs.add(p.slug);
       if (liveBenchSlugs.has(spec.slug)) {
         const list = benchesByProvider.get(p.slug) ?? [];
         list.push(`bench:${spec.slug}`);
         benchesByProvider.set(p.slug, list);
+        if (tiers.length > 0 && p.tier && p.tier !== tiers[0].value) cohortProviderSlugs.add(p.slug);
       }
     }
   }
   for (const entry of Object.values(PROVIDER_REGISTRY)) {
     if (entry.parent) declaredProviderSlugs.add(entry.parent);
   }
-  const validatedSlugs = (
-    await Promise.all(
-      providerSlugs.map(async (slug) => {
-        if (!declaredProviderSlugs.has(slug)) return null;
-        if (CHAIN_BY_SLUG.has(slug)) return null;
-        if (hlBuilderSlugSet.has(slug)) return null;
-        if (await isHlBuilderSlug(slug)) return null;
-        if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") return null;
-        if (REMOVED_PRODUCT_SLUGS.has(slug)) return null;
-        return slug;
-      }),
-    )
-  ).filter((s): s is string => s !== null);
+  const candidateSlugs = [
+    ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS, ...cohortProviderSlugs]),
+  ];
+  const validatedSlugs = candidateSlugs.filter((slug) => {
+    if (!declaredProviderSlugs.has(slug)) return false;
+    // Chains canonicalize to /chains/<slug>, except the perp venues that
+    // are also chains (hyperliquid, dydx): their product page is its own
+    // entity and self-canonical.
+    if (CHAIN_BY_SLUG.has(slug) && !PERP_PRODUCT_PILL_SLUGS.has(slug)) return false;
+    if (REMOVED_PRODUCT_SLUGS.has(slug)) return false;
+    return true;
+  });
 
   // A product page changes when one of the specs that name the provider
   // changes (cohort, copy) or when a bench is added; the newest such spec
-  // is its lastmod. Providers the blob does not map fall back to catalogTs.
+  // is its lastmod. Providers no live bench names (registry-only pages)
+  // take the registry file's last change: with catalogTs, one spec edit
+  // restamped 41 unrelated product URLs (2026-09-19).
+  const registryTs = newestEditorial(["provider-registry"], pageMtime("products/[slug]/page.tsx"));
   const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
-    lastModified: newestEditorial(benchesByProvider.get(slug) ?? [], catalogTs),
+    lastModified: newestEditorial(benchesByProvider.get(slug) ?? [], registryTs),
     changeFrequency: "daily",
     priority: 0.85,
   }));
-
-  // Hyperliquid builder routes. The worker pre-filters to builders with
-  // history so we don't need isHlBuilderWithHistory here.
-  const hlBuilderRoutes: MetadataRoute.Sitemap = sitemapBlob.hlBuilderSlugs.map(
-    (slug) => ({
-      url: `${SITE.url}/hyperliquid/${slug}`,
-      lastModified: catalogTs,
-      changeFrequency: "daily",
-      priority: 0.7,
-    }),
-  );
 
   const alternativeRoutes: MetadataRoute.Sitemap = alternatives
     .filter((alt) => benchBySlug.has(alt.benchmark))
@@ -408,10 +420,16 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Chain hub routes. Use chainDimensions from the blob to determine
   // which chains have active benches, mirroring getBenchmarksForChain logic.
   const chainsWithBenches = new Set<string>();
+  const blobSlugs = new Set(blobBenches.map((b) => b.slug));
   for (const b of blobBenches) {
     for (const chainSlug of b.chainDimensions) {
       chainsWithBenches.add(canonicalChainSlug(chainSlug));
     }
+  }
+  // Same slug convention as getBenchmarksForChain: `<chain>-rpc` benches
+  // carry the chain in their slug, not in a dimension.
+  for (const c of CHAINS) {
+    if (blobSlugs.has(`${c.slug}-rpc`)) chainsWithBenches.add(c.slug);
   }
   const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
     if (!chainsWithBenches.has(c.slug)) return [];
@@ -440,13 +458,34 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
+  // Ad hoc pairs above the live-shared floor (the same enumeration the
+  // /compare index links, so none is an orphan). They come from the
+  // provider index the worker publishes (providers.json, about 1 MB,
+  // memoized), not the aggregate blob. lifi-vs-relay ranked at 4.0 with
+  // no sitemap entry (2026-09-19); 383 compare URLs carried impressions
+  // against 19 listed. lastmod: the newest spec among the shared benches.
+  const curatedCompareSlugs = new Set(COMPARE_PAIRS.map((p) => p.slug));
+  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  const benchSlugsByProvider = new Map(
+    profiles.map((p) => [p.slug, new Set(p.appearances.map((a) => a.benchmark.slug))]),
+  );
+  const adHocCompareRoutes: MetadataRoute.Sitemap = adHocPairs(profiles)
+    .filter((pair) => !curatedCompareSlugs.has(pair.slug))
+    .map((pair) => {
+      const aB = benchSlugsByProvider.get(pair.a) ?? new Set<string>();
+      const shared = [...(benchSlugsByProvider.get(pair.b) ?? [])].filter((s) => aB.has(s));
+      return {
+        url: `${SITE.url}/compare/${pair.slug}`,
+        lastModified: newestEditorial(shared.map((s) => `bench:${s}`), pageMtime("compare/[slug]/page.tsx")),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    });
 
   // Category hub pages. Filter to categories that have live benches.
   // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
   // prod) don't keep their category hub alive in the sitemap.
-  const activeBlobBenches = blobBenches.filter(
-    (b) => !REMOVED_BENCH_SLUGS.has(b.slug) && !DEV_ONLY_BENCH_SLUGS.has(b.slug),
-  );
+  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug) && !isDevOnlyBench(b.slug));
   const liveCategoryLabels = new Set(activeBlobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))
@@ -466,12 +505,12 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...reportsRoutes(),
     ...benchmarkRoutes,
     ...providerRoutes,
-    ...hlBuilderRoutes,
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,
     ...categoryRoutes,
     ...compareRoutes,
+    ...adHocCompareRoutes,
   ];
 }
 

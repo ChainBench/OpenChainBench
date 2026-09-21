@@ -144,6 +144,65 @@ scrape_configs:
           benchmark: pm-rate-limits
           host: openchainbench
 
+  # ─ Fiat on-ramp all-in cost (bench 262) ───────────────────────────────
+  # One EU vantage (persona FR/EUR), container ocb-fiat-onramp-cost on the
+  # Paris VPS next to Prom. Harness quotes every 5 min; the scrape only
+  # refreshes gauges, sample counts come from onramp_quote_samples_total.
+  - job_name: fiat-onramp-cost
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-fiat-onramp-cost:2113
+        labels:
+          benchmark: fiat-onramp-cost
+          host: openchainbench
+
+  # ─ Perp DEX daily volume (bench 266) ──────────────────────────────────
+  # Container ocb-perp-volume-history on the Paris VPS. One number per
+  # venue per closed UTC day, backfilled 400 days; the scrape refreshes
+  # the last-day / 7d / 30d gauges, the full series is served as JSON by
+  # Caddy at kv.openchainbench.com/aggregate/perp-volume/history.json.
+  - job_name: perp-volume-history
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-perp-volume-history:2112
+        labels:
+          benchmark: perp-daily-volume
+          host: openchainbench
+
+  # ─ Trading app daily volume (bench 267) ───────────────────────────────
+  # Container ocb-trading-app-volume on the Paris VPS. Cross-chain swap
+  # volume per trading app / Telegram bot per closed UTC day from
+  # DeFiLlama's free dexs summary; the full series with the per-chain
+  # split is served by Caddy at
+  # kv.openchainbench.com/aggregate/trading-apps/history.json.
+  - job_name: trading-app-volume
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-trading-app-volume:2112
+        labels:
+          benchmark: trading-app-daily-volume
+          host: openchainbench
+
+  # Container ocb-terminal-fill-quality on the Paris VPS. Cost per swap on
+  # each Solana trading terminal from sampled user transactions read
+  # on-chain (bench 268); per-terminal stats and recent samples served by
+  # Caddy at kv.openchainbench.com/aggregate/terminal-fills/fills.json.
+  - job_name: terminal-fill-quality
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-terminal-fill-quality:2112
+        labels:
+          benchmark: terminal-fill-quality
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.

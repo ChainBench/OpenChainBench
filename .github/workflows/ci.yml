@@ -26,3 +26,40 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+
+  # crm/ is its own package (Railway); the root typecheck excludes it, so it
+  # gets its own check. Runs only when the app changes.
+  crm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changed
+        with:
+          filters: |
+            crm:
+              - 'crm/**'
+      - uses: pnpm/action-setup@v4
+        if: steps.changed.outputs.crm == 'true'
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.crm == 'true'
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        if: steps.changed.outputs.crm == 'true'
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+        if: steps.changed.outputs.crm == 'true'
+        working-directory: crm
+      - run: pnpm typecheck
+        if: steps.changed.outputs.crm == 'true'
+        working-directory: crm
+      - run: pnpm test
+        if: steps.changed.outputs.crm == 'true'
+        working-directory: crm
+      - run: pnpm build
+        if: steps.changed.outputs.crm == 'true'
+        working-directory: crm

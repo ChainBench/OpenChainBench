@@ -1,0 +1,333 @@
+# OpenChainBench. Bench 267
+
+slug: trading-app-daily-volume
+number: "267"
+title: "Trading app daily volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, Trojan by UTC day, every chain"
+seo_title: "Trading app volume 2026: GMGN vs Axiom vs FOMO, per UTC day"
+seo_description: "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}}. Cross-chain daily volume for {{count}} apps and bots, per-chain split, a year of history."
+subtitle: Swap volume routed through each trading app or Telegram bot per closed UTC day, summed over every chain the app runs on (Solana, BSC, Base, Ethereum, Robinhood Chain, Monad and more), from the same DeFiLlama day buckets defillama.com shows. 14 apps, per-chain breakdown, 7 and 30 day totals, share of the cohort, daily history.
+
+category: Trading
+status: live
+metric: Daily volume
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Volume is what each app's DeFiLlama adapter attributes to the app (fee wallet, referral tag or router contract, adapter by adapter) and counted per UTC day. Scope is whatever chains the adapter covers: FOMO is Solana only on DeFiLlama, GMGN spans ten chains. The last closed day can be restated by DeFiLlama for about a day; the harness re-reads the full series every hour.
+
+seo_intro: |
+  A trading app is a router: it does not settle trades, it sends them to pump.fun,
+  Raydium, PancakeSwap or a Robinhood Chain pool and takes a fee on the way. So
+  the number that ranks trading apps is routed swap volume, and it only means
+  something when every chain the app runs on is counted. GMGN moves most of its
+  volume on Robinhood Chain and BSC now, not Solana; Axiom is a fifth Robinhood
+  Chain; Terminal runs on four chains. A Solana-only table (bench 208) misses
+  that. This benchmark rebuilds each app's daily volume from DeFiLlama's dexs
+  adapters for the Trading App and Telegram Bot categories, the open-source
+  per-chain attributions defillama.com shows, on closed UTC days, and keeps a year
+  of daily points per app with the per-chain split. Rolling 24 hour figures are
+  not comparable across apps (every window ends at a different second); closed
+  UTC days are what "X flipped Y" claims are made on.
+
+abstract: |
+  The harness reads DeFiLlama's free dexs summary for each app
+  (/summary/dexs/<slug>?dataType=dailyVolume) once an hour: totalDataChart gives
+  the daily USD volume and totalDataChartBreakdown the per-chain split, both on
+  UTC day buckets. The current (open) UTC day is dropped, the last 400 closed days
+  are kept, and the series is re-read in full so restated days are picked up. The
+  headline is the last closed day; 7 and 30 day sums are published only when every
+  day of the window is present. Share is the app's volume over the cohort total on
+  the same window. The public JSON (kv.openchainbench.com/aggregate/trading-apps/history.json)
+  carries the daily series and chain split per app and feeds the /trading-apps
+  chart and each app's product page.
+
+methodology:
+  - "Source: DeFiLlama dexs summary, free endpoint, categories Trading App and Telegram Bot, plus pump.fun's mobile app. One request per app per hour."
+  - "Scope: every chain the app's DeFiLlama adapter covers, summed. The per-chain split of the last closed day is published as trading_app_volume_chain_usd{app,chain}."
+  - "Day bucket: UTC, closed days only; the open day is never published. DeFiLlama can restate the last closed day for about 24 hours; the full series is re-read every hour so restatements land."
+  - "Windows: 1d = last closed day (headline). 7d and 30d are sums over the last 7 / 30 closed days and are published only when all days are present."
+  - "Share: app volume over the cohort total on the same window, in percent."
+  - "History: up to 400 closed days per app (adapter start dates differ: GMGN from 2023, FOMO and Axiom from May 2026)."
+  - "Health: 1 when the app's last closed day is within 3 days of the cohort's last closed day."
+  - "Not covered: apps without a DeFiLlama dexs adapter (Maestro publishes fees only, BasedBot has none). They stay on the Dune-based bench 208 where they have data."
+
+findings:
+  - "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}} of routed swap volume."
+  - "GMGN's volume is mostly outside Solana now: Robinhood Chain and BSC carry more than half of its daily figure."
+  - "Axiom routes about a fifth of its volume through Robinhood Chain; Terminal spreads over Solana, BSC, Base and Ethereum."
+  - "FOMO's figure is its total: DeFiLlama measures it on Solana, where balances are held, and includes the cross-chain trades routed through Relay. The Dune dataset behind bench 208 counts native Solana swaps only, about a fifth of it."
+
+faq:
+  - q: "Why does this differ from the Dune-based trading platform bench?"
+    a: "Bench 208 reads one Dune community dataset per platform, and those datasets cover Solana only for FOMO, Trojan and Photon but every chain for GMGN, Axiom and Terminal, so its rows are not on the same footing. This bench reads DeFiLlama's dexs adapters, which are cross-chain by construction and expose the per-chain split, so every row is the app's total. The two also attribute swaps differently (fee-wallet detection on Dune, adapter logic on DeFiLlama), so day-level figures do not match."
+  - q: "Is FOMO really Solana only?"
+    a: "No, and the chain label is the misleading part. FOMO holds user balances on Solana and routes trades on other chains through Relay, so DeFiLlama's adapter measures everything on Solana: native swaps (FOMO fee transfers in FOMO-sponsored transactions) plus cross-chain buys (sponsored USDC deposits into the Relay depository) and sells (USDC fills from Relay solvers), each trade counted once. The row is FOMO's total; the per-chain split cannot show destination chains because the adapter does not label them. The Dune dataset behind bench 208 counts native Solana swaps only, which is why it reads about five times lower."
+  - q: "Why closed UTC days and not the last 24 hours?"
+    a: "A rolling window ends at a different second for every app, so two apps' 24h figures never cover the same period. Closed UTC days are the convention DeFiLlama, Dune dashboards and the apps' own reports use, and the unit flip claims are made in."
+  - q: "How current is it?"
+    a: "The headline is yesterday (UTC). The harness re-reads every hour; DeFiLlama restates the last day for about a day, so the figure for yesterday can move slightly until tomorrow."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/trading-app-volume
+
+prometheus:
+  window: 24h
+  freshness_metric: trading_app_health
+  expected_freshness_seconds: 7200
+
+panel_main_description: "Swap volume routed through the app on the last closed UTC day, every chain summed. From DeFiLlama's per-app dexs adapter."
+
+metric_panels:
+  - id: vol_7d
+    label: Volume 7d
+    label_key: app
+    metric: trading_app_volume_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Sum of the last 7 closed UTC days, every chain."
+  - id: vol_30d
+    label: Volume 30d
+    label_key: app
+    metric: trading_app_volume_usd{window="30d"}
+    unit: usd
+    higher_is_better: true
+    description: "Sum of the last 30 closed UTC days, every chain."
+  - id: share_1d
+    label: Share (day)
+    label_key: app
+    metric: trading_app_volume_share_pct{window="1d"}
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of the cohort's volume on the last closed day."
+  - id: share_7d
+    label: Share 7d
+    label_key: app
+    metric: trading_app_volume_share_pct{window="7d"}
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of the cohort's volume over the last 7 closed days."
+  - id: share_30d
+    label: Share 30d
+    label_key: app
+    metric: trading_app_volume_share_pct{window="30d"}
+    unit: pct
+    higher_is_better: true
+    description: "Share of the cohort's volume over the last 30 closed days."
+  - id: chains
+    label: Chains
+    label_key: app
+    metric: trading_app_chains
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Chains with volume on the last closed day."
+  - id: history_days
+    label: Days of history
+    label_key: app
+    metric: trading_app_history_days
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "How many closed UTC days the harness holds for the app."
+
+ledger_columns:
+  - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }
+  - { label: "Share", panel: share_1d, windows: { 7d: share_7d, 30d: share_30d } }
+  - { label: "Chains", panel: chains }
+  - { label: "Days of history", panel: history_days }
+
+stacked_share: true
+
+# Gauges move once per UTC day: sub-day chart ranges would show one point
+# at "now", so the chart opens on 30 days and the ledger's base window is
+# the last closed day rather than "24h".
+chart:
+  min_range: 7d
+  default_range: 30d
+  window_label: last closed day
+
+providers:
+  - slug: gmgn
+    name: GMGN
+    tag: "Trading app, Solana + BSC + Base + Ethereum + Robinhood Chain + more"
+    formula: "DeFiLlama dexs adapter gmgn: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="gmgn",window="1d"}
+      p90: trading_app_volume_usd{app="gmgn",window="1d"}
+      p99: trading_app_volume_usd{app="gmgn",window="1d"}
+      mean: trading_app_volume_usd{app="gmgn",window="1d"}
+      success: trading_app_health{app="gmgn"}
+      sample_size: trading_app_history_days{app="gmgn"}
+      series: trading_app_volume_usd{app="gmgn",window="1d"}
+
+  - slug: axiom
+    name: Axiom
+    tag: "Trading app, Solana + BSC + Robinhood Chain"
+    formula: "DeFiLlama dexs adapter axiom: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="axiom",window="1d"}
+      p90: trading_app_volume_usd{app="axiom",window="1d"}
+      p99: trading_app_volume_usd{app="axiom",window="1d"}
+      mean: trading_app_volume_usd{app="axiom",window="1d"}
+      success: trading_app_health{app="axiom"}
+      sample_size: trading_app_history_days{app="axiom"}
+      series: trading_app_volume_usd{app="axiom",window="1d"}
+
+  - slug: fomo
+    name: FOMO
+    tag: "Trading app, settled on Solana, cross-chain via Relay"
+    formula: "DeFiLlama dexs adapter fomo (Allium), per UTC day: native Solana swaps plus cross-chain buys and sells routed through Relay, each trade counted once. Labelled Solana because balances live there; destination chains are inside the figure."
+    queries:
+      p50: trading_app_volume_usd{app="fomo",window="1d"}
+      p90: trading_app_volume_usd{app="fomo",window="1d"}
+      p99: trading_app_volume_usd{app="fomo",window="1d"}
+      mean: trading_app_volume_usd{app="fomo",window="1d"}
+      success: trading_app_health{app="fomo"}
+      sample_size: trading_app_history_days{app="fomo"}
+      series: trading_app_volume_usd{app="fomo",window="1d"}
+
+  - slug: padre
+    name: Terminal
+    tag: "pump.fun's trading app, Solana + BSC + Base + Ethereum"
+    formula: "DeFiLlama dexs adapter terminal (formerly Padre): sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="padre",window="1d"}
+      p90: trading_app_volume_usd{app="padre",window="1d"}
+      p99: trading_app_volume_usd{app="padre",window="1d"}
+      mean: trading_app_volume_usd{app="padre",window="1d"}
+      success: trading_app_health{app="padre"}
+      sample_size: trading_app_history_days{app="padre"}
+      series: trading_app_volume_usd{app="padre",window="1d"}
+
+  - slug: pump-fun
+    name: pump.fun app
+    tag: "pump.fun mobile app, Solana"
+    formula: "DeFiLlama dexs adapter pump.fun-mobile-app, per UTC day. The mobile app only, not the launchpad's bonding-curve volume."
+    queries:
+      p50: trading_app_volume_usd{app="pump-fun",window="1d"}
+      p90: trading_app_volume_usd{app="pump-fun",window="1d"}
+      p99: trading_app_volume_usd{app="pump-fun",window="1d"}
+      mean: trading_app_volume_usd{app="pump-fun",window="1d"}
+      success: trading_app_health{app="pump-fun"}
+      sample_size: trading_app_history_days{app="pump-fun"}
+      series: trading_app_volume_usd{app="pump-fun",window="1d"}
+
+  - slug: photon
+    name: Photon
+    tag: "Trading app, Solana"
+    formula: "DeFiLlama dexs adapter photon, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="photon",window="1d"}
+      p90: trading_app_volume_usd{app="photon",window="1d"}
+      p99: trading_app_volume_usd{app="photon",window="1d"}
+      mean: trading_app_volume_usd{app="photon",window="1d"}
+      success: trading_app_health{app="photon"}
+      sample_size: trading_app_history_days{app="photon"}
+      series: trading_app_volume_usd{app="photon",window="1d"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram bot, Solana"
+    formula: "DeFiLlama dexs adapter trojan, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="trojan",window="1d"}
+      p90: trading_app_volume_usd{app="trojan",window="1d"}
+      p99: trading_app_volume_usd{app="trojan",window="1d"}
+      mean: trading_app_volume_usd{app="trojan",window="1d"}
+      success: trading_app_health{app="trojan"}
+      sample_size: trading_app_history_days{app="trojan"}
+      series: trading_app_volume_usd{app="trojan",window="1d"}
+
+  - slug: bullx
+    name: BullX
+    tag: "Telegram bot, Solana"
+    formula: "DeFiLlama dexs adapter bullx, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="bullx",window="1d"}
+      p90: trading_app_volume_usd{app="bullx",window="1d"}
+      p99: trading_app_volume_usd{app="bullx",window="1d"}
+      mean: trading_app_volume_usd{app="bullx",window="1d"}
+      success: trading_app_health{app="bullx"}
+      sample_size: trading_app_history_days{app="bullx"}
+      series: trading_app_volume_usd{app="bullx",window="1d"}
+
+  - slug: bonkbot
+    name: BONKbot
+    tag: "Telegram bot, Solana"
+    formula: "DeFiLlama dexs adapter bonkbot, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="bonkbot",window="1d"}
+      p90: trading_app_volume_usd{app="bonkbot",window="1d"}
+      p99: trading_app_volume_usd{app="bonkbot",window="1d"}
+      mean: trading_app_volume_usd{app="bonkbot",window="1d"}
+      success: trading_app_health{app="bonkbot"}
+      sample_size: trading_app_history_days{app="bonkbot"}
+      series: trading_app_volume_usd{app="bonkbot",window="1d"}
+
+  - slug: banana-gun
+    name: Banana Gun
+    tag: "Telegram bot, Base + BSC + Unichain + Sonic + Blast"
+    formula: "DeFiLlama dexs adapter banana-gun: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="banana-gun",window="1d"}
+      p90: trading_app_volume_usd{app="banana-gun",window="1d"}
+      p99: trading_app_volume_usd{app="banana-gun",window="1d"}
+      mean: trading_app_volume_usd{app="banana-gun",window="1d"}
+      success: trading_app_health{app="banana-gun"}
+      sample_size: trading_app_history_days{app="banana-gun"}
+      series: trading_app_volume_usd{app="banana-gun",window="1d"}
+
+  - slug: bloom
+    name: Bloom
+    tag: "Telegram bot, Solana + BSC + Base"
+    formula: "DeFiLlama dexs adapter bloom-trading-bot: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="bloom",window="1d"}
+      p90: trading_app_volume_usd{app="bloom",window="1d"}
+      p99: trading_app_volume_usd{app="bloom",window="1d"}
+      mean: trading_app_volume_usd{app="bloom",window="1d"}
+      success: trading_app_health{app="bloom"}
+      sample_size: trading_app_history_days{app="bloom"}
+      series: trading_app_volume_usd{app="bloom",window="1d"}
+
+  - slug: soltradingbot
+    name: SolTradingBot
+    tag: "Telegram bot, Solana"
+    formula: "DeFiLlama dexs adapter soltradingbot, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="soltradingbot",window="1d"}
+      p90: trading_app_volume_usd{app="soltradingbot",window="1d"}
+      p99: trading_app_volume_usd{app="soltradingbot",window="1d"}
+      mean: trading_app_volume_usd{app="soltradingbot",window="1d"}
+      success: trading_app_health{app="soltradingbot"}
+      sample_size: trading_app_history_days{app="soltradingbot"}
+      series: trading_app_volume_usd{app="soltradingbot",window="1d"}
+
+  - slug: pepeboost
+    name: Pepeboost
+    tag: "Telegram bot, Solana + Ethereum + BSC"
+    formula: "DeFiLlama dexs adapter pepeboost: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="pepeboost",window="1d"}
+      p90: trading_app_volume_usd{app="pepeboost",window="1d"}
+      p99: trading_app_volume_usd{app="pepeboost",window="1d"}
+      mean: trading_app_volume_usd{app="pepeboost",window="1d"}
+      success: trading_app_health{app="pepeboost"}
+      sample_size: trading_app_history_days{app="pepeboost"}
+      series: trading_app_volume_usd{app="pepeboost",window="1d"}
+
+  - slug: o1-exchange
+    name: o1.exchange
+    tag: "Trading terminal, Solana + Base + BSC + Ethereum + Robinhood Chain"
+    formula: "DeFiLlama dexs adapter o1.exchange-trading-terminal: sum of every chain's daily volume, per UTC day."
+    queries:
+      p50: trading_app_volume_usd{app="o1-exchange",window="1d"}
+      p90: trading_app_volume_usd{app="o1-exchange",window="1d"}
+      p99: trading_app_volume_usd{app="o1-exchange",window="1d"}
+      mean: trading_app_volume_usd{app="o1-exchange",window="1d"}
+      success: trading_app_health{app="o1-exchange"}
+      sample_size: trading_app_history_days{app="o1-exchange"}
+      series: trading_app_volume_usd{app="o1-exchange",window="1d"}

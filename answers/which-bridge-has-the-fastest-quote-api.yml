@@ -1,7 +1,7 @@
 slug: which-bridge-has-the-fastest-quote-api
 question: "Which cross-chain bridge has the fastest quote API in 2026?"
 short_answer: |
-  {{best_name}} currently returns USDC bridge quotes the fastest at {{best_p50}} (p50, 24h), measured live across {{count}} bridges (Mobula, Relay, LI.FI, deBridge, Near Intents, Across, Squid and Socket) on identical USDC routes by OpenChainBench.
+  {{best_name}} currently returns USDC bridge quotes the fastest at {{best_p50}} (p50, 24h), measured live across {{count}} bridges on identical USDC routes by OpenChainBench.
 
 benchmark: bridge-quote-latency
 
@@ -38,5 +38,5 @@ related:
   - which-solana-dex-aggregator-is-the-fastest
 
 seo_title: "Which cross-chain bridge has the fastest quote API in 2026?"
-seo_description: "{{best_name}} leads bridge quote latency at {{best_p50}} (p50, 24h) across {{count}} bridges (Mobula, Relay, LI.FI, deBridge, Near Intents, Across, Squid, Socket) on identical USDC routes, measured live by OpenChainBench."
+seo_description: "{{best_name}} leads bridge quote latency at {{best_p50}} (p50, 24h) across {{count}} bridges on identical USDC routes, measured live by OpenChainBench."
 status: live

@@ -19,7 +19,12 @@ import { useEffect, useState } from "react";
 export function LiveIndicator({
   lastRunAt,
   slug,
+  staleAfterSec = 300,
 }: {
+  /** Seconds after which the dot turns "Stale". Benches whose data moves
+   *  once a day (bridge executions) pass their expected freshness; the
+   *  default is the 5-minute ISR rhythm. */
+  staleAfterSec?: number;
   lastRunAt: string;
   slug?: string;
 }) {
@@ -72,7 +77,7 @@ export function LiveIndicator({
   }, [slug]);
 
   const ageSec = Math.max(0, Math.floor((now - new Date(canonical).getTime()) / 1000));
-  const stale = ageSec > 300;
+  const stale = ageSec > staleAfterSec;
 
   return (
     <span className="inline-flex items-center gap-2 normal-case tracking-normal text-xs tabular text-ink-muted">

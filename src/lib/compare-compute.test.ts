@@ -156,3 +156,32 @@ describe("canonicalisationTarget", () => {
     expect(canonicalisationTarget("zcash-vs-aptos")).toBe("aptos-vs-zcash");
   });
 });
+
+import { sharedBenchSlugs } from "./compare-compute";
+
+describe("sharedBenchSlugs", () => {
+  const pair = { slug: "x-vs-y" } as Parameters<typeof sharedBenchSlugs>[0];
+  const app = (slug: string, tier?: string) => ({ benchmark: { slug }, ...(tier ? { tier } : {}) });
+
+  test("intersects the two providers' benches", () => {
+    expect(
+      sharedBenchSlugs(pair, [app("a"), app("b")], [app("b"), app("c")]),
+    ).toEqual(["b"]);
+  });
+
+  test("never pairs a public row with a keyed row of the same bench", () => {
+    // PublicNode (public cohort) vs Alchemy (keyed cohort) on base-rpc:
+    // the page ranks them apart, so the compare page must not share it.
+    expect(
+      sharedBenchSlugs(pair, [app("base-rpc")], [app("base-rpc", "keyed")]),
+    ).toEqual([]);
+    expect(
+      sharedBenchSlugs(pair, [app("base-rpc", "keyed")], [app("base-rpc", "keyed")]),
+    ).toEqual(["base-rpc"]);
+  });
+
+  test("honours the whitelist and the exclude list", () => {
+    const curated = { slug: "x-vs-y", benchmarks: ["a", "b"], excludeBenchmarks: ["b"] } as Parameters<typeof sharedBenchSlugs>[0];
+    expect(sharedBenchSlugs(curated, [app("a"), app("b"), app("c")], [app("a"), app("b"), app("c")])).toEqual(["a"]);
+  });
+});

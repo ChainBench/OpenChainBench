@@ -113,6 +113,11 @@ export type ProviderResult = {
   /** Public no-key endpoint URL probed for this provider (spec
    *  provider.endpoint). Never a keyed URL: the spec schema rejects them. */
   endpoint?: string;
+  /** Access cohort on a bench that declares `dimensions.tier` (spec
+   *  provider.tier, defaulted to the first declared value). Rows of one
+   *  Benchmark object all share the active tier; the field exists so
+   *  cross-bench consumers (product pages, hubs) keep the cohort. */
+  tier?: string;
   /** Short-window liveness verdict derived at load time from the spec's
    *  `queries.live_activity` scalar and the bench-level `probe_ok`
    *  gate. Only populated when the spec declares those queries.
@@ -238,6 +243,12 @@ export type Benchmark = {
   /** Providers audited and not listed, with the reason. Rendered under
    *  the public endpoints table; never carries a URL (schema-refused). */
   excludedProviders?: { name: string; reason: string; since?: string }[];
+  /** Aggregation window of the headline queries ("24h" default, "7d" on the
+   *  bridge execution benches). Drives the "(p50, 24h)" wording. */
+  window?: string;
+  /** Seconds after which the data counts as stale for this bench (from
+   *  prometheus.expected_freshness_seconds; 600 when unset). */
+  expectedFreshnessSec?: number;
   /** Optional per-chain explainer blocks rendered as H2-anchored sections
    *  below the main chart. Targets long-tail "X chain {metric}" queries
    *  that benefit from a dedicated on-page anchor (#ethereum, #solana, ...).
@@ -276,6 +287,9 @@ export type Benchmark = {
     region?: { value: string; label: string }[];
     kind?: { value: string; label: string }[];
     venue?: { value: string; label: string }[];
+    /** Access tier (public / keyed). Partitions providers instead of
+     *  injecting a PromQL label; the first value is the headline cohort. */
+    tier?: { value: string; label: string }[];
   };
   /** Default dimension scope for the unfiltered build (spec
    *  `aggregate_filters`). Presentation surfaces (e.g. the by-region
@@ -285,8 +299,9 @@ export type Benchmark = {
     region?: string;
     kind?: string;
     venue?: string;
+    tier?: string;
   };
-  category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers" | "RWA";
+  category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers" | "RWA" | "On-ramps";
   results: ProviderResult[];
   /** Per-chain leader, computed only on the unfiltered ("All chains") view
    *  when the spec declares `dimensions.chain`. Key = chain slug from the
@@ -299,6 +314,14 @@ export type Benchmark = {
    *  are computed via extra Prom queries with `chain="<x>"` injected, so
    *  headline copy / OG image / badge endpoint can call out the leader on
    *  each chain instead of one biased global winner. */
+  /** True when the bench's p50/p90/p99 queries are genuinely different
+   *  expressions, i.e. the value really is a percentile of a distribution.
+   *  False when a provider block repeats one expression across all three,
+   *  which is how coverage and count benches are written: there is a single
+   *  measurement, not a distribution, and labelling it "p50" claims a
+   *  percentile that was never computed. Derived from the live spec in
+   *  spec.ts, so a YAML edit takes effect without a worker rewrite. */
+  hasDistribution?: boolean;
   bestPerChain?: Record<string, ProviderResult>;
   /** Per-chain trailing provider, populated in lockstep with
    *  `bestPerChain` (same key set, same population conditions). Powers
@@ -312,6 +335,14 @@ export type Benchmark = {
    *  of inheriting their aggregate position on every chain in the
    *  bench. */
   providersPerChain?: Record<string, string[]>;
+  /** Live rows of every OTHER tier cohort, computed only on the
+   *  unfiltered build of a bench that declares `dimensions.tier`.
+   *  Key = tier value (never the active one). Powers the
+   *  `{{best_name:tier:<t>}}` / `{{p50:<slug>}}` placeholders that quote
+   *  the keyed cohort from the public page's copy, the product-page
+   *  appearances of keyed providers and the /rpc hub's keyed view,
+   *  without a second bench object per cohort. */
+  tierResults?: Record<string, ProviderResult[]>;
   /** Full per-cell rankings from the spec's `rank_matrix_query`, computed
    *  only on the unfiltered view. Key = `<chain>|<region>` where a side is
    *  "all" when the bench doesn't declare that dimension OR for derived
@@ -363,6 +394,8 @@ export type Benchmark = {
    *  so the table headers describe what each slot actually holds. The
    *  first column is the headline (sort key, data bar, mobile column). */
   ledgerColumns?: LedgerColumn[];
+  /** false: the success query is a publication gate; hide Success and Reliability. */
+  ledgerReliability?: boolean;
 };
 
 export type LedgerColumn = {

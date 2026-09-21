@@ -149,10 +149,18 @@ export type RpcHubPivotRow = {
   >;
 };
 
-export type RpcHubSnapshot = {
+export type RpcHubCohort = {
   chains: RpcHubChain[];
   providersPivot: RpcHubPivotRow[];
   totals: { chains: number; uniqueProviders: number; regions: number };
+};
+
+export type RpcHubSnapshot = RpcHubCohort & {
+  /** The API-key cohort (bench blobs at sig `tier=keyed`): the chains
+   *  whose spec declares a keyed tier, ranked on their own. Absent on
+   *  blobs written before the tier dimension existed and when no keyed
+   *  blob resolves yet; the hub then shows the public view alone. */
+  keyed?: RpcHubCohort;
   generatedAt: string;
 };
 
@@ -165,7 +173,15 @@ export type RpcHubSnapshot = {
 //     forces Vercel to miss the stale blob and rebuild fresh using the
 //     new NON_CHAIN_RPC_SLUGS filter. Worker will start writing to v2
 //     after next rebuild; until then Vercel's fresh rebuild covers it.
-const RPC_HUB_KEY = "rpc-hub-v2";
+// v3: `keyed` cohort (tier dimension, 2026-09-21). Same reasoning: a v2
+//     blob from an older worker has no keyed field, so the hub would show
+//     no selector until the worker rebuild; a fresh key makes Vercel
+//     rebuild from the bench blobs, which already carry the tier variants.
+//     The worker writes the same key (it imports this constant), so the
+//     site reads the worker's snapshot again instead of rebuilding on
+//     every cache miss: the two had drifted apart at v2 ("rpc-hub" on
+//     the worker side, "rpc-hub-v2" here).
+export const RPC_HUB_KEY = "rpc-hub-v3";
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -211,11 +227,16 @@ function liveRows(bench: Benchmark): ProviderResult[] {
     .sort((a, b) => a.ms.p50 - b.ms.p50);
 }
 
-async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
+async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null> {
+  // Access cohort: the headline one is the aggregate blob (sig ""); any
+  // other tier lives at its own variant sig, and its region slices at
+  // `region=<r>&tier=<t>` (filterSig sorts keys).
+  const scope = tier ? { tier } : {};
+  const baseSig = filterSig(scope);
   // Try CDN blob first (Phase 3), fall back to Redis via SRH.
   const snap =
-    (await loadSnapshotFromBlob(spec.slug, "")) ??
-    (await readMaterialized(spec.slug, ""));
+    (await loadSnapshotFromBlob(spec.slug, baseSig)) ??
+    (await readMaterialized(spec.slug, baseSig));
   if (!snap) return null;
   const bench = snap.bench;
   const rows = liveRows(bench);
@@ -236,7 +257,7 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
   }
   const variantSnaps = await Promise.all(
     RPC_REGION_KEYS.map(async (region) => {
-      const sig = filterSig({ region });
+      const sig = filterSig({ region, ...scope });
       // Try CDN blob first, fall back to Redis via SRH.
       return (
         (await loadSnapshotFromBlob(spec.slug, sig).catch(() => null)) ??
@@ -421,32 +442,46 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
     .sort((a, b) => a.slug.localeCompare(b.slug));
   if (rpcSpecs.length === 0) return null;
 
-  const settled = await Promise.allSettled(rpcSpecs.map(buildChain));
-  const chains: RpcHubChain[] = [];
-  for (let i = 0; i < settled.length; i++) {
-    const r = settled[i];
-    if (r.status === "fulfilled" && r.value) chains.push(r.value);
-    else if (r.status === "rejected") {
-      console.warn(
-        `rpc-hub: ${rpcSpecs[i].slug} failed: ${
-          r.reason instanceof Error ? r.reason.message : r.reason
-        }`,
-      );
+  const cohortFor = async (specsIn: Spec[], tier?: string): Promise<RpcHubCohort | null> => {
+    const settled = await Promise.allSettled(specsIn.map((s) => buildChain(s, tier)));
+    const chains: RpcHubChain[] = [];
+    for (let i = 0; i < settled.length; i++) {
+      const r = settled[i];
+      if (r.status === "fulfilled" && r.value) chains.push(r.value);
+      else if (r.status === "rejected") {
+        console.warn(
+          `rpc-hub: ${specsIn[i].slug}${tier ? `/tier=${tier}` : ""} failed: ${
+            r.reason instanceof Error ? r.reason.message : r.reason
+          }`,
+        );
+      }
     }
-  }
-  if (chains.length === 0) return null;
+    if (chains.length === 0) return null;
+    chains.sort((a, b) => a.name.localeCompare(b.name));
+    const providersPivot = buildPivot(chains);
+    return {
+      chains,
+      providersPivot,
+      totals: {
+        chains: chains.length,
+        uniqueProviders: providersPivot.length,
+        regions: RPC_REGION_KEYS.length,
+      },
+    };
+  };
 
-  chains.sort((a, b) => a.name.localeCompare(b.name));
-  const providersPivot = buildPivot(chains);
+  const publicCohort = await cohortFor(rpcSpecs);
+  if (!publicCohort) return null;
+  // The API-key cohort: only the chains whose spec declares the keyed
+  // tier (nine on 2026-09-21), read from the `tier=keyed` variant blobs.
+  const keyedSpecs = rpcSpecs.filter((s) =>
+    (s.dimensions?.tier ?? []).some((t) => t.value === "keyed"),
+  );
+  const keyed = keyedSpecs.length > 0 ? await cohortFor(keyedSpecs, "keyed") : null;
 
   return {
-    chains,
-    providersPivot,
-    totals: {
-      chains: chains.length,
-      uniqueProviders: providersPivot.length,
-      regions: RPC_REGION_KEYS.length,
-    },
+    ...publicCohort,
+    ...(keyed ? { keyed } : {}),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -464,19 +499,23 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
  *  so provider aggregates only span the chains actually shown. */
 function gateSnapshotForProd(snap: RpcHubSnapshot): RpcHubSnapshot {
   if (process.env.VERCEL_ENV !== "production") return snap;
-  const chains = snap.chains.filter((c) => !REMOVED_BENCH_SLUGS.has(c.slug));
-  if (chains.length === snap.chains.length) return snap;
-  const providersPivot = buildPivot(chains);
-  return {
-    ...snap,
-    chains,
-    providersPivot,
-    totals: {
-      ...snap.totals,
-      chains: chains.length,
-      uniqueProviders: providersPivot.length,
-    },
+  const gateCohort = <T extends RpcHubCohort>(c: T): T => {
+    const chains = c.chains.filter((ch) => !REMOVED_BENCH_SLUGS.has(ch.slug));
+    if (chains.length === c.chains.length) return c;
+    const providersPivot = buildPivot(chains);
+    return {
+      ...c,
+      chains,
+      providersPivot,
+      totals: {
+        ...c.totals,
+        chains: chains.length,
+        uniqueProviders: providersPivot.length,
+      },
+    };
   };
+  const gated = gateCohort(snap);
+  return snap.keyed ? { ...gated, keyed: gateCohort(snap.keyed) } : gated;
 }
 
 async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
@@ -515,7 +554,8 @@ const fetchRpcHubCached = unstable_cache(
   //   Snapshot has all 44 chains + best=YES, but ChainRpcSection was returning
   //   null on every /chains/<slug> render (Fastest public RPC on <chain> text
   //   missing prod-wide). Bump busts the stuck v4 entry.
-  ["rpc-hub-cohort-v6", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v7: snapshot carries the keyed cohort (tier dimension).
+  ["rpc-hub-cohort-v7", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
@@ -553,9 +593,8 @@ export async function getRpcChainRow(
 export async function hasRpcProviderData(slug: string): Promise<boolean> {
   const snapshot = await fetchRpcHub();
   if (!snapshot) return false;
-  return snapshot.chains.some(
-    (c) =>
-      c.providers.some((p) => p.provider === slug) ||
-      c.unresponsive?.some((u) => u.provider === slug),
-  );
+  const inCohort = (c: RpcHubChain) =>
+    c.providers.some((p) => p.provider === slug) ||
+    c.unresponsive?.some((u) => u.provider === slug);
+  return snapshot.chains.some(inCohort) || (snapshot.keyed?.chains.some(inCohort) ?? false);
 }

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { fetchPerpByAssetMatrix, fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
-import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { AnswersForBench } from "@/components/answers-for-bench";
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -23,14 +24,28 @@ import { SITE } from "@/data/site";
  * because it lists venue identities, not metric values.
  */
 
-const DESCRIPTION =
-  "Live volume, open interest, fees, all-in cost and funding rate across 16 perpetual DEXes. Reproducible methodology, refreshed every minute, sources public.";
+// Cohort size and leader come from the same cohort the table renders,
+// never typed (audit 2026-09-21: "16 perpetual DEXes" against a header
+// saying 18 of 19).
+function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
+  // Same number as the lede and the H2: tracked venues, not the cohort
+  // array length (19 vs 18 on 2026-09-21).
+  const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
+  const lead = cohort?.venues[0];
+  // 158 characters at most: the SERP truncates beyond that.
+  return lead && lead.volume30d != null
+    ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
+    : `Live volume, open interest, fees, all-in cost and funding rate${n ? ` across ${n} perp DEXes` : ""}, reproducible methodology, sources public.`;
+}
 
-export const metadata: import("next").Metadata = pageMetadata({
-  path: "/perps",
-  title: "Best perp DEX 2026: perpetual DEX leaderboard",
-  description: DESCRIPTION,
-});
+export async function generateMetadata(): Promise<import("next").Metadata> {
+  const cohort = await fetchPerpCohort();
+  return pageMetadata({
+    path: "/perps",
+    title: "Perp DEX leaderboard 2026: volume, OI, fees, funding, live",
+    description: describe(cohort),
+  });
+}
 
 export const revalidate = 3600;
 
@@ -43,6 +58,38 @@ export default async function PerpsHubPage() {
     fetchPerpCohort(),
     fetchPerpByAssetMatrix(),
   ]);
+
+  const lead = cohort?.venues[0] ?? null;
+  const tracked = cohort?.totals.trackedVenues ?? 0;
+  const leadSentence =
+    lead && lead.volume30d != null
+      ? `${lead.name} leads ${tracked} tracked perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}; open interest, fees, all-in cost and funding are ranked below.`
+      : "";
+  const asOfLabel = cohort ? `${new Date(cohort.asOf * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC` : null;
+  const second = cohort?.venues[1] ?? null;
+  const faq = cohort
+    ? [
+        {
+          q: "Which perp DEX has the most volume right now?",
+          a: lead && lead.volume30d != null
+            ? `${lead.name}, with ${fmtUSD(lead.volume30d)} of 30-day notional${second && second.volume30d != null ? `, ahead of ${second.name} at ${fmtUSD(second.volume30d)}` : ""}. The table below ranks ${tracked} tracked venues by 30-day volume as of ${asOfLabel}.`
+            : "The leaderboard below ranks every tracked venue by 30-day volume, read from each venue's public API.",
+        },
+        {
+          q: "Where do the volume and open interest numbers come from?",
+          a: "From each venue's own public API (Hyperliquid info endpoint, Lighter, Aster, Paradex, Ondo Perps and the others), polled every 5 minutes by the perp-cohort-stats harness, normalized to USD and UTC days. 30-day volume is derived from the 24-hour series when a venue publishes no 30-day figure.",
+        },
+        {
+          q: "What does the all-in fee column measure?",
+          a: "The perp-fees benchmark: taker fee plus half spread plus price impact to open a $1,000 ETH long, walked against each venue's live order book every 5 minutes, averaged over 24 hours. Larger tiers ($100k, $1M) are on the bench page.",
+        },
+        {
+          q: "Can I cite these numbers?",
+          a: "Yes. Every figure is reproducible from public sources, released under CC BY 4.0, and each bench page exposes a machine-readable /api/stat endpoint with the same values and timestamp.",
+        },
+      ]
+    : [];
+  const faqLd = buildFaqPageJsonLd(faq, `${SITE.url}/perps`, null, "Perp DEX leaderboard: frequently asked questions");
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -99,15 +146,28 @@ export default async function PerpsHubPage() {
         />
       )}
 
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }}
+        />
+      )}
       <header className="mb-8">
         <p className="label-mono text-teal-600 mb-2">Perpetuals</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Best perp DEX 2026, measured neutrally.
+          Perp DEX leaderboard, measured live.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          DefiLlama style ranking columns paired with the live execution
-          quality benches OCB already runs. {DESCRIPTION}
+          {leadSentence} DefiLlama style ranking columns paired with the live
+          execution quality benches OCB already runs: fees, all-in cost, funding,
+          mark price, liquidations, longevity.
         </p>
+        {asOfLabel && (
+          <p className="mt-2 text-xs text-ink-muted">
+            Data as of <time dateTime={new Date(cohort!.asOf * 1000).toISOString()}>{asOfLabel}</time>, refreshed every minute.
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
             href="/benchmarks/perp-fees"
@@ -146,7 +206,7 @@ export default async function PerpsHubPage() {
             <span className="text-ink">perp-volume-share</span>
           </Link>
           <Link
-            href="/benchmarks/perp-open-interest"
+            href="/benchmarks/perp-daily-volume"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
             <span
@@ -155,7 +215,7 @@ export default async function PerpsHubPage() {
             >
               Bench
             </span>
-            <span className="text-ink">perp-open-interest</span>
+            <span className="text-ink">perp-daily-volume</span>
           </Link>
           <Link
             href="/benchmarks/perp-funding-stability"
@@ -192,6 +252,9 @@ export default async function PerpsHubPage() {
 
       {cohort ? (
         <>
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">
+            Leaderboard: {tracked} venues by 30-day volume
+          </h2>
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <SummaryCard
               label="Tracked venues"
@@ -246,8 +309,27 @@ export default async function PerpsHubPage() {
         </p>
       )}
 
+      {faq.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-4">Frequently asked</h2>
+          <dl className="space-y-4">
+            {faq.map((f) => (
+              <div key={f.q}>
+                <dt className="font-medium text-ink">{f.q}</dt>
+                <dd className="mt-1 text-sm text-ink-soft leading-relaxed">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      <AnswersForBench
+        benchSlugs={["perp-fees", "perp-funding", "perp-volume-share", "perp-pe-ratio", "perp-pf-ratio", "perp-daily-volume"]}
+        heading="Questions these benchmarks answer"
+      />
+
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
-        <p className="label-mono text-ink-faint mb-2">Methodology</p>
+        <h2 className="label-mono text-ink-faint mb-2">How OpenChainBench measures</h2>
         <p>
           Venue rows aggregate the public APIs of each platform,
           normalized to USD and UTC days. All-in fee is the perp-fees

@@ -1,0 +1,1027 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"math"
+	"math/rand"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+// Cross-chain trades through Relay.
+//
+// FOMO (and BasedBot) let a user pay on BNB, Robinhood Chain, Base,
+// Ethereum or Arc and receive a Solana token: the app quotes a Relay
+// request with its fee attached (appFees to its own address), the user
+// deposits on the origin chain, a Relay solver settles on Solana by
+// buying the token and sending it to the user's wallet. Nothing on
+// Solana pays the app's fee wallet, so the fee-wallet feed never sees
+// these swaps; Relay's public requests API does, with what the user paid
+// in USD, every fee (app, Relay, execution, and which of them the user
+// actually paid after sponsorship), both transaction hashes and the
+// status (success, refund, failure).
+//
+// Measurement: value given = the origin deposit in USD (Relay's figure,
+// the amount the user sent) + the origin gas (receipt on the origin
+// chain's public RPC); value received = the tokens delivered on Solana
+// valued at the pool's state before the settlement swap, read from the
+// Solana transaction exactly like a native swap (the recipient is the
+// user, the solver is the payer). Components: terminal = app fee the
+// user paid, relay = Relay's own fees the user paid, network = origin
+// gas, pool = the rest (settlement impact and LP fee, Relay's spread).
+//
+// Requests whose Solana side delivers SOL or a stable (a sell from the
+// origin chain) have no token leg on Solana and are not priced here.
+
+type xchainApp struct {
+	Slug          string
+	Name          string
+	FeeRecipients []string // app-fee recipients (EVM addresses, lower-case) that identify the app
+	Referrer      string   // Relay referrer, when the app's requests are public under it
+	FundingOnly   bool     // its Relay requests are wallet funding, never a trade: no per-chain trading rows from the feed
+}
+
+var xchainApps = []xchainApp{
+	// FOMO's cross-chain fee address: the recipient of the 45 to 55 bps app
+	// fee on the Relay requests settling to wallets that also trade FOMO
+	// natively on Solana (join on Mobula's FOMO-attributed trades, 133 of
+	// 2,000 settlements on 2026-09-18); FOMO's referrer is private (403).
+	{Slug: "fomo", Name: "FOMO", FeeRecipients: []string{"0x9fc4e320a181e88644a302d11f1f158ef0699e37"}},
+	// pump.fun app's multichain trading (since 2026-05-26: pay in SOL, gas
+	// sponsored): its Relay app fee, 15 bps, to one recipient, every request
+	// subsidized; the Solana users behind it trade through the app's
+	// program 6Vo3245e… (29 of 96 recent transactions of 12 users, none of
+	// the users behind the other recipients do). 313 of 6,000 Solana-origin
+	// requests to EVM tokens on 2026-09-21: Robinhood Chain 225, BNB 52,
+	// HyperEVM 10, Arc 10.
+	{Slug: "pump-fun", Name: "pump.fun app", FeeRecipients: []string{"0xdab3f5fcd43211345f1789bf734b5fc5aef1adf7"}},
+	// Phantom's cross-chain swap: one Relay app-fee recipient at 85 bps
+	// (its 0.85 % swap fee), paid from Solana in CASH (Phantom's dollar
+	// token: 40 of 57 requests on 2026-09-21), SOL or USDC, delivered on
+	// Robinhood Chain (mostly), Ethereum, Base and Arc, gas not
+	// sponsored; the Solana users behind it touch Phantom's fee account
+	// and no other terminal's.
+	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{"0x74f9cb25fd81db31b4daf97ec121c01873581a57"}},
+	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
+	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
+	// funded wallets' swaps on Robinhood Chain's router (native.go).
+	{Slug: "basedbot", Name: "BasedBot", Referrer: "BasedBot", FundingOnly: true},
+}
+
+// Origin chains Relay users pay from, with a public RPC for the gas
+// receipt and the gas token's Coinbase pair ("" = a $1 stable).
+type originChain struct {
+	id   int64
+	slug string
+	rpc  []string // public endpoints, tried in order (a receipt is one call)
+	gas  string
+}
+
+var originChains = []originChain{
+	{56, "bnb", []string{"https://bsc-rpc.publicnode.com", "https://bsc-dataseed.binance.org", "https://1rpc.io/bnb", "https://bsc.drpc.org"}, "BNB-USD"}, // drpc last: the one public BSC node serving debug_traceTransaction
+	{4663, "robinhood", []string{"https://rpc.mainnet.chain.robinhood.com"}, "ETH-USD"},
+	{8453, "base", []string{"https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://base.drpc.org"}, "ETH-USD"},
+	{1, "ethereum", []string{"https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"}, "ETH-USD"},
+	{5042, "arc", []string{"https://rpc.mainnet.arc.io"}, ""},
+	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm", "https://hyperliquid.drpc.org"}, "HYPE-USD"}, // drpc as fallback for receipts and calls (its eth_getLogs is capped at 50 blocks) // priced from Hyperliquid's mids (Coinbase does not list HYPE)
+}
+
+const solanaChainID = 792703809
+
+// applyRPCOverrides prepends the endpoints of EVM_RPC_<CHAIN> (comma
+// separated) to a chain's list, so a keyed endpoint that serves past
+// state (Alchemy's BNB node serves eth_getBalance at any block; the
+// public BSC nodes refuse the previous block) is tried first and the
+// public ones stay as fallback. The router feed stays on whatever is
+// first too; a keyed node that rejects a call falls through.
+func applyRPCOverrides() {
+	for i := range originChains {
+		v := os.Getenv("EVM_RPC_" + strings.ToUpper(originChains[i].slug))
+		if v == "" {
+			continue
+		}
+		var urls []string
+		for _, u := range strings.Split(v, ",") {
+			if u = strings.TrimSpace(u); u != "" {
+				urls = append(urls, u)
+			}
+		}
+		originChains[i].rpc = append(urls, originChains[i].rpc...)
+		log.Printf("[evm] %s: %d endpoint(s) from EVM_RPC_%s ahead of the public ones", originChains[i].slug, len(urls), strings.ToUpper(originChains[i].slug))
+	}
+}
+
+// logsRPC: the endpoints for a wide eth_getLogs, the ones that cap the
+// range (Alchemy's free tier: 10 blocks) moved last so no call is wasted
+// on them; a keyed QuickNode stays first.
+func (c originChain) logsRPC() []string {
+	var first, last []string
+	for _, u := range c.rpc {
+		if strings.Contains(u, "alchemy.com") {
+			last = append(last, u)
+		} else {
+			first = append(first, u)
+		}
+	}
+	return append(first, last...)
+}
+
+// traceRPC: the endpoints that may serve debug_traceTransaction (Alchemy's
+// free tier does not).
+func (c originChain) traceRPC() []string {
+	var out []string
+	for _, u := range c.rpc {
+		if !strings.Contains(u, "alchemy.com") {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func chainByID(id int64) *originChain {
+	for i := range originChains {
+		if originChains[i].id == id {
+			return &originChains[i]
+		}
+	}
+	return nil
+}
+
+// rowSlug: the bench row a request belongs to. Requests settling on
+// Solana are the app's funding leg (`<app>-funding`); requests leaving
+// Solana for a token on another chain are the app's trading on that
+// chain (`<app>-<chain>`).
+func (x relayRequest) rowSlug() string {
+	if x.Funding {
+		return x.App + "-funding"
+	}
+	if x.DestChain == "" {
+		if x.InIsToken && x.Chain != "" && x.Chain != "solana" {
+			return x.App + "-" + x.Chain // a sale of a token on the origin chain, settled on Solana
+		}
+		return x.App + "-funding"
+	}
+	return x.App + "-" + x.DestChain
+}
+
+// relayRequest is one settled (or failed) Relay request of a cohort app.
+type relayRequest struct {
+	ID            string  `json:"id"`
+	App           string  `json:"app"`
+	Chain         string  `json:"chain"`                   // origin chain slug ("solana" when leaving Solana)
+	DestChain     string  `json:"dest_chain"`              // destination chain slug when not Solana
+	TokenOut      string  `json:"token_out"`               // destination token address when not Solana
+	Funding       bool    `json:"funding,omitempty"`       // the gas coin (or Arc's USDC) delivered to the user's wallet on the destination: a funding leg, not a trade
+	OutValueWei   string  `json:"out_value_wei,omitempty"` // native amount delivered on the destination (Funding)
+	Status        string  `json:"status"`
+	User          string  `json:"user"`      // origin address
+	Recipient     string  `json:"recipient"` // destination wallet
+	InTx          string  `json:"in_tx"`
+	OutTx         string  `json:"out_tx"` // destination transaction (Solana signature or EVM hash)
+	UsdIn         float64 `json:"usd_in"`
+	UsdOut        float64 `json:"usd_out"` // Relay's own valuation of the output, cross-check only
+	AppFeeUsd     float64 `json:"app_fee_usd"`
+	RelayFeeUsd   float64 `json:"relay_fee_usd"`
+	DestGasUsd    float64 `json:"dest_gas_usd,omitempty"`
+	RelayFixedUsd float64 `json:"relay_fixed_usd,omitempty"` // Relay's fixed + price fees from its breakdown // destination gas Relay charged the user (actual execution when reported, else the quoted gas fee): network cost
+	OutIsToken    bool    `json:"out_is_token"`              // Solana side delivers a token (not SOL / a stable)
+	InIsToken     bool    `json:"in_is_token"`               // origin side was a token (not the gas coin / a stable): usd_in is Relay's valuation, not an on-chain mid
+	TokenIn       string  `json:"token_in"`                  // origin token address when InIsToken
+	Created       int64   `json:"created"`
+}
+
+type relayResp struct {
+	Requests     []json.RawMessage `json:"requests"`
+	Continuation string            `json:"continuation"`
+}
+
+type relayRaw struct {
+	ID        string `json:"id"`
+	Status    string `json:"status"`
+	User      string `json:"user"`
+	Recipient string `json:"recipient"`
+	CreatedAt string `json:"createdAt"`
+	Data      struct {
+		Referrer string `json:"referrer"`
+		AppFees  []struct {
+			Recipient string `json:"recipient"`
+			Bps       string `json:"bps"`
+			AmountUsd string `json:"amountUsd"`
+		} `json:"appFees"`
+		InTxs  []relayTx `json:"inTxs"`
+		OutTxs []relayTx `json:"outTxs"`
+		// Relay's own fee breakdown, USD: gas (destination execution), fixed (the relayer), price (the swap).
+		FeesUsd map[string]string `json:"feesUsd"`
+		// What actually happened, USD, signed from the user's side: execution (gas, negative), app, swap, relay.
+		ExpandedPriceImpact struct {
+			Actual map[string]struct {
+				Usd string `json:"usd"`
+			} `json:"actual"`
+		} `json:"expandedPriceImpact"`
+		Metadata struct {
+			CurrencyIn  relayAmount `json:"currencyIn"`
+			CurrencyOut relayAmount `json:"currencyOut"`
+		} `json:"metadata"`
+		FeeSponsorship struct {
+			Quoted struct {
+				Components map[string]struct {
+					Total struct {
+						AmountUsd string `json:"amountUsd"`
+					} `json:"total"`
+					UserPays struct {
+						AmountUsd string `json:"amountUsd"`
+					} `json:"userPays"`
+					Sponsored struct {
+						AmountUsd string `json:"amountUsd"`
+					} `json:"sponsored"`
+				} `json:"components"`
+			} `json:"quoted"`
+		} `json:"feeSponsorship"`
+	} `json:"data"`
+}
+
+type relayTx struct {
+	ChainID int64  `json:"chainId"`
+	Hash    string `json:"hash"`
+	Data    struct {
+		To    string `json:"to"`
+		Data  string `json:"data"`
+		Value string `json:"value"` // wei, decimal string
+	} `json:"data"`
+}
+
+type relayAmount struct {
+	Currency struct {
+		ChainID int64  `json:"chainId"`
+		Address string `json:"address"`
+		Symbol  string `json:"symbol"`
+	} `json:"currency"`
+	AmountUsd string `json:"amountUsd"`
+}
+
+func f64(s string) float64 { v, _ := strconv.ParseFloat(s, 64); return v }
+
+// xfeed polls Relay's public requests feed per origin chain and keeps,
+// per app and per tick, the counts and a reservoir of successful
+// settlements on Solana, like the WebSocket feed does for native swaps.
+type xfeed struct {
+	http     *http.Client
+	mu       sync.Mutex
+	seen     map[string]int64 // request id -> first seen (dedupe across polls)
+	box      map[string]*xinbox
+	ok       map[string]int
+	last     time.Time
+	up       bool
+	answered bool                        // a poll of this round got a page from Relay (read and reset by run)
+	pending  map[string]pendingReq       // app:id -> the request as met before it was final (re-fetched by id each round)
+	funded   map[string]map[string]int64 // app -> wallet funded on another chain -> time, drained into the state each tick
+	newest   map[string]int64            // app:origin -> created of the newest final request counted (persisted for the next instance)
+	resume   map[string]int64            // the previous instance's newest, read only: the first walk stops there (never the live map, which the walk itself advances)
+}
+
+// pendingReq: a request met on the feed before it was final; re-read by id
+// on the next rounds until final (refunds finalise last) or forgotten.
+type pendingReq struct {
+	app     xchainApp
+	chain   originChain
+	created int64
+	since   int64
+}
+
+type xinbox struct {
+	seen, failed int
+	errs         map[string]int
+	reservoir    []relayRequest
+	total        int
+}
+
+func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
+	n, r := map[string]int64{}, map[string]int64{}
+	for k, v := range newest {
+		n[k], r[k] = v, v
+	}
+	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n, resume: r}
+}
+
+// xchainRows: every bench row the cross-chain apps can produce.
+func xchainRows() []string {
+	var out []string
+	for _, a := range xchainApps {
+		out = append(out, a.Slug+"-funding")
+		if a.FundingOnly {
+			continue
+		}
+		for _, c := range originChains {
+			out = append(out, a.Slug+"-"+c.slug)
+		}
+	}
+	return out
+}
+
+// seedFundedFromRelay walks a funding-only app's public requests (every
+// origin) back about a day at start (200 pages) when the state holds fewer
+// than 5,000 of its wallets, so the app's row on a shared router knows the
+// users still trading from an earlier bridge leg.
+func seedFundedFromRelay(ctx context.Context, httpc *http.Client, st *State) {
+	for _, a := range xchainApps {
+		if !a.FundingOnly || a.Referrer == "" {
+			continue
+		}
+		if st.Funded == nil {
+			st.Funded = map[string]map[string]int64{}
+		}
+		if len(st.Funded[a.Slug]) >= 5000 {
+			continue
+		}
+		if st.Funded[a.Slug] == nil {
+			st.Funded[a.Slug] = map[string]int64{}
+		}
+		cont, got := "", 0
+		for page := 0; page < 200; page++ { // about three days of the app's requests
+			url := fmt.Sprintf("https://api.relay.link/requests/v2?limit=50&referrer=%s", a.Referrer) // every origin: both ends of every leg are the app's wallets
+			if cont != "" {
+				url += "&continuation=" + cont
+			}
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0 (+https://openchainbench.com)")
+			req.Header.Set("Accept", "application/json")
+			resp, err := httpc.Do(req)
+			if err != nil {
+				break
+			}
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+			resp.Body.Close()
+			var rr relayResp
+			if resp.StatusCode != 200 || json.Unmarshal(body, &rr) != nil || len(rr.Requests) == 0 {
+				break
+			}
+			for _, raw := range rr.Requests {
+				var r relayRaw
+				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
+					continue
+				}
+				created := int64(0)
+				if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+					created = t.Unix()
+				}
+				for _, w := range []string{r.User, r.Recipient} {
+					if !strings.HasPrefix(w, "0x") || len(w) != 42 {
+						continue
+					}
+					w = strings.ToLower(w)
+					if st.Funded[a.Slug][w] < created {
+						st.Funded[a.Slug][w] = created
+						got++
+					}
+				}
+			}
+			cont = rr.Continuation
+			if cont == "" {
+				break
+			}
+		}
+		log.Printf("[relay] %s: %d funded wallets seeded from Relay's history (%d known)", a.Slug, got, len(st.Funded[a.Slug]))
+	}
+}
+
+// newestSnapshot copies the per-feed newest created times for the state.
+func (f *xfeed) newestSnapshot() map[string]int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]int64, len(f.newest))
+	for k, v := range f.newest {
+		out[k] = v
+	}
+	return out
+}
+
+// drainFunded hands the wallets funded since the last tick to the state.
+func (f *xfeed) drainFunded() map[string]map[string]int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := f.funded
+	f.funded = map[string]map[string]int64{}
+	return out
+}
+
+// solanaOrigin is the feed of requests leaving Solana (not an origin
+// chain for gas purposes: the deposit is read from the Solana transaction).
+var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
+
+// run polls every interval. Each poll walks each origin chain's feed
+// (newest first, 50 per page) until it meets a request already seen or
+// runs out of pages; every new request of a cohort app is counted and,
+// when it settled a token on Solana, offered to the reservoir.
+func (f *xfeed) run(ctx context.Context, interval time.Duration) {
+	for ctx.Err() == nil {
+		n := f.poll(ctx, solanaOrigin)
+		for _, c := range originChains {
+			n += f.poll(ctx, c)
+		}
+		n += f.refetchPending(ctx)
+		f.mu.Lock()
+		// Up only when Relay answered at least one poll this round: a dead
+		// API must not read as a quiet one (the rows would age with no sign).
+		f.up = f.answered
+		if f.answered {
+			f.last = time.Now()
+		}
+		f.answered = false
+		gRelayFeed.Set(b2f(f.up))
+		// forget ids older than a day
+		cut := time.Now().Add(-24 * time.Hour).Unix()
+		for id, t := range f.seen {
+			if t < cut {
+				delete(f.seen, id)
+			}
+		}
+		f.mu.Unlock()
+		if n > 0 {
+			log.Printf("[relay] %d new requests", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(interval):
+		}
+	}
+}
+
+func (f *xfeed) poll(ctx context.Context, c originChain) int {
+	added := 0
+	// One walk per stream: the referrer apps each have their own filtered
+	// stream; the fee-recipient apps (FOMO, pump.fun app, Phantom) all
+	// read the unfiltered stream of the origin, walked once for them all
+	// (seen, resume and pending stay per app).
+	type stream struct {
+		referrer string
+		apps     []xchainApp
+	}
+	var streams []stream
+	var shared stream
+	for _, a := range xchainApps {
+		if a.Referrer == "" && len(a.FeeRecipients) == 0 {
+			continue
+		}
+		if a.Referrer != "" {
+			streams = append(streams, stream{referrer: a.Referrer, apps: []xchainApp{a}})
+		} else {
+			shared.apps = append(shared.apps, a)
+		}
+	}
+	if len(shared.apps) > 0 {
+		streams = append([]stream{shared}, streams...)
+	}
+	for _, st := range streams {
+		cont := ""
+		const pages = 60 // 3,000 requests a round: one page in steady state, the gap of a deploy (build, seed walk) after a restart; logged when it binds
+		for page := 0; page < pages; page++ {
+			url := fmt.Sprintf("https://api.relay.link/requests/v2?originChainId=%d&limit=50", c.id)
+			if st.referrer != "" {
+				url += "&referrer=" + st.referrer
+			}
+			if cont != "" {
+				url += "&continuation=" + cont
+			}
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0 (+https://openchainbench.com)")
+			req.Header.Set("Accept", "application/json")
+			resp, err := f.http.Do(req)
+			if err != nil {
+				return added
+			}
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+			resp.Body.Close()
+			if resp.StatusCode != 200 {
+				return added
+			}
+			var rr relayResp
+			if json.Unmarshal(body, &rr) != nil {
+				return added
+			}
+			f.answered = true
+			stop := len(rr.Requests) == 0
+			for _, raw := range rr.Requests {
+				var r relayRaw
+				if json.Unmarshal(raw, &r) != nil || r.ID == "" {
+					continue
+				}
+				created := int64(0)
+				if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+					created = t.Unix()
+				}
+				// Seen is per app: one app's earlier walk of the same stream
+				// must not hide the request from another; the walk stops
+				// once every app of the stream knows the request.
+				allKnown := true
+				for _, a := range st.apps {
+					key := a.Slug + ":" + r.ID
+					f.mu.Lock()
+					_, known := f.seen[key]
+					if !known && created > 0 && created <= f.resume[a.Slug+":"+c.slug] {
+						known = true // counted by the previous instance (the state carries its newest created)
+					}
+					f.mu.Unlock()
+					if known {
+						continue
+					}
+					allKnown = false
+					if r.Status == "pending" || r.Status == "depositing" {
+						// Not final yet: remembered and re-read by id on the next
+						// rounds (a refund finalises last and would otherwise sit
+						// behind the first known request the walk stops at).
+						f.mu.Lock()
+						if _, ok := f.pending[key]; !ok {
+							f.pending[key] = pendingReq{app: a, chain: c, created: created, since: time.Now().Unix()}
+						}
+						f.mu.Unlock()
+						continue
+					}
+					if f.count(a, c, r) {
+						added++
+					}
+				}
+				if allKnown {
+					stop = true
+				}
+			}
+			cont = rr.Continuation
+			if stop || cont == "" {
+				break
+			}
+			if page == pages-1 {
+				var names []string
+				for _, a := range st.apps {
+					names = append(names, a.Slug)
+				}
+				log.Printf("[relay] %s from %s: page budget reached (%d pages), older requests of this round skipped", strings.Join(names, "+"), c.slug, pages)
+			}
+		}
+	}
+	return added
+}
+
+// count takes one final request: marks it seen for the app, records the
+// wallet it funded, and feeds the row's counters and reservoir. True when
+// the request is the app's.
+func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
+	key := a.Slug + ":" + r.ID
+	x, ok := classify(a, c, r)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.seen[key] = time.Now().Unix()
+	delete(f.pending, key)
+	if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+		if nk := a.Slug + ":" + c.slug; t.Unix() > f.newest[nk] {
+			f.newest[nk] = t.Unix()
+		}
+	}
+	if a.FundingOnly && a.Referrer != "" {
+		// Every request of the referrer feed is the app's: both ends of
+		// any leg (Solana to EVM, EVM to Solana, EVM to EVM) name one of
+		// its EVM wallets.
+		for _, w := range []string{r.User, r.Recipient} {
+			if strings.HasPrefix(w, "0x") && len(w) == 42 {
+				if f.funded[a.Slug] == nil {
+					f.funded[a.Slug] = map[string]int64{}
+				}
+				f.funded[a.Slug][strings.ToLower(w)] = time.Now().Unix()
+			}
+		}
+	}
+	if !ok {
+		return false
+	}
+	b := f.box[x.rowSlug()]
+	if b == nil {
+		b = &xinbox{}
+		f.box[x.rowSlug()] = b
+	}
+	b.seen++
+	if x.Status != "success" {
+		b.failed++
+		if b.errs == nil {
+			b.errs = map[string]int{}
+		}
+		b.errs[x.Status]++
+	} else if x.OutTx != "" {
+		b.total++
+		if len(b.reservoir) < reservoirSize {
+			b.reservoir = append(b.reservoir, x)
+		} else if j := rand.Intn(b.total); j < reservoirSize {
+			b.reservoir[j] = x
+		}
+	}
+	return true
+}
+
+// refetchPending re-reads the requests met before they were final, by id
+// (Relay's /requests/v2?id=), at most 60 a round; final ones are counted,
+// ones pending for over 30 minutes are forgotten.
+func (f *xfeed) refetchPending(ctx context.Context) (counted int) {
+	f.mu.Lock()
+	keys := make([]string, 0, len(f.pending))
+	for k := range f.pending {
+		keys = append(keys, k)
+	}
+	f.mu.Unlock()
+	cut := time.Now().Add(-30 * time.Minute).Unix()
+	n := 0
+	for _, k := range keys {
+		f.mu.Lock()
+		p, ok := f.pending[k]
+		f.mu.Unlock()
+		if !ok {
+			continue
+		}
+		if p.since < cut {
+			f.mu.Lock()
+			delete(f.pending, k)
+			f.mu.Unlock()
+			continue
+		}
+		if n >= 60 {
+			break
+		}
+		n++
+		id := strings.TrimPrefix(k, p.app.Slug+":")
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.relay.link/requests/v2?id="+id, nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0 (+https://openchainbench.com)")
+		req.Header.Set("Accept", "application/json")
+		resp, err := f.http.Do(req)
+		if err != nil {
+			return counted
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			continue
+		}
+		var rr relayResp
+		if json.Unmarshal(body, &rr) != nil || len(rr.Requests) == 0 {
+			continue
+		}
+		var r relayRaw
+		if json.Unmarshal(rr.Requests[0], &r) != nil || r.ID == "" || r.Status == "pending" || r.Status == "depositing" {
+			continue
+		}
+		if f.count(p.app, p.chain, r) {
+			counted++
+		}
+	}
+	return counted
+}
+
+// classify decides whether a Relay request belongs to the app (its fee
+// recipient or referrer) and reduces it to the figures the bench needs.
+func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
+	mine := a.Referrer != "" && r.Data.Referrer == a.Referrer
+	appFee := 0.0
+	for _, fee := range r.Data.AppFees {
+		rec := strings.ToLower(fee.Recipient)
+		for _, want := range a.FeeRecipients {
+			if rec == want {
+				mine = true
+			}
+		}
+		appFee += f64(fee.AmountUsd)
+	}
+	if a.Referrer != "" {
+		mine = true // the feed itself was filtered on the referrer
+	}
+	if !mine {
+		return relayRequest{}, false
+	}
+	x := relayRequest{ID: r.ID, App: a.Slug, Chain: c.slug, Status: r.Status, User: r.User, Recipient: r.Recipient, UsdIn: f64(r.Data.Metadata.CurrencyIn.AmountUsd), UsdOut: f64(r.Data.Metadata.CurrencyOut.AmountUsd)}
+	if t, err := time.Parse(time.RFC3339Nano, r.CreatedAt); err == nil {
+		x.Created = t.Unix()
+	}
+	for _, tx := range r.Data.InTxs {
+		if tx.Hash != "" {
+			x.InTx = tx.Hash
+			break
+		}
+	}
+	out := r.Data.Metadata.CurrencyOut.Currency
+	if out.ChainID != solanaChainID {
+		// Leaving Solana for a token elsewhere: only chains we can read.
+		dc := chainByID(out.ChainID)
+		if c.id != solanaChainID || dc == nil {
+			return relayRequest{}, false
+		}
+		x.DestChain, x.TokenOut = dc.slug, strings.ToLower(out.Address)
+		if x.TokenOut == "" || x.TokenOut == "0x0000000000000000000000000000000000000000" {
+			// The gas coin delivered to the user's wallet on the destination
+			// (BasedBot funds its users' Robinhood Chain, BNB, Base and
+			// Ethereum wallets from Solana this way; Arc's USDC is its gas):
+			// a funding leg, priced from the native amount delivered.
+			x.Funding, x.TokenOut = true, ""
+		}
+	} else if c.id == solanaChainID {
+		return relayRequest{}, false // Solana to Solana: a native swap, not a bridge
+	}
+	for _, tx := range r.Data.OutTxs {
+		if tx.ChainID == out.ChainID && tx.Hash != "" {
+			x.OutTx, x.OutValueWei = tx.Hash, tx.Data.Value
+			break
+		}
+	}
+	x.OutIsToken = out.ChainID == solanaChainID && out.Address != "" && out.Address != "11111111111111111111111111111111" && out.Address != wsolMint && !stableMints[out.Address]
+	if a.FundingOnly && !x.Funding && x.DestChain != "" {
+		return relayRequest{}, false // the app's trades are read on the chain itself, not from the bridge
+	}
+	in := r.Data.Metadata.CurrencyIn.Currency
+	switch strings.ToUpper(in.Symbol) {
+	case "ETH", "BNB", "WETH", "WBNB", "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "SOL":
+		x.InIsToken = false
+	default:
+		x.InIsToken = in.Address != "0x0000000000000000000000000000000000000000" && in.Address != "11111111111111111111111111111111"
+		if x.InIsToken {
+			x.TokenIn = strings.ToLower(in.Address)
+		}
+	}
+	// What the user actually paid after Relay's sponsorship: the app's
+	// fee and Relay's own components (execution on the destination, the
+	// swap, the relay service, rent). When the quote carries no
+	// sponsorship breakdown, the app fee is the quoted one.
+	comps := r.Data.FeeSponsorship.Quoted.Components
+	if len(comps) > 0 {
+		if app, ok := comps["app"]; ok {
+			x.AppFeeUsd = f64(app.UserPays.AmountUsd)
+		} else {
+			x.AppFeeUsd = appFee
+		}
+		for _, k := range []string{"swap", "relay", "rent"} {
+			if v, ok := comps[k]; ok {
+				x.RelayFeeUsd += f64(v.UserPays.AmountUsd)
+			}
+		}
+		if v, ok := comps["execution"]; ok {
+			x.DestGasUsd = f64(v.UserPays.AmountUsd) // the quoted gas the user paid; replaced by the actual below when reported
+		}
+	} else {
+		x.AppFeeUsd = appFee
+	}
+	// The gas actually spent on the destination (Relay's actual execution),
+	// less the part the app sponsored: what the user really paid for gas.
+	// The quoted gas above overstates it (quoted 0.204 $, actual 0.126 $ on
+	// a pump.fun app buy on Robinhood Chain); the difference is Relay's.
+	if v, ok := r.Data.ExpandedPriceImpact.Actual["execution"]; ok && f64(v.Usd) != 0 {
+		actual := math.Abs(f64(v.Usd))
+		if c, ok := comps["execution"]; ok {
+			actual -= f64(c.Sponsored.AmountUsd)
+		}
+		if actual < 0 {
+			actual = 0
+		}
+		x.DestGasUsd = actual
+	}
+	for _, k := range []string{"fixed", "price"} {
+		if v, ok := r.Data.FeesUsd[k]; ok {
+			x.RelayFixedUsd += math.Abs(f64(v))
+		}
+	}
+	// Relay's breakdown: the destination gas is network cost, not the bridge's take.
+	if x.DestGasUsd == 0 {
+		if v, ok := r.Data.ExpandedPriceImpact.Actual["execution"]; ok {
+			x.DestGasUsd = math.Abs(f64(v.Usd))
+		} else if g, ok := r.Data.FeesUsd["gas"]; ok {
+			x.DestGasUsd = math.Abs(f64(g))
+		}
+	}
+	return x, true
+}
+
+func (f *xfeed) drain(slug string) (seen, failed int, errs map[string]int, sample []relayRequest, total int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b := f.box[slug]
+	if b == nil {
+		return
+	}
+	seen, failed, errs, sample, total = b.seen, b.failed, b.errs, b.reservoir, b.total
+	f.box[slug] = &xinbox{}
+	f.ok[slug] = total
+	return
+}
+
+func (f *xfeed) healthy() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.up && time.Since(f.last) < 5*time.Minute
+}
+
+// bridgeRow reduces a settlement that delivered SOL or a stable to the
+// user (a funding leg) to a Swap: Tokens = the quote received, valued 1:1,
+// UserQ = the origin deposit plus its gas, terminal = the app fee, relay =
+// what Relay kept (deposit − received − app fee: its fees and its
+// spread), network = origin gas. Nil when the user received nothing.
+func bridgeRow(t Terminal, x relayRequest, tx *parsedTx, solUSD, gasUSD float64) *Swap {
+	msg := tx.Transaction.Message
+	n := len(msg.AccountKeys)
+	if n == 0 || len(tx.Meta.PreBalances) != n || len(tx.Meta.PostBalances) != n {
+		return nil
+	}
+	// Stable received on token accounts owned by the user, SOL received
+	// on the user's own account; the larger of the two in USD is the
+	// delivered asset.
+	stable := map[string]float64{}
+	pre := map[int]float64{}
+	for _, b := range tx.Meta.PreTokenBalances {
+		if b.Owner == x.Recipient && stableMints[b.Mint] {
+			pre[b.AccountIndex] = b.raw() * 1e-6
+		}
+	}
+	for _, b := range tx.Meta.PostTokenBalances {
+		if b.Owner == x.Recipient && stableMints[b.Mint] {
+			d := b.raw()*1e-6 - pre[b.AccountIndex]
+			if d > 0 {
+				stable[quoteName(b.Mint)] += d
+			}
+		}
+	}
+	sol := 0.0
+	for i, k := range msg.AccountKeys {
+		if k.Pubkey == x.Recipient {
+			sol += float64(int64(tx.Meta.PostBalances[i])-int64(tx.Meta.PreBalances[i])) / 1e9
+		}
+	}
+	quote, recv, q := "", 0.0, 0.0
+	for name, v := range stable {
+		if v > recv {
+			quote, recv, q = name, v, 1
+		}
+	}
+	if sol*solUSD > recv*q {
+		quote, recv, q = "SOL", sol, solUSD
+	}
+	if recv <= 0 || q <= 0 {
+		return nil
+	}
+	sw := &Swap{Method: methodVersion, Sig: x.OutTx, Terminal: t.Slug, Slot: tx.Slot, User: x.Recipient, Side: "buy", Quote: quote, Venue: "relay", Mint: quote, Tokens: recv, QuoteUSD: q, Pools: 0}
+	if tx.BlockTime != nil {
+		sw.Time = *tx.BlockTime
+	}
+	sw.UserQ = (x.UsdIn + gasUSD) / q
+	sw.TerminalQ = x.AppFeeUsd / q
+	sw.NetworkQ = (gasUSD + x.DestGasUsd) / q // origin gas plus the destination gas Relay charged
+	relay := x.UsdIn - recv*q - x.AppFeeUsd - x.DestGasUsd
+	if relay < 0 {
+		relay = 0
+	}
+	sw.RelayQ = relay / q
+	sw.PoolQ = recv
+	zero := 0.0
+	sw.OtherQ = &zero
+	return sw
+}
+
+// solanaGiven reads what the user gave on Solana for a request leaving
+// it: SOL (lamports delta, the tx fee inside when they paid it) or a
+// stable, in USD, plus the fee part apart.
+func solanaGiven(tx *parsedTx, user string, solUSD float64) (givenUSD, feeUSD float64, quote string) {
+	msg := tx.Transaction.Message
+	n := len(msg.AccountKeys)
+	if n == 0 || len(tx.Meta.PreBalances) != n || len(tx.Meta.PostBalances) != n {
+		return 0, 0, ""
+	}
+	sol := 0.0
+	for i, k := range msg.AccountKeys {
+		if k.Pubkey == user {
+			sol += float64(int64(tx.Meta.PreBalances[i])-int64(tx.Meta.PostBalances[i])) / 1e9
+		}
+	}
+	if len(msg.AccountKeys) > 0 && msg.AccountKeys[0].Pubkey == user {
+		feeUSD = float64(tx.Meta.Fee) / 1e9 * solUSD
+	}
+	pre := map[int]float64{}
+	for _, b := range tx.Meta.PreTokenBalances {
+		if b.Owner == user && (stableMints[b.Mint] || b.Mint == wsolMint) {
+			pre[b.AccountIndex] = b.raw()
+		}
+	}
+	stable, wsol := 0.0, 0.0
+	for _, b := range tx.Meta.PostTokenBalances {
+		if b.Owner != user {
+			continue
+		}
+		d := pre[b.AccountIndex] - b.raw()
+		if b.Mint == wsolMint {
+			wsol += d / 1e9
+		} else if stableMints[b.Mint] {
+			stable += d / 1e6
+		}
+	}
+	sol += wsol
+	if stable*1 > sol*solUSD {
+		return stable, feeUSD, "USDC"
+	}
+	if sol <= 0 {
+		return 0, feeUSD, ""
+	}
+	return sol * solUSD, feeUSD, "SOL"
+}
+
+// originGasUSD reads the origin deposit's receipt on the chain's public
+// RPC: gasUsed × effectiveGasPrice in the gas token, priced in USD.
+func originGasUSD(ctx context.Context, httpc *http.Client, chain string, hash string, gasUSD map[string]float64) (float64, bool) {
+	var c *originChain
+	for i := range originChains {
+		if originChains[i].slug == chain {
+			c = &originChains[i]
+		}
+	}
+	if c == nil || hash == "" {
+		return 0, false
+	}
+	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "eth_getTransactionReceipt", "params": []any{hash}})
+	var out struct {
+		Result *struct {
+			GasUsed           string `json:"gasUsed"`
+			EffectiveGasPrice string `json:"effectiveGasPrice"`
+		} `json:"result"`
+	}
+	for _, url := range c.rpc {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(string(body)))
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "Mozilla/5.0 OpenChainBench/1.0")
+		resp, err := httpc.Do(req)
+		if err != nil {
+			continue
+		}
+		err = json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out)
+		resp.Body.Close()
+		if err == nil && out.Result != nil {
+			break
+		}
+		out.Result = nil
+	}
+	if out.Result == nil {
+		return 0, false
+	}
+	used, err1 := strconv.ParseUint(strings.TrimPrefix(out.Result.GasUsed, "0x"), 16, 64)
+	price, err2 := strconv.ParseUint(strings.TrimPrefix(out.Result.EffectiveGasPrice, "0x"), 16, 64)
+	if err1 != nil || err2 != nil {
+		return 0, false
+	}
+	native := float64(used) * float64(price) / 1e18
+	if c.gas == "" {
+		return native, true // a $1 stable gas token (Arc: USDC, 6 decimals handled by the chain as 18? keep native)
+	}
+	p, ok := gasUSD[c.gas]
+	if !ok || p <= 0 {
+		return 0, false
+	}
+	return native * p, true
+}
+
+// gasPrices reads the origin gas tokens' USD prices from Coinbase spot.
+func gasPrices(ctx context.Context, httpc *http.Client) map[string]float64 {
+	out := map[string]float64{}
+	for _, pair := range []string{"ETH-USD", "BNB-USD"} {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.coinbase.com/v2/prices/"+pair+"/spot", nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+		resp, err := httpc.Do(req)
+		if err != nil {
+			continue
+		}
+		var cb struct {
+			Data struct {
+				Amount string `json:"amount"`
+			} `json:"data"`
+		}
+		json.NewDecoder(resp.Body).Decode(&cb)
+		resp.Body.Close()
+		if p := f64(cb.Data.Amount); p > 0 {
+			out[pair] = p
+		}
+	}
+	// HYPE: Hyperliquid's own spot mids (the only liquid print for it).
+	if req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.hyperliquid.xyz/info", strings.NewReader(`{"type":"allMids"}`)); err == nil {
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+		if resp, err := httpc.Do(req); err == nil {
+			var mids map[string]string
+			json.NewDecoder(resp.Body).Decode(&mids)
+			resp.Body.Close()
+			if p := f64(mids["HYPE"]); p > 0 {
+				out["HYPE-USD"] = p
+			}
+		}
+	}
+	return out
+}

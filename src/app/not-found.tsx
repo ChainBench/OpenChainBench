@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { NotFoundPing } from "@/components/not-found-ping";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <article className="mx-auto max-w-[900px] px-4 sm:px-6 py-16 sm:py-24">
+      <NotFoundPing />
       <p className="label-mono text-ink-faint">404</p>
       <h1 className="mt-3 display text-3xl sm:text-4xl text-ink leading-[1.05]">
         This page does not exist.

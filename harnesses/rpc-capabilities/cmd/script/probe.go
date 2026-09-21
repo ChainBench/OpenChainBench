@@ -401,6 +401,10 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			case "icon":
 				gap = iconStaleBlockGap
 			}
+			// Per-chain override wins over the Kind default (config.go).
+			if c.StaleGap > 0 {
+				gap = c.StaleGap
+			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
 			}

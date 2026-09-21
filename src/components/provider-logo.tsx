@@ -79,6 +79,11 @@ export function ProviderLogo({
 // Dark-tone (or dark-on-transparent) logos — get a WHITE chip with a
 // hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
+  // On-ramp marks (bench 262): dark monochrome brand assets.
+  "moonpay",
+  "meld",
+  "mercuryo",
+  "onramper",
   "aptos",
   "slash",
   "markets-mobile",
@@ -106,6 +111,8 @@ const NEEDS_LIGHT_CHIP = new Set([
 // near-black chip so the white artwork pops. Verified via SVG fill audit
 // (fill="white" present in the brand mark).
 const NEEDS_DARK_CHIP = new Set([
+  // Ramp Network sign: off-white R on transparent.
+  "ramp",
   "jito",
   "astralane",
   "sky",

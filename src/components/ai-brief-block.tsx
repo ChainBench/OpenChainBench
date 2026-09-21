@@ -13,7 +13,7 @@ export function AiBriefBlock() {
         tag="any LLM"
         title="Web brief"
         desc="Plain markdown. Paste into ChatGPT, Claude, Cursor, Aider, Codex, Continue or any chat-based agent."
-        action={<CopyButton value="https://openchainbench.com/contribute/ai-brief.md" label="Copy brief URL" />}
+        action={<CopyButton value="https://openchainbench.com/contribute/ai-brief.md" label="Copy brief URL" event={{ kind: "brief", value: "url" }} />}
         link={{ label: "View raw", href: "/contribute/ai-brief.md" }}
       />
       <Tile
@@ -21,7 +21,7 @@ export function AiBriefBlock() {
         title="ClawHub skill"
         desc="One-line install with the ClawHub CLI. The skill auto-loads as a slash command and applies the conventions on every reply."
         code="openclaw skills install openchainbench-contributor"
-        action={<CopyButton value="openclaw skills install openchainbench-contributor" label="Copy install" mono />}
+        action={<CopyButton value="openclaw skills install openchainbench-contributor" label="Copy install" mono event={{ kind: "brief", value: "install" }} />}
         link={{ label: "ClawHub listing ↗", href: "https://clawhub.ai/skills/openchainbench-contributor", external: true }}
       />
       <p className="text-xs text-ink-muted leading-relaxed">

@@ -45,6 +45,9 @@ const PAGES: string[] = [
   "alternatives/page.tsx",
   "team/page.tsx",
   "reports/page.tsx",
+  "products/[slug]/page.tsx",
+  "compare/[slug]/page.tsx",
+  "benchmarks/[slug]/page.tsx",
 ];
 
 function gitMtimeSeconds(rel: string): number | null {
@@ -140,6 +143,10 @@ function addEditorialEntries(manifest: Record<string, number>): number {
   }
   const pairs = gitMtimeSecondsAbs("src/data/compare-pairs.ts");
   if (pairs !== null) manifest["compare-pairs"] = pairs;
+  // Product pages with no live bench (registry-only entries) change when
+  // the registry does, not when any bench spec does.
+  const registry = gitMtimeSecondsAbs("src/data/provider-registry.ts");
+  if (registry !== null) manifest["provider-registry"] = registry;
   return n;
 }
 

@@ -3,8 +3,8 @@
 slug: perp-capital-efficiency
 number: "144"
 title: "Perp DEX capital efficiency: active markets per $M TVL, live"
-seo_title: "Perp DEX capital efficiency 2026"
-seo_description: "Gains lists 40+ active perp markets per $1M TVL versus Hyperliquid at under 0.1. Capital efficiency measures how many tradable instruments a venue can sustain per dollar of locked collateral. Synthetic oracle venues outperform CLOB venues by two orders of magnitude. Live from DefiLlama TVL and native venue APIs."
+seo_title: "Perp DEX capital efficiency: {{best_name}} at {{best_p50}} per $1M TVL"
+seo_description: "{{best_name}} sustains {{best_p50}} active perp markets per $1M of TVL, {{worst_name}} {{worst_p50}}. Capital efficiency measures how many tradable instruments a venue can sustain per dollar of locked collateral; synthetic oracle venues sit far above CLOB venues. Live from DefiLlama TVL and native venue APIs."
 subtitle: "Active perp markets divided by trading TVL in USD millions. Higher means more instruments supported per dollar of locked collateral. Synthetic oracle venues like Gains carry many markets on a shared pool; CLOB venues like Hyperliquid require dedicated market-maker inventory per pair."
 category: Trading
 status: live
@@ -13,7 +13,7 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  TVL from DefiLlama /protocol/{slug} currentChainTvls, excluding staking and pool2 categories. Market count from each venue's native API (same source as the perp-active-markets bench). The ratio reflects architectural choices, not absolute liquidity: a high ratio means the venue can list many markets cheaply, not that each market has deep liquidity. Compare with perp-open-interest for the liquidity angle.
+  TVL from DefiLlama /protocol/{slug} currentChainTvls, excluding staking and pool2 categories. Market count from each venue's native API (same source as the perp-active-markets bench). The ratio reflects architectural choices, not absolute liquidity: a high ratio means the venue can list many markets cheaply, not that each market has deep liquidity. Compare with perp-volume-share for the liquidity angle.
 
 seo_intro: |
   Every perp DEX comparison ranks by volume, fees or funding rates. Few ask the
@@ -67,7 +67,7 @@ faq:
   - q: "Why does Gains win so clearly?"
     a: "Gains uses synthetic oracles backed by a single shared liquidity pool (the GToken vault). Adding a new pair costs near zero additional capital. CLOB venues like Hyperliquid or GMX need per-pair market-maker inventory or per-pool collateral, so capital scales with pair count."
   - q: "Is capital efficiency always desirable?"
-    a: "Not necessarily. Deep per-pair liquidity has value for large traders. A venue with 449 pairs on $11M TVL may have thin liquidity per pair. Pair this bench with perp-open-interest for the depth angle."
+    a: "Not necessarily. Deep per-pair liquidity has value for large traders. A venue with hundreds of pairs on a few million dollars of TVL may have thin liquidity per pair. Pair this bench with perp-volume-share for the depth angle."
   - q: "Why is TVL from DefiLlama and not native APIs?"
     a: "DefiLlama aggregates TVL across all deployment chains and normalizes the methodology across venues. Native TVL endpoints (where they exist) differ in scope: some include user margin, others only LP collateral."
   - q: "Does TVL change with crypto prices?"

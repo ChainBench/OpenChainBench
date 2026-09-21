@@ -12,6 +12,17 @@
  */
 
 const RAW: Record<string, string> = {
+  // ─── Fiat on-ramps (bench 262) ───
+  // Official brand assets: MoonPay mark from dev.moonpay.com, Transak widget
+  // logo from assets.transak.com, Ramp sign from ramp.network, Mercuryo
+  // wordmark from the press brand kit, Onramper mark from onramper.com,
+  // Meld mark from docs.meld.io.
+  moonpay: "/logos/moonpay.svg",
+  transak: "/logos/transak.svg",
+  ramp: "/logos/ramp.svg",
+  mercuryo: "/logos/mercuryo.svg",
+  onramper: "/logos/onramper.svg",
+  meld: "/logos/meld.svg",
   // ─── L1 chains ───
   ethereum: "/logos/ethereum.png",
   bitcoin: "/logos/bitcoin.png",
@@ -48,6 +59,8 @@ const RAW: Record<string, string> = {
   liquid8: "/logos/pocket-protector.jpg",
   megaeth: "/logos/megaeth.png",
   robinhood: "/logos/robinhood.png",
+  arc: "/logos/arc.svg",
+  ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.svg",
   berachain: "/logos/berachain.png",
@@ -243,7 +256,7 @@ const RAW: Record<string, string> = {
   parity: "/logos/parity.png",
   polkadot: "/logos/polkadot.png",
   "base-official": "/logos/base.jpeg",
-  binance: "/logos/binance.png",
+  binance: "/logos/binance.svg",
   lava: "/logos/lava.png",
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
@@ -404,6 +417,14 @@ const RAW: Record<string, string> = {
   bullx: "/logos/bullx.png",
   photon: "/logos/photon.webp",
   "banana-gun": "/logos/banana-gun.png",
+  // ─── Trading apps cohort (bench № 267), icons from DeFiLlama / the apps ───
+  padre: "/logos/padre.png",          // Terminal (pump.fun's app, formerly Padre)
+  bloom: "/logos/bloom.png",
+  bonkbot: "/logos/bonkbot.png",
+  soltradingbot: "/logos/soltradingbot.png",
+  "o1-exchange": "/logos/o1-exchange.png",
+  pepeboost: "/logos/pepeboost.png",
+  basedbot: "/logos/based-app.png",
 
   // ─── App Store ratings (bench № 202) ───
   moonshot: "/logos/moonshot.svg",
@@ -411,6 +432,8 @@ const RAW: Record<string, string> = {
   cryptocom: "/logos/cryptocom.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
+  // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───
+  phantom: "/logos/phantom.svg",
   axiom: "/logos/axiom.png",
   "pvp-trade": "/logos/pvp-trade.png",
   insilico: "/logos/insilico.svg",
@@ -636,7 +659,9 @@ const ALIASES: Record<string, string> = {
   sol: "solana",
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
+  "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
   "publicnode-feehistory": "publicnode",
+  "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`
   // Same brand split across two HL builder addresses; one logo is enough.
   "metamask-alt": "metamask",
 
@@ -687,6 +712,8 @@ const ALIASES: Record<string, string> = {
   hood: "robinhood",
   coin: "coinbase",
   "megaeth-official": "megaeth",
+  "robinhood-official": "robinhood",
+  "arc-official": "arc",
   "celo-official": "celo",
   "blast-official": "blast",
   "taiko-official": "taiko",

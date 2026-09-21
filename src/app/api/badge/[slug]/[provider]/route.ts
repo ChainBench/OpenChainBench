@@ -174,13 +174,34 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const b = await getBenchmark(slug);
-  if (!b || b.editorialStatus !== "live") {
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate || aggregate.editorialStatus !== "live") {
     return new NextResponse("not found", {
       status: 404,
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
+  // Access tier (?tier=keyed): a different cohort, ranked on its own,
+  // so the whole bench object is swapped rather than a cell looked up.
+  const url = new URL(req.url);
+  const rawTier = url.searchParams.get("tier")?.toLowerCase().trim() || null;
+  const tierOption = rawTier
+    ? (aggregate.dimensions?.tier?.find((t) => t.value.toLowerCase() === rawTier) ?? null)
+    : null;
+  if (rawTier && !tierOption) {
+    return new NextResponse("unknown tier", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
+  // The headline tier (aggregate pin, else the first declared value) is
+  // the aggregate itself: no variant blob, no scope label.
+  const headlineTier =
+    aggregate.aggregateFilters?.tier ?? aggregate.dimensions?.tier?.[0]?.value;
+  const cohortOption = tierOption && tierOption.value !== headlineTier ? tierOption : null;
+  const b = cohortOption
+    ? ((await getBenchmark(slug, { tier: cohortOption.value })) ?? aggregate)
+    : aggregate;
 
   // Scope params are normalized to lowercase and validated against the
   // bench's declared dimensions; an unknown value is treated as a 400
@@ -188,7 +209,6 @@ export async function GET(
   // mistypes can fix it instead of shipping a misleading unfiltered
   // figure under a scoped badge. The canonical dimension value (not the
   // raw param) feeds the cell lookup.
-  const url = new URL(req.url);
   const rawChain = url.searchParams.get("chain")?.toLowerCase().trim() || null;
   const rawRegion = url.searchParams.get("region")?.toLowerCase().trim() || null;
   // Resolve via the alias-aware matcher so /api/badge?chain=gram lands
@@ -232,6 +252,7 @@ export async function GET(
     scopeLabel = [
       chainParam ? chainLabel(b, chainParam) : null,
       regionParam ? regionLabel(b, regionParam) : null,
+      cohortOption ? cohortOption.label : null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -248,6 +269,7 @@ export async function GET(
       (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0
         ? "all regions"
         : null,
+      cohortOption ? cohortOption.label : null,
     ]
       .filter(Boolean)
       .join(" · ");
