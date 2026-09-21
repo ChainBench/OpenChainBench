@@ -19,7 +19,7 @@ import type { RpcHubCohort, RpcHubSnapshot } from "@/lib/rpc-hub-stats";
  * summary cards included, between the two; nothing on the page ranks a
  * public gateway against a keyed provider. The public view is the
  * default and the only one crawlers see; the keyed rows link to
- * `/benchmarks/<chain>-rpc?tier=keyed`, the tab that ranks them.
+ * `/benchmarks/<chain>-rpc#tier=keyed`, the tab that ranks them.
  */
 
 type Tab = "chains" | "providers";
@@ -32,11 +32,16 @@ export function RpcHubTabs({
   snapshot: RpcHubSnapshot;
   linkableSlugs?: string[];
 }) {
+  // One count on the screen: the chains whose page is indexable (the
+  // same set the "All N chain RPC pages" nav lists), not the worker's
+  // total that includes thin chains (154 vs 114 on 2026-09-21).
+  const chainCount = (c: RpcHubCohort) =>
+    linkableSlugs ? c.chains.filter((ch) => linkableSlugs.includes(ch.slug)).length : c.chains.length;
   const [tab, setTab] = useState<Tab>("chains");
   const [cohort, setCohort] = useState<Cohort>("public");
   const keyed = snapshot.keyed;
   const view: RpcHubCohort = cohort === "keyed" && keyed ? keyed : snapshot;
-  const benchQuery = cohort === "keyed" && keyed ? "?tier=keyed" : "";
+  const benchQuery = cohort === "keyed" && keyed ? "#tier=keyed" : "";
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
   const fastest = fastestOverall(view);
@@ -56,14 +61,14 @@ export function RpcHubTabs({
             <TabButton
               active={cohort === "public"}
               onClick={() => setCohort("public")}
-              count={snapshot.totals.chains}
+              count={chainCount(snapshot)}
             >
               Public, no key
             </TabButton>
             <TabButton
               active={cohort === "keyed"}
               onClick={() => setCohort("keyed")}
-              count={keyed.totals.chains}
+              count={chainCount(keyed)}
             >
               Private, API key
             </TabButton>
@@ -77,7 +82,7 @@ export function RpcHubTabs({
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <SummaryCard label="Chains benched" value={String(view.totals.chains)} accent="#0ea5e9" />
+        <SummaryCard label="Chains benched" value={String(chainCount(view))} accent="#0ea5e9" />
         <SummaryCard label="Unique providers" value={String(view.totals.uniqueProviders)} />
         <SummaryCard
           label="Probe regions"

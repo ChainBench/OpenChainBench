@@ -60,7 +60,7 @@ export function RpcChainsLeaderboard({
    *  replaces the declared-count gate, so an expired chain (data older
    *  than a week, noindex) is shown but not linked. */
   linkableSlugs?: string[];
-  /** Query string appended to every bench link ("?tier=keyed" on the
+  /** Suffix appended to every bench link ("#tier=keyed" on the
    *  API-key view, so the row opens the cohort it ranks). */
   benchQuery?: string;
 }) {
@@ -347,7 +347,7 @@ export function RpcChainsLeaderboard({
                       color="var(--color-ink-soft)"
                     />
                   ) : (
-                    <span className="text-ink-faint">—</span>
+                    <span className="text-ink-faint">n/a</span>
                   )}
                 </Td>
               </tr>

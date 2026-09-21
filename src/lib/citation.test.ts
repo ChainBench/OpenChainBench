@@ -140,12 +140,12 @@ describe("citation, access tiers", () => {
       { ...r("quicknode", "QuickNode", 12), tier: "keyed" },
     ]);
     expect(nonHeadlineTier(b)).toBe("keyed");
-    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc?tier=keyed");
+    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc#tier=keyed");
     const sentence = headlineSentence(b);
     expect(sentence).toContain("of the 3 private (API-key) Robinhood Chain RPC endpoints measured");
     expect(sentence).not.toContain("free public");
     expect(citationQuote(b, "https://openchainbench.com")).toContain(
-      "https://openchainbench.com/benchmarks/robinhood-rpc?tier=keyed",
+      "https://openchainbench.com/benchmarks/robinhood-rpc#tier=keyed",
     );
   });
 });
@@ -170,7 +170,7 @@ describe("cohortSummaries", () => {
     const cohorts = cohortSummaries(b, "https://openchainbench.com");
     expect(cohorts.map((c) => [c.tier, c.headline, c.url])).toEqual([
       ["public", true, "https://openchainbench.com/benchmarks/base-rpc"],
-      ["keyed", false, "https://openchainbench.com/benchmarks/base-rpc?tier=keyed"],
+      ["keyed", false, "https://openchainbench.com/benchmarks/base-rpc#tier=keyed"],
     ]);
     expect(cohorts[0].leader?.name).toBe("PublicNode");
     // Chainstack at 30 % success never leads the private cohort.

@@ -335,13 +335,20 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // for the product pages' lastmod below.
   const benchesByProvider = new Map<string, string[]>();
   const liveBenchSlugs = new Set(blobBenches.map((b) => b.slug));
+  // Providers of another access cohort on a live tier-dimensioned bench
+  // (the keyed RPC providers): the worker's providerSlugs come from the
+  // headline blob's rows, public only, so quicknode and chainstack were
+  // missing from the sitemap while their product pages rendered.
+  const cohortProviderSlugs = new Set<string>();
   for (const spec of await getSpecs()) {
+    const tiers = spec.dimensions?.tier ?? [];
     for (const p of spec.providers ?? []) {
       declaredProviderSlugs.add(p.slug);
       if (liveBenchSlugs.has(spec.slug)) {
         const list = benchesByProvider.get(p.slug) ?? [];
         list.push(`bench:${spec.slug}`);
         benchesByProvider.set(p.slug, list);
+        if (tiers.length > 0 && p.tier && p.tier !== tiers[0].value) cohortProviderSlugs.add(p.slug);
       }
     }
   }
@@ -349,7 +356,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     if (entry.parent) declaredProviderSlugs.add(entry.parent);
   }
   const candidateSlugs = [
-    ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS]),
+    ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS, ...cohortProviderSlugs]),
   ];
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;

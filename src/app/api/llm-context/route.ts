@@ -119,7 +119,7 @@ export async function GET(req: Request) {
       const ranked = rankedCandidates(c.bench);
       lines.push("");
       lines.push(`**${c.label} cohort** (ranked separately, never against the rows above):`);
-      lines.push(`- Page: ${SITE.url}/benchmarks/${b.slug}?tier=${c.tier}`);
+      lines.push(`- Page: ${SITE.url}/benchmarks/${b.slug}#tier=${c.tier}`);
       lines.push(`- JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
       lines.push(`- Headline: ${headlineSentence(c.bench)}`);
       for (let i = 0; i < ranked.length; i++) {

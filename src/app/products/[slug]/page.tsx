@@ -178,7 +178,10 @@ export async function generateMetadata({
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
     .sort((a, b) => a.rank - b.rank || a.benchmark.title.localeCompare(b.benchmark.title))
     .slice(0, 2)
-    .map((a) => `${a.rank === 1 ? "#1" : `#${a.rank} of ${a.totalRanked}`} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+    // Always the denominator and, on a tier-dimensioned bench, the cohort:
+    // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
+    // cohort and Alchemy the private one (audit 2026-09-21).
+    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
   const measuredLead =
     metaRanked.length > 0
       ? `${p.name} ranks ${metaRanked.join(", ")} (p50, 24h). ${benchCount} live ${benchWord}${winSuffix}.`
@@ -207,6 +210,15 @@ export async function generateMetadata({
     openGraph: { title, description, type: "profile", url: canonicalUrl },
     twitter: { card: "summary_large_image", site: SITE.twitter, title, description },
   };
+}
+
+/** " public endpoints" / " private (API-key) providers" for a rank on a
+ *  tier-dimensioned bench, "" elsewhere: a rank is always stated within
+ *  the cohort it was earned in. */
+function cohortWord(a: { tier?: string; benchmark: { slug: string } }): string {
+  if (!a.benchmark.slug.endsWith("-rpc")) return "";
+  if (a.tier === "keyed") return " private (API-key) providers";
+  return " public endpoints";
 }
 
 export default async function ProviderPage({
@@ -349,7 +361,7 @@ export default async function ProviderPage({
   const topLines: string[] = [];
   for (const a of rankedAppearances.slice(0, 4)) {
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
-    const rankStr = a.rank === 1 ? "ranks #1" : `ranks #${a.rank} of ${a.totalRanked}`;
+    const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
     topLines.push(`${a.benchmark.title} (${rankStr}, ${p50Str} p50)`);
   }
   const proseParts: string[] = [];
@@ -910,11 +922,11 @@ export default async function ProviderPage({
                 : [];
             const hasChainRanks = chainRanks.length > 0;
             return (
-              <li key={a.tier ? `${a.benchmark.slug}?tier=${a.tier}` : a.benchmark.slug}>
+              <li key={a.tier ? `${a.benchmark.slug}#tier=${a.tier}` : a.benchmark.slug}>
                 <RowLink
                   href={
                     canLink(a.benchmark.slug)
-                      ? `/benchmarks/${a.benchmark.slug}${a.tier ? `?tier=${a.tier}` : ""}`
+                      ? `/benchmarks/${a.benchmark.slug}${a.tier ? `#tier=${a.tier}` : ""}`
                       : null
                   }
                   className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"

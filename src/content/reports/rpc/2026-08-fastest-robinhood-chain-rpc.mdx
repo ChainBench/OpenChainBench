@@ -25,7 +25,7 @@ Every number here is a live query against the [OpenChainBench Prometheus](https:
 
 Each response is classified as ok, http_err, jsonrpc_err, stale (block more than 20 behind the cross-provider tip), or timeout. Latency is recorded only for ok responses, and the figures below are the p50 over a rolling 24-hour window. Probes run from Singapore, and every figure in this report is scoped to that origin. Round-trip latency to a keyed RPC depends on where the probe sits relative to the provider's serving node, so the ranking is origin-dependent.
 
-Live page, sparklines, and source: [robinhood-rpc, API-key tab](/benchmarks/robinhood-rpc?tier=keyed).
+Live page, sparklines, and source: [robinhood-rpc, Private tab](/benchmarks/robinhood-rpc#tier=keyed).
 
 ## The Result: Chainstack Leads on Median Latency
 
@@ -55,11 +55,11 @@ Both answer reliably on Robinhood Chain (100% success over the window). Alchemy 
 
 ## What to Watch Next
 
-Robinhood Chain is a new chain, and the keyed-provider field is still small. As more providers stand up keyed endpoints and as regional coverage grows, this bench will track them. Latency on a young chain moves day to day, so the live rankings, updated every 60 seconds on the [Robinhood Chain RPC bench, API-key tab](/benchmarks/robinhood-rpc?tier=keyed), are always the current source of truth.
+Robinhood Chain is a new chain, and the keyed-provider field is still small. As more providers stand up keyed endpoints and as regional coverage grows, this bench will track them. Latency on a young chain moves day to day, so the live rankings, updated every 60 seconds on the [Robinhood Chain RPC bench, Private tab](/benchmarks/robinhood-rpc#tier=keyed), are always the current source of truth.
 
 ## Sources and Reproducibility
 
-- **Live bench:** [robinhood-rpc, API-key tab](/benchmarks/robinhood-rpc?tier=keyed)
+- **Live bench:** [robinhood-rpc, Private tab](/benchmarks/robinhood-rpc#tier=keyed)
 - **Harness source:** [harnesses/rpc-keyed-latency](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency)
 - **License:** CC BY 4.0, reproduce with attribution to OpenChainBench and a link to the canonical URL.
 - **Corrections:** file a [GitHub issue](https://github.com/ChainBench/OpenChainBench/issues/new).

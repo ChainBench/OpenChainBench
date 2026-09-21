@@ -28,7 +28,7 @@ export async function StatTable({
     return (
       <p className="my-6 text-sm text-ink-muted italic">
         Live data temporarily unavailable. See{" "}
-        <Link className="lnk" href={`/benchmarks/${bench}${tier ? `?tier=${tier}` : ""}`}>
+        <Link className="lnk" href={`/benchmarks/${bench}${tier ? `#tier=${tier}` : ""}`}>
           /benchmarks/{bench}
         </Link>
         .

@@ -37,7 +37,10 @@ type Row = {
 };
 
 function errorCount(row: Row): number | null {
-  if (row.sampleSize == null || row.successPct == null) return null;
+  if (row.successPct == null) return null;
+  // The private cohort's snapshot carries no sample size; a perfect
+  // success rate still means zero failed probes.
+  if (row.sampleSize == null) return row.successPct >= 100 ? 0 : null;
   return Math.round(row.sampleSize * (1 - row.successPct / 100));
 }
 
@@ -151,7 +154,7 @@ export async function RpcProviderChainsSection({
                 <td className="py-2.5 pr-3">
                   {!linkable || linkable.has(r.benchSlug) ? (
                     <Link
-                      href={`/benchmarks/${r.benchSlug}${r.tier ? `?tier=${r.tier}` : ""}`}
+                      href={`/benchmarks/${r.benchSlug}${r.tier ? `#tier=${r.tier}` : ""}`}
                       className="inline-flex items-center gap-2 group"
                     >
                       <ProviderLogo slug={r.chain} name={r.chainName} size={18} />
@@ -196,14 +199,14 @@ export async function RpcProviderChainsSection({
                   {r.p50Ms != null ? (
                     fmtMs(r.p50Ms)
                   ) : (
-                    <span className="text-ink-faint">—</span>
+                    <span className="text-ink-faint">n/a</span>
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap text-ink-soft">
-                  {r.successPct != null ? `${r.successPct.toFixed(2)}%` : "—"}
+                  {r.successPct != null ? `${r.successPct.toFixed(2)}%` : "n/a"}
                 </td>
                 <td className="py-2.5 pl-3 text-right tabular-nums whitespace-nowrap text-ink-faint">
-                  {errorCount(r)?.toLocaleString("en-US") ?? "—"}
+                  {errorCount(r)?.toLocaleString("en-US") ?? "n/a"}
                 </td>
               </tr>
             ))}
@@ -213,7 +216,7 @@ export async function RpcProviderChainsSection({
       <p className="mt-2 text-[10.5px] text-ink-faint">
         Rank counts live providers only; unresponsive endpoints keep
         recording success rate but hold no latency percentile. Errors
-        (24h) = sample size × (1 − success rate).
+        (24h) is the sample size multiplied by the failure rate.
       </p>
     </section>
   );
