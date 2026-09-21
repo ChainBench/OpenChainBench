@@ -5,8 +5,7 @@ import { COOKIE, isValidSession } from "@/lib/auth";
 // Static assets are excluded by the matcher.
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  // /api/ingest/* is authenticated by the sender's signature (see the route).
-  if (pathname === "/login" || pathname === "/api/login" || pathname.startsWith("/api/ingest/")) return NextResponse.next();
+  if (pathname === "/login" || pathname === "/api/login") return NextResponse.next();
   const ok = await isValidSession(request.cookies.get(COOKIE)?.value);
   if (ok) return NextResponse.next();
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
