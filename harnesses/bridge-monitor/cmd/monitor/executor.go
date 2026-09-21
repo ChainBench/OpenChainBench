@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
 	"log"
 	"strconv"
 	"strings"
@@ -34,26 +33,20 @@ type ExecutionConfig struct {
 
 // ExecutionResult holds the result of an execution test
 type ExecutionResult struct {
-	Bridge              string
-	Route               TestRoute
-	AmountUSD           float64
-	QuoteLatencyMs      int64
-	ExecutionLatencyMs  int64 // Settlement latency: destination block timestamp minus source block timestamp (on-chain); wall clock when a hash is missing
-	ObservedLatencyMs   int64 // Wall clock from broadcast to the poll that saw the terminal status (the pre-2026-09-19 figure), kept for the audit trail
-	DestTxHash          string
-	LatencyMethod       string  // "watch" (credit observed minus source inclusion observed, ms) | "watch-broadcast" (credit minus broadcast) | "blocks" (block timestamp delta) | "poll"
-	OnchainBlockDeltaMs int64   // destination block timestamp minus source block timestamp, -1 when unknown
-	QuotedOutputUSD     float64 // what the quote said would land (USD), before any on-chain read
-	RealizedOnChain     bool    // OutputUSD and ActualFeeUSD come from the destination balance delta, not from the quote
-	E2ELatencyMs        int64   // Time from quote start to funds received
-	Success             bool
-	Reverted            bool
-	Refunded            bool // subset of Reverted: provider returned capital (status "refunded")
-	Error               error
-	QuoteFeeUSD         float64 // Fee from quote
-	ActualFeeUSD        float64 // Actual fee paid (input - output)
-	TxHash              string
-	DryRun              bool
+	Bridge             string
+	Route              TestRoute
+	AmountUSD          float64
+	QuoteLatencyMs     int64
+	ExecutionLatencyMs int64 // Time from broadcast to funds received
+	E2ELatencyMs       int64 // Time from quote start to funds received
+	Success            bool
+	Reverted           bool
+	Refunded           bool // subset of Reverted: provider returned capital (status "refunded")
+	Error              error
+	QuoteFeeUSD        float64 // Fee from quote
+	ActualFeeUSD       float64 // Actual fee paid (input - output)
+	TxHash             string
+	DryRun             bool
 	// For Slack notifications
 	FromChain   string
 	ToChain     string
@@ -78,12 +71,8 @@ type Executor struct {
 	debridge      *DebridgeBridge
 	nearIntents   *NearIntentsBridge
 	region        string
-	// Millisecond watch of the leg in flight (fill_watcher.go).
-	watch *legWatch
-	// Persisted last-execution times (last_execution.go).
-	lastExec *lastExecStore
-	slack    *SlackNotifier
-	spend    *SpendTracker
+	slack         *SlackNotifier
+	spend         *SpendTracker
 }
 
 // DailySpent returns today's consumed budget via the mutex-guarded tracker.
@@ -138,9 +127,7 @@ func NewExecutor(
 		region:        region,
 		slack:         slack,
 		spend:         NewSpendTracker(spendStatePath(), time.Now),
-		lastExec:      newLastExecStore(lastExecPath()),
 	}
-	e.lastExec.expose(region)
 
 	// Initialize TxExecutor if we have private keys
 	if walletManager != nil && walletManager.HasPrivateKeys() {
@@ -388,10 +375,6 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	if preBalErr != nil {
 		log.Printf("    ⚠️  pre-execution balance read failed (%v) — falling back to quote-projected fill", preBalErr)
 	}
-	// Millisecond watch: destination balance from before the broadcast,
-	// source inclusion from the broadcast (markBroadcast in each executor).
-	e.startLegWatch(route.ToChain, route.ToToken, receiver, preBalanceRaw)
-	defer e.stopLegWatch()
 
 	// Source-chain native balance before execution, to measure the real gas we
 	// pay (approve + deposit) as the pre-minus-post delta. Single-flight (execMu)
@@ -440,17 +423,6 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	// Prometheus correctly classify it (Reverted takes precedence over Success).
 	result.Success = !result.Reverted
 
-	// One definition of the quoted fee for every bridge: ticket minus the
-	// output the quote promised. Provider fee sums mixed in gas paid in the
-	// native token (Mobula: TotalFeeUsd + GasFeeUsd), which the realized fee
-	// (ticket minus landed) can never contain, so their slippage read a
-	// constant negative offset regardless of ticket (-$0.0015 at $3 and at
-	// $30 on Base). Gas we pay ourselves is its own panel.
-	result.QuotedOutputUSD = result.OutputUSD
-	if amountUSD > 0 && result.QuotedOutputUSD > 0 && result.QuotedOutputUSD <= amountUSD {
-		result.QuoteFeeUSD = amountUSD - result.QuotedOutputUSD
-	}
-
 	// Read the destination balance again to compute the REALIZED fill on-chain.
 	// Bridge status "filled" sometimes precedes the destination credit by 1-3
 	// blocks; pollRealizedFill waits up to 30s for the delta to materialise.
@@ -464,7 +436,6 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 			realizedUSD := realizedToken * destinationUSDPerToken(route)
 			log.Printf("    💰 Realized fill on-chain: %.6f tokens = $%.4f (quote projected $%.4f)", realizedToken, realizedUSD, result.OutputUSD)
 			result.OutputUSD = realizedUSD
-			result.RealizedOnChain = true
 			// Recompute fees from realized: amount sent - amount received
 			realFees := amountUSD - realizedUSD
 			if realFees < 0 {
@@ -495,7 +466,7 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	}
 	log.Printf("    %s! TX: %s | Quote: %dms | Exec: %dms | E2E: %dms | Fee: $%.4f",
 		status,
-		shortHash(txHash),
+		txHash[:16]+"...",
 		result.QuoteLatencyMs,
 		result.ExecutionLatencyMs,
 		result.E2ELatencyMs,
@@ -623,7 +594,6 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	}
 
 	log.Printf("    [mobula] ✅ TX broadcast: %s", txHash)
-	e.markBroadcast(route.FromChain, txHash)
 	log.Printf("    [mobula] ⏳ Polling status (timeout: 5min)...")
 
 	// Mobula can take 2-5min to settle an intent even on EVM sources (solver backlog,
@@ -666,7 +636,6 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
-		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" {
 		result.Reverted = true
 		result.Refunded = true
@@ -778,7 +747,6 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 	}
 
 	log.Printf("    [relay] ✅ TX broadcast: %s", txHash)
-	e.markBroadcast(route.FromChain, txHash)
 
 	// Poll status using request ID from the bridge step
 	requestID := bridgeStep.RequestId
@@ -806,7 +774,6 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
-		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" {
 		result.Reverted = true
 		result.Refunded = true
@@ -916,7 +883,6 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 	}
 
 	log.Printf("    [lifi] ✅ TX broadcast: %s", txHash)
-	e.markBroadcast(route.FromChain, txHash)
 
 	// Poll status
 	fromChain := lifiChainID(route.FromChain)
@@ -940,7 +906,6 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 	if status.Status == "filled" || status.Status == "settled" {
 		result.Success = true
 		result.ActualFeeUSD = result.QuoteFeeUSD
-		result.LatencyMethod = e.settlementLatency(result, route.FromChain, route.ToChain, txHash, status.ToTxHash)
 	} else if status.Status == "refunded" || status.Status == "failed" {
 		result.Reverted = true
 		result.Refunded = status.Status == "refunded"
@@ -970,29 +935,13 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 
 	// Record latencies
-	bridgeExecQuoteLatency.WithLabelValues(labels...).Observe(float64(result.QuoteLatencyMs))
+	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(result.QuoteLatencyMs))
 	bridgeExecutionLatency.WithLabelValues(labels...).Observe(float64(result.ExecutionLatencyMs))
 	bridgeE2ELatency.WithLabelValues(labels...).Observe(float64(result.E2ELatencyMs))
 	// Exact latency gauge (only on a real fill): lets the bench read the true
 	// observed value via quantile_over_time instead of a coarse bucket midpoint.
 	if result.Success && result.ExecutionLatencyMs > 0 {
-		method := result.LatencyMethod
-		if method == "" {
-			method = "poll"
-		}
-		pulse(bridgeExecLatencyMs, append(append([]string{}, labels...), method), float64(result.ExecutionLatencyMs))
-		if result.ObservedLatencyMs > 0 {
-			pulse(bridgeExecObservedMs, labels, float64(result.ObservedLatencyMs))
-		}
-		if result.OnchainBlockDeltaMs >= 0 && result.DestTxHash != "" {
-			pulse(bridgeExecOnchainMs, labels, float64(result.OnchainBlockDeltaMs))
-		}
-		if method != "watch" {
-			bridgeExecLatencyFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region, method).Inc()
-		}
-	}
-	if result.Success || result.Reverted || result.TxHash != "" {
-		e.lastExec.record(result.Bridge, e.region, time.Now())
+		bridgeExecLatencyMs.WithLabelValues(labels...).Set(float64(result.ExecutionLatencyMs))
 	}
 
 	// Record success/revert + consecutive-failure streak (used for paging alerts).
@@ -1029,39 +978,22 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 	}
 
 	// Record fees + the new execution-cost metrics
-	// Realized cost metrics come from the destination balance delta only.
-	// A failed leg, a 30 s destination poll miss or a pre-balance read
-	// failure leaves OutputUSD at the quote's projection: published as
-	// "realized", that was a quote number wearing an on-chain label (Relay
-	// $30 Base: one errored leg published $29.97 of "landed" value).
-	if result.Success && result.RealizedOnChain {
-		pulse(bridgeFeesUSD, labels, result.ActualFeeUSD)
-		pulse(bridgeExecRealizedFeeUSD, labels, result.ActualFeeUSD)
-		if result.AmountUSD > 0 {
-			pulse(bridgeFeesPercent, labels, (result.ActualFeeUSD/result.AmountUSD)*100)
-			pulse(bridgeExecRealizedFeeBps, labels, (result.ActualFeeUSD/result.AmountUSD)*10000)
-		}
-		if result.OutputUSD > 0 {
-			pulse(bridgeRealizedOutputUSD, labels, result.OutputUSD)
-		}
-	} else if result.Success {
-		bridgeRealizedFallback.WithLabelValues(result.Bridge, result.FromChain, result.ToChain, e.region).Inc()
+	bridgeFeesUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD)
+	if result.AmountUSD > 0 {
+		bridgeFeesPercent.WithLabelValues(labels...).Set((result.ActualFeeUSD / result.AmountUSD) * 100)
+	}
+	if result.OutputUSD > 0 {
+		bridgeRealizedOutputUSD.WithLabelValues(labels...).Set(result.OutputUSD)
 	}
 	// Execution slippage vs quote = realized fee - quote-projected fee. Only on
 	// a real fill: on a revert / refund / pre-broadcast failure there is no
 	// realized fee (ActualFeeUSD stays 0 while QuoteFeeUSD was set), so recording
 	// it would inject spurious 0 / negative samples into the realized-cost bench.
-	// Slippage is only meaningful against a quoted fee; Near Intents used to
-	// publish its whole realized fee here (QuoteFeeUSD was never set).
-	// Gate on "a quote existed", not on "the quoted fee is positive": a
-	// quote that promises the full ticket back (Mobula Sol to Base quoted
-	// $3.0000 out of $3) has a quoted fee of exactly zero, and its slippage
-	// (+$0.003 realized) is the most honest row on the page.
-	if result.Success && result.RealizedOnChain && result.QuotedOutputUSD > 0 {
-		pulse(bridgeQuoteSlippageUSD, labels, result.ActualFeeUSD-result.QuoteFeeUSD)
+	if result.Success {
+		bridgeQuoteSlippageUSD.WithLabelValues(labels...).Set(result.ActualFeeUSD - result.QuoteFeeUSD)
 	}
 	if result.ExecGasUSD > 0 {
-		pulse(bridgeExecGasUSD, labels, result.ExecGasUSD)
+		bridgeExecGasUSD.WithLabelValues(labels...).Set(result.ExecGasUSD)
 	}
 }
 
@@ -1326,15 +1258,4 @@ func (e *Executor) PrintExecutionPlan() {
 
 	planJSON, _ := json.MarshalIndent(plan, "", "  ")
 	log.Printf("📋 Execution Plan:\n%s", string(planJSON))
-}
-
-// pulseTTL is how long a per-execution gauge stays exposed: two to three
-// scrapes at the 30 s interval, then the series is deleted so a range
-// query over days weighs every execution the same.
-const pulseTTL = 75 * time.Second
-
-func pulse(g *prometheus.GaugeVec, labels []string, v float64) {
-	g.WithLabelValues(labels...).Set(v)
-	lv := append([]string{}, labels...)
-	time.AfterFunc(pulseTTL, func() { g.DeleteLabelValues(lv...) })
 }

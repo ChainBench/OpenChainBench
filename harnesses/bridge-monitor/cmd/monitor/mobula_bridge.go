@@ -215,14 +215,11 @@ func signBridgeIntent(typedDataJSON json.RawMessage, key *ecdsa.PrivateKey) (str
 func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, senderAddress, walletAddress string, amount float64, extraParams string) (*MobulaQuoteResponse, time.Duration, error) {
 	start := time.Now()
 
-	// The key travels in the Authorization header, not the query string: a
-	// transport error wraps *url.Error, whose text carries the full URL and
-	// used to reach the log and Slack.
 	url := fmt.Sprintf(
-		mobulaAPIBase()+"/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s",
+		mobulaAPIBase()+"/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s&apiKey=%s",
 		originChain, originToken, destChain, destToken,
 		strconv.FormatFloat(amount, 'f', -1, 64),
-		walletAddress,
+		walletAddress, m.apiKey,
 	)
 	if senderAddress != "" {
 		url += "&senderAddress=" + senderAddress
@@ -233,7 +230,6 @@ func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, sen
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("Authorization", m.apiKey)
 
 	resp, err := m.client.Do(req)
 	if err != nil {
@@ -241,11 +237,9 @@ func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, sen
 	}
 	defer resp.Body.Close()
 
-	// Stopwatch stops after the body is read, like every other provider in
-	// this harness (it stopped at the response headers before, timing the
-	// operator's product to an earlier event than its competitors).
-	body, _ := io.ReadAll(resp.Body)
 	latency := time.Since(start)
+
+	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		return nil, latency, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
 	}

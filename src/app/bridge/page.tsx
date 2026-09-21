@@ -4,25 +4,20 @@ import { BridgeHubTable, BridgeCorridorMatrix } from "@/components/bridge-hub-ta
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { loadBenchFromBlob } from "@/lib/bench-blob";
-import { CompareThisBench } from "@/components/compare-this-bench";
-import { AnswersForBench } from "@/components/answers-for-bench";
-import { fmtAsOfUtc } from "@/lib/format";
 
 const DESCRIPTION =
-  "Live cross-chain bridge benchmarks: all-in cost for $300 USDC and quote API latency, per corridor and per provider, refreshed every 5 minutes from EU-West.";
+  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/bridge",
-  title: "Cross-chain bridge benchmarks 2026: fees and quote speed",
+  title: "Cheapest cross-chain bridge 2026, live ranking",
   description: DESCRIPTION,
 });
 
 export const revalidate = 3600;
 
 export default async function BridgeHubPage() {
-  const [hub, feeBench] = await Promise.all([fetchBridgeHub(), loadBenchFromBlob("bridge-fee")]);
-  const asOf = hub?.asOf ? fmtAsOfUtc(hub.asOf) : null;
+  const hub = await fetchBridgeHub();
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -75,19 +70,12 @@ export default async function BridgeHubPage() {
           Cross-chain bridge benchmarks, live.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Two live benches, sampled every five minutes from EU-West (Paris).
-          One measures the all-in cost of bridging $300 USDC across four
-          Solana/Base/Arbitrum/HyperCore corridors. The other measures how
-          fast each bridge returns a usable quote. Same corridors, same
-          notional; the US-East and Singapore probes are paused and their
-          columns return when they resume.
+          Two live benches, sampled every five minutes from three regions
+          (EU-West, US-East, Singapore). One measures the all-in cost of
+          bridging $300 USDC across four Solana/Base/Arbitrum/HyperCore
+          corridors. The other measures how fast each bridge returns a
+          usable quote from each origin. Same corridors, same notional.
         </p>
-        {asOf && (
-          <p className="mt-2 text-xs text-ink-muted">
-            Data as of{" "}
-            <time dateTime={hub?.asOf ?? undefined}>{asOf}</time>.
-          </p>
-        )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
             href="/benchmarks/bridge-fee"
@@ -171,7 +159,7 @@ export default async function BridgeHubPage() {
             <p className="text-sm text-ink-muted mb-4">
               Sorted by fee p50 (all-in cost at $300 USDC). Quote latency p50/p99 from bench 002. Success from fee bench. Trailing 24h.
             </p>
-            <BridgeHubTable rows={hub.providers} liveRegions={hub.liveRegions} />
+            <BridgeHubTable rows={hub.providers} />
           </section>
 
           <section className="mb-10">
@@ -187,7 +175,7 @@ export default async function BridgeHubPage() {
               </Link>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads, and the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
+              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads — the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
             </p>
             <BridgeCorridorMatrix rows={hub.providers} />
           </section>
@@ -230,7 +218,7 @@ export default async function BridgeHubPage() {
               ))}
             </div>
             <p className="text-sm text-ink-muted">
-              Each provider may only quote a subset of corridors. The corridor matrix above shows which ones are supported and at what cost. Full p50/p90/p99 splits per corridor and per notional are on the{" "}
+              Each provider may only quote a subset of corridors. The corridor matrix above shows which ones are supported and at what cost. Full p50/p90/p99 splits with regional breakdown are on the{" "}
               <Link
                 href="/benchmarks/bridge-fee"
                 className="underline hover:text-ink"
@@ -247,12 +235,6 @@ export default async function BridgeHubPage() {
               bench pages.
             </p>
           </section>
-
-          {feeBench && <CompareThisBench benchmark={feeBench} />}
-          <AnswersForBench
-            benchSlugs={["bridge-fee", "bridge-quote-latency"]}
-            heading="Questions these benchmarks answer"
-          />
         </>
       ) : (
         <section className="rounded-xl border border-ink/10 card-soft p-6 sm:p-8">
@@ -296,7 +278,7 @@ export default async function BridgeHubPage() {
             histogram_quantile(0.50, sum by (le)
             (rate(bridge_quote_latency_ms_bucket[24h])))
           </code>
-          . Every headline figure is pinned to the EU-West (Paris) origin; the US-East and Singapore probes are paused. Failures (quote_failed,
+          . Benches run from three regions (EU-West Amsterdam, US-East, Singapore); regional breakdown on individual bench pages. Failures (quote_failed,
           unsupported route, timeout) excluded from aggregates, counted
           toward success rate.
         </p>

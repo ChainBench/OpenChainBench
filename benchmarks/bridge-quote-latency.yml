@@ -3,8 +3,8 @@
 slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API, live ms ranking
-seo_title: "Fastest bridge quote API: {{best_name}} at {{best_p50}} (live p50)"
-seo_description: "{{best_name}} returns a USDC bridge quote in {{best_p50}} (p50), {{worst_name}} in {{worst_p50}}. {{count}} bridge APIs timed every 5 minutes on identical routes, with p99 tails."
+seo_title: "Fastest bridge quote API 2026"
+seo_description: "Live p50 latency for cross-chain bridge quote APIs. Mobula, deBridge, Relay, LI.FI, Near Intents, Across, Squid and Socket ranked."
 subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI, Near Intents, Across, Squid and Socket.
 category: Bridges
 status: live
@@ -13,11 +13,11 @@ unit: ms
 
 # Per-destination breakdown. The bridge-monitor harness emits the chain
 # label set to route.ToChain (capitalized). Each bridge has wildly
-# different per-corridor latency profiles (Near Intents' dry quotes wait a
-# fixed 3 s solver window on every corridor; the execution-path quotes,
-# which return in tens of ms, are recorded on a separate metric) so the
-# per-chain tabs matter. The "All" tab pools every corridor; the per-chain
-# tabs show each route on its own.
+# different per-corridor latency profiles (Near Intents in particular is
+# bimodal: solver-cached corridors return in ~30ms while uncached ones
+# wait the full 3s solver auction window) so aggregating across all
+# destinations produces meaningless cross-corridor averages. The "All"
+# tab keeps the aggregate view; the per-chain tabs reveal the truth.
 dimensions:
   chain:
     - { value: Base,      label: Sol to Base }
@@ -66,7 +66,7 @@ methodology:
   - "Notional sizes: $5, $50, $300 per quote."
   - "Cadence: full sweep (4 routes × 3 amounts × N bridges) every 5 minutes for 24 hours."
   - "Regions: every figure on this page is pinned to the EU-West (Paris) origin. A us-east probe also runs and its cells stay in Prometheus for the region breakdown, but they are not pooled into the headline; the sgp probe is down. Execution-path quotes ($3 and $30 tickets) and the R4 meme route quoted by the same loop are excluded from every cell."
-  - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 7500, 10000 ms. Sub-50 ms buckets added 2026-07-13 so solver-cached fast paths surface their true p50 instead of being floored at the interpolation of the (0, 50] bucket; 500 ms buckets between 1 and 5 s added 2026-09-19 so Near Intents' fixed 3 s solver wait resolves instead of interpolating one (2000, 5000] edge."
+  - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms. Sub-50ms buckets added 2026-07-13 so solver-cached fast paths (Near Intents on HyperCore in particular) surface their true p50 instead of being floored at the interpolation of the (0, 50] bucket."
   - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
 # Per-corridor leader rewrite deferred: this YAML does not yet declare
@@ -80,10 +80,10 @@ methodology:
 findings:
   - "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges. The cohort spans direct protocols, aggregators and intent layers under the same query, averaged over the 4 USDC routes the harness sweeps."
   - "{{name:relay}} returns {{p50:relay}} (p50, 24 h). Intent and relay layers usually clock lowest because the API surface is a thin price-discovery call against pre-quoted solvers, not a full route-search graph."
-  - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators do more work per call (route search across N underlying bridges, fee normalisation); compare its p50 with {{p50:relay}} for Relay on the same routes."
+  - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators do more work per call (route search across N underlying bridges, fee normalisation), which costs them a stable 100 to 400 ms versus pure relays."
   - "{{name:debridge}} clocks {{p50:debridge}} (p50, 24 h). Direct protocols quote a single canonical route, so latency reflects raw API plumbing rather than route-search complexity."
   - "Tail latency tells the integration story. p99 ({{p99:relay}} / {{p99:lifi}} / {{p99:debridge}}) is what dictates timeouts in production wallets; SDKs that wait for the slowest bridge degrade the whole UX when one provider has a bad minute."
-  - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h) against {{best_p50}} for {{best_name}}; the p99 column shows how the gap stretches in the tail. A bridge that lags overall can still be fastest on a specific corridor where it is closer to its solver pool; the corridor tabs show the per route leader."
+  - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h). A 5x gap at p50 turns into a 10 to 20x gap at p99. A bridge that lags overall can still be fastest on a specific corridor where it is closer to its solver pool, that per-corridor breakdown is on the roadmap."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
@@ -93,13 +93,13 @@ prometheus:
 
 faq:
   - q: "Which cross-chain bridge has the lowest API latency?"
-    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges, averaged over the 4 USDC routes the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from the EU-West (Paris) origin under the same routes. Per-corridor latency leaders can differ from this aggregate where one provider has a solver pool closer to a specific destination chain; the corridor tabs above (Sol to Base, Base to Arb, Arb to Sol, Arb to HyperCore) show the per route leader."
+    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges, averaged over the 4 USDC routes the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from the EU-West (Paris) origin under the same routes. Per-corridor latency leaders can differ from this aggregate where one provider has a solver pool closer to a specific destination chain, that breakdown is on the roadmap once corridor dimensions are surfaced in the page UI."
   - q: "What is the difference between quote latency and bridge fill time?"
     a: "Quote latency is the wall-clock time the bridge API takes to return a price. Fill time is the wall-clock time the funds take to land on the destination chain after the user signs. They are decoupled: a bridge can quote in 100 ms and take 30 seconds to settle, or quote in 2 seconds and settle in 5 seconds. This benchmark measures the quote half because that is the part a wallet, an aggregator or an embedded swap UI feels first and tunes its UX around."
   - q: "Why does bridge quote latency matter for builders?"
     a: "Every product that integrates a bridge sits behind that API. Wallets, aggregators, intent layers, chat-app swap modals. A 1500 ms p99 forces a long loading spinner; a 5000 ms p99 forces a timeout fallback. The number controls perceived UX, time-to-first-quote in side-by-side comparators, and how aggressively the integrator has to parallelise calls across bridges to mask the slowest one."
   - q: "Are intent and relay bridges always faster than aggregators?"
-    a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LI.FI run a route-search graph over N underlying bridges per request; the live gap is {{p50:lifi}} against {{p50:relay}} at p50. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
+    a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LI.FI run a route-search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
   - q: "How does OpenChainBench measure bridge quote latency?"
     a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from the EU-West (Paris) origin. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
   - q: "Does quote latency affect the price the user gets?"
