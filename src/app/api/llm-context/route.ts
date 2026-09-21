@@ -3,6 +3,7 @@ import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fmtUnit } from "@/lib/format";
 import {
+  cohortViews,
   fieldValue,
   headlineSentence,
   isInsufficient,
@@ -110,6 +111,23 @@ export async function GET(req: Request) {
       lines.push(`- Insufficient samples to rank providers yet.`);
     } else {
       lines.push(`- ${b.status === "draft" ? "Draft (no live data yet)" : "Awaiting samples"}.`);
+    }
+
+    // Other access cohorts (chain RPC pages: the private, API-key
+    // providers), ranked apart from the block above, same gate.
+    for (const c of cohortViews(b).filter((v) => !v.headline)) {
+      const ranked = rankedCandidates(c.bench);
+      lines.push("");
+      lines.push(`**${c.label} cohort** (ranked separately, never against the rows above):`);
+      lines.push(`- Page: ${SITE.url}/benchmarks/${b.slug}?tier=${c.tier}`);
+      lines.push(`- JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
+      lines.push(`- Headline: ${headlineSentence(c.bench)}`);
+      for (let i = 0; i < ranked.length; i++) {
+        const r = ranked[i];
+        lines.push(
+          `${i + 1}. ${r.name}: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
+        );
+      }
     }
 
     if (b.methodology.length > 0) {

@@ -4,8 +4,11 @@ import { z } from "zod";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import {
+  benchPath,
   citableAsOf,
   citationQuote,
+  cohortSummaries,
+  cohortViews,
   fieldValue,
   headlineSentence,
   isInsufficient,
@@ -245,6 +248,14 @@ const mcpHandler = createMcpHandler(
             headline: headlineSentence(b),
             url: `${SITE.url}/benchmarks/${b.slug}`,
             asOf: citableAsOf(b),
+            // Chain RPC pages rank two access cohorts apart (public, no
+            // key; private, API key): each with its own leader and URL.
+            ...(() => {
+              const cohorts = cohortSummaries(b, SITE.url);
+              return cohorts.length > 0
+                ? { cohorts: cohorts.map((c) => ({ tier: c.tier, label: c.label, leader: c.leader, url: c.url })) }
+                : {};
+            })(),
           };
         });
         return {
@@ -269,11 +280,21 @@ const mcpHandler = createMcpHandler(
           "exposes chain=base|bnb|solana, region=us-east|eu-west|ap-southeast).",
           "Both args are optional; omit them for the global aggregate.",
           "",
+          "Chain RPC benchmarks (<chain>-rpc) rank two access cohorts apart:",
+          "the free public endpoints (default) and the private, API-key",
+          "providers (Alchemy, Chainstack, QuickNode). The default response",
+          "carries both under `cohorts`; pass tier=\"keyed\" to get the private",
+          "cohort as the main record (rankings, quote, pageUrl). Never compare a",
+          "public row with a private row: they are measured on different",
+          "endpoints and cadences.",
+          "",
           "Example usage:",
           "  • User: \"who's the fastest crypto data aggregator on Base?\"",
           "    → get_benchmark({ slug: \"aggregator-head-lag\", chain: \"base\" })",
           "  • User: \"how much does it cost to bridge $300 cross-chain?\"",
           "    → get_benchmark({ slug: \"bridge-fee\" })",
+          "  • User: \"fastest Base RPC with an API key, Alchemy or QuickNode?\"",
+          "    → get_benchmark({ slug: \"base-rpc\", tier: \"keyed\" })",
           "",
           "Drafts return { error: \"unknown_slug\" }. Cite the returned `pageUrl`",
           "and use `quote` as the attribution line in your answer.",
@@ -293,10 +314,29 @@ const mcpHandler = createMcpHandler(
             .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
             .optional()
             .describe("Optional region filter, e.g. 'us-east', 'eu-west', 'ap-southeast'. Only honored when the bench declares region dimensions."),
+          tier: z
+            .string()
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
+            .optional()
+            .describe("Optional access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers). Only honored when the bench declares tier dimensions."),
         },
       },
-      async ({ slug, chain, region }) => {
-        const b = await getBenchmark(slug, { chain, region });
+      async ({ slug, chain, region, tier }) => {
+        const aggregate = await getBenchmark(slug);
+        // Tier resolves against the declared values; the headline tier is
+        // the aggregate itself (no separate variant).
+        const tierOption = tier
+          ? aggregate?.dimensions?.tier?.find((t) => t.value.toLowerCase() === tier.toLowerCase())
+          : undefined;
+        if (tier && !tierOption) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ error: "unknown_tier", slug, tier, declared: aggregate?.dimensions?.tier?.map((t) => t.value) ?? [] }) }],
+            isError: true,
+          };
+        }
+        const headlineTier = aggregate?.aggregateFilters?.tier ?? aggregate?.dimensions?.tier?.[0]?.value;
+        const tierFilter = tierOption && tierOption.value !== headlineTier ? tierOption.value : undefined;
+        const b = await getBenchmark(slug, { chain, region, tier: tierFilter });
         if (!b || b.editorialStatus !== "live") {
           return {
             content: [{ type: "text", text: JSON.stringify({ error: "unknown_slug", slug }) }],
@@ -333,11 +373,12 @@ const mcpHandler = createMcpHandler(
           sparkline: insufficient ? [] : sparklineFor(b, top?.slug),
           headline: headlineSentence(b),
           quote: citationQuote(b, SITE.url),
-          pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
+          pageUrl: `${SITE.url}${benchPath(b)}`,
           ogImage: `${SITE.url}/api/og/${b.slug}`,
           asOf: citableAsOf(b),
           methodology: b.methodology,
           source: b.source,
+          ...(cohortSummaries(b, SITE.url).length > 0 ? { cohorts: cohortSummaries(b, SITE.url) } : {}),
         };
         return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
       },
@@ -529,6 +570,22 @@ const mcpHandler = createMcpHandler(
           md.push("");
           for (let i = 0; i < ranked.length; i++) {
             const r = ranked[i];
+            md.push(
+              `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
+            );
+          }
+          md.push("");
+        }
+        for (const c of cohortViews(b).filter((v) => !v.headline)) {
+          const cohortRanked = rankedCandidates(c.bench);
+          md.push(`## ${c.label} cohort (ranked separately)`);
+          md.push("");
+          md.push(`Never compared with the rows above: different endpoints, 120 s cadence. Page: ${SITE.url}/benchmarks/${b.slug}?tier=${c.tier}, JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
+          md.push("");
+          md.push(`**Headline.** ${headlineSentence(c.bench)}`);
+          md.push("");
+          for (let i = 0; i < cohortRanked.length; i++) {
+            const r = cohortRanked[i];
             md.push(
               `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
             );

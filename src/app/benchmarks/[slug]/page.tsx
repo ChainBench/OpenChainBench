@@ -26,6 +26,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import {
   citableAsOf,
   groundingTraceLine,
+  cohortViews,
   groundingTraceParts,
   headlineSentence,
   isInsufficient,
@@ -41,6 +42,8 @@ import {
   buildBenchDatasetJsonLd,
   buildBenchStatReportJsonLd,
   buildBenchVariableMeasured,
+  CREATOR_PUBLISHER,
+  DATASET_LICENSE,
 } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
@@ -448,11 +451,60 @@ export default async function BenchmarkPage({
         description: groundingLine,
       })
     : null;
+  // Other access cohorts (chain RPC pages: the private, API-key
+  // providers ranked behind the Endpoints selector). Each gets its own
+  // Dataset part (url ?tier=<t>) and, when it has a citable leader, its
+  // own StatisticalReport, so an answer engine reading this page finds
+  // "fastest private Base RPC" as a distinct, dated claim and never
+  // folds it into the public one.
+  const cohortNodes = cohortViews(benchmark)
+    .filter((v) => !v.headline)
+    .flatMap((v) => {
+      const url = `${benchmarkUrl}?tier=${v.tier}`;
+      const top = leader(v.bench);
+      const name = `${benchmark.seoTitle ?? benchmark.title}, ${v.label.toLowerCase()} cohort`;
+      const description = groundingTraceLine(v.bench, SITE.url);
+      const part = {
+        "@type": "Dataset",
+        "@id": `${url}#dataset`,
+        name,
+        description,
+        url,
+        identifier: `${benchmark.slug}?tier=${v.tier}`,
+        isPartOf: { "@id": `${benchmarkUrl}#dataset` },
+        sameAs: [`${SITE.url}/api/stat/${benchmark.slug}?tier=${v.tier}`],
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
+        isAccessibleForFree: true,
+        license: DATASET_LICENSE,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
+        ...(citableAsOf(benchmark) ? { dateModified: benchmark.lastRunAt } : {}),
+        variableMeasured,
+        measurementTechnique: benchmark.methodology.join(" "),
+      };
+      const report = top
+        ? buildBenchStatReportJsonLd({
+            slug: benchmark.slug,
+            benchTitle: name,
+            metric: benchmark.metric,
+            metricUnit: benchmark.unit,
+            leaderName: top.name,
+            leaderValue: valueInDeclaredUnit(top.value, benchmark.unit),
+            temporalCoverage: `${getBenchCreatedAt(benchmark.slug).toISOString()}/${benchmark.lastRunAt}`,
+            observationDate: benchmark.lastRunAt,
+            url,
+            measurementTechnique: benchmark.methodology[0] ?? benchmark.metric,
+            description,
+          })
+        : null;
+      return report ? [part, report] : [part];
+    });
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       datasetNode,
       ...(statReportNode ? [statReportNode] : []),
+      ...cohortNodes,
       {
         "@type": "TechArticle",
         "@id": `${benchmarkUrl}#article`,
