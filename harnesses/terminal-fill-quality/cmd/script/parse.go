@@ -80,6 +80,7 @@ type Swap struct {
 	Chain    string  `json:"chain,omitempty"`
 	RelayQ   float64 `json:"relay_q,omitempty"`
 	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
+	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created (net of those it closed): refundable on close, out of the loss, shown
 	RelayID  string  `json:"relay_id,omitempty"`
 	InTx     string  `json:"in_tx,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
@@ -813,6 +814,9 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	}
 	if tx.BlockTime != nil {
 		s.Time = *tx.BlockTime
+	}
+	if rent > 0 {
+		s.RentQ = rent
 	}
 	// "other": what the user paid minus what the final pool received,
 	// the terminal and the network. Exact on single-pool routes (pump.fun

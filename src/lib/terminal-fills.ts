@@ -109,6 +109,8 @@ export type FillSample = {
   terminalBps: number;
   networkBps: number;
   otherBps?: number;
+  /** SOL deposit of the token accounts the swap created (refundable when closed): shown, not in the loss. */
+  rentUsd?: number;
   /** The two sides in USD: what the user gave and what the user received (the token side at the reference). */
   valueInUsd?: number;
   valueOutUsd?: number;
@@ -255,6 +257,7 @@ function parse(raw: unknown): TerminalFills | null {
         terminalBps: num(s.terminal_bps) ?? 0,
         networkBps: num(s.network_bps) ?? 0,
         ...(num(s.other_bps) !== undefined ? { otherBps: num(s.other_bps) } : {}),
+        ...(num(s.rent_q) !== undefined && num(s.quote_usd) !== undefined ? { rentUsd: (num(s.rent_q) as number) * (num(s.quote_usd) as number) } : {}),
         ...valueSides(s),
       });
     }

@@ -169,7 +169,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
       </div>
 
       <div className="overflow-auto max-h-[70vh] rounded-lg border border-rule">
-        <table className="w-full min-w-[1120px] text-[12px] tabular-nums">
+        <table className="w-full min-w-[1180px] text-[12px] tabular-nums">
           <thead>
             <tr>
               {th("time", "When", "UTC block time", "left")}
@@ -185,6 +185,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th("network", "Net", "tx fee + inclusion tips, bps; on Relay rows the destination gas Relay charged is included")}
               {th(undefined, "Protocol", "launchpad / curve / creator fees (pump.fun, the EVM launchpads), referral payouts, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
+              {th(undefined, "Rent", "SOL deposit of the token accounts the swap created (about 0.002 SOL each), in $: refundable when the account is closed, so not in the loss; on a small trade it can exceed every fee")}
               {th(undefined, "Reference", "exact mid: the pool's reserves before the swap; previous trade: the trade before ours on the same pool, age in seconds", "left")}
               {th(undefined, "Sandwich", "neighbours on the pool screened; a hit links to the front-run, hover for the attacker", "left")}
             </tr>
@@ -259,6 +260,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 text-right text-ink-soft">{Math.round(s.networkBps)}</td>
                 <td className="py-2 px-3 text-right text-ink-soft">{s.otherBps === undefined ? <span className="text-ink-faint">—</span> : Math.round(s.otherBps)}</td>
                 <td className="py-2 px-3 text-right text-ink-soft">{s.poolBps === undefined ? <span className="text-ink-faint">—</span> : Math.round(s.poolBps)}</td>
+                <td className="py-2 px-3 text-right text-ink-faint">{s.rentUsd ? `$${s.rentUsd.toFixed(2)}` : "—"}</td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <RefCell s={s} />
                 </td>
