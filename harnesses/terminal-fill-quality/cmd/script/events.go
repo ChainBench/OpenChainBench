@@ -129,6 +129,58 @@ func eventMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, solUS
 		return launchpadMid(sw, tx, base, solUSD)
 	case "meteora-dlmm":
 		return dlmmMid(ctx, rpc, sw, tx, base, solUSD)
+	case "pump-curve":
+		return pumpCurveMid(sw, tx, base, solUSD)
+	}
+	return 0, false
+}
+
+// pumpCurveMid: the pump.fun curve's mid before the trade from its own
+// TradeEvent (log "Program data:"), which carries the virtual reserves
+// after the trade; x·y = k gives the state before it. The curve's
+// virtual reserves are not constants (on 2026-09-21 a curve went from
+// 30.3 to 16.9 virtual SOL between two trades eight seconds apart: the
+// previous-trade reference then read 80 % above the mid and printed a
+// 4,434 bps impact on a sell that executed 33 bps under the mid), so the
+// event of the transaction itself is the only reference that holds.
+//
+//	TradeEvent: mint(32) sol_amount(u64) token_amount(u64) is_buy(u8)
+//	  user(32) timestamp(i64) virtual_sol(u64) virtual_token(u64)
+//	  real_sol(u64) real_token(u64) …
+//
+// Accepted only when the event's token amount is the vault's own delta.
+func pumpCurveMid(sw *Swap, tx *parsedTx, base vaultInfo, solUSD float64) (float64, bool) {
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8+32+8+8+1+32+8+32 || [8]byte(raw[:8]) != discLaunchTrade {
+			continue
+		}
+		o := 8 + 32
+		solAmount := float64(binary.LittleEndian.Uint64(raw[o:]))
+		tokAmount := float64(binary.LittleEndian.Uint64(raw[o+8:]))
+		isBuy := raw[o+16] != 0
+		o += 8 + 8 + 1 + 32 + 8
+		vSol := float64(binary.LittleEndian.Uint64(raw[o:]))
+		vTok := float64(binary.LittleEndian.Uint64(raw[o+8:]))
+		// Ours when the token amount is the vault's movement (a buy pays the
+		// vault out, a sale fills it).
+		if math.Abs(math.Abs(base.delta)-tokAmount) > 1 || tokAmount <= 0 {
+			continue
+		}
+		var solPre, tokPre float64
+		if isBuy {
+			solPre, tokPre = vSol-solAmount, vTok+tokAmount
+		} else {
+			solPre, tokPre = vSol+solAmount, vTok-tokAmount
+		}
+		if solPre <= 0 || tokPre <= 0 {
+			return 0, false
+		}
+		mid := solPre / 1e9 / (tokPre * math.Pow10(-base.dec)) // SOL per token
+		return toSwapQuote(sw, wsolMint, mid, solUSD)
 	}
 	return 0, false
 }
