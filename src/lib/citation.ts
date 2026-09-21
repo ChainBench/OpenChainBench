@@ -408,3 +408,89 @@ export function isInsufficient(b: InsufficientCheckInput): boolean {
   if (live.length === 0) return true;
   return live.every((r) => !Number.isFinite(r.ms.p50));
 }
+
+/**
+ * Every access cohort of a tier-dimensioned bench as its own citable
+ * unit, headline cohort first. The other cohorts are rebuilt from the
+ * `tierResults` stash the headline blob carries (rows tagged with their
+ * tier), so `leader`, `headlineSentence`, `rankedCandidates` and
+ * `benchPath` apply the same gate and the same wording as the tab that
+ * ranks them. Empty on benches without `dimensions.tier`, so callers
+ * can spread the result into a payload unconditionally.
+ *
+ * One shape for every machine surface (/api/stat, /api/citable,
+ * /api/llm-context, llms.txt, MCP, the page JSON-LD): an agent asked
+ * "which private Base RPC is fastest" finds the answer on the public
+ * page's record instead of having to know about `?tier=keyed`.
+ */
+export type CohortView = {
+  tier: string;
+  label: string;
+  /** True for the cohort the clean URL, title and headline describe. */
+  headline: boolean;
+  /** Benchmark-shaped view of the cohort (results = that cohort's rows). */
+  bench: Benchmark;
+};
+
+export function cohortViews(b: Benchmark): CohortView[] {
+  const tiers = b.dimensions?.tier ?? [];
+  if (tiers.length === 0) return [];
+  const own = b.results.find((r) => r.tier)?.tier ?? b.aggregateFilters?.tier ?? tiers[0].value;
+  const views: CohortView[] = [];
+  for (const t of tiers) {
+    if (t.value === own) {
+      views.push({ tier: t.value, label: t.label, headline: true, bench: b });
+      continue;
+    }
+    const rows = b.tierResults?.[t.value];
+    if (!rows || rows.length === 0) continue;
+    views.push({
+      tier: t.value,
+      label: t.label,
+      headline: false,
+      bench: {
+        ...b,
+        results: rows.map((r) => ({ ...r, tier: t.value })),
+        tierResults: undefined,
+      },
+    });
+  }
+  return views;
+}
+
+export type CohortSummary = {
+  tier: string;
+  label: string;
+  headline: boolean;
+  url: string;
+  api: string;
+  sentence: string;
+  leader: { name: string; slug: string; value: number } | null;
+  measured: number;
+  rankings: Array<{ name: string; slug: string; p50: number; p99: number; successRate: number }>;
+};
+
+/** Compact, JSON-ready summary of every cohort (see cohortViews). */
+export function cohortSummaries(b: Benchmark, origin: string): CohortSummary[] {
+  return cohortViews(b).map((v) => {
+    const top = leader(v.bench);
+    const path = benchPath(v.bench);
+    return {
+      tier: v.tier,
+      label: v.label,
+      headline: v.headline,
+      url: `${origin}${path}`,
+      api: `${origin}/api/stat/${b.slug}${v.headline ? "" : `?tier=${v.tier}`}`,
+      sentence: headlineSentence(v.bench),
+      leader: top ? { name: top.name, slug: top.slug, value: top.value } : null,
+      measured: displayResults(v.bench.results).length,
+      rankings: rankedCandidates(v.bench).map((r) => ({
+        name: r.name,
+        slug: r.slug,
+        p50: r.ms.p50,
+        p99: r.ms.p99,
+        successRate: r.successRate,
+      })),
+    };
+  });
+}

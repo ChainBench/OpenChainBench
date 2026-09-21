@@ -5,6 +5,7 @@ import {
   citableAsOf,
   citationQuote,
   benchPath,
+  cohortSummaries,
   citeBundle,
   fieldValue,
   headlineSentence,
@@ -111,6 +112,12 @@ export async function GET(
     // Missing key = "all" for that dimension.
     filters:
       Object.keys(filters).length > 0 ? filters : null,
+    // Access cohorts of a tier-dimensioned bench (chain RPC pages: the
+    // public endpoints and the private, API-key providers), each with its
+    // own leader, sentence, rankings and URL, ranked apart. Present on
+    // the headline record so one call answers both questions; the
+    // record's own value/leader/rankings describe the requested cohort.
+    ...(cohortSummaries(b, SITE.url).length > 0 ? { cohorts: cohortSummaries(b, SITE.url) } : {}),
     // Aggregate is "insufficient" (median per-provider sample health
     // below 10 percent of expected_n): refuse to publish a value or
     // leader; the headline is rewritten by headlineSentence so the

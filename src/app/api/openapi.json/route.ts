@@ -96,6 +96,14 @@ export async function GET() {
                 "Restrict the response to a specific bench-defined `kind` dimension when the spec declares one.",
             },
             {
+              name: "tier",
+              in: "query",
+              required: false,
+              schema: { type: "string", enum: ["public", "keyed"] },
+              description:
+                "Access cohort on chain RPC benchmarks (<chain>-rpc): 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers such as Alchemy, Chainstack, QuickNode). The two cohorts are ranked apart; the record's value, leader, rankings, quote and pageUrl describe the requested cohort. Unknown values 400.",
+            },
+            {
               name: "venue",
               in: "query",
               required: false,
@@ -344,6 +352,26 @@ export async function GET() {
                 region: { type: "string" },
                 kind: { type: "string" },
                 venue: { type: "string" },
+                tier: { type: "string" },
+              },
+            },
+            cohorts: {
+              type: "array",
+              description:
+                "Chain RPC benchmarks only: every access cohort of the page (public, no key; private, API key), each ranked on its own with its leader, headline sentence, rankings, page URL and JSON URL. Present on both the public and the ?tier=keyed record so one call answers both questions.",
+              items: {
+                type: "object",
+                properties: {
+                  tier: { type: "string" },
+                  label: { type: "string" },
+                  headline: { type: "boolean", description: "True for the cohort the clean page URL and title describe." },
+                  url: { type: "string" },
+                  api: { type: "string" },
+                  sentence: { type: "string" },
+                  leader: { type: "object", nullable: true },
+                  measured: { type: "integer" },
+                  rankings: { type: "array" },
+                },
               },
             },
             rankings: { type: "array" },
