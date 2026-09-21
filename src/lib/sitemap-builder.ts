@@ -398,10 +398,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Chain hub routes. Use chainDimensions from the blob to determine
   // which chains have active benches, mirroring getBenchmarksForChain logic.
   const chainsWithBenches = new Set<string>();
+  const blobSlugs = new Set(blobBenches.map((b) => b.slug));
   for (const b of blobBenches) {
     for (const chainSlug of b.chainDimensions) {
       chainsWithBenches.add(canonicalChainSlug(chainSlug));
     }
+  }
+  // Same slug conventions as getBenchmarksForChain: `<chain>-rpc` and
+  // `keyed-rpc-<chain>` benches carry the chain in their slug, not in a
+  // dimension (Arc's only prod-side bench today is keyed-rpc-arc).
+  for (const c of CHAINS) {
+    if (blobSlugs.has(`${c.slug}-rpc`) || blobSlugs.has(`keyed-rpc-${c.slug}`)) chainsWithBenches.add(c.slug);
   }
   const chainRoutes: MetadataRoute.Sitemap = CHAINS.flatMap((c) => {
     if (!chainsWithBenches.has(c.slug)) return [];

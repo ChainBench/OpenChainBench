@@ -294,6 +294,14 @@ export const CHAINS: ChainEntry[] = [
       "Parallel-execution EVM Layer 1 (mainnet Nov 2025). 400 ms blocks, MonadBFT finality in about 800 ms, full EVM bytecode compatibility.",
   },
   {
+    slug: "arc",
+    label: "Arc",
+    category: "L1",
+    nativeSymbol: "USDC",
+    description:
+      "Circle's EVM Layer 1 for stablecoin finance (mainnet 2026-09-16, chain id 5042). USDC is the gas token, Malachite BFT consensus with sub-second deterministic finality, ~0.5 s blocks, proof-of-authority validator set (BlackRock, DTCC, Visa, Mastercard, ICE among the founding validators).",
+  },
+  {
     slug: "megaeth",
     label: "MegaETH",
     category: "L2",
@@ -1341,10 +1349,15 @@ export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   // the /chains/<slug> hub and had to be filtered from the sitemap by
   // hand (see prior fix #910). New per-chain bench conventions land here.
   const conventionSuffixes = ["-rpc"];
+  // Keyed RPC benches (`keyed-rpc-<chain>`) name the chain as a prefix.
+  const conventionPrefixes = ["keyed-rpc-"];
   const acceptedSlugPatterns = new Set<string>();
   for (const slug of accept) {
     for (const suffix of conventionSuffixes) {
       acceptedSlugPatterns.add(`${slug}${suffix}`);
+    }
+    for (const prefix of conventionPrefixes) {
+      acceptedSlugPatterns.add(`${prefix}${slug}`);
     }
   }
 
