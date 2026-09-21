@@ -31,17 +31,22 @@ const HEX_SLUG_RE = /^0x[0-9a-f]{4,}$/i;
 export type AdHocPair = { a: string; b: string; slug: string };
 
 export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
-  // bench slug → live flag, per provider. A shared bench only counts
-  // toward the threshold when it is live for BOTH providers.
-  const liveBenchesBySlug = new Map<string, Set<string>>();
+  // bench slug → access cohort of the live appearance, per provider. A
+  // shared bench only counts toward the threshold when it is live for
+  // BOTH providers and in the SAME cohort: the compare page resolves
+  // shared benches through sharedBenchSlugs (compare-compute.ts), which
+  // refuses a public row against a keyed row of a chain RPC page, so a
+  // pair counted across cohorts here would be advertised and 404
+  // (10 such URLs in the staging sitemap on 2026-09-21).
+  const liveBenchesBySlug = new Map<string, Map<string, string | null>>();
   for (const p of profiles) {
     if (HEX_SLUG_RE.test(p.slug)) continue;
     if (CHAIN_BY_SLUG.has(p.slug)) continue;
-    const live = new Set<string>();
+    const live = new Map<string, string | null>();
     for (const a of p.appearances) {
       if (a.result.availability === "unavailable") continue;
       if (a.result.ms.p50 <= 0) continue;
-      live.add(a.benchmark.slug);
+      live.set(a.benchmark.slug, a.tier ?? null);
     }
     if (live.size >= 1) liveBenchesBySlug.set(p.slug, live);
   }
@@ -55,7 +60,9 @@ export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
       const bSlug = slugList[j];
       const bBenches = liveBenchesBySlug.get(bSlug)!;
       let sharedLive = 0;
-      for (const s of aBenches) if (bBenches.has(s)) sharedLive += 1;
+      for (const [s, tier] of aBenches) {
+        if (bBenches.has(s) && bBenches.get(s) === tier) sharedLive += 1;
+      }
       // Buffer above the render-time noindex gate (< 2 live shared). The
       // page recomputes on its own ISR clock, so a single bench flapping
       // unavailable/back can drop `liveSharedCount` under 2 for one render

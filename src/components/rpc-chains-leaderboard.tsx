@@ -53,12 +53,16 @@ const INITIAL_ROWS = 40;
 export function RpcChainsLeaderboard({
   rows,
   linkableSlugs,
+  benchQuery = "",
 }: {
   rows: RpcHubChain[];
   /** Bench slugs whose page is indexable (worker sitemap). When given it
    *  replaces the declared-count gate, so an expired chain (data older
    *  than a week, noindex) is shown but not linked. */
   linkableSlugs?: string[];
+  /** Suffix appended to every bench link ("#tier=keyed" on the
+   *  API-key view, so the row opens the cohort it ranks). */
+  benchQuery?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
   const linkableSet = useMemo(
@@ -148,7 +152,7 @@ export function RpcChainsLeaderboard({
                 dir={sortDir}
                 onClick={() => setSort("bestP90")}
               >
-                <span title="p90 latency of the same overall-best provider — the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
+                <span title="p90 latency of the same overall-best provider, the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
                   Best p90
                 </span>
               </ThSort>
@@ -192,7 +196,7 @@ export function RpcChainsLeaderboard({
               return (
               <tr
                 key={r.slug}
-                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}`) : undefined}
+                onClick={linkable ? () => router.push(`/benchmarks/${r.slug}${benchQuery}`) : undefined}
                 className={`border-t border-ink/5 transition-colors ${linkable ? "hover:bg-paper-soft/40 cursor-pointer" : ""}`}
               >
                 <Td muted mono>
@@ -202,7 +206,7 @@ export function RpcChainsLeaderboard({
                   <div className="flex items-center gap-2 min-w-0">
                     {linkable ? (
                     <Link
-                      href={`/benchmarks/${r.slug}`}
+                      href={`/benchmarks/${r.slug}${benchQuery}`}
                       className="flex items-center gap-2 min-w-0 group"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -343,7 +347,7 @@ export function RpcChainsLeaderboard({
                       color="var(--color-ink-soft)"
                     />
                   ) : (
-                    <span className="text-ink-faint">—</span>
+                    <span className="text-ink-faint">n/a</span>
                   )}
                 </Td>
               </tr>

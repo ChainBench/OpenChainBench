@@ -19,7 +19,7 @@ import type {
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
-import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import {
@@ -65,7 +65,12 @@ export type BenchmarkFilters = {
   kind?: string;
   venue?: string;
   amount_usd?: string;
+  /** Access cohort (public / keyed). Selects providers, injects no label. */
+  tier?: string;
 };
+
+const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "tier"] as const;
+type FilterKey = (typeof FILTER_KEYS)[number];
 
 export function filterSig(f: BenchmarkFilters): string {
   // Stable ordering, ignore "all" / undefined which mean "no filter".
@@ -81,8 +86,8 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
   if (!sig) return out;
   for (const kv of sig.split("&")) {
     const [k, v] = kv.split("=");
-    if (k && v && (k === "chain" || k === "region" || k === "kind" || k === "venue" || k === "amount_usd")) {
-      out[k as "chain" | "region" | "kind" | "venue" | "amount_usd"] = v;
+    if (k && v && (FILTER_KEYS as readonly string[]).includes(k)) {
+      out[k as FilterKey] = v;
     }
   }
   return out;
@@ -133,7 +138,7 @@ async function loadSpecsFromDisk(): Promise<Spec[]> {
   // catalog, hubs, feeds or citable API. Direct URL hits get a 410
   // from middleware. Staging/preview/dev render everything.
   if (process.env.VERCEL_ENV === "production") {
-    return specs.filter((s) => !REMOVED_BENCH_SLUGS.has(s.slug));
+    return specs.filter((s) => !REMOVED_BENCH_SLUGS.has(s.slug) && !DEV_ONLY_BENCH_SLUGS.has(s.slug));
   }
   return specs;
 }
@@ -151,6 +156,8 @@ export function buildEditorial(
     disclaimer: spec.disclaimer,
     faq: spec.faq,
     excludedProviders: spec.excluded_providers,
+    window: spec.prometheus?.window,
+    expectedFreshnessSec: spec.prometheus?.expected_freshness_seconds,
     perChainExplainer: spec.per_chain_explainer,
     subtitle: spec.subtitle,
     category: spec.category,
@@ -170,6 +177,7 @@ export function buildEditorial(
     dimensions: spec.dimensions,
     aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
+    ledgerReliability: spec.ledger_reliability,
     providerNotes: spec.provider_notes,
   };
 }
@@ -181,24 +189,71 @@ export function draftPlaceholderForSpec(spec: Spec): Benchmark {
   return draftBenchmark(spec, buildEditorial(spec));
 }
 
+/** The headline tier of a bench that declares `dimensions.tier`: the
+ *  pinned `aggregate_filters.tier`, else the first declared value. */
+export function defaultTier(spec: Spec): string | undefined {
+  const tiers = spec.dimensions?.tier ?? [];
+  if (tiers.length === 0) return undefined;
+  return (spec.aggregate_filters as { tier?: string } | undefined)?.tier ?? tiers[0].value;
+}
+
+/** Tier a spec provider belongs to (spec.provider.tier, else the first
+ *  declared value). Undefined on benches without the dimension. */
+export function providerTier(spec: Spec, p: Spec["providers"][number]): string | undefined {
+  const tiers = spec.dimensions?.tier ?? [];
+  if (tiers.length === 0) return undefined;
+  return p.tier ?? tiers[0].value;
+}
+
+/** Restrict a tier-dimensioned spec to one cohort. The tier dimension
+ *  never touches PromQL: the public and keyed harnesses already emit
+ *  disjoint series (the keyed one pins tier="keyed" in every query),
+ *  so selecting a cohort is selecting providers. Everything downstream
+ *  (augmentation, cell ranks, the {{count}} placeholder, the ledger)
+ *  then sees one cohort and ranks it alone. */
+export function restrictToTier(spec: Spec, tier: string | undefined): Spec {
+  if (!tier || !spec.dimensions?.tier) return spec;
+  return {
+    ...spec,
+    providers: spec.providers.filter((p) => providerTier(spec, p) === tier),
+  };
+}
+
+/** A tier selection is a cohort switch, not a slice: the "filtered"
+ *  semantics (no augmentation of missing providers, no cell ranks) are
+ *  for label filters only. */
+function labelFilters(f: BenchmarkFilters): BenchmarkFilters {
+  const rest: BenchmarkFilters = { ...f };
+  delete rest.tier;
+  return rest;
+}
+
 export async function specToBenchmark(
-  spec: Spec,
+  fullSpec: Spec,
   options: BenchmarkFilters = {},
   hooks?: LoadHooks,
 ): Promise<Benchmark> {
-  const editorial = buildEditorial(spec);
-
   // Merge spec-declared aggregate defaults UNDER the reader's filters:
   // an explicit ?region= / tab selection always wins over the pin. The
   // unfiltered-view semantics below (provider augmentation, "All" copy)
   // key on the reader's filters only, so a pinned aggregate still reads
   // as the bench's headline view rather than a filtered slice.
   const merged: BenchmarkFilters = {
-    ...((spec.aggregate_filters ?? {}) as BenchmarkFilters),
+    ...((fullSpec.aggregate_filters ?? {}) as BenchmarkFilters),
     ...options,
   };
-  const activeLabels = activeFilterLabels(merged);
-  const isFiltered = Object.keys(activeFilterLabels(options)).length > 0;
+  // Tier: select the cohort first, so every step below (including the
+  // editorial base, whose dimensions/aggregate pin are unchanged) works
+  // on one cohort's providers. A reader-supplied tier wins over the pin
+  // and over the first declared value.
+  const activeTier = fullSpec.dimensions?.tier
+    ? merged.tier ?? defaultTier(fullSpec)
+    : undefined;
+  const spec = restrictToTier(fullSpec, activeTier);
+  const editorial = buildEditorial(spec);
+
+  const activeLabels = activeFilterLabels(labelFilters(merged));
+  const isFiltered = Object.keys(activeFilterLabels(labelFilters(options))).length > 0;
   const filteredSpec =
     Object.keys(activeLabels).length > 0
       ? applyDimensionsToSpec(spec, activeLabels)
@@ -211,6 +266,7 @@ export async function specToBenchmark(
     // their "unavailable" marker so no ranking surface counts them.
     for (const r of live.results) {
       if (!r.unresponsive) r.availability = "live";
+      if (activeTier) r.tier = activeTier;
     }
 
     // Augment with spec-declared providers that didn't return data this
@@ -243,7 +299,8 @@ export async function specToBenchmark(
           secondary: p.secondary,
           availability: "unavailable",
           formula: p.formula,
-    endpoint: p.endpoint,
+          endpoint: p.endpoint,
+          ...(activeTier ? { tier: activeTier } : {}),
         });
       }
 
@@ -383,6 +440,40 @@ export async function specToBenchmark(
       }
     }
 
+    // Other tier cohorts, live rows only, on the headline (unfiltered,
+    // default-tier) view of a tier-dimensioned bench: one extra
+    // tryLoadLive per other tier with that cohort's providers. The other
+    // tiers' own variants inherit the headline editorial through the
+    // variant route, so they never need the stash. Powers {{best_name:tier:keyed}} in the
+    // public page's copy, the keyed providers' product-page appearances
+    // and the /rpc hub keyed view. Never augmented: a missing keyed
+    // provider is simply absent from the stash.
+    let tierResults: Record<string, ProviderResult[]> | undefined;
+    if (!isFiltered && activeTier && activeTier === defaultTier(fullSpec) && fullSpec.dimensions?.tier) {
+      const others = fullSpec.dimensions.tier
+        .map((t) => t.value)
+        .filter((t) => t !== activeTier);
+      const entries = await Promise.all(
+        others.map(async (t) => {
+          const cohort = restrictToTier(fullSpec, t);
+          if (cohort.providers.length === 0) return [t, []] as const;
+          const cohortSpec =
+            Object.keys(activeLabels).length > 0
+              ? applyDimensionsToSpec(cohort, activeLabels)
+              : cohort;
+          const rows = await tryLoadLive(cohortSpec, true);
+          if (!rows) return [t, []] as const;
+          for (const r of rows.results) {
+            if (!r.unresponsive) r.availability = "live";
+            r.tier = t;
+          }
+          return [t, liveProviderResults(rows.results)] as const;
+        }),
+      );
+      const stash = Object.fromEntries(entries.filter(([, rows]) => rows.length > 0));
+      if (Object.keys(stash).length > 0) tierResults = stash;
+    }
+
     // Exact per-cell rankings (chain × region) from the spec's single
     // grouped matrix query. Failures are tolerated: badge/product
     // surfaces fall back to the coarser bestPerChain path.
@@ -429,6 +520,7 @@ export async function specToBenchmark(
       bestPerChain,
       worstPerChain,
       providersPerChain,
+      tierResults,
       cellRanks,
       expectedN,
       dataConfidence: agg?.confidence,
@@ -746,6 +838,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
             success: inject(p.queries.success),
             sample_size: inject(p.queries.sample_size),
             series: inject(p.queries.series),
+            ranked: inject(p.queries.ranked),
             live_activity: inject(p.queries.live_activity),
             regions: p.queries.regions?.map((r) => ({
               ...r,
@@ -765,6 +858,16 @@ export function injectLabels(query: string, labels: Record<string, string>): str
   return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
     const additions: string[] = [];
     for (const [k, v] of Object.entries(labels)) {
+      // A selector pinned to the dimension's `all` value is the
+      // unfiltered form of a bench whose harness publishes a pooled
+      // series next to the per-value ones (terminal-fill-quality:
+      // `chain="all"` is the product over every chain); a filter
+      // replaces it instead of adding a second, contradictory matcher.
+      const pinnedAll = new RegExp(`\\b${escapeRe(k)}\\s*=\\s*"all"`);
+      if (pinnedAll.test(inside)) {
+        inside = inside.replace(pinnedAll, `${k}="${escapePromLabelValue(v)}"`);
+        continue;
+      }
       const present = new RegExp(`\\b${escapeRe(k)}\\s*=`).test(inside);
       if (!present) additions.push(`${k}="${escapePromLabelValue(v)}"`);
     }
@@ -889,13 +992,14 @@ async function tryLoadLive(
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
       ]);
-      const [mean, success, sampleSize, slotP50, slotP99, liveActivity] = await Promise.all([
+      const [mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
         q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
+        q.ranked ? prom.scalar(q.ranked) : Promise.resolve(null),
       ]);
 
       // One retry on the load-bearing percentiles. A null here is either
@@ -988,6 +1092,12 @@ async function tryLoadLive(
         tag: p.tag,
         type: p.type,
         layer: p.layer,
+        // Explicit: a row that reached this point has real aggregates,
+        // whatever their sign. liveResults() keeps such a row on a finite
+        // p50, so a signed metric (slippage vs quote: a bridge that beats
+        // its quote is negative) is not dropped by the legacy `p50 > 0`
+        // guard, which only applies to rows without the flag.
+        availability: "live",
         ms: { p50, p90, p99, mean: mean ?? p50 },
         slots:
           slotP50 != null && slotP99 != null
@@ -995,6 +1105,9 @@ async function tryLoadLive(
             : undefined,
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
+        // The rank gate read 0: published (its figures stand), listed
+        // as provisional below the ranked field, never a leader.
+        unrankedLabel: q.ranked && rankGate != null && rankGate <= 0 ? "Provisional" : undefined,
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
@@ -1201,7 +1314,23 @@ async function tryLoadLive(
     // mask the outage.
     let lastRunAt = new Date().toISOString();
     const freshnessMetric = spec.prometheus?.freshness_metric;
-    if (freshnessMetric) {
+    const freshnessTsMetric = spec.prometheus?.freshness_timestamp_metric;
+    if (freshnessTsMetric) {
+      // Value = unix time of the last run (bridge-execution-latency:
+      // executions are pulses, an instant query on them is empty between
+      // runs and used to fall back to "now", so a dead harness read as
+      // "updated 4 min ago" forever).
+      // Ask Prometheus for the AGE, not the timestamp: prom.scalar keeps
+      // 6 significant digits, which rounds a unix time to the nearest
+      // ~1000 s (18:36:50 came back as 17:46:40 on 2026-09-19).
+      const ageSec = await prom.scalar(`time() - max(${freshnessTsMetric})`);
+      if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0 && ageSec < 10 * 365 * 86_400) {
+        lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
+      } else {
+        // No run recorded at all: say so rather than pretending.
+        lastRunAt = new Date(0).toISOString();
+      }
+    } else if (freshnessMetric) {
       const ageSec = await prom.dataAgeSec(freshnessMetric);
       if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
         lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();

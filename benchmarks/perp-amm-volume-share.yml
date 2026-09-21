@@ -27,8 +27,8 @@ abstract: |
   The bench polls six AMM-style perp DEX venues every 5 minutes and
   exposes a rolling 24h USD notional gauge per venue. Sources: GMX V2
   via the public Subsquid squid (gmx.squids.live) summing Arbitrum and
-  Avalanche 24h volume buckets; Gains backend REST API at
-  stats.gains.trade; Ostium via the Ormi subgraph trade entity on Base;
+  Avalanche 24h volume buckets; Gains backend volume-mix API
+  (auto + direct notional, DefiLlama perimeter); Ostium via the Ormi subgraph trade entity on Base;
   Pacifica onchain Solana program state; SynFutures and KiloEx via
   CoinGecko's public derivatives exchange endpoint (trade_volume_24h_btc
   converted to USD via BTC spot price). Each value carries a freshness
@@ -37,7 +37,7 @@ abstract: |
 methodology:
   - "Cadence: every 5 minutes per venue in parallel, 15 second timeout per request."
   - "GMX V2: public Subsquid squid at gmx.squids.live for Arbitrum and Avalanche; queries the most recent 1d volume bucket where timestamp >= now-86400, sums both chains in USD. volumeUsd is a BigInt scaled 1e30; dividing by 1e30 yields USD."
-  - "Gains: stats.gains.trade/volume REST endpoint; totalVolume field gives rolling 24h notional in USD across all chains."
+  - "Gains: Gains backend volume-mix API (backend-global.gains.trade), auto + direct notional per UTC day (opens and closes at full notional, resizes at traded delta, the same perimeter as DefiLlama and bench 266) over Arbitrum, Base, Polygon and MegaETH; rolling 24h = today so far plus the remaining share of yesterday."
   - "Ostium: Ormi-hosted subgraph (api.subgraph.ormilabs.com); sums trade.notional for all trades opened in the last 24h (timestamp_gte=now-86400); notional is in USDC internal units (1e6 per USD)."
   - "Pacifica: onchain reads on the Solana program state for trailing 24h taker notional."
   - "SynFutures: CoinGecko public derivatives exchange endpoint (id=synfutures); trade_volume_24h_btc multiplied by BTC/USD spot price from CoinGecko simple/price. SynFutures uses the oAMM (Oyster AMM) model on Base and Arbitrum."
@@ -90,7 +90,7 @@ providers:
   - slug: gains
     name: Gains
     tag: Synthetic leveraged trading on Arbitrum and Polygon
-    formula: "totalVolume from stats.gains.trade/volume REST API, rolling 24h USD notional across all chains; headline is the 24h time average."
+    formula: "auto + direct notional from the Gains backend volume-mix API (DefiLlama perimeter), today plus the remaining share of yesterday as rolling 24h USD, Arbitrum, Base, Polygon and MegaETH summed; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gains"}[24h])

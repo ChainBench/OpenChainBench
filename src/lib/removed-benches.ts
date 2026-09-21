@@ -38,6 +38,21 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
   // dex-network-coverage bench via the cross-link at the top of the
   // successor page.
   "network-coverage": "asset-registry-coverage",
+  // Keyed RPC cohort folded into the per-chain RPC pages (2026-09-21):
+  // one page per chain, the private (API-key) providers behind the
+  // Endpoints selector. The target is the clean canonical URL; the
+  // `#tier=keyed` fragment opens the Private tab client-side and is not
+  // a distinct document for crawlers. A value may carry a fragment. Only robinhood was ever on production, the
+  // other eight were dev-only, but their URLs were shared.
+  "keyed-rpc-ethereum": "ethereum-rpc#tier=keyed",
+  "keyed-rpc-arbitrum": "arbitrum-rpc#tier=keyed",
+  "keyed-rpc-base": "base-rpc#tier=keyed",
+  "keyed-rpc-bnb": "bnb-rpc#tier=keyed",
+  "keyed-rpc-polygon": "polygon-rpc#tier=keyed",
+  "keyed-rpc-solana": "solana-rpc#tier=keyed",
+  "keyed-rpc-hyperliquid": "hyperliquid-rpc#tier=keyed",
+  "keyed-rpc-robinhood": "robinhood-rpc#tier=keyed",
+  "keyed-rpc-arc": "arc-rpc#tier=keyed",
 };
 
 /**
@@ -56,42 +71,54 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   "which-prediction-market-data-api-is-the-freshest",
 ]);
 
-// Benches that are LIVE on dev/staging but deliberately held out of prod:
-// their spec is not on main, so the page 404s on prod. They must NOT be
-// 410'd (they render fine on staging), so this set is SEPARATE from
-// REMOVED_BENCH_SLUGS and the middleware never reads it. It exists only to
-// keep these dev-only URLs out of the sitemap so the prod indexability smoke
-// test doesn't 404 on a URL that legitimately does not exist on prod.
+/**
+ * Benches that stay on dev / staging / preview and never reach production
+ * (VERCEL_ENV === "production"): still being validated, or held back on
+ * purpose. Enforced generically, so a release needs no per-file surgery:
+ *  1. src/lib/materialize/load.ts drops the specs at loader level on prod,
+ *     so pages 404, and hubs, category pages, /rpc, compare pairs,
+ *     /api/citable, llms.txt, MCP and RSS never list or cite them.
+ *  2. src/lib/sitemap-builder.ts drops them from the worker's blob (the
+ *     worker runs from dev and publishes every bench) and from the
+ *     product recount.
+ *  3. Components tied to one of these benches check that the bench is
+ *     served by this deployment before rendering (TerminalFillSection).
+ * Moving a bench to production = remove its slug here.
+ */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // bridges: 261 on-chain execution, 263 realized cost, 264 SOL->X quotes
+  // (2026-09-22: held on dev with the rest of the bridge work)
   "bridge-execution-latency",
   "bridge-realized-cost",
   "bridge-quote-latency-solana",
-  // perp-daily-volume (266) shipped to dev on 2026-09-14 (#2357), not on
-  // main yet; its sitemap entry 404'd the prod smoke gate and rolled back
-  // the bench 265 deploy (#2375). Remove when 266 ships to prod.
-  "perp-daily-volume",
-  // fiat-onramp-cost (262) goes live on dev on 2026-09-15 (#2317 + headline
-  // switch); not on main until the cohort has more than two keyed
-  // providers. Remove when 262 ships to prod.
-  "fiat-onramp-cost",
-  // trading-app-daily-volume (267) is dev-only; the blob listed it and the
-  // prod sitemap smoke 404'd, rolling back the Serialized deploy (#2422).
-  "trading-app-daily-volume",
-  // keyed RPC cohort (dev #2442, 2026-09-18): pages exist on dev only until
-  // the cohort has data from 3+ providers per chain. Robinhood (243) stays
-  // live on main in its Singapore-only form.
-  // terminal-fill-quality (268) is dev-only (2026-09-19); the dev-built
-  // blob lists it and the prod sitemap smoke would 404.
+  // 268 terminal fill quality: method still moving (13 audits, last change
+  // 2026-09-21)
   "terminal-fill-quality",
-  "keyed-rpc-ethereum",
-  "keyed-rpc-arbitrum",
-  "keyed-rpc-base",
-  "keyed-rpc-bnb",
-  "keyed-rpc-polygon",
-  "keyed-rpc-solana",
-  "keyed-rpc-hyperliquid",
-  "keyed-rpc-arc",
 ]);
+
+/**
+ * Routes (whole pages, with their API) that stay off production the same
+ * way: the page renders notFound() on prod, the sitemap, the footer,
+ * llms.txt and the /rpc hub stop linking them there. Staging shows them.
+ */
+export const DEV_ONLY_ROUTES = new Set([
+  // browser RPC speed test and the crowdsourced latency map (2 cells,
+  // 32 samples on 2026-09-21: not ready for an audience)
+  "/speedtest-rpc",
+  "/rpc-map",
+]);
+
+export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
+
+/** True when this deployment must not serve the bench. */
+export function isDevOnlyBench(slug: string): boolean {
+  return IS_PRODUCTION && DEV_ONLY_BENCH_SLUGS.has(slug);
+}
+
+/** True when this deployment must not serve the route. */
+export function isDevOnlyRoute(path: string): boolean {
+  return IS_PRODUCTION && DEV_ONLY_ROUTES.has(path);
+}
 
 export const REMOVED_BENCH_SLUGS = new Set([
   // retired for good

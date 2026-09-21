@@ -109,6 +109,8 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchAster(v)
 	case "edgex":
 		return fetchEdgex(v)
+	case "ondo":
+		return fetchOndo(v)
 	default:
 		return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 	}

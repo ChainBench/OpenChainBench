@@ -3,8 +3,8 @@
 slug: perp-mark-price-lag
 number: "118"
 title: "Perp DEX mark price fidelity: deviation from CEX spot reference, live"
-seo_title: "Perp DEX mark price accuracy 2026"
-seo_description: "{{best_name}} leads mark price fidelity at {{best_p50}} bps deviation from CEX spot (24h p50). Oracle-priced venues vs orderbook venues on ETH, BTC and SOL. Gains, GMX, Hyperliquid, dYdX, Lighter, Paradex ranked live."
+seo_title: "Perp mark price accuracy: {{best_name}} at {{best_p50}} off spot"
+seo_description: "{{best_name}} leads mark price fidelity at {{best_p50}} deviation from CEX spot (24h p50). Oracle-priced venues vs orderbook venues on ETH, BTC and SOL. Gains, GMX, Hyperliquid, dYdX, Lighter, Paradex ranked live."
 subtitle: "Median absolute deviation in basis points between each venue's mark price and a Binance spot reference, measured every 60 seconds on ETH, BTC and SOL. Lower means the venue's mark price stays closer to the CEX spot consensus. Oracle-priced venues use a real-time price feed anchored to CEX spot; orderbook venues derive their mark from their own book."
 category: Trading
 status: live
@@ -22,9 +22,10 @@ seo_intro: |
   how far each venue's live mark price sits from a Binance spot reference
   on ETH, BTC and SOL, sampled every 60 seconds. Oracle-priced venues
   (Gains, GMX v2) source their mark from a real-time price oracle
-  (Pyth or Chainlink) that itself tracks CEX spot continuously. Their
-  deviation from Binance spot is therefore structurally small: the oracle
-  interpolates from the same underlying CEX feed we use as reference.
+  (Pyth, Chainlink) that itself tracks CEX spot continuously; the harness
+  reads the mark each venue actually publishes (Gains' pricing backend,
+  GMX's oracle price API), not the oracle behind it, so their deviation
+  is measured, not assumed.
   Orderbook venues (Hyperliquid, dYdX, Lighter, Paradex) derive their
   mark price from their own book, which can temporarily diverge from the
   broader market during low-liquidity windows or fast-moving events. The
@@ -37,12 +38,10 @@ abstract: |
   The harness polls each venue's published mark price every 60 seconds
   alongside a Binance spot reference price (best bid/ask mid). Mark price
   deviation is defined as the absolute value of (mark - reference) /
-  reference x 10000, in basis points. For oracle-priced venues
-  (Gains, GMX v2) the harness reads the Pyth price feed for the
-  same asset, which is the primary oracle both protocols weight heavily
-  in their mark price computation. Pyth updates sub-second from market
-  maker quotes that track CEX spot, so the deviation from Binance spot
-  is near zero structurally. For Hyperliquid the harness reads markPx
+  reference x 10000, in basis points. For Gains the harness reads the
+  venue's pricing backend (the price its front end and its trades use);
+  for GMX v2 it reads the oracle price the GMX v2 API publishes for
+  Arbitrum (mid of the min and max prices). For Hyperliquid the harness reads markPx
   from the metaAndAssetCtxs endpoint. For dYdX v4 it reads indexPrice
   from the perpetualMarkets indexer endpoint. For Lighter and Paradex
   it reads the orderbook mid as an approximation of their mark price.
@@ -55,8 +54,8 @@ abstract: |
 methodology:
   - "Cadence: every 60 seconds in parallel across all venues. Reference price and venue mark prices are fetched in the same cycle, so the comparison is time-aligned."
   - "Reference price: Binance REST /api/v3/ticker/bookTicker for the selected asset (ETHUSDT, BTCUSDT, SOLUSDT). The harness uses the mid of best bid and best ask as the reference."
-  - "Gains (Gains v8, oracle-priced): Pyth hermes API /v2/updates/price/latest for the ETH/USD, BTC/USD, SOL/USD feed IDs. Pyth is the primary real-time oracle Gains v8 weights in its mark price computation. Deviation from Binance spot is structurally near zero."
-  - "GMX v2 (oracle-priced): same Pyth hermes API endpoint. GMX v2 uses Chainlink as primary oracle; Pyth prices are an accepted proxy since both track CEX spot within 1 bps in normal conditions. Conservative labelling: formula tooltip notes the Pyth proxy."
+  - "Gains (Gains v8, oracle-priced): GET backend-pricing.eu.gains.trade/charts, the venue's own pricing backend (the price its front end and its trades use), BTC/USD, ETH/USD and SOL/USD pairs. A snapshot older than 60 seconds is treated as a failure, never as a price. Until 2026-09-20 the harness read a Pyth Hermes proxy instead; that endpoint went behind API keys on 2026-08-27 and the row was empty for 24 days."
+  - "GMX v2 (oracle-priced): GET arbitrum-api.gmxinfra.io/prices/tickers, the oracle price GMX v2 publishes per token on Arbitrum; the harness uses the mid of minPrice and maxPrice, scaled from GMX's 30-decimal fixed point. Same 2026-09-20 switch from the Pyth proxy as Gains."
   - "Hyperliquid: POST /info {type:metaAndAssetCtxs} returns markPx per asset. This is the venue's own mark price used for P&L and liquidations, derived from their HyperBFT oracle."
   - "dYdX v4: GET /v4/perpetualMarkets from the dYdX indexer returns indexPrice per market. indexPrice is the oracle-anchored price dYdX uses for margin and liquidation calculations."
   - "Lighter: orderbook mid computed from GET /api/v1/orderBookOrders best bid and ask. Lighter does not publish a separate mark price endpoint; the orderbook mid is the closest available approximation."
@@ -67,7 +66,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads mark price fidelity at {{best_p50}} bps median deviation from Binance spot (24h p50 across ETH, BTC and SOL)."
-  - "{{name:gains}} and {{name:gmx}} are the oracle-priced venues: their mark price is derived from Pyth, which itself aggregates from CEX market makers and tracks Binance spot within 1 bps in normal conditions. Their structural deviation is near zero."
+  - "{{name:gains}} sits at {{p50:gains}} bps and {{name:gmx}} at {{p50:gmx}} bps median deviation. Both are oracle-priced (Pyth, Chainlink), and both feeds aggregate CEX market-maker quotes, so they track Binance spot closely; the residual is the oracle's own update latency."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} bps median deviation. Hyperliquid's oracle is a volume-weighted median of external CEX prices, so it tracks spot closely but with a short latency window."
   - "{{name:dydx}} sits at {{p50:dydx}} bps median deviation. dYdX uses an oracle-anchored index price that lags spot by at most a few seconds under normal conditions."
   - "{{name:lighter}} and {{name:paradex}} derive their mark from their orderbook, which can diverge from spot during low-liquidity windows."
@@ -84,9 +83,9 @@ faq:
   - q: "What is the mark price and why does its deviation matter?"
     a: "The mark price is the price each venue uses to compute unrealised P&L, trigger liquidations and settle funding payments. A mark price that diverges significantly from the real market price creates liquidation risk: a long position can be margin-called at a loss even if the actual market price never touched the liquidation level."
   - q: "Why do oracle-priced venues structurally win this bench?"
-    a: "Oracle-priced venues (Gains, GMX v2) derive their mark from an external price oracle such as Pyth or Chainlink. Both oracles aggregate from CEX market maker quotes that continuously track Binance spot, so the deviation is structurally near zero. Orderbook venues derive their mark from their own book, which can temporarily lag or diverge from the broader market."
-  - q: "What is the Pyth proxy used for Gains and GMX?"
-    a: "The harness reads the Pyth hermes REST API for the ETH/USD, BTC/USD and SOL/USD price IDs. This is used as the oracle-priced mark proxy for both gains and gmx. Gains v8 weights Pyth heavily; GMX v2 primarily uses Chainlink. The methodology tooltip on each row discloses this proxy. Chainlink ETH/USD on Arbitrum tracks Pyth ETH/USD within 1 bps in normal conditions."
+    a: "Oracle-priced venues (Gains, GMX v2) derive their mark from an external price oracle such as Pyth or Chainlink. Both oracles aggregate from CEX market maker quotes that continuously track Binance spot, so their deviation stays small: today {{p50:gains}} bps for Gains and {{p50:gmx}} bps for GMX v2. Orderbook venues derive their mark from their own book, which can temporarily lag or diverge from the broader market. Whether an oracle venue actually beats the best orderbook venue is what the table shows, not a given."
+  - q: "Where do the Gains and GMX mark prices come from?"
+    a: "From the venues themselves. Gains: its pricing backend (backend-pricing.eu.gains.trade), the price its front end displays and its trades execute at. GMX v2: the oracle price its API publishes for Arbitrum (mid of min and max). Before 2026-09-20 the harness read a Pyth feed as a proxy for both; Pyth's public endpoint went behind API keys on 2026-08-27 and the two rows were empty until the switch."
   - q: "Does this bench capture scam wicks?"
     a: "No. Scam wicks that resolve within a single 60-second poll interval are not captured. This bench measures the persistent component of mark price divergence: how far a venue typically sits from CEX spot across a full day of 60-second samples. Sub-second wick analysis requires websocket resolution on both sides simultaneously."
   - q: "What does the signed deviation metric show?"
@@ -103,8 +102,8 @@ dimensions:
 providers:
   - slug: gains
     name: Gains
-    tag: "Oracle-priced via Pyth on Base, structurally near-zero deviation"
-    formula: "24h p50 of abs(Pyth ETH/USD price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Pyth is the primary real-time oracle weighted by Gains v8. Binance spot mid is the reference."
+    tag: "Oracle-priced (Pyth), mark read from the venue's pricing backend"
+    formula: "24h p50 of abs(Gains mark - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Mark from backend-pricing.eu.gains.trade/charts (BTC, ETH, SOL pairs). Binance spot mid is the reference."
     queries:
       p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="gains"}[24h])
@@ -116,8 +115,8 @@ providers:
 
   - slug: gmx
     name: GMX v2
-    tag: "Oracle-priced, Pyth proxy for Chainlink on Arbitrum"
-    formula: "24h p50 of abs(Pyth ETH/USD price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. GMX v2 uses Chainlink as primary oracle; Pyth is used as an accepted proxy. Disclosed in methodology."
+    tag: "Oracle-priced (Chainlink), mark read from the GMX v2 oracle API on Arbitrum"
+    formula: "24h p50 of abs(GMX oracle price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Mark = mid of minPrice and maxPrice from arbitrum-api.gmxinfra.io/prices/tickers. Binance spot mid is the reference."
     queries:
       p50: quantile_over_time(0.50, perp_mark_deviation_bps{venue="gmx"}[24h])
       p90: quantile_over_time(0.90, perp_mark_deviation_bps{venue="gmx"}[24h])

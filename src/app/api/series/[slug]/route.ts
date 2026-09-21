@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasSeriesHistory, loadSeriesHistory } from "@/lib/series-history";
 import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
 import { filterSig, loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
@@ -37,10 +38,28 @@ const getSeriesMapCached = unstable_cache(
     kind: string | undefined,
     venue: string | undefined,
     panelId: string | undefined,
+    tier: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
+    // ── Harness-backfilled history (bench 266 and friends) ──────────────
+    // Prom only holds samples since the first scrape; a bench whose
+    // harness keeps a year of daily points serves every range from that
+    // history instead (main series only, panels stay on Prom).
+    if (!panelId && hasSeriesHistory(slug)) {
+      const specs = await loadSpecsUncached();
+      const spec = specs.find((s) => s.slug === slug);
+      if (spec) {
+        const fromHistory = await loadSeriesHistory(
+          slug,
+          range,
+          spec.providers.map((p) => p.slug),
+        );
+        if (fromHistory) return fromHistory;
+      }
+    }
+
     // ── Standard ranges (7d / 30d): blob → Redis → live build ──────────
     if (range === "7d" || range === "30d") {
-      const sig = filterSig({ chain, region, kind, venue });
+      const sig = filterSig({ chain, region, kind, venue, tier });
       const stored =
         (await loadSnapshotFromBlob(slug, sig)) ??
         (await readMaterialized(slug, sig));
@@ -90,7 +109,7 @@ const getSeriesMapCached = unstable_cache(
         return Object.keys(result).length > 0 ? result : null;
       }
 
-      const b = await specToBenchmark(spec, { chain, region, kind, venue });
+      const b = await specToBenchmark(spec, { chain, region, kind, venue, tier });
       return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
     }
 
@@ -139,7 +158,7 @@ const getSeriesMapCached = unstable_cache(
     return Object.keys(result).length > 0 ? result : null;
   },
   // v8: denser 90d/1y resolution (6h / 18h step) so young benches render at full fidelity.
-  ["series-by-range-v8"],
+  ["series-by-range-v9"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -222,8 +241,8 @@ export async function GET(
     );
   }
 
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
-  for (const dim of ["chain", "region", "kind", "venue"] as const) {
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
     // Canonical-aware matching: the chain dimension may still hold the
@@ -262,6 +281,7 @@ export async function GET(
         filters.kind,
         filters.venue,
         panelId,
+        filters.tier,
       ),
       hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
     ]);

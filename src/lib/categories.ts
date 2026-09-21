@@ -31,7 +31,8 @@ export type Category =
   | "RPCs"
   | "NFT APIs"
   | "Explorers"
-  | "RWA";
+  | "RWA"
+  | "On-ramps";
 
 export type CategoryEntry = {
   /** URL slug. Lowercase, kebab-case, ASCII. */
@@ -107,6 +108,13 @@ export const CATEGORIES: readonly CategoryEntry[] = [
     heading: "NFT API benchmarks",
     description:
       "Benchmarks that compare NFT data API providers on collection metadata coverage, freshness, and the indexing depth that production NFT marketplaces and wallets depend on.",
+  },
+  {
+    slug: "on-ramps",
+    label: "On-ramps",
+    heading: "On-ramp benchmarks",
+    description:
+      "Live measurements of fiat to crypto on-ramps. What a retail buyer actually pays per unit of crypto once the declared fee, the network fee and the spread hidden in the provider's rate are folded into one number against an exchange mid, quoted every five minutes from one region.",
   },
 ];
 

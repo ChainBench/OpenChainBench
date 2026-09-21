@@ -114,6 +114,25 @@ const nextConfig: NextConfig = {
         headers: SECURITY_HEADERS,
       },
       {
+        // The RPC speed test fires fetch() at user-supplied endpoints
+        // straight from the browser — the whole product. The site-wide
+        // connect-src allowlist blocked every probe (surfaced as a fake
+        // "CORS" failure on endpoints that are actually CORS-open, e.g.
+        // publicnode). Open connect-src to any https origin on THIS
+        // route only; every other directive keeps the tight policy.
+        source: "/speedtest-rpc",
+        headers: [
+          ...SECURITY_HEADERS.filter((h) => h.key !== "Content-Security-Policy"),
+          {
+            key: "Content-Security-Policy",
+            value: CSP.replace(
+              /connect-src [^;]+/,
+              `connect-src 'self' https: ${RELAY_WS}`,
+            ),
+          },
+        ],
+      },
+      {
         // Badges are designed to be embedded as <img> in third-party
         // READMEs and blogs. Override frame-ancestors so SVG embedding
         // via <iframe>/<object> also works. Drop the X-Frame-Options
@@ -237,6 +256,18 @@ const nextConfig: NextConfig = {
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },
       { source: "/providers/:slug", destination: "/products/:slug", permanent: true },
+      // 2026-09-17: one canonical page per product. The per-entity detail
+      // routes under /hyperliquid and /perp folded into /products/<slug>
+      // as views behind the pill bar; the hash opens the matching view.
+      // The /hyperliquid and /perps hubs (no slug) are untouched.
+      // The hub's own image routes (/hyperliquid/opengraph-image) must
+      // not match: a bare :slug would 308 them to a 404.
+      {
+        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon).*)",
+        destination: "/products/:slug#hl",
+        permanent: true,
+      },
+      { source: "/perp/:slug", destination: "/products/:slug#perp", permanent: true },
       {
         source: "/benchmarks/rpc-latency",
         destination: "/benchmarks/rpc-capabilities",

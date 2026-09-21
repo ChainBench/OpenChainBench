@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"sync"
 	"time"
 )
@@ -89,13 +90,13 @@ const (
 // on perp_venue_last_refresh_unix{source=...} and
 // perp_cohort_stats_source_used{source=...}.
 const (
-	srcHLNative      = "hl_native"
-	srcLighterNative = "lighter_native"
-	srcDydxNative    = "dydx_native"
-	srcParadexNative = "paradex_native"
-	srcEdgexNative   = "edgex_native"
-	srcAsterNative   = "aster_native"
-	srcVertexNative  = "vertex_native"
+	srcHLNative          = "hl_native"
+	srcLighterNative     = "lighter_native"
+	srcDydxNative        = "dydx_native"
+	srcParadexNative     = "paradex_native"
+	srcEdgexNative       = "edgex_native"
+	srcAsterNative       = "aster_native"
+	srcVertexNative      = "vertex_native"
 	srcGrvtNative        = "grvt_native"
 	srcExtendedNative    = "extended_native"
 	srcAevoNative        = "aevo_native"
@@ -109,9 +110,10 @@ const (
 	srcKiloExNative      = "kiloex_native"
 	srcOrderlyNative     = "orderly_native"
 	srcBackpackNative    = "backpack_native"
+	srcOndoNative        = "ondo_native"
 	srcDefillama         = "defillama"
-	srcMobulaPairs   = "mobula_pairs"
-	srcMobulaFund    = "mobula_funding"
+	srcMobulaPairs       = "mobula_pairs"
+	srcMobulaFund        = "mobula_funding"
 )
 
 // priorityMap returns the ordered source preference for (venue, metric).
@@ -121,6 +123,8 @@ func priorityMap(venue, metric string) []string {
 	switch metric {
 	case mVolume24h:
 		switch venue {
+		case "ondo":
+			return []string{srcOndoNative}
 		case "hyperliquid":
 			return []string{srcHLNative, srcDefillama}
 		case "lighter":
@@ -190,6 +194,8 @@ func priorityMap(venue, metric string) []string {
 		}
 	case mOI:
 		switch venue {
+		case "ondo":
+			return []string{srcOndoNative}
 		case "hyperliquid":
 			return []string{srcHLNative, srcDefillama}
 		case "lighter":
@@ -235,6 +241,8 @@ func priorityMap(venue, metric string) []string {
 		return []string{srcDefillama}
 	case mActiveMarkets:
 		switch venue {
+		case "ondo":
+			return []string{srcOndoNative}
 		case "hyperliquid":
 			return []string{srcHLNative}
 		case "lighter":
@@ -278,6 +286,8 @@ func priorityMap(venue, metric string) []string {
 		}
 	case mTopVol24h:
 		switch venue {
+		case "ondo":
+			return []string{srcOndoNative}
 		case "hyperliquid":
 			return []string{srcHLNative}
 		case "lighter":
@@ -370,6 +380,7 @@ func NewRouter(cfg *Config) *Router {
 		NewKiloExNativeSource(),
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
+		NewOndoNativeSource(),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {
@@ -477,6 +488,15 @@ func (r *Router) Sweep() {
 	// Resolve each (venue, metric) using priorityMap. Run cross-check
 	// against the next source in the priority list.
 	cohortMetrics := []string{mVolume24h, mVolume30d, mOI, mFees30d, mActiveMarkets, mTopVol24h, mTVL}
+	// perp_venue_health is the share of a venue's metrics sourced this tick
+	// and the site shows it as the row's success rate. volume_30d has had no
+	// free source since DefiLlama moved perp volume to its paid tier
+	// (2026-07); the /perps hub derives it from our own 24 h history. Left
+	// in the denominator it pinned every venue at 6/7 = 85.7 % for weeks, a
+	// number that read as a reliability problem on four bench pages. It is
+	// still attempted (a native source may serve it one day) but does not
+	// count toward health.
+	healthExempt := map[string]bool{mVolume30d: true}
 	for _, v := range Registry {
 		var healthHits, healthTotal int
 		for _, metric := range cohortMetrics {
@@ -484,7 +504,9 @@ func (r *Router) Sweep() {
 			if len(prio) == 0 {
 				continue
 			}
-			healthTotal++
+			if !healthExempt[metric] {
+				healthTotal++
+			}
 
 			var winner string
 			var winnerVal float64
@@ -513,7 +535,9 @@ func (r *Router) Sweep() {
 			}
 
 			if winnerFound {
-				healthHits++
+				if !healthExempt[metric] {
+					healthHits++
+				}
 				publishCohort(v.Slug, metric, winnerVal)
 				perpVenueLastRefreshUnix.WithLabelValues(v.Slug, winner).Set(float64(tickTS))
 				// Reset source-used label set for this (venue, metric)
@@ -553,13 +577,26 @@ func (r *Router) Sweep() {
 	// Registry. The funding gauge surface is used by adjacent UI
 	// panels (CEFI vs DEX funding spread, cross-venue funding
 	// arbitrage), so the broader cardinality is intentional.
-	mobula := byName[srcMobulaFund]
-	if mobula != nil {
-		for venueSlug, perAsset := range mobula.Funding {
+	// Mobula first, then every native source that reports funding (Ondo,
+	// Polymarket): a venue Mobula does not list still gets a row, and a
+	// venue's own rate wins over the aggregator's when both exist.
+	fundingSources := []string{srcMobulaFund}
+	for name := range byName {
+		if name != srcMobulaFund {
+			fundingSources = append(fundingSources, name)
+		}
+	}
+	sort.Strings(fundingSources[1:])
+	for _, name := range fundingSources {
+		src := byName[name]
+		if src == nil {
+			continue
+		}
+		for venueSlug, perAsset := range src.Funding {
 			for asset, p := range perAsset {
 				perpVenueFunding24hBps.WithLabelValues(venueSlug, asset).Set(p.Bps24h)
 				perpVenueFundingIntervalHours.WithLabelValues(venueSlug, asset).Set(p.IntervalHours)
-				perpVenueLastRefreshUnix.WithLabelValues(venueSlug, srcMobulaFund).Set(float64(tickTS))
+				perpVenueLastRefreshUnix.WithLabelValues(venueSlug, name).Set(float64(tickTS))
 				r.fundingCarrySet(venueSlug, asset, p, tickTS)
 			}
 		}

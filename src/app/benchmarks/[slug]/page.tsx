@@ -9,10 +9,13 @@ import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
 import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
+import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
-import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults } from "@/lib/provider-filters";
+import { AnswersForBench } from "@/components/answers-for-bench";
+import { isThinRpcBench, isStaleBench, isExpiredBench, displayResults, liveResults } from "@/lib/provider-filters";
+import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
 import { PublicEndpointsSection, publicEndpointRows } from "@/components/public-endpoints-section";
 import { RpcSiblingChains } from "@/components/rpc-sibling-chains";
 import { CitationBar } from "@/components/citation-bar";
@@ -24,6 +27,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import {
   citableAsOf,
   groundingTraceLine,
+  cohortViews,
   groundingTraceParts,
   headlineSentence,
   isInsufficient,
@@ -39,6 +43,8 @@ import {
   buildBenchDatasetJsonLd,
   buildBenchStatReportJsonLd,
   buildBenchVariableMeasured,
+  CREATOR_PUBLISHER,
+  DATASET_LICENSE,
 } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
@@ -281,6 +287,16 @@ export default async function BenchmarkPage({
       : (aggregate.dimensions?.venue ?? []).filter(
           (v) => v.value === "all" || venuesWithData.has(v.value),
         );
+  // Access tiers: the headline cohort (aggregate pin, else the first
+  // declared value) leads the selector so the clean URL is that tab.
+  const declaredTiers = aggregate.dimensions?.tier ?? [];
+  const headlineTier = aggregate.aggregateFilters?.tier ?? declaredTiers[0]?.value ?? null;
+  const tierOptions = headlineTier
+    ? [
+        ...declaredTiers.filter((t) => t.value === headlineTier),
+        ...declaredTiers.filter((t) => t.value !== headlineTier),
+      ]
+    : [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
@@ -436,11 +452,72 @@ export default async function BenchmarkPage({
         description: groundingLine,
       })
     : null;
+  // Other access cohorts (chain RPC pages: the private, API-key
+  // providers ranked behind the Endpoints selector). Each gets its own
+  // Dataset part (@id #tier=<t>, url clean) and, when it has a citable leader, its
+  // own StatisticalReport, so an answer engine reading this page finds
+  // "fastest private Base RPC" as a distinct, dated claim and never
+  // folds it into the public one.
+  const cohortNodes = cohortViews(benchmark)
+    .filter((v) => !v.headline)
+    .flatMap((v) => {
+      // One document, two cohorts: the page URL with a fragment for
+      // `url` (the tab that ranks these rows), distinct `@id`s on the
+      // clean URL so the graph never mints a second document.
+      const url = `${benchmarkUrl}#tier=${v.tier}`;
+      const partId = `${benchmarkUrl}#tier-${v.tier}-dataset`;
+      const reportId = `${benchmarkUrl}#tier-${v.tier}-report`;
+      const top = leader(v.bench);
+      const name = `${benchmark.seoTitle ?? benchmark.title}, ${v.label.toLowerCase()} cohort`;
+      const description = groundingTraceLine(v.bench, SITE.url);
+      const part = {
+        "@type": "Dataset",
+        "@id": partId,
+        name,
+        description,
+        url,
+        identifier: `${benchmark.slug}#tier=${v.tier}`,
+        isPartOf: { "@id": `${benchmarkUrl}#dataset` },
+        sameAs: [`${SITE.url}/api/stat/${benchmark.slug}?tier=${v.tier}`],
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
+        isAccessibleForFree: true,
+        license: DATASET_LICENSE,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
+        ...(citableAsOf(benchmark) ? { dateModified: benchmark.lastRunAt } : {}),
+        variableMeasured,
+        measurementTechnique: benchmark.methodology.join(" "),
+      };
+      const built = top
+        ? buildBenchStatReportJsonLd({
+            slug: benchmark.slug,
+            benchTitle: name,
+            metric: benchmark.metric,
+            metricUnit: benchmark.unit,
+            leaderName: top.name,
+            leaderValue: valueInDeclaredUnit(top.value, benchmark.unit),
+            temporalCoverage: `${getBenchCreatedAt(benchmark.slug).toISOString()}/${benchmark.lastRunAt}`,
+            observationDate: benchmark.lastRunAt,
+            url,
+            measurementTechnique: benchmark.methodology[0] ?? benchmark.metric,
+            description,
+          })
+        : null;
+      const report = built
+        ? {
+            ...built,
+            "@id": reportId,
+            isBasedOn: { ...(built.isBasedOn as Record<string, unknown>), "@id": partId },
+          }
+        : null;
+      return report ? [part, report] : [part];
+    });
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       datasetNode,
       ...(statReportNode ? [statReportNode] : []),
+      ...cohortNodes,
       {
         "@type": "TechArticle",
         "@id": `${benchmarkUrl}#article`,
@@ -489,8 +566,20 @@ export default async function BenchmarkPage({
   // don't leak into the SERP snippet. The visible FAQ section below
   // mirrors every question/answer, satisfying Google's "content visible
   // on the page" requirement.
+  // Template questions shared by 80+ chain RPC specs ("Which <chain> RPCs
+  // work without an API key?", "How is <chain> RPC latency measured
+  // here?") stay visible but leave the FAQPage node: 112 near-identical
+  // FAQPage graphs read as scaled content (audit 2026-09-21). The
+  // chain-specific questions (official endpoint, removals, the private
+  // cohort's leader) keep the rich result.
+  const SHARED_RPC_FAQ_RE =
+    /^(which .+? rpcs? (?:endpoints )?work without an api key|how is .+? rpc latency measured)/i;
+  const faqForJsonLd =
+    benchmark.slug.endsWith("-rpc")
+      ? (benchmark.faq ?? []).filter((f) => !SHARED_RPC_FAQ_RE.test(f.q))
+      : benchmark.faq;
   const faqJsonLd = buildFaqPageJsonLd(
-    benchmark.faq,
+    faqForJsonLd,
     benchmarkUrl,
     null,
     `${benchmark.title}: frequently asked questions`,
@@ -499,6 +588,22 @@ export default async function BenchmarkPage({
   // The RPC TL;DR announces the endpoints table (the "<chain> rpc"
   // searcher's question), with the count that table shows.
   const publicEndpointCount = isDraft ? 0 : publicEndpointRows(benchmark).length;
+  // Hostnames of the public endpoints and the private providers, for the
+  // TL;DR's first-screen answer. Hosts only: the copyable URLs live in
+  // the endpoints block under the table.
+  const publicEndpointHosts = isDraft
+    ? []
+    : publicEndpointRows(benchmark).map((r) => {
+        try {
+          return new URL(r.endpoint as string).host;
+        } catch {
+          return r.name;
+        }
+      });
+  const rpcChainId = benchmark.slug.endsWith("-rpc")
+    ? EVM_CHAIN_IDS[benchmark.slug.replace(/-rpc$/, "")]
+    : undefined;
+  const keyedNames = liveResults(benchmark.tierResults?.keyed ?? []).map((r) => r.name);
   return (
     <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
@@ -548,7 +653,11 @@ export default async function BenchmarkPage({
         )}
         {!isDraft && !insufficient && (
           <span className="ml-auto">
-            <LiveIndicator lastRunAt={benchmark.lastRunAt} slug={benchmark.slug} />
+            <LiveIndicator
+              lastRunAt={benchmark.lastRunAt}
+              slug={benchmark.slug}
+              staleAfterSec={Math.max(300, benchmark.expectedFreshnessSec ?? 300)}
+            />
           </span>
         )}
       </div>
@@ -596,20 +705,26 @@ export default async function BenchmarkPage({
             {publicEndpointCount >= 2 && (
               <>
                 {" "}
-                Endpoint URLs for the {publicEndpointCount} public providers
-                are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>.
+                {/* The "<chain> rpc" searcher's answer in the first screen
+                    (audit 2026-09-21: the URL list started at word 600):
+                    chain id and the hostnames here, the full URLs with
+                    copy buttons under the ranked table. */}
+                {rpcChainId ? <>Chain ID {rpcChainId}. </> : null}
+                {publicEndpointCount} public endpoints, no key:{" "}
+                {publicEndpointHosts.join(", ")}. Full URLs with their 24h
+                median are listed <a href="#public-endpoints" className="underline underline-offset-2">below</a>
+                {keyedNames.length > 0 ? (
+                  <>
+                    ; {keyedNames.join(", ")} (private, API key) are ranked apart under the{" "}
+                    <a href="#tier=keyed" className="underline underline-offset-2">Private tab</a>
+                  </>
+                ) : null}
+                .
               </>
             )}
           </p>
         </section>
       )}
-
-      {/* Public endpoint URLs directly under the TL;DR: the "<chain> rpc"
-          searcher wants chain ID, URL and the provider list in the first
-          screen, before the intro prose (audit 2026-09-19 round 3: the
-          block started at word 1,145 on blast-rpc). Renders only when at
-          least two providers declare a public no-key `endpoint`. */}
-      {!isDraft && <PublicEndpointsSection benchmark={benchmark} />}
 
       {/* Companion hub callout. A handful of benches have a curated
           landing page that sits next to (not in place of) the bench
@@ -779,19 +894,39 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <Suspense fallback={<StaticLedger benchmark={benchmark} />}>
+        <Suspense
+          // The served HTML is this fallback (useSearchParams in the body
+          // bails out of static rendering): the endpoint URLs must be in
+          // it too, under the static ledger, where the body renders them
+          // after hydration.
+          fallback={
+            <>
+              <StaticLedger benchmark={benchmark} />
+              <PublicEndpointsSection benchmark={benchmark} />
+            </>
+          }
+        >
           <BenchmarkBody
             variants={variants}
             chainOptions={chainOptions}
             regionOptions={regionOptions}
             kindOptions={kindOptions}
             venueOptions={venueOptions}
+            tierOptions={tierOptions}
             venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
             initialVenue={venue ?? null}
+            initialTier={headlineTier}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
+            // Public endpoint URLs right under the ranked table (the
+            // "<chain> rpc" searcher wants chain ID, URL and the provider
+            // list next to the numbers), hidden on the Private tab whose
+            // rows have no listable URL. Server-rendered, so the URLs are
+            // in the HTML; renders only when at least two providers
+            // declare a public no-key `endpoint`.
+            headlineCohortBlock={<PublicEndpointsSection benchmark={benchmark} />}
             pageActions={
               !isDraft ? (
                 <>
@@ -829,6 +964,11 @@ export default async function BenchmarkPage({
           SOL is 0.8% off Binance" maps to a visible cell on the page. */}
       {!isDraft && benchmark.slug === "oracle-deviation" && <OraclePairMatrix />}
 
+      {/* Bench 268: the sampled swaps behind the ledger, one real
+          transaction per row with its Solscan link, so every figure can
+          be checked on-chain. */}
+      {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
+
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"
           phrases land in static HTML for crawlers to index. */}
@@ -844,6 +984,8 @@ export default async function BenchmarkPage({
       )}
 
       {!isDraft && <CompareThisBench benchmark={benchmark} />}
+
+      {!isDraft && <AnswersForBench benchSlug={benchmark.slug} />}
 
       {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the

@@ -168,3 +168,103 @@ describe("renderTemplate", () => {
     });
   });
 });
+
+describe("renderTemplate, access tiers", () => {
+  const keyedRows = [r("alchemy", "Alchemy", 38), r("quicknode", "QuickNode", 29)];
+  const withTiers: Benchmark = {
+    ...bench([
+      { ...r("publicnode", "PublicNode", 44), tier: "public" },
+      { ...r("drpc", "dRPC", 61), tier: "public" },
+    ]),
+    dimensions: {
+      tier: [
+        { value: "public", label: "Public, no key" },
+        { value: "keyed", label: "API key" },
+      ],
+    },
+    tierResults: { keyed: keyedRows },
+  };
+
+  test("best_name / best_p50 stay the active cohort's leader", () => {
+    expect(renderTemplate("{{best_name}} at {{best_p50}}", withTiers)).toBe("PublicNode at 44 ms");
+  });
+
+  test("tier-scoped presets read the other cohort's stash", () => {
+    expect(
+      renderTemplate("{{best_name:tier:keyed}} at {{best_p50:tier:keyed}}, {{count:tier:keyed}} keyed", withTiers),
+    ).toBe("QuickNode at 29 ms, 2 keyed");
+    expect(renderTemplate("{{worst_name:tier:keyed}}", withTiers)).toBe("Alchemy");
+  });
+
+  test("tier-scoped presets naming the active cohort resolve against it", () => {
+    expect(renderTemplate("{{best_name:tier:public}}", withTiers)).toBe("PublicNode");
+  });
+
+  test("per-slug lookups fall through to the other cohorts", () => {
+    expect(renderTemplate("Alchemy: {{p50:alchemy}}", withTiers)).toBe("Alchemy: 38 ms");
+    expect(renderTemplate("{{name:quicknode}}", withTiers)).toBe("QuickNode");
+  });
+
+  test("an undeclared tier drops its clause instead of printing the token", () => {
+    expect(
+      renderTemplate("PublicNode leads; the keyed leader is {{best_name:tier:premium}}.", withTiers),
+    ).toBe("PublicNode leads.");
+  });
+});
+
+describe("renderTemplate, access tiers, gates and gaps", () => {
+  const tiers = [
+    { value: "public", label: "Public, no key" },
+    { value: "keyed", label: "API key" },
+  ];
+  const publicRows = [
+    { ...r("publicnode", "PublicNode", 44), tier: "public" },
+    { ...r("drpc", "dRPC", 61), tier: "public" },
+  ];
+
+  test("a keyed row under the success floor never leads the keyed cohort", () => {
+    // Chainstack at 40 % success with the lowest p50: the keyed tab's
+    // ledger and /api/stat gate it out, so the public page's copy must
+    // name the same leader (Alchemy).
+    const b: Benchmark = {
+      ...bench(publicRows),
+      dimensions: { tier: tiers },
+      tierResults: {
+        keyed: [
+          { ...r("chainstack", "Chainstack", 30), successRate: 40 },
+          r("alchemy", "Alchemy", 45),
+        ],
+      },
+    };
+    expect(renderTemplate("{{best_name:tier:keyed}} at {{best_p50:tier:keyed}}", b)).toBe("Alchemy at 45 ms");
+  });
+
+  test("an empty keyed stash drops only the keyed clause of the description", () => {
+    // Rollout window (old worker blob without tierResults) and chains
+    // whose keyed probes are paused: the public leader claim survives.
+    const b: Benchmark = { ...bench(publicRows), dimensions: { tier: tiers } };
+    expect(
+      renderTemplate(
+        "{{best_name}} leads free Base RPC at {{best_p50}} (p50, 24h); {{best_name:tier:keyed}} leads the API-key cohort at {{best_p50:tier:keyed}}. URLs for all {{count}} no-key endpoints.",
+        b,
+      ),
+    ).toBe("PublicNode leads free Base RPC at 44 ms (p50, 24h). URLs for all 2 no-key endpoints.");
+  });
+});
+
+describe("renderTemplate, a cohort with no citable row", () => {
+  test("names nobody: the keyed clause is pruned, the public claim stays", () => {
+    // A chain RPC page: the citation gate has no fallback there (a 40 %
+    // success endpoint is never crowned), so the stash follows suit.
+    const b: Benchmark = {
+      ...bench([{ ...r("publicnode", "PublicNode", 44), tier: "public" }, { ...r("drpc", "dRPC", 61), tier: "public" }]),
+      slug: "base-rpc",
+      title: "Base RPC endpoints: free public URLs and API-key providers by latency",
+      dimensions: { tier: [{ value: "public", label: "Public" }, { value: "keyed", label: "API key" }] },
+      tierResults: { keyed: [{ ...r("chainstack", "Chainstack", 30), successRate: 40 }] },
+    };
+    expect(
+      renderTemplate("{{best_name}} leads at {{best_p50}}; {{best_name:tier:keyed}} leads the API-key cohort.", b),
+    ).toBe("PublicNode leads at 44 ms.");
+  });
+});

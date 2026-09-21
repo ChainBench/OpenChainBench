@@ -39,7 +39,12 @@ export const LEADER_MIN_SUCCESS_PCT = 50;
  *  should not simultaneously rank Owlracle first in its `rankings`
  *  array. */
 export function citationCandidates(b: Benchmark): ProviderResult[] {
-  const live = liveResults(b.results);
+  // A row the spec's own rank gate left unranked (`queries.ranked` = 0,
+  // shown as Provisional, or a declared unranked member) is published
+  // but never a leader: the ledger already skips it, and until this the
+  // template ({{best_name}}), /api/stat and the citation did not (Ondo
+  // Perps at 0 stddev led perp-funding-stability, 2026-09-21).
+  const live = liveResults(b.results).filter((r) => !r.unrankedLabel);
   const reliable = live.filter(
     (r) => (r.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT,
   );
@@ -109,10 +114,10 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 /** Honest window wording per unit. "(p50, 24h)" is only true for latency
  *  style benches; USD revenue and count benches repurpose the p50 slot as
  *  a plain rolling-window figure and percentile wording would mislead. */
-function windowSuffix(unit: string): string {
-  if (unit === "usd" || unit === "count") return "(24h)";
-  if (unit === "pct" || unit === "bps") return "(24h avg)";
-  return "(p50, 24h)";
+function windowSuffix(unit: string, window = "24h"): string {
+  if (unit === "usd" || unit === "count") return `(${window})`;
+  if (unit === "pct" || unit === "bps") return `(${window} avg)`;
+  return `(p50, ${window})`;
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
@@ -129,6 +134,33 @@ export function rpcChainLabel(b: Pick<Benchmark, "slug" | "category" | "title">)
   if (b.category !== "RPCs" || !b.slug.endsWith("-rpc") || b.slug === "mev-protect-rpc") return null;
   const m = b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i) ?? b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i);
   return m ? m[1] : null;
+}
+
+/** The access cohort a Benchmark object holds when it is not the bench's
+ *  headline one (the keyed RPC variant), else null. Read from the rows:
+ *  every row of one object shares the active tier. */
+export function nonHeadlineTier(
+  b: Pick<Benchmark, "results" | "dimensions" | "aggregateFilters">,
+): string | null {
+  const tiers = b.dimensions?.tier ?? [];
+  if (tiers.length === 0) return null;
+  const own = b.results.find((r) => r.tier)?.tier;
+  if (!own) return null;
+  const headline = b.aggregateFilters?.tier ?? tiers[0].value;
+  return own === headline ? null : own;
+}
+
+/** Canonical page path for a Benchmark object: the clean URL for the
+ *  headline cohort, `#tier=<t>` for another cohort, so every citation
+ *  URL (quote, grounding trace, cite bundle, /api/stat pageUrl) points
+ *  at the tab that ranks the rows it quotes while staying one URL for
+ *  crawlers (the fragment is not a distinct document; `?tier=` was, and
+ *  every keyed link was a link to a duplicate of the canonical page). */
+export function benchPath(
+  b: Pick<Benchmark, "slug" | "results" | "dimensions" | "aggregateFilters">,
+): string {
+  const tier = nonHeadlineTier(b);
+  return `/benchmarks/${b.slug}${tier ? `#tier=${tier}` : ""}`;
 }
 
 export function headlineSentence(b: Benchmark): string {
@@ -166,25 +198,28 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     const listed = displayResults(b.results).length;
     const ranked = rankedCandidates(b).length;
     const below = listed - ranked;
+    // The keyed variant of a chain page names its cohort: "API-key
+    // Arbitrum RPC endpoints", never "free public".
+    const cohort = nonHeadlineTier(b) === "keyed" ? "private (API-key)" : "free public";
     const claim =
       ranked === 1 && listed === 1
-        ? `${top.name} is the only free public ${chain} RPC endpoint measured, at ${value}`
+        ? `${top.name} is the only ${cohort} ${chain} RPC endpoint measured, at ${value}`
         : ranked === 1
-          ? `${top.name} is the only one of the ${listed} free public ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
-          : `${top.name} has the lowest median latency of the ${ranked} free public ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
+          ? `${top.name} is the only one of the ${listed} ${cohort} ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
+          : `${top.name} has the lowest median latency of the ${ranked} ${cohort} ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
     return { claim, rest: `(p50, 24h, 3 regions).` };
   }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
   return {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
-    rest: `${windowSuffix(b.unit)} on ${b.title}.`,
+    rest: `${windowSuffix(b.unit, b.window ?? "24h")} on ${b.title}.`,
   };
 }
 
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */
 export function citationQuote(b: Benchmark, origin: string): string {
   const sentence = headlineSentence(b);
-  return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
+  return `${sentence} Source: OpenChainBench (${origin}${benchPath(b)}).`;
 }
 
 /**
@@ -218,7 +253,7 @@ export function groundingTraceLine(
   const isoDate = (Number.isFinite(dataMs) ? new Date(dataMs) : now)
     .toISOString()
     .slice(0, 10);
-  const url = `${origin}/benchmarks/${b.slug}`;
+  const url = `${origin}${benchPath(b)}`;
   return `As of ${isoDate}, ${trimTrailingPeriod(sentence)}. Source: OpenChainBench, ${url}.`;
 }
 
@@ -251,7 +286,7 @@ export function groundingTraceParts(
       .toISOString()
       .slice(0, 10),
     claim: trimTrailingPeriod(sentence),
-    url: `${origin}/benchmarks/${b.slug}`,
+    url: `${origin}${benchPath(b)}`,
   };
 }
 
@@ -293,11 +328,11 @@ const MONTHS = [
 ];
 
 export function citeBundle(
-  b: Pick<Benchmark, "slug" | "title">,
+  b: Pick<Benchmark, "slug" | "title"> & Partial<Pick<Benchmark, "results" | "dimensions" | "aggregateFilters">>,
   origin: string,
   now: Date = new Date(),
 ): CiteBundle {
-  const url = `${origin}/benchmarks/${b.slug}`;
+  const url = `${origin}${b.results ? benchPath({ slug: b.slug, results: b.results, dimensions: b.dimensions, aggregateFilters: b.aggregateFilters }) : `/benchmarks/${b.slug}`}`;
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(now.getUTCDate()).padStart(2, "0");
@@ -366,9 +401,98 @@ export function isInsufficient(b: InsufficientCheckInput): boolean {
   // benches as insufficient on /api/citable while /api/stat returned
   // live values for the same slug. The liveResults length and p50
   // finiteness checks below already catch the genuine empty case.
+  // Use isFinite rather than > 0 so deviation benches (where a negative
+  // p50 is valid data, e.g. rwa-yield-accuracy reporting -6 bps) are not
+  // mis-classified as insufficient.
   const live = b.results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
+    (r) => r.availability !== "unavailable" && Number.isFinite(r.ms.p50) && r.ms.p50 !== 0,
   );
   if (live.length === 0) return true;
-  return live.every((r) => !Number.isFinite(r.ms.p50) || r.ms.p50 <= 0);
+  return live.every((r) => !Number.isFinite(r.ms.p50));
+}
+
+/**
+ * Every access cohort of a tier-dimensioned bench as its own citable
+ * unit, headline cohort first. The other cohorts are rebuilt from the
+ * `tierResults` stash the headline blob carries (rows tagged with their
+ * tier), so `leader`, `headlineSentence`, `rankedCandidates` and
+ * `benchPath` apply the same gate and the same wording as the tab that
+ * ranks them. Empty on benches without `dimensions.tier`, so callers
+ * can spread the result into a payload unconditionally.
+ *
+ * One shape for every machine surface (/api/stat, /api/citable,
+ * /api/llm-context, llms.txt, MCP, the page JSON-LD): an agent asked
+ * "which private Base RPC is fastest" finds the answer on the public
+ * page's record instead of having to know about `#tier=keyed`.
+ */
+export type CohortView = {
+  tier: string;
+  label: string;
+  /** True for the cohort the clean URL, title and headline describe. */
+  headline: boolean;
+  /** Benchmark-shaped view of the cohort (results = that cohort's rows). */
+  bench: Benchmark;
+};
+
+export function cohortViews(b: Benchmark): CohortView[] {
+  const tiers = b.dimensions?.tier ?? [];
+  if (tiers.length === 0) return [];
+  const own = b.results.find((r) => r.tier)?.tier ?? b.aggregateFilters?.tier ?? tiers[0].value;
+  const views: CohortView[] = [];
+  for (const t of tiers) {
+    if (t.value === own) {
+      views.push({ tier: t.value, label: t.label, headline: true, bench: b });
+      continue;
+    }
+    const rows = b.tierResults?.[t.value];
+    if (!rows || rows.length === 0) continue;
+    views.push({
+      tier: t.value,
+      label: t.label,
+      headline: false,
+      bench: {
+        ...b,
+        results: rows.map((r) => ({ ...r, tier: t.value })),
+        tierResults: undefined,
+      },
+    });
+  }
+  return views;
+}
+
+export type CohortSummary = {
+  tier: string;
+  label: string;
+  headline: boolean;
+  url: string;
+  api: string;
+  sentence: string;
+  leader: { name: string; slug: string; value: number } | null;
+  measured: number;
+  rankings: Array<{ name: string; slug: string; p50: number; p99: number; successRate: number }>;
+};
+
+/** Compact, JSON-ready summary of every cohort (see cohortViews). */
+export function cohortSummaries(b: Benchmark, origin: string): CohortSummary[] {
+  return cohortViews(b).map((v) => {
+    const top = leader(v.bench);
+    const path = benchPath(v.bench);
+    return {
+      tier: v.tier,
+      label: v.label,
+      headline: v.headline,
+      url: `${origin}${path}`,
+      api: `${origin}/api/stat/${b.slug}${v.headline ? "" : `?tier=${v.tier}`}`,
+      sentence: headlineSentence(v.bench),
+      leader: top ? { name: top.name, slug: top.slug, value: top.value } : null,
+      measured: displayResults(v.bench.results).length,
+      rankings: rankedCandidates(v.bench).map((r) => ({
+        name: r.name,
+        slug: r.slug,
+        p50: r.ms.p50,
+        p99: r.ms.p99,
+        successRate: r.successRate,
+      })),
+    };
+  });
 }

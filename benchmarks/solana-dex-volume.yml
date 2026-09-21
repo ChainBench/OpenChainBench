@@ -14,7 +14,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume and revenue data sourced from DeFiLlama's DEX and fees APIs. DeFiLlama attributes volume via on-chain referral tags and program IDs; platforms without standard tags may be undercounted. Figures are 24-hour and 7-day rolling totals updated every 30 minutes. Revenue uses DeFiLlama's dailyRevenue dataType, stripping LP fees. Terminal volume (Axiom, GMGN, Fomo) and launchpad volume (pump.fun) use different attribution methods and are not directly additive.
+  Volume and revenue from DeFiLlama's DEX and fees APIs, 24h and 7d totals refreshed every 30 minutes. Terminal volume is a floor: a swap counts only when its transaction pays the terminal's fee wallet and Dune decodes the venue. Revenue (dailyRevenue, LP fees stripped) counts every fee reaching those wallets, so revenue divided by volume overstates the fee rate and is not shown. Terminal and launchpad (pump.fun) volume use different attribution and are not additive.
 
 provider_notes:
   gmgn: "Solana only"
@@ -44,15 +44,15 @@ abstract: |
 methodology:
   - "Source: DeFiLlama public chain overview APIs (api.llama.fi/overview/dexs/solana and overview/fees/solana?dataType=dailyRevenue), which report SOLANA-scoped totals per protocol. Multichain platforms such as GMGN therefore show their Solana volume only, keeping every row comparable. No authentication required."
   - "Poll cadence: harness fetches every 30 minutes and updates Prometheus gauges immediately."
-  - "Fomo caveat: DeFiLlama attributes Fomo volume from on-chain Solana swaps matched to its fee wallet, while its revenue figure also includes relay fees the Fomo team self-reports. Fomo's displayed revenue-to-volume ratio (~5%) versus its stated 0.5% fee implies substantially higher total activity than the on-chain volume shown here; its Hyperliquid perps flow is tracked separately on the hyperliquid-frontends bench."
+  - "Fomo caveat: DeFiLlama measures Fomo on Solana, where user balances are held, and includes cross-chain trades routed through Relay (each counted once); its revenue combines on-chain fee-wallet inflows with relay fees the Fomo team reports. The two perimeters differ, so revenue divided by volume is not Fomo's 0.5% fee either. Its Hyperliquid perps flow is tracked separately on the hyperliquid-frontends bench."
   - "Volume: total24h and total7d fields, sum of swap notional values in USD attributed to this platform on Solana. DeFiLlama aggregates in daily buckets with roughly a 10-hour indexing delay, so intraday values are flat by construction and step once per day."
   - "Revenue: total24h and total7d from the fees endpoint with dataType=dailyRevenue. This strips LP fees that stay in pool accounts and returns only the protocol's own share. Note: dailyRevenue also nets out referral paybacks (e.g. GMGN nets ~34% back to affiliates) and for pump.fun reflects the buyback-adjusted split introduced in 2026. Use dailyFees if comparing what users pay, not what protocols retain."
-  - "Take rate: protocol revenue divided by trading volume (defillama_dex_fees_24h_usd / defillama_dex_volume_24h_usd). Measures how much of each dollar traded the platform captures."
-  - "Attribution: DeFiLlama uses on-chain referral tags, program IDs and memo fields. Platforms without standard tagging may be undercounted."
+  - "Volume is a floor: DeFiLlama's terminal adapters (Axiom, GMGN, Trojan, Photon, BullX) count a swap when the transaction pays the terminal's fee wallet and Dune's dex_solana.trades decodes the venue. Swaps through venues Dune has not indexed pay the fee but are not in the volume; DeFiLlama's own methodology calls the figure a floor."
+  - "No take rate column: revenue counts every fee that reaches the fee wallets while volume is a floor, so revenue divided by volume overstates the fee rate. On Sep 15-17 2026 Axiom's ratio read 1.2-2.9% against a stated fee of about 1%, and Photon's 1.4%. The harness still exports defillama_dex_take_rate for the record, but the bench does not rank on it."
   - "pump.fun (slug pump.fun, layer Launchpad): the original bonding-curve launchpad. Users trade tokens directly on the curve; a token graduates to PumpSwap's AMM at roughly $69K market cap. Cut bonding-curve fees to zero on Aug 7 2026."
-  - "Axiom (slug axiom, layer Terminal): web-based Solana trading terminal. Observed take rate 0.85-1.10% (stated approximately 1%). Revenue briefly overtaken by Fomo on Aug 6 2026."
+  - "Axiom (slug axiom, layer Terminal): web-based Solana trading terminal, also live on BNB and Robinhood Chain (Solana volume only here). Charges about 1% per swap, tiered down with volume. Revenue briefly overtaken by Fomo on Aug 6 2026."
   - "GMGN (slug gmgn, layer Terminal): AI-powered trading terminal on Solana. Approximately 1% fee on routed swaps."
-  - "fomo Wallet (slug fomo-wallet, layer Terminal): Fomo's DEX routing layer. Observed take rate approximately 1% on routed swaps. First crossed Axiom on daily revenue Aug 6 2026."
+  - "fomo Wallet (slug fomo-wallet, layer Terminal): Fomo's DEX routing layer, 0.5% on routed swaps. First crossed Axiom on daily revenue Aug 6 2026."
   - "Trojan (slug trojan, layer Bot): Telegram trading bot on Solana. Lower volume than web terminals but serves a distinct Telegram-native user base."
   - "Photon (slug photon, layer Terminal): Solana trading terminal targeted at advanced traders."
   - "BullX (slug bullx, layer Terminal): Solana and multi-chain trading terminal. Volume fell sharply from its 2025 highs after competitors expanded; now a fraction of peak levels."
@@ -64,7 +64,7 @@ findings:
   - "pump.fun dominates early-stage token volume with its bonding-curve launchpad, even after cutting trading fees to zero on Aug 7 2026."
   - "Axiom and GMGN are the leading independent trading terminals, each routing around $70 million per day on graduated tokens."
   - "Fomo briefly outpaced Axiom in daily revenue on Aug 6 2026, the event that triggered pump.fun's zero-fee response the following day."
-  - "The take rate column reveals the business model split: pump.fun earns on token launches and lifecycle fees, while Axiom, GMGN and Fomo charge frontend routing fees on each swap."
+  - "Revenue next to volume shows the business model split: pump.fun earns on token launches and lifecycle fees, while Axiom, GMGN and Fomo charge a routing fee on each swap (about 1%, Fomo 0.5%)."
   - "BullX is tracked but operates at a fraction of peak volume following market share losses in 2026."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-dex-volume
@@ -90,14 +90,6 @@ metric_panels:
     higher_is_better: true
     description: "Total DEX trading volume over the last 7 days."
 
-  - id: take_rate
-    label: Take rate
-    label_key: platform
-    metric: defillama_dex_take_rate
-    unit: pct
-    higher_is_better: false
-    description: "Protocol revenue as a fraction of trading volume (revenue / volume). Higher means the platform captures more of each dollar traded."
-
 ledger_columns:
   - { label: "24h Volume", slot: p50 }
   - { label: "24h Revenue", panel: fees }
@@ -116,8 +108,8 @@ faq:
     a: "Bench 201 uses Mobula's lighthouse API to attribute swaps to the frontend UI (GMGN, Axiom, Fomo, etc.). This bench uses DeFiLlama's protocol-level DEX data. The two sources diverge significantly in practice: on Aug 13 2026 Mobula ranked GMGN ($108M) ahead of Axiom ($94M) while DeFiLlama fees put Axiom 5x above GMGN. Attribution breadth differs because Mobula includes trades where the platform's referral tag is present regardless of fee collection, while DeFiLlama tracks fee-wallet inflows. Neither is wrong; they measure different populations."
   - q: "Why does Photon show less volume than GMGN and Axiom?"
     a: "Photon targets advanced traders and has a smaller but higher-frequency user base. Volume varies by day and market conditions. DeFiLlama attribution may also undercount platforms that do not embed standard on-chain referral tags."
-  - q: "What is the take rate and why does it matter?"
-    a: "The take rate is protocol revenue divided by trading volume. It shows how much of each dollar traded the platform keeps. pump.fun has a high take rate because it earns creator fees, graduation fees and protocol fees across the token lifecycle. Terminals like Axiom, GMGN and Fomo earn a routing fee on each swap. Comparing take rates reveals which platforms extract more value per dollar of activity."
+  - q: "Why does Axiom's revenue divided by volume come out above the 1% it charges?"
+    a: "Because the two columns have different coverage. Revenue is every fee that lands in Axiom's fee wallets (DeFiLlama dailyRevenue, net of referral and cashback payouts), so it is close to complete. Volume only counts swaps whose venue Dune's dex_solana.trades decodes; a swap routed through a venue Dune has not indexed pays the fee but adds nothing to the volume. DeFiLlama's own methodology calls the volume a floor. Dividing a complete numerator by a floor gives a ratio above the real fee (1.2-2.9% for Axiom on Sep 15-17 2026), which is why the bench no longer shows a take rate. The Dune community dataset behind bench 201 uses the same fee-wallet detection and lands within a few percent of DeFiLlama, so it is a floor too. Axiom's real fee is about 1%, tiered down with volume."
 
 providers:
   - slug: pump-fun
@@ -135,7 +127,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Terminal, Solana"
-    formula: "24h DEX trading volume in USD for Axiom (DeFiLlama summary/dexs/axiom, total24h, updated every 30 min)."
+    formula: "24h DEX trading volume in USD for Axiom (DeFiLlama summary/dexs/axiom, total24h, updated every 30 min). Floor: only swaps whose venue Dune decodes are counted."
     queries:
       p50: defillama_dex_volume_24h_usd{platform="axiom"}
       p90: defillama_dex_volume_24h_usd{platform="axiom"}
@@ -147,7 +139,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "Terminal, Solana"
-    formula: "24h DEX trading volume in USD for GMGN (DeFiLlama summary/dexs/gmgn, total24h, updated every 30 min)."
+    formula: "24h DEX trading volume in USD for GMGN (DeFiLlama summary/dexs/gmgn, total24h, updated every 30 min). Floor: only swaps whose venue Dune decodes are counted."
     queries:
       p50: defillama_dex_volume_24h_usd{platform="gmgn"}
       p90: defillama_dex_volume_24h_usd{platform="gmgn"}
@@ -171,7 +163,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Bot, Telegram"
-    formula: "24h DEX trading volume in USD for Trojan (DeFiLlama summary/dexs/trojan, total24h, updated every 30 min)."
+    formula: "24h DEX trading volume in USD for Trojan (DeFiLlama summary/dexs/trojan, total24h, updated every 30 min). Floor: only swaps whose venue Dune decodes are counted."
     queries:
       p50: defillama_dex_volume_24h_usd{platform="trojan"}
       p90: defillama_dex_volume_24h_usd{platform="trojan"}
@@ -183,7 +175,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Terminal, Solana"
-    formula: "24h DEX trading volume in USD for Photon (DeFiLlama summary/dexs/photon, total24h, updated every 30 min)."
+    formula: "24h DEX trading volume in USD for Photon (DeFiLlama summary/dexs/photon, total24h, updated every 30 min). Floor: only swaps whose venue Dune decodes are counted."
     queries:
       p50: defillama_dex_volume_24h_usd{platform="photon"}
       p90: defillama_dex_volume_24h_usd{platform="photon"}
@@ -195,7 +187,7 @@ providers:
   - slug: bullx
     name: BullX
     tag: "Terminal, multi-chain"
-    formula: "24h DEX trading volume in USD for BullX (DeFiLlama summary/dexs/bullx, total24h, updated every 30 min)."
+    formula: "24h DEX trading volume in USD for BullX (DeFiLlama summary/dexs/bullx, total24h, updated every 30 min). Floor: only swaps whose venue Dune decodes are counted."
     queries:
       p50: defillama_dex_volume_24h_usd{platform="bullx"}
       p90: defillama_dex_volume_24h_usd{platform="bullx"}

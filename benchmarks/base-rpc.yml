@@ -2,11 +2,10 @@
 
 slug: base-rpc
 number: "046"
-title: "Base RPC endpoints: free public URLs by latency"
-# seo_title test cohort (2026-09-19): endpoint-intent title; H1 keeps the measured claim.
-seo_title: "Base RPC endpoints: free public URLs by latency"
-seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). URLs and chain ID for all {{count}} no-key endpoints, probed every 60 s."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Base RPC endpoint, audited every 60 seconds from 3 regions.
+title: "Base RPC endpoints: free public URLs and private API-key providers by latency"
+seo_title: "Base RPC endpoints: public and private, ranked by latency"
+seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (p50, 24h); URLs for all {{count}} no-key endpoints. {{best_name:tier:keyed}} leads the private (API-key) cohort at {{best_p50:tier:keyed}}."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Base RPC endpoint (probed every 60 seconds) and, under the Access selector (Private), against the API-key endpoints of Alchemy, Chainstack and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
 status: live
@@ -18,7 +17,7 @@ seo_intro: |
   Base offers the cleanest official-versus-gateway comparison in the cluster: Coinbase operates both the sequencer and the chain-official `mainnet.base.org`, so the house endpoint has every locational advantage, and it still has to beat PublicNode, dRPC, Tenderly and Nodies on a level probe. {{count}} providers, the same `eth_getBlockByNumber` call every 60 seconds, three regions, stale-head detection against the cross-provider tip.
 
 abstract: |
-  Base: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:base-official}}.
+  Base: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:base-official}}. The same page carries the private cohort (API key), Alchemy, Chainstack and QuickNode on their keyed Base endpoints every 120 seconds: switch the Access selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
   We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Base endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Base-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -26,24 +25,28 @@ methodology:
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Base-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"base\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Blink (formerly Merkle) was delisted 2026-07: its gateway does not serve `eth_getBlockByNumber`, the anti-cache probe this cluster standardized on, so it cannot be measured on equal terms. Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Private cohort (Access selector, Private): Alchemy, Chainstack and QuickNode probed on their keyed Base endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet. GetBlock is listed under exclusions until a key exists."
+  - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
 excluded_providers:
   - { name: Ankr, reason: "public endpoint requires an API key" }
   - { name: NodeReal, reason: "requires an API key" }
-  - { name: GetBlock, reason: "requires an API key; compared on the keyed pages" }
-  - { name: Chainstack, reason: "requires an API key; compared on the keyed pages" }
+  - { name: GetBlock, reason: "requires an API key; no key held yet, so it is not in the private cohort either" }
   - { name: 1RPC, reason: "delisted for reliability: under 13 % success at one probe per minute", since: "2026-07-09" }
   - { name: gateway.fm, reason: "29 requests per IP budget, too small for continuous probing" }
   - { name: LlamaRPC, reason: "Cloudflare 521 from the probe regions" }
   - { name: BlockPI, reason: "Cloudflare 521 from the probe regions" }
   - { name: OmniaTech, reason: "Cloudflare 521 from the probe regions" }
-  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; the keyed tier is compared on the keyed pages" }
+  - { name: Alchemy demo, reason: "rate-limited public demo endpoint; Alchemy's keyed endpoint is in the private cohort on this page" }
 
 faq:
   - q: "Which Base RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Blink (formerly Merkle) was delisted in July 2026 because its gateway does not serve `eth_getBlockByNumber` (JSON-RPC -32601), the anti-cache probe used across the cluster, so its latency cannot be compared on equal terms. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
   - q: "Is Coinbase's official Base RPC faster than third-party gateways?"
     a: "Compare the two numbers: despite being operated by the same team that runs the sequencer, `mainnet.base.org` measures {{p50:base-official}} against {{best_p50}} for {{best_name}} on the cross-region median, and the ranking moves with the region the request originates from. Check the region tabs on this page for the origin closest to your deployment; the cross-region average hides these flips."
+  - q: "Which Base RPC provider is fastest with an API key?"
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}. On the free cohort {{best_name}} leads at {{best_p50}}, measured on the same call from the same three regions; the two cohorts are never ranked in one table (shared gateways at 60 s against metered endpoints at 120 s). Switch the Access selector to Private for the region tabs and the p99 column; plan tiers are disclosed in the methodology."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -55,13 +58,18 @@ prometheus:
 # fixed for the whole bench, so cells key on region alone.
 rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="base"})
 
-# Region is the only dimension: chain is baked into every query.
+# Region and access tier: chain is baked into every query.
 dimensions:
   region:
     - { value: all,     label: All regions }
     - { value: us-east, label: US-East }
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
+  # Access tier: partitions the provider list (no PromQL label). The
+  # first value is the headline cohort; ?tier=keyed reaches the other.
+  tier:
+    - { value: public, label: "Public, no key" }
+    - { value: keyed,  label: "Private, API key" }
 
 providers:
   - slug: publicnode
@@ -184,3 +192,76 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official", chain="base", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="base-official", chain="base", region="sgp"}[1h])
 
+  # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
+  # rpc-keyed-latency harness emits; the public rows above carry no tier label.
+  - slug: alchemy
+    name: Alchemy
+    tier: keyed
+    tag: Free plan key, 30M CU per month, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Alchemy's keyed Base endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="base",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="base",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="base",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="base",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="base",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="base",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="base",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="base",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="base",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="base",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="base",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="base",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="base",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy",chain="base",tier="keyed",region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tier: keyed
+    tag: Growth plan Global Node, sponsored access, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Chainstack's keyed Base endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="base",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="base",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="base",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="base",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="base",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="base",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="base",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="base",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="base",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="base",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="base",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="base",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="base",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack",chain="base",tier="keyed",region="sgp"}[1h]))
+
+  - slug: quicknode
+    name: QuickNode
+    tier: keyed
+    tag: Enterprise-tier endpoint (Mobula account), plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on QuickNode's keyed Base endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="base",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="base",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="base",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="base",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="base",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="base",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="base",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="base",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="base",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="base",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="base",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="base",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="base",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="base",tier="keyed",region="sgp"}[1h]))

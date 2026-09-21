@@ -80,6 +80,12 @@ const queries = z
     success: promql.optional(),
     sample_size: promql.optional(),
     series: promql.optional(),
+    /** Optional 0/1 rank gate. An instant query reading 0 lists the row
+     *  as "Provisional" on the ledger: its figures are shown, it takes
+     *  no rank and never leads (a harness that publishes a median from a
+     *  sample too small to rank, e.g. bench 268's tfq_ranked on the
+     *  effective sample size). Absent or 1: ranked as usual. */
+    ranked: promql.optional(),
     /** Short-window "is this provider's live feed producing new events
      *  right now" probe. Instant query returning a scalar count > 0 when
      *  fresh events arrived in the past few minutes, 0 when the source
@@ -169,6 +175,12 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  /** Access cohort this provider belongs to on a bench that declares
+   *  `dimensions.tier` (RPC pages: `public` no-key endpoints next to
+   *  `keyed` API-key providers). The tier selector partitions the
+   *  provider list; each cohort is ranked on its own and never against
+   *  the other. Absent = the first declared tier value. */
+  tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
   /** Declares a cohort member that has no headline value by design
    *  (a perp DEX with no token yet on a valuation bench). The ledger
    *  lists it in an "Unranked · <label>" block below the field with
@@ -202,6 +214,7 @@ export const Category = z.enum([
   "NFT APIs",
   "Explorers",
   "RWA",
+  "On-ramps",
 ]);
 
 // Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
@@ -375,6 +388,14 @@ export const SpecSchema = z
           .string()
           .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
           .optional(),
+        /** For benches whose raw metrics are pulses (present a minute
+         *  after each execution, then deleted): a persistent gauge whose
+         *  VALUE is the unix time of the last run. Age = time() - max(it).
+         *  Takes precedence over freshness_metric. */
+        freshness_timestamp_metric: z
+          .string()
+          .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
+          .optional(),
         /** Bench-level sanity check for the per-provider `live_activity`
          *  probe: an instant query that must be > 0 for the "Feed down"
          *  UI to trust its per-provider verdicts. Meant to answer "are
@@ -437,6 +458,24 @@ export const SpecSchema = z
             })
           )
           .optional(),
+        /* Access tier. Unlike the other dimensions it injects no PromQL
+         * label: it partitions the provider list by `provider.tier`, so
+         * each cohort keeps its own queries (the keyed harness pins
+         * tier="keyed" itself, the public one carries no tier label).
+         * The first value is the headline cohort (canonical URL, title,
+         * citation); the others are reachable through ?tier=<value>.
+         * No `all` value: the cohorts are measured on different
+         * endpoints and cadences and are never ranked together. */
+        tier: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .min(2)
+          .refine((vals) => vals.every((v) => v.value !== "all"), "dimensions.tier: no `all` value, cohorts are never pooled")
+          .optional(),
       })
       .optional(),
 
@@ -446,11 +485,11 @@ export const SpecSchema = z
      * injected into every query selector, so the bench's headline view,
      * TL;DR, JSON-LD and OG all cite the scoped slice instead of an
      * average across dimensions. A reader-applied filter (region tab,
-     * ?region= variant) always wins over these defaults. Presentation
-     * surfaces (by-region grid) also read it to restrict what a
-     * single-vantage bench shows.
+     * ?region= variant) always wins over these defaults. Keys must be
+     * dimension keys (region/chain/kind/venue); values follow the same
+     * PromQL label-value alphabet as dimension values.
      * First use: keyed-rpc-robinhood pins region=sgp so the default view
-     * is the Singapore probe. */
+     * is the Singapore probe while the US-East tab stays available. */
     /**
      * How the headline value is scoped on a bench that declares
      * `dimensions.chain`.
@@ -478,6 +517,7 @@ export const SpecSchema = z
         region: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
         kind: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
         venue: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
+        tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
       })
       .strict()
       .optional(),
@@ -605,6 +645,11 @@ export const SpecSchema = z
      * `panel` reads the values of a metric_panels entry by id. The first
      * column is the headline (sort key, data bar, mobile column).
      */
+    /** false when the providers' `success` query is a publication gate
+     *  (0 or 1) rather than a probe success rate: the ledger then hides
+     *  the Success and Reliability columns and describes an unpublished
+     *  row as under its threshold, not as a dead endpoint. */
+    ledger_reliability: z.boolean().default(true),
     ledger_columns: z
       .array(
         z
@@ -630,7 +675,10 @@ export const SpecSchema = z
           }),
       )
       .min(1)
-      .max(6)
+      // Nine covers a cost sheet (bench 268: value lost, trade size,
+      // dollars lost, five cost components, fail rate); the ledger
+      // scrolls sideways past that width.
+      .max(9)
       .optional(),
   })
   .strict()
@@ -649,6 +697,56 @@ export const SpecSchema = z
         message:
           "Benches declaring dimensions.region must provide rank_matrix_query so badge claims are scoped per region",
       });
+    }
+
+    // Tier cohorts: every provider tier must be declared, every declared
+    // tier must have at least one provider (an empty tab is a broken
+    // selector), and the aggregate pin, when set, must be a declared
+    // value. A provider `tier` on a bench without the dimension is a
+    // typo that would silently do nothing.
+    const tiers = spec.dimensions?.tier ?? [];
+    const tierValues = new Set(tiers.map((t) => t.value));
+    if (tiers.length === 0) {
+      spec.providers.forEach((p, i) => {
+        if (p.tier) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["providers", i, "tier"],
+            message: "provider.tier requires dimensions.tier on the bench",
+          });
+        }
+      });
+    } else {
+      const defaultTier = tiers[0].value;
+      const seen = new Set<string>();
+      spec.providers.forEach((p, i) => {
+        const t = p.tier ?? defaultTier;
+        seen.add(t);
+        if (!tierValues.has(t)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["providers", i, "tier"],
+            message: `Unknown tier "${t}" (declared: ${[...tierValues].join(", ")})`,
+          });
+        }
+      });
+      for (const t of tierValues) {
+        if (!seen.has(t)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["dimensions", "tier"],
+            message: `Tier "${t}" has no provider`,
+          });
+        }
+      }
+      const pinned = spec.aggregate_filters?.tier;
+      if (pinned && !tierValues.has(pinned)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["aggregate_filters", "tier"],
+          message: `aggregate_filters.tier "${pinned}" is not a declared tier`,
+        });
+      }
     }
 
     // A ledger column referencing a panel id that doesn't exist would

@@ -28,10 +28,10 @@ func TestKeccak256KnownVectors(t *testing.T) {
 }
 
 func TestGainsTopicNonEmpty(t *testing.T) {
-	if len(gainsTradeClosedTopic) != 66 || !strings.HasPrefix(gainsTradeClosedTopic, "0x") {
-		t.Fatalf("bad topic %q", gainsTradeClosedTopic)
+	if len(gainsLimitExecutedTopic) != 66 || !strings.HasPrefix(gainsLimitExecutedTopic, "0x") {
+		t.Fatalf("bad topic %q", gainsLimitExecutedTopic)
 	}
-	t.Logf("TradeClosed topic0 = %s", gainsTradeClosedTopic)
+	t.Logf("LimitExecuted topic0 = %s", gainsLimitExecutedTopic)
 }
 
 func TestSlidingWindowAndSeenSet(t *testing.T) {

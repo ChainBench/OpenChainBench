@@ -38,7 +38,6 @@ import path from "node:path";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
-import { PERP_PRODUCT_PILL_SLUGS } from "@/lib/perp-venue-context";
 import { REMOVED_BENCH_SLUGS, REMOVED_PRODUCT_SLUGS } from "@/lib/removed-benches";
 import {
   draftPlaceholderForSpec,
@@ -253,7 +252,6 @@ export async function publishSitemapSlim(
   const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
   if (!outputDir) return { ok: false, error: "AGGREGATE_OUTPUT_PATH not set" };
 
-  const hlBuilderSlugSet = new Set(hlBuilderSlugs);
   const providerSlugSet = new Set<string>();
   for (const bench of benches) {
     if (bench.status !== "live") continue;
@@ -261,9 +259,9 @@ export async function publishSitemapSlim(
       const slug = r.slug;
       if (!slug) continue;
       if (CHAIN_BY_SLUG.has(slug)) continue;
-      if (hlBuilderSlugSet.has(slug)) continue;
-      if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") continue;
       if (REMOVED_PRODUCT_SLUGS.has(slug)) continue;
+      // HL builders and perp venues are product pages too since
+      // 2026-09-17 (/products/<slug> is the one page per product).
       providerSlugSet.add(slug);
     }
   }

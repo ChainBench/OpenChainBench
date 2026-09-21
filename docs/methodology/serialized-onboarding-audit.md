@@ -3,7 +3,7 @@
 > **Pre-onboarding evaluation.** Run before Serialized is wired into any live harness, so the
 > decision to include or exclude them on each bench is documented and reproducible.
 >
-> **Version:** v1.1, 2026-09-05 (v1.0 same day; §8 corrected, §16 added). Author: internal. Key used: tenant `OpenChainBench`,
+> **Version:** v1.4, 2026-09-08 (§8 corrected in v1.1; §16.3 root cause corrected and §17 added in v1.2; §18 added in v1.3: Serialized wired into bench 001; §18.1 added in v1.4: that wiring reverted after measurement). Author: internal. Key used: tenant `OpenChainBench`,
 > plan `starter`, keyId `d5511a080aaa`, issued 2026-09-04.
 
 ---
@@ -387,11 +387,30 @@ Confirmed by request rather than by reading docs. Every path returns `404 NOT_FO
 Three independent sources agree; Serialized is low by a factor of 5.2, and reports a $55.7M market
 cap against a real ~$290M.
 
-Root cause is visible in their own response. `/v1/token/pools?chain=solana&address=DezXAZ...` ranks
-`Gx1WGimRY3jF...` first with liquidity 4,339, and the deep Orca pool everyone else prices from is
-absent from the list entirely. Their own ranks 2 and 3 quote ~3.18e-08 and ~3.20e-08 native against
-rank 1 at 6.09e-09, so the pool list is internally inconsistent by the same 5x. This is pool
-discovery missing the main market, not a decimals bug (`decimals: 5` is correct for BONK).
+**Correction (v1.2).** An earlier revision said the deep Orca pool was absent from their list. It is
+not: it is present, ranked second. The defect is the ranking, and it is sharper than "missing pool".
+Their `/v1/token/pools` returns 50 pools; the top 8 with liquidity converted to USD at their own
+`/v1/prices/native` SOL price of $103.85:
+
+| rank | pair | liquidity, raw | liquidity, USD | priceNative | implied USD |
+|---|---|---|---|---|---|
+| **1** | Bonk/USDC | 4,346.7 USDC | **$4,347** | 6.0867e-09 | $6.32e-07 |
+| 2 | Bonk/SOL | 728.7 SOL | **$75,679** | 3.1853e-08 | $3.31e-06 |
+| 3 | Bonk/USDC | 528.3 USDC | $528 | 3.1794e-08 | $3.30e-06 |
+| 6 | Bonk/SOL | 298.7 SOL | $31,017 | 3.1843e-08 | $3.31e-06 |
+
+Seven of eight pools agree at ~$3.31e-06. Rank 1 is the lone outlier, and `/v1/token/price` prices
+from it. Rank 1 holds the largest **raw** `liquidityNative` number (4,346.7) but the pool it beats
+holds 728.7 SOL, which is $75,679, or 17.4x deeper.
+
+The ranking compares `liquidityNative` across different quote assets without converting to USD, so a
+pool quoted in USDC outranks a deeper pool quoted in SOL purely because 4,346 > 728. Not a decimals
+bug (`decimals: 5` is correct for BONK), not a discovery gap: a unit bug in the pool ranking.
+
+This matters beyond pricing. `lpBurnedPct`, `lpLockedPct` and `lpSource` are all properties of the
+selected pool, so a wrong rank-1 selection also describes the LP safety of the wrong market. On BONK
+those fields degrade to `null` / `unknown`, but on a token where the thin pool has a burned LP and
+the real market does not, the security verdict would be wrong in the dangerous direction.
 
 Worth raising with them directly: a top-100 token mispriced 5x is a bigger problem for their
 prospects than any leaderboard position.
@@ -410,3 +429,154 @@ The idea remains the most promising new bench for this vertical, and the BONK ca
 is real. But it cannot be built on another aggregator as reference: the reference has to be computed
 from on-chain reserves of the deepest pool over an RPC we control, which is the actual work and the
 actual reason the bench would be defensible.
+
+
+## 17. Token-security bench: feasibility testing
+
+### 17.1 The cohort exists
+
+Six providers expose a live security endpoint, four of them keyless: Serialized, Mobula
+(`/api/2/token/security`), GoPlus (EVM and Solana), RugCheck (Solana), Honeypot.is. A leaderboard
+has enough rows on day one.
+
+### 17.2 Latency, ready to publish as-is (20 tokens, 4 chains)
+
+| Provider | p50 | p90 | max |
+|---|---|---|---|
+| RugCheck | 91 ms | 217 ms | 217 ms |
+| GoPlus | 249 ms | 376 ms | 597 ms |
+| Serialized | 306 ms | 847 ms | 2,416 ms |
+| **Mobula** | **5,240 ms** | 5,691 ms | **30,041 ms** |
+
+Mobula is 17x slower than Serialized and 57x slower than RugCheck. That is our own product at the
+bottom of a leaderboard we would be publishing, and it should be weighed before shipping this axis.
+
+### 17.3 Three design traps, all measured
+
+1. **Tax fields carry no signal.** Agreement on buy/sell tax: Serialized vs GoPlus 100% (n=22),
+   Serialized vs Mobula 90% (n=30), Mobula vs GoPlus 91% (n=22). A bench scoring tax accuracy is a
+   four-way tie.
+2. **LP fields are not comparable across vendors.** `serialized.lpBurnedPct` is LP burned,
+   `mobula.burnedHoldingsPercentage` is *token* burned, `rugcheck.lpLockedPct` is LP *locked*.
+   Three different quantities under similar names. Putting them in one column manufactures a false
+   ranking. The harness must define canonical fields and map each vendor explicitly.
+3. **Coverage alone is gameable.** A provider that always returns a number wins. Null rates measured
+   (share of nulls): Serialized top10 0%, taxes 25%, honeypot 100% (no such field);
+   Mobula taxes 5%, honeypot 30%, top10 100%; GoPlus taxes 40-50%; RugCheck LP 0%, rest 100%.
+
+### 17.4 Retrospective backtest: does the signal exist?
+
+Cohort of 128 tokens taken from `/v1/pulse?view=graduated` on Solana, Base and BNB. Cohort is defined
+by an event (graduation), not by survival, so no survivorship bias in selection. Split by current
+liquidity: 77 below $5k ("dead"), 19 above $50k ("alive"), 32 in between discarded.
+
+Median values, dead vs alive: `top10HoldersPct` 20.3 vs 10.0, `bundlersHoldingsPct` 51.6 vs 19.5,
+`holdersCount` 24 vs 239, `devHoldingsPct` 0.0 vs 79.3, `snipersHoldingsPct` 0.01 vs 98.4.
+
+**Age confound ruled out**: median age 0.8 h (dead) vs 1.0 h (alive), ratio 0.86.
+
+**But the test does not answer the prospective question.** Both cohorts are roughly one hour old, so
+"dead" means "never grew past $5k in its first hour", not "rugged over seven days". A retrospective
+query cannot substitute for snapshotting a verdict at mint and resolving the outcome later.
+
+### 17.5 Which fields are worth snapshotting (n=70)
+
+| Field | Distinct values | Read |
+|---|---|---|
+| `top10HoldersPct` | 68 / 70 (97%) | Genuine continuous measurement. Use it. |
+| `bundlersHoldingsPct` | 46 / 70 (66%) | Bimodal: 13 tokens at exactly 100.0, 13 at exactly 0.0. The 100.0 cluster tracked the dead group. Strongest candidate signal. |
+| `snipersHoldingsPct` | 45 / 70 (64%) | 26 zeros. Middling. |
+| `devHoldingsPct` | 21 / 70 (30%) | 42 zeros plus a 79.31 cluster appearing 7 times, a launchpad template signature. Low discriminative power on graduated tokens. |
+
+### 17.6 Cost constraint
+
+`token/security` costs 10 credits, `audit/contract` costs 750. At 200 fresh tokens a day the security
+endpoint costs ~60k credits a month, inside our 1M allowance. The audit endpoint is not benchmarkable
+at any useful cadence and must be excluded from the design and said so in the methodology.
+
+### 17.7 Recommended shape
+
+Layer 1, ship first: latency. No ground truth needed, 57x spread already measured.
+Layer 2: coverage against canonical fields we define, with the per-vendor mapping documented.
+Layer 3, the real bench: snapshot every provider's verdict at mint, resolve on-chain at T+7d
+(liquidity below 5% of peak, or LP pulled), publish recall and false-positive rate per provider.
+Snapshot `top10HoldersPct` and `bundlersHoldingsPct` as the primary signals per §17.5.
+
+
+## 18. Bench 001: Serialized wired, then pulled (v1.4, 2026-09-08)
+
+Earlier sections called 001 "blocked on a policy decision". That was the wrong framing, and it hid a
+practical question nobody had tested: does Serialized's stream cover the four bench pools at all?
+
+Their trades stream is keyed by **token** with an optional `pools` filter, while the bench is keyed
+by **pool**. Subscribing by the pool's native side (SOL, WETH, WBNB) acknowledges and delivers
+nothing, consistent with their REST 404 on `So111...112`: the chain native is a quote asset to them,
+never a token. Their own `GET /v1/pool` names the other side under `token` (USDC on Solana and Base,
+BUSD on BNB, USDG on Robinhood). Subscribing by that address with `pools=<bench pool>` delivers the
+tape for exactly that market.
+
+| Chain | pool | subscribe by | events with `txHash` |
+|---|---|---|---|
+| solana | 7qbRF6... | USDC `EPjF...`  | 4 in 75 s (1,694 token-wide) |
+| base | 0xd0b5... | USDC `0x8335...` | 10 in 90 s (173 token-wide) |
+| bnb | 0x58f8... | BUSD `0xe9e7...` | 2 in 90 s |
+| robinhood | 0x69bf... | USDG `0x5fc5...` | 79 in 90 s (3,888 token-wide) |
+
+One constraint from their official docs shaped the implementation: **5 concurrent connections per
+key**. The harness runs in three regions off one key, so the monitor opens one connection per
+process and multiplexes the four pools as subscriptions. A first test that opened eight connections
+was refused with close code 1008 ("connection limit (5 per key)"), which is also why an earlier
+Solana attempt looked like a failure.
+
+`harnesses/aggregator-head-lag/cmd/script/serialized_head_lag_monitor.go` records both series:
+`head_lag_seconds` from their own `at` (same treatment as Mobula and Codex, same negative filter), and
+`head_lag_ref_seconds` against the node reference clock matched by `txHash`, which is the one that can
+rank providers. Every event carries `txHash`, `block`, `poolAddress` and a `preconfirmed` boolean per
+their docs, so Base flashblocks are visible rather than inferred.
+
+### 18.1 Why it was reverted
+
+Measured 2026-09-08 before promoting the wiring to `main`. One WS connection, the four bench pools,
+a 240 s capture, plus a targeted 150 s run that asked a public Base node whether the block existed
+at the moment each trade arrived. Single vantage (workstation, NTP offset +0.078 s), so absolute
+latencies are not comparable to harness numbers; the signs and the orders of magnitude are.
+
+**The ruler matches.** Their `at` is the block timestamp exactly, so `head_lag_seconds` would measure
+the same quantity as Mobula's `trade.Date` and Codex's `event.Timestamp`:
+
+| chain | n | median(`at` − block timestamp) |
+|---|---|---|
+| base | 105 | +0.000 s |
+| bnb | 1 | +0.000 s |
+| solana | 28 | +0.473 s (artefact: `getBlockTime` returns whole seconds) |
+
+**But they read a different thing.** On Base, every sampled trade arrived before its own block:
+
+| check | result |
+|---|---|
+| median(receipt − block timestamp), base | −0.911 s |
+| share of base events with negative lag | 105/105 (100%) |
+| trades received before the block existed on a public node | 11/11 |
+| median lead over block publication | 1.04 s |
+
+In all eleven cases the node head at receipt was exactly `target block − 1`: the block was not late in
+propagation, it did not exist yet. The spread (−0.21 s to −1.80 s) is the width of one Base slot.
+Serialized streams sequencer preconfirmations; Mobula, Codex and GeckoTerminal read sealed blocks.
+
+**Decision: excluded from bench 001.** Not because the measurement is wrong, but because the two
+emissions are different products. A preconfirmation carries no finality guarantee and can be
+reordered, so the ~1.5 s lead is a latency/finality trade-off, not pure speed. Publishing both in one
+ranking would present that trade-off as superiority. `RecordHeadLag` also drops negatives outright
+(`metrics.go`), so on the legacy series they would show as no data on Base while being the fastest —
+and any rare positive sample would stick on the gauge and become their published p50.
+
+Two findings worth raising with them:
+
+- `preconfirmed` was `false` on all eleven events that preceded block publication. A consumer cannot
+  tell the two regimes apart from the payload.
+- Robinhood delivered **0 events in 240 s** despite an acknowledged subscription, against 79 in 90 s
+  recorded on 2026-09-06 (§18 table). Re-verify before any future wiring.
+
+**Reopen if** the bench gains an emission-regime dimension (sealed vs preconfirmed), or a landing-rate
+companion series shows their preconfirmations reach sealed blocks 1:1. Serialized stays on benches
+004, 005, 008 and 090, where the comparison is like for like.

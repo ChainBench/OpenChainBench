@@ -4,7 +4,7 @@ slug: hyperliquid-frontends
 number: "030"
 title: Hyperliquid frontends builder revenue leaderboard
 seo_title: "Hyperliquid frontends: builder fees 2026"
-seo_description: "Live USD revenue collected by every Hyperliquid frontend via the on-chain builder code. Ranked by 24h fees."
+seo_description: "{{best_name}} earned {{best_p50}} in builder fees over 24h, the most of {{count}} Hyperliquid frontends. Every frontend ranked live by on-chain builder-code revenue, read from a local hl node every 30 seconds."
 subtitle: How much USD builder fee revenue each Hyperliquid frontend collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live

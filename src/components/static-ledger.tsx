@@ -11,6 +11,8 @@
 import { displayResults, isStaleBench } from "@/lib/provider-filters";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
+import { isRegion } from "@/lib/brand";
+import { isHexAddressSlug } from "@/lib/providers";
 import { rpcChainLabel } from "@/lib/citation";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -19,11 +21,12 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   if (rows.length === 0) return null;
   const chain = rpcChainLabel(benchmark);
   const pausedOn = isStaleBench(benchmark) && benchmark.lastRunAt ? benchmark.lastRunAt.slice(0, 10) : null;
+  const win = benchmark.window ?? "24h";
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
     : chain
     ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
-    : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, 24h)`;
+    : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, ${win})`;
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (
     <section className="mt-8" aria-labelledby="results">
@@ -33,7 +36,7 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
-            {benchmark.title}: {benchmark.metric} per provider, last 24 hours.
+            {benchmark.title}: {benchmark.metric} per provider, last {win === "24h" ? "24 hours" : win}.
           </caption>
           <thead>
             <tr className="border-y-2 border-ink text-left">
@@ -49,7 +52,19 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
             {rows.map((r, i) => (
               <tr key={r.slug} className="border-b border-ink/10">
                 <td className="py-2 pr-3 tabular-nums text-ink-faint">{i + 1}</td>
-                <td className="py-2 pr-3 font-medium text-ink">{r.name}</td>
+                <td className="py-2 pr-3 font-medium text-ink">
+                  {/* Crawlable path from a ranking to the venue page: the
+                      interactive ledger links on mount, this server-rendered
+                      table did not, so bench HTML carried no /products link
+                      (audit 2026-09-21). Same guard as the interactive row. */}
+                  {isRegion(r.slug) || isHexAddressSlug(r.slug) ? (
+                    r.name
+                  ) : (
+                    <a href={`/products/${r.slug}`} className="hover:underline underline-offset-2">
+                      {r.name}
+                    </a>
+                  )}
+                </td>
                 <td className="py-2 px-3 text-right tabular-nums">{fmtUnit(r.ms.p50, benchmark.unit)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p99, benchmark.unit)}</td>}

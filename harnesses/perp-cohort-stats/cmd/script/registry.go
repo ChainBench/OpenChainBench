@@ -5,10 +5,10 @@ package main
 // selector `{venue="<slug>"}` matches what the bench page reads.
 //
 // Adding a venue:
-//   1. Append here
-//   2. Append on the OCB site's perp registry
-//   3. Add priority entries in adapter.go priorityMap()
-//   4. Redeploy both sides
+//  1. Append here
+//  2. Append on the OCB site's perp registry
+//  3. Add priority entries in adapter.go priorityMap()
+//  4. Redeploy both sides
 type Venue struct {
 	Slug  string
 	Name  string
@@ -46,6 +46,8 @@ var Registry = []Venue{
 	{Slug: "kiloex", Name: "KiloEx", Type: "perp", Chain: "bnb"},
 	{Slug: "orderly", Name: "Orderly", Type: "perp", Chain: "arbitrum"},
 	{Slug: "backpack", Name: "Backpack", Type: "perp", Chain: "solana"},
+	// Ondo Perps: SGX off-chain matching, custody on Ethereum and Arbitrum.
+	{Slug: "ondo", Name: "Ondo Perps", Type: "perp", Chain: "ethereum"},
 }
 
 // VenueBySlug returns the Venue with the given slug, or nil if not found.

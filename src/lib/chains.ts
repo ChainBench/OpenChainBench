@@ -294,6 +294,14 @@ export const CHAINS: ChainEntry[] = [
       "Parallel-execution EVM Layer 1 (mainnet Nov 2025). 400 ms blocks, MonadBFT finality in about 800 ms, full EVM bytecode compatibility.",
   },
   {
+    slug: "arc",
+    label: "Arc",
+    category: "L1",
+    nativeSymbol: "USDC",
+    description:
+      "Circle's EVM Layer 1 for stablecoin finance (mainnet 2026-09-16, chain id 5042). USDC is the gas token, Malachite BFT consensus with sub-second deterministic finality, ~0.5 s blocks, proof-of-authority validator set (BlackRock, DTCC, Visa, Mastercard, ICE among the founding validators).",
+  },
+  {
     slug: "megaeth",
     label: "MegaETH",
     category: "L2",
@@ -1340,6 +1348,8 @@ export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   // moonbeam, unichain, soneium, berachain, fraxtal, cronos) drop out of
   // the /chains/<slug> hub and had to be filtered from the sitemap by
   // hand (see prior fix #910). New per-chain bench conventions land here.
+  // The keyed cohort lives on the same `<chain>-rpc` page since
+  // 2026-09-21 (tier dimension), so the suffix is the only convention.
   const conventionSuffixes = ["-rpc"];
   const acceptedSlugPatterns = new Set<string>();
   for (const slug of accept) {

@@ -577,7 +577,7 @@ export async function GET(
   // label selector matches nothing and every value reads 0.
   const aggregateDims = aggregate.dimensions ?? {};
   function pickOption(
-    dim: "chain" | "region" | "venue" | "kind",
+    dim: "chain" | "region" | "venue" | "kind" | "tier",
     matcher?: (optValue: string, param: string) => boolean,
   ): { value: string; label: string } | null {
     const param = url.searchParams.get(dim);
@@ -592,16 +592,19 @@ export async function GET(
   const regionOption = pickOption("region");
   const venueOption = pickOption("venue");
   const kindOption = pickOption("kind");
+  const tierOption = pickOption("tier");
   const filters: {
     chain?: string;
     region?: string;
     venue?: string;
     kind?: string;
+    tier?: string;
   } = {};
   if (chainOption) filters.chain = chainOption.value;
   if (regionOption) filters.region = regionOption.value;
   if (venueOption) filters.venue = venueOption.value;
   if (kindOption) filters.kind = kindOption.value;
+  if (tierOption) filters.tier = tierOption.value;
   const rawBenchmark =
     Object.keys(filters).length > 0
       ? (await getBenchmark(slug, filters)) ?? aggregate
@@ -655,6 +658,7 @@ export async function GET(
   if (regionOption) labelParts.push(regionOption.label);
   if (venueOption) labelParts.push(venueOption.label);
   if (kindOption) labelParts.push(kindOption.label);
+  if (tierOption) labelParts.push(tierOption.label);
   const chainLabel = labelParts.length > 0 ? labelParts.join(" · ") : null;
 
   const rawTemplate = url.searchParams.get("template");

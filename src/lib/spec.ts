@@ -135,6 +135,8 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     seoIntro: spec.seo_intro ?? stored.seoIntro,
     faq: spec.faq ?? stored.faq,
     excludedProviders: spec.excluded_providers ?? stored.excludedProviders,
+    window: spec.prometheus?.window ?? stored.window,
+    expectedFreshnessSec: spec.prometheus?.expected_freshness_seconds ?? stored.expectedFreshnessSec,
     perChainExplainer: spec.per_chain_explainer ?? stored.perChainExplainer,
     abstract: spec.abstract ?? stored.abstract,
     methodology: spec.methodology ?? stored.methodology,
@@ -167,6 +169,12 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // the worker re-publishes the snapshot, otherwise a bench keeps
     // ranking 3-sample providers as healthy through the materialise
     // lag.
+    // Does this bench actually compute a distribution? A provider block
+    // that repeats one expression for p50, p90 and p99 has a single
+    // measurement, so the UI must not badge the value "p50". Coverage and
+    // count benches are all written that way; latency benches are not.
+    // Overlaid from the live YAML for the same reason as the fields above.
+    hasDistribution: specHasDistribution(spec) ?? stored.hasDistribution,
     expectedN: spec.expected_n ?? stored.expectedN,
   };
   // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
@@ -407,12 +415,21 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v55: add ws-head-latency-robinhood (244) + keyed-rpc-robinhood (243). Bench SET grew.
   // v56: drop 6 keyed-rpc benches (arbitrum/base/bnb/eth/polygon/solana), US-only robinhood.
   // v57: drop rpc-keyed-latency bench.
-  // v63: add bench 265 perp-pf-ratio + 5 providers on bench 234. Bench SET grew.
-  // v64: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
+  // v63: score_scope contested_chains on bench 008 changes its provider values.
+  // v64: add bench 262 fiat-onramp-cost + On-ramps category. Bench SET grew.
+  // v65: add bench 265 perp-pf-ratio (dev-only) + 5 providers on bench 234. Bench SET grew.
+  // v66: Benchmark.chart (default_panel_by_chain, hide_headline_by_chain); cached
   // objects without it kept the Head lag tab on Solana after the deploy.
-  // v65: score_scope contested_chains on bench 008 changes its provider values;
-  // Serialized joins benches 001, 004, 005, 008, 090.
-  ["bench-unfiltered-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v67: add bench 267 trading-app-daily-volume. Bench SET grew.
+  // v69: keyed RPC cohort back (237-242 restored, 269 HyperEVM, 270 Arc) and
+  // 243 Robinhood opened to 3 regions. Bench SET grew.
+  // v70: bench 268 method v3: unit bp, Sandwiched panel and ledger column
+  // removed, BullX and Nova out of the cohort; cached v69 entries keep the
+  // old panels and providers.
+  // v71: keyed RPC cohort folded into the chain pages (tier dimension):
+  // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
+  // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
+  ["bench-unfiltered-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -625,10 +642,13 @@ const loadAllBenchmarksCached = unstable_cache(
   // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
   // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
   // v57: lockstep with bench-unfiltered-v54 (add 6 new chain benches 216-221).
-  // v58: lockstep with bench-unfiltered-v63 (add bench 265 perp-pf-ratio).
-  // v59: lockstep with bench-unfiltered-v64 (Benchmark.chart).
-  // v60: lockstep with bench-unfiltered-v65 (contested scope, Serialized).
-  ["all-benchmarks-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v59: lockstep with bench-unfiltered-v64 (add bench 262 fiat-onramp-cost).
+  // v60: lockstep with bench-unfiltered-v65 (add bench 265 perp-pf-ratio).
+  // v61: lockstep with bench-unfiltered-v66 (Benchmark.chart).
+  // v62: lockstep with bench-unfiltered-v67 (add bench 267 trading-app-daily-volume).
+  // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
+  // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
+  ["all-benchmarks-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -727,7 +747,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v23: lockstep with bench-unfiltered-v56 (keyed-rpc cleanup).
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
   // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
-  ["bench-filters-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v31: lockstep with bench-unfiltered-v71 (tier variants).
+  ["bench-filters-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
@@ -789,5 +810,25 @@ export const getSpecs = (): Promise<Spec[]> => loadSpecs();
 
 const loadSpecs = cache(loadSpecsUncached);
 
-
-
+/**
+ * True when at least one provider declares p50, p90 and p99 as expressions
+ * that are not all identical. Undefined when the spec declares no provider
+ * queries at all, so the caller can fall back to whatever the snapshot held
+ * rather than asserting "no distribution" about a spec it could not read.
+ */
+function specHasDistribution(spec: {
+  providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
+}): boolean | undefined {
+  const providers = spec.providers ?? [];
+  let sawQueries = false;
+  for (const p of providers) {
+    const q = p.queries;
+    if (!q?.p50) continue;
+    sawQueries = true;
+    const distinct = new Set(
+      [q.p50, q.p90, q.p99].filter((x): x is string => !!x).map((x) => x.trim()),
+    );
+    if (distinct.size > 1) return true;
+  }
+  return sawQueries ? false : undefined;
+}

@@ -111,3 +111,76 @@ describe("citation reliability threshold", () => {
     expect(top?.value).toBe(ranks[0].ms.p50);
   });
 });
+
+import { headlineSentence, citationQuote, benchPath, nonHeadlineTier } from "./citation";
+
+describe("citation, access tiers", () => {
+  const tiers = [
+    { value: "public", label: "Public, no key" },
+    { value: "keyed", label: "API key" },
+  ];
+  const rpc = (results: ProviderResult[]): Benchmark => ({
+    ...bench(results),
+    slug: "robinhood-rpc",
+    title: "Robinhood Chain RPC endpoints: free public URLs and API-key providers by latency",
+    dimensions: { tier: tiers },
+  });
+
+  test("the headline cohort keeps the clean URL and the free public wording", () => {
+    const b = rpc([{ ...r("publicnode", "PublicNode", 40), tier: "public" }, { ...r("drpc", "dRPC", 55), tier: "public" }]);
+    expect(nonHeadlineTier(b)).toBeNull();
+    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc");
+    expect(headlineSentence(b)).toContain("free public Robinhood Chain RPC endpoints");
+  });
+
+  test("the keyed variant names its cohort and links its tab", () => {
+    const b = rpc([
+      { ...r("chainstack", "Chainstack", 3), tier: "keyed" },
+      { ...r("alchemy", "Alchemy", 9), tier: "keyed" },
+      { ...r("quicknode", "QuickNode", 12), tier: "keyed" },
+    ]);
+    expect(nonHeadlineTier(b)).toBe("keyed");
+    expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc#tier=keyed");
+    const sentence = headlineSentence(b);
+    expect(sentence).toContain("of the 3 private (API-key) Robinhood Chain RPC endpoints measured");
+    expect(sentence).not.toContain("free public");
+    expect(citationQuote(b, "https://openchainbench.com")).toContain(
+      "https://openchainbench.com/benchmarks/robinhood-rpc#tier=keyed",
+    );
+  });
+});
+
+import { cohortSummaries } from "./citation";
+
+describe("cohortSummaries", () => {
+  test("one record per cohort, headline first, each ranked apart with its own URL and gate", () => {
+    const b: Benchmark = {
+      ...bench([{ ...r("publicnode", "PublicNode", 40), tier: "public" }, { ...r("drpc", "dRPC", 55), tier: "public" }]),
+      slug: "base-rpc",
+      title: "Base RPC endpoints: free public URLs and private API-key providers by latency",
+      dimensions: { tier: [{ value: "public", label: "Public, no key" }, { value: "keyed", label: "Private, API key" }] },
+      tierResults: {
+        keyed: [
+          r("alchemy", "Alchemy", 38),
+          r("quicknode", "QuickNode", 29),
+          { ...r("chainstack", "Chainstack", 20), successRate: 30 },
+        ],
+      },
+    };
+    const cohorts = cohortSummaries(b, "https://openchainbench.com");
+    expect(cohorts.map((c) => [c.tier, c.headline, c.url])).toEqual([
+      ["public", true, "https://openchainbench.com/benchmarks/base-rpc"],
+      ["keyed", false, "https://openchainbench.com/benchmarks/base-rpc#tier=keyed"],
+    ]);
+    expect(cohorts[0].leader?.name).toBe("PublicNode");
+    // Chainstack at 30 % success never leads the private cohort.
+    expect(cohorts[1].leader?.name).toBe("QuickNode");
+    expect(cohorts[1].rankings.map((x) => x.slug)).toEqual(["quicknode", "alchemy"]);
+    expect(cohorts[1].sentence).toContain("private (API-key) Base RPC endpoints");
+    expect(cohorts[1].api).toBe("https://openchainbench.com/api/stat/base-rpc?tier=keyed");
+  });
+
+  test("empty on a bench without tiers", () => {
+    expect(cohortSummaries(bench([r("a", "A", 1)]), "https://x")).toEqual([]);
+  });
+});

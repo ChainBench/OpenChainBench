@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { citableAsOf, citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { stripQueryRedirect } from "@/lib/canonical-query";
@@ -91,6 +91,25 @@ export async function GET(req: Request) {
       source: b.source,
       license: "CC-BY-4.0",
       cite: citeBundle(b, SITE.url),
+      // Chain RPC pages carry two cohorts ranked apart (public, no key;
+      // private, API key). Compact form: leader + sentence + URL each.
+      ...(() => {
+        const cohorts = cohortSummaries(b, SITE.url);
+        return cohorts.length > 0
+          ? {
+              cohorts: cohorts.map((c) => ({
+                tier: c.tier,
+                label: c.label,
+                headline: c.headline,
+                url: c.url,
+                api: c.api,
+                leader: c.leader ? { ...c.leader, value: valueInDeclaredUnit(c.leader.value, b.unit) } : null,
+                measured: c.measured,
+                sentence: c.sentence,
+              })),
+            }
+          : {};
+      })(),
     };
   });
 

@@ -22,7 +22,7 @@ export function fmtAsOfUtc(iso: string): string | null {
   )} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-export function fmtUnit(value: number, unit: string) {
+export function fmtUnit(value: number, unit: string): string {
   if (!Number.isFinite(value)) return "-";
   if (unit === "pct") return formatPercent(value);
   if (unit === "bps") {
@@ -113,6 +113,9 @@ export function fmtUnit(value: number, unit: string) {
   }
   if (unit === "usd") {
     if (value === 0) return "$0";
+    // Signed amounts (slippage vs quote: a bridge that beats its quote is
+    // negative) read "-$0.0038", not "$-0.0038".
+    if (value < 0) return `-${fmtUnit(-value, unit)}`;
     const abs = Math.abs(value);
     // Fee-grade precision: network fees can be 6 decimals deep
     // ($0.000001 Avalanche transfer), so we can't collapse anything
@@ -224,4 +227,28 @@ function formatPercent(pct: number): string {
   if (abs >= 0.01) return `${pct.toFixed(3)}%`;
   if (abs >= 0.001) return `${pct.toFixed(4)}%`;
   return `${pct.toFixed(5)}%`;
+}
+
+/**
+ * Label rendered under a benchmark's headline value.
+ *
+ * "p50 · 24h" is only honest when a percentile was actually computed. On a
+ * coverage or count bench the provider block repeats one expression for
+ * p50, p90 and p99, so the number is a single measurement and the badge
+ * would be claiming a distribution that does not exist: "19 DEX-indexed
+ * chains, p50 over 24h" reads as nonsense because it is.
+ *
+ * Percentages and basis points are rolling ratios over the window, so they
+ * get "24h avg". Everything else with a single measurement gets the bare
+ * window.
+ */
+export function valueWindowLabel(bench: {
+  unit: string;
+  hasDistribution?: boolean;
+}): string {
+  if (bench.hasDistribution !== false) return "p50 · 24h";
+  if (bench.unit === "pct" || bench.unit === "bps" || bench.unit === "bp") {
+    return "24h avg";
+  }
+  return "24h";
 }

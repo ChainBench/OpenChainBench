@@ -19,12 +19,15 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { CompareBenchCard } from "@/components/compare-bench-card";
+import { PerpVolumeHeadToHead } from "@/components/perp-volume-head-to-head-section";
+import { PERP_VOLUME_COHORT } from "@/lib/perp-volume-history";
 import type { CompareBench } from "@/components/compare-bench-card";
 import {
   computeInputsHash,
   readPairCache,
   writePairCache,
 } from "@/lib/compare-cache";
+import { sharedBenchSlugs } from "@/lib/compare-compute";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -146,13 +149,7 @@ function hasSharedBenches(
   bAppearances: Awaited<ReturnType<typeof getProvider>>,
 ): boolean {
   if (!aAppearances || !bAppearances) return false;
-  const aSlugs = new Set(aAppearances.appearances.map((x) => x.benchmark.slug));
-  const bSlugs = new Set(bAppearances.appearances.map((x) => x.benchmark.slug));
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
-    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  return candidateSlugs.some((s) => !excluded.has(s));
+  return sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances).length > 0;
 }
 
 export async function generateMetadata({
@@ -190,16 +187,13 @@ export async function generateMetadata({
 
   // Compute shared bench count from appearances (already loaded via
   // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
-  const aSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
-  const bSlugs = new Set(b.appearances.map((x) => x.benchmark.slug));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugsForMeta = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
-    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
-  const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
+  const sharedSlugsForMeta = sharedBenchSlugs(pair, a.appearances, b.appearances);
+  const sharedCount = sharedSlugsForMeta.length;
   const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
 
-  const title = `${a.name} vs ${b.name} Benchmark${sharedCount === 1 ? "" : "s"} ${currentYear}`;
+  // Title carries the count: `LI.FI vs Relay 2026: 2 live benchmarks compared`
+  // (audit 2026-09-19, major 4: the previous form named no number).
+  const title = `${a.name} vs ${b.name} ${currentYear}: ${sharedCount} live ${benchWord} compared`;
 
   // Thin-content gate (SEO audit 2026-07-08): a pair whose shared
   // benches carry live data for both providers on fewer than 2 of them
@@ -225,7 +219,7 @@ export async function generateMetadata({
       .map((x) => x.benchmark.slug),
   );
   const liveSharedCount = sharedSlugsForMeta.filter(
-    (s) => !excluded.has(s) && aLive.has(s) && bLive.has(s),
+    (s) => aLive.has(s) && bLive.has(s),
   ).length;
   // Curated pairs are hand-picked head-term targets like usdc-vs-usdt
   // and carry editorial framing beyond the ledger, so they stay
@@ -241,8 +235,15 @@ export async function generateMetadata({
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
   // Bing indexing 2 of 4938 compare pages. Also cites "as of DATE" for
-  // LLM citations.
-  const isoDate = new Date().toISOString().split("T")[0];
+  // LLM citations. The date is the newest measurement across the shared
+  // benches, not the render clock: a description that restamped itself
+  // on every ISR pass advertised freshness the data did not have.
+  const newestRun = [...a.appearances, ...b.appearances]
+    .filter((x) => sharedSlugsForMeta.includes(x.benchmark.slug))
+    .map((x) => Date.parse(x.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => y - x)[0];
+  const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
   const description = capDescription(
     `${a.name} vs ${b.name} on ${sharedCount} shared OpenChainBench ${benchWord}. Live measurements, reproducible methodology. As of ${isoDate}.`,
     158,
@@ -308,12 +309,26 @@ const COMPARE_BENCH_TITLES: Record<string, string> = {
 /** Maps a bench to the right comparative verb for FAQ questions. */
 function verbForBench(bench: SharedBench): string {
   const unit = (bench.unit ?? "").toLowerCase();
+  // Direction first: a higher-is-better USD bench (24h perp volume) is
+  // not "cheaper", a lower-is-better ratio (P/E) is not "faster"
+  // (audit 2026-09-21: "Which is cheaper on 24h perp volume").
+  if (bench.higherIsBetter && (unit === "usd" || unit === "count" || unit === "bps" || unit === "bp")) return "higher on";
+  if (!bench.higherIsBetter && unit === "x") return "lower on";
   if (unit === "usd" || unit === "gwei" || unit === "bps" || unit === "bp") return "cheaper";
   if ((unit === "pct" || unit === "sol") && !bench.higherIsBetter) return "cheaper";
   if (unit === "x" && bench.higherIsBetter) return "higher-rated";
   if (unit === "count" && bench.higherIsBetter) return "more active";
   if (bench.higherIsBetter) return "more reliable";
   return "faster";
+}
+
+/** "Which is faster, A or B?" / "Which has the higher 24h volume, A or B?" */
+function whichQuestion(verb: string, metric: string | null, a: string, b: string): string {
+  if (verb === "higher on" || verb === "lower on") {
+    const adj = verb === "higher on" ? "higher" : "lower";
+    return `Which has the ${adj} ${(metric ?? "value").toLowerCase()}, ${a} or ${b}?`;
+  }
+  return metric ? `Which is ${verb} on ${metric.toLowerCase()}, ${a} or ${b}?` : `Which is ${verb}, ${a} or ${b}?`;
 }
 
 /** Strips provider-list suffixes from bench titles for use in FAQ and
@@ -419,6 +434,7 @@ async function loadBreakdown(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<BreakdownRow[]> {
   const filtered = options.filter(
     (o) => o.value.toLowerCase() !== "all",
@@ -428,6 +444,7 @@ async function loadBreakdown(
     filtered.map(async (opt) => {
       const variant = await loadBenchmark(benchSlug, {
         [axis]: opt.value,
+        ...(tier ? { tier } : {}),
       });
       if (!variant) return null;
       const aRes = variant.results.find((r) => r.slug === providerA);
@@ -469,19 +486,22 @@ async function loadChainRegionMatrix(
   providerA: string,
   providerB: string,
   higherIsBetter: boolean,
+  tier?: string,
 ): Promise<ChainRegionEntry[]> {
   const chains = chainOpts.filter((c) => c.value.toLowerCase() !== "all");
   const regions = regionOpts.filter((r) => r.value.toLowerCase() !== "all");
   if (chains.length === 0 || regions.length === 0) return [];
 
+  const scope = tier ? { tier } : {};
   const chainTasks = chains.map((c) =>
-    loadBenchmark(benchSlug, { chain: c.value }),
+    loadBenchmark(benchSlug, { chain: c.value, ...scope }),
   );
   const regionTasks = chains.flatMap((c) =>
     regions.map((r) =>
       loadBenchmark(benchSlug, {
         chain: c.value,
         region: r.value,
+        ...scope,
       }).then((variant) => ({ chain: c.value, region: r.value, variant })),
     ),
   );
@@ -572,11 +592,8 @@ async function buildSharedBenches(
   //   2. Otherwise take the natural intersection of both providers'
   //      appearances (the default for any new pair).
   //   3. In both cases, subtract anything in `excludeBenchmarks`.
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aByBench.has(s) && bByBench.has(s))
-    : Array.from(aByBench.keys()).filter((s) => bByBench.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
+  // Same access cohort only: see sharedBenchSlugs.
+  const sharedSlugs = sharedBenchSlugs(pair, aAppearances.appearances, bAppearances.appearances);
 
   // KV cache lookup before the fan out. Hash mixes provider slugs, the
   // shared bench list and the deploy SHA so any drift (new bench, new
@@ -595,7 +612,8 @@ async function buildSharedBenches(
       const aEntry = aByBench.get(benchSlug);
       const bEntry = bByBench.get(benchSlug);
       if (!aEntry || !bEntry) return null;
-      const fullBench = await loadBenchmark(benchSlug);
+      const tier = aEntry.tier;
+      const fullBench = await loadBenchmark(benchSlug, tier ? { tier } : {});
       if (!fullBench) return null;
 
       const higherIsBetter = fullBench.higherIsBetter === true;
@@ -637,6 +655,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? Promise.resolve<BreakdownRow[]>([])
@@ -647,6 +666,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               ),
           hasBothDims
             ? loadChainRegionMatrix(
@@ -656,6 +676,7 @@ async function buildSharedBenches(
                 aAppearances.slug,
                 bAppearances.slug,
                 higherIsBetter,
+                tier,
               )
             : Promise.resolve<ChainRegionEntry[]>([]),
         ]);
@@ -857,17 +878,27 @@ export default async function ComparePage({
     q: `${a.name} vs ${b.name}: which one is better?`,
     a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${aWinsBench.compareTitle ?? shortBenchTitle(aWinsBench.title)}.` : ""} ${bWinsBench ? `${b.name} leads on ${bWinsBench.compareTitle ?? shortBenchTitle(bWinsBench.title)}.` : ""} See the live table on this page for every metric.`.trim(),
   });
+  // When both winners share the verb ("faster" for every ms bench) the
+  // two questions collided and FAQPage carried a duplicate question
+  // (audit 2026-09-19, major 4); name the bench in the question then.
+  const sameVerb =
+    aWinsBench && bWinsBench && verbForBench(aWinsBench) === verbForBench(bWinsBench);
+  const whichQ = (bench: SharedBench) => {
+    const verb = verbForBench(bench);
+    const needsMetric = sameVerb || verb === "higher on" || verb === "lower on";
+    return whichQuestion(verb, needsMetric ? bench.metric : null, a.name, b.name);
+  };
   if (aWinsBench) {
     const st = shortBenchTitle(aWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(aWinsBench)}, ${a.name} or ${b.name}?`,
+      q: whichQ(aWinsBench),
       a: `On the ${st} benchmark, ${a.name} leads at ${fmtResult(aWinsBench.aResult.p50, aWinsBench.unit, aWinsBench.aResult.sampleSize)} versus ${b.name} at ${fmtResult(aWinsBench.bResult.p50, aWinsBench.unit, aWinsBench.bResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     const st = shortBenchTitle(bWinsBench.title);
     faqEntries.push({
-      q: `Which is ${verbForBench(bWinsBench)}, ${a.name} or ${b.name}?`,
+      q: whichQ(bWinsBench),
       a: `On the ${st} benchmark, ${b.name} leads at ${fmtResult(bWinsBench.bResult.p50, bWinsBench.unit, bWinsBench.bResult.sampleSize)} versus ${a.name} at ${fmtResult(bWinsBench.aResult.p50, bWinsBench.unit, bWinsBench.aResult.sampleSize)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
@@ -875,6 +906,16 @@ export default async function ComparePage({
     q: `How is the ${a.name} vs ${b.name} comparison measured?`,
     a: `Every benchmark on this page uses the same open methodology, published at ${SITE.url}/methodology. Data is CC-BY-4.0. Measurement harnesses are MIT-licensed.`,
   });
+  // Belt and braces: FAQPage rejects duplicate questions.
+  const seenQ = new Set<string>();
+  const dedupedFaq = faqEntries.filter((f) => {
+    const k = f.q.trim().toLowerCase();
+    if (seenQ.has(k)) return false;
+    seenQ.add(k);
+    return true;
+  });
+  faqEntries.length = 0;
+  faqEntries.push(...dedupedFaq);
 
   const faqJsonLd = {
     "@context": "https://schema.org",
@@ -895,6 +936,9 @@ export default async function ComparePage({
   };
 
   const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+  const perpPair =
+    pair.hero === "perp-volume" ||
+    (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
 
   return (
     <main className="mx-auto max-w-5xl px-6 pt-10 pb-16 sm:pt-14">
@@ -979,6 +1023,15 @@ export default async function ComparePage({
         />
       </section>
 
+      {perpPair && (
+        <PerpVolumeHeadToHead
+          aSlug={a.slug}
+          bSlug={b.slug}
+          aName={a.name}
+          bName={b.name}
+        />
+      )}
+
       <section className="mt-10">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           Side by side measurements
@@ -990,6 +1043,8 @@ export default async function ComparePage({
               bench={s}
               aName={a.name}
               bName={b.name}
+              aSlug={a.slug}
+              bSlug={b.slug}
             />
           ))}
         </div>
@@ -1055,7 +1110,7 @@ export default async function ComparePage({
           per provider, observable third-party search demand, and a
           public <code>/products/[slug]</code> page on OCB. Editorially
           curated pairs (like this one) may publish early when search
-          demand is high and data is accruing — panels with fewer than
+          demand is high and data is accruing; panels with fewer than
           100 samples are shown as provisional. The full pair ledger is
           versioned in the public repo.
         </p>

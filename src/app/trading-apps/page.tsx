@@ -2,22 +2,36 @@ import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import { getBenchmark } from "@/data/benchmarks";
 import type { ProviderResult } from "@/types/benchmark";
+import { TradingAppVolumeSection } from "@/components/trading-app-volume-section";
+import { TerminalFillSection } from "@/components/terminal-fill-section";
+import { isDevOnlyBench } from "@/lib/removed-benches";
+import { ChainBar } from "@/components/chain-bar";
+import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-history";
+import {
+  TRADING_APP_PLATFORMS as PLATFORMS,
+  TRADING_APP_COLUMNS as COLUMNS,
+  fmtCount,
+  scopeFromFormula,
+  type TradingAppColKey as ColKey,
+} from "@/lib/trading-apps";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live benchmarks for Solana trading platforms and Telegram bots — volume, swap transactions, average trade size, and app store ratings.";
+  "Cross-chain daily volume for trading apps and Telegram bots (GMGN, Axiom, FOMO, Terminal, Photon, Trojan and more) on closed UTC days with per-chain split and trends, plus on-chain activity, fee rates and app store ratings.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Best Solana Trading Apps 2026, ranked by benchmark",
+  title: "Trading app volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, cross-chain daily",
   description: DESCRIPTION,
 });
 
-export const revalidate = 3600;
+export const revalidate = 300; // the fill rows' fetch revalidates at 300 s; an hour here printed a table an hour behind the bench page
 
-const BENCH_SLUGS = [
+const ALL_BENCH_SLUGS = [
+  "trading-app-daily-volume",
+  "terminal-fill-quality",
   "solana-trading-platform-wars",
   "solana-dex-volume",
   "solana-unique-traders",
@@ -27,76 +41,9 @@ const BENCH_SLUGS = [
   "memecoin-platforms",
   "app-store-ratings",
 ] as const;
-
-// Volume source: Dune community datasets (dataset_*_daily).
-// Each platform is a separate dataset with cross-chain breakdown (blockchain col).
-// pump.fun = pumpapp Solana + relay swaps, shown with proper attribution now.
-// Terminal (slug: padre) = pump.fun's own trading app (formerly Padre, acq Apr 2025).
-// BasedBot is a multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM).
-const PLATFORMS = [
-  { slug: "pump-fun", name: "pump.fun" },
-  { slug: "padre", name: "Terminal" },
-  { slug: "gmgn", name: "GMGN" },
-  { slug: "axiom", name: "Axiom" },
-  { slug: "fomo", name: "FOMO" },
-  { slug: "trojan", name: "Trojan" },
-  { slug: "photon", name: "Photon" },
-  { slug: "maestro", name: "Maestro" },
-  { slug: "basedbot", name: "BasedBot" },
-] as const;
-
-const COLUMNS = [
-  {
-    key: "volume" as const,
-    label: "24h Volume",
-    bench: "solana-trading-platform-wars",
-    fmt: fmtUSD,
-    tip: "Cross-chain 24h volume from Dune community datasets. Includes Solana + BNB + Base + Robinhood node + HyperEVM + Monad etc. pump.fun = pumpapp frontend only (not all bonding-curve). Terminal = pump.fun's own trading app (formerly Padre, acq. Apr 2025).",
-    higherBetter: true,
-  },
-  {
-    key: "traders" as const,
-    label: "Swap Tx",
-    bench: "solana-unique-traders",
-    fmt: fmtCount,
-    tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
-    higherBetter: true,
-  },
-  {
-    key: "tradeSize" as const,
-    label: "Avg Trade",
-    bench: "solana-avg-trade-size",
-    fmt: fmtUSD,
-    tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
-    higherBetter: true,
-  },
-  {
-    key: "wallets" as const,
-    label: "Active Wallets",
-    bench: "trading-platform-wallets",
-    fmt: fmtCount,
-    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal. Better signal of real user base than raw tx count.",
-    higherBetter: true,
-  },
-  {
-    key: "feeRate" as const,
-    label: "Fee Rate",
-    bench: "memecoin-platforms",
-    fmt: fmtPct,
-    tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
-    higherBetter: false,
-  },
-  {
-    key: "rating" as const,
-    label: "App Rating",
-    bench: "app-store-ratings",
-    fmt: fmtRating,
-    tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app — they show —.",
-    higherBetter: true,
-  },
-] as const;
-
-type ColKey = (typeof COLUMNS)[number]["key"];
+// The ItemList and the "Active benchmarks" count name only the benches this
+// deployment serves (bench 268 is dev-only on production).
+const BENCH_SLUGS: string[] = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
 
 function indexBySlug(results: ProviderResult[] | undefined): Record<string, number> {
   const out: Record<string, number> = {};
@@ -104,31 +51,6 @@ function indexBySlug(results: ProviderResult[] | undefined): Record<string, numb
     out[r.slug] = r.ms.p50;
   }
   return out;
-}
-
-function fmtUSD(v: number | null): string {
-  if (v === null) return "—";
-  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(0)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
-  return `$${v.toFixed(0)}`;
-}
-
-function fmtCount(v: number | null): string {
-  if (v === null) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-  return v.toFixed(0);
-}
-
-function fmtPct(v: number | null): string {
-  if (v === null) return "—";
-  return `${v.toFixed(2)}%`;
-}
-
-function fmtRating(v: number | null): string {
-  if (v === null) return "—";
-  return `${v.toFixed(1)} / 5`;
 }
 
 const GROUPS = [
@@ -157,17 +79,33 @@ const GROUPS = [
 ] as const;
 
 export default async function TradingAppsHubPage() {
-  const [volBench, tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench] =
+  const [tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench, history] =
     await Promise.all([
-      getBenchmark("solana-trading-platform-wars"),
       getBenchmark("solana-unique-traders"),
       getBenchmark("solana-avg-trade-size"),
       getBenchmark("trading-platform-wallets"),
       getBenchmark("memecoin-platforms"),
       getBenchmark("app-store-ratings"),
+      getTradingAppHistory(),
     ]);
+  // Last-day chain split per app from bench 267, for the chains column of
+  // the Dune table (apps DeFiLlama does not track show a dash).
+  const chainSplitOf = new Map<string, { chain: string; usd: number; pct: number }[]>();
+  const chainLabelOf = new Map<string, string>();
+  if (history)
+    for (const s of computeTradingAppStats(history)) {
+      chainSplitOf.set(s.app.slug, s.chainSplit);
+      if (s.app.chainLabel) chainLabelOf.set(s.app.slug, s.app.chainLabel);
+    }
 
-  const volIdx = indexBySlug(volBench?.results);
+  // Per-platform formula per column (spec provider.formula): the chain
+  // scope differs per platform, so each cell carries its own source.
+  const benchByKey: Record<ColKey, typeof tradersBench> = {
+    traders: tradersBench, tradeSize: tradeSizeBench,
+    wallets: walletsBench, feeRate: feeBench, rating: ratingsBench,
+  };
+  const formulaOf = (key: ColKey, slug: string): string | null =>
+    benchByKey[key]?.results.find((r) => r.slug === slug)?.formula ?? null;
   const tradersIdx = indexBySlug(tradersBench?.results);
   const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
   const walletsIdx = indexBySlug(walletsBench?.results);
@@ -177,7 +115,6 @@ export default async function TradingAppsHubPage() {
   type Row = {
     slug: string;
     name: string;
-    volume: number | null;
     traders: number | null;
     tradeSize: number | null;
     wallets: number | null;
@@ -188,13 +125,12 @@ export default async function TradingAppsHubPage() {
   const matrix: Row[] = PLATFORMS.map((p) => ({
     slug: p.slug,
     name: p.name,
-    volume: volIdx[p.slug] ?? null,
     traders: tradersIdx[p.slug] ?? null,
     tradeSize: tradeSizeIdx[p.slug] ?? null,
     wallets: walletsIdx[p.slug] ?? null,
     feeRate: feeIdx[p.slug] ?? null,
     rating: ratingIdx[p.slug] ?? null,
-  })).sort((a, b) => (b.volume ?? -1) - (a.volume ?? -1));
+  })).sort((a, b) => (b.traders ?? -1) - (a.traders ?? -1));
 
   function best(key: ColKey, higherBetter: boolean): number | null {
     const vals = matrix.map((r) => r[key]).filter((v): v is number => v !== null);
@@ -207,8 +143,8 @@ export default async function TradingAppsHubPage() {
     bests[col.key] = best(col.key, col.higherBetter);
   }
 
-  const topVolumeRow = matrix.reduce(
-    (b, row) => ((row.volume ?? -1) > (b.volume ?? -1) ? row : b),
+  const topTxRow = matrix.reduce(
+    (b, row) => ((row.traders ?? -1) > (b.traders ?? -1) ? row : b),
     matrix[0],
   );
   const topRating = ratingsBench?.results.find((r: ProviderResult) =>
@@ -264,21 +200,61 @@ export default async function TradingAppsHubPage() {
           Trading Apps
         </p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Solana trading app benchmarks
+          Trading app benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          {PLATFORMS.length} platforms measured across {BENCH_SLUGS.length}{" "}
-          independent benchmarks: volume, swap transactions, average trade size,
-          fee rates, and app store ratings. Live data, no marketing claims.
+          Swap volume routed through each trading app and Telegram bot, every
+          chain summed, per closed UTC day, with the per-chain split and 7 / 30
+          day trends. Below it, on-chain activity, fee rates and app store
+          ratings. Live data, no marketing claims.
         </p>
       </header>
 
+      <section className="mb-14">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-4 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          Cross-chain daily volume · bench 267
+        </p>
+        <TradingAppVolumeSection />
+      </section>
+
+      <section className="mb-14">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          Fill quality · bench 268
+        </p>
+        <p className="text-sm text-ink-soft max-w-2xl mb-4">
+          What a swap really costs on each terminal: real user transactions read on-chain, valued at the pool&apos;s
+          arrival price, split into terminal fee, network, pump.fun and pool costs, plus the share of transactions that fail.
+        </p>
+        <TerminalFillSection />
+      </section>
+
+      <section className="mb-6">
+        <p
+          className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          On-chain activity · Dune datasets, per platform
+        </p>
+        <p className="text-sm text-ink-soft max-w-2xl mb-6">
+          Swap transactions, average trade size, active wallets and fee rates
+          from each platform&apos;s Dune community dataset. Scope follows the
+          dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot, Solana
+          only where marked SOL.
+        </p>
+      </section>
+
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
         <KpiCard
-          label="Top volume platform"
+          label="Most swaps, 24h (Dune)"
           value={
-            topVolumeRow?.volume != null
-              ? `${topVolumeRow.name} · ${fmtUSD(topVolumeRow.volume)}`
+            topTxRow?.traders != null
+              ? `${topTxRow.name} · ${fmtCount(topTxRow.traders)}`
               : "Awaiting data"
           }
           accent="#10b981"
@@ -309,6 +285,12 @@ export default async function TradingAppsHubPage() {
               <tr className="border-b border-ink/10 bg-ink/3">
                 <th className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap w-[160px]">
                   Platform
+                </th>
+                <th
+                  className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap cursor-help"
+                  title="Where the app's volume settled on the last closed UTC day (DeFiLlama, bench 267). Dash: not tracked by DeFiLlama."
+                >
+                  Chains
                 </th>
                 {COLUMNS.map((col) => (
                   <th
@@ -352,9 +334,17 @@ export default async function TradingAppsHubPage() {
                       </span>
                     </Link>
                   </td>
+                  <td className="px-4 py-3">
+                    <ChainBar split={chainSplitOf.get(row.slug) ?? []} width={56} label={chainLabelOf.get(row.slug)} />
+                  </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
+// The ItemList and the "Active benchmarks" count name only the benches this
+// deployment serves (bench 268 is dev-only on production).
+const BENCH_SLUGS = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
                     const isBest = val !== null && val === bests[col.key];
+                    const formula = formulaOf(col.key, row.slug);
+                    const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";
                     return (
                       <td
                         key={col.key}
@@ -365,8 +355,12 @@ export default async function TradingAppsHubPage() {
                               ? "font-semibold text-emerald-600 dark:text-emerald-400"
                               : "text-ink"
                         }`}
+                        title={formula ?? undefined}
                       >
                         {col.fmt(val)}
+                        {solOnly && (
+                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint font-normal" title="Solana only">SOL</span>
+                        )}
                       </td>
                     );
                   })}
@@ -376,7 +370,9 @@ export default async function TradingAppsHubPage() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-ink-faint">
-          Best value per column highlighted in green. Sorted by 24h volume.
+          Best value per column highlighted in green. Sorted by swap transactions.
+          Volume is in the bench 267 table above (one figure per app, cross-chain).
+          Chains from bench 267 (last closed UTC day); SOL marks a Dune dataset that covers Solana only.
           Hover column headers for methodology notes. Data refreshes every 60 s.
         </p>
       </section>
@@ -438,10 +434,13 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume from Dune community datasets: cross-chain
-          totals per platform (Solana + BNB + Base + Robinhood node + HyperEVM
-          + Monad). pump.fun = pumpapp frontend + relay swaps only, not all
-          bonding-curve activity. Terminal = pump.fun's own app (formerly Padre,
+          Volume from Dune community datasets, one per platform, with the
+          dataset&apos;s own scope: cross-chain totals for GMGN, Axiom, Terminal and
+          BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad),
+          Solana-native swaps only for FOMO, Trojan and Photon (cells marked SOL; hover a
+          figure for the exact source). FOMO&apos;s cross-chain trades go through Relay and are
+          not in its Dune dataset; the bench above counts them. pump.fun = pumpapp frontend + relay swaps only, not all
+          bonding-curve activity. Terminal = pump.fun&apos;s own app (formerly Padre,
           acq. Apr 2025). Swap transaction counts from Dune
           Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
           Average trade size = volume ÷ trade count, includes bots and MEV.

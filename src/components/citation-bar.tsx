@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { track } from "@/lib/analytics";
 
 const ORIGIN = "https://openchainbench.com";
 
@@ -21,6 +22,7 @@ export function CitationBar({ slug }: { slug: string }) {
   async function onCopy() {
     try {
       await navigator.clipboard.writeText(apiUrl);
+      track("copy", { kind: "api_url", bench: slug });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {

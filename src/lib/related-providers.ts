@@ -42,14 +42,37 @@ function isLiveAppearance(a: ProviderAppearance): boolean {
   return a.result.availability !== "unavailable" && a.result.ms.p50 > 0;
 }
 
+/** Two appearances on the same bench are comparable only in the same
+ *  access cohort: on a chain RPC page a public gateway and a keyed
+ *  provider are never ranked together, and the compare page
+ *  (sharedBenchSlugs) refuses the pair, so the link must too. */
+function sameCohort(a: ProviderAppearance, b: ProviderAppearance): boolean {
+  return (a.tier ?? null) === (b.tier ?? null);
+}
+
+/** Benches both providers appear on, same cohort only (live or not). */
+export function sharedBenchCount(
+  a: ProviderAppearance[],
+  b: ProviderAppearance[],
+): number {
+  const aByBench = new Map(a.map((x) => [x.benchmark.slug, x] as const));
+  let n = 0;
+  for (const x of b) {
+    const mine = aByBench.get(x.benchmark.slug);
+    if (mine && sameCohort(mine, x)) n += 1;
+  }
+  return n;
+}
+
 export function liveSharedBenchCount(
   a: ProviderAppearance[],
   b: ProviderAppearance[],
 ): number {
-  const aLive = new Set(a.filter(isLiveAppearance).map((x) => x.benchmark.slug));
+  const aLive = new Map(a.filter(isLiveAppearance).map((x) => [x.benchmark.slug, x] as const));
   let n = 0;
   for (const x of b) {
-    if (isLiveAppearance(x) && aLive.has(x.benchmark.slug)) n += 1;
+    const mine = aLive.get(x.benchmark.slug);
+    if (isLiveAppearance(x) && mine && sameCohort(mine, x)) n += 1;
   }
   return n;
 }
@@ -105,17 +128,13 @@ export const getCompareCandidates = cache(async function getCompareCandidates(
   const me = providerSlug.toLowerCase();
   const meProfile = profiles.find((p) => p.slug.toLowerCase() === me);
   if (!meProfile) return [];
-  const myBenches = new Set(meProfile.appearances.map((a) => a.benchmark.slug));
-  if (myBenches.size === 0) return [];
+  if (meProfile.appearances.length === 0) return [];
 
   const out: CompareCandidate[] = [];
   for (const other of profiles) {
     if (other.slug.toLowerCase() === me) continue;
     if (DEAD_COMPOSITE_SLUGS.has(other.slug.toLowerCase())) continue;
-    let shared = 0;
-    for (const a of other.appearances) {
-      if (myBenches.has(a.benchmark.slug)) shared += 1;
-    }
+    const shared = sharedBenchCount(meProfile.appearances, other.appearances);
     if (shared === 0) continue;
     const pairSlug = canonicalPairSlug(meProfile.slug, other.slug);
     // Only pairs whose compare page is indexable (see isPairLinkable).

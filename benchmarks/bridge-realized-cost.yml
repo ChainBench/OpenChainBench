@@ -1,0 +1,146 @@
+# OpenChainBench. Bench № 263
+
+slug: bridge-realized-cost
+number: "263"
+title: "Bridge slippage vs quote: what actually settles versus what was quoted"
+seo_title: "Bridge execution slippage 2026: realized cost vs the quote"
+seo_description: "Live gap between a bridge quote and the real on-chain settlement for Mobula, Relay, LI.FI and Near Intents, plus the gas the user actually pays, measured on real executed USDC transfers across Solana, Base and Arbitrum from EU-West."
+subtitle: The gap between what a bridge quotes and what actually settles on-chain, in USD, on real executed USDC transfers, plus our own gas, at $3 and $30, measured from EU-West.
+category: Bridges
+status: live
+metric: Slippage vs quote
+unit: usd
+higher_is_better: false
+
+# Per-corridor breakdown. The chain label carries route.ToChain, so each tab
+# isolates one leg of the executed triangle; the $3 and $30 tickets are pooled.
+# Every figure is a REAL executed transaction, never a quote.
+dimensions:
+  chain:
+    - { value: Base,     label: Sol to Base }
+    - { value: Arbitrum, label: Base to Arb }
+    - { value: Solana,   label: Arb to Sol }
+
+seo_intro: |
+  Every bridge quotes a cost. This benchmark measures whether that quote
+  survives contact with the chain. We broadcast and settle real USDC
+  transfers through Mobula, Relay, LI.FI and Near Intents on a self-conserving triangle,
+  then record the realized fee against the fee the quote promised. The
+  headline is that gap, in dollars: a bridge whose settlement matches its
+  quote sits near zero, a bridge that fills below quote reads positive, and
+  a bridge that beats its quote reads negative. Alongside it we surface the
+  gas the user actually pays to execute (approve plus deposit) and the value
+  that actually landed on the destination. Quotes are a promise; this is the
+  settlement.
+
+abstract: |
+  For every executed transfer we record the realized fee (amount sent minus
+  amount received on-chain) and subtract the quote-projected fee, giving the
+  execution slippage versus the quote in USD. The headline is the 7-day median
+  of that gap (one execution per corridor per day, $3 and $30 pooled). Companion panels report our own on-chain gas (approve plus
+  deposit, measured as the source-chain native balance delta) and the
+  realized output that landed on the destination. Sampled at $3 and $30 from
+  EU-West on the same conserving USDC triangle as the execution-latency
+  benchmark, so cost and latency are measured on the identical transactions.
+
+methodology:
+  - "Route: a self-conserving all-USDC triangle (Solana to Base, Base to Arbitrum, Arbitrum to Solana). Each bridge completes the full triangle before the next starts, so inventory returns to origin and only fees burn."
+  - "Slippage vs quote: realized fee minus quoted fee, in USD (bridge_quote_slippage_usd). Realized fee is the ticket minus what actually landed on the destination, read from the balance delta; quoted fee is the ticket minus the output the quote promised, one definition for every bridge. Near zero means the settlement matched the quote; positive means it settled worse; negative means it beat the quote."
+  - "Why not the providers' own fee fields: some mix in gas paid in the native token, which the realized fee (ticket minus landed) can never contain, so one bridge read a constant negative offset at every ticket size. Both sides of the subtraction are now defined against the ticket."
+  - "All-in gas: our own on-chain gas to execute (approve plus deposit), measured as the source-chain native balance delta before and after (bridge_exec_gas_usd). This is the cost the user bears on top of the bridge fee."
+  - "Realized fee: ticket minus the value that landed on the destination chain, in basis points of the ticket (bridge_exec_realized_fee_bps), so $3 and $30 executions compare. Published only for settled executions whose destination balance was read on-chain; a leg whose credit was not visible within 30 s publishes nothing and is counted in bridge_realized_fallback_total."
+  - "Ticket sizes: $3 daily and $30 on Monday and Thursday, pooled. Small on purpose, since this measures the quote-to-settlement gap, not large-ticket depth. Window: 7 days, about 7 to 9 executions per bridge and corridor."
+  - "Region: EU-West only. The execution node runs a single wallet, so a second origin would race the same inventory."
+  - "Cohort: Mobula, Relay, LI.FI and Near Intents, the bridges executed on all three legs. Quote-only providers are covered by the bridge-fee and bridge-quote-latency benchmarks."
+
+findings:
+  - "{{name:mobula}} settles within {{p50:mobula}} of its quote (median, 7 d) on executed USDC transfers."
+  - "{{name:relay}} settles within {{p50:relay}} of its quote."
+  - "{{name:lifi}} settles within {{p50:lifi}} of its quote."
+  - "{{name:near-intents}} settles within {{p50:near-intents}} of its quote."
+
+faq:
+  - q: "How is this different from the bridge fee benchmark?"
+    a: "The fee benchmark measures the cost a quote advertises. This one measures the cost that actually settled on-chain and subtracts what the quote promised, so it captures the gap a user only discovers after they commit. A bridge can quote cheap and settle worse, and only an execution benchmark surfaces that."
+  - q: "Why can the number be negative?"
+    a: "Because a bridge can settle better than it quoted. Slippage vs quote is realized fee minus quoted fee, both defined against the ticket (ticket minus landed, ticket minus quoted output), so a solver that fills above the quoted output makes the figure negative. Near zero means the quote was honest; positive means the execution cost more than promised."
+  - q: "Does this include the gas I pay?"
+    a: "The headline is the bridge's own quote-to-settlement gap. Our own execution gas (approve plus deposit) is reported separately in the all-in gas panel, measured as the real native-token balance delta, because it is a cost the user bears on top of the bridge fee."
+  - q: "Where does this run from?"
+    a: "EU-West, on the same executed transactions as the bridge execution latency benchmark. The execution node holds a single wallet, so cost and latency are always measured on the identical transfer."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+
+metric_panels:
+  - id: fee
+    label: Realized fee (bps of ticket)
+    metric: avg by (bridge) (ocb:bridge_exec_realized_fee_bps:avg_7d{region="eu-west"})
+    label_key: bridge
+    unit: bps
+    higher_is_better: false
+    description: "Ticket minus the value that actually landed on the destination chain, in basis points of the ticket so the $3 and $30 executions compare, averaged over the last 7 days of settled executions whose destination balance was read on-chain."
+  - id: gas
+    label: All-in gas we paid
+    metric: avg by (bridge) (ocb:bridge_exec_gas_usd:avg_7d{region="eu-west"})
+    label_key: bridge
+    unit: usd
+    higher_is_better: false
+    description: "Our own on-chain gas (approve plus deposit), measured as the source-chain native balance delta. The cost the user bears on top of the bridge fee."
+
+prometheus:
+  window: 7d
+  freshness_timestamp_metric: bridge_last_execution_timestamp_seconds
+  expected_freshness_seconds: 172800
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
+    type: intent
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Mobula from EU-West, at the selected corridor, $3 and $30 tickets pooled."
+    queries:
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="mobula", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="mobula", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="mobula", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="mobula", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="mobula", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="mobula", region="eu-west"}
+
+  - slug: relay
+    name: Relay
+    tag: Cross-chain relay
+    type: relay
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through Relay from EU-West, at the selected corridor, $3 and $30 tickets pooled."
+    queries:
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="relay", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="relay", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="relay", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="relay", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="relay", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="relay", region="eu-west"}
+
+  - slug: lifi
+    name: LI.FI
+    tag: Aggregator
+    type: aggregator
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through LI.FI from EU-West, at the selected corridor, $3 and $30 tickets pooled."
+    queries:
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="lifi", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="lifi", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="lifi", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="lifi", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="lifi", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="lifi", region="eu-west"}
+
+  - slug: near-intents
+    name: Near Intents
+    tag: Intent layer (NEAR)
+    type: intent
+    formula: "7-day median of execution slippage vs quote (realized fee minus quote-projected fee, USD) on real executed USDC-triangle transfers through the Near Intents 1Click flow from EU-West, at the selected corridor, $3 and $30 tickets pooled."
+    queries:
+      p50: avg(ocb:bridge_quote_slippage_usd:p50_7d{bridge="near-intents", region="eu-west"})
+      p90: avg(ocb:bridge_quote_slippage_usd:p90_7d{bridge="near-intents", region="eu-west"})
+      p99: avg(ocb:bridge_quote_slippage_usd:p99_7d{bridge="near-intents", region="eu-west"})
+      mean: avg(ocb:bridge_quote_slippage_usd:mean_7d{bridge="near-intents", region="eu-west"})
+      sample_size: round(sum(increase(bridge_success_total{bridge="near-intents", region="eu-west"}[7d])))
+      series: ocb:bridge_quote_slippage_usd:p50_7d{bridge="near-intents", region="eu-west"}
