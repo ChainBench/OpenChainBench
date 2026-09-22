@@ -247,7 +247,7 @@ const RAW: Record<string, string> = {
   ngd2: "/logos/neo.png",
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
-  blockdaemon: "/logos/blockdaemon.png",
+  blockdaemon: "/logos/blockdaemon.svg",
   chainstack: "/logos/chainstack.svg",
   drpc: "/logos/drpc.png",
   thirdweb: "/logos/thirdweb.png",
