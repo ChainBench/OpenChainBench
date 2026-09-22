@@ -126,6 +126,14 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
+  // Alias → canonical, mirrored in the page component below: a
+  // metadata-only redirect leaves a cached 404 behind (merkle, 2026-07-11).
+  {
+    const resolved = await getProvider(slug);
+    if (resolved && resolved.slug.toLowerCase() !== slug.toLowerCase()) {
+      permanentRedirect(`/products/${resolved.slug}`);
+    }
+  }
   // /products/<slug> is the one canonical page per product since
   // 2026-09-17. The former /hyperliquid/<slug> and /perp/<slug> detail
   // routes 308 here (next.config redirects) and their content is a view
@@ -260,6 +268,14 @@ export default async function ProviderPage({
   }
   const p = await getProvider(slug);
   if (!p) notFound();
+  // One URL per product. getProvider resolves aliases, so a request for a
+  // non-canonical slug would otherwise answer 200 on a second URL; a 308
+  // sends the link equity to the canonical one instead. This also closes
+  // the /hyperliquid/<slug> and /perp/<slug> rewrites, which 308 here
+  // without checking that the slug exists.
+  if (p.slug.toLowerCase() !== slug.toLowerCase()) {
+    permanentRedirect(`/products/${p.slug}`);
+  }
   const reg = getProviderRegistry(p.slug);
   // Bench pages this deployment indexes (worker sitemap minus expired
   // chain pages). An appearance on a thin or expired chain RPC bench is
