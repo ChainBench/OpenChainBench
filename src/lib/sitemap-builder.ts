@@ -18,7 +18,7 @@ import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
-import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { isExpiredPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -304,9 +304,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // The worker publishes every dev bench; production must not list a
     // page it does not serve.
     if (isDevOnlyBench(b.slug)) return [];
-    // Expired chain RPC pages render noindex; never list them even if the
-    // blob still carries them.
-    if (isExpiredRpcPage(b)) return [];
+    // Expired pages render noindex; never list them even if the blob still
+    // carries them. Any bench, not just chain RPC ones — a bench below
+    // quorum keeps serving its last good render, and after a week that
+    // render must not be advertised to crawlers.
+    if (isExpiredPage(b)) return [];
     // Editorial change only. lastRunAt is a data timestamp, not a page
     // change; with an empty manifest it stamped 857 of 879 entries with
     // one day on production (2026-09-19). Fall back to the page module's

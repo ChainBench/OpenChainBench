@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"math"
 	"math/big"
 	"net/http"
@@ -647,7 +648,17 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 			extra = []string{main.ev.id}
 		}
 		sqrt, err := prevSqrtPrice(ctx, httpc, c, main.ev.pool, main.ev.log.Topics[0], extra, out.BlockNum, main.ev.index)
-		if err != nil || sqrt == nil || sqrt.Sign() == 0 {
+		if err != nil {
+			// An unreachable node is not a quiet pool. Kept apart so a
+			// rate-limited endpoint cannot read as "this market had no
+			// previous trade" (HyperEVM's public RPC answers two
+			// address-filtered getLogs then throttles), the same split
+			// rhcurve.go makes between curve_logs and curve_no_prev.
+			out.Unpriced = main.ev.kind + "_logs"
+			log.Printf("[evm] %s previous trade on pool %s: %s", c.slug, main.ev.pool, redactURL(err.Error(), c.logsRPC()[0]))
+			return out, nil
+		}
+		if sqrt == nil || sqrt.Sign() == 0 {
 			out.Unpriced = main.ev.kind + "_no_prev"
 			return out, nil
 		}
@@ -1001,7 +1012,17 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 			extra = []string{main.ev.id}
 		}
 		sqrt, err := prevSqrtPrice(ctx, httpc, c, main.ev.pool, main.ev.log.Topics[0], extra, out.BlockNum, main.ev.index)
-		if err != nil || sqrt == nil || sqrt.Sign() == 0 {
+		if err != nil {
+			// An unreachable node is not a quiet pool. Kept apart so a
+			// rate-limited endpoint cannot read as "this market had no
+			// previous trade" (HyperEVM's public RPC answers two
+			// address-filtered getLogs then throttles), the same split
+			// rhcurve.go makes between curve_logs and curve_no_prev.
+			out.Unpriced = main.ev.kind + "_logs"
+			log.Printf("[evm] %s previous trade on pool %s: %s", c.slug, main.ev.pool, redactURL(err.Error(), c.logsRPC()[0]))
+			return out, nil
+		}
+		if sqrt == nil || sqrt.Sign() == 0 {
 			out.Unpriced = main.ev.kind + "_no_prev"
 			return out, nil
 		}

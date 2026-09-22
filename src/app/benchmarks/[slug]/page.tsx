@@ -155,7 +155,14 @@ export async function generateMetadata({
   // keeps it out of the sitemap).
   const metaChain = rpcChainLabel(b);
   const metaStale = metaChain != null && isStaleBench(b);
-  const metaExpired = metaChain != null && isExpiredBench(b);
+  // Expiry is NOT an RPC-only concern, and gating it on metaChain meant
+  // only `<chain>-rpc` pages ever went noindex: perp-asset-breadth served
+  // an 2026-08-17 render for five weeks with `index, follow` and a place
+  // in the sitemap, because a collapsed bench keeps its last good render
+  // (by design) and nothing downstream noticed the render had aged out.
+  // The description rewrite below stays chain-specific — it is written in
+  // RPC terms — but the crawler gate applies to every bench.
+  const metaExpired = isExpiredBench(b);
   if (metaStale && metaChain) {
     const lastLeader = leader(b);
     const pausedOn = b.lastRunAt ? new Date(b.lastRunAt).toISOString().slice(0, 10) : "an earlier date";
