@@ -279,9 +279,17 @@ export async function generateMetadata({
       : aWins === bWins
         ? `${a.name} and ${b.name} split ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"} evenly.`
         : `${aWins >= bWins ? a.name : b.name} leads on ${Math.max(aWins, bWins)} of ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"}, ${aWins >= bWins ? b.name : a.name} on ${Math.min(aWins, bWins)}.`;
+  // Name what this pair actually shares. Every one of the 383 compare pages
+  // promised "Fees, volume, funding and latency" whatever it measured:
+  // /compare/1rpc-vs-drpc shares three latency benches and said it measured
+  // fees, volume and funding too (SEO audit 2026-09-22).
+  const metrics = [...new Set(verdictRows.map((s) => s.metric.toLowerCase()))].slice(0, 3);
+  const measuredClause = metrics.length
+    ? `${metrics.join(", ")} measured live.`
+    : "Shared benchmarks measured live.";
   const description = capSnippet(
     verdict
-      ? `${verdict} Fees, volume, funding and latency measured live. As of ${isoDate}.`
+      ? `${verdict} ${measuredClause} As of ${isoDate}.`
       : `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
   );
 

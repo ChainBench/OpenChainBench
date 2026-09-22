@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchPmCohort } from "@/lib/pm-stats";
+import { REMOVED_ANSWER_SLUGS } from "@/lib/removed-benches";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
@@ -22,6 +23,9 @@ import { SITE } from "@/data/site";
  * because it lists venue identities, not metric values.
  */
 
+// Filtered through REMOVED_ANSWER_SLUGS below: this hand-written list was
+// the only live pointer to /answers/polymarket-fees-explained, which 404s
+// (SEO audit 2026-09-22).
 const ANSWERS = [
   { slug: "how-long-does-polymarket-take-to-resolve", question: "How long does Polymarket take to resolve a market?" },
   { slug: "polymarket-vs-kalshi-resolution-speed", question: "Polymarket vs Kalshi, which resolves prediction markets faster?" },
@@ -204,7 +208,7 @@ export default async function PredictionMarketsHubPage() {
               Measured answers
             </p>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ANSWERS.map((a) => (
+              {ANSWERS.filter((a) => !REMOVED_ANSWER_SLUGS.has(a.slug)).map((a) => (
                 <li key={a.slug}>
                   <Link
                     href={`/answers/${a.slug}`}
