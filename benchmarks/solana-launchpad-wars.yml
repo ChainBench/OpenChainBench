@@ -4,7 +4,7 @@ slug: solana-launchpad-wars
 number: "200"
 title: "Solana meme launchpad leaderboard: PumpFun vs Flap vs Bankr, live 24h volume"
 seo_title: "Solana meme launchpad comparison 2026: PumpFun, Flap, Bankr, LetsCash"
-seo_description: "{{best_name}} leads Solana meme launchpads at ${{best_p50}} 24h volume. PumpFun vs Flap vs Bankr vs LetsCash vs Meteora DBC vs NOXA Fun ranked live from Mobula lighthouse data."
+seo_description: "{{best_name}} leads Solana meme launchpads at {{best_p50}} 24h volume. PumpFun vs Flap vs Bankr vs LetsCash vs Meteora DBC vs NOXA Fun ranked live from Mobula lighthouse data."
 subtitle: Live 24-hour trading volume for each Solana meme coin launchpad. Polled every 15 minutes from Mobula lighthouse, which aggregates on-chain swap events across all bonding-curve programs on Solana.
 
 category: Trading
@@ -47,7 +47,7 @@ methodology:
   - "PumpFun note: PumpFun volume here is bonding-curve activity only. Tokens that graduate from the bonding curve to PumpSwap AMM are counted separately under PumpSwap in the DEX view and are not included here."
 
 findings:
-  - "{{best_name}} leads Solana meme launchpads at ${{best_p50}} 24h volume."
+  - "{{best_name}} leads Solana meme launchpads at {{best_p50}} 24h volume."
   - "PumpFun commands the market with over $100 million in daily bonding-curve volume, roughly 70 percent of total tracked launchpad volume. Protocol fee revenue is now primarily from token graduations after cutting bonding-curve trading fees to zero in August 2026."
   - "Flap and Meteora DBC are the closest challengers, each processing tens of millions in daily volume. Flap has the highest fee-to-volume ratio among active launchpads."
   - "Bankr, LetsCash and NOXA Fun each run active programs with single-digit millions in daily volume and tens of thousands in daily fees."

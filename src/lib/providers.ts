@@ -45,6 +45,13 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // any external citation that still says ton/Toncoin lands on the
   // correct page.
   ton: "gram",
+  // Hyperliquid builder leaderboards publish a short slug while the
+  // registry key carries the domain. Without these, /hyperliquid/tuleep
+  // and /perp/tuleep 308 into a 404 — and "tuleep" is the single largest
+  // query on the property (273 impressions, position 8.31, zero clicks,
+  // 90 days to 2026-09-19).
+  tuleep: "tuleep-trade",
+  "mass-money": "mass-dot-money",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",

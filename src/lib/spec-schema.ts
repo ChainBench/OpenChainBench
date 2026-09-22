@@ -232,13 +232,23 @@ const noAiDashesMsg =
 const MARKETING = /\b(blisteringly|blazing(ly)?|best-in-class|world-class|revolutionary|lightning-fast|ultra-fast|cutting-edge|game-changing)\b/i;
 const noMarketing = (s: string) => !MARKETING.test(s);
 const noMarketingMsg = "marketing adjective (blisteringly, blazing, best-in-class, world-class, ...): state the number instead";
+// A value placeholder renders its own unit: on a usd bench {{best_p50}}
+// becomes "$112.66M", so a literal $ or % in front of it doubles the
+// symbol. solana-trading-platform-wars shipped "$$112.66M" in the meta
+// description of the site's highest-impression page (1,688 impressions,
+// position 6.15) until the 2026-09-22 SEO audit found it.
+const DOUBLED_UNIT = /[$€£%]\s*\{\{\s*(best_p50|best_p90|best_p99|p50:|p90:|p99:)/;
+const noDoubledUnit = (s: string) => !DOUBLED_UNIT.test(s);
+const noDoubledUnitMsg =
+  "unit before a value placeholder: {{best_p50}} and {{p50:...}} already render their own unit";
 const seoText = (min: number, max: number) =>
   z
     .string()
     .min(min)
     .max(max)
     .refine(noAiDashes, noAiDashesMsg)
-    .refine(noMarketing, noMarketingMsg);
+    .refine(noMarketing, noMarketingMsg)
+    .refine(noDoubledUnit, noDoubledUnitMsg);
 
 export const SpecSchema = z
   .object({
