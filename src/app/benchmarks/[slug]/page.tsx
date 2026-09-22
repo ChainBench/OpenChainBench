@@ -35,7 +35,7 @@ import {
   rpcChainLabel,
 } from "@/lib/citation";
 import { valueInDeclaredUnit, fmtUnit } from "@/lib/format";
-import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -175,7 +175,7 @@ export async function generateMetadata({
   // Google truncates meta descriptions at ~155-160 chars in the SERP. Anything
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
-  if (description) description = capDescription(description, 158);
+  if (description) description = capSnippet(description);
   // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
   // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
   const canonical = `${SITE.url}/benchmarks/${b.slug}`;
@@ -191,7 +191,9 @@ export async function generateMetadata({
     ? new Date(b.lastRunAt).toISOString().slice(0, 10)
     : undefined;
   return {
-    title: metaTitle,
+    // Same rule as pageMetadata: past 43 characters the brand suffix would
+    // cut the measured number off the title, so it ships absolute.
+    title: metaTitle.length > 43 ? { absolute: metaTitle } : metaTitle,
     description,
     alternates: { canonical },
     ...((metaIsAwaiting || metaThinRpc || metaExpired)

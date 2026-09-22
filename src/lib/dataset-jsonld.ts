@@ -79,6 +79,28 @@ export const CREATOR_PUBLISHER = {
  *  Google Dataset "encodingFormat" / "contentUrl" requirements. */
 export const CITABLE_JSON_URL = `${SITE.url}/api/citable`;
 
+/** Highwire citation_* meta for a page that states a dated measured
+ *  claim (hubs, per-asset pages, compare pages). The bench page emits the
+ *  same set with its DOI and creation date. `jsonUrl` is the machine
+ *  record the citation points at. */
+export function buildCitationMeta(input: {
+  title: string;
+  url: string;
+  asOfIso?: string | null;
+  jsonUrl?: string | null;
+}): Record<string, string> {
+  return {
+    citation_title: input.title,
+    citation_author: "OpenChainBench",
+    citation_publisher: "OpenChainBench",
+    ...(input.asOfIso ? { citation_online_date: input.asOfIso.slice(0, 10) } : {}),
+    ...(input.jsonUrl ? { citation_pdf_url: input.jsonUrl } : {}),
+    citation_public_url: input.url,
+    citation_language: "en",
+    citation_journal_title: "OpenChainBench",
+  };
+}
+
 /**
  * Site-wide Dataset entry. Emitted on the home page so Google Dataset
  * Search and Perplexity have a single canonical record pointing at both

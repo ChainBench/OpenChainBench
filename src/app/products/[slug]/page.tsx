@@ -9,7 +9,7 @@ import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
   getProviderRegistry,
@@ -145,7 +145,16 @@ export async function generateMetadata({
   // at position 4, 0 clicks each on 2026-09-19) land next to the brand's
   // own site; the title has to say what this page adds, independent
   // measurement, and the description has to carry the numbers.
-  const title = `${p.name} benchmark: live rank and measured numbers`;
+  // The brand queries that land here (tuleep, invo, dextrabot: 1,034
+  // impressions, 0 clicks over 90 days) get the measured fact in the
+  // title when there is one: "Invo: #7 of 104 on Hyperliquid builder
+  // fees" says what the page adds next to the brand's own site.
+  const titleTop = [...p.appearances]
+    .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))[0];
+  const title = titleTop
+    ? `${p.name}: #${titleTop.rank} of ${titleTop.totalRanked}${cohortWord(titleTop)} on ${shortBenchLabel(titleTop.benchmark)}`
+    : `${p.name} benchmark: live rank and measured numbers`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
@@ -174,17 +183,23 @@ export async function generateMetadata({
   // value, then the registry one-liner if room remains. The dated
   // "As of" belongs in the page body (TL;DR, JSON-LD dateModified), not
   // in 22 characters of the snippet.
-  const metaRanked = [...p.appearances]
+  const rankedApps = [...p.appearances]
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
     // Tie-break on the size of the field a rank was earned in (#1 of 6
     // before #1 of 2), then the title; the alphabetical break opened
     // PublicNode's snippet with Akash and Arbitrum Nova (audit 2026-09-21).
-    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))
-    .slice(0, 2)
-    // Always the denominator and, on a tier-dimensioned bench, the cohort:
-    // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
-    // cohort and Alchemy the private one (audit 2026-09-21).
-    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title));
+  // Always the denominator and, on a tier-dimensioned bench, the cohort:
+  // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
+  // cohort and Alchemy the private one (audit 2026-09-21). One rank when
+  // the first already fills most of the budget, so the cut never lands on
+  // a number.
+  const rankLine = (a: (typeof rankedApps)[number]) =>
+    `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`;
+  const firstRank = rankedApps[0] ? rankLine(rankedApps[0]) : null;
+  const metaRanked = rankedApps
+    .slice(0, firstRank && firstRank.length + p.name.length > 90 ? 1 : 2)
+    .map(rankLine);
   // Count first, ranks second: the 158-character cap lands inside the
   // rank list on providers with two long bench labels, and a sentence
   // cut on a numeral ("at 4.") is what the snippet then shows (audit
@@ -196,7 +211,7 @@ export async function generateMetadata({
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
-  const description = capDescription(`${measuredLead} ${registryLine}`.trim(), 158);
+  const description = capSnippet(`${measuredLead} ${registryLine}`.trim());
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
@@ -219,7 +234,10 @@ export async function generateMetadata({
   const newestLastRunIso =
     lastRuns.length > 0 ? new Date(Math.max(...lastRuns)).toISOString().slice(0, 10) : null;
   return {
-    title,
+    // The layout appends " · OpenChainBench" (17 characters); past 43 the
+    // measured fact at the end of the title is what the SERP cuts, so
+    // long titles ship absolute and short ones keep the suffix.
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description, type: "profile", url: canonicalUrl },
@@ -629,6 +647,26 @@ export default async function ProviderPage({
       // the Organization above plus the Dataset references it links to via
       // `subjectOf`. Removing SoftwareApplication drops the failed rich
       // result attempt without losing any real signal.
+      {
+        "@type": "ItemList",
+        "@id": `${url}#ranks`,
+        name: `${p.name}: rank on every live OpenChainBench benchmark`,
+        numberOfItems: sorted.filter((a) => a.rank > 0).length,
+        itemListElement: sorted
+          .filter((a) => a.rank > 0)
+          .map((a, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: `#${a.rank} of ${a.totalRanked} on ${a.benchmark.title}`,
+            url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+            item: {
+              "@type": "PropertyValue",
+              name: a.benchmark.metric,
+              value: a.result.ms.p50,
+              unitText: a.benchmark.unit,
+            },
+          })),
+      },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
         { name: "Products", item: `${SITE.url}/products` },

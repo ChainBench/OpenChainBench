@@ -39,7 +39,11 @@ export function pageMetadata({
   // file-based root image, so /compare and /alternatives end up sharing
   // unbranded blank cards on every social embed.
   const meta: Metadata = {
-    title,
+    // The layout template appends " · OpenChainBench" (17 characters):
+    // past 43 the tail of the title, where the measured number sits, is
+    // what the SERP cuts. Long titles ship absolute, short ones keep the
+    // suffix; the social title above always carries the brand.
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     alternates: { canonical },
     openGraph: {

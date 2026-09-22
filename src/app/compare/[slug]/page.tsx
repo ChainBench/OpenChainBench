@@ -13,10 +13,11 @@ import {
 import { getProviderRegistry } from "@/data/provider-registry";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { buildCitationMeta } from "@/lib/dataset-jsonld";
 import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { CompareBenchCard } from "@/components/compare-bench-card";
 import { PerpVolumeHeadToHead } from "@/components/perp-volume-head-to-head-section";
@@ -275,20 +276,21 @@ export async function generateMetadata({
       : aWins === bWins
         ? `${a.name} and ${b.name} split ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"} evenly.`
         : `${aWins >= bWins ? a.name : b.name} leads on ${Math.max(aWins, bWins)} of ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"}, ${aWins >= bWins ? b.name : a.name} on ${Math.min(aWins, bWins)}.`;
-  const description = capDescription(
+  const description = capSnippet(
     verdict
       ? `${verdict} Fees, volume, funding and latency measured live. As of ${isoDate}.`
       : `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
-    158,
   );
 
   return {
-    title,
+    // Past 43 characters the brand suffix cuts the count off the title.
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     // follow stays on so PageRank keeps flowing through the body links
     // (both provider pages, parent benches) even while deindexed.
     ...(thin ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
+    other: buildCitationMeta({ title, url, asOfIso: isoDate, jsonUrl: `${SITE.url}/api/citable` }),
     openGraph: {
       title,
       description,
@@ -978,6 +980,10 @@ export default async function ComparePage({
   const proseAsOf = proseRun ? ` Data as of ${new Date(proseRun).toISOString().split("T")[0]} UTC.` : "";
   const baseProse = buildComparisonProse(shared, a.name, b.name);
   const comparisonProse = baseProse ? baseProse + proseAsOf : "";
+  // The title and the lede count the benches with a decided winner; the
+  // header badge counted every shared bench, so a reader saw 13 and 14
+  // on one screen (audit 2026-09-22).
+  const decidedCount = shared.filter((s) => s.aResult.p50 > 0 && s.bResult.p50 > 0 && s.aggregateWinner !== "tie").length;
   const perpPair =
     pair.hero === "perp-volume" ||
     (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
@@ -1048,6 +1054,7 @@ export default async function ComparePage({
           <span>
             {shared.length} shared{" "}
             {shared.length === 1 ? "benchmark" : "benchmarks"}
+            {decidedCount < shared.length ? `, ${decidedCount} with a measured winner` : ""}
           </span>
         </div>
       </header>

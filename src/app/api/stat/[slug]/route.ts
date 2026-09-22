@@ -163,6 +163,9 @@ export async function GET(
       stale: isStaleBench(b),
     },
     measured: displayResults(b.results).length,
+    // The cohort `rankings` and `leader` describe (50 % success floor,
+    // rank and sample gates); `measured` is the wider display cohort.
+    ranked: rankedCandidates(b).length,
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
