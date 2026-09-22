@@ -21,7 +21,7 @@ import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
   getProviderRegistry,
@@ -229,9 +229,11 @@ export async function generateMetadata({
   // "ranks #36 of 104", which answers a question the searcher did not ask;
   // capDescription cuts at a sentence end, so the registry line survives
   // whole and the measured lead is what gets dropped when room runs out.
-  const description = capDescription(
+  // capSnippet, not capDescription: a registry line longer than the
+  // budget with no sentence end inside it shipped "(Hyperliquid referral…"
+  // on /products/invo; the snippet capper closes on a clause instead.
+  const description = capSnippet(
     registryLine ? `${registryLine} ${measuredLead}`.trim() : measuredLead,
-    158,
   );
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
