@@ -19,6 +19,7 @@
  *   {{mean:<slug>}}            same for mean.
  *   {{success:<slug>}}         provider success rate, "99.8 %".
  *   {{name:<slug>}}            provider display name.
+ *   {{best_names}}          every provider tied with the leader, joined.
  *   {{best_name}}              name of the leading provider (best p50).
  *   {{best_p50}}               p50 of the leader, formatted.
  *   {{worst_name}}             name of the trailing provider.
@@ -58,7 +59,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
-import { citationCandidates } from "@/lib/citation";
+import { citationCandidates, joinNames, leaderNames } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
@@ -246,8 +247,23 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         const raw = provider.ms[k as "p50" | "p90" | "p99" | "mean"];
         return fmtUnit(raw, benchmark.unit);
       }
-      case "best_name":
+      case "best_name": {
+        // One name, so the 600 authored sentences built around a singular
+        // subject keep their grammar; a display tie is marked instead of
+        // hidden, so a title never reads as crowning one of two venues the
+        // body says are level (perp-cost-slope, audit 2026-09-22).
+        const tied = leaderNames(benchmark);
+        if (tied.length > 1) return `${tied[0]} (tied)`;
+        if (tied.length === 1) return tied[0];
         return best ? best.name : UNRESOLVED;
+      }
+      case "best_names": {
+        // The tied set spelled out ("Gains and GMX v2"), for copy written
+        // for a plural subject.
+        const tied = leaderNames(benchmark);
+        if (tied.length > 0) return joinNames(tied);
+        return best ? best.name : UNRESOLVED;
+      }
       case "best_p50":
         return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
       case "worst_name":

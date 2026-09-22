@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { leader, fieldValue, rankedCandidates } from "./citation";
+import { leader, fieldValue, rankedCandidates, leaderNames } from "./citation";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(
@@ -215,6 +215,9 @@ describe("headline ties", () => {
 
   test("a higher-is-better tie says all lead", () => {
     const b = { ...counts([r("a", "Alpha", 9), r("b", "Bravo", 9)]), higherIsBetter: true };
-    expect(headlineSentence(b)).toContain("Alpha and Bravo all lead on");
+    // Two tied providers read "both", three or more "all" (audit 2026-09-22).
+    expect(headlineSentence(b)).toContain("Alpha and Bravo both lead on");
+    expect(leaderNames(b)).toEqual(["Alpha", "Bravo"]);
+    expect(headlineSentence(b)).not.toContain(b.title);
   });
 });

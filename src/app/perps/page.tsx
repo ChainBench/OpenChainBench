@@ -5,6 +5,35 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { AnswersForBench } from "@/components/answers-for-bench";
+import { getProviders } from "@/lib/providers";
+import { PERP_VENUES } from "@/lib/perp-stats";
+import { PERP_VENUE_META } from "@/lib/perp-venue-context";
+import { isPairLinkable, liveSharedBenchCount } from "@/lib/related-providers";
+
+/** The venue pairs with the most live benchmarks in common, each with an
+ *  indexable compare page. The hub ranked 19 venues and linked none of
+ *  the 383 compare pages, the template that converts best on the site
+ *  (audit 2026-09-22). Pairs go through isPairLinkable so no link lands
+ *  on a noindex page; product slugs follow PERP_VENUE_META (gmx-v2 is
+ *  /products/gmx, trade-xyz is /products/xyz). */
+async function perpHeadToHead(limit = 8): Promise<{ slug: string; aName: string; bName: string; count: number }[]> {
+  const profiles = await getProviders();
+  const bySlug = new Map(profiles.map((p) => [p.slug, p]));
+  const slugs = [...new Set(PERP_VENUES.map((v) => PERP_VENUE_META[v.slug]?.productSlug ?? v.slug))];
+  const out: { slug: string; aName: string; bName: string; count: number }[] = [];
+  for (let i = 0; i < slugs.length; i++) {
+    for (let j = i + 1; j < slugs.length; j++) {
+      const a = bySlug.get(slugs[i]);
+      const b = bySlug.get(slugs[j]);
+      if (!a || !b) continue;
+      const [x, y] = a.slug < b.slug ? [a, b] : [b, a];
+      const pairSlug = `${x.slug}-vs-${y.slug}`;
+      if (!isPairLinkable(pairSlug, x.appearances, y.appearances)) continue;
+      out.push({ slug: pairSlug, aName: x.name, bName: y.name, count: liveSharedBenchCount(x.appearances, y.appearances) });
+    }
+  }
+  return out.sort((p, q) => q.count - p.count || p.slug.localeCompare(q.slug)).slice(0, limit);
+}
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -54,9 +83,10 @@ export default async function PerpsHubPage() {
   // hydrated on first paint, no second round-trip when the user flips
   // the pill. Both helpers are wrapped in unstable_cache so concurrent
   // requests collapse onto the same Prom roundtrip.
-  const [cohort, byAsset] = await Promise.all([
+  const [cohort, byAsset, headToHead] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpByAssetMatrix(),
+    perpHeadToHead().catch(() => [] as { slug: string; aName: string; bName: string; count: number }[]),
   ]);
 
   const lead = cohort?.venues[0] ?? null;
@@ -327,6 +357,27 @@ export default async function PerpsHubPage() {
         </p>
       )}
 
+      {headToHead.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">Head to head</h2>
+          <p className="text-sm text-ink-soft mb-3">
+            The venue pairs with the most live benchmarks in common, each on
+            its own comparison page: fees, volume, funding, open interest and
+            slippage side by side.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+            {headToHead.map((h) => (
+              <li key={h.slug}>
+                <Link href={`/compare/${h.slug}`} className="text-ink underline underline-offset-2 hover:text-teal-700">
+                  {h.aName} vs {h.bName}
+                </Link>
+                <span className="text-ink-faint">, {h.count} live {h.count === 1 ? "benchmark" : "benchmarks"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {faq.length > 0 && (
         <section className="mt-12 max-w-3xl">
           <h2 className="display text-xl sm:text-2xl text-ink mb-4">Frequently asked</h2>
@@ -342,7 +393,24 @@ export default async function PerpsHubPage() {
       )}
 
       <AnswersForBench
-        benchSlugs={["perp-fees", "perp-funding", "perp-volume-share", "perp-pe-ratio", "perp-pf-ratio", "perp-daily-volume"]}
+        benchSlugs={[
+          "perp-fees",
+          "perp-execution-quality",
+          "perp-cost-slope",
+          "perp-funding",
+          "perp-funding-stability",
+          "perp-volume-share",
+          "perp-daily-volume",
+          "perp-amm-volume-share",
+          "perp-active-markets",
+          "perp-asset-breadth",
+          "perp-liq-rate",
+          "perp-mark-price-lag",
+          "perp-capital-efficiency",
+          "perp-protocol-longevity",
+          "perp-pe-ratio",
+          "perp-pf-ratio",
+        ]}
         heading="Questions these benchmarks answer"
       />
 

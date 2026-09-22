@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, leaders, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { stripQueryRedirect } from "@/lib/canonical-query";
@@ -70,6 +70,11 @@ export async function GET(req: Request) {
       unit: b.unit,
       status: b.status,
       value: raw == null ? null : valueInDeclaredUnit(raw, b.unit),
+      // Every provider tied with the leader on the displayed figure;
+      // `leader` stays leaders[0] for consumers that predate the field.
+      leaders: insufficient
+        ? []
+        : leaders(b).map((l) => ({ ...l, value: valueInDeclaredUnit(l.value, b.unit) })),
       leader:
         insufficient
           ? null

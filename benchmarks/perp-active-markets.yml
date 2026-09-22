@@ -3,8 +3,8 @@
 slug: perp-active-markets
 number: "116"
 title: Most tradable markets on a perp DEX, live count per venue
-seo_title: "Perp DEX markets: {{best_name}} lists {{best_p50}}, live count"
-seo_description: "{{best_name}} lists the most perpetual markets, {{best_p50}} live, across {{count}} venues (Hyperliquid, Aster, Lighter, Ondo Perps, dYdX, Paradex, edgeX and more), counted from each venue's API every 5 minutes."
+seo_title: "Perp DEX markets: {{best_name}} lists {{best_p50}} live"
+seo_description: "{{best_name}} lists the most perp markets, {{best_p50}} live, across {{count}} venues: Hyperliquid, Aster, Lighter, Ondo, dYdX, Paradex, edgeX and more, counted every 5 minutes."
 subtitle: Live count of active perpetual futures markets per venue, polled every 5 minutes from each venue's public API. Higher means more tradable instruments across crypto, forex, stocks, indices and commodities.
 category: Trading
 status: live

@@ -185,9 +185,13 @@ export async function generateMetadata({
     // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
     // cohort and Alchemy the private one (audit 2026-09-21).
     .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+  // Count first, ranks second: the 158-character cap lands inside the
+  // rank list on providers with two long bench labels, and a sentence
+  // cut on a numeral ("at 4.") is what the snippet then shows (audit
+  // 2026-09-22). The count sentence is complete however the cut falls.
   const measuredLead =
     metaRanked.length > 0
-      ? `${p.name} ranks ${metaRanked.join(", ")} (p50, 24h). ${benchCount} live ${benchWord}${winSuffix}.`
+      ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked.join(", ")} (p50, 24h).`
       : fallbackDescription;
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
@@ -206,12 +210,29 @@ export async function generateMetadata({
   const canonicalUrl = isChain
     ? `${SITE.url}/chains/${p.slug}`
     : `${SITE.url}/products/${p.slug}`;
+  // Newest measurement across the provider's appearances: the online
+  // date scholarly and answer-engine crawlers read from citation_* meta
+  // (the bench pages carry the same set; the product template had none).
+  const lastRuns = p.appearances
+    .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t));
+  const newestLastRunIso =
+    lastRuns.length > 0 ? new Date(Math.max(...lastRuns)).toISOString().slice(0, 10) : null;
   return {
     title,
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description, type: "profile", url: canonicalUrl },
     twitter: { card: "summary_large_image", site: SITE.twitter, title, description },
+    other: {
+      citation_title: title,
+      citation_author: "OpenChainBench",
+      citation_publisher: "OpenChainBench",
+      ...(newestLastRunIso ? { citation_online_date: newestLastRunIso } : {}),
+      citation_public_url: canonicalUrl,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench",
+    },
   };
 }
 
@@ -379,6 +400,14 @@ export default async function ProviderPage({
     proseParts.push(
       `${p.name} performance benchmarks, live across ${p.appearances.length} ${p.appearances.length === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
     );
+  }
+  // Dated, like the bench TL;DR: the newest measurement behind the
+  // sentence above, so a quoted line carries its own as-of.
+  const proseRuns = p.appearances
+    .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t));
+  if (proseRuns.length > 0) {
+    proseParts.push(`Data as of ${new Date(Math.max(...proseRuns)).toISOString().slice(0, 10)} UTC.`);
   }
   const productProse = proseParts.join(" ");
 

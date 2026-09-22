@@ -253,8 +253,32 @@ export async function generateMetadata({
     .filter((t) => Number.isFinite(t))
     .sort((x, y) => y - x)[0];
   const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
+  // The verdict the body lede opens with ("Hyperliquid leads on 5 of 13
+  // shared benchmarks, Lighter on 8"), not a count and a date alone: the
+  // compare template converts best on the site and its snippet said
+  // nothing measurable (audit 2026-09-22).
+  const verdictRows = await buildSharedBenches(pair, a, b);
+  let aWins = 0;
+  let bWins = 0;
+  let scored = 0;
+  for (const s of verdictRows) {
+    if (s.aResult.p50 <= 0 || s.bResult.p50 <= 0) continue;
+    scored += 1;
+    if (s.aggregateWinner === "a") aWins += 1;
+    else if (s.aggregateWinner === "b") bWins += 1;
+  }
+  // The counts alone (a split-decision lede lists four bench labels with
+  // values and runs past the budget); the tail carries the date.
+  const verdict =
+    scored === 0
+      ? ""
+      : aWins === bWins
+        ? `${a.name} and ${b.name} split ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"} evenly.`
+        : `${aWins >= bWins ? a.name : b.name} leads on ${Math.max(aWins, bWins)} of ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"}, ${aWins >= bWins ? b.name : a.name} on ${Math.min(aWins, bWins)}.`;
   const description = capDescription(
-    `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
+    verdict
+      ? `${verdict} Fees, volume, funding and latency measured live. As of ${isoDate}.`
+      : `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
     158,
   );
 
@@ -944,7 +968,16 @@ export default async function ComparePage({
     })),
   };
 
-  const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+  // Dated like the meta description: the newest measurement across the
+  // shared benches, so the page body carries the as-of the snippet states.
+  const proseRun = [...a.appearances, ...b.appearances]
+    .filter((x) => shared.some((s) => s.slug === x.benchmark.slug))
+    .map((x) => Date.parse(x.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => y - x)[0];
+  const proseAsOf = proseRun ? ` Data as of ${new Date(proseRun).toISOString().split("T")[0]} UTC.` : "";
+  const baseProse = buildComparisonProse(shared, a.name, b.name);
+  const comparisonProse = baseProse ? baseProse + proseAsOf : "";
   const perpPair =
     pair.hero === "perp-volume" ||
     (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
