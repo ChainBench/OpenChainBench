@@ -19,7 +19,8 @@ import (
 //	PoolQ     what the pool(s) received (buy) or paid out (sell)
 //	TerminalQ what landed in the terminal's fee wallets (and, for FOMO,
 //	          its user-signed stable fee legs)
-//	NetworkQ  tx fee the user paid (0 when the terminal sponsors gas) +
+//	NetworkQ  tx fee (paid by the user, or by the terminal's sponsor out of
+//	          its fee: then moved from terminal to network) +
 //	          inclusion tips (Jito and the other relays, the terminal's own) +
 //	          the deposit of the token accounts the swap created (rent)
 //	OtherQ    quote that left the user and reached neither the final pool,
@@ -442,10 +443,16 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 	}
 	// Network cost: tx fee when the user is the fee payer (account 0), plus
-	// inclusion tips.
+	// inclusion tips. When the terminal's own account pays the fee (FOMO's
+	// sponsor), the fee is still network cost, funded out of the terminal's
+	// take: it is moved from terminal to network below.
 	network := 0.0
+	sponsoredFee := 0.0
 	if pubkeyAt(0) == user {
 		network += float64(tx.Meta.Fee) / 1e9
+	} else if internal[pubkeyAt(0)] {
+		sponsoredFee = float64(tx.Meta.Fee) / 1e9
+		network += sponsoredFee
 	}
 	for k, v := range lam {
 		if tip(k) && v > 0 {
@@ -815,6 +822,10 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 	}
 
+	if sponsoredFee > 0 {
+		// The sponsor's gas comes out of the fee the user paid the terminal.
+		terminalQ = math.Max(0, terminalQ-toQuote("SOL", sponsoredFee))
+	}
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,

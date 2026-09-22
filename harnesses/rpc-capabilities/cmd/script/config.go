@@ -264,9 +264,19 @@ func chains() []Chain {
 		},
 		// ─── Arc (chain 5042, Circle's USDC-gas L1, ~0.5 s blocks) added
 		// 2026-09-21. Live-verified no-key: rpc.mainnet.arc.io (Circle),
-		// dRPC, PublicNode, Tenderly Gateway. Blockdaemon 401, Ankr 403,
-		// Lava discontinued, bloXroute / OnFinality / Nodies no host.
+		// dRPC, PublicNode, Tenderly Gateway. Ankr 403, Lava
+		// discontinued, bloXroute / OnFinality / Nodies no host.
 		// StaleGap 40 = 20 s at 0.5 s blocks.
+		//
+		// 2026-09-22: the two Arc-branded provider URLs the chain's own
+		// docs publish (docs.arc.io/arc/references/rpc-endpoints) answer
+		// without a key, which the docs table does not say (eth_chainId
+		// 5042 on 10 consecutive calls, no credentials), so the page's
+		// own rows are measurable. Blockdaemon has no other keyless
+		// entry point (its direct gateway answers 401). The dRPC row of
+		// that table, rpc.drpc.mainnet.arc.io, serves the same free tier
+		// as arc.drpc.org (identical x-drpc-owner-id) and is therefore
+		// measured once, as dRPC.
 		{
 			Slug:     "arc",
 			Name:     "Arc",
@@ -276,6 +286,8 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARC_DRPC", "https://arc.drpc.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARC_PUBLICNODE", "https://arc-rpc.publicnode.com")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARC_TENDERLY", "https://arc.gateway.tenderly.co")},
+				{Slug: "blockdaemon", Name: "Blockdaemon", URL: envDefault("RPC_URL_ARC_BLOCKDAEMON", "https://rpc.blockdaemon.mainnet.arc.io")},
+				{Slug: "arc-quicknode", Name: "QuickNode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
 			},
 		},
 		// ─── Ethereum mainnet (9 providers) ────────────────────────

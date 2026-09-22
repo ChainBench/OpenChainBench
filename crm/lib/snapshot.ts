@@ -197,6 +197,21 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
     next.status.posthog = { at: null, error: "POSTHOG_PERSONAL_API_KEY or POSTHOG_PROJECT_ID not set" };
   }
 
+  // Sections that no longer exist (a loader removed, e.g. gsc and the
+  // Vercel log drain on 2026-09-22) keep their last status in the stored
+  // snapshot and the header goes on reporting them as failing. Only the
+  // keys this build can produce survive a refresh.
+  const knownSections = new Set([
+    "benches",
+    "harness",
+    "dune",
+    "posthog",
+    ...TRAFFIC_SECTIONS.map((s) => `traffic.${s}`),
+  ]);
+  for (const key of Object.keys(next.status)) {
+    if (!knownSections.has(key)) delete next.status[key];
+  }
+
   next.refreshedAt = stamp();
   next.budget = { used: budget.used(), limit: HOURLY_BUDGET };
   await writeSnapshot(next);

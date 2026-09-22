@@ -14,14 +14,36 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const t = snap.traffic;
   const totals = t.totals;
   const weekly = t.weekly ?? [];
-  const lastFull = weekly.length >= 2 ? weekly[weekly.length - 2] : null;
-  const prevFull = weekly.length >= 3 ? weekly[weekly.length - 3] : null;
+  // Set below, after the partial-history helpers: the last two weeks that
+  // are both complete and fully covered by the data.
   const channels = channelTotals(t.referrers ?? []);
   // Exact 7 d uniques for the two headline channels; the channel table
   // below sums per-domain uniques and can count a visitor twice.
   const ai = totals ? { visitors: totals.aiVisitors, prevVisitors: totals.prevAiVisitors } : undefined;
   const search = totals ? { visitors: totals.searchVisitors, prevVisitors: totals.prevSearchVisitors } : undefined;
-  const fullWeeks = weekly.slice(0, -1);
+  // PostHog started receiving events on 2026-09-20 (the site token shipped
+  // as the literal "[SENSITIVE]" from 2026-08-24 until then), so the 28-day
+  // and 12-week windows are mostly empty and the cards must say so instead
+  // of implying a month of history.
+  const firstDay = t.daily?.[0]?.day ?? null;
+  const windowStart = new Date(Date.now() - 27 * 864e5).toISOString().slice(0, 10);
+  const partialHistory = Boolean(firstDay && firstDay > windowStart);
+  const dailyLabel = partialHistory
+    ? `Daily visitors, since ${firstDay} (${t.daily?.length ?? 0} d)`
+    : "Daily visitors, 28 d";
+  // A week that began before the first event holds a few days at most.
+  const weekIsPartial = (week: string) => Boolean(firstDay && week < firstDay);
+  // The rows are keyed by the Monday that opens the week (HogQL
+  // toStartOfWeek mode 1); print the span so a Monday date is never read
+  // as the day the numbers belong to.
+  const weekRange = (monday: string) => {
+    const end = new Date(`${monday}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return `${monday} to ${end.toISOString().slice(0, 10)}`;
+  };
+  const fullWeeks = weekly.slice(0, -1).filter((w) => !weekIsPartial(w.week));
+  const lastFull = fullWeeks.at(-1) ?? null;
+  const prevFull = fullWeeks.at(-2) ?? null;
   const sections = sectionTotals(t.pages ?? []);
   const aiDomains = (t.referrers ?? []).filter((r) => r.channel === "ai" && (r.visitors > 0 || r.prevVisitors > 0)).slice(0, 12);
   const b = snap.benches;
@@ -59,7 +81,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
-          <p className="label">Daily visitors, 28 d</p>
+          <p className="label">{dailyLabel}</p>
           {t.daily && t.daily.length > 1 ? (
             <>
               <Spark series={t.daily.map((d) => d.visitors)} />
@@ -89,7 +111,13 @@ export default async function Overview({ searchParams }: { searchParams: Promise
               </p>
             </>
           ) : (
-            <Empty text="No PostHog data yet." />
+            <Empty
+              text={
+                firstDay
+                  ? `Two full weeks needed; PostHog data starts ${firstDay}.`
+                  : "No PostHog data yet."
+              }
+            />
           )}
         </div>
       </section>
@@ -155,7 +183,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
             <table className="data mt-2">
               <thead>
                 <tr>
-                  <th>Week of</th>
+                  <th>Week (Mon to Sun)</th>
                   <th className="num">Visitors</th>
                   <th className="num">Pageviews</th>
                   <th className="num">From AI</th>
@@ -167,8 +195,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
                 {[...weekly].reverse().map((w, i) => (
                   <tr key={w.week} style={i === 0 ? { color: "var(--muted)" } : undefined}>
                     <td className="mono">
-                      {w.week}
-                      {i === 0 ? " (current, partial)" : ""}
+                      {weekRange(w.week)}
+                      {i === 0 ? " (current, partial)" : weekIsPartial(w.week) ? ` (partial, data from ${firstDay})` : ""}
                     </td>
                     <td className="num mono">{fmtInt(w.visitors)}</td>
                     <td className="num mono">{fmtInt(w.pageviews)}</td>
