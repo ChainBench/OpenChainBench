@@ -137,9 +137,15 @@ export function benchRowsForVenue(
   venue: PerpVenueRow,
   feesAtSizeBench?: Benchmark | null,
 ): PerpVenueBenchRow[] {
-  const cohortSize = cohort.venues.length;
+  // Measured venues only: the CEX reference rows (venue-reported via
+  // CoinGecko, funding from Mobula) sit behind the hub selector and are
+  // on no bench, so they rank nothing here either. Without this, Binance's
+  // pair count outranked every DEX on the Active markets card while the
+  // card linked to a bench that lists no CEX.
+  const measured = cohort.venues.filter((v) => v.venueType !== "cex");
+  const cohortSize = measured.length;
 
-  const activeMarketsVenues = cohort.venues
+  const activeMarketsVenues = measured
     .filter((v) => v.activeMarkets != null && Number.isFinite(v.activeMarkets))
     .sort((a, b) => (b.activeMarkets as number) - (a.activeMarkets as number));
   const activeMarketsRank =
@@ -155,7 +161,7 @@ export function benchRowsForVenue(
       label: "All-in fee (ETH 10x)",
       blurb:
         "Taker fee plus half-spread plus impact on a $1000 ETH 10x long, 24h average.",
-      rank: rankWithinCohort(cohort.venues, "allInFeeBpsEth", venue.slug),
+      rank: rankWithinCohort(measured, "allInFeeBpsEth", venue.slug),
       cohortSize,
       value: fmtBps(venue.allInFeeBpsEth),
       vsMedian: null,
@@ -166,7 +172,7 @@ export function benchRowsForVenue(
       label: "Funding cost (ETH 24h)",
       blurb:
         "Normalized funding cost to hold an ETH long for 24 hours, 24h average. Negative means longs get paid.",
-      rank: rankWithinCohort(cohort.venues, "funding24hBpsEth", venue.slug),
+      rank: rankWithinCohort(measured, "funding24hBpsEth", venue.slug),
       cohortSize,
       value: fmtBpsSigned(venue.funding24hBpsEth),
       vsMedian: null,

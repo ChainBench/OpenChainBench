@@ -365,8 +365,8 @@ export default async function PerpsHubPage() {
               label="Tracked venues"
               value={
                 cohort.totals.trackedVenues > 0
-                  ? `${cohort.totals.trackedVenues} of ${cohort.venues.length}`
-                  : `0 of ${cohort.venues.length}`
+                  ? `${cohort.totals.trackedVenues} of ${measured.length}`
+                  : `0 of ${measured.length}`
               }
               accent="#14b8a6"
               tip="Venues with at least a 30 day volume sample in the current cohort run."

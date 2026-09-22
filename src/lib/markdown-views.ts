@@ -1,8 +1,9 @@
 /**
  * Markdown renderings of the pages agents read most: a bench, the perps
  * hub, a product profile. Served by /api/md/<path> and, through the
- * middleware, to any client whose Accept header prefers text/markdown on
- * the HTML URL itself (`curl -H 'Accept: text/markdown' /benchmarks/x`).
+ * header-conditioned rewrites in next.config.ts (`rewrites()`,
+ * beforeFiles), to any client whose Accept header prefers text/markdown
+ * on the HTML URL itself (`curl -H 'Accept: text/markdown' /benchmarks/x`).
  * The MCP resource for a bench renders the same text, so an agent gets
  * one document whichever door it comes through.
  */
@@ -123,8 +124,12 @@ export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
   }
   md.push(`- Data as of: ${new Date(cohort.asOf * 1000).toISOString()}`);
   md.push("");
-  const dex = cohort.venues.filter((v) => v.venueType !== "cex");
-  const cex = cohort.venues.filter((v) => v.venueType === "cex");
+  // The snapshot keeps registry order; the HTML table sorts client side.
+  // Sort here, or the `#` column would number a registry listing.
+  const byVolume = (rows: PerpVenueRow[]) =>
+    [...rows].sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
+  const dex = byVolume(cohort.venues.filter((v) => v.venueType !== "cex"));
+  const cex = byVolume(cohort.venues.filter((v) => v.venueType === "cex"));
   const lead = dex[0];
   if (lead && lead.volume30d != null) {
     md.push(
