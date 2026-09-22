@@ -59,6 +59,8 @@ import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { variantCombos } from "./variant-combos";
+export { variantCombos };
 import { publishAggregate, publishVariants, publishSitemapSlim } from "./publish-aggregate";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
@@ -210,43 +212,6 @@ async function materializeOne(
   await publishSnapshot(snap);
 }
 
-export function variantCombos(spec: Spec): BenchmarkFilters[] {
-  const dims = spec.dimensions ?? {};
-  const chains = (dims.chain ?? []).map((d) => d.value).filter((v) => v !== "all");
-  const regions = (dims.region ?? []).map((d) => d.value).filter((v) => v !== "all");
-  const kinds = (dims.kind ?? []).map((d) => d.value).filter((v) => v !== "all");
-  const venues = (dims.venue ?? []).map((d) => d.value).filter((v) => v !== "all");
-  const amounts = (dims.amount_usd ?? []).map((d) => d.value);
-  // Access tiers: the headline tier IS the aggregate (sig "" is built
-  // with it pinned), so only the other cohorts get their own variants,
-  // crossed with every label dimension like any other filter.
-  const headlineTier = defaultTier(spec);
-  const tiers = (dims.tier ?? []).map((d) => d.value).filter((v) => v !== headlineTier);
-  const opt = <T,>(xs: T[]): (T | undefined)[] => (xs.length ? [undefined, ...xs] : [undefined]);
-  const combos: BenchmarkFilters[] = [];
-  for (const chain of opt(chains)) {
-    for (const region of opt(regions)) {
-      for (const kind of opt(kinds)) {
-        for (const venue of opt(venues)) {
-          for (const amount_usd of opt(amounts)) {
-            for (const tier of opt(tiers)) {
-              if (!chain && !region && !kind && !venue && !amount_usd && !tier) continue; // the aggregate is tier A
-              combos.push({
-                ...(chain ? { chain } : {}),
-                ...(region ? { region } : {}),
-                ...(kind ? { kind } : {}),
-                ...(venue ? { venue } : {}),
-                ...(amount_usd ? { amount_usd } : {}),
-                ...(tier ? { tier } : {}),
-              });
-            }
-          }
-        }
-      }
-    }
-  }
-  return combos;
-}
 
 async function inBatches<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
   for (let i = 0; i < items.length; i += n) {
