@@ -69,6 +69,10 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   // References pm-data-freshness (bench 113, retired 2026-07). Bench
   // removed; answer returns 404 without this guard.
   "which-prediction-market-data-api-is-the-freshest",
+  // References pm-fee-comparison (dropped 2026-07). The YAML also
+  // hand-types "2% fee" and "vig roughly 4-10%", so it must not be
+  // revived as written. 410 instead of 404 (SEO audit 2026-09-22).
+  "polymarket-fees-explained",
 ]);
 
 /**

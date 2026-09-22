@@ -104,6 +104,7 @@ export const config = {
     "/answers/which-solana-rpc-lands-the-most-transactions",
     "/answers/which-solana-dex-aggregator-is-the-fastest",
     "/answers/which-prediction-market-data-api-is-the-freshest",
+    "/answers/polymarket-fees-explained",
     "/products/bitquery",
     "/products/goldrush",
     "/products/zerion",
