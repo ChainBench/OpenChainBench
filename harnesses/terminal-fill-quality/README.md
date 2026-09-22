@@ -251,6 +251,18 @@ Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
 publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
 `rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
 
+**HyperEVM needs a keyed endpoint** (`EVM_RPC_HYPEREVM`). Measured
+2026-09-22 with address-filtered `eth_getLogs`, the shape the previous-trade
+lookup issues: the public node answers two calls and then rate-limits (10
+failures in 12), and `hyperliquid.drpc.org` now 403s every request, so it
+was dropped from the fallback list. Maximum span per provider: Alchemy
+100,000 blocks, Chainstack 5,000, QuickNode and the public node 1,000. The
+deploy puts Chainstack first, Alchemy behind it, the public node last.
+Until then HyperEVM rows read `v3_no_prev` although every pool had a
+previous trade 1 to 795 blocks back; an RPC failure now reports
+`v3_logs` / `v4_logs` instead, so a throttled node can never again look
+like a quiet market.
+
 **Native EVM terminals (`native.go`)**: GMGN and Axiom route their BNB
 and Robinhood Chain swaps through their own contracts (GMGN BNB router
 `0x1de460f3…`; GMGN Robinhood routers `0x65050a9b…` and `0xe492912f…`,
