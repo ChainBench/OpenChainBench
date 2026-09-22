@@ -165,14 +165,22 @@ export async function generateMetadata({
   // at position 4, 0 clicks each on 2026-09-19) land next to the brand's
   // own site; the title has to say what this page adds, independent
   // measurement, and the description has to carry the numbers.
-  const title = `${p.name} benchmark: live rank and measured numbers`;
+  const appearances = livingAppearances(p.appearances);
+  const benchCount = appearances.length;
+  // The category the product is actually in, taken from the bench it
+  // ranks highest on, so the blue line answers "what is this" before it
+  // answers "how does it rank". Brand queries carried 690 impressions and
+  // zero clicks against the old generic title (SEO audit 2026-09-22).
+  const topCategory = [...appearances].sort((a, b) => a.rank - b.rank)[0]?.benchmark.category;
+  const categoryNoun = topCategory ? (CATEGORY_NOUN[topCategory] ?? topCategory.toLowerCase()) : "";
+  const title = categoryNoun
+    ? `${p.name}: ${categoryNoun} benchmark ${new Date().getUTCFullYear()}, live rank`
+    : `${p.name} benchmark: live rank and measured numbers`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
   // first word is the provider name, which is what the SERP snippet keeps
   // when it truncates.
-  const appearances = livingAppearances(p.appearances);
-  const benchCount = appearances.length;
   const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
@@ -217,7 +225,14 @@ export async function generateMetadata({
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
-  const description = capDescription(`${measuredLead} ${registryLine}`.trim(), 158);
+  // What it is, then how it ranks. The reverse order opened the snippet on
+  // "ranks #36 of 104", which answers a question the searcher did not ask;
+  // capDescription cuts at a sentence end, so the registry line survives
+  // whole and the measured lead is what gets dropped when room runs out.
+  const description = capDescription(
+    registryLine ? `${registryLine} ${measuredLead}`.trim() : measuredLead,
+    158,
+  );
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
