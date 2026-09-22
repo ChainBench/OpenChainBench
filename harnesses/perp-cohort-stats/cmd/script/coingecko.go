@@ -30,6 +30,10 @@ const (
 type cgExchangeListItem struct {
 	ID                string  `json:"id"`
 	TradeVolume24hBTC float64 `json:"trade_volume_24h_btc,string"`
+	// Present on the CEX rows (null on a few DEX entries), read by the
+	// CEX source; the DEX callers only use the volume.
+	OpenInterestBTC float64 `json:"open_interest_btc"`
+	PerpetualPairs  int     `json:"number_of_perpetual_pairs"`
 }
 
 var cgList struct {

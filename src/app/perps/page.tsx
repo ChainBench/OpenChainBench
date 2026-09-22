@@ -33,7 +33,7 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
   // Same number as the lede and the H2: tracked venues, not the cohort
   // array length (19 vs 18 on 2026-09-21).
   const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
-  const lead = cohort?.venues[0];
+  const lead = cohort?.venues.find((v) => v.venueType !== "cex");
   // 158 characters at most: the SERP truncates beyond that.
   return lead && lead.volume30d != null
     ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
@@ -67,14 +67,17 @@ export default async function PerpsHubPage() {
     perpHeadToHead().catch(() => []),
   ]);
 
-  const lead = cohort?.venues[0] ?? null;
+  // Measured rows only: the CEX reference (venue-reported) sits behind the
+  // selector and never leads the hub's own sentences.
+  const measured = cohort?.venues.filter((v) => v.venueType !== "cex") ?? [];
+  const lead = measured[0] ?? null;
   const tracked = cohort?.totals.trackedVenues ?? 0;
   const leadSentence =
     lead && lead.volume30d != null
       ? `${lead.name} leads ${tracked} tracked perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}; open interest, fees, all-in cost and funding are ranked below.`
       : "";
   const asOfLabel = cohort ? `${new Date(cohort.asOf * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC` : null;
-  const second = cohort?.venues[1] ?? null;
+  const second = measured[1] ?? null;
   const faq = cohort
     ? [
         {
@@ -142,7 +145,7 @@ export default async function PerpsHubPage() {
         ],
       }
     : null;
-  const top15 = cohort ? cohort.venues.slice(0, 15) : [];
+  const top15 = measured.slice(0, 15);
   const itemListLd = cohort
     ? {
         "@context": "https://schema.org",

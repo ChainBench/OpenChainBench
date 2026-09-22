@@ -52,6 +52,16 @@ export const PERP_VENUE_META: Record<
   jupiter:     { url: "https://jup.ag/perps",    chainLabel: "Solana" },
   "lighter-rh": { url: "https://rh.lighter.xyz", chainLabel: "Lighter L2, Robinhood" },
   "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: "xyz" },
+  binance:     { url: "https://www.binance.com/en/futures", chainLabel: "Offchain, CEX" },
+  okx:         { url: "https://www.okx.com/trade-swap", chainLabel: "Offchain, CEX" },
+  bybit:       { url: "https://www.bybit.com/trade/usdt", chainLabel: "Offchain, CEX" },
+  gate:        { url: "https://www.gate.com/futures", chainLabel: "Offchain, CEX" },
+  coinbase:    { url: "https://international.coinbase.com", chainLabel: "Offchain, CEX" },
+  bitget:      { url: "https://www.bitget.com/futures", chainLabel: "Offchain, CEX" },
+  deribit:     { url: "https://www.deribit.com",  chainLabel: "Offchain, CEX" },
+  kraken:      { url: "https://futures.kraken.com", chainLabel: "Offchain, CEX" },
+  kucoin:      { url: "https://www.kucoin.com/futures", chainLabel: "Offchain, CEX" },
+  mexc:        { url: "https://futures.mexc.com", chainLabel: "Offchain, CEX" },
 };
 
 /**

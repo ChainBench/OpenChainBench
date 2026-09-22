@@ -1,0 +1,205 @@
+/**
+ * Markdown renderings of the pages agents read most: a bench, the perps
+ * hub, a product profile. Served by /api/md/<path> and, through the
+ * middleware, to any client whose Accept header prefers text/markdown on
+ * the HTML URL itself (`curl -H 'Accept: text/markdown' /benchmarks/x`).
+ * The MCP resource for a bench renders the same text, so an agent gets
+ * one document whichever door it comes through.
+ */
+import { SITE } from "@/data/site";
+import { fmtUnit } from "@/lib/format";
+import {
+  citableAsOf,
+  citationQuote,
+  cohortViews,
+  headlineSentence,
+  isInsufficient,
+  rankedCandidates,
+} from "@/lib/citation";
+import type { Benchmark } from "@/types/benchmark";
+import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
+import type { ProviderProfile } from "@/lib/providers";
+
+function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
+  return ranked.map(
+    (r, i) =>
+      `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
+  );
+}
+
+export function benchMarkdown(b: Benchmark): string {
+  const insufficient = isInsufficient(b);
+  // Shares `rankedCandidates` with `leader()` so the Rankings list matches
+  // the Headline sentence and the `rankings` field on /api/stat.
+  const ranked = insufficient ? [] : rankedCandidates(b);
+  const md: string[] = [];
+  md.push(`# ${b.title}`);
+  md.push("");
+  md.push(`> ${b.subtitle}`);
+  md.push("");
+  md.push(`- Category: ${b.category}`);
+  md.push(`- Metric: ${b.metric} (${b.unit})`);
+  md.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
+  md.push(`- JSON: ${SITE.url}/api/stat/${b.slug}`);
+  md.push(`- Source: ${b.source}`);
+  md.push(`- License: CC-BY-4.0`);
+  {
+    const asOf = citableAsOf(b);
+    md.push(`- Last sample: ${asOf ?? "(no measurement yet, draft)"}`);
+  }
+  md.push("");
+  md.push(`**Headline.** ${headlineSentence(b)}`);
+  md.push("");
+  md.push(`**Citation quote.** ${citationQuote(b, SITE.url)}`);
+  md.push("");
+  if (ranked.length > 0) {
+    md.push(`## Rankings (p50, ${b.window ?? "24h"})`);
+    md.push("");
+    md.push(...rankingLines(b, ranked));
+    md.push("");
+  }
+  for (const c of cohortViews(b).filter((v) => !v.headline)) {
+    const cohortRanked = rankedCandidates(c.bench);
+    md.push(`## ${c.label} cohort (ranked separately)`);
+    md.push("");
+    md.push(
+      `Never compared with the rows above: different endpoints, 120 s cadence. Page: ${SITE.url}/benchmarks/${b.slug}#tier=${c.tier}, JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`,
+    );
+    md.push("");
+    md.push(`**Headline.** ${headlineSentence(c.bench)}`);
+    md.push("");
+    md.push(...rankingLines(b, cohortRanked));
+    md.push("");
+  }
+  if (b.methodology.length > 0) {
+    md.push(`## Methodology`);
+    md.push("");
+    for (const m of b.methodology) md.push(`- ${m}`);
+    md.push("");
+  }
+  if (b.faq && b.faq.length > 0) {
+    md.push(`## Frequently asked`);
+    md.push("");
+    for (const f of b.faq) {
+      md.push(`**${f.q}**`);
+      md.push("");
+      md.push(f.a);
+      md.push("");
+    }
+  }
+  md.push(`---`);
+  md.push(`Cite this benchmark: link ${SITE.url}/benchmarks/${b.slug} · JSON ${SITE.url}/api/stat/${b.slug}`);
+  return md.join("\n");
+}
+
+const usd = (v: number | null): string => {
+  if (v == null || !Number.isFinite(v)) return "n/a";
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+};
+const bps = (v: number | null): string => (v == null || !Number.isFinite(v) ? "n/a" : `${v.toFixed(2)} bps`);
+const num = (v: number | null): string => (v == null || !Number.isFinite(v) ? "n/a" : String(Math.round(v)));
+
+const VENUE_TYPE_LABEL: Record<PerpVenueRow["venueType"], string> = {
+  onchain: "DEX",
+  regulated: "regulated",
+  cex: "CEX, venue-reported",
+};
+
+export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
+  const md: string[] = [];
+  md.push(`# Perp DEX leaderboard: volume, open interest, fees and funding, measured live`);
+  md.push("");
+  md.push(`- Page: ${SITE.url}/perps`);
+  md.push(`- Per asset: ${SITE.url}/perps/eth · ${SITE.url}/perps/btc · ${SITE.url}/perps/sol`);
+  md.push(`- JSON: ${SITE.url}/api/stat/perp-volume-share (volume), ${SITE.url}/api/stat/perp-fees (all-in cost), ${SITE.url}/api/stat/perp-funding (funding)`);
+  md.push(`- License: CC-BY-4.0`);
+  if (!cohort) {
+    md.push("");
+    md.push("Cohort data is temporarily unavailable; the bench pages above carry the last measurements.");
+    return md.join("\n");
+  }
+  md.push(`- Data as of: ${new Date(cohort.asOf * 1000).toISOString()}`);
+  md.push("");
+  const dex = cohort.venues.filter((v) => v.venueType !== "cex");
+  const cex = cohort.venues.filter((v) => v.venueType === "cex");
+  const lead = dex[0];
+  if (lead && lead.volume30d != null) {
+    md.push(
+      `**Headline.** ${lead.name} leads ${cohort.totals.trackedVenues} tracked perp DEXes on 30-day volume at ${usd(lead.volume30d)}; cohort open interest ${usd(cohort.totals.cohortOpenInterest)}.`,
+    );
+    md.push("");
+  }
+  const table = (rows: PerpVenueRow[]) => {
+    md.push(`| # | Venue | Type | Volume 24h | Volume 30d | Open interest | Markets | All-in $1k ETH | Funding 24h ETH |`);
+    md.push(`|---|---|---|---|---|---|---|---|---|`);
+    rows.forEach((v, i) => {
+      md.push(
+        `| ${i + 1} | ${v.name} (${SITE.url}/products/${v.slug === "gmx-v2" ? "gmx" : v.slug === "trade-xyz" ? "xyz" : v.slug}) | ${VENUE_TYPE_LABEL[v.venueType]} | ${usd(v.volume24h)} | ${usd(v.volume30d)} | ${usd(v.openInterest)} | ${num(v.activeMarkets)} | ${bps(v.allInFeeBpsEth)} | ${bps(v.funding24hBpsEth)} |`,
+      );
+    });
+  };
+  md.push(`## DEX and regulated venues, by 30-day volume`);
+  md.push("");
+  table(dex);
+  md.push("");
+  if (cex.length > 0) {
+    md.push(`## Centralised reference`);
+    md.push("");
+    md.push(
+      `Volume, open interest and market counts as the venue reports them to CoinGecko (not an OpenChainBench measurement); funding from the same feed as the DEX rows.`,
+    );
+    md.push("");
+    table(cex);
+    md.push("");
+  }
+  md.push(`## How to read`);
+  md.push("");
+  md.push(`- Volume and open interest come from each venue's own public API through the perp-cohort-stats harness, every minute; 30-day volume is derived from the 24-hour series when a venue publishes no 30-day figure.`);
+  md.push(`- All-in cost is the perp-fees benchmark: taker fee plus half spread plus impact to open a $1,000 ETH long, 24h average. Funding is the perp-funding benchmark, normalised to a 24-hour hold.`);
+  md.push(`- Volume over open interest (bench perp-volume-oi-ratio) is the screen for volume that no position backs: ${SITE.url}/benchmarks/perp-volume-oi-ratio`);
+  return md.join("\n");
+}
+
+export function productMarkdown(p: ProviderProfile): string {
+  const md: string[] = [];
+  md.push(`# ${p.name}: OpenChainBench measurements`);
+  md.push("");
+  md.push(`- Page: ${SITE.url}/products/${p.slug}`);
+  md.push(`- Live benchmarks: ${p.appearances.length}${p.wins > 0 ? `, ${p.wins} first-place ${p.wins === 1 ? "finish" : "finishes"}` : ""}`);
+  md.push(`- License: CC-BY-4.0`);
+  const runs = p.appearances
+    .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t));
+  if (runs.length > 0) md.push(`- Data as of: ${new Date(Math.max(...runs)).toISOString()}`);
+  md.push("");
+  const ranked = [...p.appearances]
+    .filter((a) => a.rank > 0)
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked);
+  if (ranked.length > 0) {
+    md.push(`## Ranks (p50, 24h unless the bench says otherwise)`);
+    md.push("");
+    md.push(`| Benchmark | Rank | Value | Page |`);
+    md.push(`|---|---|---|---|`);
+    for (const a of ranked) {
+      md.push(
+        `| ${a.benchmark.title} | #${a.rank} of ${a.totalRanked} | ${fmtUnit(a.result.ms.p50, a.benchmark.unit)} | ${SITE.url}/benchmarks/${a.benchmark.slug} |`,
+      );
+    }
+    md.push("");
+  }
+  const unranked = p.appearances.filter((a) => !(a.rank > 0));
+  if (unranked.length > 0) {
+    md.push(`## Measured, not ranked`);
+    md.push("");
+    for (const a of unranked) {
+      md.push(`- ${a.benchmark.title}: ${a.result.unrankedLabel ?? "below the ranking floor"} (${SITE.url}/benchmarks/${a.benchmark.slug})`);
+    }
+    md.push("");
+  }
+  md.push(`---`);
+  md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);
+  return md.join("\n");
+}

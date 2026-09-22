@@ -173,7 +173,16 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    // Markdown negotiation: a client whose Accept header names
+    // text/markdown and not text/html (agents, curl) gets the Markdown
+    // view of a bench, the perps hub or a product at the page's own URL,
+    // served by /api/md/<path>. Browsers send text/html first and never
+    // match. The middleware stays a literal list of retired URLs.
+    const markdownOnly = [{ type: "header" as const, key: "accept", value: "^(?!.*text/html).*text/markdown.*$" }];
     return [
+      { source: "/benchmarks/:slug", has: markdownOnly, destination: "/api/md/benchmarks/:slug" },
+      { source: "/products/:slug", has: markdownOnly, destination: "/api/md/products/:slug" },
+      { source: "/perps", has: markdownOnly, destination: "/api/md/perps" },
       // PostHog reverse proxy — routes /ingest/* through the Next.js server
       // so ad-blockers that block posthog.com directly don't drop events.
       // api_host in posthog-provider.tsx is set to "/ingest" to match.

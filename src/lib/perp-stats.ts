@@ -23,9 +23,11 @@ import {
 } from "@/lib/cohort-snapshot";
 
 // "onchain": DEX (orderbook or pool settled on a chain). "regulated": a
-// licensed exchange with a margin account (Kalshi, CFTC DCM), kept in the
-// cohort so the regulated row can be read next to the DEXs.
-export type PerpVenueType = "onchain" | "regulated";
+// licensed exchange with a margin account (Kalshi, CFTC DCM). "cex": a
+// centralised book whose volume, OI and market count are what it reports
+// to CoinGecko (not an OpenChainBench measurement), kept behind the hub's
+// venue-type selector as the reference next to the measured rows.
+export type PerpVenueType = "onchain" | "regulated" | "cex";
 
 export type PerpVenueRow = {
   slug: string;
@@ -116,6 +118,16 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "jupiter",    name: "Jupiter Perps", chain: "Solana",     venueType: "onchain" },
   { slug: "lighter-rh", name: "Lighter RH", chain: "Lighter L2, Robinhood", venueType: "onchain" },
   { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
+  { slug: "binance",    name: "Binance",    chain: "Offchain",      venueType: "cex" },
+  { slug: "okx",        name: "OKX",        chain: "Offchain",      venueType: "cex" },
+  { slug: "bybit",      name: "Bybit",      chain: "Offchain",      venueType: "cex" },
+  { slug: "gate",       name: "Gate",       chain: "Offchain",      venueType: "cex" },
+  { slug: "coinbase",   name: "Coinbase International", chain: "Offchain", venueType: "cex" },
+  { slug: "bitget",     name: "Bitget",     chain: "Offchain",      venueType: "cex" },
+  { slug: "deribit",    name: "Deribit",    chain: "Offchain",      venueType: "cex" },
+  { slug: "kraken",     name: "Kraken",     chain: "Offchain",      venueType: "cex" },
+  { slug: "kucoin",     name: "KuCoin",     chain: "Offchain",      venueType: "cex" },
+  { slug: "mexc",       name: "MEXC",       chain: "Offchain",      venueType: "cex" },
 ];
 
 /** PROMETHEUS_URL when the process can reach Prom (the worker); null on
@@ -284,6 +296,9 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
   let cohortOpenInterest = 0;
   let trackedVenues = 0;
   for (const r of venues) {
+    // Totals describe the measured cohort (DEX and regulated); the CEX
+    // reference rows are venue-reported and sit behind the hub selector.
+    if (r.venueType === "cex") continue;
     if (r.volume30d != null) {
       cohortVolume30d += r.volume30d;
       trackedVenues += 1;
@@ -291,6 +306,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
     if (r.openInterest != null) cohortOpenInterest += r.openInterest;
   }
   const fundingValues = venues
+    .filter((r) => r.venueType !== "cex")
     .map((r) => r.funding24hBpsEth)
     .filter((v): v is number => v != null && Number.isFinite(v));
   const avgFunding24hEth = fundingValues.length

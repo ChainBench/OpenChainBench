@@ -136,6 +136,7 @@ const (
 	srcJupiterNative     = "jupiter_native"
 	srcLighterRHNative   = "lighter_rh_native"
 	srcHLXyzNative       = "hl_xyz_native"
+	srcCexCoinGecko      = "cex_coingecko"
 	srcDefillama         = "defillama"
 	srcMobulaPairs       = "mobula_pairs"
 	srcMobulaFund        = "mobula_funding"
@@ -208,6 +209,8 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
 		}
 	case mVolume30d:
 		switch venue {
@@ -280,6 +283,8 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
 		case "vest":
 			// The Vest API publishes no open interest.
 			return nil
@@ -351,6 +356,8 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
 		}
 	case mTopVol24h:
 		switch venue {
@@ -530,6 +537,7 @@ func NewRouter(cfg *Config) *Router {
 		NewJupiterNativeSource(),
 		NewLighterDeploymentSource("lighter-rh", "https://api.rh.lighter.xyz/api/v1", srcLighterRHNative),
 		NewHLBuilderSource("trade-xyz", "xyz", srcHLXyzNative),
+		NewCexCoinGeckoSource(),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {
