@@ -116,8 +116,9 @@ function variantKey(
   kind: string | null,
   venue: string | null = null,
   tier: string | null = null,
+  bucket: string | null = null,
 ): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}`;
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}|${bucket ?? "__none"}`;
 }
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
@@ -202,12 +203,14 @@ export function BenchmarkBody({
   regionOptions,
   kindOptions = [],
   venueOptions = [],
+  bucketOptions = [],
   tierOptions = [],
   venuesForChain,
   initialChain,
   initialRegion,
   initialKind = null,
   initialVenue = null,
+  initialBucket = null,
   initialTier = null,
   hasLongHistory = false,
   pageActions,
@@ -218,6 +221,8 @@ export function BenchmarkBody({
   regionOptions: ChainOption[];
   kindOptions?: ChainOption[];
   venueOptions?: ChainOption[];
+  /** Trade-size buckets (terminal-fill-quality). Same shape as venue. */
+  bucketOptions?: ChainOption[];
   /** Access tiers (public / keyed), headline cohort first. The first
    *  option is the aggregate itself: it never hits the variant API and
    *  never appears in the URL. Another tier rides in the URL fragment
@@ -232,6 +237,7 @@ export function BenchmarkBody({
   initialRegion: string | null;
   initialKind?: string | null;
   initialVenue?: string | null;
+  initialBucket?: string | null;
   initialTier?: string | null;
   /** When true, render the long-window archive toggle (24h..All time)
    *  below the main ledger. Only set on benches whose harness ships a
@@ -258,6 +264,7 @@ export function BenchmarkBody({
   const urlRegion = searchParams.get("region");
   const urlKind = searchParams.get("kind");
   const urlVenue = searchParams.get("venue");
+  const urlBucket = searchParams.get("bucket");
   const urlTier = searchParams.get("tier");
   const urlLayer = searchParams.get("layer");
   // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
@@ -272,6 +279,8 @@ export function BenchmarkBody({
     (urlKind && kindOptions.find((k) => k.value === urlKind)?.value) ?? initialKind;
   const resolvedInitialVenue =
     (urlVenue && venueOptions.find((v) => v.value === urlVenue)?.value) ?? initialVenue;
+  const resolvedInitialBucket =
+    (urlBucket && bucketOptions.find((b) => b.value === urlBucket)?.value) ?? initialBucket;
   const resolvedInitialTier =
     (urlTier && tierOptions.find((t) => t.value === urlTier)?.value) ?? initialTier;
   const resolvedInitialLayer: ProviderLayer =
@@ -281,6 +290,7 @@ export function BenchmarkBody({
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
   const [kind, setKind] = useState<string | null>(resolvedInitialKind);
   const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
+  const [bucket, setBucket] = useState<string | null>(resolvedInitialBucket);
   const [tier, setTier] = useState<string | null>(resolvedInitialTier);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
   // `#tier=<t>` is invisible to the server and to useSearchParams: read
@@ -323,6 +333,7 @@ export function BenchmarkBody({
     syncParam(url, "region", region, regionOptions);
     syncParam(url, "kind", kind, kindOptions);
     syncParam(url, "venue", venue, venueOptions);
+    syncParam(url, "bucket", bucket, bucketOptions);
     // Tier travels in the fragment (see tierOptions above); a legacy
     // ?tier= in the address bar is folded into it.
     url.searchParams.delete("tier");
@@ -341,12 +352,13 @@ export function BenchmarkBody({
     if (next !== window.location.pathname + window.location.search + window.location.hash) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, kind, venue, tier, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, tierOptions]);
+  }, [chain, region, kind, venue, bucket, tier, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, bucketOptions, tierOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
   const fallbackKind = kindOptions[0]?.value ?? null;
   const fallbackVenue = venueOptions[0]?.value ?? null;
+  const fallbackBucket = bucketOptions[0]?.value ?? null;
   // The headline tier is the aggregate: represented as null in the
   // variant key and absent from the variant query string.
   const headlineTier = tierOptions[0]?.value ?? null;
@@ -383,6 +395,7 @@ export function BenchmarkBody({
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;
+  const effectiveBucket = bucketOptions.length > 0 ? (bucket ?? fallbackBucket) : null;
   const effectiveTier = tierOptions.length > 0 ? tierParam(tier ?? headlineTier) : null;
 
   // Cross-dimension filtering: hide venue tabs with no data for the active
@@ -418,7 +431,7 @@ export function BenchmarkBody({
   // tab still works, numbers stay cross-dimension) and may retry on the
   // next flip.
   const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
-  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier);
+  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket);
   const aggregateBench =
     variants[variantKey(null, null, null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
@@ -464,25 +477,27 @@ export function BenchmarkBody({
   useEffect(() => {
     if (!aggregateBench) return;
     const isAll = (v: string | null) => !v || v === "all";
-    type Combo = [string | null, string | null, string | null, string | null, string | null];
+    type Combo = [string | null, string | null, string | null, string | null, string | null, string | null];
     const combos: Combo[] = [
-      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier] as Combo),
-      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue, effectiveTier] as Combo),
-      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value, effectiveTier] as Combo),
-      ...tierOptions.map((t) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(t.value)] as Combo),
+      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket] as Combo),
+      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket] as Combo),
+      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value, effectiveTier, effectiveBucket] as Combo),
+      ...tierOptions.map((t) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(t.value), effectiveBucket] as Combo),
+      ...bucketOptions.map((b) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, b.value] as Combo),
     ];
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     let i = 0;
-    for (const [c, r, k, vn, t] of combos) {
-      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn) && !t) continue;
-      const key = variantKey(c, r, k, vn, t);
+    for (const [c, r, k, vn, t, bk] of combos) {
+      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn) && isAll(bk) && !t) continue;
+      const key = variantKey(c, r, k, vn, t, bk);
       if (variantMap[key]) continue;
       const qs = new URLSearchParams();
       if (!isAll(c)) qs.set("chain", c!);
       if (!isAll(r)) qs.set("region", r!);
       if (!isAll(k)) qs.set("kind", k!);
       if (!isAll(vn)) qs.set("venue", vn!);
+      if (!isAll(bk)) qs.set("bucket", bk!);
       if (t) qs.set("tier", t);
       timers.push(
         setTimeout(() => {
@@ -789,7 +804,7 @@ export function BenchmarkBody({
                     o.value,
                     summarize(
                       variantMap[
-                        variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value))
+                        variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value), effectiveBucket)
                       ],
                     ),
                   ])
@@ -819,7 +834,25 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier, effectiveBucket)],
+                    ),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
+          {bucketOptions.length > 0 && (
+            <DimensionRow
+              label="Trade size"
+              options={bucketOptions}
+              selected={bucket ?? fallbackBucket}
+              onSelect={setBucket}
+              metaByValue={Object.fromEntries(
+                bucketOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, o.value)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -837,7 +870,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier, effectiveBucket)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -854,7 +887,7 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier)]),
+                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -870,7 +903,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier)]),
+                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
