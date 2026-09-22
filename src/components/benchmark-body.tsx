@@ -523,6 +523,8 @@ export function BenchmarkBody({
   }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
+  // Chain RPC pages put their endpoint list above the ledger, see below.
+  const endpointsFirst = benchmark.category === "RPCs";
   // True while the selected chain/region/kind variant is still loading:
   // the page shows the aggregate as a placeholder, which without a
   // visible signal reads as "the filter does nothing" (cold variant
@@ -1093,6 +1095,14 @@ export function BenchmarkBody({
             <StackedShareChart slug={benchmark.slug} />
           )}
 
+          {/* Chain RPC pages lead with the endpoints. The searcher typing
+              "arbitrum rpc" wants a URL to paste into a wallet; the ranking
+              is why they should trust this one. Everywhere else the cohort
+              block stays below the ledger, where it reads as an appendix.
+              Measured 2026-09-22: the first endpoint URL sat at word 423
+              and the 115 chain pages shared 0.53 of their first 300 words. */}
+          {!effectiveTier && endpointsFirst && headlineCohortBlock}
+
           <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
             {hasLongHistory && longRangeKey ? (
               <>
@@ -1143,7 +1153,7 @@ export function BenchmarkBody({
                 <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
-          {!effectiveTier && headlineCohortBlock}
+          {!effectiveTier && !endpointsFirst && headlineCohortBlock}
         </>
       )}
     </>
