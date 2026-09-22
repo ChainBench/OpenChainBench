@@ -205,14 +205,12 @@ export const COMPARE_PAIRS: ComparePair[] = [
     providerA: "hyperliquid",
     providerB: "kalshi",
     publishedAt: "2026-09-23",
-    hero: "perp-volume",
   },
   {
     slug: "hyperliquid-vs-xyz",
     providerA: "hyperliquid",
     providerB: "xyz",
     publishedAt: "2026-09-23",
-    hero: "perp-volume",
   },
   {
     slug: "kalshi-vs-polymarket",

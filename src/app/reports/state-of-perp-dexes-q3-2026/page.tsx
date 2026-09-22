@@ -5,7 +5,7 @@ import { SITE } from "@/data/site";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
-import { fetchPerpCohort, type PerpVenueRow } from "@/lib/perp-stats";
+import { fetchPerpCohort, PERP_VENUES, type PerpVenueRow } from "@/lib/perp-stats";
 import { headlineSentence, leader, rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { capSnippet } from "@/lib/seo-text";
@@ -35,6 +35,16 @@ const usd = (v: number | null | undefined): string => {
   if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
   return `$${v.toFixed(0)}`;
 };
+
+const CEX_SLUGS = new Set(PERP_VENUES.filter((v) => v.venueType === "cex").map((v) => v.slug));
+
+/** Leader among the measured venues: the funding benches also rank the
+ *  centralised books, which a report on perp DEXes does not crown. */
+function measuredLeader(b: Benchmark | null | undefined): { name: string; value: number } | null {
+  if (!b || !leader(b)) return null;
+  const r = rankedCandidates(b).find((c) => !CEX_SLUGS.has(c.slug));
+  return r ? { name: r.name, value: r.ms.p50 } : null;
+}
 
 function top(b: Benchmark | null | undefined, n = 3) {
   if (!b) return [];
@@ -126,8 +136,8 @@ export default async function StateOfPerpDexesQ3Page() {
 
   const feesLead = fees ? leader(fees) : null;
   const slipLead = slippage ? leader(slippage) : null;
-  const fundLead = funding ? leader(funding) : null;
-  const fundCostLead = fundingCost ? leader(fundingCost) : null;
+  const fundLead = measuredLeader(funding);
+  const fundCostLead = measuredLeader(fundingCost);
   const breadthLead = breadth ? leader(breadth) : null;
   const breadthRanked = breadth ? rankedCandidates(breadth) : [];
   const breadthNonZero = breadthRanked.filter((r) => r.ms.p50 > 0).length;
@@ -263,8 +273,8 @@ export default async function StateOfPerpDexesQ3Page() {
         <h2 className="display text-2xl text-ink">3. Cost of holding</h2>
         <p className="mt-3 text-sm text-ink-soft leading-relaxed">
           Funding is quoted per hour or per eight hours; a position pays every settlement. The harness normalises each venue&apos;s rate to the cost of holding a long for 24 hours and integrates it over the month.
-          {fundLead ? ` Right now ${fundLead.name} is the cheapest venue to hold an ETH long at ${fmtUnit(fundLead.value, funding!.unit)} per 24 hours.` : ""}
-          {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional, on a bench that ranks the DEXs and the large centralised books together (the CEX rows come from the Mobula funding feed).` : ""}
+          {fundLead ? ` Right now ${fundLead.name} is the cheapest measured venue to hold an ETH long at ${fmtUnit(fundLead.value, funding!.unit)} per 24 hours.` : ""}
+          {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least of the measured venues, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional; the bench page ranks the large centralised books on the same scale (their rows come from the Mobula funding feed).` : ""}
         </p>
         <RankList b={fundingCost} />
         <BenchLine b={funding} />
