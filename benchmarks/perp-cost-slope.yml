@@ -3,8 +3,8 @@
 slug: perp-cost-slope
 number: "117"
 title: "Perp DEX cost invariance: all-in bps at $1M vs $1k, live slope ranked"
-seo_title: "Perp cost at $1M vs $1k: {{best_name}} flattest at {{best_p50}}"
-seo_description: "{{best_name}} keeps the flattest perp cost slope, {{best_p50}} all-in at $1M over $1k (24h avg). Oracle venues score 1.00, orderbooks above; {{count}} ranked live."
+seo_title: "Perp cost at $1M vs $1k: {{best_p50}} for {{best_name}}"
+seo_description: "{{best_name}} keeps the flattest perp cost slope, {{best_p50}} all-in at $1M over $1k (24h avg). Oracle venues score 1.00, orderbooks above; {{ranked_count}} of {{count}} ranked live."
 subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues (no orderbook to walk) always score 1.00 by construction."
 category: Trading
 status: live

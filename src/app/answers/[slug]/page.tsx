@@ -24,7 +24,7 @@ import {
   safeJsonLd,
 } from "@/lib/jsonld";
 import { PERSON_ID } from "@/lib/hub-jsonld";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 
 export const revalidate = 3600;
@@ -73,7 +73,7 @@ export async function generateMetadata({
           `${SITE.url}/benchmarks/${ans.bench.slug}`,
         ).short_answer
       : cleanLeftoverTokens(renderTemplate(descSource, ans.bench));
-  const description = capDescription(metaDescription, 158);
+  const description = capSnippet(metaDescription);
   const asOfIso = citableAsOf(ans.bench);
   return {
     title,

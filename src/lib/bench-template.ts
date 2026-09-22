@@ -59,7 +59,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
-import { citationCandidates, joinNames, leaderNames } from "@/lib/citation";
+import { citationCandidates, joinNames, leaderNames, rankedCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
@@ -272,8 +272,15 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : UNRESOLVED;
       case "count":
         // The display cohort (5 % success floor), the same set the Results
-        // table, the endpoints block and the TL;DR count.
+        // table and the endpoints block count.
         return String(displayResults(benchmark.results).length);
+      case "ranked_count":
+        // The ranked cohort the TL;DR, the leader and /api/stat rankings use
+        // (50 % success floor, spec rank gate, sample gate). Copy that names
+        // a cohort size next to a leader claim uses this one, or both
+        // ("13 ranked of 19 measured"), never {{count}} alone (audit
+        // 2026-09-22: five pages stated two sizes).
+        return String(rankedCandidates(benchmark).length);
       default:
         return whole;
     }

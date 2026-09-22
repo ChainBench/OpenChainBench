@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
+import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
+import { perpHeadToHead } from "@/lib/perp-head-to-head";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import {
   PERP_ASSETS,
@@ -31,15 +32,19 @@ export function generateStaticParams() {
   return PERP_ASSETS.map((a) => ({ asset: a.slug }));
 }
 
+// "not measured", never a dash: a model reading the table must not take
+// a missing funding sample for zero.
+const NOT_MEASURED = "not measured";
+
 const fmtBps = (v: number | null): string => {
-  if (v == null || !Number.isFinite(v)) return "–";
+  if (v == null || !Number.isFinite(v)) return NOT_MEASURED;
   const abs = Math.abs(v);
   const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
   return `${v < 0 ? "−" : ""}${abs.toFixed(digits)} bps`;
 };
 
 const fmtSignedBps = (v: number | null): string => {
-  if (v == null || !Number.isFinite(v)) return "–";
+  if (v == null || !Number.isFinite(v)) return NOT_MEASURED;
   return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(Math.abs(v) >= 100 ? 0 : 1)} bps`;
 };
 
@@ -71,16 +76,21 @@ export async function generateMetadata({ params }: { params: Promise<{ asset: st
   const description = fee
     ? `${fee.name} opens a $1k ${a.asset} long at ${fmtBps(fee.allInBps)} all in${fund ? `, ${fund.name} was cheapest to hold over 30 days at ${fmtSignedBps(fund.funding30dBps)}` : ""}. ${rows.length} venues, fees, slippage and funding measured live.`
     : `${a.asset} perps compared across venues: all-in opening cost, $100k slippage, taker fee and funding over 24h, 7d and 30d, measured live from public APIs.`;
-  return pageMetadata({
-    path: `/perps/${a.slug}`,
-    title: `${a.asset} perps: cheapest venue to trade and hold, live`,
-    description,
-  });
+  const title = `${a.asset} perps: cheapest venue to trade and hold, live`;
+  return {
+    ...pageMetadata({ path: `/perps/${a.slug}`, title, description }),
+    other: buildCitationMeta({
+      title,
+      url: `${SITE.url}/perps/${a.slug}`,
+      asOfIso: page ? new Date(page.asOf * 1000).toISOString() : null,
+      jsonUrl: `${SITE.url}/api/stat/perp-fees`,
+    }),
+  };
 }
 
 function Cell({ v, signed = false }: { v: number | null; signed?: boolean }) {
   return (
-    <td className="num mono tabular-nums px-2 py-1.5 text-right whitespace-nowrap">{signed ? fmtSignedBps(v) : fmtBps(v)}</td>
+    <td className={`num mono tabular-nums px-2 py-1.5 text-right whitespace-nowrap${v == null ? " text-ink-faint text-[11px]" : ""}`}>{signed ? fmtSignedBps(v) : fmtBps(v)}</td>
   );
 }
 
@@ -149,7 +159,10 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
   const a = perpAssetBySlug(slug);
   if (!a) notFound();
 
-  const page = await fetchPerpAssetPage(a.asset);
+  const [page, headToHead] = await Promise.all([
+    fetchPerpAssetPage(a.asset),
+    perpHeadToHead().catch(() => []),
+  ]);
   const rows = page ? sortPerpAssetRows(page.data.venues) : [];
   const cex = page ? sortPerpAssetRows(page.data.cex) : [];
   const fee = cheapest(rows, "allInBps");
@@ -293,6 +306,25 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
           <Link href="/benchmarks/perp-fees" className="underline">/benchmarks/perp-fees</Link> and{" "}
           <Link href="/benchmarks/perp-funding" className="underline">/benchmarks/perp-funding</Link>.
         </p>
+      )}
+
+      {headToHead.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">Head to head</h2>
+          <p className="text-sm text-ink-soft mb-3">
+            The venue pairs with the most live benchmarks in common, {a.asset} fees, slippage and funding among them, each on its own comparison page.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+            {headToHead.map((h) => (
+              <li key={h.slug}>
+                <Link href={`/compare/${h.slug}`} className="text-ink underline underline-offset-2 hover:text-teal-700">
+                  {h.aName} vs {h.bName}
+                </Link>
+                <span className="text-ink-faint">, {h.count} live {h.count === 1 ? "benchmark" : "benchmarks"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="mt-12 max-w-3xl">

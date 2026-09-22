@@ -4,36 +4,9 @@ import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { AnswersForBench } from "@/components/answers-for-bench";
-import { getProviders } from "@/lib/providers";
-import { PERP_VENUES } from "@/lib/perp-stats";
-import { PERP_VENUE_META } from "@/lib/perp-venue-context";
-import { isPairLinkable, liveSharedBenchCount } from "@/lib/related-providers";
-
-/** The venue pairs with the most live benchmarks in common, each with an
- *  indexable compare page. The hub ranked 19 venues and linked none of
- *  the 383 compare pages, the template that converts best on the site
- *  (audit 2026-09-22). Pairs go through isPairLinkable so no link lands
- *  on a noindex page; product slugs follow PERP_VENUE_META (gmx-v2 is
- *  /products/gmx, trade-xyz is /products/xyz). */
-async function perpHeadToHead(limit = 8): Promise<{ slug: string; aName: string; bName: string; count: number }[]> {
-  const profiles = await getProviders();
-  const bySlug = new Map(profiles.map((p) => [p.slug, p]));
-  const slugs = [...new Set(PERP_VENUES.map((v) => PERP_VENUE_META[v.slug]?.productSlug ?? v.slug))];
-  const out: { slug: string; aName: string; bName: string; count: number }[] = [];
-  for (let i = 0; i < slugs.length; i++) {
-    for (let j = i + 1; j < slugs.length; j++) {
-      const a = bySlug.get(slugs[i]);
-      const b = bySlug.get(slugs[j]);
-      if (!a || !b) continue;
-      const [x, y] = a.slug < b.slug ? [a, b] : [b, a];
-      const pairSlug = `${x.slug}-vs-${y.slug}`;
-      if (!isPairLinkable(pairSlug, x.appearances, y.appearances)) continue;
-      out.push({ slug: pairSlug, aName: x.name, bName: y.name, count: liveSharedBenchCount(x.appearances, y.appearances) });
-    }
-  }
-  return out.sort((p, q) => q.count - p.count || p.slug.localeCompare(q.slug)).slice(0, limit);
-}
+import { perpHeadToHead } from "@/lib/perp-head-to-head";
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -69,11 +42,16 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
 
 export async function generateMetadata(): Promise<import("next").Metadata> {
   const cohort = await fetchPerpCohort();
-  return pageMetadata({
-    path: "/perps",
-    title: "Perp DEX leaderboard 2026: volume, OI, fees, funding, live",
-    description: describe(cohort),
-  });
+  const title = "Perp DEX leaderboard 2026: volume, OI, fees, funding, live";
+  return {
+    ...pageMetadata({ path: "/perps", title, description: describe(cohort) }),
+    other: buildCitationMeta({
+      title,
+      url: `${SITE.url}/perps`,
+      asOfIso: cohort ? new Date(cohort.asOf * 1000).toISOString() : null,
+      jsonUrl: `${SITE.url}/api/stat/perp-volume-share`,
+    }),
+  };
 }
 
 export const revalidate = 3600;
@@ -86,7 +64,7 @@ export default async function PerpsHubPage() {
   const [cohort, byAsset, headToHead] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpByAssetMatrix(),
-    perpHeadToHead().catch(() => [] as { slug: string; aName: string; bName: string; count: number }[]),
+    perpHeadToHead().catch(() => []),
   ]);
 
   const lead = cohort?.venues[0] ?? null;
@@ -134,6 +112,36 @@ export default async function PerpsHubPage() {
   // harness label), but the product page lives at /products/gmx, so
   // map it here. Keeping this list stable means the SERP card does
   // not churn if the harness drops a series momentarily.
+  // Dataset node for the leaderboard itself: the hub states a dated
+  // measured claim and had no citable record (audit 2026-09-22).
+  const datasetLd = cohort
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "@id": `${SITE.url}/perps#dataset`,
+        name: "Perp DEX leaderboard: 30-day volume, open interest, all-in cost and funding per venue",
+        description: `Cross-venue perpetual DEX measurements by OpenChainBench: 30-day volume, open interest, fees, all-in opening cost and 24h funding for ${cohort.totals.trackedVenues} tracked venues, from public APIs and the perp-fees and perp-funding benchmarks.`,
+        url: `${SITE.url}/perps`,
+        license: DATASET_LICENSE,
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
+        isAccessibleForFree: true,
+        dateModified: new Date(cohort.asOf * 1000).toISOString(),
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: `${SITE.url}/api/stat/perp-volume-share`,
+          },
+        ],
+        variableMeasured: [
+          { "@type": "PropertyValue", name: "Volume 30d", unitText: "USD" },
+          { "@type": "PropertyValue", name: "Open interest", unitText: "USD" },
+          { "@type": "PropertyValue", name: "All-in cost, $1k ETH long", unitText: "bps" },
+          { "@type": "PropertyValue", name: "Funding, 24h ETH hold", unitText: "bps" },
+        ],
+      }
+    : null;
   const top15 = cohort ? cohort.venues.slice(0, 15) : [];
   const itemListLd = cohort
     ? {
@@ -168,6 +176,13 @@ export default async function PerpsHubPage() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
+      {datasetLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(datasetLd) }}
+        />
+      )}
       {itemListLd && (
         <script
           type="application/ld+json"

@@ -13,7 +13,7 @@ import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
 import { isHexAddressSlug } from "@/lib/providers";
-import { rpcChainLabel } from "@/lib/citation";
+import { rankedCandidates, rpcChainLabel } from "@/lib/citation";
 import type { Benchmark } from "@/types/benchmark";
 
 export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
@@ -22,10 +22,17 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const chain = rpcChainLabel(benchmark);
   const pausedOn = isStaleBench(benchmark) && benchmark.lastRunAt ? benchmark.lastRunAt.slice(0, 10) : null;
   const win = benchmark.window ?? "24h";
+  // The TL;DR, the leader and /api/stat rank the 50 % floor cohort; the
+  // table shows the 5 % floor cohort. Say both when they differ.
+  const ranked = rankedCandidates(benchmark).length;
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
+    : chain && ranked < rows.length
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h, 3 regions)`
     : chain
     ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
+    : ranked < rows.length
+    ? `Results: ${rows.length} providers measured, ${ranked} ranked by ${benchmark.metric} (p50, ${win})`
     : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, ${win})`;
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (

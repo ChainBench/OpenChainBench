@@ -3,7 +3,7 @@ slug: perp-execution-quality
 number: "054"
 title: "Perp DEX execution quality: slippage on a $100k market order, live across orderbook venues"
 seo_title: "Perp DEX slippage: {{best_name}} fills $100k ETH at {{best_p50}}"
-seo_description: "{{best_name}} fills a $100k ETH market order at {{best_p50}} of slippage, {{worst_name}} at {{worst_p50}}. {{count}} orderbook DEXs walked every 30 s, 24h average."
+seo_description: "{{best_name}} fills a $100k ETH market order at {{best_p50}} of slippage, {{worst_name}} at {{worst_p50}}. {{ranked_count}} of {{count}} orderbook DEXs ranked, books walked every 30 s."
 subtitle: "Half-spread plus price impact in basis points to fill a $100,000 market buy against each venue's live orderbook, fee excluded, on ETH, BTC and SOL. Lower means the venue fills the size closer to mid. Books walked every 30 seconds across {{count}} orderbook perp DEXs, including Hyperliquid, Lighter, Aster, Extended, dYdX v4, Paradex, Ondo Perps, Polymarket and edgeX."
 category: Trading
 status: live

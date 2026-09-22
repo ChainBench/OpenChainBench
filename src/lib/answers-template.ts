@@ -49,7 +49,7 @@ export function cleanLeftoverTokens(text: string): string {
  * whether the source depends on live data before rendering starts.
  */
 export function hasLiveDataTokens(source: string): boolean {
-  return /\{\{\s*(?:best_name|best_p50|worst_name|worst_p50|p50|p90|p99|mean|name|count)/i.test(
+  return /\{\{\s*(?:best_name|best_names|best_p50|worst_name|worst_p50|p50|p90|p99|mean|name|count|ranked_count)/i.test(
     source,
   );
 }

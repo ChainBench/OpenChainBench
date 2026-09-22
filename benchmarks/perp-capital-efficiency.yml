@@ -3,8 +3,8 @@
 slug: perp-capital-efficiency
 number: "144"
 title: "Perp DEX capital efficiency: active markets per $M TVL, live"
-seo_title: "Perp markets per $1M TVL: {{best_name}} at {{best_p50}}"
-seo_description: "{{best_name}} sustains {{best_p50}} perp markets per $1M of TVL, {{worst_name}} {{worst_p50}}. Synthetic oracle venues sit far above orderbooks; {{count}} venues, live."
+seo_title: "Perp DEX capital efficiency: {{ranked_count}} venues ranked"
+seo_description: "{{best_name}} sustains {{best_p50}} perp markets per $1M of TVL, {{worst_name}} {{worst_p50}}. Synthetic oracle venues sit far above orderbooks; {{ranked_count}} of {{count}} venues ranked, live."
 subtitle: "Active perp markets divided by trading TVL in USD millions. Higher means more instruments supported per dollar of locked collateral. Synthetic oracle venues like Gains carry many markets on a shared pool; CLOB venues like Hyperliquid require dedicated market-maker inventory per pair."
 category: Trading
 status: live

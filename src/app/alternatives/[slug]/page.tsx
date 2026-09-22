@@ -8,7 +8,7 @@ import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
@@ -50,9 +50,8 @@ export async function generateMetadata({
   const title =
     alt.seo_title ??
     `${alt.target_product} alternatives. live benchmark · OpenChainBench`;
-  const description = capDescription(
+  const description = capSnippet(
     alt.seo_description ?? alt.intro,
-    158,
   );
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   const ogImage = `${SITE.url}/api/og/${alt.benchmark}`;

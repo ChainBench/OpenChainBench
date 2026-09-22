@@ -16,7 +16,7 @@ const ANSWERS_DIR = path.join(ROOT, "answers");
 type Issue = { file: string; level: "error" | "warning"; message: string };
 
 const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
-const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_p50", "worst_name", "worst_p50", "count"]);
+const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "worst_name", "worst_p50", "count", "ranked_count"]);
 
 /** Every `{{...}}` in `fields` names a known keyword, a provider slug of
  *  the bench for per-provider lookups, a declared chain value, or a

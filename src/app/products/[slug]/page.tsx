@@ -255,7 +255,10 @@ export async function generateMetadata({
   const newestLastRunIso =
     lastRuns.length > 0 ? new Date(Math.max(...lastRuns)).toISOString().slice(0, 10) : null;
   return {
-    title,
+    // The layout appends " · OpenChainBench" (17 characters); past 43 the
+    // tail of the title is what the SERP cuts, so long titles ship
+    // absolute and short ones keep the suffix (audit 2026-09-22).
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description, type: "profile", url: canonicalUrl },
@@ -677,6 +680,29 @@ export default async function ProviderPage({
       // the Organization above plus the Dataset references it links to via
       // `subjectOf`. Removing SoftwareApplication drops the failed rich
       // result attempt without losing any real signal.
+      {
+        "@type": "ItemList",
+        "@id": `${url}#ranks`,
+        name: `${p.name}: rank on every live OpenChainBench benchmark`,
+        // Indexable bench pages only, like subjectOf above: a ListItem URL
+        // into a noindex page is a crawl hint into a page we asked engines
+        // to skip.
+        numberOfItems: sorted.filter((a) => a.rank > 0 && canLink(a.benchmark.slug)).length,
+        itemListElement: sorted
+          .filter((a) => a.rank > 0 && canLink(a.benchmark.slug))
+          .map((a, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: `#${a.rank} of ${a.totalRanked} on ${a.benchmark.title}`,
+            url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+            item: {
+              "@type": "PropertyValue",
+              name: a.benchmark.metric,
+              value: a.result.ms.p50,
+              unitText: a.benchmark.unit,
+            },
+          })),
+      },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
         { name: "Products", item: `${SITE.url}/products` },
