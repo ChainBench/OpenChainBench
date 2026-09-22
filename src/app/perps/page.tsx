@@ -259,6 +259,39 @@ export default async function PerpsHubPage() {
             </span>
             <span className="text-ink">perp-funding-stability</span>
           </Link>
+          {[
+            { href: "/benchmarks/perp-volume-oi-ratio", label: "perp-volume-oi-ratio" },
+            { href: "/benchmarks/perp-funding-cost-30d", label: "perp-funding-cost-30d" },
+          ].map((b) => (
+            <Link
+              key={b.href}
+              href={b.href}
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+            >
+              <span
+                className="label-mono text-ink-faint text-[10px]"
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              >
+                Bench
+              </span>
+              <span className="text-ink">{b.label}</span>
+            </Link>
+          ))}
+          {["eth", "btc", "sol"].map((asset) => (
+            <Link
+              key={asset}
+              href={`/perps/${asset}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 hover:bg-ink/5"
+            >
+              <span
+                className="label-mono text-ink-faint text-[10px]"
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              >
+                By asset
+              </span>
+              <span className="text-ink">{asset.toUpperCase()} perps</span>
+            </Link>
+          ))}
           <Link
             href="/fee-compare"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
@@ -410,6 +443,8 @@ export default async function PerpsHubPage() {
           "perp-protocol-longevity",
           "perp-pe-ratio",
           "perp-pf-ratio",
+          "perp-volume-oi-ratio",
+          "perp-funding-cost-30d",
         ]}
         heading="Questions these benchmarks answer"
       />

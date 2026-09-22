@@ -118,7 +118,9 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
 ];
 
-function promUrl(): string | null {
+/** PROMETHEUS_URL when the process can reach Prom (the worker); null on
+ *  Vercel, where every reader goes through the worker-written snapshots. */
+export function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 

@@ -46,6 +46,7 @@ import {
 } from "@/lib/cohort-snapshot";
 import { fetchPerpCohortFresh,
   fetchPerpByAssetMatrixFresh } from "@/lib/perp-stats";
+import { fetchPerpAssetPagesFresh, PERP_ASSET_PAGES_KEY } from "@/lib/perp-asset-pages";
 import {
   fetchHlBuilderStatsFresh,
   fetchHlCohortFresh,
@@ -373,6 +374,9 @@ async function sweep(iteration: number): Promise<void> {
     }> = [
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
       { key: "perp-by-asset", build: () => fetchPerpByAssetMatrixFresh() },
+      // /perps/eth, /perps/btc, /perps/sol: per-asset cost, slippage and
+      // funding per venue, one blob for the three assets.
+      { key: PERP_ASSET_PAGES_KEY, build: () => fetchPerpAssetPagesFresh() },
       { key: "hl-frontends", build: () => Promise.resolve(hlCohort) },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
       { key: "hl-history", build: () => fetchHlHistoryFresh() },
