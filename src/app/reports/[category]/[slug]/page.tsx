@@ -21,7 +21,8 @@ const SERIF: React.CSSProperties = { fontFamily: "var(--font-serif)" };
 type Props = { params: Promise<{ category: string; slug: string }> };
 
 export async function generateStaticParams() {
-  const reports = getAllReports();
+  // Live reports have their own route segment, which Next matches first.
+  const reports = getAllReports().filter((r) => !r.live);
   return reports.map((r) => ({ category: r.categorySlug, slug: r.slug }));
 }
 
@@ -294,7 +295,7 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
 export default async function ReportPage({ params }: Props) {
   const { category, slug } = await params;
   const report = getReport(category, slug);
-  if (!report) notFound();
+  if (!report || report.live) notFound();
 
   const catMeta = REPORT_CATEGORY_META[category];
   const lds = reportJsonLd(report);

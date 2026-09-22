@@ -1937,7 +1937,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   deribit: {
     url: "https://www.deribit.com",
     description:
-      "Centralised derivatives exchange, options and perpetual futures on BTC, ETH and a few majors. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+      "Centralised derivatives exchange, options and perpetual futures on BTC, ETH and a few majors. On OpenChainBench as a funding reference row from the Mobula feed; CoinGecko's figures for it are options-heavy and would not describe a perp book, so volume and open interest are not shown.",
     twitter: "@DeribitExchange",
   },
   nado: {

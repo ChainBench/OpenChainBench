@@ -189,12 +189,12 @@ const nextConfig: NextConfig = {
     // beforeFiles: /perps is a concrete page, and a bare array (afterFiles)
     // runs after the filesystem match, so the rule would never fire there.
     // Case-insensitive on the two media types (JS RegExp here takes no
-    // flags), and `text/html;q=0...` does not block: markdown without a
-    // q-value is q=1 and outranks it. A client that lowers both q-values
-    // is not something an agent or curl sends.
+    // flags). text/html blocks the rewrite unless its q-value is exactly
+    // zero (q=0, q=0.0); a fractional q like q=0.9 still ranks HTML
+    // above a markdown token that carries a lower q, so it stays HTML.
     const ci = (s: string) => s.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
     const markdownOnly = [
-      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0)).*${ci("text/markdown")}.*$` },
+      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9]))).*${ci("text/markdown")}.*$` },
     ];
     const beforeFiles = [
       { source: "/benchmarks/:slug", has: markdownOnly, destination: "/api/md/benchmarks/:slug" },

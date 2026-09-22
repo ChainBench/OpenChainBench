@@ -302,7 +302,7 @@ export default async function PerpsHubPage() {
             </Link>
           ))}
           <Link
-            href="/reports/state-of-perp-dexes-q3-2026"
+            href="/reports/perps/state-of-perp-dexes-q3-2026"
             className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 hover:bg-ink/5"
           >
             <span

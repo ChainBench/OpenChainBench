@@ -444,6 +444,10 @@ export async function fetchPerpByAssetMatrixFresh(): Promise<PerpAssetRow[]> {
 
   const byVenue = new Map<string, PerpAssetRow>();
   for (const v of PERP_VENUES) {
+    // Measured venues only: the CEX rows have Mobula funding series for
+    // these assets and would otherwise land here unlabelled, outside the
+    // venue-type selector (which filters the venues tab, not this one).
+    if (v.venueType === "cex") continue;
     byVenue.set(v.slug, {
       slug: v.slug,
       name: v.name,

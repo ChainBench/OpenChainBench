@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { fetchPerpCohort, PERP_VENUES, type PerpVenueRow } from "@/lib/perp-stats";
-import { headlineSentence, leader, rankedCandidates } from "@/lib/citation";
+import { headlineSentence, isInsufficient, leader, rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { capSnippet } from "@/lib/seo-text";
 import type { Benchmark } from "@/types/benchmark";
@@ -25,7 +25,7 @@ import type { Benchmark } from "@/types/benchmark";
 
 export const revalidate = 3600;
 
-const PATH = "/reports/state-of-perp-dexes-q3-2026";
+const PATH = "/reports/perps/state-of-perp-dexes-q3-2026";
 const TITLE = "State of perp DEXes, Q3 2026: measured, not self-reported";
 const QUARTER_END = "2026-09-30";
 
@@ -41,14 +41,22 @@ const CEX_SLUGS = new Set(PERP_VENUES.filter((v) => v.venueType === "cex").map((
 /** Leader among the measured venues: the funding benches also rank the
  *  centralised books, which a report on perp DEXes does not crown. */
 function measuredLeader(b: Benchmark | null | undefined): { name: string; value: number } | null {
-  if (!b || !leader(b)) return null;
-  const r = rankedCandidates(b).find((c) => !CEX_SLUGS.has(c.slug));
+  const r = ranked(b).find((c) => !CEX_SLUGS.has(c.slug));
   return r ? { name: r.name, value: r.ms.p50 } : null;
 }
 
-function top(b: Benchmark | null | undefined, n = 3) {
-  if (!b) return [];
-  return rankedCandidates(b).slice(0, n);
+/** The bench's ranking, or nothing when the bench itself would not
+ *  assert a leader (draft, unhealthy sample, no live rows): the same
+ *  gate `leader()` and the bench page apply, which `rankedCandidates`
+ *  alone does not. */
+function ranked(b: Benchmark | null | undefined) {
+  if (!b || isInsufficient(b) || !leader(b)) return [];
+  return rankedCandidates(b);
+}
+
+function top(b: Benchmark | null | undefined, n = 3, measuredOnly = false) {
+  const rows = ranked(b);
+  return (measuredOnly ? rows.filter((r) => !CEX_SLUGS.has(r.slug)) : rows).slice(0, n);
 }
 
 function BenchLine({ b }: { b: Benchmark | null | undefined }) {
@@ -64,9 +72,9 @@ function BenchLine({ b }: { b: Benchmark | null | undefined }) {
   );
 }
 
-function RankList({ b, n = 5 }: { b: Benchmark | null | undefined; n?: number }) {
+function RankList({ b, n = 5, measuredOnly = false }: { b: Benchmark | null | undefined; n?: number; measuredOnly?: boolean }) {
   if (!b) return null;
-  const rows = top(b, n);
+  const rows = top(b, n, measuredOnly);
   if (rows.length === 0) return null;
   return (
     <ol className="mt-2 text-sm text-ink grid gap-1 sm:grid-cols-2">
@@ -139,9 +147,9 @@ export default async function StateOfPerpDexesQ3Page() {
   const fundLead = measuredLeader(funding);
   const fundCostLead = measuredLeader(fundingCost);
   const breadthLead = breadth ? leader(breadth) : null;
-  const breadthRanked = breadth ? rankedCandidates(breadth) : [];
+  const breadthRanked = ranked(breadth);
   const breadthNonZero = breadthRanked.filter((r) => r.ms.p50 > 0).length;
-  const volOiRanked = volOi ? rankedCandidates(volOi) : [];
+  const volOiRanked = ranked(volOi);
   const volOiHigh = volOiRanked.filter((r) => r.ms.p50 >= 8);
 
   const sections = [
@@ -159,7 +167,8 @@ export default async function StateOfPerpDexesQ3Page() {
     "@graph": [
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
-        { name: "Perp DEX leaderboard", item: `${SITE.url}/perps` },
+        { name: "Research reports", item: `${SITE.url}/reports` },
+        { name: "Perp DEXes", item: `${SITE.url}/reports/perps` },
         { name: "State of perp DEXes, Q3 2026", item: pageUrl },
       ]),
       {
@@ -199,7 +208,9 @@ export default async function StateOfPerpDexesQ3Page() {
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <nav aria-label="Breadcrumb" className="text-[12px] text-ink-faint mb-4">
-        <Link href="/perps" className="hover:text-ink">Perp DEX leaderboard</Link>
+        <Link href="/reports" className="hover:text-ink">Research reports</Link>
+        <span className="mx-1.5">/</span>
+        <Link href="/reports/perps" className="hover:text-ink">Perp DEXes</Link>
         <span className="mx-1.5">/</span>
         <span className="text-ink-soft">State of perp DEXes, Q3 2026</span>
       </nav>
@@ -276,7 +287,7 @@ export default async function StateOfPerpDexesQ3Page() {
           {fundLead ? ` Right now ${fundLead.name} is the cheapest measured venue to hold an ETH long at ${fmtUnit(fundLead.value, funding!.unit)} per 24 hours.` : ""}
           {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least of the measured venues, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional; the bench page ranks the large centralised books on the same scale (their rows come from the Mobula funding feed).` : ""}
         </p>
-        <RankList b={fundingCost} />
+        <RankList b={fundingCost} measuredOnly />
         <BenchLine b={funding} />
       </section>
 
