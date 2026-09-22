@@ -73,6 +73,10 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   // hand-types "2% fee" and "vig roughly 4-10%", so it must not be
   // revived as written. 410 instead of 404 (SEO audit 2026-09-22).
   "polymarket-fees-explained",
+  // Same class, found by the next audit: references pm-fee-comparison too,
+  // and hand-types "flat 2%", "roughly $0.07" and a "$0.20 / $0.80"
+  // crossover. 410 instead of 404 (SEO audit 2026-09-23).
+  "polymarket-vs-kalshi-fees",
 ]);
 
 /**

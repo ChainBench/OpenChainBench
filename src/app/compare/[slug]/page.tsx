@@ -240,10 +240,16 @@ export async function generateMetadata({
   // dydx-vs-hyperliquid in prod). The gate only applies to
   // combinatorial ad hoc pairs.
   const isCurated = getComparePair(pair.slug) !== undefined;
-  // A 200 with noindex is recrawled forever; a 404 leaves the index in
-  // weeks. 232 ad hoc compare URLs were live, crawled and deindexed on
-  // 2026-09-22 against 151 in the sitemap.
-  if (!isCurated && liveSharedCount < 2) notFound();
+  // Two situations, two answers. A pair that SHARES fewer than two benches
+  // has nothing to compare and never will on this data: it 404s, because a
+  // 200 with noindex is recrawled forever while a 404 leaves the index in
+  // weeks (232 such URLs were live, crawled and deindexed on 2026-09-22
+  // against 151 in the sitemap). A pair that shares enough but whose live
+  // count dipped is a render-window accident, so it noindexes and recovers:
+  // /compare/fomo-vs-invo sits at exactly two live shared benches and earns
+  // 36 of the site's 289 clicks, and a 404 there would be self-inflicted.
+  if (!isCurated && sharedSlugsForMeta.length < 2) notFound();
+  const dataThin = !isCurated && liveSharedCount < 2;
 
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
@@ -299,6 +305,7 @@ export async function generateMetadata({
     description,
     // follow stays on so PageRank keeps flowing through the body links
     // (both provider pages, parent benches) even while deindexed.
+    ...(dataThin ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
     other: buildCitationMeta({ title, url, asOfIso: isoDate, jsonUrl: `${SITE.url}/api/citable` }),
     openGraph: {
@@ -820,14 +827,12 @@ export default async function ComparePage({
 
   const shared = await buildSharedBenches(pair, a, b);
   if (shared.length === 0) return notFound();
-  // Mirrors generateMetadata: an ad hoc pair with fewer than two live
-  // shared benches has nothing to compare, so it 404s instead of serving
-  // a 200 the crawler keeps in its queue. Curated pairs are exempt.
-  if (getComparePair(pair.slug) === undefined) {
-    // "Live" here is the same test the verdict uses above: both sides
-    // carry a positive p50 on that bench.
-    const live = shared.filter((sb) => sb.aResult.p50 > 0 && sb.bResult.p50 > 0).length;
-    if (live < 2) return notFound();
+  // Mirrors generateMetadata: a pair sharing fewer than two benches has
+  // nothing to compare and 404s. A live-count dip is answered there with
+  // noindex, not here with a 404, so a flapping bench cannot delete a page
+  // that earns clicks. Curated pairs are exempt.
+  if (getComparePair(pair.slug) === undefined && shared.length < 2) {
+    return notFound();
   }
 
   const regA = getProviderRegistry(a.slug);
