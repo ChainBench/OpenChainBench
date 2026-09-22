@@ -13,7 +13,7 @@ import {
 import { getProviderRegistry } from "@/data/provider-registry";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { capDescription, capSnippet } from "@/lib/seo-text";
+import { capSnippet } from "@/lib/seo-text";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
