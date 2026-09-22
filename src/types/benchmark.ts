@@ -287,6 +287,9 @@ export type Benchmark = {
     region?: { value: string; label: string }[];
     kind?: { value: string; label: string }[];
     venue?: { value: string; label: string }[];
+    /** Trade-size bucket (terminal-fill-quality). Injects a `bucket`
+     *  label like chain/venue do; `all` is the pooled row. */
+    bucket?: { value: string; label: string }[];
     /** Access tier (public / keyed). Partitions providers instead of
      *  injecting a PromQL label; the first value is the headline cohort. */
     tier?: { value: string; label: string }[];

@@ -450,6 +450,17 @@ export const SpecSchema = z
             })
           )
           .optional(),
+        /* Trade-size bucket (terminal-fill-quality: all / under25 /
+         * 25to250 / over250). Same mechanics as `venue`: a plain label
+         * injected into the selector, `all` meaning the pooled row. */
+        bucket: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .optional(),
         amount_usd: z
           .array(
             z.object({

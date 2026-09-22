@@ -251,6 +251,24 @@ Robinhood `rpc.mainnet.chain.robinhood.com`, BNB / Base / Ethereum
 publicnode with fallbacks, Arc `rpc.mainnet.arc.io`, HyperEVM
 `rpc.hyperliquid.xyz/evm` (gas coin unpriced there).
 
+**Trade-size views.** Every published figure also carries a `bucket` label:
+`all` is the pooled row, `under25`, `25to250` and `over250` split the same
+window by trade value in USD. It exists because a terminal's median trade
+size varies six-fold across the cohort (FOMO $17, BasedBot on Base $112), so
+one ranking compares apps on different trade sizes. Measured 2026-09-22,
+FOMO takes 200 bps under $25 and 77 bps over $250 on Solana while its EVM
+rows charge a flat ~50 bps, and the size ranking reorders the field: Banana
+Gun goes 607 to 484 to 727 bps across the three buckets, BONKbot 442 to 391
+to 348. A bucket's figures are plain medians over its own swaps, not the
+flow-weighted rule the pooled row uses: that rule exists so a product whose
+chains charge differently does not land on one chain's mode, and inside one
+size bucket of one product there is no such mix. Relay and Protocol appear
+in a bucket only when they cover at least half its swaps. `tfq_fail_rate_pct`
+and `tfq_fail_overhead_bps` carry no bucket: a failed attempt never reached
+a pool and has no trade size. Floors: `MIN_PRICED_SIZE` (20) to publish,
+`MIN_RANK_SIZE` (40) to rank, so a thin bucket reads as provisional rather
+than as a median of five swaps.
+
 **HyperEVM needs a keyed endpoint** (`EVM_RPC_HYPEREVM`). Measured
 2026-09-22 with address-filtered `eth_getLogs`, the shape the previous-trade
 lookup issues: the public node answers two calls and then rate-limits (10

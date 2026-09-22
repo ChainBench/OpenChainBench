@@ -65,11 +65,13 @@ export type BenchmarkFilters = {
   kind?: string;
   venue?: string;
   amount_usd?: string;
+  /** Trade-size bucket; injects the `bucket` label like the others. */
+  bucket?: string;
   /** Access cohort (public / keyed). Selects providers, injects no label. */
   tier?: string;
 };
 
-const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "tier"] as const;
+const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 export function filterSig(f: BenchmarkFilters): string {

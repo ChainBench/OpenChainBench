@@ -45,22 +45,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Sample floors for the per-size views, set from MIN_PRICED_SIZE and
+// MIN_RANK_SIZE at startup.
+var minPricedSize, minRankSize = 20, 40
+
 var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi",
-	}, []string{"terminal", "chain", "stat"})
+		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi; bucket=all|under25|25to250|over250 (trade size in USD)",
+	}, []string{"terminal", "chain", "stat", "bucket"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow",
-	}, []string{"terminal", "chain", "component"})
+		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow; bucket=all, or a trade-size bucket as a plain median over its swaps",
+	}, []string{"terminal", "chain", "component", "bucket"})
 	gFail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_rate_pct", Help: "Share of the terminal's swap attempts that failed on-chain, percent (rolling window, every attempt the feed saw)",
 	}, []string{"terminal", "chain"})
 	gSamples = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_sample_size", Help: "Samples in the window: seen (swap attempts), parsed (swaps), priced (with a loss figure)",
-	}, []string{"terminal", "chain", "kind"})
+	}, []string{"terminal", "chain", "kind", "bucket"})
 	gTrade = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_trade_usd", Help: "Sampled trade size in USD",
-	}, []string{"terminal", "chain", "stat"})
+	}, []string{"terminal", "chain", "stat", "bucket"})
 	gVenue = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_venue_share_pct", Help: "Share of sampled swaps per venue",
 	}, []string{"terminal", "chain", "venue"})
@@ -81,10 +85,10 @@ var (
 	}, []string{"terminal", "chain", "origin"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_health", Help: "1 when the entry has at least MIN_PRICED priced samples in the window (a product on one chain: half that), its main chain is not still filling, and its sample is not one side only with no fee",
-	}, []string{"terminal", "chain"})
+	}, []string{"terminal", "chain", "bucket"})
 	gRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_ranked", Help: "1 when the terminal has at least MIN_RANK priced samples (its median is stable enough to rank)",
-	}, []string{"terminal", "chain"})
+	}, []string{"terminal", "chain", "bucket"})
 	gFailCost = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_fail_cost_usd", Help: "Median transaction fee paid on a failed swap attempt, USD (sampled failed attempts, rolling window)",
 	}, []string{"terminal", "chain"})
@@ -93,7 +97,7 @@ var (
 	}, []string{"terminal", "chain"})
 	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
-	}, []string{"terminal", "chain"})
+	}, []string{"terminal", "chain", "bucket"})
 	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -259,6 +263,8 @@ type TerminalStats struct {
 	SandwichProfit *Quantiles `json:"sandwich_profit_bps,omitempty"`
 	/** Loss by trade-size bucket. */
 	BySize map[string]*Quantiles `json:"by_size,omitempty"`
+	/** The whole row again per trade-size bucket: loss, the split, trade size, sample count. */
+	SizeSplit map[string]*SizeStats `json:"size_split,omitempty"`
 	/** Cross-chain apps: loss by origin chain (bnb, robinhood, base, ethereum, arc), with the median's interval. */
 	ByChain map[string]*Quantiles `json:"by_chain,omitempty"`
 	/** Largest "other" recipients over the window, for audit: pubkey, label when known, count, quote received in USD. */
@@ -343,6 +349,13 @@ func main() {
 	windowHours := envInt("WINDOW_HOURS", 24)
 	minPriced := envInt("MIN_PRICED", 50)
 	minRank := envInt("MIN_RANK", 100)
+	// A size bucket holds roughly a third of a terminal's sample, so it
+	// gets its own floors rather than silently failing the whole-row ones
+	// and leaving every size view blank. Lower, and said out loud: a
+	// bucket under MIN_RANK_SIZE publishes its figure unranked, which the
+	// site shows as provisional.
+	minPricedSize = envInt("MIN_PRICED_SIZE", 20)
+	minRankSize = envInt("MIN_RANK_SIZE", 40)
 	useWS := envInt("WS", 1) == 1
 	minTradeUSD = float64(envInt("MIN_TRADE_USD", 2))
 	stateFile := os.Getenv("STATE_FILE")
@@ -1625,6 +1638,17 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		var loss, pool, term, net, relay, other, trade, sandProfit []float64
 		var lossW, poolW, termW, netW, relayW, otherW, tradeW []float64 // the rows' weights, same order
 		bySize := map[string][]float64{}
+		// The same swaps again, grouped by trade size, so a reader can ask
+		// what a $10 swap costs on this terminal rather than what its
+		// median swap costs. Unweighted on purpose, see sizeSplit.
+		sz := map[string]*sizeAcc{}
+		accOf := func(usd float64) *sizeAcc {
+			b := sizeBucket(usd)
+			if sz[b] == nil {
+				sz[b] = &sizeAcc{}
+			}
+			return sz[b]
+		}
 		byChain := map[string][]float64{}
 		refSrc := map[string]int{}
 		buys := 0
@@ -1665,6 +1689,25 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 			ts.Parsed++
 			w := wOf(s)
+			if s.TradeUSD > 0 {
+				a := accOf(s.TradeUSD)
+				a.parsed++
+				a.term = append(a.term, s.TerminalBps)
+				a.net = append(a.net, s.NetworkBps)
+				a.trade = append(a.trade, s.TradeUSD)
+				if s.RelayID != "" {
+					a.relay = append(a.relay, s.RelayBps)
+				}
+				if s.OtherBps != nil {
+					a.other = append(a.other, *s.OtherBps)
+				}
+				if s.Priced && s.LossBps != nil {
+					a.loss = append(a.loss, *s.LossBps)
+					if s.PoolBps != nil {
+						a.pool = append(a.pool, *s.PoolBps)
+					}
+				}
+			}
 			term = append(term, s.TerminalBps)
 			termW = append(termW, w)
 			net = append(net, s.NetworkBps)
@@ -1788,6 +1831,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 					ts.BySize[b] = quantiles(v, false)
 				}
 			}
+			ts.SizeSplit = sizeSplit(sz, minPricedSize, minRankSize)
 			if len(byChain) > 0 {
 				ts.ByChain = map[string]*Quantiles{}
 				for c, v := range byChain {
@@ -1886,51 +1930,53 @@ func publishGauges(stats []TerminalStats) {
 			for _, g := range []*prometheus.GaugeVec{gLoss, gComponent, gTrade, gVenue, gLossSize, gLossChain} {
 				g.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 			}
-			for _, g := range []*prometheus.GaugeVec{gFail, gBuy, gSandwich, gSandwichProfit, gFailCost, gFailOverhead, gLostUSD, gUnpriced} {
+			for _, g := range []*prometheus.GaugeVec{gFail, gBuy, gSandwich, gSandwichProfit, gFailCost, gFailOverhead, gUnpriced} {
 				g.DeleteLabelValues(ts.Product, ts.Chain)
 			}
-			gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
-			gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
-			gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
-			if ts.NEff > 0 {
-				gSamples.WithLabelValues(ts.Product, ts.Chain, "effective").Set(math.Round(ts.NEff))
+			for g := range map[*prometheus.GaugeVec]bool{gSamples: true, gHealth: true, gRanked: true, gLostUSD: true} {
+				g.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 			}
-			gHealth.WithLabelValues(ts.Product, ts.Chain).Set(0)
-			gRanked.WithLabelValues(ts.Product, ts.Chain).Set(0)
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "seen", "all").Set(float64(ts.Seen))
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed", "all").Set(float64(ts.Parsed))
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "priced", "all").Set(float64(ts.Priced))
+			if ts.NEff > 0 {
+				gSamples.WithLabelValues(ts.Product, ts.Chain, "effective", "all").Set(math.Round(ts.NEff))
+			}
+			gHealth.WithLabelValues(ts.Product, ts.Chain, "all").Set(0)
+			gRanked.WithLabelValues(ts.Product, ts.Chain, "all").Set(0)
 			continue
 		}
 		if ts.Loss != nil && ts.Healthy {
-			gLoss.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.Loss.Median)
-			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.Loss.P90)
-			gLoss.WithLabelValues(ts.Product, ts.Chain, "p99").Set(ts.Loss.P99)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "median", "all").Set(ts.Loss.Median)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90", "all").Set(ts.Loss.P90)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p99", "all").Set(ts.Loss.P99)
 			if ts.Loss.CILo != nil && ts.Loss.CIHi != nil {
-				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_lo").Set(*ts.Loss.CILo)
-				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_hi").Set(*ts.Loss.CIHi)
+				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_lo", "all").Set(*ts.Loss.CILo)
+				gLoss.WithLabelValues(ts.Product, ts.Chain, "ci_hi", "all").Set(*ts.Loss.CIHi)
 			}
 		} else {
 			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
 		gComponent.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain}) // a component that dropped out stays out
 		for c, v := range ts.Components {
-			gComponent.WithLabelValues(ts.Product, ts.Chain, c).Set(v)
+			gComponent.WithLabelValues(ts.Product, ts.Chain, c, "all").Set(v)
 		}
 		if ts.FailRate != nil {
 			gFail.WithLabelValues(ts.Product, ts.Chain).Set(*ts.FailRate) // already percent
 		} else {
 			gFail.DeleteLabelValues(ts.Product, ts.Chain)
 		}
-		gSamples.WithLabelValues(ts.Product, ts.Chain, "seen").Set(float64(ts.Seen))
-		gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed").Set(float64(ts.Parsed))
-		gSamples.WithLabelValues(ts.Product, ts.Chain, "priced").Set(float64(ts.Priced))
+		gSamples.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "seen", "all").Set(float64(ts.Seen))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed", "all").Set(float64(ts.Parsed))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "priced", "all").Set(float64(ts.Priced))
 		if ts.NEff > 0 {
-			gSamples.WithLabelValues(ts.Product, ts.Chain, "effective").Set(math.Round(ts.NEff))
-		} else {
-			gSamples.DeleteLabelValues(ts.Product, ts.Chain, "effective")
+			gSamples.WithLabelValues(ts.Product, ts.Chain, "effective", "all").Set(math.Round(ts.NEff))
 		}
 		if ts.TradeUSD != nil {
-			gTrade.WithLabelValues(ts.Product, ts.Chain, "median").Set(ts.TradeUSD.Median)
-			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90").Set(ts.TradeUSD.P90)
-			gTrade.WithLabelValues(ts.Product, ts.Chain, "p99").Set(ts.TradeUSD.P99)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "median", "all").Set(ts.TradeUSD.Median)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90", "all").Set(ts.TradeUSD.P90)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p99", "all").Set(ts.TradeUSD.P99)
 		}
 		gVenue.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		for v, p := range ts.Venues {
@@ -1966,17 +2012,18 @@ func publishGauges(stats []TerminalStats) {
 			gFailOverhead.DeleteLabelValues(ts.Product, ts.Chain)
 		}
 		if ts.Loss != nil && ts.Healthy && ts.TradeUSD != nil {
-			gLostUSD.WithLabelValues(ts.Product, ts.Chain).Set(ts.TradeUSD.Median * ts.Loss.Median / 1e4)
+			gLostUSD.WithLabelValues(ts.Product, ts.Chain, "all").Set(ts.TradeUSD.Median * ts.Loss.Median / 1e4)
 		} else {
-			gLostUSD.DeleteLabelValues(ts.Product, ts.Chain)
+			gLostUSD.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
 		if ts.UnpricedShare > 0 {
 			gUnpriced.WithLabelValues(ts.Product, ts.Chain).Set(ts.UnpricedShare)
 		} else {
 			gUnpriced.DeleteLabelValues(ts.Product, ts.Chain)
 		}
-		gHealth.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Healthy))
-		gRanked.WithLabelValues(ts.Product, ts.Chain).Set(b2f(ts.Ranked))
+		gHealth.WithLabelValues(ts.Product, ts.Chain, "all").Set(b2f(ts.Healthy))
+		gRanked.WithLabelValues(ts.Product, ts.Chain, "all").Set(b2f(ts.Ranked))
+		publishSizeGauges(ts)
 	}
 }
 
@@ -2395,4 +2442,102 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 		done++
 	}
 	log.Printf("[state] REPRICE_VENUES=%q: %d rows priced again, %d unreadable", os.Getenv("REPRICE_VENUES"), done, failed)
+}
+
+// sizeAcc collects one trade-size bucket's raw figures while the window is
+// walked; sizeSplit turns it into the published row.
+type sizeAcc struct {
+	parsed                              int
+	loss, pool, term, net, relay, other []float64
+	trade                               []float64
+}
+
+// SizeStats is one bucket's row: the same shape the All-sizes row has, so
+// the site can render a size view with the queries it already knows.
+type SizeStats struct {
+	Loss       *Quantiles         `json:"loss_bps,omitempty"`
+	Components map[string]float64 `json:"components,omitempty"`
+	TradeUSD   *Quantiles         `json:"trade_usd,omitempty"`
+	Priced     int                `json:"priced"`
+	Parsed     int                `json:"parsed"`
+	Healthy    bool               `json:"healthy"`
+	Ranked     bool               `json:"ranked"`
+}
+
+// sizeSplit computes each bucket's row. Plain medians, not the flow-weighted
+// rule the All-sizes row uses: that rule exists so a product whose chains
+// charge differently does not land on one chain's mode, and inside a single
+// size bucket of a single product there is no such mix to correct for. A
+// bucket under minPriced publishes nothing at all rather than a median of
+// five swaps; between the two floors it publishes unranked.
+func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int) map[string]*SizeStats {
+	if len(acc) == 0 {
+		return nil
+	}
+	out := map[string]*SizeStats{}
+	for b, a := range acc {
+		if len(a.loss) < minPriced {
+			continue
+		}
+		st := &SizeStats{
+			Loss:       quantiles(a.loss, false),
+			Components: map[string]float64{},
+			Priced:     len(a.loss),
+			Parsed:     a.parsed,
+			Healthy:    true,
+			Ranked:     len(a.loss) >= minRank,
+		}
+		if len(a.trade) > 0 {
+			st.TradeUSD = quantiles(a.trade, false)
+		}
+		st.Components["terminal"] = median(a.term)
+		st.Components["network"] = median(a.net)
+		if len(a.pool) > 0 {
+			st.Components["pool"] = median(a.pool)
+		}
+		// Relay and Protocol are carried by part of the flow only: a median
+		// over the rows that have them describes those rows, not the bucket,
+		// so they are published only when they cover at least half of it.
+		if len(a.relay)*2 >= a.parsed {
+			st.Components["relay"] = median(a.relay)
+		}
+		if len(a.other)*2 >= a.parsed {
+			st.Components["other"] = median(a.other)
+		}
+		out[b] = st
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// publishSizeGauges writes each bucket under the same metric names as the
+// All-sizes row, one `bucket` label apart, which is what lets the site's
+// dimension mechanism swap a pinned bucket="all" for the reader's choice.
+// Fail rate and failure overhead stay out: a failed attempt never reached a
+// pool and has no trade size to bucket it by.
+func publishSizeGauges(ts TerminalStats) {
+	for b, st := range ts.SizeSplit {
+		if st.Loss != nil {
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "median", b).Set(st.Loss.Median)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p90", b).Set(st.Loss.P90)
+			gLoss.WithLabelValues(ts.Product, ts.Chain, "p99", b).Set(st.Loss.P99)
+		}
+		for c, v := range st.Components {
+			gComponent.WithLabelValues(ts.Product, ts.Chain, c, b).Set(v)
+		}
+		if st.TradeUSD != nil {
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "median", b).Set(st.TradeUSD.Median)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p90", b).Set(st.TradeUSD.P90)
+			gTrade.WithLabelValues(ts.Product, ts.Chain, "p99", b).Set(st.TradeUSD.P99)
+			if st.Loss != nil {
+				gLostUSD.WithLabelValues(ts.Product, ts.Chain, b).Set(st.TradeUSD.Median * st.Loss.Median / 1e4)
+			}
+		}
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "priced", b).Set(float64(st.Priced))
+		gSamples.WithLabelValues(ts.Product, ts.Chain, "parsed", b).Set(float64(st.Parsed))
+		gHealth.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Healthy))
+		gRanked.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Ranked))
+	}
 }
