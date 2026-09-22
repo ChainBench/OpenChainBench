@@ -651,9 +651,12 @@ export default async function ProviderPage({
         "@type": "ItemList",
         "@id": `${url}#ranks`,
         name: `${p.name}: rank on every live OpenChainBench benchmark`,
-        numberOfItems: sorted.filter((a) => a.rank > 0).length,
+        // Indexable bench pages only, like subjectOf above: a ListItem URL
+        // into a noindex page is a crawl hint into a page we asked engines
+        // to skip.
+        numberOfItems: sorted.filter((a) => a.rank > 0 && canLink(a.benchmark.slug)).length,
         itemListElement: sorted
-          .filter((a) => a.rank > 0)
+          .filter((a) => a.rank > 0 && canLink(a.benchmark.slug))
           .map((a, i) => ({
             "@type": "ListItem",
             position: i + 1,

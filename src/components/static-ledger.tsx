@@ -27,6 +27,8 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const ranked = rankedCandidates(benchmark).length;
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
+    : chain && ranked < rows.length
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h, 3 regions)`
     : chain
     ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
     : ranked < rows.length

@@ -983,7 +983,9 @@ export default async function ComparePage({
   // The title and the lede count the benches with a decided winner; the
   // header badge counted every shared bench, so a reader saw 13 and 14
   // on one screen (audit 2026-09-22).
-  const decidedCount = shared.filter((s) => s.aResult.p50 > 0 && s.bResult.p50 > 0 && s.aggregateWinner !== "tie").length;
+  // Same predicate as the lede's denominator and the meta description
+  // (`scored`): both sides measured, ties included.
+  const decidedCount = shared.filter((s) => s.aResult.p50 > 0 && s.bResult.p50 > 0).length;
   const perpPair =
     pair.hero === "perp-volume" ||
     (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
@@ -1054,7 +1056,7 @@ export default async function ComparePage({
           <span>
             {shared.length} shared{" "}
             {shared.length === 1 ? "benchmark" : "benchmarks"}
-            {decidedCount < shared.length ? `, ${decidedCount} with a measured winner` : ""}
+            {decidedCount < shared.length ? `, ${decidedCount} measured on both sides` : ""}
           </span>
         </div>
       </header>
