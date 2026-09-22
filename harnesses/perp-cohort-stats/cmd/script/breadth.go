@@ -18,8 +18,9 @@ import (
 //
 //	crypto       tokens and crypto indices (TOTAL2, BTC dominance)
 //	forex        fiat pairs (EUR/USD, USD/JPY)
-//	stocks       listed equities, ADRs, ETFs and pre-IPO synthetics
-//	indices      equity and rates indices (S&P 500, Nasdaq 100, KOSPI 200)
+//	stocks       listed equities, ADRs, sector and country ETFs, pre-IPO synthetics
+//	indices      equity and rates indices (S&P 500, Nasdaq 100, KOSPI 200) and
+//	             the ETFs that track one (SPY, QQQ, IWM)
 //	commodities  metals and energy on their spot or futures reference
 //
 // Tokenized gold (PAXG, XAUT) is a crypto token and stays in crypto; the
@@ -53,7 +54,7 @@ var forexSymbols = symbolSet(
 
 var commoditySymbols = symbolSet(
 	"XAU", "GOLD", "XAG", "SILVER", "XPT", "PLATINUM", "XPD", "PALLADIUM",
-	"HG", "COPPER", "XCU", "CL", "WTI", "USOIL", "BRENT", "BRENTOIL", "BZ", "XBR",
+	"HG", "COPPER", "XCU", "CL", "WTI", "WTIOIL", "USOIL", "BRENT", "BRENTOIL", "BZ", "XBR",
 	"NG", "NATGAS", "XNG", "XAUUSD1", "XAGUSD1",
 )
 

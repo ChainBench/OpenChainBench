@@ -100,11 +100,26 @@ func TestVenueTaxonomies(t *testing.T) {
 	if got := asterClass("AAPLUSDT", []string{"STOCK", "Top"}); got != classStocks {
 		t.Errorf("Aster AAPLUSDT = %q", got)
 	}
-	if got := ondoClass([]string{"ETF"}); got != classStocks {
-		t.Errorf("Ondo ETF = %q", got)
+	if got := ondoClass("EWY", []string{"ETF"}); got != classStocks {
+		t.Errorf("Ondo EWY ETF = %q", got)
 	}
-	if got := ostiumClass("etf"); got != classStocks {
-		t.Errorf("Ostium etf = %q", got)
+	if got := ondoClass("SPY", []string{"ETF"}); got != classIndices {
+		t.Errorf("Ondo SPY ETF = %q, want indices", got)
+	}
+	if got := ostiumClass("etf", "URA"); got != classStocks {
+		t.Errorf("Ostium URA etf = %q", got)
+	}
+	if got := ostiumClass("etf", "KR2550"); got != classStocks {
+		t.Errorf("Ostium KR2550 etf = %q", got)
+	}
+	if got := gmxNonCrypto["SPCX"]; got != classStocks {
+		t.Errorf("GMX SPCX = %q", got)
+	}
+	if got := symbolClass("WTIOIL", false, nil); got != classCommodities {
+		t.Errorf("GMX WTIOIL = %q", got)
+	}
+	if got := symbolClass("MEGA", false, nil); got != classCrypto {
+		t.Errorf("GMX MEGA = %q, want crypto", got)
 	}
 	if got := dydxNonCrypto["SPX-USD"]; got != "" {
 		t.Errorf("dYdX SPX-USD must stay crypto (SPX6900), got %q", got)

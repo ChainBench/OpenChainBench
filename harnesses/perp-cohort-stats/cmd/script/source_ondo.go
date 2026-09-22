@@ -51,12 +51,15 @@ type ondoContract struct {
 }
 
 // ondoClass maps the venue's tags (Crypto, Stock, ETF, Commodity, Index,
-// FX) onto the breadth classes; ETFs are listed equities.
-func ondoClass(tags []string) string {
+// FX) onto the breadth classes; an ETF is a listed equity unless it
+// tracks an index (SPY, QQQ), which the symbol table moves to indices.
+func ondoClass(base string, tags []string) string {
 	for _, t := range tags {
 		switch t {
-		case "Stock", "ETF":
+		case "Stock":
 			return classStocks
+		case "ETF":
+			return rwaClass(base)
 		case "Commodity":
 			return classCommodities
 		case "Index":
@@ -97,7 +100,7 @@ func (s *OndoNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
-		class := ondoClass(c.Tags)
+		class := ondoClass(baseSymbol(c.BaseCurrency), c.Tags)
 		breadth.add(class)
 		if class != classCrypto {
 			nonCrypto++

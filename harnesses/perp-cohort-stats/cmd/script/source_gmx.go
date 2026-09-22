@@ -159,14 +159,23 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 
 // gmxTokens is GET arbitrum-api.gmxinfra.io/tokens: every token GMX v2
 // prices, `synthetic` marking the ones that exist only as a perp market
-// (no ERC-20 on Arbitrum). The catalog is crypto-only as of 2026-09;
-// the symbol tables would move a gold or S&P listing to its class the
-// day it appears, so the bench reads a live 0 rather than a constant.
+// (no ERC-20 on Arbitrum). The API carries no asset class; the symbol
+// table covers the commodity and index listings (GOLD, SILVER, WTIOIL,
+// BRENTOIL, NATGAS, SPY, QQQ as of 2026-09-22) and gmxNonCrypto the
+// synthetic equities the table cannot recognise.
 type gmxTokens struct {
 	Tokens []struct {
 		Symbol    string `json:"symbol"`
 		Synthetic bool   `json:"synthetic"`
 	} `json:"tokens"`
+}
+
+// gmxNonCrypto lists GMX synthetic markets whose symbol is a stock or a
+// pre-IPO equity synthetic; everything else not in the tables is a
+// crypto token (MEGA is MegaETH, SPX6900 a memecoin). Reviewed
+// 2026-09-22 against /tokens (102 synthetic entries).
+var gmxNonCrypto = map[string]string{
+	"SPCX": classStocks, // SpaceX pre-IPO synthetic
 }
 
 func (s *GMXNativeSource) breadth() breadthCounter {
@@ -193,7 +202,12 @@ func (s *GMXNativeSource) breadth() breadthCounter {
 		if !tok.Synthetic {
 			continue
 		}
-		b.add(symbolClass(baseSymbol(tok.Symbol), false, nil))
+		base := baseSymbol(tok.Symbol)
+		if class, ok := gmxNonCrypto[base]; ok {
+			b.add(class)
+			continue
+		}
+		b.add(symbolClass(base, false, nil))
 	}
 	return b
 }

@@ -50,27 +50,30 @@ abstract: |
   and index names; a symbol not in the table counts as a stock on a
   HIP-3 dex and as crypto on dYdX, which carries an explicit list of its
   non-crypto tickers (EUR, TRY, WTI, XAG, TSLAX). GMX v2 is read from its
-  synthetic token list and reports 0 while its catalog stays crypto-only.
-  Delisted, disabled and testnet markets are excluded.
+  synthetic token list, where gold, silver, WTI, Brent, natural gas, SPY,
+  QQQ and a SpaceX pre-IPO synthetic sit next to the crypto markets.
+  Sector and country ETFs count as stocks; the ETFs that track an index
+  (SPY, QQQ, IWM) count as indices on every venue. Delisted, disabled and
+  testnet markets are excluded.
 methodology:
   - "Cadence: every 60 seconds, one class count per venue per tick. Hyperliquid's HIP-3 dex list and Aster's exchangeInfo are refreshed every 10 minutes; the other catalogs are read on every tick."
-  - "Classes: stocks (listed equities, ADRs, ETFs and pre-IPO synthetics such as OpenAI or SpaceX), indices (S&P 500, Nasdaq 100, KOSPI 200, Nikkei 225, US Treasuries), forex (EUR/USD, USD/JPY, GBP/USD...), commodities (gold, silver, platinum, copper, WTI, Brent, natural gas). The ranking metric is the sum of the four; crypto is published for context in perp_venue_markets_by_class."
+  - "Classes: stocks (listed equities, ADRs, sector and country ETFs, pre-IPO synthetics such as OpenAI or SpaceX), indices (S&P 500, Nasdaq 100, KOSPI 200, Nikkei 225, US Treasuries, and the ETFs that track one: SPY, QQQ, IWM), forex (EUR/USD, USD/JPY, GBP/USD...), commodities (gold, silver, platinum, copper, WTI, Brent, natural gas). The ranking metric is the sum of the four; crypto is published for context in perp_venue_markets_by_class."
   - "Hyperliquid: POST /info perpDexs lists the HIP-3 deployer dexes, POST /info meta with dex=<name> returns each dex's universe. Core universe markets are crypto. HIP-3 symbols are classified by the fixed table, a core coin relisted on a HIP-3 dex stays crypto, crypto indices (TOTAL2, OTHERS, BTC dominance) stay crypto, everything else on a HIP-3 dex is a stock."
-  - "Extended: GET /api/v1/info/markets, category RWA with subCategory Equity, Commodity, FX, ETF/Index or Pre-market. ETF/Index is split per symbol (SPX500m, JP225, KR200 are indices, EWY or SOXL are ETFs and count as stocks). A Crypto-category commodity such as PAXG stays crypto."
+  - "Extended: GET /api/v1/info/markets, category RWA with subCategory Equity, Commodity, FX, ETF/Index or Pre-market. ETF/Index is split per symbol (SPX500m, JP225, KR200 are indices, EWY or SOXL are sector and country ETFs and count as stocks). A Crypto-category commodity such as PAXG stays crypto."
   - "Aster: GET /fapi/v1/exchangeInfo underlyingSubType. STOCK counts as stocks, Commodities as commodities, ETF and USD1-RWA are split per symbol (SPXUSDT is an index, XAUUSD1 a commodity). Linear USDT and USDC pairs only."
   - "Paradex: GET /markets tags. RWA-tagged perps are split per symbol into commodities (XAU, XAG, XPT, XCU, CL, NG, BZ), indices (US500, US100) and stocks (the rest). Options and dated futures are excluded."
-  - "Ostium: pair group from the Ormi subgraph (crypto, forex, stocks, etf, indices, commodities); etf counts as stocks. Pairs with a last trade price only."
-  - "Ondo Perps: GET /v1/perps/contracts tags (Crypto, Stock, ETF, Commodity, Index, FX), enabled perpetual contracts only; ETF counts as stocks."
+  - "Ostium: pair group from the Ormi subgraph (crypto, forex, stocks, etf, indices, commodities); etf is split per symbol (URA, XLE, TLT count as stocks). Pairs with a last trade price only."
+  - "Ondo Perps: GET /v1/perps/contracts tags (Crypto, Stock, ETF, Commodity, Index, FX), enabled perpetual contracts only; ETF is split per symbol (SPY and QQQ count as indices, EWY, SOXL, URNM as stocks)."
   - "dYdX v4: GET /v4/perpetualMarkets, ACTIVE markets. The indexer publishes no asset class and its tickers collide with the table (SPX-USD is the SPX6900 token, GME-USD a token), so a reviewed list marks EUR-USD and TRY-USD as forex, WTI-USD and XAG-USD as commodities, TSLAX-USD (xStocks TSLA) as a stock; everything else is crypto."
   - "Gains and Lighter: Mobula GET /api/2/perp/pairs assetClass (forex, stocks, indices, commodities count; crypto, degen and new are crypto). Mainnet chains only, arbitrum-sepolia excluded."
-  - "GMX v2: GET arbitrum-api.gmxinfra.io/tokens, synthetic tokens matched against the table. The catalog is crypto-only, so the venue reads 0; a gold or index listing would move it the day it appears."
+  - "GMX v2: GET arbitrum-api.gmxinfra.io/tokens, synthetic tokens matched against the table (GOLD, SILVER, WTIOIL, BRENTOIL, NATGAS are commodities, SPY and QQQ indices) plus a reviewed list for the equity synthetics the table cannot recognise (SPCX, SpaceX pre-IPO). MEGA (MegaETH) and SPX6900 stay crypto."
   - "A venue whose catalog call fails on a tick keeps its previous count; the per-source error counter records the failure. Counts are not sampled, so p50, p90 and p99 read the same live value."
 findings:
   - "{{best_name}} leads non-crypto perp breadth with {{best_p50}} live markets across stocks, indices, forex and commodities, {{worst_name}} lists {{worst_p50}}."
   - "Hyperliquid reaches {{p50:hyperliquid}} non-crypto markets through HIP-3 deployer dexes (xyz, para, mkts, io): US and Asian equities, ETFs, gold, silver, oil, copper, JPY and EUR, S&P 500 and Nasdaq 100 style indices. The core Hyperliquid universe is still crypto-only."
   - "Extended lists {{p50:extended}} and Aster {{p50:aster}} non-crypto markets, both dominated by US stock perps, with a handful of commodities, indices and forex pairs on the side."
   - "Gains lists {{p50:gains}} non-crypto markets, the broadest forex catalog of the cohort (18 pairs) next to 68 stocks, 14 indices and 10 commodities. Ostium lists {{p50:ostium}} with forex, indices and commodities as its core catalog rather than an add-on."
-  - "Ondo Perps lists {{p50:ondo}}, Lighter {{p50:lighter}}, Paradex {{p50:paradex}}. dYdX v4 lists {{p50:dydx}} (EUR, TRY, WTI, XAG, TSLAX) and GMX v2 none: the two older CLOB and pool venues have stayed crypto-first."
+  - "Ondo Perps lists {{p50:ondo}}, Lighter {{p50:lighter}}, Paradex {{p50:paradex}}. GMX v2 lists {{p50:gmx-v2}} (gold, silver, WTI, Brent, natural gas, SPY, QQQ, a SpaceX synthetic) and dYdX v4 {{p50:dydx}} (EUR, TRY, WTI, XAG, TSLAX): the two older venues have added a handful of non-crypto markets, not a catalog."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
   window: 24h
@@ -78,7 +81,7 @@ prometheus:
   freshness_metric: perp_venue_noncore_markets_total
 faq:
   - q: "What counts as a non-crypto market?"
-    a: "A perpetual whose underlying is not a crypto token: a stock or ETF (AAPL, TSLA, NVDA, SPY, EWY), an equity or rates index (S&P 500, Nasdaq 100, KOSPI 200, US Treasuries), a forex pair (EUR/USD, USD/JPY) or a commodity (gold, silver, platinum, copper, WTI, Brent, natural gas). Tokenized gold such as PAXG or XAUT is an onchain token and stays in the crypto class."
+    a: "A perpetual whose underlying is not a crypto token: a stock or ETF (AAPL, TSLA, NVDA, EWY), an equity or rates index or the ETF that tracks one (S&P 500, SPY, Nasdaq 100, QQQ, KOSPI 200, US Treasuries), a forex pair (EUR/USD, USD/JPY) or a commodity (gold, silver, platinum, copper, WTI, Brent, natural gas). Tokenized gold such as PAXG or XAUT is an onchain token and stays in the crypto class."
   - q: "Where does the asset class come from?"
     a: "From the venue itself whenever it publishes one: Extended's category and subCategory, Paradex's RWA tag, Aster's underlyingSubType, Ostium's pair group, Ondo's tags, Mobula's assetClass for Gains and Lighter. Hyperliquid HIP-3 dexes and dYdX publish none, so their symbols are matched against a fixed table of forex codes, commodity references and index names, and dYdX carries a reviewed list of its five non-crypto tickers."
   - q: "Why does Hyperliquid rank high when its own perps are crypto-only?"
@@ -201,8 +204,8 @@ providers:
 
   - slug: gmx-v2
     name: GMX v2
-    tag: Arbitrum and Avalanche pool perps, crypto-only synthetic token list
-    formula: "Count of synthetic tokens in GET arbitrum-api.gmxinfra.io/tokens matched as forex, index or commodity. Live, 0 while the catalog stays crypto-only."
+    tag: Arbitrum and Avalanche pool perps, gold, silver, oil, gas, SPY, QQQ next to crypto
+    formula: "Count of synthetic tokens in GET arbitrum-api.gmxinfra.io/tokens matched as commodity or index by the symbol table, plus the reviewed equity synthetics (SPCX). Live."
     queries:
       p50: perp_venue_noncore_markets_total{venue="gmx-v2"}
       p90: perp_venue_noncore_markets_total{venue="gmx-v2"}

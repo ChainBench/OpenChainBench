@@ -72,13 +72,16 @@ type ostiumPair struct {
 }
 
 // ostiumClass maps the subgraph pair group (crypto, forex, stocks, etf,
-// indices, commodities) onto the breadth classes.
-func ostiumClass(group string) string {
+// indices, commodities) onto the breadth classes; an etf is a listed
+// equity unless it tracks an index (the symbol table decides).
+func ostiumClass(group, from string) string {
 	switch group {
 	case "forex":
 		return classForex
-	case "stocks", "etf":
+	case "stocks":
 		return classStocks
+	case "etf":
+		return rwaClass(baseSymbol(from))
 	case "indices":
 		return classIndices
 	case "commodities":
@@ -172,7 +175,7 @@ func (s *OstiumNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
-		breadth.add(ostiumClass(p.Group.Name))
+		breadth.add(ostiumClass(p.Group.Name, p.From))
 		long := longRaw / scale1e18
 		short := shortRaw / scale1e18
 		px := pxRaw / scale1e18
