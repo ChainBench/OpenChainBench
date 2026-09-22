@@ -19,7 +19,7 @@ export function PerpVenueKpiStrip({ kpis }: { kpis: PerpVenueKpis }) {
 
   if (kpis.volume30d != null) {
     cards.push({
-      label: "Volume 30d, OpenChainBench average",
+      label: "Volume 30d, OpenChainBench total",
       value: fmtUSD(kpis.volume30d),
       tip: "USD notional traded over the rolling 30 day window, from the cohort harness (perp markets the venue reports).",
     });

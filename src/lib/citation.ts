@@ -112,11 +112,11 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 }
 
 /** Every provider tied with the leader on the displayed figure, leader
- *  first, capped at four so a bench where everyone reads 0 does not
- *  produce a list nobody can quote. The comparison is on the displayed
- *  figure, not the raw float: two providers shown as "0" are tied to a
- *  reader whatever the eleventh decimal says. One entry when the top
- *  value is unique, none when there is no leader. Feeds {{best_name}},
+ *  first, the full set (the headline sentence names at most four and
+ *  counts the rest). The comparison is on the displayed figure, not the
+ *  raw float: two providers shown as "0" are tied to a reader whatever
+ *  the eleventh decimal says. One entry when the top value is unique,
+ *  none when there is no leader. Feeds {{best_name}} / {{best_names}},
  *  the headline and the `leaders` field of /api/stat and /api/citable, so
  *  a title, a TL;DR and a JSON record never disagree on who is first
  *  (perp-cost-slope crowned Gains in the title while its body said Gains
@@ -126,10 +126,9 @@ export function leaders(b: Benchmark): { name: string; slug: string; value: numb
   if (!top) return [];
   const shown = (v: number) => fmtUnit(v, b.unit);
   const target = shown(top.value);
-  const tied = rankedCandidates(b)
+  return rankedCandidates(b)
     .filter((r) => shown(r.ms.p50) === target)
     .map((r) => ({ name: r.name, slug: r.slug, value: r.ms.p50 }));
-  return tied.length > 4 ? tied.slice(0, 4) : tied;
 }
 
 export function leaderNames(b: Benchmark): string[] {
@@ -262,8 +261,11 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
       : both
         ? "both post the lowest"
         : "all post the lowest";
+    // Four names at most in a sentence meant to be quoted; a bench where
+    // everyone reads 0 says how many more share the figure.
+    const named = tied.length > 4 ? `${joinNames(tied.slice(0, 4))} and ${tied.length - 4} more` : joinNames(tied);
     return {
-      claim: `${joinNames(tied)} ${allVerb} ${metricInSentence(b.metric)}, tied at ${value}`,
+      claim: `${named} ${allVerb} ${metricInSentence(b.metric)}, tied at ${value}`,
       rest,
     };
   }

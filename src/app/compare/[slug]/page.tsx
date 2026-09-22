@@ -258,7 +258,23 @@ export async function generateMetadata({
   // compare template converts best on the site and its snippet said
   // nothing measurable (audit 2026-09-22).
   const verdictRows = await buildSharedBenches(pair, a, b);
-  const verdict = buildComparisonProse(verdictRows, a.name, b.name).split(/(?<=\.)\s+/)[0] ?? "";
+  let aWins = 0;
+  let bWins = 0;
+  let scored = 0;
+  for (const s of verdictRows) {
+    if (s.aResult.p50 <= 0 || s.bResult.p50 <= 0) continue;
+    scored += 1;
+    if (s.aggregateWinner === "a") aWins += 1;
+    else if (s.aggregateWinner === "b") bWins += 1;
+  }
+  // The counts alone (a split-decision lede lists four bench labels with
+  // values and runs past the budget); the tail carries the date.
+  const verdict =
+    scored === 0
+      ? ""
+      : aWins === bWins
+        ? `${a.name} and ${b.name} split ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"} evenly.`
+        : `${aWins >= bWins ? a.name : b.name} leads on ${Math.max(aWins, bWins)} of ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"}, ${aWins >= bWins ? b.name : a.name} on ${Math.min(aWins, bWins)}.`;
   const description = capDescription(
     verdict
       ? `${verdict} Fees, volume, funding and latency measured live. As of ${isoDate}.`
