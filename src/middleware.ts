@@ -105,6 +105,7 @@ export const config = {
     "/answers/which-solana-dex-aggregator-is-the-fastest",
     "/answers/which-prediction-market-data-api-is-the-freshest",
     "/answers/polymarket-fees-explained",
+    "/answers/polymarket-vs-kalshi-fees",
     "/products/bitquery",
     "/products/goldrush",
     "/products/zerion",

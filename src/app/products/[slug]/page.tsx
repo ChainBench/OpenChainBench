@@ -225,15 +225,26 @@ export async function generateMetadata({
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
-  // What it is, then how it ranks. The reverse order opened the snippet on
-  // "ranks #36 of 104", which answers a question the searcher did not ask;
-  // capDescription cuts at a sentence end, so the registry line survives
-  // whole and the measured lead is what gets dropped when room runs out.
+  // What it is, then how it ranks, but only when both fit. Registry
+  // descriptions run to a median of 166 characters against a 155 cap, so
+  // leading with the whole one-liner dropped every number from all 220
+  // product snippets (regression from 2026-09-22, caught the same night by
+  // the next audit). The vendor's own SERP result already says what the
+  // product is; the ranks are the only thing ours carries that theirs does
+  // not. A short one-liner leads; a long one follows the ranks, trimmed to
+  // its first clause.
   // capSnippet, not capDescription: a registry line longer than the
   // budget with no sentence end inside it shipped "(Hyperliquid referral…"
   // on /products/invo; the snippet capper closes on a clause instead.
+  const registryClause = registryLine
+    ? (registryLine.split(/(?<=[.;])\s|,\s/)[0] ?? "").replace(/[,;:\s]+$/, "")
+    : "";
   const description = capSnippet(
-    registryLine ? `${registryLine} ${measuredLead}`.trim() : measuredLead,
+    !registryLine
+      ? measuredLead
+      : registryLine.length <= 80
+        ? `${registryLine} ${measuredLead}`.trim()
+        : `${measuredLead} ${registryClause}${registryClause ? "." : ""}`.trim(),
   );
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
