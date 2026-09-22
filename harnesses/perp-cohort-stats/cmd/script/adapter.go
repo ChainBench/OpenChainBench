@@ -34,6 +34,24 @@ type SourceResult struct {
 	Values map[string]map[string]float64
 	// Funding is keyed [venue][asset] -> (bps_24h, intervalHours).
 	Funding map[string]map[string]fundingPoint
+	// Breadth is keyed [venue][class] -> active market count; see
+	// breadth.go. Only set by a source that saw the venue's full list.
+	Breadth map[string]map[string]int
+	// CryptoSymbols are the base symbols a venue lists as crypto markets
+	// (its own metadata says so, or its whole catalog is crypto). The
+	// router unions them across sources into the known-crypto set used
+	// to classify the venues that publish no asset class.
+	CryptoSymbols map[string]bool
+	// RWASymbols are the base symbols a venue lists as a non-crypto
+	// market (its metadata says stock, ETF, index, forex or commodity).
+	// A symbol that is a token on one venue and a stock on another (BB is
+	// BounceBit and BlackBerry, STX is Stacks and Seagate, QNT is Quant
+	// and Quantinuum) resolves as the RWA on a HIP-3 dex.
+	RWASymbols map[string]bool
+	// Unclassified is keyed [venue] -> base symbols the source could not
+	// classify on its own (Hyperliquid HIP-3 dexes); the router does it
+	// once every source has reported, see classifyUnclassified.
+	Unclassified map[string][]string
 }
 
 type fundingPoint struct {
@@ -333,7 +351,67 @@ func priorityMap(venue, metric string) []string {
 }
 
 // Router orchestrates one sweep across all registered sources.
+// classifyUnclassified turns every SourceResult.Unclassified list into a
+// Breadth entry. Two sets accumulate across ticks (a source that failed
+// this tick still contributes its last list): the symbols some venue
+// lists as a non-crypto market and the symbols some venue lists as a
+// crypto market. On a HIP-3 dex the RWA reading wins, then the crypto
+// one (xyz:BOT is a token also listed on Lighter), then the fixed
+// tables, and a symbol nobody knows counts as a stock. The Hyperliquid
+// core universe arrives through the crypto map.
+func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
+	r.cryptoMu.Lock()
+	defer r.cryptoMu.Unlock()
+	if r.knownCrypto == nil {
+		r.knownCrypto = map[string]bool{}
+		r.knownRWA = map[string]bool{}
+	}
+	for _, res := range byName {
+		for sym := range res.CryptoSymbols {
+			r.knownCrypto[sym] = true
+		}
+		for sym := range res.RWASymbols {
+			r.knownRWA[sym] = true
+		}
+	}
+	for _, res := range byName {
+		for venue, syms := range res.Unclassified {
+			b := breadthCounter{}
+			if existing, ok := res.Breadth[venue]; ok {
+				for k, v := range existing {
+					b[k] = v
+				}
+			}
+			var asCrypto []string
+			for _, sym := range syms {
+				var class string
+				if r.knownRWA[sym] {
+					// A venue with metadata lists this symbol as a stock,
+					// ETF, index, forex pair or commodity: on an RWA dex
+					// that reading wins over a same-named token elsewhere.
+					class = rwaClass(sym)
+				} else {
+					class = symbolClass(sym, true, r.knownCrypto)
+				}
+				b.add(class)
+				if class == classCrypto {
+					asCrypto = append(asCrypto, sym)
+				}
+			}
+			res.SetBreadth(venue, b)
+			// The crypto verdicts are the ones a reader would question on
+			// an RWA dex; log them so a wrong collision is visible.
+			sort.Strings(asCrypto)
+			fmt.Printf("[perp-cohort][%s][breadth] %d unclassified -> %s; crypto: %v\n", venue, len(syms), b, asCrypto)
+		}
+	}
+}
+
 type Router struct {
+	cryptoMu    sync.Mutex
+	knownCrypto map[string]bool
+	knownRWA    map[string]bool
+
 	cfg     *Config
 	sources []Source
 	// carry holds the last successfully published value per (venue,
@@ -565,6 +643,27 @@ func (r *Router) Sweep() {
 		// Health: fraction of metrics with primary-source success this tick.
 		if healthTotal > 0 {
 			perpVenueHealth.WithLabelValues(v.Slug).Set(float64(healthHits) / float64(healthTotal))
+		}
+	}
+
+	// Asset-class breadth: the first registered source that reports a
+	// venue wins (the venue's native source is registered before Mobula
+	// and DefiLlama). A venue nobody reported this tick keeps its gauges.
+	// Symbols a source left unclassified (HIP-3 dexes) are resolved here
+	// against every crypto symbol the cohort listed this tick and before.
+	r.classifyUnclassified(byName)
+	seenBreadth := map[string]bool{}
+	for _, s := range r.sources {
+		res := byName[s.Name()]
+		if res == nil {
+			continue
+		}
+		for venue, counts := range res.Breadth {
+			if seenBreadth[venue] {
+				continue
+			}
+			seenBreadth[venue] = true
+			publishBreadth(venue, counts)
 		}
 	}
 

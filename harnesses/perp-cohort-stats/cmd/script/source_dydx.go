@@ -50,6 +50,18 @@ type dydxResponse struct {
 	Markets map[string]dydxMarket `json:"markets"`
 }
 
+// dydxNonCrypto is the venue's non-crypto list, kept by hand because the
+// indexer publishes no asset class and the symbol tables cannot be
+// trusted on this catalog: SPX-USD is the SPX6900 memecoin, GME-USD a
+// token. Reviewed 2026-09-22 against /v4/perpetualMarkets (296 tickers).
+var dydxNonCrypto = map[string]string{
+	"EUR-USD":   classForex,
+	"TRY-USD":   classForex,
+	"WTI-USD":   classCommodities,
+	"XAG-USD":   classCommodities,
+	"TSLAX-USD": classStocks, // xStocks TSLA
+}
+
 func (s *DydxNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
 	venue := "dydx"
@@ -70,11 +82,19 @@ func (s *DydxNativeSource) Fetch() (*SourceResult, error) {
 
 	var volSum, oiSum, topVol float64
 	var active int
-	for _, m := range parsed.Markets {
+	breadth := breadthCounter{}
+	for ticker, m := range parsed.Markets {
 		if m.Status != "ACTIVE" {
 			continue
 		}
 		active++
+		if class, ok := dydxNonCrypto[ticker]; ok {
+			breadth.add(class)
+			res.AddRWASymbol(baseSymbol(ticker))
+		} else {
+			breadth.add(classCrypto)
+			res.AddCryptoSymbol(baseSymbol(ticker))
+		}
 		v, _ := strconv.ParseFloat(m.Volume24H, 64)
 		volSum += v
 		if v > topVol {
@@ -89,8 +109,9 @@ func (s *DydxNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(active))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
-	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcDydxNative, active, volSum, oiSum, topVol)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f breadth: %s\n",
+		venue, srcDydxNative, active, volSum, oiSum, topVol, breadth)
 	return res, nil
 }
 

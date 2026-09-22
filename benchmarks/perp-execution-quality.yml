@@ -1,113 +1,204 @@
 # OpenChainBench. Bench № 054
-
 slug: perp-execution-quality
 number: "054"
-title: Best DEX for a $BOT market order, live slippage ranked
-seo_title: "Best DEX to trade $BOT, live orderbook slippage"
-seo_description: "{{best_name}} leads $BOT slippage at {{best_p50}} for a $5,000 buy (24h avg). Lighter vs Hyperliquid HIP-3 (xyz:BOT), measured live from public orderbooks every 30 seconds."
-subtitle: Effective slippage in basis points for a $5,000 market buy of $BOT perps, walked live on each DEX orderbook every 30 seconds. Lower means the venue fills the size closer to mid. Lighter native and Hyperliquid HIP-3 (xyz:BOT) are the two DEX venues currently listing $BOT.
+title: "Perp DEX execution quality: slippage on a $100k market order, live across orderbook venues"
+seo_title: "Perp DEX slippage 2026: {{best_name}} fills $100k of ETH at {{best_p50}}"
+seo_description: "{{best_name}} fills a $100,000 ETH market order at {{best_p50}} of slippage over mid, {{worst_name}} at {{worst_p50}}. {{count}} orderbook perp DEXs, books walked live every 30 seconds, 24 h average. BTC and SOL tabs."
+subtitle: "Half-spread plus price impact in basis points to fill a $100,000 market buy against each venue's live orderbook, fee excluded, on ETH, BTC and SOL. Lower means the venue fills the size closer to mid. Books walked every 30 seconds across {{count}} orderbook perp DEXs, including Hyperliquid, Lighter, Aster, Extended, dYdX v4, Paradex, Ondo Perps, Polymarket and edgeX."
 category: Trading
 status: live
-metric: Effective slippage
+metric: Slippage at $100k
 unit: bps
 higher_is_better: false
-
 seo_intro: |
-  $BOT is currently listed on two decentralized perp venues, Lighter and
-  Hyperliquid HIP-3 (as `xyz:BOT`, deployed by third-party operator xyz).
-  Rack-rate taker fees do not tell a trader which venue actually fills
-  their market order closer to mid; the answer depends on the depth of
-  the visible orderbook at the notional they want to trade, and both
-  books move continuously. This benchmark polls the two public
-  orderbook endpoints every 30 seconds, walks each side for a fixed set
-  of USD notionals (from $100 up to $500,000), and publishes the
-  effective slippage in basis points as a live gauge per venue, per side
-  and per size. The headline number is the 24 hour average at the
-  $5,000 buy bucket, chosen to match the reliable book depth of the thinner $BOT venue (Hyperliquid HIP-3 xyz:BOT fills $5k in 100% of ticks and $10k in only ~23%)
-  likely to execute at market. CEX venues are not part of this bench;
-  DefiLlama covers the CEX side of the audit.
-
+  Rack-rate taker fees do not tell a trader which perp DEX fills a market
+  order closer to mid: that depends on the depth of the visible orderbook
+  at the notional being traded, and books move continuously. This
+  benchmark isolates the execution component of the perp-fees bench: the
+  same 30 second orderbook walks, the same $1k to $1M tiers, but with the
+  taker fee taken out, so a zero-fee venue and a 5 bps venue are compared
+  on depth alone. The headline is the $100,000 buy, the size where
+  impact starts to separate venues (at $1,000 every deep book fills
+  within a fraction of a basis point). ETH is the headline tab; BTC and
+  SOL have their own rankings, and the $1k, $10k and $1M tiers are
+  published as raw series. Oracle-priced venues (GMX v2, Gains) have no
+  book to walk and are left out; their fixed spread parameter is part of
+  their all-in figure on the perp-fees bench.
 abstract: |
-  We measure the live execution quality of a $BOT market order across
-  every DEX that lists $BOT as a perp. Every 30 seconds the harness
-  polls Lighter `/api/v1/orderBookOrders?market_id=185` and Hyperliquid
-  `POST /info {type:l2Book, coin:"xyz:BOT"}`, computes the top-of-book
-  mid, then walks each side for a set of USD notional buckets to derive
-  the size-weighted average execution price. Effective slippage is
-  reported in basis points relative to mid, per venue, per side and per
-  size. Books that lack the depth for a given size are excluded from
-  the slippage series and only reported through
-  `perp_execution_max_fillable_usd`. No trades are placed; every value
-  is derived from public, unauthenticated REST endpoints.
-
+  Every 30 seconds the perp-fees harness fetches the public orderbook of
+  each venue for ETH, BTC and SOL, computes the top-of-book mid and walks
+  the ask side for $1,000, $10,000, $100,000 and $1,000,000 of notional,
+  consuming levels until the size is filled. The size-weighted average
+  execution price against mid, in basis points, is the slippage of a
+  market buy at that size. The harness publishes the all-in cost per
+  tier (perp_fees_all_in_bps_tier{venue,chain,notional}) and the taker
+  fee (perp_fees_taker_fee_bps{venue,chain}); this bench subtracts the
+  second from the first and ranks venues on the 24 hour average at the
+  $100,000 tier. A tier the visible book cannot fill is dropped for that
+  tick and counted in perp_fees_tier_skipped_total instead of being
+  extrapolated. No trades are placed; every value comes from public,
+  unauthenticated REST endpoints.
 methodology:
-  - "Cadence: every 30 seconds, in parallel across both venues, 10 second timeout per fetch."
-  - "Lighter: `GET https://mainnet.zklighter.elliot.ai/api/v1/orderBookOrders?market_id=185&limit=100` returns the top-100 asks and bids for the $BOT perp market."
-  - "Hyperliquid HIP-3: `POST https://api.hyperliquid.xyz/info {\"type\":\"l2Book\",\"coin\":\"xyz:BOT\"}` returns the L2 book for the xyz-deployed BOT perp under HIP-3 permissionless listings."
-  - "Mid price: (best_bid + best_ask) / 2 from the top of each book, per tick, per venue."
-  - "Walk: for each USD notional bucket, iterate the sorted side, consuming `min(level_notional_usd, remaining_target_usd)` until target is filled; size-weighted average execution price is target_usd / total_base_filled."
-  - "Slippage bps: (avg_execution_price - mid) / mid x 10000 on the buy side, mirrored on the sell side, sign-normalized so every published value represents cost to the trader."
-  - "Buckets published: $100, $1,000, $5,000, $10,000, $25,000, $50,000, $100,000, $500,000. Both sides (buy, sell)."
-  - "Depth fallback: if the visible book does not cover 99% of the requested size, the slippage series for that (venue, side, size) is dropped for that tick and `perp_execution_max_fillable_usd{side}` reports the ceiling instead."
-  - "Headline. avg_over_time of `perp_execution_slippage_bps{asset=\"BOT\", side=\"buy\", size_usd=\"5000\"}` over 24h, per venue. A one-print spike does not move the ranking."
-  - "Failures. A venue that errors or times out drops its `perp_execution_health` to 0 and increments `perp_execution_fetch_errors_total{error_type}`; the leaderboard tags it as stale."
-  - "CEX venues are intentionally out of scope. Traders comparing against a Binance or Bybit fill should read DefiLlama for the CEX-side audit; the DEX bench does not aggregate what it cannot orderbook-walk from a public endpoint."
-
+  - "Cadence: every 30 seconds per venue and asset, 8 second timeout per fetch, from the perp-fees harness (bench 007). The metric is perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for the same venue and asset, averaged over 24 hours."
+  - "Mid price: (best_bid + best_ask) / 2 from the top of each book at tick time. Slippage: (size-weighted average ask price filled - mid) / mid x 10,000, so half the quoted spread is part of the number and a one-tick book reads above zero."
+  - "Walk: levels are consumed in price order, min(level_notional_usd, remaining_target_usd) at each, until $100,000 is filled. Books capped by the venue API (Paradex 100 levels, edgeX 200 levels) skip the tier when the visible depth cannot fill it (or, on Paradex, when the walk would eat more than 90 % of the visible side) rather than publish an inflated number."
+  - "Book endpoints, part 1: Hyperliquid POST /info l2Book; Lighter GET /api/v1/orderBookOrders (100 levels); Aster GET /fapi/v1/depth (100 levels); Extended GET /api/v1/info/markets/{market}/orderbook; dYdX v4 indexer GET /v4/orderbooks/perpetualMarket/{ticker}."
+  - "Book endpoints, part 2: Paradex GET /orderbook/{market}/interactive (the Retail book, RPI liquidity included, see perp-fees); Ondo Perps GET /v1/perps/depth (100 levels); Polymarket perps GET /v1/info/book (500 levels); edgeX GET /api/v2/public/quote/getDepth (200 levels)."
+  - "Fee excluded on purpose: Lighter quotes 0 bps taker, Hyperliquid 4.5, Aster and dYdX 5, Extended and Ondo 2.5, Polymarket 4, edgeX 3.8, Paradex 0 on Retail orders. The all-in ranking with fees is the perp-fees bench; this page answers the depth question only."
+  - "Oracle-priced venues excluded: GMX v2 and Gains price against an oracle with a fixed spread and impact parameter, there is no book to walk, so their tiers are flat and would read as zero or constant slippage. They stay on perp-fees where the fee and the spread parameter are counted together."
+  - "Headline tier $100,000, tabs ETH, BTC, SOL. The $1,000, $10,000 and $1,000,000 tiers are available as raw series through perp_fees_all_in_bps_tier{notional} on the API and MCP surfaces."
+  - "Failures: a venue that errors or returns an empty book drops perp_fees_health to 0 for that asset and increments perp_fees_fetch_errors_total{error_type}; the leaderboard tags it as stale and the 24 h average excludes the missing ticks."
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} of slippage on a $5,000 $BOT buy (24 h average) between the {{count}} DEX venues listing $BOT."
-  - "{{name:lighter}} sits at {{p50:lighter}} on the same $5,000 bucket. Fully onchain orderbook on zk-rollup, zero taker fee, so the number is essentially the crossed half-spread plus depth impact."
-  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} on the same $5,000 bucket. HIP-3 markets settle through the same HyperBFT orderbook engine as native Hyperliquid perps but liquidity is provided by the deployer-affiliated market maker, so depth can be thinner than on a native flagship pair."
-  - "Both venues publish additional size buckets ($100 up to $500,000, both sides). The full grid is exposed via the raw `perp_execution_slippage_bps` series with the `size_usd` and `side` labels."
-  - "$BOT is not currently listed on any other decentralized perp venue with a public orderbook endpoint. New listings will show up here automatically once their `(asset, venue)` pair is added to the harness config."
-
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-execution-scanner
-
+  - "{{best_name}} fills a $100,000 ETH market buy at {{best_p50}} of slippage over mid (24 h average), the tightest book among the {{count}} orderbook venues; {{worst_name}} sits at {{worst_p50}}."
+  - "{{name:hyperliquid}} reads {{p50:hyperliquid}} and {{name:lighter}} {{p50:lighter}} at $100k on ETH: the two deepest onchain books, where the number is mostly the crossed half-spread."
+  - "{{name:aster}} reads {{p50:aster}} and {{name:extended}} {{p50:extended}}, within a basis point of the leaders at this size."
+  - "{{name:dydx}} reads {{p50:dydx}}, {{name:ondo}} {{p50:ondo}}, {{name:polymarket}} {{p50:polymarket}}: thinner books where $100k already consumes several levels."
+  - "The ranking changes with size. At $1,000 every venue fills within a few basis points; at $1,000,000 the gap between the deepest and the thinnest book is an order of magnitude. Read the tier that matches your clip."
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-fees
 prometheus:
   window: 24h
   expected_freshness_seconds: 300
+  freshness_metric: perp_fees_all_in_bps_tier
+
+# Asset selector, same mechanism as perp-fees: every PromQL selector gets
+# `chain="X"` injected server-side, so each tab is its own ranking. The
+# harness labels the underlying asset `chain` to reuse the dimension filter.
+dimensions:
+  chain:
+    - { value: ETH, label: ETH }
+    - { value: BTC, label: BTC }
+    - { value: SOL, label: SOL }
 
 faq:
-  - q: "Which DEX has the best execution for a $BOT market order right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} of slippage on a $5,000 buy (24 h average). The leaderboard re-sorts every 30 seconds against fresh Prometheus samples so the answer reflects the last day of live orderbook walks on Lighter and Hyperliquid HIP-3 (`xyz:BOT`), not a marketing snapshot."
-  - q: "Why is $BOT only tracked on two venues?"
-    a: "Because those are the only two decentralized perp venues currently listing $BOT with a public orderbook endpoint: Lighter (market_id 185) and Hyperliquid HIP-3 under the `xyz:BOT` coin symbol. Native Hyperliquid does not have $BOT listed, so `coin=\"BOT\"` on `/info` returns nothing; the HIP-3 permissionless listing is the only path for $BOT on Hyperliquid infrastructure today."
-  - q: "What is HIP-3 and how is `xyz:BOT` different from a native Hyperliquid perp?"
-    a: "HIP-3 is Hyperliquid's permissionless perp listing standard: a third party (here `xyz`) stakes HYPE and deploys a perp market under a namespaced coin symbol, e.g. `xyz:BOT`. The orderbook is settled on the same HyperBFT infrastructure as native Hyperliquid perps, but liquidity is bootstrapped by the deployer rather than by the flagship Hyperliquid market-making stack, so depth on smaller HIP-3 markets is typically thinner."
-  - q: "How is slippage computed here vs a raw quote?"
-    a: "Every 30 seconds the harness fetches the top of book on each venue, walks the ask side (for a buy) or the bid side (for a sell), and consumes levels until the requested USD notional is filled. Effective execution price is size-weighted; slippage is (avg_exec - mid) / mid in basis points. This is exactly what a market order would cross assuming the visible book at tick time, no impact model on top."
-  - q: "Why publish so many size buckets?"
-    a: "Because execution quality is not linear in size. A venue that fills $1k with 1 bps of slippage can charge 200 bps at $50k if its book thins out fast. The bench publishes eight size buckets from $100 to $500,000 on both sides so a trader can pick the row that matches their intended clip."
-  - q: "What about CEX venues like Binance or Bybit for $BOT?"
-    a: "Out of scope for this bench. CEX taker fees and orderbook depth are covered by DefiLlama's aggregated stats for the CEX side. This bench answers a narrower question: given that a user wants to execute onchain, which DEX will fill their $BOT order closer to mid right now."
-  - q: "What happens when the visible book cannot fill the requested size?"
-    a: "The slippage series for that (venue, side, size) is dropped for that tick and `perp_execution_max_fillable_usd{side}` reports how much notional the book could actually clear, so the leaderboard does not silently print a misleading number when depth runs out."
+  - q: "Which perp DEX has the lowest slippage on a $100k market order right now?"
+    a: "{{best_name}} at {{best_p50}} on ETH (24 h average), ahead of {{count}} orderbook venues. The ranking re-sorts every minute from the last 24 hours of 30 second orderbook walks, and the BTC and SOL tabs rank the same venues on their own books."
+  - q: "How is slippage computed here?"
+    a: "The harness reads each venue's public orderbook, takes mid as (best bid + best ask) / 2 and walks the ask side until $100,000 of notional is filled. The size-weighted average fill price against mid, in basis points, is the slippage. It includes half the quoted spread and the impact of eating through levels; it excludes the taker fee."
+  - q: "Why is the fee left out when perp-fees already exists?"
+    a: "perp-fees ranks the all-in cost (fee plus spread plus impact) and a zero-fee venue can win it on the fee alone. This bench removes the fee so the comparison is about book depth: how much the fill price moves for a given size. Both numbers matter; a trader with a fee rebate or a large clip reads this one."
+  - q: "Why are GMX v2 and Gains missing?"
+    a: "They price against an oracle with a fixed spread and impact parameter instead of an orderbook, so there is no depth to walk and their tiers are flat. They are ranked on perp-fees, where the fee and the spread parameter are added together."
+  - q: "What happens when a book cannot fill $100k?"
+    a: "The tier is skipped for that tick and counted in perp_fees_tier_skipped_total instead of being extrapolated from the last visible level. Paradex (100 visible levels) and edgeX (200) are the venues where this happens on thin sessions; the sample size column shows how many ticks made it into the 24 h average."
+  - q: "Does this measure what I would pay on the venue's UI?"
+    a: "For the book component, yes: the walk uses the same public book the UI shows, at the same instant. On Paradex it reads the interactive book that Retail (UI) orders cross, RPI liquidity included; a plain API order on Paradex sees a thinner book. Latency, partial fills and price protection settings can still move an actual fill."
+  - q: "What about the $BOT bench that used to live here?"
+    a: "The earlier version of this page compared Lighter and Hyperliquid HIP-3 on the $BOT perp alone; that data still runs in the perp-execution-scanner harness. This page now ranks the whole orderbook cohort on ETH, BTC and SOL, which is what most readers asked it."
 
 providers:
   - slug: lighter
     name: Lighter
-    tag: zk-rollup perp DEX, fully onchain orderbook
-    formula: "Average over 24h of the effective slippage in bps for a $5,000 buy on Lighter's native $BOT orderbook, walked live every 30 seconds from `/api/v1/orderBookOrders?market_id=185`."
+    tag: zk-rollup orderbook, zero taker fee
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Lighter on the selected asset: half-spread plus impact of a $100k market buy walked on GET /api/v1/orderBookOrders, in bps."
     queries:
-      p50: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}[24h])
-      p90: quantile_over_time(0.90, perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}[24h])
-      p99: quantile_over_time(0.99, perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}[24h])
-      mean: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}[24h])
-      success: avg_over_time(perp_execution_health{asset="BOT", venue="lighter"}[24h])
-      sample_size: count_over_time(perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}[24h])
-      series: perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="5000"}
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="lighter", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="lighter", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="lighter"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="lighter"}[24h])
+      success: avg_over_time(perp_fees_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="lighter", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="lighter", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="lighter"}
 
   - slug: hyperliquid
-    # name must stay the venue brand: provider profiles prefer bench spec
-    # names, and "Hyperliquid HIP-3 (xyz:BOT)" here renamed the whole
-    # /products/hyperliquid page title. The market detail lives in the tag.
     name: Hyperliquid
-    tag: HIP-3 permissionless perp, xyz:BOT market
-    formula: "Average over 24h of the effective slippage in bps for a $5,000 buy on the Hyperliquid HIP-3 `xyz:BOT` orderbook, walked live every 30 seconds from `POST /info {type:l2Book, coin:\"xyz:BOT\"}`."
+    tag: HyperBFT L1 orderbook
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Hyperliquid on the selected asset: half-spread plus impact of a $100k market buy walked on POST /info l2Book, in bps."
     queries:
-      p50: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}[24h])
-      p90: quantile_over_time(0.90, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}[24h])
-      p99: quantile_over_time(0.99, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}[24h])
-      mean: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}[24h])
-      success: avg_over_time(perp_execution_health{asset="BOT", venue="hyperliquid"}[24h])
-      sample_size: count_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}[24h])
-      series: perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="5000"}
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_fees_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="hyperliquid", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="hyperliquid"}
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain orderbook perps
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Aster on the selected asset: half-spread plus impact of a $100k market buy walked on GET /fapi/v1/depth, in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="aster", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="aster"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="aster", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="aster"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="aster", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="aster"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="aster", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="aster"}[24h])
+      success: avg_over_time(perp_fees_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="aster", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="aster", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="aster"}
+
+  - slug: extended
+    name: Extended
+    tag: Starknet orderbook perps
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Extended on the selected asset: half-spread plus impact of a $100k market buy walked on the /orderbook endpoint, in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="extended", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="extended"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="extended", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="extended"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="extended", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="extended"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="extended", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="extended"}[24h])
+      success: avg_over_time(perp_fees_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="extended", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="extended", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="extended"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain orderbook
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for dYdX v4 on the selected asset: half-spread plus impact of a $100k market buy walked on GET /v4/orderbooks/perpetualMarket/{ticker}, in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="dydx"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="dydx", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="dydx", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="dydx"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="dydx"}[24h])
+      success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="dydx", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="dydx", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="dydx"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain orderbook, Retail (interactive) book
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Paradex on the selected asset: $100k market buy walked on the interactive book (100 levels, skipped past 90 % of the side), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="paradex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="paradex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="paradex"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="paradex"}[24h])
+      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="paradex", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="paradex", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="paradex"}
+
+  - slug: ondo
+    name: Ondo Perps
+    tag: SGX-matched orderbook, custody on Ethereum and Arbitrum
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Ondo Perps on the selected asset: half-spread plus impact of a $100k market buy walked on GET /v1/perps/depth (100 levels), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])
+      success: avg_over_time(perp_fees_health{venue="ondo"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="ondo", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="ondo"}
+
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon perps by Polymarket
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Polymarket perps on the selected asset: half-spread plus impact of a $100k market buy walked on the perps book endpoint, in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="polymarket"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="polymarket"}[24h])
+      success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="polymarket", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="polymarket"}
+
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx-settled orderbook perps
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for edgeX on the selected asset: half-spread plus impact of a $100k market buy walked on GET /api/v2/public/quote/getDepth (200 levels), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="edgex"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="edgex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="edgex"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps_tier{venue="edgex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="edgex"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="edgex"}[24h])
+      success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="edgex", notional="100000"}[24h])
+      series: perp_fees_all_in_bps_tier{venue="edgex", notional="100000"} - ignoring(notional) perp_fees_taker_fee_bps{venue="edgex"}

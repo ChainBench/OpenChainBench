@@ -9,25 +9,29 @@ import (
 	"time"
 )
 
-// edgeX (offchain CLOB perp DEX). Public no-auth REST. Contract IDs are
-// resolved via GET /api/v1/public/meta/getMetaData; hardcoded here after a
-// one-time lookup (verified via getMetaData on 2026-07-16). The taker fee
-// is not exposed by any public endpoint: the documented base rate
-// (3.8 bps, edgex-1.gitbook.io) is used and disclosed in the spec formula.
-// TODO: switch to fee schedule API when edgeX ships one.
+// edgeX (offchain CLOB perp DEX). Public no-auth REST, v2 API since
+// 2026-09-22: the v1 host (pro.edgex.exchange/api/v1) kept answering 200
+// with an empty data array on every quote endpoint, which the harness
+// read as empty_orderbook on all three assets for weeks. Contract IDs
+// are resolved via GET /api/v2/public/meta/getMetaData; hardcoded here
+// after a lookup on 2026-09-22 (v2 renumbered them to 30000xxx). The
+// taker fee is not exposed by any public endpoint: the documented base
+// rate (3.8 bps, edgex-1.gitbook.io) is used and disclosed in the spec
+// formula. TODO: switch to fee schedule API when edgeX ships one.
 
-const edgexBase = "https://pro.edgex.exchange"
+const edgexBase = "https://edgex-prod-v2.edgex.exchange"
 
 // Documented base taker rate (3.8 bps = 0.00038). Revisit if edgeX ships a
 // public fees endpoint.
 const edgexTakerBps = 3.8
 
-// Asset → contractId map. Verified via getMetaData on 2026-07-16. If edgeX
-// re-numbers contracts, update these IDs (or wire in a dynamic lookup).
+// Asset → contractId map. Verified via v2 getMetaData on 2026-09-22
+// (BTCUSDC, ETHUSDC, SOLUSDC). If edgeX re-numbers contracts again,
+// update these IDs (or wire in a dynamic lookup).
 var edgexContractIDs = map[string]string{
-	"ETH": "10000002",
-	"BTC": "10000001",
-	"SOL": "10000003",
+	"ETH": "30000002",
+	"BTC": "30000001",
+	"SOL": "30000003",
 }
 
 type edgexDepthResp struct {
@@ -59,7 +63,7 @@ func fetchEdgex(v VenueConfig) PerpSample {
 	s.TakerFeeBps = edgexTakerBps
 
 	var book edgexDepthResp
-	url := fmt.Sprintf("%s/api/v1/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)
+	url := fmt.Sprintf("%s/api/v2/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)
 	if err := edgexGet(client, url, &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()

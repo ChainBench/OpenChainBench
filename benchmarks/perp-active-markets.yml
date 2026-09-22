@@ -127,7 +127,7 @@ providers:
   - slug: edgex
     name: edgeX
     tag: zkSync-based offchain CLOB
-    formula: "Count of active perp markets from edgeX native markets endpoint on zkSync."
+    formula: "Count of contracts with enableTrade and enableDisplay in the edgeX v2 getMetaData catalog (175 on 2026-09-22). Before 2026-09-22 the v1 catalog was counted whole, retired rows included (292), so the series steps down on that date."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h])
       p90: quantile_over_time(0.90, perp_venue_active_markets{venue="edgex"}[24h])

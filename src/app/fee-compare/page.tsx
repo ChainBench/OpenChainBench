@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/page-metadata";
 import { FeeCompareClient } from "@/components/fee-compare-client";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -36,6 +37,7 @@ export default async function FeeComparePage({
     "@graph": [
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
+        { name: "Perp DEX leaderboard", item: `${SITE.url}/perps` },
         { name: "Perp DEX fee comparison", item: `${SITE.url}/fee-compare` },
       ]),
       {
@@ -72,7 +74,13 @@ export default async function FeeComparePage({
         trades would have cost on the other platform.
       </p>
       <p className="mt-2 text-sm text-ink-faint">
-        No API key required. Rates fetched live from public endpoints.
+        No API key required. Rates fetched live from public endpoints. The
+        cohort-wide ranking (taker fee plus spread plus impact, 24 h average)
+        is on the{" "}
+        <Link href="/perps" className="underline">
+          perp DEX leaderboard
+        </Link>
+        .
       </p>
 
       <div className="mt-8">

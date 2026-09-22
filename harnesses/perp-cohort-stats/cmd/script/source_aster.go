@@ -38,6 +38,68 @@ type AsterNativeSource struct {
 	oiCache      map[string]float64
 	oiTS         time.Time
 	oiRefreshing bool
+
+	// symbol -> breadth class from /fapi/v1/exchangeInfo (one call,
+	// ~600 rows), refreshed every asterClassCacheTTL.
+	classMu    sync.Mutex
+	classCache map[string]string
+	classTS    time.Time
+}
+
+const asterClassCacheTTL = 10 * time.Minute
+
+// asterExchangeInfo is the slice of /fapi/v1/exchangeInfo the breadth
+// classification needs. underlyingType is COIN on every row (stock
+// perps included); underlyingSubType carries the venue's own bucket:
+// STOCK, ETF, Commodities, USD1-RWA for the non-crypto listings.
+type asterExchangeInfo struct {
+	Symbols []struct {
+		Symbol            string   `json:"symbol"`
+		Status            string   `json:"status"`
+		UnderlyingSubType []string `json:"underlyingSubType"`
+	} `json:"symbols"`
+}
+
+func asterClass(symbol string, subTypes []string) string {
+	for _, t := range subTypes {
+		switch t {
+		case "STOCK":
+			return classStocks
+		case "ETF", "USD1-RWA":
+			return rwaClass(baseSymbol(symbol))
+		case "Commodities":
+			return classCommodities
+		}
+	}
+	return classCrypto
+}
+
+// classes returns the symbol -> class map, refreshed at most every
+// asterClassCacheTTL; nil when no catalog was ever fetched.
+func (s *AsterNativeSource) classes() map[string]string {
+	s.classMu.Lock()
+	defer s.classMu.Unlock()
+	if s.classCache != nil && time.Since(s.classTS) < asterClassCacheTTL {
+		return s.classCache
+	}
+	body, err := s.get("https://fapi.asterdex.com/fapi/v1/exchangeInfo")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("aster", srcAsterNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][aster][%s] exchangeInfo err: %v\n", srcAsterNative, err)
+		return s.classCache
+	}
+	var info asterExchangeInfo
+	if err := json.Unmarshal(body, &info); err != nil || len(info.Symbols) == 0 {
+		perpCohortFetchErrors.WithLabelValues("aster", srcAsterNative, "parse").Inc()
+		return s.classCache
+	}
+	m := make(map[string]string, len(info.Symbols))
+	for _, sym := range info.Symbols {
+		m[sym.Symbol] = asterClass(sym.Symbol, sym.UnderlyingSubType)
+	}
+	s.classCache = m
+	s.classTS = time.Now()
+	return m
 }
 
 func NewAsterNativeSource() *AsterNativeSource {
@@ -50,11 +112,11 @@ func NewAsterNativeSource() *AsterNativeSource {
 func (s *AsterNativeSource) Name() string { return srcAsterNative }
 
 type asterTicker struct {
-	Symbol               string `json:"symbol"`
-	LastPrice            string `json:"lastPrice"`
-	PriceChangePercent   string `json:"priceChangePercent"`
-	Volume               string `json:"volume"`
-	QuoteVolume          string `json:"quoteVolume"`
+	Symbol             string `json:"symbol"`
+	LastPrice          string `json:"lastPrice"`
+	PriceChangePercent string `json:"priceChangePercent"`
+	Volume             string `json:"volume"`
+	QuoteVolume        string `json:"quoteVolume"`
 }
 
 type asterOIResponse struct {
@@ -89,12 +151,26 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
+	classes := s.classes()
+	breadth := breadthCounter{}
 	keep := make([]asterRow, 0, len(tickers))
 	var volSum, topVol float64
 	for _, t := range tickers {
 		// Linear perp pairs only.
 		if !strings.HasSuffix(t.Symbol, "USDT") && !strings.HasSuffix(t.Symbol, "USDC") {
 			continue
+		}
+		if classes != nil {
+			class, ok := classes[t.Symbol]
+			if !ok {
+				class = classCrypto
+			}
+			breadth.add(class)
+			if class == classCrypto {
+				res.AddCryptoSymbol(baseSymbol(t.Symbol))
+			} else {
+				res.AddRWASymbol(baseSymbol(t.Symbol))
+			}
 		}
 		qv, _ := strconv.ParseFloat(t.QuoteVolume, 64)
 		last, _ := strconv.ParseFloat(t.LastPrice, 64)
@@ -129,8 +205,9 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(len(keep)))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
-	fmt.Printf("[perp-cohort][%s][%s] ok: markets=%d oi_cached=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcAsterNative, len(keep), cached, volSum, oiSum, topVol)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: markets=%d oi_cached=%d vol24h=%.0f oi=%.0f top24h=%.0f breadth: %s\n",
+		venue, srcAsterNative, len(keep), cached, volSum, oiSum, topVol, breadth)
 	return res, nil
 }
 

@@ -52,17 +52,42 @@ const ostiumSubgraphURL = "https://api.subgraph.ormilabs.com/api/public/67a599d5
 const ostiumPairsQuery = `{
   pairs(first: 200) {
     id
+    from
     longOI
     shortOI
     lastTradePrice
+    group { name }
   }
 }`
 
 type ostiumPair struct {
 	ID             string `json:"id"`
+	From           string `json:"from"`
 	LongOI         string `json:"longOI"`
 	ShortOI        string `json:"shortOI"`
 	LastTradePrice string `json:"lastTradePrice"`
+	Group          struct {
+		Name string `json:"name"`
+	} `json:"group"`
+}
+
+// ostiumClass maps the subgraph pair group (crypto, forex, stocks, etf,
+// indices, commodities) onto the breadth classes; an etf is a listed
+// equity unless it tracks an index (the symbol table decides).
+func ostiumClass(group, from string) string {
+	switch group {
+	case "forex":
+		return classForex
+	case "stocks":
+		return classStocks
+	case "etf":
+		return rwaClass(baseSymbol(from))
+	case "indices":
+		return classIndices
+	case "commodities":
+		return classCommodities
+	}
+	return classCrypto
 }
 
 type ostiumResponse struct {
@@ -141,6 +166,7 @@ func (s *OstiumNativeSource) Fetch() (*SourceResult, error) {
 	const scale1e18 = 1e18
 	var oiSum float64
 	var active int
+	breadth := breadthCounter{}
 	for _, p := range parsed.Data.Pairs {
 		longRaw, _ := strconv.ParseFloat(p.LongOI, 64)
 		shortRaw, _ := strconv.ParseFloat(p.ShortOI, 64)
@@ -149,6 +175,13 @@ func (s *OstiumNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
+		class := ostiumClass(p.Group.Name, p.From)
+		breadth.add(class)
+		if class == classCrypto {
+			res.AddCryptoSymbol(baseSymbol(p.From))
+		} else {
+			res.AddRWASymbol(baseSymbol(p.From))
+		}
 		long := longRaw / scale1e18
 		short := shortRaw / scale1e18
 		px := pxRaw / scale1e18
@@ -157,8 +190,9 @@ func (s *OstiumNativeSource) Fetch() (*SourceResult, error) {
 
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(active))
-	fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f active=%d oi=%.0f\n",
-		venue, srcOstiumNative, vol, active, oiSum)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f active=%d oi=%.0f breadth: %s\n",
+		venue, srcOstiumNative, vol, active, oiSum, breadth)
 	return res, nil
 }
 
