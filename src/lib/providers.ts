@@ -34,6 +34,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
+  // Arc publishes a keyless QuickNode endpoint under its own domain; the
+  // product page is QuickNode's.
+  "arc-quicknode": "quicknode",
   // TON → Gram rebrand (June 2026). Stale inbound references to slug
   // "ton" resolve to canonical "gram" so older links, search hits, and
   // any external citation that still says ton/Toncoin lands on the
