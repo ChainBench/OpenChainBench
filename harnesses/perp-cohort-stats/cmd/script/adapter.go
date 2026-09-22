@@ -42,6 +42,12 @@ type SourceResult struct {
 	// router unions them across sources into the known-crypto set used
 	// to classify the venues that publish no asset class.
 	CryptoSymbols map[string]bool
+	// RWASymbols are the base symbols a venue lists as a non-crypto
+	// market (its metadata says stock, ETF, index, forex or commodity).
+	// A symbol that is a token on one venue and a stock on another (BB is
+	// BounceBit and BlackBerry, STX is Stacks and Seagate, QNT is Quant
+	// and Quantinuum) resolves as the RWA on a HIP-3 dex.
+	RWASymbols map[string]bool
 	// Unclassified is keyed [venue] -> base symbols the source could not
 	// classify on its own (Hyperliquid HIP-3 dexes); the router does it
 	// once every source has reported, see classifyUnclassified.
@@ -346,21 +352,26 @@ func priorityMap(venue, metric string) []string {
 
 // Router orchestrates one sweep across all registered sources.
 // classifyUnclassified turns every SourceResult.Unclassified list into a
-// Breadth entry. The known-crypto set is the union of what every source
-// reported as crypto this tick plus what was reported on earlier ticks
-// (a source that failed this tick still contributes its last list), so a
-// token perp on a HIP-3 dex (xyz:BOT, also listed on Lighter) reads as
-// crypto and only symbols no cohort venue lists as crypto count as
-// stocks. The Hyperliquid core universe arrives through the same map.
+// Breadth entry. Two sets accumulate across ticks (a source that failed
+// this tick still contributes its last list): the symbols some venue
+// lists as a non-crypto market and the symbols some venue lists as a
+// crypto market. On a HIP-3 dex the RWA reading wins, then the crypto
+// one (xyz:BOT is a token also listed on Lighter), then the fixed
+// tables, and a symbol nobody knows counts as a stock. The Hyperliquid
+// core universe arrives through the crypto map.
 func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 	r.cryptoMu.Lock()
 	defer r.cryptoMu.Unlock()
 	if r.knownCrypto == nil {
 		r.knownCrypto = map[string]bool{}
+		r.knownRWA = map[string]bool{}
 	}
 	for _, res := range byName {
 		for sym := range res.CryptoSymbols {
 			r.knownCrypto[sym] = true
+		}
+		for sym := range res.RWASymbols {
+			r.knownRWA[sym] = true
 		}
 	}
 	for _, res := range byName {
@@ -373,7 +384,15 @@ func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 			}
 			var asCrypto []string
 			for _, sym := range syms {
-				class := symbolClass(sym, true, r.knownCrypto)
+				var class string
+				if r.knownRWA[sym] {
+					// A venue with metadata lists this symbol as a stock,
+					// ETF, index, forex pair or commodity: on an RWA dex
+					// that reading wins over a same-named token elsewhere.
+					class = rwaClass(sym)
+				} else {
+					class = symbolClass(sym, true, r.knownCrypto)
+				}
 				b.add(class)
 				if class == classCrypto {
 					asCrypto = append(asCrypto, sym)
@@ -391,6 +410,7 @@ func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 type Router struct {
 	cryptoMu    sync.Mutex
 	knownCrypto map[string]bool
+	knownRWA    map[string]bool
 
 	cfg     *Config
 	sources []Source

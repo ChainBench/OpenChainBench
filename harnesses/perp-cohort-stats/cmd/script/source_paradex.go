@@ -138,6 +138,7 @@ func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
 		if rwa != nil {
 			if rwa[m.Symbol] {
 				breadth.add(rwaClass(baseSymbol(m.Symbol)))
+				res.AddRWASymbol(baseSymbol(m.Symbol))
 			} else {
 				breadth.add(classCrypto)
 				res.AddCryptoSymbol(baseSymbol(m.Symbol))

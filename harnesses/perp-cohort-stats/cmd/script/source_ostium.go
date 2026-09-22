@@ -175,7 +175,13 @@ func (s *OstiumNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
-		breadth.add(ostiumClass(p.Group.Name, p.From))
+		class := ostiumClass(p.Group.Name, p.From)
+		breadth.add(class)
+		if class == classCrypto {
+			res.AddCryptoSymbol(baseSymbol(p.From))
+		} else {
+			res.AddRWASymbol(baseSymbol(p.From))
+		}
 		long := longRaw / scale1e18
 		short := shortRaw / scale1e18
 		px := pxRaw / scale1e18

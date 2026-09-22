@@ -102,9 +102,12 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 		// stock, gold and JPY listings sit there and would turn the same
 		// symbols on Hyperliquid xyz into crypto. The base is the part
 		// before the slash ("BOT/USD" -> BOT).
-		if p.AssetClass == classCrypto {
-			if i := strings.Index(p.Name, "/"); i > 0 {
+		if i := strings.Index(p.Name, "/"); i > 0 {
+			switch p.AssetClass {
+			case classCrypto:
 				res.AddCryptoSymbol(baseSymbol(p.Name[:i]))
+			case classForex, classStocks, classIndices, classCommodities:
+				res.AddRWASymbol(baseSymbol(p.Name[:i]))
 			}
 		}
 	}

@@ -118,6 +118,8 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 		breadth.add(class)
 		if class == classCrypto {
 			res.AddCryptoSymbol(baseSymbol(m.Name))
+		} else {
+			res.AddRWASymbol(baseSymbol(m.Name))
 		}
 		v, _ := strconv.ParseFloat(m.MarketStats.DailyVolume, 64)
 		volSum += v

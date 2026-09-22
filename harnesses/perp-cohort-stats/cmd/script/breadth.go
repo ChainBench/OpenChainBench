@@ -203,6 +203,18 @@ func (r *SourceResult) AddCryptoSymbol(base string) {
 	r.CryptoSymbols[base] = true
 }
 
+// AddRWASymbol records a base symbol the venue lists as a non-crypto
+// market; see SourceResult.RWASymbols.
+func (r *SourceResult) AddRWASymbol(base string) {
+	if base == "" {
+		return
+	}
+	if r.RWASymbols == nil {
+		r.RWASymbols = map[string]bool{}
+	}
+	r.RWASymbols[base] = true
+}
+
 // SetUnclassified hands the router the base symbols of a venue's
 // markets that carry no asset class; they are merged into the venue's
 // Breadth entry after every source has reported.

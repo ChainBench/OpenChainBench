@@ -168,6 +168,8 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 			breadth.add(class)
 			if class == classCrypto {
 				res.AddCryptoSymbol(baseSymbol(t.Symbol))
+			} else {
+				res.AddRWASymbol(baseSymbol(t.Symbol))
 			}
 		}
 		qv, _ := strconv.ParseFloat(t.QuoteVolume, 64)

@@ -208,6 +208,8 @@ func (s *GMXNativeSource) breadth() breadthCounter {
 			continue
 		}
 		b.add(symbolClass(base, false, nil))
+		// GMX symbols are unique to GMX (GOLD, WTIOIL) or plain tokens;
+		// neither set learns anything reliable from them.
 	}
 	return b
 }

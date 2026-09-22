@@ -90,6 +90,7 @@ func (s *DydxNativeSource) Fetch() (*SourceResult, error) {
 		active++
 		if class, ok := dydxNonCrypto[ticker]; ok {
 			breadth.add(class)
+			res.AddRWASymbol(baseSymbol(ticker))
 		} else {
 			breadth.add(classCrypto)
 			res.AddCryptoSymbol(baseSymbol(ticker))

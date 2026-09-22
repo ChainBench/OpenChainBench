@@ -104,6 +104,7 @@ func (s *OndoNativeSource) Fetch() (*SourceResult, error) {
 		breadth.add(class)
 		if class != classCrypto {
 			nonCrypto++
+			res.AddRWASymbol(baseSymbol(c.BaseCurrency))
 		} else {
 			res.AddCryptoSymbol(baseSymbol(c.BaseCurrency))
 		}
