@@ -189,11 +189,13 @@ func (s *ApexNativeSource) runRefresh(live []apexLive) {
 		body, err := s.get("https://omni.apex.exchange/api/v3/ticker?symbol=" + l.cross)
 		if err != nil {
 			fails++
+			perpCohortFetchErrors.WithLabelValues("apex", srcApexNative, classifyError(err.Error())).Inc()
 			continue
 		}
 		var t apexTickerResponse
 		if err := json.Unmarshal(body, &t); err != nil || len(t.Data) == 0 {
 			fails++
+			perpCohortFetchErrors.WithLabelValues("apex", srcApexNative, "parse").Inc()
 			continue
 		}
 		row := t.Data[0]
@@ -205,9 +207,13 @@ func (s *ApexNativeSource) runRefresh(live []apexLive) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(fresh) < len(live)/2 {
+	// A partial walk swapped in would publish a venue total missing the
+	// markets that failed; below 90 % the previous snapshot stays and the
+	// shortfall is counted on the errors counter above.
+	if len(fresh)*10 < len(live)*9 {
 		fmt.Printf("[perp-cohort][apex][%s] cache refresh DEGRADED: %d/%d ok, %d fails; keeping prior snapshot (%d)\n",
 			srcApexNative, len(fresh), len(live), fails, len(s.cache))
+		perpCohortFetchErrors.WithLabelValues("apex", srcApexNative, "degraded_refresh").Inc()
 		return
 	}
 	s.cache = fresh

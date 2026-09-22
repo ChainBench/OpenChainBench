@@ -23,7 +23,7 @@ import (
 //
 //	volume_24h_usd            = summary.volume_quote_24h
 //	oi_usd                    = summary.open_interest_notional
-//	active_markets            = len(symbols)
+//	active_markets            = summary.symbol_count (len(symbols) when absent)
 //	top_market_volume_24h_usd = max(symbols[].volume_quote_24h)
 //	funding (BTC, ETH, SOL)   = funding_rate x 24 x 10000 bps per day, 1 h interval
 //
@@ -80,21 +80,28 @@ func (s *StandXNativeSource) Fetch() (*SourceResult, error) {
 		if v > topVol {
 			topVol = v
 		}
-		syms = append(syms, baseSymbol(m.Base))
-		switch m.Base {
+		base := baseSymbol(m.Base)
+		syms = append(syms, base)
+		switch base {
 		case "BTC", "ETH", "SOL":
 			if rate, err := strconv.ParseFloat(m.FundingRate, 64); err == nil {
-				res.SetFunding(venue, m.Base, fundingPoint{Bps24h: rate * 24 * 10000, IntervalHours: 1})
+				res.SetFunding(venue, base, fundingPoint{Bps24h: rate * 24 * 10000, IntervalHours: 1})
 			}
 		}
 	}
+	// The venue's own count; the symbols array is the fallback should the
+	// summary ever omit it.
+	active := o.Summary.SymbolCount
+	if active == 0 {
+		active = len(o.Symbols)
+	}
 	res.SetIfPositive(venue, mVolume24h, vol)
 	res.SetIfPositive(venue, mOI, oi)
-	res.SetIfPositive(venue, mActiveMarkets, float64(len(o.Symbols)))
+	res.SetIfPositive(venue, mActiveMarkets, float64(active))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
 	res.SetUnclassified(venue, syms)
 	fmt.Printf("[perp-cohort][%s][%s] ok: markets=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcStandXNative, len(o.Symbols), vol, oi, topVol)
+		venue, srcStandXNative, active, vol, oi, topVol)
 	return res, nil
 }
 

@@ -122,6 +122,7 @@ func (s *KalshiNativeSource) Fetch() (*SourceResult, error) {
 			// tables decide, a miss counts as a stock (Kalshi lists no
 			// token that is not also a major on the cohort venues).
 			breadth.add(rwaClass(baseSymbol(base)))
+			res.AddRWASymbol(baseSymbol(base))
 		}
 	}
 	res.SetIfPositive(venue, mVolume24h, volSum)

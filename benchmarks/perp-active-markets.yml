@@ -26,7 +26,7 @@ abstract: |
   of active markets per venue. Sources: native API for most venues (Hyperliquid
   info metaAndAssetCtxs, Lighter orderBookDetails with market_type==perp filter,
   dYdX v4 indexer perpetualMarkets, Paradex markets summary, edgeX native markets,
-  Aster fapi exchangeInfo PERPETUAL instruments, Vertex indexer, GRVT markets,
+  Aster fapi exchangeInfo PERPETUAL instruments, Nado gateway, GRVT markets,
   Extended public markets, Aevo markets, Pacifica Solana program state, Ostium
   subgraph, Polymarket perps tickers). Gains uses the Mobula perp pairs
   catalog (dex=gains, mainnet chains only, arbitrum-sepolia excluded), the same
@@ -41,7 +41,8 @@ methodology:
   - "Paradex: markets summary endpoint on Starknet L2, count of active perp markets."
   - "edgeX: native markets endpoint, count of active perp markets on zkSync."
   - "Aster: fapi exchangeInfo, count of instruments with contractType==PERPETUAL and status==TRADING on BNB Chain."
-  - "Vertex: public indexer, count of active perp products on Arbitrum."
+  - "Nado (the Vertex team's venue on Ink, published as Vertex until 2026-09-22): gateway /v1/symbols, count of perp products with trading_status live."
+  - "Kalshi: margin/markets rows with status active. Vest: /v2/ticker/latest rows with status TRADING. StandX: summary.symbol_count. ApeX Omni: live perpetual and stock contracts. Jupiter Perps: markets answering market-stats. Lighter RH: active perp books on api.rh.lighter.xyz. trade.xyz: non-delisted xyz dex universe."
   - "GRVT: public markets endpoint, count of active instruments on ZK Stack."
   - "Extended: public markets API, count of active perp markets on StarkEx."
   - "Aevo: public markets endpoint, count of active perp instruments on OP Stack."
