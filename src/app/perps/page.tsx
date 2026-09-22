@@ -4,6 +4,7 @@ import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { perpHeadToHead } from "@/lib/perp-head-to-head";
@@ -164,10 +165,7 @@ export default async function PerpsHubPage() {
           "@type": "ListItem",
           position: i + 1,
           name: r.name,
-          url:
-            r.slug === "gmx-v2"
-              ? `${SITE.url}/products/gmx`
-              : `${SITE.url}/products/${r.slug}`,
+          url: `${SITE.url}/products/${perpProductSlug(r.slug)}`,
         })),
       }
     : null;

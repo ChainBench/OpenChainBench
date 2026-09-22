@@ -20,6 +20,7 @@ import {
 import type { Benchmark } from "@/types/benchmark";
 import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 
 function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
   return ranked.map(
@@ -142,7 +143,7 @@ export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
     md.push(`|---|---|---|---|---|---|---|---|---|`);
     rows.forEach((v, i) => {
       md.push(
-        `| ${i + 1} | ${v.name} (${SITE.url}/products/${v.slug === "gmx-v2" ? "gmx" : v.slug === "trade-xyz" ? "xyz" : v.slug}) | ${VENUE_TYPE_LABEL[v.venueType]} | ${usd(v.volume24h)} | ${usd(v.volume30d)} | ${usd(v.openInterest)} | ${num(v.activeMarkets)} | ${bps(v.allInFeeBpsEth)} | ${bps(v.funding24hBpsEth)} |`,
+        `| ${i + 1} | ${v.name} (${SITE.url}/products/${perpProductSlug(v.slug)}) | ${VENUE_TYPE_LABEL[v.venueType]} | ${usd(v.volume24h)} | ${usd(v.volume30d)} | ${usd(v.openInterest)} | ${num(v.activeMarkets)} | ${bps(v.allInFeeBpsEth)} | ${bps(v.funding24hBpsEth)} |`,
       );
     });
   };

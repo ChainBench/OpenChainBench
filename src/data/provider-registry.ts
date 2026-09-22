@@ -1339,6 +1339,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
     twitter: "@moonshotapp",
   },
+  "coinbase-international": {
+    url: "https://international.coinbase.com",
+    description:
+      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@CoinbaseIntExch",
+  },
   coinbase: {
     url: "https://www.coinbase.com",
     description:

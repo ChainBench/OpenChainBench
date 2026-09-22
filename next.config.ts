@@ -194,7 +194,7 @@ const nextConfig: NextConfig = {
     // above a markdown token that carries a lower q, so it stays HTML.
     const ci = (s: string) => s.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
     const markdownOnly = [
-      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9]))).*${ci("text/markdown")}.*$` },
+      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9]))).*${ci("text/markdown")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9])).*$` },
     ];
     const beforeFiles = [
       { source: "/benchmarks/:slug", has: markdownOnly, destination: "/api/md/benchmarks/:slug" },

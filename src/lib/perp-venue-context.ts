@@ -6,6 +6,7 @@ import {
 } from "@/lib/perp-stats";
 import type { Benchmark } from "@/types/benchmark";
 import type { PerpVenueBenchRow } from "@/components/perp-venue-bench-cards";
+import { PERP_PRODUCT_SLUGS } from "@/lib/perp-product-slug";
 
 /**
  * Per-venue metadata for the perps cohort. Hardcoded because the venue
@@ -28,7 +29,7 @@ export const PERP_VENUE_META: Record<
 > = {
   hyperliquid: { url: "https://hyperliquid.xyz", chainLabel: "Hyperliquid L1" },
   lighter:     { url: "https://lighter.xyz",     chainLabel: "Lighter L2" },
-  "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: "gmx" },
+  "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: PERP_PRODUCT_SLUGS["gmx-v2"] },
   gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum, Base, Polygon, ApeChain" },
   dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
   nado:        { url: "https://nado.xyz",        chainLabel: "Ink" },
@@ -51,12 +52,12 @@ export const PERP_VENUE_META: Record<
   apex:        { url: "https://omni.apex.exchange", chainLabel: "Omnichain" },
   jupiter:     { url: "https://jup.ag/perps",    chainLabel: "Solana" },
   "lighter-rh": { url: "https://rh.lighter.xyz", chainLabel: "Lighter L2, Robinhood" },
-  "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: "xyz" },
+  "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: PERP_PRODUCT_SLUGS["trade-xyz"] },
   binance:     { url: "https://www.binance.com/en/futures", chainLabel: "Offchain, CEX" },
   okx:         { url: "https://www.okx.com/trade-swap", chainLabel: "Offchain, CEX" },
   bybit:       { url: "https://www.bybit.com/trade/usdt", chainLabel: "Offchain, CEX" },
   gate:        { url: "https://www.gate.com/futures", chainLabel: "Offchain, CEX" },
-  coinbase:    { url: "https://international.coinbase.com", chainLabel: "Offchain, CEX" },
+  coinbase:    { url: "https://international.coinbase.com", chainLabel: "Offchain, CEX", productSlug: PERP_PRODUCT_SLUGS.coinbase },
   bitget:      { url: "https://www.bitget.com/futures", chainLabel: "Offchain, CEX" },
   deribit:     { url: "https://www.deribit.com",  chainLabel: "Offchain, CEX" },
   kraken:      { url: "https://futures.kraken.com", chainLabel: "Offchain, CEX" },
@@ -69,19 +70,19 @@ export const PERP_VENUE_META: Record<
  * the /prediction-markets pattern). All cohort venues plus the GMX
  * product slug, which the cohort tracks under gmx-v2.
  */
-export const PERP_PRODUCT_PILL_SLUGS: ReadonlySet<string> = new Set([
-  ...Object.keys(PERP_VENUE_META),
-  // PROVIDER_REGISTRY entries whose cohort key differs (gmx for gmx-v2,
-  // xyz for trade-xyz).
-  ...Object.values(PERP_VENUE_META).flatMap((m) => (m.productSlug ? [m.productSlug] : [])),
-]);
+export const PERP_PRODUCT_PILL_SLUGS: ReadonlySet<string> = new Set(
+  // A key with a productSlug is served by that product page, never by a
+  // page that happens to share the key (US retail /products/coinbase is
+  // not the Coinbase International perp row).
+  Object.entries(PERP_VENUE_META).map(([key, m]) => m.productSlug ?? key),
+);
 
-/** Cohort key for a product slug: the key itself, or the key whose
- *  productSlug names it (gmx -> gmx-v2, xyz -> trade-xyz). */
+/** Cohort key for a product slug: the key itself when it has no
+ *  productSlug, or the key whose productSlug names it (gmx -> gmx-v2,
+ *  xyz -> trade-xyz, coinbase-international -> coinbase). */
 export function perpCohortSlugForProduct(slug: string): string | null {
-  if (PERP_VENUE_META[slug]) return slug;
   for (const [key, meta] of Object.entries(PERP_VENUE_META)) {
-    if (meta.productSlug === slug) return key;
+    if ((meta.productSlug ?? key) === slug) return key;
   }
   return null;
 }

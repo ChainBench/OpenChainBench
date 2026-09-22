@@ -63,13 +63,14 @@ func (s *CexCoinGeckoSource) Fetch() (*SourceResult, error) {
 		fmt.Printf("[perp-cohort][cex][%s] err: %v\n", srcCexCoinGecko, err)
 		return res, nil
 	}
-	btc, err := fetchBTCMid(s.client)
-	if err != nil {
+	// The pair count needs no price; a Hyperliquid allMids blip only
+	// costs the two BTC-denominated figures for this cycle.
+	btc, btcErr := fetchBTCMid(s.client)
+	if btcErr != nil {
 		for venue := range cexCoinGeckoIDs {
-			perpCohortFetchErrors.WithLabelValues(venue, srcCexCoinGecko, classifyError(err.Error())).Inc()
+			perpCohortFetchErrors.WithLabelValues(venue, srcCexCoinGecko, classifyError(btcErr.Error())).Inc()
 		}
-		fmt.Printf("[perp-cohort][cex][%s] btc mid err: %v\n", srcCexCoinGecko, err)
-		return res, nil
+		fmt.Printf("[perp-cohort][cex][%s] btc mid err: %v (volume and OI skipped this cycle)\n", srcCexCoinGecko, btcErr)
 	}
 	byID := map[string]cgExchangeListItem{}
 	for _, it := range items {
@@ -86,8 +87,10 @@ func (s *CexCoinGeckoSource) Fetch() (*SourceResult, error) {
 		if stale {
 			perpCohortFetchErrors.WithLabelValues(venue, srcCexCoinGecko, "stale_cache").Inc()
 		}
-		res.SetIfPositive(venue, mVolume24h, it.TradeVolume24hBTC*btc)
-		res.SetIfPositive(venue, mOI, it.OpenInterestBTC*btc)
+		if btcErr == nil {
+			res.SetIfPositive(venue, mVolume24h, it.TradeVolume24hBTC*btc)
+			res.SetIfPositive(venue, mOI, it.OpenInterestBTC*btc)
+		}
 		res.SetIfPositive(venue, mActiveMarkets, float64(it.PerpetualPairs))
 	}
 	fmt.Printf("[perp-cohort][cex][%s] ok: %d/%d venues, btc=%.0f\n", srcCexCoinGecko, found, len(cexCoinGeckoIDs), btc)

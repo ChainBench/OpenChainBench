@@ -719,6 +719,7 @@ const ALIASES: Record<string, string> = {
   "robinhood-official": "robinhood",
   "lighter-rh": "lighter",
   "trade-xyz": "xyz",
+  "coinbase-international": "coinbase",
   "arc-official": "arc",
   "celo-official": "celo",
   "blast-official": "blast",

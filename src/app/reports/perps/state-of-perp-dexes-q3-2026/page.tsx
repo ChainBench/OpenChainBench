@@ -45,6 +45,13 @@ function measuredLeader(b: Benchmark | null | undefined): { name: string; value:
   return r ? { name: r.name, value: r.ms.p50 } : null;
 }
 
+/** First row of `ranked(b)`: the leader under the same gate as the
+ *  lists, so a sentence never crowns a venue whose list is withheld. */
+function rankedLeader(b: Benchmark | null | undefined): { name: string; value: number } | null {
+  const r = ranked(b)[0];
+  return r ? { name: r.name, value: r.ms.p50 } : null;
+}
+
 /** The bench's ranking, or nothing when the bench itself would not
  *  assert a leader (draft, unhealthy sample, no live rows): the same
  *  gate `leader()` and the bench page apply, which `rankedCandidates`
@@ -59,11 +66,28 @@ function top(b: Benchmark | null | undefined, n = 3, measuredOnly = false) {
   return (measuredOnly ? rows.filter((r) => !CEX_SLUGS.has(r.slug)) : rows).slice(0, n);
 }
 
-function BenchLine({ b }: { b: Benchmark | null | undefined }) {
+/** The bench's own headline under the report's gate: nothing asserted
+ *  when `ranked()` is empty, and on the funding benches (which rank the
+ *  centralised books too) a measured-venue sentence instead of the
+ *  bench's, which may crown a CEX. The bench link stays either way. */
+function BenchLine({ b, measuredOnly = false }: { b: Benchmark | null | undefined; measuredOnly?: boolean }) {
   if (!b) return null;
+  const rows = ranked(b);
+  const measured = rows.filter((r) => !CEX_SLUGS.has(r.slug));
+  let sentence: string;
+  if (rows.length === 0) {
+    sentence = "No leader asserted right now (sample below the bench's floor).";
+  } else if (measuredOnly) {
+    const lead = measured[0];
+    sentence = lead
+      ? `${lead.name} leads the ${measured.length} measured venues at ${fmtUnit(lead.ms.p50, b.unit)} (p50, ${b.window ?? "24h"}); the bench page ranks the centralised books on the same scale.`
+      : "No measured venue is ranked right now.";
+  } else {
+    sentence = headlineSentence(b);
+  }
   return (
     <p className="mt-2 text-sm text-ink-soft">
-      {headlineSentence(b)}{" "}
+      {sentence}{" "}
       <Link href={`/benchmarks/${b.slug}`} className="underline underline-offset-2">
         {b.title}
       </Link>
@@ -142,11 +166,11 @@ export default async function StateOfPerpDexesQ3Page() {
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}${PATH}`;
 
-  const feesLead = fees ? leader(fees) : null;
-  const slipLead = slippage ? leader(slippage) : null;
+  const feesLead = rankedLeader(fees);
+  const slipLead = rankedLeader(slippage);
   const fundLead = measuredLeader(funding);
   const fundCostLead = measuredLeader(fundingCost);
-  const breadthLead = breadth ? leader(breadth) : null;
+  const breadthLead = rankedLeader(breadth);
   const breadthRanked = ranked(breadth);
   const breadthNonZero = breadthRanked.filter((r) => r.ms.p50 > 0).length;
   const volOiRanked = ranked(volOi);
@@ -288,7 +312,7 @@ export default async function StateOfPerpDexesQ3Page() {
           {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least of the measured venues, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional; the bench page ranks the large centralised books on the same scale (their rows come from the Mobula funding feed).` : ""}
         </p>
         <RankList b={fundingCost} measuredOnly />
-        <BenchLine b={funding} />
+        <BenchLine b={funding} measuredOnly />
       </section>
 
       <section id="beyond-crypto" className="mt-10">

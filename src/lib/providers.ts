@@ -676,6 +676,10 @@ const PERP_VENUE_SEED = [
   { slug: "standx", name: "StandX" },
   { slug: "apex", name: "ApeX Omni" },
   { slug: "lighter-rh", name: "Lighter RH" },
+  // The Coinbase perp row (cohort key "coinbase") is Coinbase
+  // International; the funding benches list it under "coinbase", so this
+  // page has no bench appearance of its own and needs the seed.
+  { slug: "coinbase-international", name: "Coinbase International" },
 ];
 
 // Meta-providers that live in PROVIDER_REGISTRY but never appear as a
@@ -720,7 +724,8 @@ const buildProvidersCached = unstable_cache(
   // vest, standx, apex, lighter-rh and the cohort rows) and vertex became
   // nado. /products/vest, /products/standx and /products/lighter-rh were
   // 404 on staging while the v7 list outlived the deploy.
-  ["providers-v8"],
+  // v9 (2026-09-23): coinbase-international joined PERP_VENUE_SEED.
+  ["providers-v9"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
