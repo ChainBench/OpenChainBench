@@ -33,7 +33,9 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
   // Same number as the lede and the H2: tracked venues, not the cohort
   // array length (19 vs 18 on 2026-09-21).
   const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
-  const lead = cohort?.venues.find((v) => v.venueType !== "cex");
+  const lead = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
+    .slice()
+    .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1))[0];
   // 158 characters at most: the SERP truncates beyond that.
   return lead && lead.volume30d != null
     ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
@@ -69,7 +71,11 @@ export default async function PerpsHubPage() {
 
   // Measured rows only: the CEX reference (venue-reported) sits behind the
   // selector and never leads the hub's own sentences.
-  const measured = cohort?.venues.filter((v) => v.venueType !== "cex") ?? [];
+  // Sorted by 30-day volume, like the Markdown view and the table: the
+  // snapshot keeps registry order, which always put Hyperliquid first.
+  const measured = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
+    .slice()
+    .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
   const lead = measured[0] ?? null;
   const tracked = cohort?.totals.trackedVenues ?? 0;
   const leadSentence =

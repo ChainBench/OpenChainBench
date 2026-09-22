@@ -74,7 +74,10 @@ function RankList({ b, n = 5 }: { b: Benchmark | null | undefined; n?: number })
 
 export async function generateMetadata(): Promise<Metadata> {
   const cohort = await fetchPerpCohort();
-  const measured = cohort?.venues.filter((v) => v.venueType !== "cex") ?? [];
+  // Same ordering as the body: by 30-day volume, never registry order.
+  const measured = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
+    .filter((v) => v.volume30d != null)
+    .sort((a, b) => (b.volume30d ?? 0) - (a.volume30d ?? 0));
   const lead = measured[0];
   const description = lead && lead.volume30d != null
     ? `${cohort!.totals.trackedVenues} perp venues measured from public APIs through Q3 2026: ${lead.name} leads 30-day volume at ${usd(lead.volume30d)}, cohort open interest ${usd(cohort!.totals.cohortOpenInterest)}. Fees, funding, slippage, breadth beyond crypto, volume quality and token valuation, each figure live and linked to its benchmark.`
@@ -110,7 +113,9 @@ export default async function StateOfPerpDexesQ3Page() {
   const lead = byVolume[0] ?? null;
   const totalVol = cohort?.totals.cohortVolume30d ?? 0;
   const top3Share = lead && totalVol > 0 ? byVolume.slice(0, 3).reduce((s, v) => s + (v.volume30d ?? 0), 0) / totalVol : null;
-  const cexVol = cex.reduce((s, v) => s + (v.volume30d ?? 0), 0);
+  // 24h, the figure the venues actually report to CoinGecko; the 30-day
+  // column on CEX rows is OpenChainBench's own average of that series.
+  const cexVol24h = cex.reduce((s, v) => s + (v.volume24h ?? 0), 0);
   const asOfIso = cohort ? new Date(cohort.asOf * 1000).toISOString() : null;
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}${PATH}`;
@@ -212,7 +217,7 @@ export default async function StateOfPerpDexesQ3Page() {
             {byVolume[1] ? `, ahead of ${byVolume[1].name} (${usd(byVolume[1].volume30d)})` : ""}
             {byVolume[2] ? ` and ${byVolume[2].name} (${usd(byVolume[2].volume30d)})` : ""}.
             {top3Share != null ? ` The top three carry ${(top3Share * 100).toFixed(0)} percent of the ${usd(totalVol)} the measured cohort traded over 30 days;` : ""} cohort open interest stands at {usd(cohort!.totals.cohortOpenInterest)}.
-            {cexVol > 0 ? ` For scale, the ten centralised books the board carries as reference report ${usd(cexVol)} of 30-day volume to CoinGecko, a figure the venues declare rather than one OpenChainBench measures.` : ""}
+            {cexVol24h > 0 ? ` For scale, the centralised books the board carries as reference report ${usd(cexVol24h)} of 24-hour derivatives volume to CoinGecko, a figure the venues declare rather than one OpenChainBench measures.` : ""}
           </p>
         ) : (
           <p className="mt-3 text-sm text-ink-faint italic">Cohort data is temporarily unavailable.</p>
@@ -255,7 +260,7 @@ export default async function StateOfPerpDexesQ3Page() {
         <p className="mt-3 text-sm text-ink-soft leading-relaxed">
           Funding is quoted per hour or per eight hours; a position pays every settlement. The harness normalises each venue&apos;s rate to the cost of holding a long for 24 hours and integrates it over the month.
           {fundLead ? ` Right now ${fundLead.name} is the cheapest venue to hold an ETH long at ${fmtUnit(fundLead.value, funding!.unit)} per 24 hours.` : ""}
-          {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional, with the large centralised books on the same page as the reference.` : ""}
+          {fundCostLead ? ` Over the trailing 30 days ${fundCostLead.name} accumulated the least, ${fmtUnit(fundCostLead.value, fundingCost!.unit)} of notional, on a bench that ranks the DEXs and the large centralised books together (the CEX rows come from the Mobula funding feed).` : ""}
         </p>
         <RankList b={fundingCost} />
         <BenchLine b={funding} />

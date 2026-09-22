@@ -36,7 +36,12 @@ func (s *CexCoinGeckoSource) Name() string { return srcCexCoinGecko }
 
 // cexCoinGeckoIDs maps the cohort slug (the one the Mobula funding feed
 // already uses for these venues) to CoinGecko's derivatives exchange id.
-// KuCoin has no derivatives entry on the list; its row stays funding-only.
+// CoinGecko's volume and open interest are exchange-wide derivatives
+// figures (dated futures included), while the pair count is perps only;
+// on these futures-first books the difference is small. Deribit is left
+// out (options carry most of its volume and OI, so the row would not
+// describe a perp book) and KuCoin has no derivatives entry on the list;
+// both stay funding-only rows.
 var cexCoinGeckoIDs = map[string]string{
 	"binance":  "binance_futures",
 	"okx":      "okex_swap",
@@ -44,7 +49,6 @@ var cexCoinGeckoIDs = map[string]string{
 	"gate":     "gate_futures",
 	"coinbase": "coinbase_international_derivatives",
 	"bitget":   "bitget_futures",
-	"deribit":  "deribit",
 	"kraken":   "kraken_futures",
 	"mexc":     "mxc_futures",
 }
