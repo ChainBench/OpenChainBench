@@ -187,6 +187,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/perps/eth`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
     { url: `${SITE.url}/perps/btc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
     { url: `${SITE.url}/perps/sol`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/reports/state-of-perp-dexes-q3-2026`, lastModified: catalogTs, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },

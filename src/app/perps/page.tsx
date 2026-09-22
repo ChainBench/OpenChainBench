@@ -295,6 +295,18 @@ export default async function PerpsHubPage() {
               <span className="text-ink">{b.label}</span>
             </Link>
           ))}
+          <Link
+            href="/reports/state-of-perp-dexes-q3-2026"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 hover:bg-ink/5"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Report
+            </span>
+            <span className="text-ink">State of perp DEXes, Q3 2026</span>
+          </Link>
           {["eth", "btc", "sol"].map((asset) => (
             <Link
               key={asset}
