@@ -210,10 +210,41 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     return { claim, rest: `(p50, 24h, 3 regions).` };
   }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
+  // A tie is not a win. rpc-reliability had four providers at 0 incidents
+  // and the sentence crowned whichever one sorted first — "Tenderly posts
+  // the lowest reliability incidents at 0" reads as a ranking over three
+  // providers that did exactly as well. Name them all instead; the
+  // single-leader wording is untouched when the top value is unique.
+  const tied = tiedWithLeader(b, top.value);
+  if (tied.length > 1) {
+    const names =
+      tied.length === 2
+        ? `${tied[0]} and ${tied[1]}`
+        : `${tied.slice(0, -1).join(", ")} and ${tied[tied.length - 1]}`;
+    const allVerb = b.higherIsBetter ? "all lead on" : "all post the lowest";
+    return {
+      claim: `${names} ${allVerb} ${metricInSentence(b.metric)}, tied at ${value}`,
+      rest: `${windowSuffix(b.unit, b.window ?? "24h")} on ${b.title}.`,
+    };
+  }
   return {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
     rest: `${windowSuffix(b.unit, b.window ?? "24h")} on ${b.title}.`,
   };
+}
+
+/** Names sharing the leader's value, leader first, capped at four so a
+ *  bench where everyone reads 0 does not produce a sentence nobody can
+ *  quote. The comparison is on the displayed figure, not the raw float:
+ *  two providers shown as "0" are tied to a reader whatever the eleventh
+ *  decimal says. Returns one name when the top value is unique. */
+function tiedWithLeader(b: Benchmark, topValue: number): string[] {
+  const shown = (v: number) => fmtUnit(v, b.unit);
+  const target = shown(topValue);
+  const names = rankedCandidates(b)
+    .filter((r) => shown(r.ms.p50) === target)
+    .map((r) => r.name);
+  return names.length > 4 ? names.slice(0, 4) : names;
 }
 
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */
