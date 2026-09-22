@@ -860,6 +860,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Multi-chain infrastructure provider. Public keyless endpoints on 80+ networks with generous daily limits, plus dedicated and API-key tiers.",
     twitter: "@OnFinality",
   },
+  blockdaemon: {
+    url: "https://www.blockdaemon.com",
+    description:
+      "Institutional node infrastructure across 50+ chains, normally key-gated. On Arc it also serves the keyless endpoint the chain's docs publish (rpc.blockdaemon.mainnet.arc.io), which is what this cohort measures.",
+    twitter: "@BlockdaemonHQ",
+  },
   quicknode: {
     url: "https://www.quicknode.com",
     description:

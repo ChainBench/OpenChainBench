@@ -19,9 +19,10 @@ seo_intro: |
   support is new and uneven, which is exactly when an independent latency
   measurement is most useful. This page measures both sides with one probe,
   `eth_getBlockByNumber` with a rotating request id, every 60 seconds on the
-  {{count}} free endpoints (the Circle-operated rpc.mainnet.arc.io, dRPC,
-  PublicNode, Tenderly Gateway) and every 120 seconds on the keyed endpoints
-  of Alchemy, Chainstack and QuickNode, from us-east, eu-west and Singapore;
+  {{count}} endpoints that answer without a key, every row of the table in
+  the chain's own docs included, and every 120 seconds on the keyed
+  endpoints of Alchemy, Chainstack and QuickNode, from us-east, eu-west and
+  Singapore;
   the Access selector switches between the two cohorts, which are never
   ranked against each other.
 
@@ -34,6 +35,8 @@ methodology:
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Arc-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"arc\" (chain id 5042). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Endpoints published by the chain: the RPC endpoints page of the Arc docs lists Circle's primary endpoint plus Alchemy, Blockdaemon, dRPC and QuickNode. The Blockdaemon and QuickNode rows are Arc-branded URLs (rpc.blockdaemon.mainnet.arc.io, rpc.quicknode.mainnet.arc.io) that answer without a key, verified before inclusion, and are measured here as such."
+  - "The dRPC row of that table (rpc.drpc.mainnet.arc.io) serves the same free tier as arc.drpc.org, identical x-drpc-owner-id, and is measured once under dRPC; the Alchemy row needs a key and sits in the private cohort."
   - "Private cohort (Access selector, Private): Alchemy, Chainstack and QuickNode probed on their keyed Arc endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet; Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing. GetBlock is listed under exclusions until a key exists."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
@@ -173,6 +176,54 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="arc", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="arc", region="sgp"}[1h])
+
+  - slug: blockdaemon
+    name: Blockdaemon
+    endpoint: https://rpc.blockdaemon.mainnet.arc.io
+    tag: Arc-branded endpoint published in the chain's docs, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Blockdaemon's no-key Arc endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockdaemon", chain="arc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockdaemon", chain="arc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockdaemon", chain="arc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockdaemon", chain="arc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockdaemon", chain="arc"}) / sum(ocb:rpc_call:rate_24h{provider="blockdaemon", chain="arc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockdaemon", chain="arc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockdaemon", chain="arc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockdaemon", chain="arc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockdaemon", chain="arc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockdaemon", chain="arc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockdaemon", chain="arc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockdaemon", chain="arc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockdaemon", chain="arc", region="sgp"}[1h])
+
+  - slug: arc-quicknode
+    name: QuickNode (Arc endpoint)
+    endpoint: https://rpc.quicknode.mainnet.arc.io
+    tag: Arc-branded endpoint published in the chain's docs, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to QuickNode's no-key Arc endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arc-quicknode", chain="arc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="arc-quicknode", chain="arc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="arc-quicknode", chain="arc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="arc-quicknode", chain="arc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="arc-quicknode", chain="arc"}) / sum(ocb:rpc_call:rate_24h{provider="arc-quicknode", chain="arc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="arc-quicknode", chain="arc"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="arc-quicknode", chain="arc"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arc-quicknode", chain="arc", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="arc-quicknode", chain="arc", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arc-quicknode", chain="arc", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="arc-quicknode", chain="arc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arc-quicknode", chain="arc", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="arc-quicknode", chain="arc", region="sgp"}[1h])
 
   # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
   # rpc-keyed-latency harness emits; the public rows above carry no tier label.
