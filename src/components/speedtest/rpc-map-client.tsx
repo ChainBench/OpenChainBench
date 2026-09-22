@@ -97,10 +97,18 @@ export function RpcMapClient() {
   const [chain, setChain] = useState("ethereum");
   const [chainQuery, setChainQuery] = useState("");
   const [data, setData] = useState<MapData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Which chain the data in state belongs to. "Loading" is derived from it
+  // rather than set synchronously at the top of the fetch effect (which
+  // triggers a cascading render), and it stays correct when `chain`
+  // changes faster than the fetch resolves.
+  const [loadedChain, setLoadedChain] = useState<string | null>(null);
+  const loading = loadedChain !== chain;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hover, setHover] = useState<MapCell | null>(null);
-  const [hoverXY, setHoverXY] = useState<[number, number]>([0, 0]);
+  // [x, y, svg width]. The width rides along because the tooltip clamps
+  // against it at render time, and reading it off the ref there would be
+  // a ref access during render.
+  const [hoverXY, setHoverXY] = useState<[number, number, number]>([0, 0, 600]);
   const [selectedGh, setSelectedGh] = useState<string | null>(null);
   const [cellDetail, setCellDetail] = useState<CellDetail | null>(null);
   const [cellLoading, setCellLoading] = useState(false);
@@ -113,16 +121,17 @@ export function RpcMapClient() {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     fetch(`/api/speedtest/map?chain=${chain}`)
       .then((r) => r.json())
       .then((d) => {
         if (alive) {
           setData(d);
-          setLoading(false);
+          setLoadedChain(chain);
         }
       })
-      .catch(() => alive && setLoading(false));
+      // A failed fetch still ends the loading state: the empty-map branch
+      // below is the honest answer, not a spinner that never stops.
+      .catch(() => alive && setLoadedChain(chain));
     return () => {
       alive = false;
     };
@@ -461,8 +470,8 @@ export function RpcMapClient() {
                   style={{ cursor: "pointer" }}
                   onMouseEnter={(e) => {
                     setHover(c);
-                    const rect = svgRef.current?.getBoundingClientRect();
-                    if (rect) setHoverXY([e.clientX - rect.left, e.clientY - rect.top]);
+                    const rect = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                    if (rect) setHoverXY([e.clientX - rect.left, e.clientY - rect.top, rect.width]);
                   }}
                   onMouseLeave={() => setHover(null)}
                   onClick={() => {
@@ -501,7 +510,7 @@ export function RpcMapClient() {
           <div
             className="absolute z-10 pointer-events-none rounded-lg border border-rule px-3.5 py-2.5 shadow-lg"
             style={{
-              left: Math.min(hoverXY[0] + 14, (svgRef.current?.clientWidth ?? 600) - 220),
+              left: Math.min(hoverXY[0] + 14, hoverXY[2] - 220),
               top: hoverXY[1] + 12,
               background: "var(--color-paper, #fff)",
               minWidth: 190,

@@ -377,7 +377,6 @@ export function BenchmarkBody({
     const want = effectiveChain ? defaultPanelByChain[effectiveChain] ?? null : null;
     const seedPanels = Object.values(variants)[0]?.metricPanels ?? [];
     const valid = want && seedPanels.some((p) => p.id === want) ? want : null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActivePanelId(valid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveChain]);
