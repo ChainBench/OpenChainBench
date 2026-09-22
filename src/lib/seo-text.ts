@@ -13,12 +13,15 @@ export function capDescription(input: string | undefined, max = 990): string {
   const s = (input ?? "").replace(/\s+/g, " ").trim();
   if (s.length <= max) return s;
   const head = s.slice(0, max - 1);
-  // Prefer cutting at a sentence end, but only when that keeps most of
-  // the budget: at 0.6 the Polymarket answer (323 impressions, 0.3 % CTR
-  // at position 7.6) shipped a 102-character snippet and lost its hook
-  // ("Sports vs crypto vs politics, disputes and the pending backlog").
+  // The longest run of whole sentences that fits. These descriptions open
+  // with the claim ("GMGN leads trading platforms at $112.66M 24h volume."),
+  // so a clean cut keeps the hook and drops the enumeration, where the old
+  // 0.8 threshold fell through to a word cut and shipped "8 live
+  // benchmarks, 9…" on /products/mobula and four other audited pages.
   const lastDot = head.lastIndexOf(". ");
-  if (lastDot > max * 0.8) return head.slice(0, lastDot + 1);
+  if (lastDot > 0) return head.slice(0, lastDot + 1);
+  // No sentence end inside the budget: one very long opening clause. Cut at
+  // a word and say so with the ellipsis rather than mid-word.
   const lastSpace = head.lastIndexOf(" ");
   if (lastSpace > max * 0.6) return head.slice(0, lastSpace) + "…";
   return head + "…";
