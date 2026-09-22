@@ -1693,18 +1693,25 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				a := accOf(s.TradeUSD)
 				a.parsed++
 				a.term = append(a.term, s.TerminalBps)
+				a.termW = append(a.termW, w)
 				a.net = append(a.net, s.NetworkBps)
+				a.netW = append(a.netW, w)
 				a.trade = append(a.trade, s.TradeUSD)
+				a.tradeW = append(a.tradeW, w)
 				if s.RelayID != "" {
 					a.relay = append(a.relay, s.RelayBps)
+					a.relayW = append(a.relayW, w)
 				}
 				if s.OtherBps != nil {
 					a.other = append(a.other, *s.OtherBps)
+					a.otherW = append(a.otherW, w)
 				}
 				if s.Priced && s.LossBps != nil {
 					a.loss = append(a.loss, *s.LossBps)
+					a.lossW = append(a.lossW, w)
 					if s.PoolBps != nil {
 						a.pool = append(a.pool, *s.PoolBps)
+						a.poolW = append(a.poolW, w)
 					}
 				}
 			}
@@ -1769,7 +1776,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				ts.Components["relay"] = wmedian(relay, relayW, pooled)
 			}
 			if pooled {
-				cm := chainMeanOfMedians(st, member, slugs, attOf, c2field)
+				cm := chainMeanOfMedians(st, member, slugs, attOf, c2field, nil)
 				for c, v := range cm {
 					ts.Components[c] = v
 				}
@@ -1815,7 +1822,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			if len(pool) > 0 {
 				ts.Components["pool"] = wmedian(pool, poolW, pooled)
 				if pooled {
-					if v, ok := chainMeanOfMedians(st, member, slugs, attOf, c2field)["pool"]; ok {
+					if v, ok := chainMeanOfMedians(st, member, slugs, attOf, c2field, nil)["pool"]; ok {
 						ts.Components["pool"] = v
 					}
 				}
@@ -1831,7 +1838,32 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 					ts.BySize[b] = quantiles(v, false)
 				}
 			}
-			ts.SizeSplit = sizeSplit(sz, minPricedSize, minRankSize)
+			ts.SizeSplit = sizeSplit(sz, minPricedSize, minRankSize, pooled)
+			if pooled {
+				// Same rule as the pooled row, narrowed to each bucket, so
+				// the buckets decompose the published figure instead of
+				// answering a different question.
+				for b, st2 := range ts.SizeSplit {
+					bucket := b
+					cmB := chainMeanOfMedians(st, member, slugs, attOf, c2field, func(s Swap) bool {
+						return s.TradeUSD > 0 && sizeBucket(s.TradeUSD) == bucket
+					})
+					for _, c := range []string{"terminal", "network", "pool"} {
+						if v, ok := cmB[c]; ok {
+							st2.Components[c] = v
+						} else {
+							delete(st2.Components, c)
+						}
+					}
+					for _, c := range []string{"relay", "other"} {
+						if v, ok := cmB[c]; ok {
+							st2.Components[c] = v
+						} else {
+							delete(st2.Components, c) // under half the bucket's flow: blank, like the pooled row
+						}
+					}
+				}
+			}
 			if len(byChain) > 0 {
 				ts.ByChain = map[string]*Quantiles{}
 				for c, v := range byChain {
@@ -2121,16 +2153,26 @@ func c2field(s Swap, c string) (float64, bool) {
 // "other": pump.fun's fees sit inside its pool figure); published only
 // when those rows carry at least half of the product's flow, else the
 // column stays blank rather than describing a minority.
-func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf map[string]float64, get func(Swap, string) (float64, bool)) map[string]float64 {
+//
+// `keep` narrows it to a subset of the window (a trade-size bucket) while
+// keeping the estimator identical: each row's weight is scaled by the share
+// of its swaps that the subset holds, so the row counts for the flow it
+// actually contributes there. nil keeps everything, which is the pooled row
+// and leaves the weight exactly attOf[slug].
+func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf map[string]float64, get func(Swap, string) (float64, bool), keep func(Swap) bool) map[string]float64 {
 	out := map[string]float64{}
 	for _, c := range []string{"terminal", "network", "relay", "other", "pool"} {
 		num, den, denAll := 0.0, 0.0, 0.0
 		any := false
 		for _, slug := range slugs {
 			var vals []float64
-			rows := 0
+			rows, rowsAll := 0, 0
 			for _, s := range st.Swaps {
 				if s.Terminal != slug || s.Method != methodVersion {
+					continue
+				}
+				rowsAll++
+				if keep != nil && !keep(s) {
 					continue
 				}
 				rows++
@@ -2144,6 +2186,8 @@ func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf
 			w := attOf[slug]
 			if w <= 0 {
 				w = float64(rows)
+			} else if rows < rowsAll {
+				w *= float64(rows) / float64(rowsAll)
 			}
 			denAll += w
 			if len(vals) == 0 {
@@ -2450,6 +2494,9 @@ type sizeAcc struct {
 	parsed                              int
 	loss, pool, term, net, relay, other []float64
 	trade                               []float64
+	// The same per-swap weights the pooled row uses, in the same order, so a
+	// bucket's loss and trade size are the same weighted quantile.
+	lossW, termW, netW, relayW, otherW, poolW, tradeW []float64
 }
 
 // SizeStats is one bucket's row: the same shape the All-sizes row has, so
@@ -2470,7 +2517,7 @@ type SizeStats struct {
 // size bucket of a single product there is no such mix to correct for. A
 // bucket under minPriced publishes nothing at all rather than a median of
 // five swaps; between the two floors it publishes unranked.
-func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int) map[string]*SizeStats {
+func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int, pooled bool) map[string]*SizeStats {
 	if len(acc) == 0 {
 		return nil
 	}
@@ -2480,7 +2527,7 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int) map[string]*Size
 			continue
 		}
 		st := &SizeStats{
-			Loss:       quantiles(a.loss, false),
+			Loss:       wquantiles(a.loss, a.lossW, true, pooled),
 			Components: map[string]float64{},
 			Priced:     len(a.loss),
 			Parsed:     a.parsed,
@@ -2488,21 +2535,24 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int) map[string]*Size
 			Ranked:     len(a.loss) >= minRank,
 		}
 		if len(a.trade) > 0 {
-			st.TradeUSD = quantiles(a.trade, false)
+			st.TradeUSD = wquantiles(a.trade, a.tradeW, false, pooled)
 		}
-		st.Components["terminal"] = median(a.term)
-		st.Components["network"] = median(a.net)
+		// Single-row entry: the same weighted median the row itself uses.
+		// A pooled entry overwrites these with the chain-weighted rule right
+		// after, so both views of a product share one estimator.
+		st.Components["terminal"] = wmedian(a.term, a.termW, pooled)
+		st.Components["network"] = wmedian(a.net, a.netW, pooled)
 		if len(a.pool) > 0 {
-			st.Components["pool"] = median(a.pool)
+			st.Components["pool"] = wmedian(a.pool, a.poolW, pooled)
 		}
 		// Relay and Protocol are carried by part of the flow only: a median
 		// over the rows that have them describes those rows, not the bucket,
 		// so they are published only when they cover at least half of it.
 		if len(a.relay)*2 >= a.parsed {
-			st.Components["relay"] = median(a.relay)
+			st.Components["relay"] = wmedian(a.relay, a.relayW, pooled)
 		}
 		if len(a.other)*2 >= a.parsed {
-			st.Components["other"] = median(a.other)
+			st.Components["other"] = wmedian(a.other, a.otherW, pooled)
 		}
 		out[b] = st
 	}
