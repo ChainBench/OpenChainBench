@@ -53,11 +53,14 @@ func (s *SynFuturesNativeSource) Fetch() (*SourceResult, error) {
 
 	// The exchange row comes from the shared, cached derivatives list
 	// (coingecko.go) rather than a per-venue call every tick.
-	volBTC, found, err := cgVolume24hBTC(map[string]bool{"synfutures": true})
+	volBTC, found, stale, err := cgVolume24hBTC(map[string]bool{"synfutures": true})
 	if err != nil {
 		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, classifyError(err.Error())).Inc()
 		fmt.Printf("[perp-cohort][%s][%s] err: %v\n", venue, srcSynFuturesNative, err)
 		return res, nil
+	}
+	if stale {
+		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, "stale_cache").Inc()
 	}
 	if found == 0 {
 		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, "not_listed").Inc()

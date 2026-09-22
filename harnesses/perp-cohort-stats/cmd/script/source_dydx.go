@@ -92,6 +92,7 @@ func (s *DydxNativeSource) Fetch() (*SourceResult, error) {
 			breadth.add(class)
 		} else {
 			breadth.add(classCrypto)
+			res.AddCryptoSymbol(baseSymbol(ticker))
 		}
 		v, _ := strconv.ParseFloat(m.Volume24H, 64)
 		volSum += v

@@ -104,6 +104,8 @@ func (s *OndoNativeSource) Fetch() (*SourceResult, error) {
 		breadth.add(class)
 		if class != classCrypto {
 			nonCrypto++
+		} else {
+			res.AddCryptoSymbol(baseSymbol(c.BaseCurrency))
 		}
 		v, _ := strconv.ParseFloat(c.UsdVolume, 64)
 		volSum += v

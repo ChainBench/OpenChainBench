@@ -76,12 +76,24 @@ func (s *ParadexNativeSource) rwaTagged() map[string]bool {
 		return nil
 	}
 	rwa := map[string]bool{}
+	var tagged int
 	for _, m := range cat.Results {
+		if len(m.Tags) > 0 {
+			tagged++
+		}
 		for _, t := range m.Tags {
 			if t == "RWA" {
 				rwa[m.Symbol] = true
 			}
 		}
+	}
+	// A catalog that decodes but carries no row or no tag at all is a
+	// schema change, not an all-crypto venue: publish nothing rather
+	// than a 0 that would drop Paradex to the bottom of the ranking.
+	if len(cat.Results) == 0 || tagged == 0 {
+		perpCohortFetchErrors.WithLabelValues("paradex", srcParadexNative, "parse").Inc()
+		fmt.Printf("[perp-cohort][paradex][%s] catalog: %d rows, %d tagged; breadth skipped\n", srcParadexNative, len(cat.Results), tagged)
+		return nil
 	}
 	return rwa
 }
@@ -128,6 +140,7 @@ func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
 				breadth.add(rwaClass(baseSymbol(m.Symbol)))
 			} else {
 				breadth.add(classCrypto)
+				res.AddCryptoSymbol(baseSymbol(m.Symbol))
 			}
 		}
 		v, _ := strconv.ParseFloat(m.Volume24h, 64)

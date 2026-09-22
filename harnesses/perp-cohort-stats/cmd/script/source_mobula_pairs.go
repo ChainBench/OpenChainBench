@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,7 @@ func NewMobulaPairsSource(apiKey string) *MobulaPairsSource {
 func (s *MobulaPairsSource) Name() string { return srcMobulaPairs }
 
 type mobulaPair struct {
+	Name       string `json:"name"` // "BTC/USD"
 	Dex        string `json:"dex"`
 	Chain      string `json:"chain"`
 	AssetClass string `json:"assetClass"`
@@ -94,6 +96,16 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 			byClass[p.Dex] = map[string]int{}
 		}
 		byClass[p.Dex][p.AssetClass]++
+		switch p.AssetClass {
+		case classForex, classStocks, classIndices, classCommodities:
+		default:
+			// crypto, degen, new: a token market. The base is the part
+			// before the slash ("BOT/USD" -> BOT); it feeds the cohort
+			// known-crypto set used for the HIP-3 dexes (breadth.go).
+			if i := strings.Index(p.Name, "/"); i > 0 {
+				res.AddCryptoSymbol(baseSymbol(p.Name[:i]))
+			}
+		}
 	}
 	for dex, n := range counts {
 		res.Set(dex, mActiveMarkets, float64(n))

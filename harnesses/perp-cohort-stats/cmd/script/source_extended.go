@@ -114,7 +114,11 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
-		breadth.add(extendedClass(m))
+		class := extendedClass(m)
+		breadth.add(class)
+		if class == classCrypto {
+			res.AddCryptoSymbol(baseSymbol(m.Name))
+		}
 		v, _ := strconv.ParseFloat(m.MarketStats.DailyVolume, 64)
 		volSum += v
 		if v > topVol {

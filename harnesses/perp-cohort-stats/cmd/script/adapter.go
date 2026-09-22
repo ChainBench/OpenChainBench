@@ -37,6 +37,15 @@ type SourceResult struct {
 	// Breadth is keyed [venue][class] -> active market count; see
 	// breadth.go. Only set by a source that saw the venue's full list.
 	Breadth map[string]map[string]int
+	// CryptoSymbols are the base symbols a venue lists as crypto markets
+	// (its own metadata says so, or its whole catalog is crypto). The
+	// router unions them across sources into the known-crypto set used
+	// to classify the venues that publish no asset class.
+	CryptoSymbols map[string]bool
+	// Unclassified is keyed [venue] -> base symbols the source could not
+	// classify on its own (Hyperliquid HIP-3 dexes); the router does it
+	// once every source has reported, see classifyUnclassified.
+	Unclassified map[string][]string
 }
 
 type fundingPoint struct {
@@ -336,7 +345,44 @@ func priorityMap(venue, metric string) []string {
 }
 
 // Router orchestrates one sweep across all registered sources.
+// classifyUnclassified turns every SourceResult.Unclassified list into a
+// Breadth entry. The known-crypto set is the union of what every source
+// reported as crypto this tick plus what was reported on earlier ticks
+// (a source that failed this tick still contributes its last list), so a
+// token perp on a HIP-3 dex (xyz:BOT, also listed on Lighter) reads as
+// crypto and only symbols no cohort venue lists as crypto count as
+// stocks. The Hyperliquid core universe arrives through the same map.
+func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
+	r.cryptoMu.Lock()
+	defer r.cryptoMu.Unlock()
+	if r.knownCrypto == nil {
+		r.knownCrypto = map[string]bool{}
+	}
+	for _, res := range byName {
+		for sym := range res.CryptoSymbols {
+			r.knownCrypto[sym] = true
+		}
+	}
+	for _, res := range byName {
+		for venue, syms := range res.Unclassified {
+			b := breadthCounter{}
+			if existing, ok := res.Breadth[venue]; ok {
+				for k, v := range existing {
+					b[k] = v
+				}
+			}
+			for _, sym := range syms {
+				b.add(symbolClass(sym, true, r.knownCrypto))
+			}
+			res.SetBreadth(venue, b)
+		}
+	}
+}
+
 type Router struct {
+	cryptoMu    sync.Mutex
+	knownCrypto map[string]bool
+
 	cfg     *Config
 	sources []Source
 	// carry holds the last successfully published value per (venue,
@@ -574,6 +620,9 @@ func (r *Router) Sweep() {
 	// Asset-class breadth: the first registered source that reports a
 	// venue wins (the venue's native source is registered before Mobula
 	// and DefiLlama). A venue nobody reported this tick keeps its gauges.
+	// Symbols a source left unclassified (HIP-3 dexes) are resolved here
+	// against every crypto symbol the cohort listed this tick and before.
+	r.classifyUnclassified(byName)
 	seenBreadth := map[string]bool{}
 	for _, s := range r.sources {
 		res := byName[s.Name()]

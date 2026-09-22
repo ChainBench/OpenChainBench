@@ -55,7 +55,7 @@ var (
 	perpVenueMarketsByClass = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_markets_by_class",
-			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: Mobula perp pairs catalog.",
+			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: each venue's native catalog and asset tags (breadth.go); Mobula perp pairs for Gains and Lighter.",
 		},
 		[]string{"venue", "class"},
 	)

@@ -40,9 +40,10 @@ var cgList struct {
 }
 
 // cgDerivativesExchanges returns the cached list, refreshing it when it
-// is older than cgListTTL. The error is non-nil only when nothing
-// usable is cached.
-func cgDerivativesExchanges() ([]cgExchangeListItem, error) {
+// is older than cgListTTL. stale is true when the refresh failed and a
+// list younger than cgStaleMax is served instead, so callers can count
+// the miss; the error is non-nil only when nothing usable is cached.
+func cgDerivativesExchanges() (items []cgExchangeListItem, stale bool, err error) {
 	cgList.mu.Lock()
 	defer cgList.mu.Unlock()
 	if cgList.client == nil {
@@ -50,12 +51,13 @@ func cgDerivativesExchanges() ([]cgExchangeListItem, error) {
 	}
 	age := time.Since(cgList.fetched)
 	if cgList.items != nil && age < cgListTTL {
-		return cgList.items, nil
+		return cgList.items, false, nil
 	}
 	req, _ := http.NewRequest("GET", cgListURL, nil)
 	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com")
 	req.Header.Set("Accept", "application/json")
-	resp, err := cgList.client.Do(req)
+	resp, doErr := cgList.client.Do(req)
+	err = doErr
 	if err == nil {
 		defer resp.Body.Close()
 		body, readErr := io.ReadAll(resp.Body)
@@ -69,11 +71,11 @@ func cgDerivativesExchanges() ([]cgExchangeListItem, error) {
 			}
 			err = fmt.Errorf("http %d: %s", resp.StatusCode, snippet)
 		default:
-			var items []cgExchangeListItem
-			if err = json.Unmarshal(body, &items); err == nil && len(items) > 0 {
-				cgList.items = items
+			var fresh []cgExchangeListItem
+			if err = json.Unmarshal(body, &fresh); err == nil && len(fresh) > 0 {
+				cgList.items = fresh
 				cgList.fetched = time.Now()
-				return items, nil
+				return fresh, false, nil
 			}
 			if err == nil {
 				err = fmt.Errorf("empty list")
@@ -82,17 +84,18 @@ func cgDerivativesExchanges() ([]cgExchangeListItem, error) {
 	}
 	if cgList.items != nil && age < cgStaleMax {
 		fmt.Printf("[perp-cohort][coingecko] refresh failed (%v), serving %s old list\n", err, age.Round(time.Second))
-		return cgList.items, nil
+		return cgList.items, true, nil
 	}
-	return nil, err
+	return nil, false, err
 }
 
 // cgVolume24hBTC returns the summed 24 h BTC volume of the given
-// exchange ids, plus how many of them were present in the list.
-func cgVolume24hBTC(ids map[string]bool) (float64, int, error) {
-	items, err := cgDerivativesExchanges()
+// exchange ids, how many of them were present in the list, and whether
+// the list is a stale copy served after a failed refresh.
+func cgVolume24hBTC(ids map[string]bool) (float64, int, bool, error) {
+	items, stale, err := cgDerivativesExchanges()
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, false, err
 	}
 	var total float64
 	var found int
@@ -102,5 +105,5 @@ func cgVolume24hBTC(ids map[string]bool) (float64, int, error) {
 			found++
 		}
 	}
-	return total, found, nil
+	return total, found, stale, nil
 }

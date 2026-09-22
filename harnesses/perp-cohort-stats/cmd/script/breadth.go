@@ -111,9 +111,11 @@ func rwaClass(base string) string {
 	return classStocks
 }
 
-// symbolClass is the no-metadata path (Hyperliquid HIP-3 dexes, dYdX):
-// a symbol is non-crypto only when it sits in one of the explicit
-// tables or when the caller says the listing venue is an RWA dex.
+// symbolClass is the no-metadata path (Hyperliquid HIP-3 dexes, GMX):
+// a symbol is crypto when a cohort venue lists it as one (knownCrypto,
+// see Router.classifyUnclassified) or when it is a crypto index; it is
+// forex, a commodity or an index when the tables say so; otherwise it
+// is a stock on an RWA dex and crypto anywhere else.
 func symbolClass(base string, rwaVenue bool, knownCrypto map[string]bool) string {
 	switch {
 	case cryptoIndexSymbols[base], knownCrypto[base]:
@@ -187,6 +189,31 @@ func (r *SourceResult) SetBreadth(venue string, b breadthCounter) {
 		m[k] = v
 	}
 	r.Breadth[venue] = m
+}
+
+// AddCryptoSymbol records a base symbol the venue lists as a crypto
+// market; see SourceResult.CryptoSymbols.
+func (r *SourceResult) AddCryptoSymbol(base string) {
+	if base == "" {
+		return
+	}
+	if r.CryptoSymbols == nil {
+		r.CryptoSymbols = map[string]bool{}
+	}
+	r.CryptoSymbols[base] = true
+}
+
+// SetUnclassified hands the router the base symbols of a venue's
+// markets that carry no asset class; they are merged into the venue's
+// Breadth entry after every source has reported.
+func (r *SourceResult) SetUnclassified(venue string, syms []string) {
+	if len(syms) == 0 {
+		return
+	}
+	if r.Unclassified == nil {
+		r.Unclassified = map[string][]string{}
+	}
+	r.Unclassified[venue] = append(r.Unclassified[venue], syms...)
 }
 
 // publishBreadth writes the class gauges for one venue. Every class is

@@ -56,10 +56,20 @@ func (s *KiloExNativeSource) Fetch() (*SourceResult, error) {
 	// Bulk request: one call covers all KiloEx chain entries.
 	// Shared, cached CoinGecko list (coingecko.go): one call per 10 min
 	// for every CoinGecko-backed venue instead of one per source per tick.
-	totalBTC, found, err := cgVolume24hBTC(kiloexChainIDs)
+	totalBTC, found, stale, err := cgVolume24hBTC(kiloexChainIDs)
 	if err != nil {
 		perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, classifyError(err.Error())).Inc()
 		fmt.Printf("[perp-cohort][%s][%s] bulk err: %v\n", venue, srcKiloExNative, err)
+		return res, nil
+	}
+	if stale {
+		// Served from the cache after a failed refresh: the value is
+		// published (it is at most cgStaleMax old) and the miss is counted.
+		perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, "stale_cache").Inc()
+	}
+	if found == 0 {
+		perpCohortFetchErrors.WithLabelValues(venue, srcKiloExNative, "not_listed").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err: no kiloex deployment in the CoinGecko top-250 list\n", venue, srcKiloExNative)
 		return res, nil
 	}
 

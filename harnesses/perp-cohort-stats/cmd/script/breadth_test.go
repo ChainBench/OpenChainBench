@@ -45,7 +45,9 @@ func TestSymbolClassHIP3(t *testing.T) {
 		"para:AVGO":   classStocks,
 		"io:OAI":      classStocks, // pre-IPO synthetic
 		"hyna:HYPE":   classCrypto, // core coin relisted on a HIP-3 dex
+		"xyz:BOT":     classCrypto, // token perp also listed on Lighter
 	}
+	core["BOT"] = true // arrives through the cohort known-crypto set
 	for in, want := range cases {
 		if got := symbolClass(baseSymbol(in), true, core); got != want {
 			t.Errorf("symbolClass(%q) = %q, want %q", in, got, want)

@@ -218,7 +218,7 @@ providers:
 
   - slug: paradex
     name: Paradex
-    tag: Starknet appchain perps, 2 bps api taker tier
+    tag: Starknet appchain perps, Retail (interactive) book, 0 bps interactive taker tier
     formula: "Average over 24h of (interactive-tier taker rate from the Paradex /markets fee config + half-spread plus impact from the /orderbook/{market}/interactive asks, depth 100, walked for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="paradex"}[24h])

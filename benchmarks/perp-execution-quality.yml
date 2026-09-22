@@ -167,7 +167,7 @@ providers:
   - slug: ondo
     name: Ondo Perps
     tag: SGX-matched orderbook, custody on Ethereum and Arbitrum
-    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Ondo Perps on the selected asset: half-spread plus impact of a $100k market buy walked on GET /v1/perps/orderbook, in bps."
+    formula: "24 h average of perp_fees_all_in_bps_tier{notional=\"100000\"} minus perp_fees_taker_fee_bps for Ondo Perps on the selected asset: half-spread plus impact of a $100k market buy walked on GET /v1/perps/depth (100 levels), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps_tier{venue="ondo", notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{venue="ondo"}[24h])

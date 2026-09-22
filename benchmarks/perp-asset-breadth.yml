@@ -14,10 +14,10 @@ disclaimer: |
   Counts reflect each venue's live market catalog at query time, mainnet
   only. The asset class comes from the venue's own metadata where it
   publishes one; Hyperliquid HIP-3 dexes and dYdX publish none, so their
-  symbols are matched against a fixed table of forex, commodity and index
-  names (details in the methodology). Tokenized gold (PAXG, XAUT) is a
-  crypto token and is not counted. A market counts once whether it
-  trades 24/7 or only during exchange hours.
+  symbols are matched against the crypto markets the other venues list
+  and a fixed table of forex, commodity and index names. Tokenized gold
+  (PAXG, XAUT) is a crypto token and is not counted. A market counts once
+  whether it trades 24/7 or only during exchange hours.
 seo_intro: |
   Most perp DEX comparisons measure fees, funding and volume on BTC and
   ETH. They skip a structural question: which venues let you trade
@@ -58,7 +58,8 @@ abstract: |
 methodology:
   - "Cadence: every 60 seconds, one class count per venue per tick. Hyperliquid's HIP-3 dex list and Aster's exchangeInfo are refreshed every 10 minutes; the other catalogs are read on every tick."
   - "Classes: stocks (listed equities, ADRs, sector and country ETFs, pre-IPO synthetics such as OpenAI or SpaceX), indices (S&P 500, Nasdaq 100, KOSPI 200, Nikkei 225, US Treasuries, and the ETFs that track one: SPY, QQQ, IWM), forex (EUR/USD, USD/JPY, GBP/USD...), commodities (gold, silver, platinum, copper, WTI, Brent, natural gas). The ranking metric is the sum of the four; crypto is published for context in perp_venue_markets_by_class."
-  - "Hyperliquid: POST /info perpDexs lists the HIP-3 deployer dexes, POST /info meta with dex=<name> returns each dex's universe. Core universe markets are crypto. HIP-3 symbols are classified by the fixed table, a core coin relisted on a HIP-3 dex stays crypto, crypto indices (TOTAL2, OTHERS, BTC dominance) stay crypto, everything else on a HIP-3 dex is a stock."
+  - "Hyperliquid: POST /info perpDexs lists the HIP-3 deployer dexes, POST /info meta with dex=<name> returns each dex's universe. Core universe markets are crypto."
+  - "Hyperliquid HIP-3 symbols: crypto when any cohort venue lists the symbol as a crypto market (the core universe, Lighter, Aster, Extended, Paradex, dYdX, Ondo; xyz:BOT is a token also listed on Lighter) or when it is a crypto index (TOTAL2, OTHERS, BTC dominance); forex, commodity or index when the fixed table says so; a stock otherwise."
   - "Extended: GET /api/v1/info/markets, category RWA with subCategory Equity, Commodity, FX, ETF/Index or Pre-market. ETF/Index is split per symbol (SPX500m, JP225, KR200 are indices, EWY or SOXL are sector and country ETFs and count as stocks). A Crypto-category commodity such as PAXG stays crypto."
   - "Aster: GET /fapi/v1/exchangeInfo underlyingSubType. STOCK counts as stocks, Commodities as commodities, ETF and USD1-RWA are split per symbol (SPXUSDT is an index, XAUUSD1 a commodity). Linear USDT and USDC pairs only."
   - "Paradex: GET /markets tags. RWA-tagged perps are split per symbol into commodities (XAU, XAG, XPT, XCU, CL, NG, BZ), indices (US500, US100) and stocks (the rest). Options and dated futures are excluded."
@@ -73,7 +74,7 @@ findings:
   - "Hyperliquid reaches {{p50:hyperliquid}} non-crypto markets through HIP-3 deployer dexes (xyz, para, mkts, io): US and Asian equities, ETFs, gold, silver, oil, copper, JPY and EUR, S&P 500 and Nasdaq 100 style indices. The core Hyperliquid universe is still crypto-only."
   - "Extended lists {{p50:extended}} and Aster {{p50:aster}} non-crypto markets, both dominated by US stock perps, with a handful of commodities, indices and forex pairs on the side."
   - "Gains lists {{p50:gains}} non-crypto markets, the broadest forex catalog of the cohort (18 pairs) next to 68 stocks, 14 indices and 10 commodities. Ostium lists {{p50:ostium}} with forex, indices and commodities as its core catalog rather than an add-on."
-  - "Ondo Perps lists {{p50:ondo}}, Lighter {{p50:lighter}}, Paradex {{p50:paradex}}. GMX v2 lists {{p50:gmx-v2}} (gold, silver, WTI, Brent, natural gas, SPY, QQQ, a SpaceX synthetic) and dYdX v4 {{p50:dydx}} (EUR, TRY, WTI, XAG, TSLAX): the two older venues have added a handful of non-crypto markets, not a catalog."
+  - "Ondo Perps lists {{p50:ondo}}, Lighter {{p50:lighter}}, Paradex {{p50:paradex}}. GMX v2 lists {{p50:gmx-v2}} (gold, silver, WTI, Brent, natural gas, SPY, QQQ, a SpaceX synthetic) and dYdX v4 {{p50:dydx}} live markets from its reviewed list (EUR, TRY, WTI, XAG, TSLAX, whichever are ACTIVE): the two older venues have added a handful of non-crypto markets, not a catalog."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
   window: 24h
