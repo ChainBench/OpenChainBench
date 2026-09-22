@@ -41,16 +41,23 @@ export type PerpAssetVenueRow = {
   allInBps: number | null;
   /** perp-fees: taker fee bps, 24h avg. */
   takerFeeBps: number | null;
-  /** perp-fees tiers: slippage bps of a $100k market buy, fee excluded, 24h avg. */
+  /** perp-fees tiers: slippage bps of a $100k market buy, fee excluded, 24h avg.
+   *  Null when the book filled $100k on fewer than 90 % of the ticks (the
+   *  tier series only exists on filled ticks, so its average would be the
+   *  venue's deep hours only). */
   slippage100kBps: number | null;
+  /** Share of 24h ticks where the $100k tier was filled (0 to 1). */
+  slippage100kFill: number | null;
   /** Funding cost in bps to hold a long: 24h at the current rate (24h avg),
-   *  and the cost accumulated over the trailing 7 and 30 days. Signed,
+   *  and the cost accumulated over the days measured in the trailing 7 and
+   *  30 (average daily cost x days measured, never projected). Signed,
    *  positive means longs pay. */
   funding24hBps: number | null;
   funding7dBps: number | null;
   funding30dBps: number | null;
-  /** Samples behind funding30dBps; under 10 % of a month of minutes the
-   *  30d figure is a partial window (venue joined recently). */
+  /** Hourly samples behind funding30dBps (720 for a full month). The 30d
+   *  figure is the cost accumulated over samples / 24 days; under a full
+   *  month it is a partial window (venue joined recently). */
   funding30dSamples: number | null;
 };
 
@@ -115,24 +122,49 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
   // the perp-funding bench feed for cells it lacks. 7d and 30d are the
   // daily cost averaged over the window times the days in it: what a long
   // held for the whole window paid.
-  const fundingSel = (w: string) =>
-    `avg_over_time(perp_venue_funding_24h_bps{${ASSETS_RE}}[${w}]) or avg_over_time(perp_funding_hold_24h_bps{${ASSETS_RE}}[${w}])`;
-  const [f24, f7, f30, n30, allIn, taker, tier100k] = await Promise.all([
-    queryVector(prom, fundingSel("24h")),
-    queryVector(prom, `(${fundingSel("7d")}) * 7`),
-    queryVector(prom, `(${fundingSel("30d")}) * 30`),
-    queryVector(
-      prom,
-      `count_over_time(perp_venue_funding_24h_bps{${ASSETS_RE}}[30d]) or count_over_time(perp_funding_hold_24h_bps{${ASSETS_RE}}[30d])`,
-    ),
+  // The 7d and 30d windows are read on an hourly grid ([w:1h]): 720
+  // points per series instead of 43,200 minutes, so the query stays well
+  // inside the client's 10 s timeout. The accumulated cost is the average
+  // daily cost times the days actually measured (count / 24, capped at
+  // the window): a venue three days old shows three days of funding, not
+  // a month projected from them.
+  // Two funding feeds, queried apart and merged cohort-first below: a
+  // PromQL `or` keeps both when their label sets differ (the perp-funding
+  // bench series carry extra labels), which duplicated Binance and OKX.
+  const accumulated = (metric: string, w: string, days: number) => {
+    const sel = `${metric}{${ASSETS_RE}}[${w}:1h]`;
+    return `avg_over_time(${sel}) * clamp_max(count_over_time(${sel}) / 24, ${days})`;
+  };
+  const feeds = ["perp_venue_funding_24h_bps", "perp_funding_hold_24h_bps"] as const;
+  const [[f24a, f24b], [f7a, f7b], [f30a, f30b], [n30a, n30b], allIn, taker, tier100k, fill100k] = await Promise.all([
+    Promise.all(feeds.map((m) => queryVector(prom, `avg_over_time(${m}{${ASSETS_RE}}[24h])`))),
+    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "7d", 7)))),
+    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "30d", 30)))),
+    Promise.all(feeds.map((m) => queryVector(prom, `count_over_time(${m}{${ASSETS_RE}}[30d:1h])`))),
     queryVector(prom, `avg_over_time(perp_fees_all_in_bps{${CHAINS_RE}}[24h])`),
     queryVector(prom, `avg_over_time(perp_fees_taker_fee_bps{${CHAINS_RE}}[24h])`),
     queryVector(
       prom,
       `avg_over_time(perp_fees_all_in_bps_tier{${CHAINS_RE},notional="100000"}[24h]) - ignoring(notional) avg_over_time(perp_fees_taker_fee_bps{${CHAINS_RE}}[24h])`,
     ),
+    // Share of ticks where the $100k tier was filled. The tier gauge is
+    // deleted on ticks the book could not absorb $100k, so its average is
+    // the venue's deep hours only; below 90 % the slippage figure is not
+    // published for the venue.
+    queryVector(
+      prom,
+      `count_over_time(perp_fees_all_in_bps_tier{${CHAINS_RE},notional="100000"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps{${CHAINS_RE}}[24h])`,
+    ),
   ]);
-  if (f24.length === 0 && allIn.length === 0) return null;
+  // Every block has to answer; a timed-out 30d query would otherwise
+  // publish a complete-looking snapshot with a column of nulls and the
+  // previous good blob would be replaced by it.
+  // Cohort feed first, bench feed only for cells the cohort lacks.
+  const f24 = [...f24a, ...f24b];
+  const f7 = [...f7a, ...f7b];
+  const f30 = [...f30a, ...f30b];
+  const n30 = [...n30a, ...n30b];
+  if (f24a.length === 0 || allIn.length === 0 || f30a.length === 0 || f7a.length === 0) return null;
 
   const assets: PerpAssetCode[] = ["ETH", "BTC", "SOL"];
   const out = {} as Record<PerpAssetCode, PerpAssetPageData>;
@@ -146,6 +178,7 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
       allInBps: null,
       takerFeeBps: null,
       slippage100kBps: null,
+      slippage100kFill: null,
       funding24hBps: null,
       funding7dBps: null,
       funding30dBps: null,
@@ -154,12 +187,14 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     for (const v of PERP_VENUES) rows.set(v.slug, blank(v.slug, v.name, v.venueType));
     for (const [slug, name] of Object.entries(CEX_FUNDING_VENUES)) rows.set(slug, blank(slug, name, "cex"));
 
+    // First writer wins: samples are ordered cohort feed then bench feed.
     const put = (samples: Sample[], labelKey: "asset" | "chain", field: keyof PerpAssetVenueRow) => {
       for (const s of samples) {
         if (s.labels[labelKey] !== asset) continue;
         const row = rows.get(venueSlug(s.labels.venue ?? ""));
         if (!row) continue;
-        (row as unknown as Record<string, number | null>)[field] = s.value;
+        const target = row as unknown as Record<string, number | null>;
+        if (target[field] == null) target[field] = s.value;
       }
     };
     put(f24, "asset", "funding24hBps");
@@ -169,6 +204,10 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     put(allIn, "chain", "allInBps");
     put(taker, "chain", "takerFeeBps");
     put(tier100k, "chain", "slippage100kBps");
+    put(fill100k, "chain", "slippage100kFill");
+    for (const r of rows.values()) {
+      if (r.slippage100kBps != null && (r.slippage100kFill ?? 0) < 0.9) r.slippage100kBps = null;
+    }
 
     const has = (r: PerpAssetVenueRow) =>
       r.allInBps != null || r.funding24hBps != null || r.slippage100kBps != null;

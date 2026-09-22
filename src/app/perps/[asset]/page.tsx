@@ -43,9 +43,14 @@ const fmtSignedBps = (v: number | null): string => {
   return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(Math.abs(v) >= 100 ? 0 : 1)} bps`;
 };
 
-/** A month of minute samples; under a tenth of it the 30d cost is a
- *  partial window (the venue joined the cohort recently). */
-const MONTH_OF_MINUTES = 43_200;
+/** A month of hourly samples behind the 30d column. A venue is named as
+ *  the cheapest to hold over 30 days only with (nearly) the whole month
+ *  measured; a shorter window is shown with its day count. */
+const MONTH_OF_HOURS = 720;
+// Harness restarts leave hour-sized gaps in a month (628 of 720 hours
+// answered on 2026-09-22), so a full month is 80 % of the grid.
+const FULL_MONTH_MIN = MONTH_OF_HOURS * 0.8;
+const daysMeasured = (samples: number | null): number => Math.round(((samples ?? 0) / 24) * 10) / 10;
 
 function cheapest<K extends keyof PerpAssetVenueRow>(rows: PerpAssetVenueRow[], key: K): PerpAssetVenueRow | null {
   const withValue = rows.filter((r) => typeof r[key] === "number");
@@ -60,9 +65,9 @@ export async function generateMetadata({ params }: { params: Promise<{ asset: st
   const page = await fetchPerpAssetPage(a.asset);
   const rows = page ? sortPerpAssetRows(page.data.venues) : [];
   const fee = cheapest(rows, "allInBps");
-  // Same partial-window rule as the page: a venue with under a tenth of a
-  // month of samples does not get named as the cheapest to hold.
-  const fund = cheapest(rows.filter((r) => (r.funding30dSamples ?? 0) >= MONTH_OF_MINUTES / 10), "funding30dBps");
+  // Same rule as the page: only a venue with (nearly) the whole month
+  // measured is named the cheapest to hold over 30 days.
+  const fund = cheapest(rows.filter((r) => (r.funding30dSamples ?? 0) >= FULL_MONTH_MIN), "funding30dBps");
   const description = fee
     ? `${fee.name} opens a $1k ${a.asset} long at ${fmtBps(fee.allInBps)} all in${fund ? `, ${fund.name} was cheapest to hold over 30 days at ${fmtSignedBps(fund.funding30dBps)}` : ""}. ${rows.length} venues, fees, slippage and funding measured live.`
     : `${a.asset} perps compared across venues: all-in opening cost, $100k slippage, taker fee and funding over 24h, 7d and 30d, measured live from public APIs.`;
@@ -100,7 +105,7 @@ function VenueTable({ list, showFees }: { list: PerpAssetVenueRow[]; showFees: b
         </thead>
         <tbody>
           {list.map((r) => {
-            const partial = r.funding30dBps != null && (r.funding30dSamples ?? 0) < MONTH_OF_MINUTES / 10;
+            const partial = r.funding30dBps != null && (r.funding30dSamples ?? 0) < FULL_MONTH_MIN;
             return (
               <tr key={r.slug} className="border-b border-ink/5">
                 <td className="px-2 py-1.5">
@@ -125,8 +130,8 @@ function VenueTable({ list, showFees }: { list: PerpAssetVenueRow[]; showFees: b
                 <td className="num mono tabular-nums px-2 py-1.5 text-right whitespace-nowrap">
                   {fmtSignedBps(r.funding30dBps)}
                   {partial && (
-                    <span className="ml-1 text-[10px] text-ink-faint" title="Less than a tenth of a month of samples: the venue joined the cohort recently">
-                      partial
+                    <span className="ml-1 text-[10px] text-ink-faint" title="Funding accumulated over the days measured, not a full month: the venue joined the cohort recently">
+                      {daysMeasured(r.funding30dSamples)} d
                     </span>
                   )}
                 </td>
@@ -149,7 +154,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
   const cex = page ? sortPerpAssetRows(page.data.cex) : [];
   const fee = cheapest(rows, "allInBps");
   const slip = cheapest(rows, "slippage100kBps");
-  const fund30 = cheapest(rows.filter((r) => (r.funding30dSamples ?? 0) >= MONTH_OF_MINUTES / 10), "funding30dBps");
+  const fund30 = cheapest(rows.filter((r) => (r.funding30dSamples ?? 0) >= FULL_MONTH_MIN), "funding30dBps");
   const asOfIso = page ? new Date(page.asOf * 1000).toISOString() : null;
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}/perps/${a.slug}`;
@@ -169,18 +174,18 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     {
       q: `Where does a $100k ${a.asset} market order slip the least?`,
       a: slip
-        ? `${slip.name}, at ${fmtBps(slip.slippage100kBps)} of half spread plus impact with the fee excluded, walked on the venue's public order book every 30 seconds (perp-execution-quality benchmark). Oracle-priced venues (GMX v2, Gains) have no book to walk and are not in that column.`
+        ? `${slip.name}, at ${fmtBps(slip.slippage100kBps)} of half spread plus impact with the fee excluded, walked on the venue's public order book every 30 seconds (perp-execution-quality benchmark). Venues whose book filled $100k on fewer than 90 percent of the ticks are not shown in that column, and oracle-priced venues (GMX v2, Gains) have no book to walk.`
         : `The perp-execution-quality benchmark ranks it live.`,
     },
     {
       q: `Which venue was cheapest to hold an ${a.asset} long over the last 30 days?`,
       a: fund30
-        ? `${fund30.name}, at ${fmtSignedBps(fund30.funding30dBps)} of funding accumulated over the trailing 30 days (positive means the long paid). Venues that joined the cohort less than a month ago show a partial window and are not counted for this answer.`
+        ? `${fund30.name}, at ${fmtSignedBps(fund30.funding30dBps)} of funding accumulated over the trailing 30 days (positive means the long paid). Venues measured for less than the whole month show the days behind their figure and are not counted for this answer.`
         : `The perp-funding-cost-30d benchmark ranks it once a month of samples exists.`,
     },
     {
       q: "How is funding over 7 and 30 days computed?",
-      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series over the window and multiply by the days in it: the funding a long held for the whole window paid, in basis points of notional.",
+      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series on an hourly grid and multiply by the days actually measured in the window (capped at 7 and 30): the funding a long held over those days paid, in basis points of notional. A venue that joined recently shows its day count next to the figure.",
     },
     {
       q: "Why are Binance, Bybit and OKX listed under the DEXs?",
@@ -188,14 +193,18 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     },
   ];
 
-  const jsonLd = {
+  // Without data the page says so in the body; it must not also ship a
+  // Dataset and FAQ answers that read "unavailable" into the crawl for
+  // the hour the render is cached.
+  const breadcrumb = buildBreadcrumbJsonLd([
+    { name: "Home", item: SITE.url },
+    { name: "Perp DEX leaderboard", item: `${SITE.url}/perps` },
+    { name: `${a.asset} perps`, item: pageUrl },
+  ]);
+  const jsonLd = rows.length === 0 ? { "@context": "https://schema.org", "@graph": [breadcrumb] } : {
     "@context": "https://schema.org",
     "@graph": [
-      buildBreadcrumbJsonLd([
-        { name: "Home", item: SITE.url },
-        { name: "Perp DEX leaderboard", item: `${SITE.url}/perps` },
-        { name: `${a.asset} perps`, item: pageUrl },
-      ]),
+      breadcrumb,
       {
         "@type": "Dataset",
         "@id": `${pageUrl}#dataset`,
@@ -265,7 +274,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
         <>
           <h2 className="display text-xl sm:text-2xl text-ink mb-3">{rows.length} venues listing {a.asset} perps</h2>
           <p className="text-sm text-ink-soft mb-3 max-w-3xl">
-            All-in cost is the taker fee plus half spread plus impact of a $1,000 market long, 24h average (perp-fees). Slippage is the same walk at $100,000 with the fee removed (perp-execution-quality); oracle-priced venues have no book and no slippage column. Funding is the cost of holding a long: at the current rate for 24h, and accumulated over the trailing 7 and 30 days; positive means the long paid.
+            All-in cost is the taker fee plus half spread plus impact of a $1,000 market long, 24h average (perp-fees). Slippage is the same walk at $100,000 with the fee removed (perp-execution-quality), shown only where the book filled $100k on at least 90 percent of the ticks; oracle-priced venues have no book and no slippage column. Funding is the cost of holding a long: at the current rate for 24h, and accumulated over the days measured in the trailing 7 and 30 (a day count marks a venue measured for less than the full window); positive means the long paid.
           </p>
           <VenueTable list={rows} showFees />
           {cex.length > 0 && (
