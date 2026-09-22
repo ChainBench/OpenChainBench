@@ -4,7 +4,7 @@ slug: solana-dex-volume
 number: "205"
 title: "Solana DEX volume: pump.fun vs Axiom vs GMGN vs Fomo, live 24h"
 seo_title: "Solana DEX trading volume 2026: pump.fun vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX"
-seo_description: "{{best_name}} leads Solana DEX trading platforms at ${{best_p50}} 24h volume. pump.fun vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX ranked live from DeFiLlama."
+seo_description: "{{best_name}} leads Solana DEX trading platforms at {{best_p50}} 24h volume. pump.fun vs Axiom vs GMGN vs Fomo vs Trojan vs Photon vs BullX ranked live from DeFiLlama."
 subtitle: Live 24-hour trading volume and protocol revenue for the top Solana DEX platforms. Updated every 30 minutes from DeFiLlama. The fee column shows what each protocol earns, not what users pay in gas.
 
 category: Trading
@@ -60,7 +60,7 @@ methodology:
   - "Phantom: Phantom Wallet is the largest Solana wallet by user count but does not have its own DeFiLlama DEX slug. Phantom routes swaps through Jupiter and other aggregators, which appear in those protocols' volume figures."
 
 findings:
-  - "{{best_name}} leads Solana DEX platforms at ${{best_p50}} 24h volume."
+  - "{{best_name}} leads Solana DEX platforms at {{best_p50}} 24h volume."
   - "pump.fun dominates early-stage token volume with its bonding-curve launchpad, even after cutting trading fees to zero on Aug 7 2026."
   - "Axiom and GMGN are the leading independent trading terminals, each routing around $70 million per day on graduated tokens."
   - "Fomo briefly outpaced Axiom in daily revenue on Aug 6 2026, the event that triggered pump.fun's zero-fee response the following day."

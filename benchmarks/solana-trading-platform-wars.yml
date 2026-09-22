@@ -4,7 +4,7 @@ slug: solana-trading-platform-wars
 number: "201"
 title: "Trading platform leaderboard: GMGN vs Axiom vs Fomo vs pump.fun, live 24h volume"
 seo_title: "Trading platform volume 24h: GMGN vs Axiom vs Fomo vs Trojan"
-seo_description: "{{best_name}} leads trading platforms at ${{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Terminal vs BasedBot ranked live from Dune community datasets."
+seo_description: "{{best_name}} leads trading platforms at {{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Terminal vs BasedBot ranked live from Dune community datasets."
 subtitle: Live 24-hour trading volume per platform and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed every 4 hours.
 
 category: Trading
@@ -50,7 +50,7 @@ methodology:
   - "BasedBot: multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM, Avalanche)."
 
 findings:
-  - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
+  - "{{best_name}} leads Solana trading platforms at {{best_p50}} 24h volume."
   - "GMGN and Axiom consistently rank at the top of the leaderboard and regularly trade places. Both serve power traders with web-based terminals; GMGN emphasizes AI copy-trading while Axiom focuses on execution speed."
   - "Fomo closed the gap on Axiom and briefly overtook it on daily revenue around August 5-8 2026; as of mid-August Axiom leads again, making the top three a contested race with positions that shift by the week."
   - "Trojan serves the Telegram-native segment and accounts for significant bot-driven Solana swap flow. Padre is a web trading terminal, not a Telegram bot."

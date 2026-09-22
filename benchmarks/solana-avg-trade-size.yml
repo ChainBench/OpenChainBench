@@ -4,7 +4,7 @@ slug: solana-avg-trade-size
 number: "206"
 title: "Average swap size on Solana: pump.fun vs GMGN vs Fomo vs Axiom, live"
 seo_title: "Average trade size by Solana trading platform 2026: pump.fun vs GMGN vs Axiom vs Fomo"
-seo_description: "{{best_name}} has the largest average swap size at ${{best_p50}} per trade. pump.fun vs GMGN vs Axiom vs Fomo vs Trojan ranked by average trade size, live from Mobula lighthouse."
+seo_description: "{{best_name}} has the largest average swap size at {{best_p50}} per trade. pump.fun vs GMGN vs Axiom vs Fomo vs Trojan ranked by average trade size, live from Mobula lighthouse."
 subtitle: Live average swap size in USD per attributed transaction for each Solana trading platform and launchpad. Polled every 15 minutes from Mobula lighthouse. Reveals the trader profile of each platform, from retail micro-trades to sophisticated large-order flow.
 
 category: Trading
@@ -44,7 +44,7 @@ methodology:
   - "Meteora DBC excluded: Meteora DBC counts LP provision events and micro-rebalances as trades, making its avg size of ~$12 not comparable to pure swap activity."
 
 findings:
-  - "{{best_name}} attracts the largest average swap at ${{best_p50}} per transaction."
+  - "{{best_name}} attracts the largest average swap at {{best_p50}} per transaction."
   - "pump.fun has the smallest average swap size in the set, dominated by bot sniping and micro-cap degen retail flow on its bonding-curve launchpad."
   - "GMGN and Trojan consistently lead on average swap size, serving more sophisticated traders with larger position sizes. Note: Mobula's volume attribution for GMGN and Trojan is broader than fee-paying volume (only ~8% of attributed volume generates a fee event per bench 203), so average size comparisons with pump.fun should be treated as directional."
   - "Fomo sits mid-market between retail launchpad activity and professional terminals."
