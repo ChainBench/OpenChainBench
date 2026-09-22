@@ -3,8 +3,8 @@
 slug: hyperliquid-hip3-deployers
 number: "035"
 title: Hyperliquid HIP-3 deployer revenue leaderboard
-seo_title: "Hyperliquid HIP-3 dex deployer fees 2026"
-seo_description: "{{best_name}} collected {{best_p50}} in HIP-3 deployer fees over 24h, the most of {{count}} builder-deployed dexes on Hyperliquid. Every deployer ranked live, read from a local hl node every 30 seconds."
+seo_title: "HIP-3 deployers on Hyperliquid ranked by fees: {{best_name}} first"
+seo_description: "{{count}} HIP-3 builder dexes on Hyperliquid ranked by deployer fees: {{best_name}} collected {{best_p50}} in 24 h. Live 24 h, 7 d and 30 d windows from a local hl node."
 subtitle: How much USD deployer fee revenue each HIP-3 builder-deployed dex collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live

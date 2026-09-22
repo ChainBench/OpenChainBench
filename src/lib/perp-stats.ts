@@ -22,7 +22,10 @@ import {
   writeCohortSnapshot,
 } from "@/lib/cohort-snapshot";
 
-export type PerpVenueType = "onchain";
+// "onchain": DEX (orderbook or pool settled on a chain). "regulated": a
+// licensed exchange with a margin account (Kalshi, CFTC DCM), kept in the
+// cohort so the regulated row can be read next to the DEXs.
+export type PerpVenueType = "onchain" | "regulated";
 
 export type PerpVenueRow = {
   slug: string;
@@ -92,7 +95,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
   { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
-  { slug: "vertex",      name: "Vertex",      chain: "Arbitrum",      venueType: "onchain" },
+  { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet",      venueType: "onchain" },
   { slug: "aster",       name: "Aster",       chain: "BNB Chain",     venueType: "onchain" },
   { slug: "edgex",       name: "EdgeX",       chain: "zkSync",        venueType: "onchain" },
@@ -106,6 +109,13 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "kiloex",     name: "KiloEx",     chain: "BSC, Base, opBNB", venueType: "onchain" },
   { slug: "orderly",    name: "Orderly",    chain: "Multi-chain",   venueType: "onchain" },
   { slug: "backpack",   name: "Backpack",   chain: "Solana",        venueType: "onchain" },
+  { slug: "kalshi",     name: "Kalshi",     chain: "US, CFTC DCM",  venueType: "regulated" },
+  { slug: "vest",       name: "Vest",       chain: "Vest zk appchain", venueType: "onchain" },
+  { slug: "standx",     name: "StandX",     chain: "BNB Chain",     venueType: "onchain" },
+  { slug: "apex",       name: "ApeX Omni",  chain: "Omnichain",     venueType: "onchain" },
+  { slug: "jupiter",    name: "Jupiter Perps", chain: "Solana",     venueType: "onchain" },
+  { slug: "lighter-rh", name: "Lighter RH", chain: "Lighter L2, Robinhood", venueType: "onchain" },
+  { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
 ];
 
 function promUrl(): string | null {

@@ -217,6 +217,54 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="ondo",source="ondo_native"} > bool (time() - 900))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, funding settled every 8 hours (00:00, 08:00, 16:00 ET)
+    formula: "Last settled funding_rate per market from GET /trade-api/v2/margin/funding_rates/historical x 3 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="kalshi",source="kalshi_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, hourly funding read from /v2/ticker/latest
+    formula: "oneHrFundingRate from GET /v2/ticker/latest (BTC-PERP, ETH-PERP, SOL-PERP) x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="vest",source="vest_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain, hourly funding
+    formula: "funding_rate per symbol from GET /api/query_market_overview (hourly) x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="standx",source="standx_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, hourly funding
+    formula: "fundingRate from GET /api/v3/ticker (hourly) x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="apex",source="apex_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
 metric_panels:
   - id: annualized
     label: Annualized (ETH)

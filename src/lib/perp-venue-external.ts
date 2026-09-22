@@ -367,12 +367,12 @@ async function fetchDydxStats(): Promise<PerpVenueExternalStats> {
 }
 
 // ---------------------------------------------------------------------------
-// Vertex — DeFiLlama
+// Nado (ex Vertex) — DeFiLlama
 // ---------------------------------------------------------------------------
 
 async function fetchVertexStats(): Promise<PerpVenueExternalStats> {
   const fees = await jf<LlamaChartResp>(
-    "https://api.llama.fi/summary/fees/vertex-perps",
+    "https://api.llama.fi/summary/fees/nado",
   );
   if (!fees) return {};
 
@@ -744,7 +744,7 @@ async function fetchVenueRaw(
         return await fetchHyperliquidStats();
       case "dydx":
         return await fetchDydxStats();
-      case "vertex":
+      case "nado":
         return await fetchVertexStats();
       case "aevo":
         return await fetchAevoStats();

@@ -26,15 +26,34 @@ import (
 // `status=="active"`.
 type LighterNativeSource struct {
 	client *http.Client
+	venue  string
+	base   string
+	name   string
+	// classify hands the perp symbols to the router's cross-venue
+	// classification (the Robinhood deployment lists equities next to
+	// tokens and has no asset class); mainnet keeps Mobula's taxonomy.
+	classify bool
 }
 
 func NewLighterNativeSource() *LighterNativeSource {
+	return NewLighterDeploymentSource("lighter", "https://mainnet.zklighter.elliot.ai/api/v1", srcLighterNative)
+}
+
+// NewLighterDeploymentSource reads one Lighter deployment. Lighter runs
+// the same API on separate hosts per deployment (mainnet, and the
+// Robinhood-branded api.rh.lighter.xyz since 2026), each with its own
+// order books and volume.
+func NewLighterDeploymentSource(venue, base, name string) *LighterNativeSource {
 	return &LighterNativeSource{
-		client: &http.Client{Timeout: 15 * time.Second},
+		client:   &http.Client{Timeout: 15 * time.Second},
+		venue:    venue,
+		base:     base,
+		name:     name,
+		classify: venue != "lighter",
 	}
 }
 
-func (s *LighterNativeSource) Name() string { return srcLighterNative }
+func (s *LighterNativeSource) Name() string { return s.name }
 
 type lighterExchangeStats struct {
 	Code           int                  `json:"code"`
@@ -51,8 +70,8 @@ type lighterMarketStats struct {
 }
 
 type lighterOrderBookDetails struct {
-	Code              int                  `json:"code"`
-	OrderBookDetails  []lighterOrderBookDetail `json:"order_book_details"`
+	Code             int                      `json:"code"`
+	OrderBookDetails []lighterOrderBookDetail `json:"order_book_details"`
 }
 
 type lighterOrderBookDetail struct {
@@ -65,18 +84,18 @@ type lighterOrderBookDetail struct {
 
 func (s *LighterNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
-	venue := "lighter"
+	venue := s.venue
 
 	// Pass 1: /exchangeStats for 24h volume + top-market volume.
-	body, err := s.get("https://mainnet.zklighter.elliot.ai/api/v1/exchangeStats")
+	body, err := s.get(s.base + "/exchangeStats")
 	if err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcLighterNative, classifyError(err.Error())).Inc()
-		fmt.Printf("[perp-cohort][%s][%s] err exchangeStats: %v\n", venue, srcLighterNative, err)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err exchangeStats: %v\n", venue, s.name, err)
 	} else {
 		var es lighterExchangeStats
 		if err := json.Unmarshal(body, &es); err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcLighterNative, "parse").Inc()
-			fmt.Printf("[perp-cohort][%s][%s] err parse exchangeStats: %v\n", venue, srcLighterNative, err)
+			perpCohortFetchErrors.WithLabelValues(venue, s.name, "parse").Inc()
+			fmt.Printf("[perp-cohort][%s][%s] err parse exchangeStats: %v\n", venue, s.name, err)
 		} else {
 			var volSum, topVol float64
 			for _, m := range es.OrderBookStats {
@@ -88,34 +107,39 @@ func (s *LighterNativeSource) Fetch() (*SourceResult, error) {
 			res.SetIfPositive(venue, mVolume24h, volSum)
 			res.SetIfPositive(venue, mTopVol24h, topVol)
 			fmt.Printf("[perp-cohort][%s][%s] ok exchangeStats: markets=%d vol24h=%.0f top24h=%.0f\n",
-				venue, srcLighterNative, len(es.OrderBookStats), volSum, topVol)
+				venue, s.name, len(es.OrderBookStats), volSum, topVol)
 		}
 	}
 
 	// Pass 2: /orderBookDetails for OI sum + active market count.
-	body2, err := s.get("https://mainnet.zklighter.elliot.ai/api/v1/orderBookDetails")
+	body2, err := s.get(s.base + "/orderBookDetails")
 	if err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcLighterNative, classifyError(err.Error())).Inc()
-		fmt.Printf("[perp-cohort][%s][%s] err orderBookDetails: %v\n", venue, srcLighterNative, err)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err orderBookDetails: %v\n", venue, s.name, err)
 	} else {
 		var ob lighterOrderBookDetails
 		if err := json.Unmarshal(body2, &ob); err != nil {
-			perpCohortFetchErrors.WithLabelValues(venue, srcLighterNative, "parse").Inc()
-			fmt.Printf("[perp-cohort][%s][%s] err parse orderBookDetails: %v\n", venue, srcLighterNative, err)
+			perpCohortFetchErrors.WithLabelValues(venue, s.name, "parse").Inc()
+			fmt.Printf("[perp-cohort][%s][%s] err parse orderBookDetails: %v\n", venue, s.name, err)
 		} else {
 			var oiSum float64
 			var active int
+			var syms []string
 			for _, m := range ob.OrderBookDetails {
 				if m.MarketType != "perp" || m.Status != "active" {
 					continue
 				}
 				active++
 				oiSum += m.OpenInterest * m.LastTradePrice
+				syms = append(syms, baseSymbol(m.Symbol))
 			}
 			res.SetIfPositive(venue, mOI, oiSum)
 			res.SetIfPositive(venue, mActiveMarkets, float64(active))
+			if s.classify {
+				res.SetUnclassified(venue, syms)
+			}
 			fmt.Printf("[perp-cohort][%s][%s] ok orderBookDetails: active=%d oi=%.0f\n",
-				venue, srcLighterNative, active, oiSum)
+				venue, s.name, active, oiSum)
 		}
 	}
 

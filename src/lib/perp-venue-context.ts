@@ -31,7 +31,7 @@ export const PERP_VENUE_META: Record<
   "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: "gmx" },
   gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum, Base, Polygon, ApeChain" },
   dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
-  vertex:      { url: "https://vertexprotocol.com", chainLabel: "Arbitrum" },
+  nado:        { url: "https://nado.xyz",        chainLabel: "Ink" },
   paradex:     { url: "https://paradex.trade",   chainLabel: "Starknet" },
   aster:       { url: "https://asterdex.com",    chainLabel: "BNB Chain" },
   edgex:       { url: "https://pro.edgex.exchange", chainLabel: "zkSync" },
@@ -45,6 +45,13 @@ export const PERP_VENUE_META: Record<
   kiloex:      { url: "https://kiloex.io",       chainLabel: "BSC, Base, opBNB" },
   orderly:     { url: "https://orderly.network", chainLabel: "Multi-chain" },
   backpack:    { url: "https://backpack.exchange", chainLabel: "Solana" },
+  kalshi:      { url: "https://kalshi.com/perpetuals", chainLabel: "US, CFTC DCM" },
+  vest:        { url: "https://vest.exchange",   chainLabel: "Vest zk appchain" },
+  standx:      { url: "https://standx.com",      chainLabel: "BNB Chain" },
+  apex:        { url: "https://omni.apex.exchange", chainLabel: "Omnichain" },
+  jupiter:     { url: "https://jup.ag/perps",    chainLabel: "Solana" },
+  "lighter-rh": { url: "https://rh.lighter.xyz", chainLabel: "Lighter L2, Robinhood" },
+  "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: "xyz" },
 };
 
 /**
@@ -54,8 +61,20 @@ export const PERP_VENUE_META: Record<
  */
 export const PERP_PRODUCT_PILL_SLUGS: ReadonlySet<string> = new Set([
   ...Object.keys(PERP_VENUE_META),
-  "gmx", // PROVIDER_REGISTRY entry; cohort key is gmx-v2
+  // PROVIDER_REGISTRY entries whose cohort key differs (gmx for gmx-v2,
+  // xyz for trade-xyz).
+  ...Object.values(PERP_VENUE_META).flatMap((m) => (m.productSlug ? [m.productSlug] : [])),
 ]);
+
+/** Cohort key for a product slug: the key itself, or the key whose
+ *  productSlug names it (gmx -> gmx-v2, xyz -> trade-xyz). */
+export function perpCohortSlugForProduct(slug: string): string | null {
+  if (PERP_VENUE_META[slug]) return slug;
+  for (const [key, meta] of Object.entries(PERP_VENUE_META)) {
+    if (meta.productSlug === slug) return key;
+  }
+  return null;
+}
 
 export type PerpVenueContext = {
   kind: "venue";
@@ -77,11 +96,9 @@ export async function getPerpVenueContext(
   slug: string,
   feesAtSizeBench?: Benchmark | null,
 ): Promise<PerpVenueContext | null> {
-  // Map product slug to cohort slug for the few that differ. Today
-  // only GMX is split (PROVIDER_REGISTRY entry "gmx", cohort label
-  // "gmx-v2"); everything else lines up 1:1.
-  const cohortSlug =
-    slug === "gmx" ? "gmx-v2" : PERP_VENUE_META[slug] ? slug : null;
+  // Map product slug to cohort slug for the few that differ (gmx ->
+  // gmx-v2, xyz -> trade-xyz); everything else lines up 1:1.
+  const cohortSlug = perpCohortSlugForProduct(slug);
   if (!cohortSlug) return null;
 
   const meta = PERP_VENUE_META[cohortSlug];
