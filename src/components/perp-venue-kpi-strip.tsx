@@ -19,17 +19,17 @@ export function PerpVenueKpiStrip({ kpis }: { kpis: PerpVenueKpis }) {
 
   if (kpis.volume30d != null) {
     cards.push({
-      label: "Volume 30d",
+      label: "Volume 30d, OpenChainBench average",
       value: fmtUSD(kpis.volume30d),
-      tip: "USD notional traded over the rolling 30 day window.",
+      tip: "USD notional traded over the rolling 30 day window, from the cohort harness (perp markets the venue reports).",
     });
   }
 
   if (kpis.openInterest != null) {
     cards.push({
-      label: "Open Interest",
+      label: "Open interest, perps only",
       value: fmtUSD(kpis.openInterest),
-      tip: "USD value of outstanding positions on active markets.",
+      tip: "USD value of outstanding positions on the venue's perp markets, from the cohort harness. The Venue data block below may quote a wider perimeter (all markets, builder dexes).",
     });
   }
 

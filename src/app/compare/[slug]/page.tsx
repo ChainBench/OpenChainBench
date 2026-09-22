@@ -253,8 +253,16 @@ export async function generateMetadata({
     .filter((t) => Number.isFinite(t))
     .sort((x, y) => y - x)[0];
   const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
+  // The verdict the body lede opens with ("Hyperliquid leads on 5 of 13
+  // shared benchmarks, Lighter on 8"), not a count and a date alone: the
+  // compare template converts best on the site and its snippet said
+  // nothing measurable (audit 2026-09-22).
+  const verdictRows = await buildSharedBenches(pair, a, b);
+  const verdict = buildComparisonProse(verdictRows, a.name, b.name).split(/(?<=\.)\s+/)[0] ?? "";
   const description = capDescription(
-    `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
+    verdict
+      ? `${verdict} Fees, volume, funding and latency measured live. As of ${isoDate}.`
+      : `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
     158,
   );
 
@@ -944,7 +952,16 @@ export default async function ComparePage({
     })),
   };
 
-  const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+  // Dated like the meta description: the newest measurement across the
+  // shared benches, so the page body carries the as-of the snippet states.
+  const proseRun = [...a.appearances, ...b.appearances]
+    .filter((x) => shared.some((s) => s.slug === x.benchmark.slug))
+    .map((x) => Date.parse(x.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => y - x)[0];
+  const proseAsOf = proseRun ? ` Data as of ${new Date(proseRun).toISOString().split("T")[0]} UTC.` : "";
+  const baseProse = buildComparisonProse(shared, a.name, b.name);
+  const comparisonProse = baseProse ? baseProse + proseAsOf : "";
   const perpPair =
     pair.hero === "perp-volume" ||
     (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));

@@ -10,6 +10,7 @@ import {
   fieldValue,
   headlineSentence,
   leader,
+  leaders,
   rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
@@ -128,6 +129,11 @@ export async function GET(
       insufficient || !top
         ? null
         : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
+    // Every provider tied with the leader on the displayed figure;
+    // `leader` stays leaders[0] for consumers that predate the field.
+    leaders: insufficient
+      ? []
+      : leaders(b).map((l) => ({ ...l, value: valueInDeclaredUnit(l.value, b.unit) })),
     // Shares `rankedCandidates` with `leader()` so `rankings[0]`
     // stays consistent with the `leader` field on the same JSON blob:
     // a document that names Etherscan as leader must not also list

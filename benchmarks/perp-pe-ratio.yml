@@ -3,8 +3,8 @@
 slug: perp-pe-ratio
 number: "234"
 title: "Perp DEX token P/E ratio 2026: Hyperliquid, Lighter, GMX, dYdX, GNS live"
-seo_title: "Perp DEX P/E ratio: {{best_name}} lowest at {{best_p50}}, live"
-seo_description: "{{best_name}} has the lowest P/E ratio at {{best_p50}} among perp DEX tokens. FDV divided by annualized protocol revenue for Hyperliquid, Lighter, Jupiter, GMX, Gains, dYdX, ApeX, SynFutures, Derive, Drift. Live from DeFiLlama and CoinGecko, updated hourly."
+seo_title: "Perp DEX P/E ratio: {{best_name}} lowest at {{best_p50}}"
+seo_description: "{{best_name}} has the lowest P/E among perp DEX tokens at {{best_p50}}: FDV over annualized revenue for Hyperliquid, Jupiter, GMX, Gains, dYdX and ApeX, hourly."
 subtitle: FDV divided by annualized protocol revenue (30-day trailing average) for the major perp DEX tokens. Lower is cheaper relative to earnings. Updated hourly from DeFiLlama and CoinGecko.
 
 category: Trading

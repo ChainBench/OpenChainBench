@@ -2,8 +2,8 @@
 slug: perp-asset-breadth
 number: "124"
 title: "Perp DEX asset breadth: non-crypto markets live, stocks + indices + forex + commodities"
-seo_title: "Perp DEX asset breadth 2026: {{best_name}} lists {{best_p50}} non-crypto perps"
-seo_description: "{{best_name}} lists {{best_p50}} non-crypto perp markets (stocks, indices, forex, commodities), {{worst_name}} {{worst_p50}}. {{count}} venues, read from each venue's own catalog every 60 seconds."
+seo_title: "Non-crypto perp markets: {{best_name}} lists {{best_p50}}"
+seo_description: "{{best_name}} lists {{best_p50}} non-crypto perp markets (stocks, indices, forex, commodities), {{worst_name}} {{worst_p50}}. {{count}} venues, read from each catalog every minute."
 subtitle: "Number of tradable non-crypto perpetual markets per venue: tokenized stocks and ETFs, equity indices, forex pairs and commodities. Higher means broader coverage beyond BTC, ETH and SOL. Read from each venue's own market catalog and asset tags every 60 seconds across {{count}} venues, including Hyperliquid HIP-3, Extended, Aster, Ostium, Gains and Lighter."
 category: Trading
 status: live

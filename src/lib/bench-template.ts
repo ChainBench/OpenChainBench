@@ -58,7 +58,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
-import { citationCandidates } from "@/lib/citation";
+import { citationCandidates, joinNames, leaderNames } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
@@ -246,8 +246,13 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         const raw = provider.ms[k as "p50" | "p90" | "p99" | "mean"];
         return fmtUnit(raw, benchmark.unit);
       }
-      case "best_name":
+      case "best_name": {
+        // Every provider tied on the displayed figure, so a title never
+        // crowns one of two venues the body says are level.
+        const tied = leaderNames(benchmark);
+        if (tied.length > 0) return joinNames(tied);
         return best ? best.name : UNRESOLVED;
+      }
       case "best_p50":
         return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
       case "worst_name":
