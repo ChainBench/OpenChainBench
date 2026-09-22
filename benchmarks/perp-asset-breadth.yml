@@ -4,7 +4,7 @@ slug: perp-asset-breadth
 number: "124"
 title: "Perp DEX asset breadth: non-crypto markets live, forex + stocks + indices + commodities"
 seo_title: "Perp DEX asset breadth 2026"
-seo_description: "Gains leads perp DEX asset breadth with 110+ non-crypto markets live: 18 forex pairs (EUR/USD, GBP/JPY...), 68 stocks (AAPL, TSLA, NVDA...), 14 indices (SPX, NDX...) and 10 commodities (XAU, WTI...). Hyperliquid, GMX, dYdX are crypto-only. Live count updated every 5 minutes from the Mobula perp catalog."
+seo_description: "Hyperliquid leads perp DEX asset breadth with 143 non-crypto markets live, through its HIP-3 builder dexes (TSLA, NVDA, GOLD, EUR, US500). Extended 131, Aster 124, Gains 110 across forex, stocks, indices and commodities. Live count updated every 5 minutes."
 subtitle: "Total number of tradable non-crypto perpetual markets per venue: forex currency pairs, tokenized stocks, indices and commodities. Higher means broader asset coverage beyond BTC/ETH/SOL. Live count updated every 5 minutes."
 category: Trading
 status: live
@@ -13,7 +13,7 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  Market count reflects the Mobula perp pairs catalog at query time. Only mainnet markets are counted (testnets excluded). Asset class tags (forex, stocks, indices, commodities) are assigned by Mobula's editorial taxonomy and updated when new pairs are listed. Venues not in the Mobula catalog (Hyperliquid, GMX, dYdX, Ostium, Vertex, Paradex, Aster) are monitored separately: their catalogs are crypto-only or verified crypto-only by native API.
+  Counts reflect each venue's catalog at query time, mainnet only (testnets excluded). Gains and Lighter are classed by Mobula's editorial assetClass tag; the other venues by the same four classes read from their own APIs. Hyperliquid's total includes markets deployed by third parties under HIP-3, which the exchange hosts but does not list itself.
 
 seo_intro: |
   Most perp DEX comparisons measure fees, funding and volume on BTC and ETH.
@@ -23,44 +23,45 @@ seo_intro: |
   stocks like AAPL and NVDA, indices like SPX and NDX, and commodities like
   XAU and WTI crude, across the major onchain perp venues.
 
-  The results are stark. Gains lists over 110 non-crypto perpetual
-  markets, the widest catalog among EVM perp DEXes. Lighter lists around 40.
-  Hyperliquid, GMX, dYdX, Ostium and Vertex have no non-crypto markets or
-  only crypto. For a trader who wants to hedge a forex position or get
-  leveraged exposure to US equities on-chain without a centralized
-  intermediary, Gains is the only EVM venue with meaningful depth
-  across all four non-crypto asset classes.
+  The ranking changed hands in 2026. Hyperliquid now lists the most,
+  around 143, not on its core exchange but through HIP-3: ten builder-deployed
+  dexes carrying equities, indices, metals and FX (xyz:TSLA, km:EUR,
+  cash:US500). Extended and Aster follow. Gains, at about 110, remains the
+  widest catalog native to a single EVM venue and the deepest across all four
+  classes at once. GMX v2 and dYdX v4 stay effectively crypto-only.
+
+  For a trader hedging FX or taking leveraged equity exposure on-chain, the
+  question is no longer "which venue has any of this" but which one has it
+  natively rather than through a third-party deployer.
 
 abstract: |
-  The harness calls the Mobula perp pairs catalog (GET /api/2/perp/pairs)
-  every 5 minutes. Each pair in the response carries an assetClass tag
-  assigned by Mobula editorial taxonomy: crypto, forex, stocks, indices,
-  commodities, degen or new. The bench aggregates the count of pairs per
-  venue whose assetClass is one of the four core non-crypto classes (forex,
-  stocks, indices, commodities). degen (leverage variants of crypto pairs)
-  and new (newly listed, unclassified) are excluded as they do not represent
-  genuine asset class breadth.
+  Every 5 minutes the harness counts, per venue, the live markets whose asset
+  class is forex, stocks, indices or commodities. Gains and Lighter come from
+  the Mobula perp pairs catalog (GET /api/2/perp/pairs) and its assetClass
+  tag; the other venues come from their own APIs through the same cohort
+  harness. degen (leverage variants of crypto pairs) and new (listed but
+  unclassified) are excluded: neither is a new asset class.
 
-  For venues not in the Mobula catalog (Hyperliquid, GMX, dYdX, Ostium,
-  Vertex, Paradex, Aster), the bench emits 0 after verifying via native
-  API that their catalogs contain no forex, stocks, indices or commodity
-  markets.
+  Hyperliquid is counted across its HIP-3 builder dexes as well as its core
+  universe. Those markets are deployed by third parties on Hyperliquid, not
+  listed by the exchange itself, and the count says so rather than crediting
+  or discounting them silently.
 
 methodology:
-  - "Cadence: every 5 minutes. Source: Mobula /api/2/perp/pairs for Gains and Lighter; native venue APIs for others."
+  - "Cadence: every 5 minutes. Source: Mobula /api/2/perp/pairs for Gains and Lighter; each other venue through its own API in the same cohort harness."
   - "Gains: Mobula catalog bucketed by assetClass. Counted classes: forex (EUR/USD, GBP/JPY...), stocks (AAPL, TSLA, NVDA, AMZN...), indices (SPX, NDX, DJI...), commodities (XAU, XAG, WTI, NATGAS...). Mainnet only (arbitrum-sepolia excluded)."
   - "Lighter: same Mobula catalog. Lighter lists non-crypto markets but with smaller catalogs per class."
-  - "Hyperliquid: native info metaAndAssetCtxs endpoint verified crypto-only. Non-crypto count: 0."
-  - "GMX v2: DataStore onchain pairs verified crypto-only (BTC, ETH, ARB, SOL, AVAX, LINK, DOGE, UNI). Non-crypto count: 0."
-  - "dYdX v4: indexer perpetualMarkets verified crypto-only. Non-crypto count: 0."
-  - "Ostium: Arbitrum subgraph verified: FX pairs (EUR/USD, GBP/USD, XAU/USD) present but counted separately from this bench which focuses on the EVM DEX cohort. Count represents the Mobula catalog only."
+  - "Hyperliquid: core universe plus every HIP-3 builder dex (info perpDexs, then meta per dex). On 2026-09-22 the builder dexes carried 290 markets across 10 deployers, most of them equities, indices, metals and FX."
+  - "GMX v2: DataStore onchain pairs. Almost entirely crypto, with a small commodities and index tail."
+  - "dYdX v4: indexer perpetualMarkets. Effectively crypto-only, with a two-market commodities tail."
+  - "Ostium, Extended, Aster, Ondo and Paradex are ranked here too: each is read through its own API by the same harness, with the same four counted classes."
   - "Asset class taxonomy: Mobula editorial, updated at listing time. The bench re-reads on every 5-minute tick so new listings appear automatically."
 
 findings:
   - "{{best_name}} leads non-crypto perp breadth with {{best_p50}} active markets in forex, stocks, indices and commodities combined."
-  - "Gains lists the widest non-crypto catalog among EVM perp DEXes: forex pairs (EUR/USD, GBP/JPY...), tokenized stocks (AAPL, TSLA, NVDA...), indices (SPX, NDX, DAX...) and commodities (XAU, WTI...). Total live: {{p50:gains}} markets."
-  - "Lighter lists non-crypto markets across all four classes but with smaller per-class catalogs. Total live: {{p50:lighter}} markets."
-  - "Hyperliquid, GMX v2 and dYdX v4 are crypto-only: 0 forex, stocks, indices or commodity markets."
+  - "Hyperliquid reaches {{p50:hyperliquid}} almost entirely through HIP-3: ten builder-deployed dexes listing equities (xyz:TSLA, cash:NVDA), indices (km:US500), metals (flx:GOLD) and FX (mkts:EUR). Its core exchange stays crypto."
+  - "Gains lists {{p50:gains}}, the widest catalog native to one EVM venue: forex (EUR/USD, GBP/JPY...), stocks (AAPL, TSLA, NVDA...), indices (SPX, NDX, DAX...) and commodities (XAU, WTI...)."
+  - "GMX v2 at {{p50:gmx}} and dYdX v4 at {{p50:dydx}} remain effectively crypto-only; Lighter lists {{p50:lighter}} across all four classes with smaller per-class catalogs."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
@@ -78,8 +79,8 @@ faq:
     a: "Gains lists synthetic stock perpetuals. Trading availability during off-hours depends on the venue's oracle and liquidity configuration. The market is listed but execution conditions may differ from market-hours trading."
   - q: "How often does the market list change?"
     a: "The Mobula catalog is updated when venues list or delist pairs. The bench re-reads every 5 minutes so new listings appear automatically within one polling cycle."
-  - q: "Why is Ostium not in the main ranking?"
-    a: "Ostium lists FX and commodity markets but uses a different data source (Arbitrum subgraph) tracked in a separate bench. This bench focuses on venues whose full catalog is tracked in the Mobula pairs API."
+  - q: "Do Hyperliquid's HIP-3 markets count as Hyperliquid's?"
+    a: "They are listed and margined on Hyperliquid, and a trader reaches them from the same account, so they are counted. They are deployed by third-party builders rather than by the exchange, which is why the finding names HIP-3 explicitly: Hyperliquid's own core universe stays crypto, and the breadth comes from its deployers."
 
 providers:
   - slug: gains
@@ -104,8 +105,8 @@ providers:
 
   - slug: hyperliquid
     name: Hyperliquid
-    tag: Custom L1 HyperBFT — crypto-only — native API verified
-    formula: "Native info metaAndAssetCtxs endpoint verified crypto-only. Non-crypto count: 0."
+    tag: Custom L1 HyperBFT — equities, indices, metals and FX via HIP-3 builder dexes
+    formula: "Count of live markets in the four non-crypto classes across Hyperliquid's core universe and every HIP-3 builder dex (info perpDexs, then meta per dex)."
     queries:
       p50: perp_venue_noncore_markets_total{venue="hyperliquid"}
       p90: perp_venue_noncore_markets_total{venue="hyperliquid"}
@@ -114,20 +115,70 @@ providers:
 
   - slug: gmx
     name: GMX v2
-    tag: EVM Arbitrum — crypto-only — DataStore onchain verified
-    formula: "DataStore pairs verified crypto-only (BTC, ETH, ARB, SOL, AVAX, LINK, DOGE, UNI). Non-crypto count: 0."
+    tag: EVM Arbitrum — crypto with a small commodities and index tail
+    formula: "Count of GMX v2 DataStore pairs in the four non-crypto classes. Mainnet only."
     queries:
-      p50: perp_venue_noncore_markets_total{venue="gmx"}
-      p90: perp_venue_noncore_markets_total{venue="gmx"}
-      p99: perp_venue_noncore_markets_total{venue="gmx"}
-      series: perp_venue_noncore_markets_total{venue="gmx"}
+      p50: perp_venue_noncore_markets_total{venue="gmx-v2"}
+      p90: perp_venue_noncore_markets_total{venue="gmx-v2"}
+      p99: perp_venue_noncore_markets_total{venue="gmx-v2"}
+      series: perp_venue_noncore_markets_total{venue="gmx-v2"}
 
   - slug: dydx
     name: dYdX v4
-    tag: Cosmos appchain — crypto-only — indexer verified
-    formula: "Indexer perpetualMarkets endpoint verified crypto-only. Non-crypto count: 0."
+    tag: Cosmos appchain — crypto with a two-market commodities tail
+    formula: "Count of dYdX v4 indexer perpetualMarkets in the four non-crypto classes."
     queries:
       p50: perp_venue_noncore_markets_total{venue="dydx"}
       p90: perp_venue_noncore_markets_total{venue="dydx"}
       p99: perp_venue_noncore_markets_total{venue="dydx"}
       series: perp_venue_noncore_markets_total{venue="dydx"}
+
+  - slug: extended
+    name: Extended
+    tag: StarkEx L2 — equities and commodities alongside crypto
+    formula: "Count of live markets in the four non-crypto classes (forex, stocks, indices, commodities), read from the venue's own API. Mainnet only."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="extended"}
+      p90: perp_venue_noncore_markets_total{venue="extended"}
+      p99: perp_venue_noncore_markets_total{venue="extended"}
+      series: perp_venue_noncore_markets_total{venue="extended"}
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain — large equities catalog alongside crypto
+    formula: "Count of live markets in the four non-crypto classes (forex, stocks, indices, commodities), read from the venue's own API. Mainnet only."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="aster"}
+      p90: perp_venue_noncore_markets_total{venue="aster"}
+      p99: perp_venue_noncore_markets_total{venue="aster"}
+      series: perp_venue_noncore_markets_total{venue="aster"}
+
+  - slug: ostium
+    name: Ostium
+    tag: EVM Arbitrum — FX, metals and commodities
+    formula: "Count of live markets in the four non-crypto classes (forex, stocks, indices, commodities), read from the venue's own API. Mainnet only."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="ostium"}
+      p90: perp_venue_noncore_markets_total{venue="ostium"}
+      p99: perp_venue_noncore_markets_total{venue="ostium"}
+      series: perp_venue_noncore_markets_total{venue="ostium"}
+
+  - slug: ondo
+    name: Ondo
+    tag: Tokenized equities venue — stocks-first catalog
+    formula: "Count of live markets in the four non-crypto classes (forex, stocks, indices, commodities), read from the venue's own API. Mainnet only."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="ondo"}
+      p90: perp_venue_noncore_markets_total{venue="ondo"}
+      p99: perp_venue_noncore_markets_total{venue="ondo"}
+      series: perp_venue_noncore_markets_total{venue="ondo"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain — small non-crypto tail
+    formula: "Count of live markets in the four non-crypto classes (forex, stocks, indices, commodities), read from the venue's own API. Mainnet only."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="paradex"}
+      p90: perp_venue_noncore_markets_total{venue="paradex"}
+      p99: perp_venue_noncore_markets_total{venue="paradex"}
+      series: perp_venue_noncore_markets_total{venue="paradex"}
