@@ -96,12 +96,13 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 			byClass[p.Dex] = map[string]int{}
 		}
 		byClass[p.Dex][p.AssetClass]++
-		switch p.AssetClass {
-		case classForex, classStocks, classIndices, classCommodities:
-		default:
-			// crypto, degen, new: a token market. The base is the part
-			// before the slash ("BOT/USD" -> BOT); it feeds the cohort
-			// known-crypto set used for the HIP-3 dexes (breadth.go).
+		// Only the pairs Mobula has classified as crypto feed the cohort
+		// known-crypto set used for the HIP-3 dexes (breadth.go). The
+		// `new` bucket is unclassified, not crypto: Lighter's recent
+		// stock, gold and JPY listings sit there and would turn the same
+		// symbols on Hyperliquid xyz into crypto. The base is the part
+		// before the slash ("BOT/USD" -> BOT).
+		if p.AssetClass == classCrypto {
 			if i := strings.Index(p.Name, "/"); i > 0 {
 				res.AddCryptoSymbol(baseSymbol(p.Name[:i]))
 			}
@@ -121,6 +122,8 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 			case classForex, classStocks, classIndices, classCommodities:
 				b[class] += n
 			default:
+				// crypto, degen (leverage variants), new (unclassified):
+				// none of them is a non-crypto market for the ranking.
 				b[classCrypto] += n
 			}
 		}

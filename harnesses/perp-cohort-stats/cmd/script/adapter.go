@@ -371,10 +371,19 @@ func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 					b[k] = v
 				}
 			}
+			var asCrypto []string
 			for _, sym := range syms {
-				b.add(symbolClass(sym, true, r.knownCrypto))
+				class := symbolClass(sym, true, r.knownCrypto)
+				b.add(class)
+				if class == classCrypto {
+					asCrypto = append(asCrypto, sym)
+				}
 			}
 			res.SetBreadth(venue, b)
+			// The crypto verdicts are the ones a reader would question on
+			// an RWA dex; log them so a wrong collision is visible.
+			sort.Strings(asCrypto)
+			fmt.Printf("[perp-cohort][%s][breadth] %d unclassified -> %s; crypto: %v\n", venue, len(syms), b, asCrypto)
 		}
 	}
 }
