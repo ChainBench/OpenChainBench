@@ -709,7 +709,11 @@ const buildProvidersCached = unstable_cache(
   // v6: profile names now inherit bench spec casing (dRPC, USDC, dYdX)
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
-  ["providers-v7"],
+  // v8 (2026-09-22): seven perp venues joined PERP_VENUE_SEED (kalshi,
+  // vest, standx, apex, lighter-rh and the cohort rows) and vertex became
+  // nado. /products/vest, /products/standx and /products/lighter-rh were
+  // 404 on staging while the v7 list outlived the deploy.
+  ["providers-v8"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
