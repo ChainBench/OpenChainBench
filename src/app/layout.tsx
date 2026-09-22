@@ -239,7 +239,6 @@ export default async function RootLayout({
             not an account secret). Skipped entirely when env unset so
             staging/preview deploys do not pollute the analytics graph. */}
         {process.env.NEXT_PUBLIC_AHREFS_KEY && (
-          // eslint-disable-next-line @next/next/no-sync-scripts
           <script
             src="https://analytics.ahrefs.com/analytics.js"
             data-key={process.env.NEXT_PUBLIC_AHREFS_KEY}

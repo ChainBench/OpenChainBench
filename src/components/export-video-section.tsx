@@ -314,7 +314,6 @@ function ModalBody({
     }
     if (hasDims) return variant;
     return benchmark;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMetricPanel, benchmark, variant, hasDims]);
 
   // Live rows ranked by headline value (video order), dead rows last.
