@@ -47,6 +47,7 @@ methodology:
   - "Hyperliquid TVL: total user deposits (USDC). Funds serve as both margin and implicit market-maker collateral; every listed pair draws from this pool for maker fills."
   - "Ratio formula: avg_over_time(markets[24h]) / avg_over_time(tvl_usd[24h]) * 1_000_000."
   - "Interpretation: a ratio of 40 means the venue can sustain 40 active markets per $1M locked. Higher is more capital-efficient in terms of market breadth."
+  - "Cohort: every venue of the perp-cohort-stats harness that publishes both an active market count and a DefiLlama TVL, 12 venues as of 2026-09-22 (Gains, Hyperliquid, dYdX v4, Ostium, Aster, Extended, Lighter, Paradex, edgeX, Pacifica, Aevo, GRVT). Ondo Perps, Polymarket and Vertex have a market count but no TVL in the DefiLlama sense and are left out."
 
 findings:
   - "{{best_name}} leads capital efficiency with {{best_p50}} active markets per $1M TVL."
@@ -54,6 +55,7 @@ findings:
   - "Hyperliquid lists {{p50:hyperliquid}} markets per $1M TVL. Its CLOB model requires market-maker inventory per pair; the $6B deposit base reflects that inventory requirement."
   - "dYdX v4 lists {{p50:dydx}} markets per $1M TVL. Cosmos appchain orderbook."
   - "Ostium lists {{p50:ostium}} markets per $1M TVL. Synthetic perps on Arbitrum covering FX, crypto and commodities."
+  - "Among the orderbook venues, {{name:extended}} lists {{p50:extended}}, {{name:aster}} {{p50:aster}}, {{name:lighter}} {{p50:lighter}} and {{name:paradex}} {{p50:paradex}} markets per $1M TVL: the same CLOB model spreads over two orders of magnitude depending on how much collateral each venue holds against its catalog."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
@@ -129,3 +131,107 @@ providers:
       success: avg_over_time(perp_venue_health{venue="ostium"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="ostium"}[24h])
       series: perp_venue_active_markets{venue="ostium"} / perp_venue_tvl_usd{venue="ostium"} * 1000000
+  - slug: aster
+    name: Aster
+    tag: BNB Chain orderbook perps, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"aster\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"aster\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="aster"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aster"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="aster"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aster"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="aster"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aster"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="aster"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aster"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="aster"}[24h])
+      series: perp_venue_active_markets{venue="aster"} / perp_venue_tvl_usd{venue="aster"} * 1000000
+  - slug: extended
+    name: Extended
+    tag: Starknet orderbook perps, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"extended\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"extended\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="extended"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="extended"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="extended"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="extended"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="extended"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="extended"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="extended"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="extended"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="extended"}[24h])
+      series: perp_venue_active_markets{venue="extended"} / perp_venue_tvl_usd{venue="extended"} * 1000000
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup orderbook perps, bridge deposits as TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"lighter\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"lighter\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="lighter"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="lighter"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="lighter"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="lighter"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="lighter"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="lighter"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="lighter"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="lighter"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="lighter"}[24h])
+      series: perp_venue_active_markets{venue="lighter"} / perp_venue_tvl_usd{venue="lighter"} * 1000000
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain orderbook, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"paradex\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"paradex\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="paradex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="paradex"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="paradex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="paradex"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="paradex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="paradex"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="paradex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="paradex"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="paradex"}[24h])
+      series: perp_venue_active_markets{venue="paradex"} / perp_venue_tvl_usd{venue="paradex"} * 1000000
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx-settled orderbook perps, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"edgex\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"edgex\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="edgex"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="edgex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="edgex"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="edgex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="edgex"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="edgex"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="edgex"}[24h])
+      series: perp_venue_active_markets{venue="edgex"} / perp_venue_tvl_usd{venue="edgex"} * 1000000
+  - slug: pacifica
+    name: Pacifica
+    tag: Solana orderbook perps, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"pacifica\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"pacifica\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="pacifica"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="pacifica"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="pacifica"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="pacifica"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="pacifica"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="pacifica"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="pacifica"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="pacifica"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="pacifica"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="pacifica"}[24h])
+      series: perp_venue_active_markets{venue="pacifica"} / perp_venue_tvl_usd{venue="pacifica"} * 1000000
+  - slug: aevo
+    name: Aevo
+    tag: OP Stack rollup, perps and options, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"aevo\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"aevo\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="aevo"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aevo"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="aevo"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aevo"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="aevo"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aevo"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="aevo"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="aevo"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="aevo"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="aevo"}[24h])
+      series: perp_venue_active_markets{venue="aevo"} / perp_venue_tvl_usd{venue="aevo"} * 1000000
+  - slug: grvt
+    name: GRVT
+    tag: zkSync-based hybrid orderbook, DefiLlama TVL
+    confidence_tier: onchain
+    formula: "avg_over_time(perp_venue_active_markets{venue=\"grvt\"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue=\"grvt\"}[24h]) * 1000000"
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="grvt"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="grvt"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="grvt"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="grvt"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="grvt"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="grvt"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="grvt"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="grvt"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="grvt"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="grvt"}[24h])
+      series: perp_venue_active_markets{venue="grvt"} / perp_venue_tvl_usd{venue="grvt"} * 1000000

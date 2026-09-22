@@ -230,6 +230,18 @@ export default async function PerpsHubPage() {
             <span className="text-ink">perp-funding-stability</span>
           </Link>
           <Link
+            href="/fee-compare"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Tool
+            </span>
+            <span className="text-ink">Compare fees for your wallet</span>
+          </Link>
+          <Link
             href="/hyperliquid"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
@@ -291,7 +303,13 @@ export default async function PerpsHubPage() {
             the all-in cost column. perp-funding bench (036) for the
             funding column. All gauges scraped from the public OCB Prom,
             refresh interval 60s. Click a venue row to open its
-            dedicated product page.
+            dedicated product page. To see what a specific wallet paid
+            on Hyperliquid or Gains and what the same trades would have
+            cost on another venue, use the{" "}
+            <Link href="/fee-compare" className="underline">
+              fee comparison tool
+            </Link>
+            .
           </p>
         </>
       ) : (

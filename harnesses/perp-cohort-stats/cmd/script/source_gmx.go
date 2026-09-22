@@ -151,5 +151,49 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 		}
 	}
 	res.SetIfPositive(venue, mVolume24h, total)
+	if b := s.breadth(); b != nil {
+		res.SetBreadth(venue, b)
+	}
 	return res, nil
+}
+
+// gmxTokens is GET arbitrum-api.gmxinfra.io/tokens: every token GMX v2
+// prices, `synthetic` marking the ones that exist only as a perp market
+// (no ERC-20 on Arbitrum). The catalog is crypto-only as of 2026-09;
+// the symbol tables would move a gold or S&P listing to its class the
+// day it appears, so the bench reads a live 0 rather than a constant.
+type gmxTokens struct {
+	Tokens []struct {
+		Symbol    string `json:"symbol"`
+		Synthetic bool   `json:"synthetic"`
+	} `json:"tokens"`
+}
+
+func (s *GMXNativeSource) breadth() breadthCounter {
+	req, _ := http.NewRequest("GET", "https://arbitrum-api.gmxinfra.io/tokens", nil)
+	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, classifyError(err.Error())).Inc()
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+		return nil
+	}
+	var t gmxTokens
+	if err := json.Unmarshal(body, &t); err != nil || len(t.Tokens) == 0 {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
+		return nil
+	}
+	b := breadthCounter{}
+	for _, tok := range t.Tokens {
+		if !tok.Synthetic {
+			continue
+		}
+		b.add(symbolClass(baseSymbol(tok.Symbol), false, nil))
+	}
+	return b
 }

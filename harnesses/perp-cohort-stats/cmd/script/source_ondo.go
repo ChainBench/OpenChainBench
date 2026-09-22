@@ -50,6 +50,24 @@ type ondoContract struct {
 	Tags            []string `json:"tags"`
 }
 
+// ondoClass maps the venue's tags (Crypto, Stock, ETF, Commodity, Index,
+// FX) onto the breadth classes; ETFs are listed equities.
+func ondoClass(tags []string) string {
+	for _, t := range tags {
+		switch t {
+		case "Stock", "ETF":
+			return classStocks
+		case "Commodity":
+			return classCommodities
+		case "Index":
+			return classIndices
+		case "FX":
+			return classForex
+		}
+	}
+	return classCrypto
+}
+
 type ondoContractsResponse struct {
 	Success bool           `json:"success"`
 	Result  []ondoContract `json:"result"`
@@ -73,18 +91,15 @@ func (s *OndoNativeSource) Fetch() (*SourceResult, error) {
 
 	var volSum, oiSum, topVol float64
 	var active, nonCrypto int
+	breadth := breadthCounter{}
 	for _, c := range parsed.Result {
 		if c.Disabled || c.ProductType != "perpetual" {
 			continue
 		}
 		active++
-		crypto := false
-		for _, t := range c.Tags {
-			if t == "Crypto" {
-				crypto = true
-			}
-		}
-		if !crypto {
+		class := ondoClass(c.Tags)
+		breadth.add(class)
+		if class != classCrypto {
 			nonCrypto++
 		}
 		v, _ := strconv.ParseFloat(c.UsdVolume, 64)
@@ -107,6 +122,7 @@ func (s *OndoNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(active))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
+	res.SetBreadth(venue, breadth)
 	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d (non-crypto %d) vol24h=%.0f oi=%.0f top24h=%.0f\n",
 		venue, srcOndoNative, active, nonCrypto, volSum, oiSum, topVol)
 	return res, nil

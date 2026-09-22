@@ -40,14 +40,50 @@ func NewParadexNativeSource() *ParadexNativeSource {
 func (s *ParadexNativeSource) Name() string { return srcParadexNative }
 
 type paradexSummaryRow struct {
-	Symbol        string `json:"symbol"`
-	MarkPrice     string `json:"mark_price"`
-	OpenInterest  string `json:"open_interest"`
-	Volume24h     string `json:"volume_24h"`
+	Symbol       string `json:"symbol"`
+	MarkPrice    string `json:"mark_price"`
+	OpenInterest string `json:"open_interest"`
+	Volume24h    string `json:"volume_24h"`
 }
 
 type paradexSummaryResponse struct {
 	Results []paradexSummaryRow `json:"results"`
+}
+
+// paradexCatalog is GET /markets: the static catalog carries the
+// editorial `tags` (RWA, LAYER-1, DEFI, MEME, AI) the summary lacks.
+type paradexCatalog struct {
+	Results []struct {
+		Symbol    string   `json:"symbol"`
+		AssetKind string   `json:"asset_kind"`
+		Tags      []string `json:"tags"`
+	} `json:"results"`
+}
+
+// rwaTagged returns the set of perp symbols Paradex tags RWA. A failed
+// catalog call returns nil and the tick publishes no breadth for the
+// venue (the gauges keep their previous values).
+func (s *ParadexNativeSource) rwaTagged() map[string]bool {
+	body, err := s.get("https://api.prod.paradex.trade/v1/markets")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("paradex", srcParadexNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][paradex][%s] catalog err: %v\n", srcParadexNative, err)
+		return nil
+	}
+	var cat paradexCatalog
+	if err := json.Unmarshal(body, &cat); err != nil {
+		perpCohortFetchErrors.WithLabelValues("paradex", srcParadexNative, "parse").Inc()
+		return nil
+	}
+	rwa := map[string]bool{}
+	for _, m := range cat.Results {
+		for _, t := range m.Tags {
+			if t == "RWA" {
+				rwa[m.Symbol] = true
+			}
+		}
+	}
+	return rwa
 }
 
 func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
@@ -68,6 +104,12 @@ func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
+	// Breadth: the venue's RWA tag decides non-crypto; the symbol tables
+	// split that bucket into commodities (XAU, CL, NG), indices (US500,
+	// US100) and stocks (the rest).
+	rwa := s.rwaTagged()
+	breadth := breadthCounter{}
+
 	var volSum, oiSum, topVol float64
 	var active int
 	for _, m := range parsed.Results {
@@ -81,6 +123,13 @@ func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
+		if rwa != nil {
+			if rwa[m.Symbol] {
+				breadth.add(rwaClass(baseSymbol(m.Symbol)))
+			} else {
+				breadth.add(classCrypto)
+			}
+		}
 		v, _ := strconv.ParseFloat(m.Volume24h, 64)
 		volSum += v
 		if v > topVol {
@@ -94,8 +143,9 @@ func (s *ParadexNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(active))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
-	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcParadexNative, active, volSum, oiSum, topVol)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f breadth: %s\n",
+		venue, srcParadexNative, active, volSum, oiSum, topVol, breadth)
 	return res, nil
 }
 

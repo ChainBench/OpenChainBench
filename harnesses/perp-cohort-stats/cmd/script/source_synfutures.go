@@ -9,11 +9,13 @@ import (
 	"time"
 )
 
-// SynFuturesNativeSource queries CoinGecko's public derivatives-exchange endpoint
-// for SynFutures, an oAMM-based perp DEX deployed on Base, Arbitrum and opBNB.
+// SynFuturesNativeSource reads SynFutures (oAMM perp DEX on Base, Arbitrum
+// and opBNB) from CoinGecko's derivatives-exchange list: the venue's own
+// API (api.synfutures.com/v3) answers 403 to every unauthenticated path
+// and its swagger endpoint 500s (checked 2026-09-22), so there is no
+// native stats surface to read.
 //
-// CoinGecko exchange ID: "synfutures"
-// Endpoint: GET https://api.coingecko.com/api/v3/derivatives/exchanges/synfutures
+// CoinGecko exchange ID: "synfutures", row of the shared list in coingecko.go
 //
 // trade_volume_24h_btc is the 24h rolling taker notional expressed in BTC.
 // A second call fetches the BTC/USD spot price from CoinGecko's simple/price
@@ -35,10 +37,6 @@ func NewSynFuturesNativeSource() *SynFuturesNativeSource {
 
 func (s *SynFuturesNativeSource) Name() string { return srcSynFuturesNative }
 
-type cgDerivExchangeResp struct {
-	TradeVolume24hBTC float64 `json:"trade_volume_24h_btc,string"`
-}
-
 // hlAllMidsResp is the Hyperliquid allMids response: map of coin -> mid price string.
 type hlAllMidsResp map[string]string
 
@@ -53,25 +51,25 @@ func (s *SynFuturesNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
-	body, err := s.get("https://api.coingecko.com/api/v3/derivatives/exchanges/synfutures")
+	// The exchange row comes from the shared, cached derivatives list
+	// (coingecko.go) rather than a per-venue call every tick.
+	volBTC, found, err := cgVolume24hBTC(map[string]bool{"synfutures": true})
 	if err != nil {
 		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, classifyError(err.Error())).Inc()
 		fmt.Printf("[perp-cohort][%s][%s] err: %v\n", venue, srcSynFuturesNative, err)
 		return res, nil
 	}
-
-	var resp cgDerivExchangeResp
-	if err := json.Unmarshal(body, &resp); err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, "parse").Inc()
-		fmt.Printf("[perp-cohort][%s][%s] parse err: %v\n", venue, srcSynFuturesNative, err)
+	if found == 0 {
+		perpCohortFetchErrors.WithLabelValues(venue, srcSynFuturesNative, "not_listed").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err: synfutures absent from the CoinGecko top-250 list\n", venue, srcSynFuturesNative)
 		return res, nil
 	}
 
-	if resp.TradeVolume24hBTC > 0 && btcPrice > 0 {
-		volUSD := resp.TradeVolume24hBTC * btcPrice
+	if volBTC > 0 && btcPrice > 0 {
+		volUSD := volBTC * btcPrice
 		res.SetIfPositive(venue, mVolume24h, volUSD)
 		fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f BTC * %.0f USD/BTC = %.0f USD\n",
-			venue, srcSynFuturesNative, resp.TradeVolume24hBTC, btcPrice, volUSD)
+			venue, srcSynFuturesNative, volBTC, btcPrice, volUSD)
 	}
 	return res, nil
 }

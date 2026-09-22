@@ -34,6 +34,9 @@ type SourceResult struct {
 	Values map[string]map[string]float64
 	// Funding is keyed [venue][asset] -> (bps_24h, intervalHours).
 	Funding map[string]map[string]fundingPoint
+	// Breadth is keyed [venue][class] -> active market count; see
+	// breadth.go. Only set by a source that saw the venue's full list.
+	Breadth map[string]map[string]int
 }
 
 type fundingPoint struct {
@@ -565,6 +568,24 @@ func (r *Router) Sweep() {
 		// Health: fraction of metrics with primary-source success this tick.
 		if healthTotal > 0 {
 			perpVenueHealth.WithLabelValues(v.Slug).Set(float64(healthHits) / float64(healthTotal))
+		}
+	}
+
+	// Asset-class breadth: the first registered source that reports a
+	// venue wins (the venue's native source is registered before Mobula
+	// and DefiLlama). A venue nobody reported this tick keeps its gauges.
+	seenBreadth := map[string]bool{}
+	for _, s := range r.sources {
+		res := byName[s.Name()]
+		if res == nil {
+			continue
+		}
+		for venue, counts := range res.Breadth {
+			if seenBreadth[venue] {
+				continue
+			}
+			seenBreadth[venue] = true
+			publishBreadth(venue, counts)
 		}
 	}
 

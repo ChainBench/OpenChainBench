@@ -55,7 +55,28 @@ type extendedMarket struct {
 	Name        string              `json:"name"`
 	Type        string              `json:"type"`
 	Status      string              `json:"status"`
+	Category    string              `json:"category"`    // Crypto | RWA
+	SubCategory string              `json:"subCategory"` // RWA: Equity, Commodity, FX, ETF/Index, Pre-market
 	MarketStats extendedMarketStats `json:"marketStats"`
+}
+
+// extendedClass maps Extended's own market taxonomy onto the breadth
+// classes. ETF/Index is split per symbol (SPX500m, JP225 and KR200 are
+// indices, EWY or SOXL are listed ETFs); Pre-market is a pre-IPO equity
+// synthetic; a Crypto-category commodity (PAXG) stays crypto.
+func extendedClass(m extendedMarket) string {
+	if m.Category != "RWA" {
+		return classCrypto
+	}
+	switch m.SubCategory {
+	case "Commodity":
+		return classCommodities
+	case "FX":
+		return classForex
+	case "ETF/Index":
+		return rwaClass(baseSymbol(m.Name))
+	}
+	return classStocks
 }
 
 type extendedResponse struct {
@@ -83,6 +104,7 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 
 	var volSum, oiSum, topVol float64
 	var active int
+	breadth := breadthCounter{}
 	for _, m := range parsed.Data {
 		if m.Type != "PERPETUAL" || m.Status != "ACTIVE" {
 			continue
@@ -92,6 +114,7 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 			continue
 		}
 		active++
+		breadth.add(extendedClass(m))
 		v, _ := strconv.ParseFloat(m.MarketStats.DailyVolume, 64)
 		volSum += v
 		if v > topVol {
@@ -108,8 +131,9 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(active))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
-	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcExtendedNative, active, volSum, oiSum, topVol)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f breadth: %s\n",
+		venue, srcExtendedNative, active, volSum, oiSum, topVol, breadth)
 	return res, nil
 }
 

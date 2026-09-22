@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -29,6 +30,22 @@ import (
 //	top_market_volume_24h_usd = max(dayNtlVlm)
 type HyperliquidNativeSource struct {
 	client *http.Client
+
+	// HIP-3 breadth cache: the deployer dex list and one meta call per
+	// dex are refreshed every hlDexCacheTTL, not every 60 s tick.
+	dexMu      sync.Mutex
+	dexBreadth breadthCounter
+	dexTS      time.Time
+}
+
+// hlDexCacheTTL bounds the perpDexs + per-dex meta fan-out (11 calls
+// as of 2026-09) to one refresh per 10 minutes.
+const hlDexCacheTTL = 10 * time.Minute
+
+// hlPerpDex is one entry of POST /info {"type":"perpDexs"}; the first
+// element is null (the core dex) and is skipped.
+type hlPerpDex struct {
+	Name string `json:"name"`
 }
 
 func NewHyperliquidNativeSource() *HyperliquidNativeSource {
@@ -117,9 +134,80 @@ func (s *HyperliquidNativeSource) Fetch() (*SourceResult, error) {
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(activeCount))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
+
+	// Asset-class breadth. The core universe is crypto by construction;
+	// the HIP-3 deployer dexes (xyz, para, mkts, io...) list equities,
+	// ETFs, FX, indices and commodities under `dex:SYMBOL` names and
+	// are classified per symbol in breadth.go, with the core universe
+	// as the known-crypto set (a HIP-3 dex relisting a core coin stays
+	// crypto).
+	core := map[string]bool{}
+	for _, u := range meta.Universe {
+		if !u.IsDelisted {
+			core[baseSymbol(u.Name)] = true
+		}
+	}
+	if b := s.hip3Breadth(core); b != nil {
+		b[classCrypto] += activeCount
+		res.SetBreadth(venue, b)
+	}
 	fmt.Printf("[perp-cohort][%s][%s] ok: active=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
 		venue, srcHLNative, activeCount, volSum, oiSum, topVol)
 	return res, nil
+}
+
+// hip3Breadth returns the class counts of every HIP-3 dex market, from
+// the cache when it is younger than hlDexCacheTTL. Returns nil when the
+// dex list cannot be fetched and nothing is cached, so the venue keeps
+// its previous gauges instead of publishing a crypto-only count.
+func (s *HyperliquidNativeSource) hip3Breadth(core map[string]bool) breadthCounter {
+	s.dexMu.Lock()
+	defer s.dexMu.Unlock()
+	if s.dexBreadth != nil && time.Since(s.dexTS) < hlDexCacheTTL {
+		return s.dexBreadth.clone()
+	}
+	body, err := s.post("https://api.hyperliquid.xyz/info", []byte(`{"type":"perpDexs"}`))
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("hyperliquid", srcHLNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][hyperliquid][%s] perpDexs err: %v\n", srcHLNative, err)
+		return s.dexBreadth.clone()
+	}
+	var dexs []*hlPerpDex
+	if err := json.Unmarshal(body, &dexs); err != nil {
+		perpCohortFetchErrors.WithLabelValues("hyperliquid", srcHLNative, "parse").Inc()
+		return s.dexBreadth.clone()
+	}
+	b := breadthCounter{}
+	var dexCount int
+	for _, d := range dexs {
+		if d == nil || d.Name == "" {
+			continue
+		}
+		mb, err := s.post("https://api.hyperliquid.xyz/info", []byte(fmt.Sprintf(`{"type":"meta","dex":%q}`, d.Name)))
+		if err != nil {
+			perpCohortFetchErrors.WithLabelValues("hyperliquid", srcHLNative, classifyError(err.Error())).Inc()
+			fmt.Printf("[perp-cohort][hyperliquid][%s] meta dex=%s err: %v\n", srcHLNative, d.Name, err)
+			// One dex missing would understate the count for 10 minutes;
+			// keep the previous snapshot instead.
+			return s.dexBreadth.clone()
+		}
+		var m hlMeta
+		if err := json.Unmarshal(mb, &m); err != nil {
+			perpCohortFetchErrors.WithLabelValues("hyperliquid", srcHLNative, "parse").Inc()
+			return s.dexBreadth.clone()
+		}
+		dexCount++
+		for _, u := range m.Universe {
+			if u.IsDelisted {
+				continue
+			}
+			b.add(symbolClass(baseSymbol(u.Name), true, core))
+		}
+	}
+	s.dexBreadth = b
+	s.dexTS = time.Now()
+	fmt.Printf("[perp-cohort][hyperliquid][%s] hip3: %d dexes, %s\n", srcHLNative, dexCount, b)
+	return b.clone()
 }
 
 func (s *HyperliquidNativeSource) post(url string, body []byte) ([]byte, error) {

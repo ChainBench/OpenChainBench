@@ -99,19 +99,20 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 		res.Set(dex, mActiveMarkets, float64(n))
 	}
 
-	// nonCore classes are the asset classes beyond crypto that represent
-	// genuine breadth: forex, stocks, indices, commodities.
-	// degen and new are excluded (leverage variants and unclassified crypto).
-	nonCore := map[string]bool{"forex": true, "stocks": true, "indices": true, "commodities": true}
+	// Mobula's degen (leverage variants of crypto pairs) and new
+	// (listed, not yet classified) buckets are crypto for the breadth
+	// gauges; the four non-crypto classes map one to one. See breadth.go.
 	for dex, classes := range byClass {
-		total := 0
+		b := breadthCounter{}
 		for class, n := range classes {
-			perpVenueMarketsByClass.WithLabelValues(dex, class).Set(float64(n))
-			if nonCore[class] {
-				total += n
+			switch class {
+			case classForex, classStocks, classIndices, classCommodities:
+				b[class] += n
+			default:
+				b[classCrypto] += n
 			}
 		}
-		perpVenueNoncoreMarketsTotal.WithLabelValues(dex).Set(float64(total))
+		res.SetBreadth(dex, b)
 	}
 
 	fmt.Printf("[perp-cohort][mobula_pairs] ok: %d dexes, counts=%v\n", len(counts), counts)
