@@ -33,6 +33,14 @@ export default async function Overview({ searchParams }: { searchParams: Promise
     : "Daily visitors, 28 d";
   // A week that began before the first event holds a few days at most.
   const weekIsPartial = (week: string) => Boolean(firstDay && week < firstDay);
+  // The rows are keyed by the Monday that opens the week (HogQL
+  // toStartOfWeek mode 1); print the span so a Monday date is never read
+  // as the day the numbers belong to.
+  const weekRange = (monday: string) => {
+    const end = new Date(`${monday}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return `${monday} to ${end.toISOString().slice(0, 10)}`;
+  };
   const fullWeeks = weekly.slice(0, -1).filter((w) => !weekIsPartial(w.week));
   const lastFull = fullWeeks.at(-1) ?? null;
   const prevFull = fullWeeks.at(-2) ?? null;
@@ -175,7 +183,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
             <table className="data mt-2">
               <thead>
                 <tr>
-                  <th>Week of</th>
+                  <th>Week (Mon to Sun)</th>
                   <th className="num">Visitors</th>
                   <th className="num">Pageviews</th>
                   <th className="num">From AI</th>
@@ -187,7 +195,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
                 {[...weekly].reverse().map((w, i) => (
                   <tr key={w.week} style={i === 0 ? { color: "var(--muted)" } : undefined}>
                     <td className="mono">
-                      {w.week}
+                      {weekRange(w.week)}
                       {i === 0 ? " (current, partial)" : weekIsPartial(w.week) ? ` (partial, data from ${firstDay})` : ""}
                     </td>
                     <td className="num mono">{fmtInt(w.visitors)}</td>
