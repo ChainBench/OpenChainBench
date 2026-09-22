@@ -209,7 +209,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
-		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
 			return []string{srcCexCoinGecko}
 		}
 	case mVolume30d:
@@ -283,7 +283,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
-		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
 			return []string{srcCexCoinGecko}
 		case "vest":
 			// The Vest API publishes no open interest.
@@ -356,7 +356,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterRHNative}
 		case "trade-xyz":
 			return []string{srcHLXyzNative}
-		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "deribit", "kraken", "mexc":
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
 			return []string{srcCexCoinGecko}
 		}
 	case mTopVol24h:

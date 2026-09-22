@@ -8,6 +8,7 @@ import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dat
 import { fetchPerpCohort, type PerpVenueRow } from "@/lib/perp-stats";
 import { headlineSentence, leader, rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
+import { capSnippet } from "@/lib/seo-text";
 import type { Benchmark } from "@/types/benchmark";
 
 /**
@@ -79,9 +80,11 @@ export async function generateMetadata(): Promise<Metadata> {
     .filter((v) => v.volume30d != null)
     .sort((a, b) => (b.volume30d ?? 0) - (a.volume30d ?? 0));
   const lead = measured[0];
-  const description = lead && lead.volume30d != null
-    ? `${cohort!.totals.trackedVenues} perp venues measured from public APIs through Q3 2026: ${lead.name} leads 30-day volume at ${usd(lead.volume30d)}, cohort open interest ${usd(cohort!.totals.cohortOpenInterest)}. Fees, funding, slippage, breadth beyond crypto, volume quality and token valuation, each figure live and linked to its benchmark.`
-    : `A dated reading of the perp DEX benchmarks at the end of Q3 2026: volume, open interest, fees, funding, slippage, asset breadth, volume quality and token valuation, every figure live and linked to its benchmark.`;
+  const description = capSnippet(
+    lead && lead.volume30d != null
+      ? `${cohort!.totals.trackedVenues} perp venues measured through Q3 2026: ${lead.name} leads 30-day volume at ${usd(lead.volume30d)}, cohort open interest ${usd(cohort!.totals.cohortOpenInterest)}. Fees, funding, slippage and breadth, each figure live and linked.`
+      : `The perp DEX benchmarks at the end of Q3 2026: volume, open interest, fees, funding, slippage and asset breadth, every figure live and linked to its benchmark.`,
+  );
   return {
     ...pageMetadata({ path: PATH, title: TITLE, description }),
     other: buildCitationMeta({
@@ -116,6 +119,7 @@ export default async function StateOfPerpDexesQ3Page() {
   // 24h, the figure the venues actually report to CoinGecko; the 30-day
   // column on CEX rows is OpenChainBench's own average of that series.
   const cexVol24h = cex.reduce((s, v) => s + (v.volume24h ?? 0), 0);
+  const measuredVol24h = measured.reduce((s, v) => s + (v.volume24h ?? 0), 0);
   const asOfIso = cohort ? new Date(cohort.asOf * 1000).toISOString() : null;
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}${PATH}`;
@@ -193,7 +197,7 @@ export default async function StateOfPerpDexesQ3Page() {
         <p className="label-mono text-teal-600 mb-2">Report</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">State of perp DEXes, Q3 2026</h1>
         <p className="mt-4 text-base sm:text-lg text-ink-soft leading-snug">
-          What the perp benchmarks measured at the end of the quarter: who trades what, what it costs to trade and to hold, how far the venues have gone beyond crypto, how much of the volume is backed by positions, and how the tokens are priced against their fees. Every figure below is the live value of a benchmark or of the cohort snapshot, linked to its source, so the report reads true after publication instead of ageing into a PDF. The quarter closes on {QUARTER_END}; the page keeps updating until then and freezes its wording after.
+          What the perp benchmarks measured at the end of the quarter: who trades what, what it costs to trade and to hold, how far the venues have gone beyond crypto, how much of the volume is backed by positions, and how the tokens are priced against their fees. Every figure below is the live value of a benchmark or of the cohort snapshot, linked to its source, so the report reads true after publication instead of ageing into a PDF. The quarter closes on {QUARTER_END}. The page is not frozen: every figure is the current value of its source and the data-as-of line says when it was read, so a quotation should carry that timestamp.
         </p>
         {asOfLabel && (
           <p className="mt-2 text-xs text-ink-muted">
@@ -217,7 +221,7 @@ export default async function StateOfPerpDexesQ3Page() {
             {byVolume[1] ? `, ahead of ${byVolume[1].name} (${usd(byVolume[1].volume30d)})` : ""}
             {byVolume[2] ? ` and ${byVolume[2].name} (${usd(byVolume[2].volume30d)})` : ""}.
             {top3Share != null ? ` The top three carry ${(top3Share * 100).toFixed(0)} percent of the ${usd(totalVol)} the measured cohort traded over 30 days;` : ""} cohort open interest stands at {usd(cohort!.totals.cohortOpenInterest)}.
-            {cexVol24h > 0 ? ` For scale, the centralised books the board carries as reference report ${usd(cexVol24h)} of 24-hour derivatives volume to CoinGecko, a figure the venues declare rather than one OpenChainBench measures.` : ""}
+            {cexVol24h > 0 && measuredVol24h > 0 ? ` For scale, on the same 24-hour window the measured cohort traded ${usd(measuredVol24h)} while the centralised books the board carries as reference declared ${usd(cexVol24h)} of derivatives volume to CoinGecko, ${(cexVol24h / measuredVol24h).toFixed(1)} times as much; the CEX figure is venue-reported, not an OpenChainBench measurement.` : ""}
           </p>
         ) : (
           <p className="mt-3 text-sm text-ink-faint italic">Cohort data is temporarily unavailable.</p>
@@ -280,8 +284,9 @@ export default async function StateOfPerpDexesQ3Page() {
         <h2 className="display text-2xl text-ink">5. Volume quality</h2>
         <p className="mt-3 text-sm text-ink-soft leading-relaxed">
           Volume is the easiest number to manufacture; open interest has to be collateralised. The ratio of the two says how much of a day&apos;s volume is backed by positions that exist at the end of it. Order books with real holders sit between 0.3x and 3x.
-          {volOiRanked.length > 0 ? ` ${volOiRanked[0].name} reads ${fmtUnit(volOiRanked[0].ms.p50, volOi!.unit)}, the most position-backed volume of the ${volOiRanked.length} venues measured` : ""}
-          {volOiHigh.length > 0 ? `; ${volOiHigh.map((r) => `${r.name} (${fmtUnit(r.ms.p50, volOi!.unit)})`).join(", ")} turn their book over more than eight times a day, where the volume figure deserves a second look.` : "."}
+          {volOiRanked.length > 0
+            ? ` ${volOiRanked[0].name} reads ${fmtUnit(volOiRanked[0].ms.p50, volOi!.unit)}, the most position-backed volume of the ${volOiRanked.length} venues measured${volOiHigh.length > 0 ? `; ${volOiHigh.map((r) => `${r.name} (${fmtUnit(r.ms.p50, volOi!.unit)})`).join(", ")} turn their book over more than eight times a day, where the volume figure deserves a second look` : ""}.`
+            : ""}
         </p>
         <RankList b={volOi} n={6} />
         <BenchLine b={volOi} />

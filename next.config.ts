@@ -188,7 +188,14 @@ const nextConfig: NextConfig = {
     // match. The middleware stays a literal list of retired URLs.
     // beforeFiles: /perps is a concrete page, and a bare array (afterFiles)
     // runs after the filesystem match, so the rule would never fire there.
-    const markdownOnly = [{ type: "header" as const, key: "accept", value: "^(?!.*text/html).*text/markdown.*$" }];
+    // Case-insensitive on the two media types (JS RegExp here takes no
+    // flags), and `text/html;q=0...` does not block: markdown without a
+    // q-value is q=1 and outranks it. A client that lowers both q-values
+    // is not something an agent or curl sends.
+    const ci = (s: string) => s.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
+    const markdownOnly = [
+      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0)).*${ci("text/markdown")}.*$` },
+    ];
     const beforeFiles = [
       { source: "/benchmarks/:slug", has: markdownOnly, destination: "/api/md/benchmarks/:slug" },
       { source: "/products/:slug", has: markdownOnly, destination: "/api/md/products/:slug" },
