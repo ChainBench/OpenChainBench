@@ -101,3 +101,19 @@ export function isExpiredRpcPage(b: {
   if (!b.slug.endsWith("-rpc") || (b.category && b.category !== "RPCs")) return false;
   return dataAgeHours(b) > NOINDEX_AFTER_HOURS;
 }
+
+/** The same week-old gate, for any bench rather than chain RPC pages only.
+ *  A bench that loses quorum keeps serving its last good render, which is
+ *  the right call for a Prometheus brownout and the wrong one once the
+ *  render has aged out: perp-asset-breadth sat in the sitemap with
+ *  `index, follow` and data from 2026-08-17 for five weeks, because every
+ *  expiry check downstream was RPC-shaped. Works on the slim sitemap rows,
+ *  which carry slug, status and lastRunAt and nothing else. */
+export function isExpiredPage(b: {
+  slug: string;
+  category?: string;
+  lastRunAt?: string | null;
+  status?: string;
+}): boolean {
+  return isExpiredBench(b) || isExpiredRpcPage(b);
+}
