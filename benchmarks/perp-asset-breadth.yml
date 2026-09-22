@@ -214,3 +214,58 @@ providers:
       mean: avg_over_time(perp_venue_noncore_markets_total{venue="gmx-v2"}[24h])
       sample_size: count_over_time(perp_venue_noncore_markets_total{venue="gmx-v2"}[24h])
       series: perp_venue_noncore_markets_total{venue="gmx-v2"}
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, asset_class Crypto and Metals
+    formula: "Count of active markets in GET /trade-api/v2/margin/markets whose asset_class is not Crypto (Metals: gold, silver, platinum, palladium). Live."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="kalshi"}
+      p90: perp_venue_noncore_markets_total{venue="kalshi"}
+      p99: perp_venue_noncore_markets_total{venue="kalshi"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="kalshi"}[24h])
+      series: perp_venue_noncore_markets_total{venue="kalshi"}
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, {TICKER}-USD-PERP for equities, indices and FX
+    formula: "Count of TRADING symbols named {TICKER}-USD-PERP in GET /v2/ticker/latest, split by the symbol tables into forex, indices and stocks; {COIN}-PERP is crypto. Live."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="vest"}
+      p90: perp_venue_noncore_markets_total{venue="vest"}
+      p99: perp_venue_noncore_markets_total{venue="vest"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="vest"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="vest"}[24h])
+      series: perp_venue_noncore_markets_total{venue="vest"}
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, stockContract catalog
+    formula: "Count of live rows in the stockContract list of GET /api/v3/symbols, split by the symbol tables (IWM is an index tracker, USO an ETF); perpetualContract rows are crypto. Live."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="apex"}
+      p90: perp_venue_noncore_markets_total{venue="apex"}
+      p99: perp_venue_noncore_markets_total{venue="apex"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="apex"}[24h])
+      series: perp_venue_noncore_markets_total{venue="apex"}
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment, equities next to crypto
+    formula: "Count of active perp markets on api.rh.lighter.xyz classified by the cohort known-crypto and known-RWA sets and the symbol tables. Live."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="lighter-rh"}
+      p90: perp_venue_noncore_markets_total{venue="lighter-rh"}
+      p99: perp_venue_noncore_markets_total{venue="lighter-rh"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="lighter-rh"}[24h])
+      series: perp_venue_noncore_markets_total{venue="lighter-rh"}
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex
+    formula: "Count of xyz dex markets classified as stocks, indices, forex or commodities (same rule as the Hyperliquid row, which also counts them). Live."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="trade-xyz"}
+      p90: perp_venue_noncore_markets_total{venue="trade-xyz"}
+      p99: perp_venue_noncore_markets_total{venue="trade-xyz"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
+      series: perp_venue_noncore_markets_total{venue="trade-xyz"}

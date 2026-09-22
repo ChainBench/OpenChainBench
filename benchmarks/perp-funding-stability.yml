@@ -209,6 +209,79 @@ providers:
   # via Mobula's CEFI funding-rate aggregator instead of direct venue
   # polls. Freshness gauge is perp_venue_last_refresh_unix.
 
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, 8 h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"kalshi\",asset=\"ETH\"} over a 24h window. Source: Kalshi margin funding_rates/historical (8 h rate x 3), polled by the cohort harness every minute."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="kalshi",source="kalshi_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h]) > bool 0)
+
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, hourly funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"vest\",asset=\"ETH\"} over a 24h window. Source: Vest /v2/ticker/latest oneHrFundingRate x 24, polled by the cohort harness every minute."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="vest",source="vest_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h]) > bool 0)
+
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain, hourly funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"standx\",asset=\"ETH\"} over a 24h window. Source: StandX query_market_overview funding_rate x 24, polled by the cohort harness every minute."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="standx",source="standx_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h]) > bool 0)
+
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, hourly funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"apex\",asset=\"ETH\"} over a 24h window. Source: ApeX /api/v3/ticker fundingRate x 24, polled by the cohort harness every minute."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="apex",source="apex_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h]) > bool 0)
+
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+
   - slug: bitget
     name: Bitget
     tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding

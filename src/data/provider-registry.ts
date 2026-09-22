@@ -1916,6 +1916,27 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Nado is an orderbook perpetuals DEX on Ink, the Kraken-backed L2, with a central limit orderbook and cross-margin. No token has launched yet.",
     twitter: "@nadoHQ",
   },
+  vest: {
+    url: "https://vest.exchange",
+    description:
+      "Vest is a zk-settled perpetuals exchange listing crypto next to US equities, indices and FX perps under a {TICKER}-USD-PERP convention, with a public REST API (ticker, funding, order book) and no open-interest feed.",
+    twitter: "@VestExchange",
+    docs: "https://docs.vest.exchange/vest-api",
+  },
+  standx: {
+    url: "https://standx.com",
+    description:
+      "StandX is a DUSD-margined perpetuals DEX on BNB Chain (13 markets in 2026-09: majors plus gold, silver, oil and a few equities) with a public market-overview endpoint carrying volume, open interest and hourly funding per market.",
+    twitter: "@StandX_Official",
+    docs: "https://docs.standx.com/standx-api/standx-api",
+  },
+  "lighter-rh": {
+    url: "https://rh.lighter.xyz",
+    description:
+      "Lighter's Robinhood deployment: the same zk order-book engine as Lighter mainnet on a separate host (api.rh.lighter.xyz) with its own books, listing US equities next to crypto perps.",
+    twitter: "@Lighter_xyz",
+    docs: "https://apidocs.lighter.xyz/",
+  },
   decibel: {
     url: "https://decibel.trade",
     description:
@@ -2031,12 +2052,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Solana perp DEX with hybrid AMM/orderbook model, sub-second matching via Anchor program.",
     twitter: "@DriftProtocol",
-  },
-  vertex: {
-    url: "https://www.nado.xyz",
-    description:
-      "Arbitrum perp and spot orderbook DEX with off-chain matching and on-chain settlement. Migrating to Ink Foundation.",
-    twitter: "@vertex_protocol",
   },
   edgex: {
     url: "https://edgex.exchange",

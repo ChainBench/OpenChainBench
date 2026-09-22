@@ -67,7 +67,7 @@ findings:
   - "{{name:pacifica}} sits at {{p50:pacifica}} of 24h notional. Solana-native onchain perps."
   - "{{name:extended}} sits at {{p50:extended}} of 24h notional. StarkEx-based perps venue."
   - "{{name:dydx}} sits at {{p50:dydx}} of 24h notional. Cosmos appchain orderbook."
-  - "{{name:vertex}} sits at {{p50:vertex}} of 24h notional. Arbitrum orderbook plus AMM hybrid."
+  - "{{name:nado}} sits at {{p50:nado}} of 24h notional. Ink orderbook DEX by the Vertex team."
   - "{{name:paradex}} sits at {{p50:paradex}} of 24h notional. Starknet L2 perps."
   - "{{name:aevo}} sits at {{p50:aevo}} of 24h notional. Optimism L2 orderbook perps."
   - "{{name:orderly}} sits at {{p50:orderly}} of 24h notional. Cross-chain CLOB infrastructure on Arbitrum and Base."
@@ -194,18 +194,18 @@ providers:
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h])
       series: perp_venue_volume_24h_usd{venue="pacifica"}
 
-  - slug: vertex
-    name: Vertex
-    tag: Arbitrum orderbook plus AMM hybrid
-    formula: "24h volume from the Vertex public indexer per product, summed across all perps in USD; headline is the 24h time average."
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook DEX by the Vertex team (the row read as Vertex until 2026-09-22)
+    formula: "24h volume from the Nado public archive (market_snapshots, cumulative volumes diffed 24h apart) summed across live perp products in USD; headline is the 24h time average."
     queries:
-      p50: avg_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      mean: avg_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      success: avg_over_time(perp_venue_health{venue="vertex"}[24h])
-      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      series: perp_venue_volume_24h_usd{venue="vertex"}
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="nado"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nado"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      series: perp_venue_volume_24h_usd{venue="nado"}
 
   - slug: dydx
     name: dYdX v4
@@ -297,3 +297,87 @@ providers:
       success: avg_over_time(perp_venue_health{venue="backpack"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="backpack"}[24h])
       series: perp_venue_volume_24h_usd{venue="backpack"}
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, 25 perps on crypto and metals, 8 h funding
+    formula: "volume_24h_notional_value_dollars summed across active markets from GET /trade-api/v2/margin/markets (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      series: perp_venue_volume_24h_usd{venue="kalshi"}
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, crypto plus US equities, indices and FX perps
+    formula: "quoteVolume summed across GET /v2/ticker/24hr rows (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="vest"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="vest"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      success: avg_over_time(perp_venue_health{venue="vest"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      series: perp_venue_volume_24h_usd{venue="vest"}
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain, 13 markets incl. gold, silver, oil
+    formula: "summary.volume_quote_24h from GET /api/query_market_overview (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="standx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="standx"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="standx"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      series: perp_venue_volume_24h_usd{venue="standx"}
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, crypto and US stock contracts
+    formula: "turnover24h summed across live perpetual and stock contracts from GET /api/v3/ticker (one call per market, 5 min cache), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="apex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="apex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="apex"}
+  - slug: jupiter
+    name: Jupiter Perps
+    tag: Solana, JLP pool as counterparty, SOL, ETH, WBTC
+    formula: "volume from GET /v1/market-stats summed over the three markets (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="jupiter"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      series: perp_venue_volume_24h_usd{venue="jupiter"}
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment, separate books on api.rh.lighter.xyz
+    formula: "daily_quote_token_volume summed across GET /api/v1/exchangeStats rows on the Robinhood deployment (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      series: perp_venue_volume_24h_usd{venue="lighter-rh"}
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex, equities, metals, FX and index perps
+    formula: "dayNtlVlm summed across the xyz dex universe from POST /info metaAndAssetCtxs dex=xyz (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      series: perp_venue_volume_24h_usd{venue="trade-xyz"}

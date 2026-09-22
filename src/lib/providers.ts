@@ -37,6 +37,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Arc publishes a keyless QuickNode endpoint under its own domain; the
   // product page is QuickNode's.
   "arc-quicknode": "quicknode",
+  // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
+  // cohort row moved with it on 2026-09-22.
+  vertex: "nado",
   // TON → Gram rebrand (June 2026). Stale inbound references to slug
   // "ton" resolve to canonical "gram" so older links, search hits, and
   // any external citation that still says ton/Toncoin lands on the
@@ -62,6 +65,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // "gmx-v2"; every other perp bench and the product page use "gmx".
   // One brand, one product page, one compare entry.
   "gmx-v2": "gmx",
+  // trade.xyz is the xyz HIP-3 deployer: one product page (xyz) for the
+  // deployers bench and the perp cohort row (trade-xyz).
+  "trade-xyz": "xyz",
   // Bench 268 measured the Binance Wallet swap as "binance-wallet" for a
   // day (2026-09-18); the row and the product page are "binance".
   "binance-wallet": "binance",
@@ -650,7 +656,7 @@ export function isBlacklistedSlug(slug: string): boolean {
 // avoid a build-time cycle with the perp-stats module.
 const PERP_VENUE_SEED = [
   { slug: "drift", name: "Drift" },
-  { slug: "vertex", name: "Vertex" },
+  { slug: "nado", name: "Nado" },
   { slug: "edgex", name: "edgeX" },
   { slug: "extended", name: "Extended" },
   { slug: "aevo", name: "Aevo" },
@@ -658,6 +664,11 @@ const PERP_VENUE_SEED = [
   { slug: "variational", name: "Variational" },
   { slug: "ostium", name: "Ostium" },
   { slug: "grvt", name: "GRVT" },
+  { slug: "kalshi", name: "Kalshi" },
+  { slug: "vest", name: "Vest" },
+  { slug: "standx", name: "StandX" },
+  { slug: "apex", name: "ApeX Omni" },
+  { slug: "lighter-rh", name: "Lighter RH" },
 ];
 
 // Meta-providers that live in PROVIDER_REGISTRY but never appear as a

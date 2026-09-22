@@ -134,6 +134,8 @@ const RAW: Record<string, string> = {
   derive: "/logos/derive.svg",
   // Pre-TGE rows on the same bench; marks from each site, on a white tile.
   nado: "/logos/nado.svg",
+  vest: "/logos/vest.svg",
+  standx: "/logos/standx.png",
   decibel: "/logos/decibel.svg",
   drift: "/logos/drift.png",
   vertex: "/logos/vertex.png",
@@ -715,6 +717,8 @@ const ALIASES: Record<string, string> = {
   coin: "coinbase",
   "megaeth-official": "megaeth",
   "robinhood-official": "robinhood",
+  "lighter-rh": "lighter",
+  "trade-xyz": "xyz",
   "arc-official": "arc",
   "celo-official": "celo",
   "blast-official": "blast",

@@ -114,7 +114,7 @@ const (
 	srcParadexNative     = "paradex_native"
 	srcEdgexNative       = "edgex_native"
 	srcAsterNative       = "aster_native"
-	srcVertexNative      = "vertex_native"
+	srcVertexNative      = "nado_native" // the Vertex team's venue is Nado since 2026 (source_vertex.go)
 	srcGrvtNative        = "grvt_native"
 	srcExtendedNative    = "extended_native"
 	srcAevoNative        = "aevo_native"
@@ -129,6 +129,13 @@ const (
 	srcOrderlyNative     = "orderly_native"
 	srcBackpackNative    = "backpack_native"
 	srcOndoNative        = "ondo_native"
+	srcKalshiNative      = "kalshi_native"
+	srcVestNative        = "vest_native"
+	srcStandXNative      = "standx_native"
+	srcApexNative        = "apex_native"
+	srcJupiterNative     = "jupiter_native"
+	srcLighterRHNative   = "lighter_rh_native"
+	srcHLXyzNative       = "hl_xyz_native"
 	srcDefillama         = "defillama"
 	srcMobulaPairs       = "mobula_pairs"
 	srcMobulaFund        = "mobula_funding"
@@ -159,7 +166,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative, srcDefillama}
 		case "aster":
 			return []string{srcAsterNative, srcDefillama}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative, srcDefillama}
 		case "grvt":
 			return []string{srcGrvtNative, srcDefillama}
@@ -187,6 +194,20 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcOrderlyNative}
 		case "backpack":
 			return []string{srcBackpackNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
 		}
 	case mVolume30d:
 		switch venue {
@@ -196,7 +217,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterNative, srcDefillama}
 		case "gmx-v2", "gains":
 			return []string{srcDefillama}
-		case "vertex":
+		case "nado":
 			// DefiLlama vertex-perps returns null for vol30d, so the
 			// native archive (31 daily granules diffed) is primary.
 			return []string{srcVertexNative, srcDefillama}
@@ -228,7 +249,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative, srcDefillama}
 		case "aster":
 			return []string{srcAsterNative, srcDefillama}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative, srcDefillama}
 		case "grvt":
 			return []string{srcGrvtNative, srcDefillama}
@@ -247,10 +268,25 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcDefillama}
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
+		case "vest":
+			// The Vest API publishes no open interest.
+			return nil
 		}
 	case mFees30d:
 		switch venue {
-		case "vertex":
+		case "nado":
 			// DefiLlama vertex-perps returns null for fees, so the
 			// native archive (cumulative_taker_fees + cumulative_maker_fees
 			// diffed across 31 daily granules) is primary.
@@ -282,7 +318,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative}
 		case "aster":
 			return []string{srcAsterNative}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative}
 		case "grvt":
 			return []string{srcGrvtNative}
@@ -301,6 +337,20 @@ func priorityMap(venue, metric string) []string {
 			return nil
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
 		}
 	case mTopVol24h:
 		switch venue {
@@ -318,7 +368,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative}
 		case "aster":
 			return []string{srcAsterNative}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative}
 		case "grvt":
 			return []string{srcGrvtNative}
@@ -334,6 +384,20 @@ func priorityMap(venue, metric string) []string {
 			return nil
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
 		}
 	case mTVL:
 		// TVL comes from DefiLlama /protocol/{slug} for venues where the
@@ -342,7 +406,7 @@ func priorityMap(venue, metric string) []string {
 		// reliable TVL signal and are omitted from the capital-efficiency bench.
 		switch venue {
 		case "hyperliquid", "gains", "gmx-v2", "dydx", "ostium",
-			"lighter", "paradex", "edgex", "aster", "vertex",
+			"lighter", "paradex", "edgex", "aster", "nado",
 			"grvt", "extended", "aevo", "pacifica":
 			return []string{srcDefillama}
 		}
@@ -459,6 +523,13 @@ func NewRouter(cfg *Config) *Router {
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
 		NewOndoNativeSource(),
+		NewKalshiNativeSource(),
+		NewVestNativeSource(),
+		NewStandXNativeSource(),
+		NewApexNativeSource(),
+		NewJupiterNativeSource(),
+		NewLighterDeploymentSource("lighter-rh", "https://api.rh.lighter.xyz/api/v1", srcLighterRHNative),
+		NewHLBuilderSource("trade-xyz", "xyz", srcHLXyzNative),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {

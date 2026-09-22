@@ -66,7 +66,7 @@ findings:
   - "{{name:ostium}} lists {{p50:ostium}} active markets. Synthetic perps on Arbitrum, FX and commodities alongside crypto."
   - "{{name:pacifica}} lists {{p50:pacifica}} active markets. Solana-native onchain perps."
   - "{{name:paradex}} lists {{p50:paradex}} active markets. Starknet L2 perps."
-  - "{{name:vertex}} lists {{p50:vertex}} active markets. Arbitrum orderbook plus AMM hybrid."
+  - "{{name:nado}} lists {{p50:nado}} active markets. Ink orderbook DEX by the Vertex team."
   - "{{name:polymarket}} lists {{p50:polymarket}} active markets. Polygon perps, launched 2026-07."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
@@ -254,18 +254,18 @@ providers:
       sample_size: count_over_time(perp_venue_active_markets{venue="paradex"}[24h])
       series: perp_venue_active_markets{venue="paradex"}
 
-  - slug: vertex
-    name: Vertex
-    tag: Arbitrum orderbook plus AMM hybrid
-    formula: "Count of active perp products from the Vertex public indexer on Arbitrum."
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook DEX by the Vertex team (the row read as Vertex until 2026-09-22)
+    formula: "Count of perp products with trading_status live from the Nado public gateway /v1/symbols."
     queries:
-      p50: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="vertex"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="vertex"}[24h])
-      mean: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      success: avg_over_time(perp_venue_health{venue="vertex"}[24h])
-      sample_size: count_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      series: perp_venue_active_markets{venue="vertex"}
+      p50: avg_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="nado"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nado"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      series: perp_venue_active_markets{venue="nado"}
 
   - slug: polymarket
     name: Polymarket
@@ -279,3 +279,87 @@ providers:
       success: avg_over_time(perp_venue_health{venue="polymarket"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="polymarket"}[24h])
       series: perp_venue_active_markets{venue="polymarket"}
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, crypto and metals perps
+    formula: "Count of markets with status active from GET /trade-api/v2/margin/markets."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="kalshi"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      series: perp_venue_active_markets{venue="kalshi"}
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, crypto plus US equities, indices and FX
+    formula: "Count of symbols with status TRADING in GET /v2/ticker/latest (544 listed, about 90 open at a time; equities follow exchange hours)."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="vest"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="vest"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      success: avg_over_time(perp_venue_health{venue="vest"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      series: perp_venue_active_markets{venue="vest"}
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain
+    formula: "summary.symbol_count from GET /api/query_market_overview."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="standx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="standx"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="standx"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      series: perp_venue_active_markets{venue="standx"}
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, crypto and US stock contracts
+    formula: "Count of perpetualContract and stockContract rows with enableTrade and enableDisplay in GET /api/v3/symbols; prediction contracts excluded."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="apex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="apex"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      series: perp_venue_active_markets{venue="apex"}
+  - slug: jupiter
+    name: Jupiter Perps
+    tag: Solana, JLP pool as counterparty
+    formula: "Markets answering GET /v1/market-stats (SOL, ETH, WBTC)."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="jupiter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="jupiter"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="jupiter"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      series: perp_venue_active_markets{venue="jupiter"}
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment
+    formula: "Count of perp markets with status active in GET /api/v1/orderBookDetails on api.rh.lighter.xyz."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="lighter-rh"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="lighter-rh"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      series: perp_venue_active_markets{venue="lighter-rh"}
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex
+    formula: "Count of non-delisted universe entries from POST /info metaAndAssetCtxs dex=xyz."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="trade-xyz"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="trade-xyz"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      series: perp_venue_active_markets{venue="trade-xyz"}
