@@ -1,6 +1,18 @@
 import type { Metadata } from "next";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { isDevOnlyBench } from "@/lib/removed-benches";
+
+/** Appearances the site still has a page for. A retired bench returns 410,
+ *  so counting it, linking it or quoting its rank describes a cohort that
+ *  no longer exists: /products/mobula linked two of them and printed their
+ *  ranks in its first 300 words (SEO audit 2026-09-22). */
+function livingAppearances<T extends { benchmark: { slug: string } }>(xs: T[]): T[] {
+  return xs.filter(
+    (a) => !REMOVED_BENCH_SLUGS.has(a.benchmark.slug) && !isDevOnlyBench(a.benchmark.slug),
+  );
+}
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -159,7 +171,8 @@ export async function generateMetadata({
   // to a numeric one summarizing competitive footprint. Either way the
   // first word is the provider name, which is what the SERP snippet keeps
   // when it truncates.
-  const benchCount = p.appearances.length;
+  const appearances = livingAppearances(p.appearances);
+  const benchCount = appearances.length;
   const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
@@ -182,7 +195,7 @@ export async function generateMetadata({
   // value, then the registry one-liner if room remains. The dated
   // "As of" belongs in the page body (TL;DR, JSON-LD dateModified), not
   // in 22 characters of the snippet.
-  const metaRanked = [...p.appearances]
+  const metaRanked = [...appearances]
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
     // Tie-break on the size of the field a rank was earned in (#1 of 6
     // before #1 of 2), then the title; the alphabetical break opened
@@ -287,7 +300,9 @@ export default async function ProviderPage({
     ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
     : null;
   const canLink = (benchSlug: string) =>
-    !benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug);
+    !REMOVED_BENCH_SLUGS.has(benchSlug) &&
+    !isDevOnlyBench(benchSlug) &&
+    (!benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug));
 
   // Degraded-read tripwire: a provider listed on several benches never
   // loses EVERY rank in the same cycle — that signature means the store
@@ -385,7 +400,9 @@ export default async function ProviderPage({
     return !!r && (r.feep50 != null || r.quotep50 != null);
   });
 
-  const sorted = [...p.appearances].sort((a, b) => {
+  // Same rule as generateMetadata: nothing that 410s gets counted or shown.
+  const living = livingAppearances(p.appearances);
+  const sorted = [...living].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
     // Larger field first (see metaRanked), then the title.
     if (a.totalRanked !== b.totalRanked) return b.totalRanked - a.totalRanked;
@@ -409,7 +426,7 @@ export default async function ProviderPage({
   const proseParts: string[] = [];
   if (topLines.length > 0) {
     proseParts.push(
-      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${p.appearances.length} live OpenChainBench ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
+      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
     );
     proseParts.push(`${topLines.join(", ")}.`);
   } else {

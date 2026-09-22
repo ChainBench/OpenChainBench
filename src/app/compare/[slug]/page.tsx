@@ -239,7 +239,10 @@ export async function generateMetadata({
   // dydx-vs-hyperliquid in prod). The gate only applies to
   // combinatorial ad hoc pairs.
   const isCurated = getComparePair(pair.slug) !== undefined;
-  const thin = !isCurated && liveSharedCount < 2;
+  // A 200 with noindex is recrawled forever; a 404 leaves the index in
+  // weeks. 232 ad hoc compare URLs were live, crawled and deindexed on
+  // 2026-09-22 against 151 in the sitemap.
+  if (!isCurated && liveSharedCount < 2) notFound();
 
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
@@ -287,7 +290,6 @@ export async function generateMetadata({
     description,
     // follow stays on so PageRank keeps flowing through the body links
     // (both provider pages, parent benches) even while deindexed.
-    ...(thin ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
     openGraph: {
       title,
@@ -808,6 +810,15 @@ export default async function ComparePage({
 
   const shared = await buildSharedBenches(pair, a, b);
   if (shared.length === 0) return notFound();
+  // Mirrors generateMetadata: an ad hoc pair with fewer than two live
+  // shared benches has nothing to compare, so it 404s instead of serving
+  // a 200 the crawler keeps in its queue. Curated pairs are exempt.
+  if (getComparePair(pair.slug) === undefined) {
+    // "Live" here is the same test the verdict uses above: both sides
+    // carry a positive p50 on that bench.
+    const live = shared.filter((sb) => sb.aResult.p50 > 0 && sb.bResult.p50 > 0).length;
+    if (live < 2) return notFound();
+  }
 
   const regA = getProviderRegistry(a.slug);
   const regB = getProviderRegistry(b.slug);
