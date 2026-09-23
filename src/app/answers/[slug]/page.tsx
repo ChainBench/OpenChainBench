@@ -76,7 +76,9 @@ export async function generateMetadata({
   const description = capSnippet(metaDescription);
   const asOfIso = citableAsOf(ans.bench);
   return {
-    title,
+    // Same rule as the bench, product and compare routes: a title that
+    // already fills the SERP budget ships without the brand suffix.
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     alternates: { canonical: url },
     // Same Highwire citation_* block as the bench pages: the answer is
