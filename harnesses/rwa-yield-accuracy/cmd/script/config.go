@@ -10,10 +10,18 @@ import (
 // 30d/7d windows are recomputed at windowRecomputeInterval (heavier
 // query, values move slowly enough that once an hour is plenty).
 const (
-	pollInterval             = 60 * time.Second
-	windowRecomputeInterval  = time.Hour
-	promisedReloadInterval   = 60 * time.Second
-	httpTimeout              = 30 * time.Second
+	pollInterval            = 60 * time.Second
+	windowRecomputeInterval = time.Hour
+	promisedReloadInterval  = 60 * time.Second
+	httpTimeout             = 30 * time.Second
+	// A measurement is two print searches per window (binary search over
+	// five days of blocks, one archive call per step) for two windows.
+	measureTimeout = 3 * time.Minute
+	// A last good measurement stays published, with probe_ok at 1, for
+	// this long after it was taken; beyond that a failing probe reads 0.
+	// The same bound as the spec's success gate (7200 s on the age of
+	// rwa_yield_last_measured_unix), so the harness and the page agree.
+	staleAfter = 2 * time.Hour
 )
 
 // Rolling window sizes for delivered-yield computation.

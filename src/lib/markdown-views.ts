@@ -22,7 +22,17 @@ import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 
-function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
+export function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
+  // A bench that repurposes the p50/p90/p99/mean slots declares
+  // ledger_columns; the Markdown then names the slots the way the table
+  // does instead of printing a signed 30d deviation as "p99".
+  const slotCols = (b.ledgerColumns ?? []).filter((c) => c.slot);
+  if (slotCols.length > 0) {
+    return ranked.map((r, i) => {
+      const cells = slotCols.map((c) => `${c.label} ${fmtUnit(r.ms[c.slot as "p50" | "p90" | "p99" | "mean"], c.unit ?? b.unit)}`);
+      return `${i + 1}. **${r.name}**: ${cells.join(", ")} (success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`;
+    });
+  }
   return ranked.map(
     (r, i) =>
       `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
@@ -204,6 +214,36 @@ export function productMarkdown(p: ProviderProfile): string {
       md.push(`- ${a.benchmark.title}: ${a.result.unrankedLabel ?? "below the ranking floor"} (${SITE.url}/benchmarks/${a.benchmark.slug})`);
     }
     md.push("");
+  }
+  md.push(`---`);
+  md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);
+  return md.join("\n");
+}
+
+/** Markdown view of /rwa: the five tokenized-RWA benches, leader and
+ *  top rows each, in the order the hub shows them. */
+export function rwaHubMarkdown(benches: Benchmark[]): string {
+  const md: string[] = [];
+  md.push(`# Tokenized RWA benchmarks: price, NAV and yield, measured`);
+  md.push("");
+  md.push(`- Page: ${SITE.url}/rwa`);
+  md.push(`- License: CC-BY-4.0`);
+  md.push(`- What this is: on-chain reads of what tokenized stocks, treasuries and yield funds do (price against the market, basis to the published NAV, yield delivered against yield advertised), not a ranking of declared value.`);
+  md.push("");
+  for (const b of benches) {
+    const insufficient = isInsufficient(b);
+    const ranked = insufficient ? [] : rankedCandidates(b);
+    md.push(`## ${b.title}`);
+    md.push("");
+    md.push(`- Page: ${SITE.url}/benchmarks/${b.slug} · JSON: ${SITE.url}/api/stat/${b.slug}`);
+    md.push(`- Metric: ${b.metric} (${b.unit}), window ${b.window ?? "24h"}, last sample ${citableAsOf(b) ?? "n/a"}`);
+    md.push("");
+    md.push(`**Headline.** ${headlineSentence(b)}`);
+    md.push("");
+    if (ranked.length > 0) {
+      md.push(...rankingLines(b, ranked.slice(0, 8)));
+      md.push("");
+    }
   }
   md.push(`---`);
   md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);

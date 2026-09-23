@@ -37,6 +37,10 @@ export function valueQualifier(b: WindowBench): string {
   const win = b.window ?? "24h";
   if (b.valueKind === "latest") return "latest value";
   if (b.valueKind === "total") return `${windowDays(win)} at the average daily rate`;
+  // A quantile_over_time(0.5, ...) headline is a median whatever the unit;
+  // the pct/bps rule below would call the stock benches' 7d median an
+  // average (review 2026-09-23).
+  if (b.valueKind === "median") return `p50, ${win}`;
   if (b.unit === "usd" || b.unit === "count") return win;
   if (b.unit === "pct" || b.unit === "bps" || b.unit === "bp") return `${win} avg`;
   if (b.hasDistribution === false) return win;
@@ -78,11 +82,12 @@ export function valueReadingPhrase(b: WindowBench): string {
  */
 export function specValueKind(spec: {
   providers?: { queries?: { p50?: string } }[];
-}): "latest" | "total" | undefined {
+}): "latest" | "total" | "median" | undefined {
   const providers = spec.providers ?? [];
   let sawQueries = false;
   let allLatest = true;
   let allTotal = true;
+  let allMedian = true;
   for (const p of providers) {
     const q = p.queries?.p50?.trim();
     if (!q) continue;
@@ -93,9 +98,11 @@ export function specValueKind(spec: {
     // at the average daily rate, which the qualifier must not call an
     // average of the month.
     if (!/^avg_over_time\(.+\)\s*\*\s*\d+$/.test(q)) allTotal = false;
+    if (!/^quantile_over_time\(0\.50?,/.test(q)) allMedian = false;
   }
   if (!sawQueries) return undefined;
   if (allLatest) return "latest";
   if (allTotal) return "total";
+  if (allMedian) return "median";
   return undefined;
 }

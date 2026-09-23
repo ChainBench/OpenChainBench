@@ -329,7 +329,10 @@ export function LedgerTable({
       // Comparing with > 0 dropped legitimately NEGATIVE rows on signed
       // benches: perp-funding's OKX (paid on ETH, BTC and SOL, all three
       // slots negative) vanished from the ledger while leading the chart.
-      return r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0;
+      // The mean slot counts too: on rwa-yield-accuracy the three
+      // percentile slots are deviations, all 0 for a token tracking its
+      // reference exactly, while mean holds the delivered yield.
+      return r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0 || (r.ms.mean ?? 0) !== 0;
     })
     .sort((a, b) => {
       // Default branch: preserve the EXACT comparator that shipped before

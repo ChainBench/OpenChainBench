@@ -11,14 +11,19 @@ import (
 // chain. All three delivered-yield windows are computed together so
 // the caller (main loop) writes them atomically to Prometheus.
 type Measurement struct {
-	Token   string
-	Issuer  string
-	Chain   string
+	Token  string
+	Issuer string
+	Chain  string
 
 	// All yields in basis points (530 = 5.30%).
 	DeliveredBps30d      int
 	DeliveredBps7d       int
 	DeliveredBpsLifetime int
+
+	// Days between the two NAV prints each window yield spans (0 when
+	// the adapter does not anchor on prints).
+	SpanDays30d float64
+	SpanDays7d  float64
 
 	// totalSupply in the token's own base units (usually 1e18 or 1e6).
 	TotalSupplyUnits float64
@@ -42,7 +47,7 @@ type Measurement struct {
 // mutate Prometheus metrics — the caller owns metric writes so a
 // single probe error doesn't wipe healthy gauges.
 type IssuerProbe interface {
-	Slug() string  // token slug, e.g. "usdy"
+	Slug() string   // token slug, e.g. "usdy"
 	Issuer() string // issuer slug, e.g. "ondo"
 	Chain() string  // chain slug, e.g. "ethereum"
 

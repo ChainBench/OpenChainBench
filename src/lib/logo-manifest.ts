@@ -418,7 +418,6 @@ const RAW: Record<string, string> = {
   mu: "/logos/mu.png",
   qqq: "/logos/qqq.png",
   "orca-solana": "/logos/orca.png",
-  "pyth-market": "/logos/pyth.jpg",
 
   // ─── Buyback audit (bench 018) ───
   sky: "/logos/sky.svg",
@@ -810,6 +809,7 @@ const ALIASES: Record<string, string> = {
   "robinhood-official": "robinhood",
   "lighter-rh": "lighter",
   "trade-xyz": "xyz",
+  "jupiter-solana": "jupiter",
   "coinbase-international": "coinbase",
   "arc-official": "arc",
   "celo-official": "celo",

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { getProvider } from "@/lib/providers";
 import { fetchPerpCohort } from "@/lib/perp-stats";
-import { benchMarkdown, perpsHubMarkdown, productMarkdown } from "@/lib/markdown-views";
+import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from "@/lib/markdown-views";
 
 /**
  * Markdown views of a bench, the perps hub and a product page, at
@@ -44,6 +44,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: stri
   if (head === "perps" && slug === undefined) {
     const cohort = await fetchPerpCohort();
     return markdown(perpsHubMarkdown(cohort), "/perps");
+  }
+  if (head === "rwa" && slug === undefined) {
+    const slugs = ["rwa-yield-accuracy", "usdy-nav-basis", "tokenized-stock-peg", "xstocks-peg", "tokenized-stock-weekend-drift"];
+    const benches = (await Promise.all(slugs.map((s) => getBenchmark(s)))).filter((b): b is NonNullable<typeof b> => !!b);
+    return markdown(rwaHubMarkdown(benches), "/rwa");
   }
   if (head === "benchmarks" && slug && SLUG.test(slug)) {
     // Same rule as the HTML page (src/app/benchmarks/[slug]/page.tsx): a

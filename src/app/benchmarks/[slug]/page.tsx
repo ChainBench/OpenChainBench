@@ -389,6 +389,7 @@ export default async function BenchmarkPage({
   const variableMeasured = buildBenchVariableMeasured({
     metric: benchmark.metric,
     unit: benchmark.unit,
+    ledgerColumns: benchmark.ledgerColumns,
     leader:
       currentLeader && leaderResult
         ? {
@@ -396,6 +397,7 @@ export default async function BenchmarkPage({
             p50: valueInDeclaredUnit(leaderResult.ms.p50, benchmark.unit),
             p90: valueInDeclaredUnit(leaderResult.ms.p90, benchmark.unit),
             p99: valueInDeclaredUnit(leaderResult.ms.p99, benchmark.unit),
+            mean: valueInDeclaredUnit(leaderResult.ms.mean, benchmark.unit),
           }
         : null,
   });

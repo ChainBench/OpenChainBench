@@ -490,10 +490,10 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Orca is Solana's concentrated liquidity DEX. Its USDY/USDC whirlpool is the deepest genuine venue for Ondo's tokenized treasury and the market leg of the USDY NAV basis benchmark.",
   },
-  "pyth-market": {
-    url: "https://pyth.network",
+  "jupiter-solana": {
+    url: "https://jup.ag",
     description:
-      "Pyth Network's USDY/USD market composite aggregates USDY trading into one feed. Measured against Pyth's own USDY redemption rate feed on the NAV basis benchmark.",
+      "Jupiter's best open route for selling USDY into USDC on Solana, quoted through its public API. Its executable price is measured against the redemption price Ondo publishes on-chain on the USDY NAV basis benchmark.",
   },
   slash: {
     url: "https://slash.trade",

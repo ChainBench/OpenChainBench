@@ -54,6 +54,14 @@ describe("valueQualifier: window totals", () => {
 describe("specValueKind, derived from the spec", () => {
   const one = (q: string) => ({ providers: [{ queries: { p50: q } }] });
 
+  it("calls a quantile_over_time(0.5) headline a median even in basis points", () => {
+    // The stock peg benches' 7d median read "(7d avg)" through the bps rule.
+    const kind = specValueKind(one('quantile_over_time(0.50, (tsp_deviation_bps{asset="nvda"})[7d:1m])'));
+    expect(kind).toBe("median");
+    expect(valueQualifier({ unit: "bp", valueKind: kind, window: "7d" })).toBe("p50, 7d");
+    expect(valueQualifier({ unit: "bp", window: "7d" })).toBe("7d avg");
+  });
+
   it("recognises a point read", () => {
     expect(specValueKind(one('last_over_time(chain_bridged_tvl_usd{chain="base"}[1h])')))
       .toBe("latest");
@@ -65,9 +73,9 @@ describe("specValueKind, derived from the spec", () => {
     expect(specValueKind(one("avg_over_time(x[24h]) * 365 / 100"))).toBeUndefined();
   });
 
-  it("refuses a window statistic", () => {
+  it("refuses a window statistic that is neither a median nor a total", () => {
     expect(specValueKind(one("avg_over_time(x[24h])"))).toBeUndefined();
-    expect(specValueKind(one("quantile_over_time(0.5, x[24h])"))).toBeUndefined();
+    expect(specValueKind(one("quantile_over_time(0.9, x[24h])"))).toBeUndefined();
     expect(specValueKind(one("x"))).toBeUndefined();
   });
 
