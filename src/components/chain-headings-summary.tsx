@@ -3,6 +3,7 @@ import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import {
+  CHAIN_BY_SLUG,
   canonicalChainSlug,
   chainLabelForSlug,
 } from "@/lib/chains";
@@ -59,9 +60,13 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
       </h2>
       <p className="mt-3 text-sm text-ink-muted">
         Live p50 over the last 24 hours, ranked{" "}
-        {benchmark.higherIsBetter ? "highest" : "lowest"} first. Each chain has
-        its own consensus mechanism. The explainer below matches what the
-        harness actually measures.
+        {benchmark.higherIsBetter ? "highest" : "lowest"} first.
+        {/* Only promise an explainer on a bench that has one: benches
+            without per-chain documents were telling the reader to look
+            below for a paragraph that is never rendered. */}
+        {explainerBySlug.size > 0
+          ? " Each chain has its own consensus mechanism. The explainer below matches what the harness actually measures."
+          : ""}
       </p>
 
       <div className="mt-8 space-y-8">
@@ -87,6 +92,17 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
                 {explainer ? (
                   <Link
                     href={`/benchmarks/${benchmark.slug}/${canonSlug}`}
+                    className="hover:underline underline-offset-4"
+                  >
+                    {heading}
+                  </Link>
+                ) : CHAIN_BY_SLUG.has(canonSlug) ? (
+                  /* No per-chain document on this bench, but the chain has a
+                     hub. Without this the block emits 20 headings and zero
+                     links, and a bench whose rows are all chains contributes
+                     nothing to the chain hubs it is about. */
+                  <Link
+                    href={`/chains/${canonSlug}`}
                     className="hover:underline underline-offset-4"
                   >
                     {heading}

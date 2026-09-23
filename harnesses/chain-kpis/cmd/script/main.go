@@ -35,7 +35,8 @@ import (
 
 func main() {
 	fmt.Println("=== chain-kpis harness ===")
-	fmt.Println("Per-chain TVL + DEX vol + stables (DefiLlama) and native price + mcap + tokens (Mobula).")
+	fmt.Println("Per-chain TVL + DEX vol + stables (DefiLlama), native price + mcap + tokens (Mobula),")
+	fmt.Println("and value secured split native/canonical/external with a cohort-relative 7d move (L2Beat).")
 	fmt.Println("Exposes /metrics on :2112.")
 
 	cfg := loadConfig()

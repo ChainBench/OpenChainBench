@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"math"
 	"net/http"
 	"sort"
 	"time"
@@ -31,10 +33,17 @@ const l2beatSummaryURL = "https://l2beat.com/api/scaling/summary"
 var httpClientL2Beat = &http.Client{Timeout: 20 * time.Second}
 
 // l2beatProject is the slice of one `projects` entry that we read.
+//
+// Type and IsUnderReview are decoded because both change how the median
+// cohort should be read: the cohort contains layer3s, and projects L2Beat
+// is re-verifying still publish a figure that votes. Their counts are
+// exported so the yardstick's composition is visible rather than implied.
 type l2beatProject struct {
-	Name       string `json:"name"`
-	IsArchived bool   `json:"isArchived"`
-	Tvs        struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	IsArchived    bool   `json:"isArchived"`
+	IsUnderReview bool   `json:"isUnderReview"`
+	Tvs           struct {
 		Breakdown struct {
 			Total     float64 `json:"total"`
 			Native    float64 `json:"native"`
@@ -59,24 +68,49 @@ type l2beatSummary struct {
 // when too few projects clear the floor for a median to mean anything,
 // and the caller then publishes no excess rather than an excess against a
 // number it cannot defend.
-func cohortMedianChange7d(projects map[string]l2beatProject, floorUSD float64) (median float64, size int, ok bool) {
+func cohortMedianChange7d(projects map[string]l2beatProject, floorUSD float64) (c cohort) {
 	changes := []float64{}
 	for _, p := range projects {
 		if p.IsArchived || p.Tvs.Breakdown.Total < floorUSD {
 			continue
 		}
 		changes = append(changes, 100*p.Tvs.Change7d)
+		c.Size++
+		if p.IsUnderReview {
+			c.UnderReview++
+		}
+		if p.Type == "layer3" {
+			c.Layer3++
+		}
 	}
-	if len(changes) < 5 {
-		return 0, len(changes), false
+	if len(changes) < minCohort {
+		return c
 	}
 	sort.Float64s(changes)
 	n := len(changes)
 	if n%2 == 1 {
-		return changes[n/2], n, true
+		c.Median = changes[n/2]
+	} else {
+		c.Median = (changes[n/2-1] + changes[n/2]) / 2
 	}
-	return (changes[n/2-1] + changes[n/2]) / 2, n, true
+	c.OK = true
+	return c
 }
+
+// cohort describes the reference group the excess is measured against.
+// UnderReview and Layer3 are counted, not filtered: a project L2Beat is
+// re-verifying still publishes the figure everyone else reads, and
+// dropping it would make the yardstick a judgement rather than a
+// measurement. Publishing the counts lets a reader weigh it instead.
+type cohort struct {
+	Median                    float64
+	Size, UnderReview, Layer3 int
+	OK                        bool
+}
+
+// Below this many projects a median is an accident of which few cleared
+// the floor, so the harness publishes none and deletes any stale one.
+const minCohort = 5
 
 func fetchAllL2Beat(cfg *Config) {
 	start := time.Now()
@@ -106,10 +140,18 @@ func fetchAllL2Beat(cfg *Config) {
 // that carry an L2Beat id. Split from the fetch so the mapping and the
 // derived gauges are testable without reaching the network.
 func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
-	median, cohortSize, haveMedian := cohortMedianChange7d(summary.Projects, cfg.L2BeatMedianFloorUSD)
-	chainTvsCohortSize.Set(float64(cohortSize))
-	if haveMedian {
-		chainTvsCohortMedian7dPct.Set(median)
+	co := cohortMedianChange7d(summary.Projects, cfg.L2BeatMedianFloorUSD)
+	chainTvsCohortSize.Set(float64(co.Size))
+	chainTvsCohortUnderReview.Set(float64(co.UnderReview))
+	chainTvsCohortLayer3.Set(float64(co.Layer3))
+	if co.OK {
+		chainTvsCohortMedian7dPct.Set(co.Median)
+	} else {
+		// Delete rather than freeze: a median left at its last value would
+		// keep every excess on the board looking defensible while the
+		// cohort behind it no longer exists.
+		chainTvsCohortMedian7dPct.Set(math.NaN())
+		chainTvsChange7dExcessPct.Reset()
 	}
 
 	published, missing := 0, []string{}
@@ -139,6 +181,18 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(0)
 			continue
 		}
+		// The three origins must reconstruct the total. If upstream renames
+		// one of them, every field we read silently binds to zero and the
+		// board would publish a $0 bridged TVL at full health — a wrong
+		// number that looks measured. A residual above a tenth of a percent
+		// is not a rounding difference, it is a schema change.
+		if residual := math.Abs(b.Native+b.Canonical+b.External-b.Total) / b.Total; residual > 0.001 {
+			missing = append(missing, c.Slug)
+			chainKpisFetchErrors.WithLabelValues(c.Slug, "l2beat", "schema_drift").Inc()
+			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(0)
+			log.Printf("[l2beat][%s] origins do not reconstruct the total (residual %.4f); not publishing", c.Slug, residual)
+			continue
+		}
 
 		chainValueSecuredUsd.WithLabelValues(c.Slug, "native").Set(b.Native)
 		chainValueSecuredUsd.WithLabelValues(c.Slug, "canonical").Set(b.Canonical)
@@ -148,13 +202,13 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 
 		change := 100 * p.Tvs.Change7d
 		chainTvsChange7dPct.WithLabelValues(c.Slug).Set(change)
-		if haveMedian {
+		if co.OK {
 			// The absolute move is mostly the market's move. In the week
 			// this was written every one of the 16 projects above $200M
-			// was up, from +3.6% to +23.6% with a median of +14.8%, so a
-			// ranking on the raw number would have ranked beta. The excess
-			// is what says a chain gained or lost ground against its peers.
-			chainTvsChange7dExcessPct.WithLabelValues(c.Slug).Set(change - median)
+			// was up, so a ranking on the raw number would have ranked
+			// beta. The excess is what says a chain gained or lost ground
+			// against its peers.
+			chainTvsChange7dExcessPct.WithLabelValues(c.Slug).Set(change - co.Median)
 		}
 
 		chainKpisLastRefresh.WithLabelValues(c.Slug, "l2beat").Set(now)
@@ -167,8 +221,26 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 		published++
 	}
 
-	fmt.Printf("[l2beat] published %d chains, cohort %d above $%.0fM, median 7d %+.1f%% (missing: %v)\n",
-		published, cohortSize, cfg.L2BeatMedianFloorUSD/1e6, median, missing)
+	if published > 0 {
+		// The freshness gauge the bench reads. It has to be its own bare
+		// metric: chain_kpis_last_refresh_timestamp_seconds carries a
+		// source label, so a max() over it stays fresh on DefiLlama's tick
+		// while L2Beat is hours stale, and the page would claim a
+		// freshness it does not have.
+		chainKpisL2BeatLastSuccessUnix.Set(now)
+		chainKpisLastTickUnix.Set(now)
+	}
+
+	fmt.Printf("[l2beat] published %d chains, cohort %d above $%.0fM (%d under review, %d layer3), median 7d %s (missing: %v)\n",
+		published, co.Size, cfg.L2BeatMedianFloorUSD/1e6, co.UnderReview, co.Layer3,
+		medianLabel(co), missing)
+}
+
+func medianLabel(c cohort) string {
+	if !c.OK {
+		return "none (cohort too small)"
+	}
+	return fmt.Sprintf("%+.1f%%", c.Median)
 }
 
 func fetchL2BeatSummary() (*l2beatSummary, error) {

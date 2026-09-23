@@ -28,12 +28,12 @@ func TestMedianRefusesATooSmallCohort(t *testing.T) {
 		"b": proj(400e6, 0, 0, 0, 0.20, false),
 		"c": proj(1e6, 0, 0, 0, 5.00, false), // below the floor, must not vote
 	}
-	_, size, ok := cohortMedianChange7d(small, 200e6)
-	if ok {
+	co := cohortMedianChange7d(small, 200e6)
+	if co.OK {
 		t.Fatalf("a 2-project cohort produced a median")
 	}
-	if size != 2 {
-		t.Fatalf("cohort size = %d, want 2 (the $1M project must be excluded)", size)
+	if co.Size != 2 {
+		t.Fatalf("cohort size = %d, want 2 (the $1M project must be excluded)", co.Size)
 	}
 }
 
@@ -45,9 +45,9 @@ func TestFloorKeepsTheMedianFromBeingSetByDust(t *testing.T) {
 	for _, k := range []string{"a", "b", "c", "d", "e", "f", "g"} {
 		base[k] = proj(1e9, 0, 0, 0, 0.10, false) // seven big chains, all +10%
 	}
-	withFloor, _, ok := cohortMedianChange7d(base, 200e6)
-	if !ok || math.Abs(withFloor-10) > 1e-9 {
-		t.Fatalf("median with floor = %v, want 10", withFloor)
+	withFloor := cohortMedianChange7d(base, 200e6)
+	if !withFloor.OK || math.Abs(withFloor.Median-10) > 1e-9 {
+		t.Fatalf("median with floor = %v, want 10", withFloor.Median)
 	}
 
 	// Add eight dust chains that each tripled this week. Eight, not six:
@@ -57,19 +57,19 @@ func TestFloorKeepsTheMedianFromBeingSetByDust(t *testing.T) {
 	for _, k := range []string{"t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"} {
 		base[k] = proj(2e6, 0, 0, 0, 2.00, false)
 	}
-	stillWithFloor, size, _ := cohortMedianChange7d(base, 200e6)
-	if math.Abs(stillWithFloor-10) > 1e-9 {
-		t.Fatalf("dust moved the floored median to %v", stillWithFloor)
+	stillWithFloor := cohortMedianChange7d(base, 200e6)
+	if math.Abs(stillWithFloor.Median-10) > 1e-9 {
+		t.Fatalf("dust moved the floored median to %v", stillWithFloor.Median)
 	}
-	if size != 7 {
-		t.Fatalf("cohort size = %d, want 7", size)
+	if stillWithFloor.Size != 7 {
+		t.Fatalf("cohort size = %d, want 7", stillWithFloor.Size)
 	}
 
-	noFloor, _, _ := cohortMedianChange7d(base, 0)
-	if math.Abs(noFloor-10) < 1e-9 {
-		t.Fatalf("without a floor the median should have moved, got %v", noFloor)
+	noFloor := cohortMedianChange7d(base, 0)
+	if math.Abs(noFloor.Median-10) < 1e-9 {
+		t.Fatalf("without a floor the median should have moved, got %v", noFloor.Median)
 	}
-	t.Logf("median with floor %.1f%%, without floor %.1f%%", stillWithFloor, noFloor)
+	t.Logf("median with floor %.1f%%, without floor %.1f%%", stillWithFloor.Median, noFloor.Median)
 }
 
 func TestArchivedProjectsDoNotVote(t *testing.T) {
@@ -81,9 +81,9 @@ func TestArchivedProjectsDoNotVote(t *testing.T) {
 		"e": proj(1e9, 0, 0, 0, 0.10, false),
 		"z": proj(9e9, 0, 0, 0, 9.99, true),
 	}
-	median, size, ok := cohortMedianChange7d(m, 200e6)
-	if !ok || size != 5 || math.Abs(median-10) > 1e-9 {
-		t.Fatalf("median=%v size=%d ok=%v; the archived project leaked in", median, size, ok)
+	co := cohortMedianChange7d(m, 200e6)
+	if !co.OK || co.Size != 5 || math.Abs(co.Median-10) > 1e-9 {
+		t.Fatalf("median=%v size=%d ok=%v; the archived project leaked in", co.Median, co.Size, co.OK)
 	}
 }
 
@@ -96,9 +96,9 @@ func TestMedianIsTheAverageOfTheTwoMiddlesWhenEven(t *testing.T) {
 		"e": proj(1e9, 0, 0, 0, 0.30, false),
 		"f": proj(1e9, 0, 0, 0, 0.40, false),
 	}
-	median, _, ok := cohortMedianChange7d(m, 200e6)
-	if !ok || math.Abs(median-15) > 1e-9 {
-		t.Fatalf("median = %v, want 15 (mean of 10 and 20)", median)
+	co := cohortMedianChange7d(m, 200e6)
+	if !co.OK || math.Abs(co.Median-15) > 1e-9 {
+		t.Fatalf("median = %v, want 15 (mean of 10 and 20)", co.Median)
 	}
 }
 
@@ -135,10 +135,14 @@ func TestParsesTheLivePayloadShape(t *testing.T) {
 	}
 }
 
-// Every registry row that claims an L2Beat id must be a rollup; an L1 has
-// no bridge securing its value and would publish a bridged TVL of zero
-// that reads as "no capital came here" rather than "not applicable".
-func TestOnlyRollupsCarryAnL2BeatID(t *testing.T) {
+// A chain L2Beat does not track in its scaling summary must not claim an
+// id. The settled L1s below are the clear cases: they secure their own
+// value with no host chain, so a bridged figure would read as "no capital
+// came here" rather than "not applicable". Note this is narrower than
+// "only rollups": Polygon PoS, Gnosis and Hyperliquid run their own
+// consensus and are still tracked, which is why the bench copy says
+// "chains L2Beat tracks" and not "rollups".
+func TestSettledL1sCarryNoL2BeatID(t *testing.T) {
 	l1s := map[string]bool{
 		"ethereum": true, "solana": true, "bnb": true, "avalanche": true,
 		"sui": true, "gram": true, "stellar": true, "tron": true,
@@ -158,19 +162,27 @@ func TestPublishDerivesBridgedAndExcess(t *testing.T) {
 	s := &l2beatSummary{Projects: map[string]l2beatProject{
 		"base":        proj(16441422848, 8222340259, 3121029128, 5098059233, 0.1524, false),
 		"hyperliquid": proj(7507570688, 0, 7507570688, 0, 0.1510, false),
-		// five more so the cohort clears the minimum for a median
-		"arbitrum": proj(11874269184, 0, 0, 0, 0.1020, false),
-		"optimism": proj(1930874112, 0, 0, 0, 0.1990, false),
-		"mantle":   proj(1528454272, 0, 0, 0, 0.0750, false),
-		"linea":    proj(384864000, 0, 0, 0, 0.1220, false),
-		"celo":     proj(262609296, 0, 0, 0, 0.0430, false),
+		// Five more so the cohort clears the minimum for a median. Each
+		// carries a real split: the publish path refuses a project whose
+		// origins do not reconstruct its total, so an all-zero breakdown
+		// would be dropped before it reached a gauge.
+		"arbitrum": proj(11874269184, 3692575462, 3803950446, 4377743276, 0.1020, false),
+		"optimism": proj(1930874112, 392793661, 1192897272, 345183179, 0.1990, false),
+		"mantle":   proj(1528454272, 46692460, 818479451, 663282361, 0.0750, false),
+		"linea":    proj(384864000, 1925419, 133260387, 249678194, 0.1220, false),
+		"celo":     proj(262609296, 243129539, 2587787, 16891970, 0.0430, false),
 	}}
 	cfg := &Config{L2BeatMedianFloorUSD: 200e6}
 	publishL2Beat(s, cfg, 42)
 
-	median, size, ok := cohortMedianChange7d(s.Projects, 200e6)
-	if !ok || size != 7 {
-		t.Fatalf("cohort size %d ok %v", size, ok)
+	co := cohortMedianChange7d(s.Projects, 200e6)
+	if !co.OK || co.Size != 7 {
+		t.Fatalf("cohort size %d ok %v", co.Size, co.OK)
+	}
+	median := co.Median
+	if co.UnderReview != 0 || co.Layer3 != 0 {
+		t.Errorf("fixture has no under-review or layer3 project but counts say %d/%d",
+			co.UnderReview, co.Layer3)
 	}
 
 	// Base: bridged is everything that is not native.
@@ -225,4 +237,58 @@ func TestRegistryL2BeatIDsAreUnique(t *testing.T) {
 	if len(seen) < 15 {
 		t.Fatalf("only %d chains mapped; the batch verified on 2026-09-23 was 20", len(seen))
 	}
+}
+
+// If L2Beat renames an origin field, every value we read binds to zero and
+// the board would publish a $0 bridged TVL at full health: a wrong number
+// wearing the clothes of a measured one. The guard has to drop the row.
+func TestSchemaDriftDropsTheRowInsteadOfPublishingZero(t *testing.T) {
+	chainBridgedTvlUsd.Reset()
+	chainKpisHealth.Reset()
+
+	drifted := proj(16441422848, 0, 0, 0, 0.15, false) // total binds, origins do not
+	s := &l2beatSummary{Projects: map[string]l2beatProject{"base": drifted}}
+	publishL2Beat(s, &Config{L2BeatMedianFloorUSD: 200e6}, 1)
+
+	if n := countSeries(t, chainBridgedTvlUsd); n != 0 {
+		t.Fatalf("published %d bridged series from a drifted payload; expected none", n)
+	}
+	if h := readGaugeVec(t, chainKpisHealth, "base", "l2beat"); h != 0 {
+		t.Fatalf("health = %v after schema drift, want 0", h)
+	}
+}
+
+// A cohort that falls under the minimum must take the excess series with
+// it. A frozen excess keeps every row looking defensible against a
+// yardstick that no longer exists.
+func TestTooSmallACohortClearsTheExcessSeries(t *testing.T) {
+	full := &l2beatSummary{Projects: map[string]l2beatProject{
+		"base":     proj(16441422848, 8222340259, 3121029128, 5098059233, 0.1524, false),
+		"arbitrum": proj(11874269184, 3692575462, 3803950446, 4377743276, 0.1020, false),
+		"optimism": proj(1930874112, 392793661, 1192897272, 345183179, 0.1990, false),
+		"mantle":   proj(1528454272, 46692460, 818479451, 663282361, 0.0750, false),
+		"linea":    proj(384864000, 1925419, 133260387, 249678194, 0.1220, false),
+	}}
+	publishL2Beat(full, &Config{L2BeatMedianFloorUSD: 200e6}, 1)
+	if countSeries(t, chainTvsChange7dExcessPct) == 0 {
+		t.Fatalf("a 5-project cohort published no excess at all")
+	}
+
+	// Same payload, floor raised so only two projects clear it.
+	publishL2Beat(full, &Config{L2BeatMedianFloorUSD: 5e9}, 1)
+	if n := countSeries(t, chainTvsChange7dExcessPct); n != 0 {
+		t.Fatalf("%d excess series survived a cohort of 2", n)
+	}
+}
+
+func countSeries(t *testing.T, g *prometheus.GaugeVec) int {
+	t.Helper()
+	ch := make(chan prometheus.Metric, 256)
+	g.Collect(ch)
+	close(ch)
+	n := 0
+	for range ch {
+		n++
+	}
+	return n
 }

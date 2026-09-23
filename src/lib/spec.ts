@@ -428,10 +428,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // old panels and providers.
   // v72: add bench 273 chain-bridged-tvl (dev-only) + Blockchains category
   // row. Bench SET grew.
+  // v73: bench 273 audit round 1: panel directions, last_over_time
+  // aggregates and a freshness_timestamp_metric; v72 entries keep the old
+  // panels and the 24h-mean headline.
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v73", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -651,7 +654,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
   // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
   // v66: lockstep with bench-unfiltered-v72 (add bench 273 chain-bridged-tvl).
-  ["all-benchmarks-v66", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v67: lockstep with bench-unfiltered-v73 (bench 273 audit round 1).
+  ["all-benchmarks-v67", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
