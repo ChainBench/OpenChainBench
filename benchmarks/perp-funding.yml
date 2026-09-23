@@ -201,7 +201,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="aster"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="aster"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
 
@@ -214,7 +214,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="ondo"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="ondo"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
   - slug: kalshi
@@ -226,7 +226,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="kalshi"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="kalshi"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
   - slug: vest
@@ -238,7 +238,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="vest"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="vest"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
   - slug: standx
@@ -250,7 +250,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="standx"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="standx"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
   - slug: apex
@@ -262,7 +262,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="apex"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="apex"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
   - slug: lighter
@@ -274,7 +274,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="lighter"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="lighter"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
   - slug: lighter-rh
@@ -286,7 +286,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="lighter-rh"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="lighter-rh"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
   - slug: extended
@@ -298,7 +298,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="extended"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="extended"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
   - slug: edgex
@@ -310,7 +310,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="edgex"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="edgex"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
   - slug: pacifica
@@ -322,7 +322,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_funding_refresh_unix{venue="pacifica"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="pacifica"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
 

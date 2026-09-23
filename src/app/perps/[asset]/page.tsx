@@ -50,9 +50,10 @@ const fmtSignedBps = (v: number | null): string => {
   return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(Math.abs(v) >= 100 ? 0 : 1)} bps`;
 };
 
-/** A month of hourly samples behind the 30d column. A venue is named as
- *  the cheapest to hold over 30 days only with (nearly) the whole month
- *  measured; a shorter window is shown with its day count. */
+/** A month of hourly samples behind the 30d column. The 30d figure is a
+ *  month at the average daily cost of the hours measured; a venue is named
+ *  as the cheapest to hold over 30 days only with (nearly) the whole month
+ *  behind that average, and a shorter window is shown with its day count. */
 const MONTH_OF_HOURS = 720;
 // Harness restarts leave hour-sized gaps in a month (628 of 720 hours
 // answered on 2026-09-22), so a full month is 80 % of the grid.
@@ -146,9 +147,8 @@ function Th({ children, href, title }: { children: React.ReactNode; href?: strin
 function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; showFees: boolean; benchHref: (b: string) => string }) {
   const best: Partial<Record<NumKey, string>> = {};
   const fullMonth = list.filter((r) => (r.funding30dSamples ?? 0) >= FULL_MONTH_MIN);
-  // No 7d highlight: the 7d figure is a total over the days measured and
-  // rows carry no 7d sample count to gate it on, so the shortest window
-  // would win (the 30d column is gated on FULL_MONTH_MIN).
+  // No 7d highlight: rows carry no 7d sample count, so a week averaged
+  // from a few hours could win (the 30d column is gated on FULL_MONTH_MIN).
   for (const k of ["allInBps", "slippage100kBps", "takerFeeBps", "funding24hBps"] as NumKey[]) {
     best[k] = cheapest(list, k)?.slug;
   }
@@ -168,8 +168,8 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
               </>
             )}
             <Th href="/benchmarks/perp-funding" title="Cost of holding a long for 24 hours at the current rate, 24h average; positive means the long pays (bench perp-funding)">Funding 24h</Th>
-            <Th title="Funding accumulated over the days measured in the trailing 7">Funding 7d</Th>
-            <Th href="/benchmarks/perp-funding-cost-30d" title="Funding accumulated over the days measured in the trailing 30; a day count marks a window shorter than the month (bench perp-funding-cost-30d)">Funding 30d</Th>
+            <Th title="A week of funding at the average daily cost over the trailing 7 days">Funding 7d</Th>
+            <Th href="/benchmarks/perp-funding-cost-30d" title="A month of funding at the average daily cost over the trailing 30 days; a day count marks an average taken over less than the month (bench perp-funding-cost-30d)">Funding 30d</Th>
           </tr>
         </thead>
         <tbody>
@@ -191,7 +191,7 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
                 <td className={`num mono tabular-nums px-2 py-2 text-right whitespace-nowrap${r.funding30dBps == null ? " text-ink-faint text-[11px]" : best.funding30dBps === r.slug ? " text-teal-700 font-semibold" : ""}`}>
                   {fmtSignedBps(r.funding30dBps)}
                   {partial && (
-                    <span className="ml-1 text-[10px] font-normal text-ink-faint" title="Funding accumulated over the days measured, not a full month: the venue joined the cohort recently">
+                    <span className="ml-1 text-[10px] font-normal text-ink-faint" title="Month at the average daily cost of the days measured, less than the full month: the venue joined the cohort recently or its feed dropped hours">
                       {daysMeasured(r.funding30dSamples)} d
                     </span>
                   )}
@@ -263,7 +263,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
   const benchHref = (b: string) => (b === "perp-fees" || b === "perp-execution-quality" ? `/benchmarks/${b}?chain=${a.asset}` : `/benchmarks/${b}`);
 
   const lead = fee
-    ? `${fee.name} is the cheapest venue to open a $1,000 ${a.asset} long right now at ${fmtBps(fee.allInBps)} all in (taker fee plus half spread plus impact, 24h average)${slip ? `; ${slip.name} fills a $100,000 ${a.asset} market order with the least slippage at ${fmtBps(slip.slippage100kBps)}` : ""}${fund30 ? `; over the trailing 30 days ${fund30.name} was the cheapest venue to hold an ${a.asset} long, ${fmtSignedBps(fund30.funding30dBps)} of funding` : ""}.`
+    ? `${fee.name} is the cheapest venue to open a $1,000 ${a.asset} long right now at ${fmtBps(fee.allInBps)} all in (taker fee plus half spread plus impact, 24h average)${slip ? `; ${slip.name} fills a $100,000 ${a.asset} market order with the least slippage at ${fmtBps(slip.slippage100kBps)}` : ""}${fund30 ? `; over the trailing 30 days ${fund30.name} was the cheapest venue to hold an ${a.asset} long, ${fmtSignedBps(fund30.funding30dBps)} of funding for the month at its average daily rate` : ""}.`
     : `Live ${a.asset} perp data is temporarily unavailable; the per-venue benchmarks below still carry the last measurements.`;
 
   const faq = [
@@ -282,12 +282,12 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     {
       q: `Which venue was cheapest to hold an ${a.asset} long over the last 30 days?`,
       a: fund30
-        ? `${fund30.name}, at ${fmtSignedBps(fund30.funding30dBps)} of funding accumulated over the trailing 30 days (positive means the long paid), among the ${fullMonth.length} venues measured for (nearly) the whole month. Venues measured for less show the days behind their figure and are not counted for this answer.`
+        ? `${fund30.name}, at ${fmtSignedBps(fund30.funding30dBps)} of funding for a month at its average daily cost over the trailing 30 days (positive means the long paid), among the ${fullMonth.length} venues with (nearly) the whole month behind that average. Venues measured for less show the days behind their figure and are not counted for this answer.`
         : `The perp-funding-cost-30d benchmark ranks it once a month of samples exists.`,
     },
     {
       q: "How is funding over 7 and 30 days computed?",
-      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series on an hourly grid and multiply by the days actually measured in the window (capped at 7 and 30): the funding a long held over those days paid, in basis points of notional. A venue that joined recently shows its day count next to the figure.",
+      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series on an hourly grid and multiply by 7 and 30: a week or a month of funding at the average daily cost the venue quoted, in basis points of notional. Hours the harness could not read are left out of the average, never filled with the last rate. A venue with less than the month behind its average shows its day count next to the figure and is not named the cheapest to hold.",
     },
     {
       q: "Why is a cell marked not measured?",
@@ -402,7 +402,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
                 label={`Hold ${a.asset} long, 30 days`}
                 venue={fund30}
                 value={fund30 ? fmtSignedBps(fund30.funding30dBps) : null}
-                note={`Funding accumulated over the month, ${fullMonth.length} venues with a full month.`}
+                note={`A month at the average daily cost, ${fullMonth.length} venues with a full month behind it.`}
                 benchHref="/benchmarks/perp-funding-cost-30d"
               />
             </div>
@@ -473,7 +473,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <h2 className="label-mono text-ink-faint mb-2">How OpenChainBench measures</h2>
         <p>
-          Fees and slippage: the perp-fees harness walks each venue&apos;s public order book for {a.asset} every 30 seconds at $1k, $10k, $100k and $1M and publishes the all-in cost per tier; this page shows the 24h averages. Funding: the perp-cohort-stats harness reads each venue&apos;s quoted rate every minute (its own endpoint where it publishes one, the Mobula aggregator otherwise), normalises it to a 24h hold, and the 7d and 30d columns integrate that series. Sources are public and unauthenticated; the methodology is on each bench page.
+          Fees and slippage: the perp-fees harness walks each venue&apos;s public order book for {a.asset} every 30 seconds at $1k, $10k, $100k and $1M and publishes the all-in cost per tier; this page shows the 24h averages. Funding: the perp-cohort-stats harness reads each venue&apos;s quoted rate every minute (its own endpoint where it publishes one, the Mobula aggregator otherwise), normalises it to a 24h hold, and the 7d and 30d columns are that daily cost averaged over the window times its days. Sources are public and unauthenticated; the methodology is on each bench page.
         </p>
       </footer>
     </article>

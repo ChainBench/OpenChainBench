@@ -49,15 +49,16 @@ export type PerpAssetVenueRow = {
   /** Share of 24h ticks where the $100k tier was filled (0 to 1). */
   slippage100kFill: number | null;
   /** Funding cost in bps to hold a long: 24h at the current rate (24h avg),
-   *  and the cost accumulated over the days measured in the trailing 7 and
-   *  30 (average daily cost x days measured, never projected). Signed,
-   *  positive means longs pay. */
+   *  and a week or a month at the average daily cost over the trailing 7
+   *  and 30 days (average x 7, average x 30). Signed, positive means longs
+   *  pay. funding30dSamples says how many hours are behind the month. */
   funding24hBps: number | null;
   funding7dBps: number | null;
   funding30dBps: number | null;
-  /** Hourly samples behind funding30dBps (720 for a full month). The 30d
-   *  figure is the cost accumulated over samples / 24 days; under a full
-   *  month it is a partial window (venue joined recently). */
+  /** Hourly samples behind funding30dBps (720 for a full month). Under
+   *  FULL_MONTH_MIN the month is extrapolated from a shorter window (the
+   *  venue joined recently, or its feed dropped hours) and the page marks
+   *  the day count. */
   funding30dSamples: number | null;
 };
 
@@ -118,28 +119,29 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     return null;
   }
 
-  // Funding: the cohort feed first (every venue and the Mobula CEX rows),
-  // the perp-funding bench feed for cells it lacks. 7d and 30d are the
-  // daily cost averaged over the window times the days in it: what a long
-  // held for the whole window paid.
+  // Funding: the cohort feed and the perp-funding bench feed, merged per
+  // (venue, asset) below. 7d and 30d are the daily cost averaged over the
+  // window times the days in the window: a week or a month of funding at
+  // the average daily cost actually quoted (same rule as bench
+  // perp-funding-cost-30d). A total over the days measured would rank on
+  // coverage: a venue that lost five days to an outage would beat an
+  // identical one on the missing days alone (review 2026-09-23).
   // The 7d and 30d windows are read on an hourly grid ([w:1h]): 720
   // points per series instead of 43,200 minutes, so the query stays well
-  // inside the client's 10 s timeout. The accumulated cost is the average
-  // daily cost times the days actually measured (count / 24, capped at
-  // the window): a venue three days old shows three days of funding, not
-  // a month projected from them.
+  // inside the client's 10 s timeout. The sample count travels with the
+  // 30d figure so the page can mark a window shorter than the month.
   // Two funding feeds, queried apart and merged cohort-first below: a
   // PromQL `or` keeps both when their label sets differ (the perp-funding
   // bench series carry extra labels), which duplicated Binance and OKX.
-  const accumulated = (metric: string, w: string, days: number) => {
+  const normalised = (metric: string, w: string, days: number) => {
     const sel = `${metric}{${ASSETS_RE}}[${w}:1h]`;
-    return `avg_over_time(${sel}) * clamp_max(count_over_time(${sel}) / 24, ${days})`;
+    return `avg_over_time(${sel}) * ${days}`;
   };
   const feeds = ["perp_venue_funding_24h_bps", "perp_funding_hold_24h_bps"] as const;
   const [[f24a, f24b], [f7a, f7b], [f30a, f30b], [n30a, n30b], allIn, taker, tier100k, fill100k] = await Promise.all([
     Promise.all(feeds.map((m) => queryVector(prom, `avg_over_time(${m}{${ASSETS_RE}}[24h])`))),
-    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "7d", 7)))),
-    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "30d", 30)))),
+    Promise.all(feeds.map((m) => queryVector(prom, normalised(m, "7d", 7)))),
+    Promise.all(feeds.map((m) => queryVector(prom, normalised(m, "30d", 30)))),
     Promise.all(feeds.map((m) => queryVector(prom, `count_over_time(${m}{${ASSETS_RE}}[30d:1h])`))),
     queryVector(prom, `avg_over_time(perp_fees_all_in_bps{${CHAINS_RE}}[24h])`),
     queryVector(prom, `avg_over_time(perp_fees_taker_fee_bps{${CHAINS_RE}}[24h])`),

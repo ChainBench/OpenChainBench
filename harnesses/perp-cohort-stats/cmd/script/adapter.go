@@ -843,9 +843,11 @@ func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 				perpVenueFundingIntervalHours.DeleteLabelValues(venue, asset)
 			}
 		}
+		// The refresh stamp stays: a stale timestamp is exactly what the
+		// funding benches' success check needs to read (a deleted series
+		// would come back as "no data", which the loader treats as 100 %).
 		if len(perAsset) == 0 {
 			delete(r.fundCarry, venue)
-			perpVenueFundingRefreshUnix.DeleteLabelValues(venue)
 		}
 	}
 }

@@ -104,7 +104,7 @@ var (
 	perpVenueFundingRefreshUnix = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_funding_refresh_unix",
-			Help: "Unix timestamp of the last tick on which a source produced a funding rate for the venue. The carry-forward does not advance it, so a funding bench's success check reads the rate's own freshness, not the venue's volume feed.",
+			Help: "Unix timestamp of the last tick on which a source produced a funding rate for the venue. Neither the carry-forward nor the reaper touches it, so a funding bench's success check reads the rate's own freshness (a stale stamp stays exported as stale), not the venue's volume feed.",
 		},
 		[]string{"venue"},
 	)

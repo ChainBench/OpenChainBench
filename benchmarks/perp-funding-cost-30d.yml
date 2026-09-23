@@ -3,8 +3,8 @@ slug: perp-funding-cost-30d
 number: "272"
 title: "Funding paid to hold an ETH perp long for 30 days, per venue, live"
 seo_title: "30-day ETH funding cost: {{best_name}} cheapest at {{best_p50}}"
-seo_description: "Holding an ETH perp long for 30 days cost {{best_p50}} of funding on {{best_name}}, {{worst_p50}} on {{worst_name}}. {{count}} DEX and CEX venues, accumulated from the live rate every minute."
-subtitle: "Funding accumulated by a long held for the trailing 30 days, in basis points of notional, per venue on ETH (BTC and SOL in the p90 and p99 columns). Positive means the long paid, negative means it was paid. The 24h-hold figure on the perp-funding bench is the rate right now; this is what the month actually cost."
+seo_description: "A month of ETH perp funding costs {{best_p50}} on {{best_name}} at its average daily rate over the trailing 30 days, {{worst_p50}} on {{worst_name}}. {{count}} DEX and CEX venues, sampled every minute."
+subtitle: "A month of funding for an ETH long at each venue's average daily cost over the trailing 30 days, in basis points of notional (BTC and SOL in the p90 and p99 columns). Positive means the long paid, negative means it was paid. The 24h-hold figure on the perp-funding bench is the rate right now; this is what a month at the rates actually observed costs."
 category: Trading
 status: live
 metric: Funding paid, 30d ETH long
@@ -36,28 +36,28 @@ abstract: |
   normalised from its settlement interval (1h, 4h or 8h) to the cost in
   basis points of holding a long for 24 hours, sampled every minute. The
   bench averages that series over the trailing 30 days and multiplies by
-  the days measured in the window, capped at 30: the average daily cost
-  times the days a long was exposed is the funding it paid. The same figure over 7 days is
-  in the mean column. ETH is the headline; BTC and SOL sit in the p90 and
-  p99 columns on the same convention as the perp-funding bench. The
-  sample count per row is the number of hours the venue has been in the
-  window: 720 for a full month, a few dozen for a venue that joined this
-  week, which the sample-health badge flags; for those rows the average
-  is multiplied by the days measured, not by 30, so the figure is what
-  the position accumulated, never a projection.
+  30: a month of funding at the average daily cost the venue actually
+  quoted. The same figure over 7 days is in the mean column. ETH is the
+  headline; BTC and SOL sit in the p90 and p99 columns on the same
+  convention as the perp-funding bench. The sample count per row is the
+  number of hours behind the average: 720 for a full month, and a venue
+  ranks only with 576 of them (24 days), because a total over fewer days
+  would rank on coverage rather than on cost. Under that floor the row
+  is shown unranked with its day count, its figure a month extrapolated
+  from the days measured, which the sample-health badge flags.
 methodology:
   - "Source series: perp_venue_funding_24h_bps{venue,asset} from the perp-cohort-stats harness (each venue's own rate endpoint where the harness reads one: Kalshi, Vest, StandX, ApeX, Polymarket, Extended, edgeX, Pacifica, Aster, Lighter; the Mobula funding aggregator for Hyperliquid and the CEX rows), sampled every 60 seconds and read here on an hourly grid ([30d:1h])."
-  - "30d cost = avg_over_time(series[30d:1h]) x min(days measured, 30), where days measured = count_over_time(series[30d:1h]) / 24. A venue with a full month in the window pays average daily cost x 30; a venue measured for 3 days pays average x 3, the funding it accumulated, not a month projected from three days. 7d cost is the same with a 7 day cap (mean column)."
+  - "30d cost = avg_over_time(series[30d:1h]) x 30: the average daily cost over the hours measured in the window, times a month. A venue is ranked only with 576 hourly samples (24 days) behind that average; under the floor the figure is a month at the rate of the days measured and the row carries its day count. 7d cost is avg_over_time(series[7d:1h]) x 7 (mean column)."
   - "Columns: p50 = ETH 30d, p90 = BTC 30d, p99 = SOL 30d, mean = ETH 7d. The column labels are inherited from the latency template; the values are signed bps."
   - "Sign: positive means the long paid funding to shorts; negative means shorts paid longs. Lower ranks first, so on a month where shorts paid, the venue that paid longs the most is first."
-  - "Sample health: expected_n is 720 (a month of hourly samples). A venue ranks only with at least 576 of them (24 days, 80 percent of the grid, which absorbs harness restarts): its figure is a total over the days measured, so a shorter window would win by construction. Under that floor the venue is shown unranked with its day count. The venues added on 2026-09-22 and 2026-09-23 start there."
+  - "Sample health: expected_n is 720 (a month of hourly samples). A venue ranks only with at least 576 of them (24 days, 80 percent of the grid, which absorbs harness restarts): the figure is a month at the average daily cost, so it does not move with coverage, but an average over a few days is not a month's evidence. Under the floor the venue is shown unranked with its day count. A venue whose feed stops loses its hours: the harness drops a funding rate no source refreshed for 30 minutes rather than repeat it. The venues added on 2026-09-22 and 2026-09-23 start under the floor."
   - "Interval normalisation is the venue's: Hyperliquid, Vest, StandX and ApeX settle hourly, Kalshi every 8 hours (three settlements a day), the CEX rows per their own schedule; every row is expressed as cost per 24h before integrating."
   - "This page does not replace perp-funding (bench 036), which ranks the rate right now; it ranks what the last month cost."
 findings:
-  - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days at {{best_p50}} of funding; {{worst_name}} cost {{worst_p50}}."
-  - "{{name:hyperliquid}} accumulated {{p50:hyperliquid}}, {{name:lighter}} {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
+  - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days, {{best_p50}} of funding for the month at its average daily rate; {{worst_name}} cost {{worst_p50}}."
+  - "{{name:hyperliquid}} at {{p50:hyperliquid}} for the month, {{name:lighter}} at {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
   - "{{name:okx}} {{p50:okx}}, {{name:coinbase-international}} {{p50:coinbase-international}}, {{name:kraken}} {{p50:kraken}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
-  - "Rows with a low-sample badge (Kalshi, Vest, StandX, ApeX Omni) show the funding accumulated since they joined the cohort (average daily cost x days measured), not a month; the figure grows into a 30-day number over October and the row takes a rank after three days."
+  - "Rows with a low-sample badge (the venues that joined on 2026-09-22 and 2026-09-23) show a month at the average daily cost of the days measured since they joined, with the day count on the row; they take a rank once 24 days are behind the average, in mid-October."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
   window: 30d
@@ -65,335 +65,335 @@ prometheus:
   freshness_metric: perp_venue_funding_24h_bps
 faq:
   - q: "How is the 30-day funding cost computed?"
-    a: "The harness records every minute the venue's current funding rate normalised to the cost of holding a long for 24 hours. The bench averages that series over the trailing 30 days on an hourly grid and multiplies by the days actually measured in the window (30 for a venue with a full month, fewer for a venue that joined recently): the funding a long held over those days paid, in basis points of notional. The 7-day figure is the same with a 7 day cap."
+    a: "The harness records every minute the venue's current funding rate normalised to the cost of holding a long for 24 hours. The bench averages that series over the trailing 30 days on an hourly grid and multiplies by 30: a month of funding at the average daily cost the venue quoted, in basis points of notional. A venue ranks only with 24 days behind that average; with fewer the row shows its day count and no rank. The 7-day figure is the same average over 7 days times 7."
   - q: "Why is the number negative on some venues?"
     a: "Funding is signed. When the perp trades below spot, shorts pay longs and a long collects funding; the cost is then negative. Lower ranks first, so on such a month the venue that paid longs the most is at the top."
   - q: "Is this what I would have paid?"
-    a: "For a long of constant notional held the whole window, yes, to the precision of a per-minute sample of the quoted rate. A position opened mid-window, resized, or held on a venue that settles funding in discrete 8-hour steps (Kalshi) pays the settlements it was open for; the bench does not model entries and exits."
+    a: "For a long of constant notional held the whole window on a venue with a full month measured, yes, to the precision of a per-minute sample of the quoted rate. A position opened mid-window, resized, or held on a venue that settles funding in discrete 8-hour steps (Kalshi) pays the settlements it was open for; the bench does not model entries and exits. Hours the harness could not read are left out of the average rather than filled with the last rate."
   - q: "Why are CEXs on a perp DEX bench?"
     a: "Because the reference a carry trader compares a DEX against is Binance, Bybit or OKX. The CEX rows come from the same Mobula funding feed the perp-funding bench uses (so does Hyperliquid's); the other DEX rows and Kalshi come from each venue's own API."
   - q: "Why do Kalshi, Vest, StandX and ApeX show a low-sample badge?"
-    a: "They joined the cohort on 2026-09-22. Their figure is the funding accumulated over the days measured since then, not a month; the sample count on the row says how many hours are in it. They take a rank once they pass three days (10 percent of a month) and lose the badge at 15 days."
+    a: "They joined the cohort on 2026-09-22 (Extended, edgeX, Pacifica, Aster and Lighter RH on 2026-09-23). Their figure is a month at the average daily cost of the days measured since then; the sample count on the row says how many hours are behind it. They take a rank once 576 hours (24 days) are, and lose the badge at 15 days."
 
 providers:
   - slug: hyperliquid
     name: Hyperliquid
     tag: Onchain order book, hourly funding
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"hyperliquid\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"hyperliquid\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="hyperliquid"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="hyperliquid"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[30d:1h]) * 30
 
   - slug: lighter
     name: Lighter
     tag: zk-rollup order book, hourly funding
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"lighter\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"lighter\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="lighter"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="lighter"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[30d:1h]) * 30
 
   - slug: kalshi
     name: Kalshi
     tag: CFTC-regulated US exchange, 8 h funding, joined 2026-09-22
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"kalshi\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"kalshi\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="kalshi"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="kalshi"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[30d:1h]) * 30
 
   - slug: vest
     name: Vest
     tag: zk perp exchange, hourly funding, joined 2026-09-22
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"vest\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"vest\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="vest"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="vest"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[30d:1h]) * 30
 
   - slug: standx
     name: StandX
     tag: DUSD-margined perps on BNB Chain, hourly funding, joined 2026-09-22
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"standx\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"standx\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="standx"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="standx"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[30d:1h]) * 30
 
   - slug: apex
     name: ApeX Omni
     tag: Omnichain order book, hourly funding, joined 2026-09-22
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"apex\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"apex\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="apex"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="apex"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[30d:1h]) * 30
 
   - slug: ondo
     name: Ondo Perps
     tag: SGX-matched order book, hourly funding
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"ondo\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"ondo\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="ondo"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="ondo"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[30d:1h]) * 30
 
   - slug: polymarket
     name: Polymarket
     tag: Polygon perps by Polymarket
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"polymarket\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"polymarket\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="polymarket"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="polymarket"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="polymarket",asset="ETH"}[30d:1h]) * 30
 
   - slug: binance
     name: Binance
     tag: CEX reference, 8 h funding (4 h on some pairs), via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"binance\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"binance\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="binance"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="binance"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[30d:1h]) * 30
 
   - slug: bybit
     name: Bybit
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"bybit\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"bybit\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="bybit"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="bybit"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[30d:1h]) * 30
 
   - slug: okx
     name: OKX
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"okx\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"okx\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="okx"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="okx"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * 30
 
   - slug: coinbase-international
     name: Coinbase International
     tag: CEX reference (Coinbase International), hourly funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="coinbase"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="coinbase"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * 30
 
   - slug: kraken
     name: Kraken
     tag: CEX reference, hourly funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"kraken\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"kraken\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="kraken"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="kraken"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[30d:1h]) * 30
 
   - slug: bitget
     name: Bitget
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"bitget\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"bitget\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="bitget"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="bitget"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[30d:1h]) * 30
 
   - slug: gate
     name: Gate
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"gate\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"gate\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="gate"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="gate"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[30d:1h]) * 30
 
   - slug: kucoin
     name: KuCoin
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"kucoin\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"kucoin\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="kucoin"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="kucoin"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[30d:1h]) * 30
 
   - slug: mexc
     name: MEXC
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"mexc\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"mexc\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="mexc"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="mexc"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[30d:1h]) * 30
 
   - slug: deribit
     name: Deribit
     tag: CEX reference, 8 h funding, via the Mobula funding feed
-    formula: "avg of perp_venue_funding_24h_bps{venue=\"deribit\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
+    formula: "Average of perp_venue_funding_24h_bps{venue=\"deribit\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="deribit"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="deribit"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[30d:1h]) * 30
 
   - slug: extended
     name: Extended
     tag: Starknet order book, hourly funding (native)
-    formula: "Native hourly fundingRate (GET /api/v1/info/markets) x 24 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and multiplied by those days (capped at 30): bps of notional a long paid."
+    formula: "Native hourly fundingRate (GET /api/v1/info/markets) x 24 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and x 30: the month at that average daily cost, ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="extended"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="extended"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[30d:1h]) * 30
 
   - slug: edgex
     name: edgeX
     tag: StarkEx order book, 4h funding (native)
-    formula: "Native fundingRate per 4h interval (GET getTicker, fundingTime to nextFundingTime) x 6 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and multiplied by those days (capped at 30)."
+    formula: "Native fundingRate per 4h interval (GET getTicker, fundingTime to nextFundingTime) x 6 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and x 30, ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="edgex"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="edgex"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[30d:1h]) * 30
 
   - slug: pacifica
     name: Pacifica
     tag: Solana order book, hourly funding (native)
-    formula: "Native hourly funding (GET /api/v1/info/prices) x 24 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and multiplied by those days (capped at 30): bps of notional a long paid."
+    formula: "Native hourly funding (GET /api/v1/info/prices) x 24 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30 and x 30: the month at that average daily cost, ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="pacifica"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="pacifica"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[30d:1h]) * 30
 
   - slug: aster
     name: Aster
     tag: BNB Chain order book, 8h funding (native)
-    formula: "Native lastFundingRate (GET /fapi/v1/premiumIndex) over the interval fundingInfo declares (8h on the majors) x 24/interval x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30, times those days."
+    formula: "Native lastFundingRate (GET /fapi/v1/premiumIndex) over the interval fundingInfo declares (8h on the majors) x 24/interval x 10000 = bps per 24h hold; averaged over the trailing 30 days and x 30, ranked with 24 days."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="aster"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="aster"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[30d:1h]) * 30
 
   - slug: lighter-rh
     name: Lighter RH
     tag: Lighter deployment for Robinhood, hourly funding (native)
-    formula: "Native rate for exchange lighter (GET /api/v1/funding-rates on api.rh.lighter.xyz, feed normalised to 8h) x 3 x 10000 = bps per 24h hold; averaged over the days measured in the trailing 30, times those days (cap 30)."
+    formula: "Native rate for exchange lighter (GET /api/v1/funding-rates on api.rh.lighter.xyz, feed normalised to 8h) x 3 x 10000 = bps per 24h hold; averaged over the trailing 30 days and x 30, ranked with 24 days measured."
     queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) / 24, 30)
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[30d:1h]) / 24, 30)
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[30d:1h]) / 24, 30)
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[7d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[7d:1h]) / 24, 7)
-      success: (perp_venue_funding_refresh_unix{venue="lighter-rh"} > bool (time() - 900))
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) * 30
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[30d:1h]) * 30
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[30d:1h]) * 30
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[7d:1h]) * 7
+      success: ((perp_venue_funding_refresh_unix{venue="lighter-rh"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) / 24, 30)
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[30d:1h]) * 30
