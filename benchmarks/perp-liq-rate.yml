@@ -104,6 +104,19 @@ dimensions:
   chain:
     - { value: ETH, label: ETH }
     - { value: BTC, label: BTC }
+    - { value: SOL, label: SOL }
+
+# The headline view is ETH, the same pin perp-fees uses, so the board
+# compares one asset across venues instead of whichever series Prom
+# returned first. Hyperliquid on 2026-09-23 read 0.50% on BTC and 0.12%
+# on ETH, so this was a 4x difference decided by ordering.
+aggregate_filters: { chain: ETH }
+# The pin is injected into every query on the bench, including ones whose
+# metric has no chain label: perp_liq_health is per venue, so an injected
+# chain="ETH" matched nothing and nulled seven venues' success, which
+# load.ts then reads as 100% healthy. Those selectors carry chain=~".*",
+# which suppresses the injection (a selector already naming the label is
+# left alone) and still matches series that have no chain label.
 
 providers:
   - slug: hyperliquid
@@ -115,7 +128,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
-      success: avg_over_time(perp_liq_health{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_liq_health{venue="hyperliquid",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       series: perp_liq_rate_24h_pct{venue="hyperliquid"}
 
@@ -128,7 +141,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="dydx"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="dydx"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      success: avg_over_time(perp_liq_health{venue="dydx"}[24h])
+      success: avg_over_time(perp_liq_health{venue="dydx",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
       series: perp_liq_rate_24h_pct{venue="dydx"}
 
@@ -141,7 +154,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gmx"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gmx"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      success: avg_over_time(perp_liq_health{venue="gmx"}[24h])
+      success: avg_over_time(perp_liq_health{venue="gmx",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
       series: perp_liq_rate_24h_pct{venue="gmx"}
 
@@ -154,7 +167,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="lighter"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="lighter"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
-      success: avg_over_time(perp_liq_health{venue="lighter"}[24h])
+      success: avg_over_time(perp_liq_health{venue="lighter",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
       series: perp_liq_rate_24h_pct{venue="lighter"}
 
@@ -167,7 +180,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gains"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
-      success: avg_over_time(perp_liq_health{venue="gains"}[24h])
+      success: avg_over_time(perp_liq_health{venue="gains",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
       series: perp_liq_rate_24h_pct{venue="gains"}
 
@@ -180,7 +193,7 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="aevo"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="aevo"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      success: avg_over_time(perp_liq_health{venue="aevo"}[24h])
+      success: avg_over_time(perp_liq_health{venue="aevo",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
       series: perp_liq_rate_24h_pct{venue="aevo"}
 
@@ -193,6 +206,6 @@ providers:
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="paradex"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="paradex"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
-      success: avg_over_time(perp_liq_health{venue="paradex"}[24h])
+      success: avg_over_time(perp_liq_health{venue="paradex",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
       series: perp_liq_rate_24h_pct{venue="paradex"}

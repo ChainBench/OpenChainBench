@@ -52,7 +52,8 @@ abstract: |
   part, the partial figure is withheld rather than published as a total.
 
 methodology:
-  - "Open interest: the value of positions still open, in USD. Kalshi publishes it natively. Polymarket and Limitless use DefiLlama protocol TVL, because gamma's openInterest field is deprecated and reads an order of magnitude low; Myriad's native figure is AMM liquidity rather than positions. For venues with no public API it is DefiLlama protocol TVL throughout. Each row's tag names its own source, and TVL is a proxy wherever it appears."
+  - "Open interest here is collateral: cash held against positions still open, not their market value. On the on-chain venues that is DefiLlama protocol TVL, one dollar escrowed per complete set outstanding. On Kalshi it is one dollar per open contract, since each settles at a dollar or nothing and is fully collateralized across the two sides. Each row tag names its source."
+  - "Valuing Kalshi's open contracts at last price instead gives the market value of the YES leg. That is a different quantity, 14% of the collateral figure, and it is published as pm_venue_open_interest_mark_usd rather than dropped. Myriad's native figure is AMM liquidity, not positions."
   - "Volume: each venue's own figure where its API gives one, otherwise DefiLlama /summary/dexs for that protocol. Both windows, 24 hours and 30 days, come from the same source for a given venue so the ratio between them is internally consistent."
   - "Turnover is 24h volume over open interest. Below 1x a venue holds more than it trades in a day, which is what long-dated markets look like; well above 1x the book turns over repeatedly, which is what short-dated contracts look like. It is a description, not a ranking."
   - "Kalshi's volume comes from DefiLlama rather than from the harness's own read. Unauthenticated, the fetcher sums the /events catalog and reaches $2.26M against DefiLlama's $424.8M for the same venue and window on 2026-09-23, because the catalog walk is capped well short of the full book. With an API key the native figure is the better source and the harness prefers it again."
@@ -60,6 +61,7 @@ methodology:
   - "Size floor: $500,000 of open interest. Below it one position moves a venue by tens of percent, and the board would rank position-opening events. Venues under the floor keep publishing their gauges and are absent from the ranking."
   - "A venue with no readable open interest is absent rather than shown at zero. Polymarket US is in that state: a CFTC-regulated exchange has no on-chain balance for DefiLlama to measure, and while its own API does publish per-market open interest, reading it costs one request per market. Its volume is among the largest in the category and is published."
   - "Cadence: native fetchers every 5 minutes, the DefiLlama aggregate every 15. The headline is a 24h average, so a single print does not move a row."
+  - "Two known limits on the Kalshi figure, stated rather than smoothed. Its catalog walk covers 13,402 open events and 125,777 nested markets, and markets that have already resolved inside a still-open event are excluded (2,229 of them, holding 48.5M contracts, on 2026-09-23). And Kalshi offers reduced margin across mutually exclusive outcomes in one event group, so $1 per open contract is an upper bound on cash actually escrowed; the exchange publishes no netted figure."
 
 findings:
   - "{{best_name}} holds the largest book of open positions at {{best_p50}}, of the {{ranked_count}} prediction markets ranked."
@@ -136,7 +138,7 @@ providers:
 
   - slug: kalshi
     name: Kalshi
-    tag: CFTC-regulated exchange; open interest native, volume from DefiLlama
+    tag: CFTC-regulated exchange; open interest at par per open contract, volume from DefiLlama
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"kalshi\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])

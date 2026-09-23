@@ -108,22 +108,22 @@ providers:
     tag: Public protect RPC, rejects eth_call on the free gateway
     formula: "Median latency across the wallet methods served per 60s tick against rpc.flashbots.net, aggregated over 24h via quantile_over_time; 3-region average."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="flashbots",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="flashbots",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="flashbots"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="flashbots", region="sgp"}[1h])
 
   - slug: mevblocker
@@ -131,22 +131,22 @@ providers:
     tag: CoW built, Consensys owned since 2026, full wallet method set
     formula: "Median latency across the wallet methods served per 60s tick against rpc.mevblocker.io, aggregated over 24h via quantile_over_time; 3-region average."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="mevblocker",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="mevblocker",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="mevblocker"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="mevblocker", region="sgp"}[1h])
 
   - slug: blinklabs
@@ -154,22 +154,22 @@ providers:
     tag: Formerly Merkle, only gateway live on Ethereum, Base and BSC, powers Ledger
     formula: "Median latency across the wallet methods served per 60s tick against ethereum.blinklabs.xyz, base.merkle.io and bsc.merkle.io, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="blinklabs",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="blinklabs",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="blinklabs"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="sgp"}[1h])
 
   - slug: bloxroute
@@ -177,22 +177,22 @@ providers:
     tag: Free protect tier of the bloXroute MEV stack, Ethereum + BSC
     formula: "Median latency across the wallet methods served per 60s tick against eth-protect.rpc.blxrbdn.com and bsc.rpc.blxrbdn.com, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="bloxroute",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="bloxroute",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="bloxroute"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="sgp"}[1h])
 
   - slug: blocksec
@@ -200,22 +200,22 @@ providers:
     tag: Security-vendor private routing, Ethereum + BSC
     formula: "Median latency across the wallet methods served per 60s tick against eth.rpc.blocksec.com and bsc.rpc.blocksec.com, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="blocksec",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="blocksec",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="blocksec"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="sgp"}[1h])
 
   - slug: 48club
@@ -223,22 +223,22 @@ providers:
     tag: BSC validator collective, Puissant successor
     formula: "Median latency across the wallet methods served per 60s tick against rpc.48.club, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="48club",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="48club",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="48club"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="sgp"}[1h])
 
   - slug: pancakeswap
@@ -246,20 +246,20 @@ providers:
     tag: BSC, powered by 48 Club behind PancakeSwap's edge
     formula: "Median latency across the wallet methods served per 60s tick against bscrpc.pancakeswap.finance, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
-      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
-      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
-      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
-      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
+      p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h]))
+      p90: avg(quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h]))
+      p99: avg(quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h]))
+      mean: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h]))
       success: sum(increase(mev_rpc_call_total{provider="pancakeswap",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="pancakeswap",result!~"blocked|method_not_found"}[24h])), 1)
       sample_size: sum(increase(mev_rpc_call_total{provider="pancakeswap"}[24h]))
       series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="us-east"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="us-east"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="eu-west"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="eu-west"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="sgp"}[24h])
+          p50: avg(quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="sgp"}[24h]))
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="sgp"}[1h])

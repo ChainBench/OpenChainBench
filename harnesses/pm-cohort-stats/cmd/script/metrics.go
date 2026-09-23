@@ -31,7 +31,17 @@ var (
 	pmVenueOpenInterestUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "pm_venue_open_interest_usd",
-			Help: "Current open interest in USD, per venue. Source: Polymarket gamma /markets openInterest sum, Kalshi /markets open_interest sum scaled by last_price, Myriad /markets sum(liquidity * liquidityPrice) across USD-stable open markets (replaces the prior DefiLlama TVL proxy). For Manifold (play-money), this is the sum of totalLiquidity (AMM seed, mana) scaled by MANIFOLD_MANA_USD_RATE (default 0.001 = legacy charity donation rate, NOT a market exchange rate); see pm_venue_open_interest_mana for the raw value.",
+			Help: "Capital held against open positions, in USD, per venue. One definition across the board: cash escrowed, not market value. Kalshi is $1 per open contract on active markets (each contract settles $1 or $0 and is fully collateralized between the two sides); Polymarket and Limitless are DefiLlama protocol TVL, which is $1 per complete set outstanding, because gamma's openInterest field is deprecated and reads zero; the aggregate-fed venues are DefiLlama protocol TVL; Myriad is sum(liquidity * liquidityPrice) over USD-stable open markets. See pm_venue_open_interest_mark_usd for the mark-to-market alternative. For Manifold (play-money) this is totalLiquidity in mana scaled by MANIFOLD_MANA_USD_RATE (default 0.001, the legacy charity donation rate, NOT a market exchange rate); see pm_venue_open_interest_mana.",
+		},
+		[]string{"venue"},
+	)
+	// The other half of the open-interest question, published so the two
+	// definitions can be compared rather than one silently standing in
+	// for the other. Kalshi on 2026-09-23: par $991M, mark $144M.
+	pmVenueOpenInterestMarkUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "pm_venue_open_interest_mark_usd",
+			Help: "Mark-to-market value of the YES leg of open positions, in USD, per venue: sum(open_interest * last_price). Not the same quantity as pm_venue_open_interest_usd, which is the cash escrowed against those positions. Published for Kalshi, where the two differ by roughly 7x.",
 		},
 		[]string{"venue"},
 	)
@@ -131,6 +141,7 @@ var (
 func init() {
 	prometheus.MustRegister(
 		pmVenueVolume30dUsd, pmVenueVolume24hUsd, pmVenueOpenInterestUsd,
+		pmVenueOpenInterestMarkUsd,
 		pmVenueActiveMarkets, pmVenueTopMarketVolume24hUsd, pmVenueMarketsAbove1m,
 		pmVenueVolume30dMana, pmVenueVolume24hMana, pmVenueOpenInterestMana,
 		pmVenueTopMarketVolume24hMana, pmVenueMarketsAbove1bMana,
