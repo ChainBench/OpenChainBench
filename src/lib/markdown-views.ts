@@ -209,3 +209,33 @@ export function productMarkdown(p: ProviderProfile): string {
   md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);
   return md.join("\n");
 }
+
+/** Markdown view of /rwa: the five tokenized-RWA benches, leader and
+ *  top rows each, in the order the hub shows them. */
+export function rwaHubMarkdown(benches: Benchmark[]): string {
+  const md: string[] = [];
+  md.push(`# Tokenized RWA benchmarks: price, NAV and yield, measured`);
+  md.push("");
+  md.push(`- Page: ${SITE.url}/rwa`);
+  md.push(`- License: CC-BY-4.0`);
+  md.push(`- What this is: on-chain reads of what tokenized stocks, treasuries and yield funds do (price against the market, basis to the published NAV, yield delivered against yield advertised), not a ranking of declared value.`);
+  md.push("");
+  for (const b of benches) {
+    const insufficient = isInsufficient(b);
+    const ranked = insufficient ? [] : rankedCandidates(b);
+    md.push(`## ${b.title}`);
+    md.push("");
+    md.push(`- Page: ${SITE.url}/benchmarks/${b.slug} · JSON: ${SITE.url}/api/stat/${b.slug}`);
+    md.push(`- Metric: ${b.metric} (${b.unit}), window ${b.window ?? "24h"}, last sample ${citableAsOf(b) ?? "n/a"}`);
+    md.push("");
+    md.push(`**Headline.** ${headlineSentence(b)}`);
+    md.push("");
+    if (ranked.length > 0) {
+      md.push(...rankingLines(b, ranked.slice(0, 8)));
+      md.push("");
+    }
+  }
+  md.push(`---`);
+  md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);
+  return md.join("\n");
+}
