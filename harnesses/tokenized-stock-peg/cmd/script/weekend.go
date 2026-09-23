@@ -197,8 +197,13 @@ func (w *weekendTracker) gapsFromProm(end time.Time) []sessionGap {
 	}
 	prom := strings.TrimRight(envOr("PROM_URL", "http://172.18.0.14:9090"), "/")
 	const step = 120 // seconds; 10 days at 2 min is 7200 points, under Prometheus' 11000 cap
+	// The evaluation grid is aligned to the step so two scans made at
+	// different moments see the same minutes: otherwise every restart
+	// moved a weekend's end stamp by a few seconds and the spec's weekend
+	// count (changes of the stamp) went up by one.
+	last := end.Unix() - end.Unix()%step
 	q := `max(tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"})`
-	u := fmt.Sprintf("%s/api/v1/query_range?query=%s&start=%d&end=%d&step=%d", prom, urlQueryEscape(q), end.Add(-regularScan).Unix(), end.Unix(), step)
+	u := fmt.Sprintf("%s/api/v1/query_range?query=%s&start=%d&end=%d&step=%d", prom, urlQueryEscape(q), last-int64(regularScan.Seconds()), last, step)
 	req, _ := http.NewRequest("GET", u, nil)
 	resp, err := w.client.Do(req)
 	if err != nil {
