@@ -108,7 +108,7 @@ func main() {
 				// stays, it is a chain read.
 				depthPrice.DeleteLabelValues(a.Slug, a.Issuer)
 				raw, haveRaw := supplyRaw[a.Slug]
-				if p, ok := lastPrice[a.Slug]; ok && haveRaw && time.Since(lastPriceAt[a.Slug]) <= 2*pollInterval {
+				if p, ok := lastPrice[a.Slug]; ok && haveRaw && time.Since(lastPriceAt[a.Slug]) <= 2*pollInterval+pollInterval/2 {
 					supplyUSD.WithLabelValues(a.Slug, a.Issuer).Set(raw * p / pow10(a.Decimals))
 				} else {
 					supplyUSD.DeleteLabelValues(a.Slug, a.Issuer)

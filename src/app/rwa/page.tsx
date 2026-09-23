@@ -84,8 +84,8 @@ function describe(benches: RwaBenches): string {
   const stockLead = lead(benches["tokenized-stock-peg"]);
   const yieldLead = lead(benches["rwa-yield-accuracy"]);
   const parts: string[] = [];
-  if (t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown) parts.push(`${fmtUSD(t.measuredUsd)} of tokenized RWA measured on Solana, ${fmtUSD(t.liquidUsd)} sells $100k within ${LIQUID_BPS} bps, ${fmtUSD(t.noMarketUsd)} has no open market`);
-  else if (t.noMarketUsd > 0) parts.push(`${fmtUSD(t.noMarketUsd)} of tokenized RWA on Solana has no open market`);
+  if (t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown && t.noMarketKnown) parts.push(`${fmtUSD(t.measuredUsd)} of tokenized RWA measured on Solana, ${fmtUSD(t.liquidUsd)} sells $100k within ${LIQUID_BPS} bps, ${fmtUSD(t.noMarketUsd)} has no open market`);
+  else if (t.noMarketUsd > 0 && t.noMarketKnown) parts.push(`${fmtUSD(t.noMarketUsd)} of tokenized RWA on Solana has no open market`);
   if (depthLead) parts.push(`${depthLead.names} cheapest at size (${fmtBp(depthLead.value)})`);
   if (stockLead) parts.push(`${stockLead.names} closest to Nasdaq (${fmtBp(stockLead.value)})`);
   if (yieldLead) parts.push(`${yieldLead.names} closest to its reference yield`);
@@ -306,9 +306,9 @@ export default async function RwaHubPage() {
   const noMarketRows = funds.filter((r) => r.noMarket && r.supplyUsd != null);
 
   const leadSentence = [
-    t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown
+    t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown && t.noMarketKnown
       ? `Of the ${fmtUSD(t.measuredUsd)} of tokenized RWA supply this page measures on Solana, ${fmtUSD(t.liquidUsd)} sells $100,000 within ${LIQUID_BPS} bps and ${fmtUSD(t.noMarketUsd)} has no open market at all`
-      : t.noMarketUsd > 0
+      : t.noMarketUsd > 0 && t.noMarketKnown
         ? `${fmtUSD(t.noMarketUsd)} of tokenized RWA supply on Solana has no open market at all`
         : null,
     stockLead ? `${stockLead.names} tracks Nasdaq tightest on Robinhood Chain at ${fmtBp(stockLead.value)}` : null,
@@ -323,7 +323,7 @@ export default async function RwaHubPage() {
     },
     {
       q: "How much of Solana's tokenized RWA value can actually be sold?",
-      a: t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown
+      a: t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown && t.noMarketKnown
         ? `Of the ${fmtUSD(t.measuredUsd)} of supply the rwa-solana-depth bench values on Solana (as of ${asOfLabel}), ${fmtUSD(t.liquidUsd)} belongs to assets whose $100,000 sale costs ${LIQUID_BPS} bps or less on Jupiter${depthLead ? `, ${depthLead.names} being the cheapest at ${fmtBp(depthLead.value)}` : ""}. ${fmtUSD(t.noMarketUsd)} sits in funds with no route at all${noMarketRows.length > 0 ? ` (${joinNames(noMarketRows.map((r) => r.name))})` : ""}: transfer-restricted funds that never trade on an open pool and can only be redeemed through the issuer.`
         : "The rwa-solana-depth bench measures it every ten minutes: the cost of selling $1k, $10k and $100k of each asset on Jupiter, and the on-chain supply of each mint, including the funds with no route. The liquid share was not asserted when this page rendered.",
     },
@@ -434,8 +434,8 @@ export default async function RwaHubPage() {
       <h2 className="display text-xl sm:text-2xl text-ink mb-3">Declared on Solana, and what sells</h2>
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         <SummaryCard label="Supply measured on Solana" value={t.measuredUsd > 0 && t.measuredKnown ? fmtUSD(t.measuredUsd) : "…"} tip="Sum of the on-chain supply of every asset in the rwa-solana-depth cohort, valued at the executable price (BUIDL at $1.00 by design). Read from each mint, not from a dashboard." />
-        <SummaryCard label={`Sells $100k within ${LIQUID_BPS} bps`} value={t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown ? fmtUSD(t.liquidUsd) : "…"} accent="#0f766e" tip={`Supply of the assets whose $100,000 sale on Jupiter costs ${LIQUID_BPS} bps or less relative to a $100 sale, 24h median.`} />
-        <SummaryCard label="No open market" value={t.noMarketUsd > 0 ? fmtUSD(t.noMarketUsd) : "…"} accent="#b45309" tip="Supply of the funds for which Jupiter returns no route for one unit: transfer-restricted funds that never trade on an open pool." />
+        <SummaryCard label={`Sells $100k within ${LIQUID_BPS} bps`} value={t.measuredUsd > 0 && t.measuredKnown && t.liquidKnown && t.noMarketKnown ? fmtUSD(t.liquidUsd) : "…"} accent="#0f766e" tip={`Supply of the assets whose $100,000 sale on Jupiter costs ${LIQUID_BPS} bps or less relative to a $100 sale, 24h median.`} />
+        <SummaryCard label="No open market" value={t.noMarketUsd > 0 && t.noMarketKnown ? fmtUSD(t.noMarketUsd) : "…"} accent="#b45309" tip="Supply of the funds for which Jupiter returns no route for one unit: transfer-restricted funds that never trade on an open pool." />
         <SummaryCard label="Assets measured" value={t.assets > 0 ? String(t.assets) : "…"} tip="Distinct tokenized assets across the six RWA benchmarks." />
       </section>
 
