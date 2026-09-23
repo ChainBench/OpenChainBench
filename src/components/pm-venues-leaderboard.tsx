@@ -10,9 +10,15 @@ import type { PmVenueRow } from "@/lib/pm-stats";
 /**
  * Sortable + searchable venue leaderboard for /prediction-markets.
  * Mirrors the HL cohort leaderboard structure, with PM specific columns:
- * onchain/offchain badge, 30d volume, open interest, active markets,
- * median resolution delay (from pm-resolution-delay bench), p50 API
- * latency (from pm-api-latency bench) and markets above $1M.
+ * onchain/offchain badge, open interest, 24h and 30d volume, turnover,
+ * active markets, median resolution delay (from pm-resolution-delay
+ * bench), p50 API latency (from pm-api-latency bench) and markets above
+ * $1M.
+ *
+ * Open interest leads because it is the one column every venue in the
+ * cohort carries; the probe columns on the right only exist for the six
+ * venues with a native fetcher, and sorting on one of those would put
+ * ten venues below a fold of dashes.
  *
  * The data is pure SSR input; this component only handles sort + search
  * state on the client.
@@ -20,7 +26,9 @@ import type { PmVenueRow } from "@/lib/pm-stats";
 
 type SortKey =
   | "volume30d"
+  | "volume24h"
   | "openInterest"
+  | "turnover24h"
   | "activeMarkets"
   | "medianResolutionDelayMin"
   | "p50ApiLatencyMs"
@@ -28,7 +36,7 @@ type SortKey =
 
 export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>("volume30d");
+  const [sortKey, setSortKey] = useState<SortKey>("openInterest");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
 
@@ -87,18 +95,32 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
               <Th>#</Th>
               <Th>Venue</Th>
               <ThSort
-                active={sortKey === "volume30d"}
-                dir={sortDir}
-                onClick={() => setSort("volume30d")}
-              >
-                Volume 30d
-              </ThSort>
-              <ThSort
                 active={sortKey === "openInterest"}
                 dir={sortDir}
                 onClick={() => setSort("openInterest")}
               >
                 Open Interest
+              </ThSort>
+              <ThSort
+                active={sortKey === "volume24h"}
+                dir={sortDir}
+                onClick={() => setSort("volume24h")}
+              >
+                Volume 24h
+              </ThSort>
+              <ThSort
+                active={sortKey === "turnover24h"}
+                dir={sortDir}
+                onClick={() => setSort("turnover24h")}
+              >
+                Turnover
+              </ThSort>
+              <ThSort
+                active={sortKey === "volume30d"}
+                dir={sortDir}
+                onClick={() => setSort("volume30d")}
+              >
+                Volume 30d
               </ThSort>
               <ThSort
                 active={sortKey === "activeMarkets"}
@@ -167,22 +189,38 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                 <Td
                   mono
                   tip={
-                    r.slug === "kalshi"
-                      ? "Projection from 24h × 30; may over-estimate during burst-trade periods"
-                      : undefined
-                  }
-                >
-                  {fmtUSD(r.volume30d)}
-                </Td>
-                <Td
-                  mono
-                  tip={
                     r.slug === "polymarket" || r.slug === "limitless"
                       ? "Proxy: DefiLlama protocol TVL (Polymarket gamma openInterest is deprecated)"
                       : undefined
                   }
                 >
                   {fmtUSD(r.openInterest)}
+                </Td>
+                <Td
+                  mono
+                  tip={
+                    r.slug === "kalshi"
+                      ? "DefiLlama aggregate. The unauthenticated Kalshi trades feed sees a fraction of the book and is not published."
+                      : undefined
+                  }
+                >
+                  {fmtUSD(r.volume24h)}
+                </Td>
+                <Td
+                  mono
+                  tip="24h volume divided by open interest: how many times the book turns over in a day. Blank when a venue publishes only one of the two."
+                >
+                  {fmtTurnover(r.turnover24h)}
+                </Td>
+                <Td
+                  mono
+                  tip={
+                    r.slug === "kalshi"
+                      ? "Projection from 24h × 30; may over-estimate during burst-trade periods"
+                      : undefined
+                  }
+                >
+                  {fmtUSD(r.volume30d)}
                 </Td>
                 <Td mono>{fmtCount(r.activeMarkets)}</Td>
                 <Td mono>{fmtMinutes(r.medianResolutionDelayMin)}</Td>
@@ -194,7 +232,7 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={10}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No venue matches &ldquo;{q}&rdquo;.
@@ -294,6 +332,17 @@ function fmtUSD(v: number | null): string {
   if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
   return `$${v.toFixed(0)}`;
+}
+
+function fmtTurnover(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "...";
+  // Two decimals under 10x, one above: Polymarket lives at 0.02 and
+  // Myriad at 16.9, and a single scale that reads both is worth the
+  // extra branch.
+  // A book that turned over $681 against $837k of open interest did not
+  // turn over none of it. Below the display floor, say so.
+  if (v > 0 && v < 0.01) return "<0.01×";
+  return v < 10 ? `${v.toFixed(2)}×` : `${v.toFixed(1)}×`;
 }
 
 function fmtCount(v: number | null): string {

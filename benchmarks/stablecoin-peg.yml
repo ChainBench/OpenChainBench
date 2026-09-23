@@ -136,7 +136,7 @@ providers:
       p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="usdc"}[24h])
       p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="usdc"}[24h])
       mean: avg_over_time(peg_deviation_worst_bps{stable="usdc"}[24h])
-      success: avg_over_time(peg_source_health{stable="usdc"}[24h])
+      success: avg(avg_over_time(peg_source_health{stable="usdc"}[24h]))
       sample_size: sum(increase(peg_source_call_total{stable="usdc"}[24h]))
       series: peg_deviation_worst_bps{stable="usdc"}
 
@@ -149,7 +149,7 @@ providers:
       p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="usdt"}[24h])
       p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="usdt"}[24h])
       mean: avg_over_time(peg_deviation_worst_bps{stable="usdt"}[24h])
-      success: avg_over_time(peg_source_health{stable="usdt"}[24h])
+      success: avg(avg_over_time(peg_source_health{stable="usdt"}[24h]))
       sample_size: sum(increase(peg_source_call_total{stable="usdt"}[24h]))
       series: peg_deviation_worst_bps{stable="usdt"}
 
@@ -162,7 +162,7 @@ providers:
       p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="dai"}[24h])
       p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="dai"}[24h])
       mean: avg_over_time(peg_deviation_worst_bps{stable="dai"}[24h])
-      success: avg_over_time(peg_source_health{stable="dai"}[24h])
+      success: avg(avg_over_time(peg_source_health{stable="dai"}[24h]))
       sample_size: sum(increase(peg_source_call_total{stable="dai"}[24h]))
       series: peg_deviation_worst_bps{stable="dai"}
 

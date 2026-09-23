@@ -283,6 +283,113 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     founded: 2010,
   },
 
+  // ─── Prediction markets, bench 277 cohort ─────────────────────
+  // Added 2026-09-23 with bench 277. Every one is classified
+  // "Prediction Market" by DefiLlama, which is also where their open
+  // interest is read from. They are not all the same product: two are
+  // sportsbooks, one is a liquidity layer other front ends draw on, and
+  // one trades fantasy player shares rather than event outcomes. The
+  // descriptions say which, because the category label does not.
+  rain: {
+    url: "https://www.rain.one",
+    description:
+      "Prediction market protocol on Arbitrum with user-created markets and tradable options. No public REST API; open interest is read from the DefiLlama protocol aggregate.",
+    twitter: "@Rain__Protocol",
+    chains: ["Arbitrum"],
+    github: "https://github.com/rain1-labs",
+  },
+  "predict-fun": {
+    url: "https://predict.fun",
+    description:
+      "Prediction market on BNB Chain and Blast covering sports, crypto and world events. Pays yield on collateral backing open positions rather than leaving it idle.",
+    twitter: "@predictdotfun",
+    chains: ["BNB Chain", "Blast"],
+    docs: "https://docs.predict.fun",
+  },
+  opinion: {
+    url: "https://app.opinion.trade",
+    description:
+      "Prediction exchange on BNB Chain trading macroeconomic releases, forecasts and news as standardized contracts, resolved through its own on-chain oracle.",
+    twitter: "@opinionlabsxyz",
+    chains: ["BNB Chain"],
+    docs: "https://docs.opinion.trade",
+  },
+  "sport-fun": {
+    url: "https://pro.sport.fun",
+    description:
+      "Fantasy football market on Base: users trade fractional shares in individual players whose value tracks real match performance, collateralized in a USDC-pegged unit. Classified as a prediction market by DefiLlama, though it trades player shares rather than binary event outcomes.",
+    twitter: "@sportfun",
+    chains: ["Base"],
+    docs: "https://docs.sport.fun",
+  },
+  augur: {
+    url: "https://augur.net",
+    description:
+      "The original on-chain prediction market, live on Ethereum since 2018. Permissionless market creation with reporter-based resolution and no cap on position size.",
+    twitter: "@AugurProject",
+    chains: ["Ethereum"],
+    github: "https://github.com/AugurProject",
+    founded: 2015,
+  },
+  "levr-bet": {
+    url: "https://levr.bet",
+    description:
+      "Prediction markets on Monad offering 2x to 5x leverage on single-game sports lines.",
+    twitter: "@Levr_Bet",
+    chains: ["Monad"],
+  },
+  predictstreet: {
+    url: "https://adipredictstreet.com",
+    description:
+      "Binary YES/NO outcome exchange on ADI Chain covering sports and general events. Every position is fully collateralized in USDC.e and settled on-chain.",
+    twitter: "@Predictstreet",
+    chains: ["ADI Chain"],
+    docs: "https://docs.adipredictstreet.com",
+  },
+  pascal: {
+    url: "https://www.pascal.trade",
+    description:
+      "Non-custodial prediction market exchange on Solana.",
+    twitter: "@pascaldottrade",
+    chains: ["Solana"],
+    docs: "https://docs.pascal.trade",
+  },
+  overtime: {
+    url: "https://www.overtimemarkets.xyz",
+    description:
+      "On-chain sportsbook and digital options venue built on the Thales contracts, running across six chains with Chainlink feeds for settlement and AMM-backed liquidity pools rather than a book.",
+    twitter: "@Overtime_io",
+    chains: ["Optimism", "Arbitrum", "Polygon", "Base", "Ethereum", "BNB Chain"],
+    docs: "https://docs.overtime.io",
+    github: "https://github.com/thales-markets",
+  },
+  trueo: {
+    url: "https://trueo.com",
+    description:
+      "Yield-bearing prediction market on Base. Each market commits its title, resolution criteria and approved sources on-chain at launch, and resolves through an optimistic oracle with bonded disputes. No public REST or GraphQL API; the deployment, including TruthMarketManager, is published and markets are enumerable from it on-chain.",
+    twitter: "@Trueo_app",
+    chains: ["Base"],
+    docs: "https://docs.trueo.com",
+    github: "https://github.com/trueo-protocol",
+    longDescription:
+      "Trueo settles binary outcome markets on Base through an optimistic oracle: an outcome is proposed against a bond, and anyone may dispute it within the challenge window, with an Oracle Council and a set of attesters backing resolution. Collateral held against open positions earns yield rather than sitting idle. Contract addresses are published at docs.trueo.com/deployments, including TruthMarketManager at 0x61A98Bef11867c69489B91f340fE545eEfc695d7, whose clones are the individual markets; there is no REST or GraphQL API and no subgraph, so OpenChainBench reads Trueo through the DefiLlama protocol aggregate. Trueo announced on 2026-09-21 that it is migrating the protocol to Ethereum mainnet while Base continues to trade, settle and redeem.",
+    features: [
+      "Optimistic oracle with bonded disputes",
+      "Resolution criteria committed on-chain at launch",
+      "Yield on collateral backing open positions",
+      "No public API; contracts published",
+    ],
+  },
+  azuro: {
+    url: "https://azuro.org",
+    description:
+      "Liquidity and infrastructure layer for on-chain betting rather than a venue of its own: front ends draw on its Liquidity Tree pool design. Live on six chains, so its open interest aggregates the apps built on it.",
+    twitter: "@azuroprotocol",
+    chains: ["Polygon", "Base", "Chiliz", "Linea", "Arbitrum", "Gnosis"],
+    docs: "https://gem.azuro.org",
+    github: "https://github.com/Azuro-protocol",
+  },
+
   // ─── Solana transaction landing services ──────────────────────
   jito: {
     url: "https://www.jito.wtf",

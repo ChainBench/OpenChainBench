@@ -49,10 +49,10 @@ type gmxMarketInfo struct {
 }
 
 type gmxMarketsRESTItem struct {
-	MarketToken         string `json:"marketToken"`
-	IndexToken          string `json:"indexToken"`
-	FundingFactorPerSecondLong  string `json:"fundingFactorPerSecondLong"`
-	FundingFactorPerSecondShort string `json:"fundingFactorPerSecondShort"`
+	MarketToken                       string `json:"marketToken"`
+	IndexToken                        string `json:"indexToken"`
+	FundingFactorPerSecondLong        string `json:"fundingFactorPerSecondLong"`
+	FundingFactorPerSecondShort       string `json:"fundingFactorPerSecondShort"`
 	BorrowingFactorPerSecondForLongs  string `json:"borrowingFactorPerSecondForLongs"`
 	BorrowingFactorPerSecondForShorts string `json:"borrowingFactorPerSecondForShorts"`
 }

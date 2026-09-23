@@ -1,0 +1,210 @@
+# OpenChainBench. Bench 276
+slug: perp-fee-disclosure
+number: "276"
+title: "What perp traders actually paid, against what each venue's fee schedule allows"
+seo_title: "Perp effective fee: {{best_name}} lowest at {{best_p50}}"
+seo_description: "{{best_name}} traders paid {{best_p50}} per dollar traded, {{worst_name}} {{worst_p50}}. Declared fee revenue over measured volume, checked against each venue's own published maker and taker rates."
+subtitle: "Each venue's declared fee revenue divided by the volume we measure, in basis points: what every filled dollar paid on average. Read it against the two columns beside it, the venue's own published maker and taker rates. A figure outside that range cannot have come from the schedule the venue publishes."
+category: Trading
+status: live
+metric: Effective fee paid
+row_noun: { one: venue, many: venues }
+unit: bps
+higher_is_better: false
+
+disclaimer: |
+  Not an accusation. A figure outside a venue's published range has
+  ordinary explanations: fee tiers below the base rate, a volume figure
+  that counts both legs of a fill, revenue from products the volume does
+  not cover, or an upstream adapter measuring a different perimeter. What
+  the bench asserts is narrower and checkable: the declared figure and the
+  published schedule, on the volume we measure, do not reconcile.
+
+seo_intro: |
+  Every perp venue publishes a fee schedule and reports a fee revenue, and
+  almost nobody checks whether the two agree. This board does the division:
+  a venue's declared 30-day perp fees over the volume we measure across the
+  same window, which is what each filled dollar paid on average. Then it
+  puts that number next to the venue's own maker and taker rates, read
+  from its public API rather than from a blog post. A venue whose traders
+  fill entirely on the maker side cannot pay less than its maker rate, and
+  one filling entirely on the taker side cannot pay more than its taker
+  rate, so the declared figure has to land between the two. On the day this
+  was written two venues did, three did not, and three publish no maker
+  rate at all, which makes them unverifiable rather than wrong.
+
+abstract: |
+  Three sources, none of which alone can produce this. The perp-fees
+  harness reads each venue's fee schedule from its own public API every few
+  minutes and publishes perp_fees_taker_fee_bps and
+  perp_fees_maker_fee_bps. The perp-cohort-stats harness reads each venue's
+  24h traded notional natively and publishes perp_venue_volume_24h_usd. The
+  perp-token-metrics harness reads DeFiLlama's dailyFees for the venue's
+  perps product and publishes perp_protocol_perp_fees_30d_usd. The headline
+  is the third divided by the second, scaled to basis points; the maker and
+  taker rates ride alongside as panels. Nothing here re-derives a fee from
+  a fill: it compares what a venue says it earned with what its own price
+  list says it can charge.
+
+methodology:
+  - "Effective fee = 10000 x (declared 30d perp fees) / (30 x the 24h volume we measure, averaged over 24h). Both sides cover the perps product only, so a venue's spot or staking revenue does not enter the numerator."
+  - "The maker and taker rates come from each venue's own public API, not from documentation: Hyperliquid userFees, Lighter orderBookDetails, dYdX chain config, Paradex markets fee_config, edgeX getMetaData. A rate the API does not publish is absent rather than assumed."
+  - "The band is maker to taker. A venue whose flow fills entirely on the maker side cannot average less than its maker rate; one filling entirely on the taker side cannot average more than its taker rate. The true mix is unknown and this bench does not estimate it, which is why the verdict is only inside or outside."
+  - "Outside is not a verdict about honesty. Fee tiers below the base rate, a volume figure counting both legs, revenue from a product the volume excludes, or an upstream adapter on a different perimeter all put a true figure outside the band."
+  - "Three venues publish a taker rate and no maker rate (Aster, Extended, Gains). Their row shows the effective fee with a taker ceiling and no floor, and is marked unverifiable rather than ranked as compliant. Gains is oracle-priced with no order book, so it has no maker side to publish."
+  - "edgeX's taker rate was pinned in the harness at the documented 3.8 bps until 2026-09-23, when reading it live showed 4.5. A hardcoded rate drifts silently; both of its rates are now read from getMetaData each tick, with the documented value as a fallback only when the call fails."
+  - "Volume is each venue's own 24h notional as its API reports it. A venue that counts both legs of a fill halves its own effective fee here, which is one of the ordinary reasons a row lands below its band."
+  - "Cadence: the fee schedule every few minutes, volume every 60 seconds, the declared figure hourly. The headline reads the declared 30d total against a 24h volume average, so a single print moves neither side."
+
+findings:
+  - "{{best_name}} traders paid {{best_p50}} per dollar traded, the least of the {{ranked_count}} venues measured."
+  - "A venue's effective fee has to sit between its own maker and taker rates, because those are the only two prices it charges. The venues where it does not are the reading this board exists for."
+  - "{{worst_name}} sits at {{worst_p50}}, the most paid per dollar traded on today's declared figures."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-fees
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 3600
+  freshness_metric: perp_fees_health
+
+panel_main_description: "Declared 30-day perp fee revenue divided by the volume we measure over the same window, in basis points. What every filled dollar paid on average."
+
+metric_panels:
+  - id: maker_rate
+    label: Maker rate
+    label_key: venue
+    metric: perp_fees_maker_fee_bps{}
+    unit: bps
+    higher_is_better: false
+    description: "The venue's own published maker rate, read from its API. The floor of the band: flow filling entirely on the maker side cannot average less than this. Absent where the venue publishes no maker rate, or has no order book."
+  - id: taker_rate
+    label: Taker rate
+    label_key: venue
+    metric: perp_fees_taker_fee_bps{}
+    unit: bps
+    higher_is_better: false
+    description: "The venue's own published taker rate, read from its API. The ceiling of the band: flow filling entirely on the taker side cannot average more than this."
+  - id: spread
+    label: Spread
+    label_key: venue
+    metric: perp_fees_spread_bps{}
+    unit: bps
+    higher_is_better: false
+    description: "Half-spread plus impact at $1,000 notional, measured on the book. What a taker pays on top of the fee, and not part of the fee revenue the band is checked against."
+
+faq:
+  - q: "What does 'effective fee' mean here?"
+    a: "What every filled dollar paid on average: the venue's declared 30-day perp fee revenue divided by the volume we measure over the same window. It is not a rate anyone is quoted; it is the rate that reconciles the two published figures."
+  - q: "Why compare it to a maker and a taker rate?"
+    a: "Because those are the only two prices a venue charges on a fill. Flow filling entirely on the maker side cannot average less than the maker rate, and flow filling entirely on the taker side cannot average more than the taker rate. The average has to land between them whatever the mix is."
+  - q: "So a venue outside the band is lying?"
+    a: "No, and the board does not say that. Fee tiers below the base rate, a volume figure that counts both legs of a fill, revenue from a product the volume does not cover, or an upstream fee adapter measuring a different perimeter all put a perfectly true figure outside the band. What the bench establishes is that the two public numbers do not reconcile on the volume we measure."
+  - q: "Why do some venues have no maker rate?"
+    a: "Because their public API does not publish one. Aster's fee endpoint needs an API key, Extended documents a taker rate only, and Gains prices off an oracle with no order book, so it has no maker side at all. Those rows show a ceiling and no floor, and are unverifiable rather than compliant."
+  - q: "Can you tell what share of volume fills on the maker side?"
+    a: "No, and the board is built so it does not need to. The mix is exactly the thing none of these APIs publish, which is why the output is a range test rather than a reconstructed fee."
+providers:
+  - slug: gains
+    name: Gains
+    tag: Arbitrum and Base, oracle pricing, no order book so no maker side
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="gains"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 order book, schedule from userFees
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="hyperliquid"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain order book, taker documented, no public maker rate
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="aster"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain order book, schedule from the chain config
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="dydx"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
+
+  - slug: extended
+    name: Extended
+    tag: Starknet order book, taker documented, no public maker rate
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="extended"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
+
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx-settled order book, schedule from getMetaData
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="edgex"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain, retail tier reads zero on both sides
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="paradex"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
+
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup order book, no fee on either side
+    formula: "declared 30d perp fees, divided by the volume we measure over the same window, in basis points"
+    queries:
+      p50: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
+      p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
+      p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
+      mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
+      success: avg(avg_over_time(perp_fees_health{venue="lighter"}[24h]))
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h])
+      series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))

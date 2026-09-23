@@ -28,6 +28,7 @@ import (
 // so we don't hardcode it either.
 
 const gainsDiamond = "0x6cd5ac19a07518a8092eeffda4f1174c72704eeb"
+
 // Base RPC. Configurable via RPC_BASE env var to point at a dedicated
 // provider (Alchemy, QuickNode, etc.) when public throttling becomes
 // an issue. Default mainnet.base.org caps around 10 req/s.

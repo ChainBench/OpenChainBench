@@ -140,7 +140,25 @@ const provider = z.object({
   /** Display name. */
   name: z.string().min(1),
   /** Optional one-liner shown under the name. */
-  tag: z.string().optional(),
+  /**
+   * What this row IS: its architecture, its venue, its scope. Not what it
+   * currently reads — the board carries that, and a tag restating it goes
+   * stale silently. Bench 275 shipped twenty tags like "$93.9B stablecoin
+   * float, dollars arriving", which matched the live signs only because
+   * they were written the same day, with Avalanche one small mint from
+   * contradicting its own tag (SEO audit 2026-09-23).
+   *
+   * An order of magnitude as context is fine, qualified: "~$290k pool
+   * depth" describes a venue, "$93.9B float" restates a measurement. The
+   * rule asks for the tilde.
+   */
+  tag: z
+    .string()
+    .refine(
+      (t) => !/(?<![~≈])\s*\$\s?\d/.test(t),
+      'tag: an exact amount goes stale next to the live column; qualify it ("~$2.8B") or drop it',
+    )
+    .optional(),
   /** Single-line explanation of how THIS provider's headline value is
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
