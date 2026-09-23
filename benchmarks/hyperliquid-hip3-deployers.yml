@@ -85,7 +85,7 @@ faq:
   - q: "How are dexes identified?"
     a: "By their on-chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The harness discovers the set dynamically from the fill stream and starts metering a brand new deployer with its first fill; the page lists each new namespace after a short spec review. Operating teams are resolved from the on-chain perpDexs registry, which publishes each namespace deployer address and full name."
   - q: "What puts a deployer at the top of this table?"
-    a: "Catalog depth and open interest. trade.xyz, for example, operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and xyz leads on both breadth and notional."
+    a: "Catalog depth and open interest. trade.xyz, for example, operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and through Q3 2026 trade.xyz led on both breadth and notional."
   - q: "What does the Effective fee bps column tell me?"
     a: "Deployer fees divided by notional volume, in basis points. It is the trader perspective: what a representative dollar of flow paid the dex operator. Two dexes with the same revenue can have very different fee rates if one routes ten times the volume."
   - q: "Why do 30 day figures look low for some dexes?"

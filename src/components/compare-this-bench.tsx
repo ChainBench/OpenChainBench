@@ -1,5 +1,6 @@
 /**
- * Server-rendered contextual compare links on /benchmarks/[slug].
+ * Server-rendered contextual compare links on /benchmarks/[slug],
+ * /answers/[slug] and /bridge (three call sites, one MIN_PAIRS).
  *
  * The compare hub has 1,500+ ad-hoc /compare/<a>-vs-<b> pages seeded via
  * the sitemap, but each one had <2 inlinks (Ahref data 2026-06),
@@ -14,8 +15,8 @@
  *
  * No-op when:
  *   - the bench category is Blockchains (chains have their own hubs)
- *   - no usable pair can be built (skip HL builder hex slugs, dedupe
- *     canonical pairs); one pair renders as one chip (audit 2026-09-23:
+ *   - fewer than two ranked rows, or no usable pair among them (skip HL
+ *     builder hex slugs, dedupe canonical pairs); one pair renders as one chip (audit 2026-09-23:
  *     the two highest-impression perp pages rendered no head-to-head
  *     block at the old floor of three)
  */
@@ -70,7 +71,8 @@ export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) 
     return true;
   });
 
-  if (uniqueRanked.length < 3) return null;
+  // Two ranked rows make the first pair; the pattern below needs no more.
+  if (uniqueRanked.length < 2) return null;
 
   // Link a pair only when its compare page is indexable: curated, or the
   // two providers share at least two live benches. A pair that shares only
