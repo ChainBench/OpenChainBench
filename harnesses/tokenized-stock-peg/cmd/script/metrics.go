@@ -58,6 +58,16 @@ var (
 		Name: "tsp_last_success_timestamp_seconds",
 		Help: "Unix time of the last tick on which the asset produced a deviation sample. A stamp that stops advancing is a frozen leg, which a scrape age cannot show.",
 	}, []string{"asset"})
+
+	tspWeekendDrift = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsp_weekend_drift_bps",
+		Help: "Maximum |deviation| from Friday's close over the last completed weekend gap (last regular tick before a gap of 40 h or more to the first regular tick after it), per asset.",
+	}, []string{"asset"})
+
+	tspWeekendDriftEnd = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsp_weekend_drift_end_unix",
+		Help: "Unix time of the regular open that closed the weekend gap tsp_weekend_drift_bps describes.",
+	}, []string{"asset"})
 )
 
 func startMetricsServer(addr string) error {

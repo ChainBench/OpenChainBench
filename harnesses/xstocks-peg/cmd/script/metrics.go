@@ -58,8 +58,8 @@ var (
 	}, []string{"asset"})
 
 	tspLastSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tsp_last_success_timestamp_seconds",
-		Help: "Unix time of the last tick on which the asset produced a deviation sample. A stamp that stops advancing is a frozen leg, which a scrape age cannot show.",
+		Name: "xstocks_last_success_timestamp_seconds",
+		Help: "Unix time of the last tick on which the asset produced a deviation sample. Its own name (not tsp_*) because the spec's freshness key takes a bare metric and the Robinhood harness shares the tsp_ family.",
 	}, []string{"asset"})
 
 	tspScaledMultiplier = promauto.NewGaugeVec(prometheus.GaugeOpts{

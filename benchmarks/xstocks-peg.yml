@@ -73,7 +73,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/xstocks
 
 prometheus:
   window: 7d
-  freshness_timestamp_metric: tsp_last_success_timestamp_seconds
+  freshness_timestamp_metric: xstocks_last_success_timestamp_seconds
 
 providers:
   - slug: tsla

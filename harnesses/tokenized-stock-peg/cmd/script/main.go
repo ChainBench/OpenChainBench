@@ -54,6 +54,7 @@ func main() {
 
 		refs := fetchReferencePrices(client)
 		onchain := fetchOnchainPrices(client)
+		weekend.begin(state, now)
 
 		for _, a := range assets {
 			sym := strings.ToLower(a.Symbol)
@@ -82,6 +83,7 @@ func main() {
 				tspDeviationBps.WithLabelValues(sym, state, "robinhood").Set(dev)
 				tspHealth.WithLabelValues(sym).Set(1)
 				tspLastSuccess.WithLabelValues(sym).Set(float64(now.Unix()))
+				weekend.observe(sym, state, dev)
 				flag := ""
 				if dev > logThresholdBps && state == "regular" {
 					flag = "  <-- wide"
@@ -97,6 +99,7 @@ func main() {
 		}
 	}
 
+	weekend.backfill(client)
 	tick()
 	t := time.NewTicker(pollInterval)
 	defer t.Stop()
