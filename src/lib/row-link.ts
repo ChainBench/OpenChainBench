@@ -1,20 +1,10 @@
 import { CHAIN_BY_SLUG, canonicalChainSlug } from "@/lib/chains";
 import { isRegion } from "@/lib/brand";
+// Not from @/lib/providers: that pulls the materialize store (ioredis)
+// behind it, and this module is reached from a client component.
+import { isHexAddressSlug } from "@/lib/slug-shape";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
-/**
- * A raw contract address used as a row slug (Hyperliquid frontends not yet
- * in builders.json). Duplicated from providers.ts rather than imported:
- * this module is reached from a client component, and providers.ts pulls
- * spec.ts -> materialize/store.ts -> ioredis into the browser bundle. The
- * build fails on it; typecheck and the unit tests do not, which is how it
- * shipped.
- */
-const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
-
-function isHexAddressSlug(slug: string): boolean {
-  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
-}
 
 /**
  * Where a ledger row points.

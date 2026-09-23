@@ -391,3 +391,83 @@ func TestEveryMappedChainHasABenchRow(t *testing.T) {
 	}
 	t.Logf("%d mapped chains, %d bench rows", len(mapped), len(rows))
 }
+
+// A chain the harness refuses must stop answering queries, not keep the
+// last value it had. Because the gauges are re-exported every 30 s, a
+// refused row's headline last_over_time(...[1h]) kept resolving, its row
+// badge stayed fresh, and the only exit was the 5 % success floor — which
+// a 24h success rate reaches 22.8 hours later. An archived chain would
+// have held a place on the board for most of a day, with an excess
+// measured against a median that had already moved.
+func TestARefusedChainStopsPublishing(t *testing.T) {
+	good := map[string]l2beatProject{
+		"base":     proj(16441422848, 8222340259, 3121029128, 5098059233, 0.1524, false),
+		"arbitrum": proj(11874269184, 3692575462, 3803950446, 4377743276, 0.1020, false),
+		"optimism": proj(1930874112, 392793661, 1192897272, 345183179, 0.1990, false),
+		"mantle":   proj(1528454272, 46692460, 818479451, 663282361, 0.0750, false),
+		"linea":    proj(384864000, 1925419, 133260387, 249678194, 0.1220, false),
+		"celo":     proj(262609296, 243129539, 2587787, 16891970, 0.0430, false),
+	}
+	cfg := &Config{L2BeatMedianFloorUSD: 200e6}
+
+	for name, breaking := range map[string]func(map[string]l2beatProject){
+		"archived":     func(m map[string]l2beatProject) { p := m["celo"]; p.IsArchived = true; m["celo"] = p },
+		"zero total":   func(m map[string]l2beatProject) { m["celo"] = proj(0, 0, 0, 0, 0.04, false) },
+		"schema drift": func(m map[string]l2beatProject) { m["celo"] = proj(262609296, 0, 0, 0, 0.04, false) },
+		"gone":         func(m map[string]l2beatProject) { delete(m, "celo") },
+	} {
+		chainBridgedTvlUsd.Reset()
+		chainTvsUsd.Reset()
+		chainValueSecuredUsd.Reset()
+		chainTvsChange7dPct.Reset()
+		chainTvsChange7dExcessPct.Reset()
+
+		// Publish a healthy tick first, so there is something to forget.
+		healthy := map[string]l2beatProject{}
+		for k, v := range good {
+			healthy[k] = v
+		}
+		publishL2Beat(&l2beatSummary{Projects: healthy}, cfg, 1)
+		if readGaugeVec(t, chainBridgedTvlUsd, "celo") == 0 {
+			t.Fatalf("%s: celo did not publish on the healthy tick", name)
+		}
+
+		broken := map[string]l2beatProject{}
+		for k, v := range good {
+			broken[k] = v
+		}
+		breaking(broken)
+		publishL2Beat(&l2beatSummary{Projects: broken}, cfg, 1)
+
+		for label, g := range map[string]*prometheus.GaugeVec{
+			"bridged": chainBridgedTvlUsd, "tvs": chainTvsUsd,
+			"change": chainTvsChange7dPct, "excess": chainTvsChange7dExcessPct,
+			"origins": chainValueSecuredUsd,
+		} {
+			if hasLabel(t, g, "celo") {
+				t.Errorf("%s: celo still publishes %s after being refused", name, label)
+			}
+		}
+		// The chains that are still good must be untouched.
+		if readGaugeVec(t, chainBridgedTvlUsd, "base") == 0 {
+			t.Errorf("%s: forgetting celo took base with it", name)
+		}
+	}
+}
+
+func hasLabel(t *testing.T, g *prometheus.GaugeVec, want string) bool {
+	t.Helper()
+	ch := make(chan prometheus.Metric, 256)
+	g.Collect(ch)
+	close(ch)
+	for m := range ch {
+		d := &dto.Metric{}
+		_ = m.Write(d)
+		for _, l := range d.GetLabel() {
+			if l.GetValue() == want {
+				return true
+			}
+		}
+	}
+	return false
+}

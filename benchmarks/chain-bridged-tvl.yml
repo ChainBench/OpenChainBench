@@ -55,15 +55,16 @@ abstract: |
   balance to report.
 
 methodology:
-  - "Source: L2Beat /api/scaling/summary, one unauthenticated request per tick covering every tracked project. Poll cadence 15 minutes, matched to the DefiLlama cadence in the same harness. The two are not the same instant even so: DefiLlama publishes one daily TVL aggregate, so a chain's DeFi TVL is a day-grained figure while its value secured is quarter-hour grained."
+  - "Source: L2Beat /api/scaling/summary, one unauthenticated request per tick covering every tracked project. Poll cadence 15 minutes, matched to the DefiLlama cadence in the same harness. Neither is the instant it is read at: DefiLlama publishes one daily TVL aggregate, and L2Beat computes an hourly series that normally runs one to two hours behind, so the page reports the last point each source finished rather than the moment of the request."
   - "Bridged TVL = canonical + external from tvs.breakdown, in USD. Canonical is value escrowed on the host chain by the chain's own contracts; external arrived through a third-party bridge; native was minted on the chain itself and is excluded."
   - "The three origins reconstruct the total, so bridged TVL is exactly the value secured that is not native, and a chain whose value is entirely canonical reads 100 percent bridged. A row whose origins miss its total by more than 0.1 percent is not published at all: if the upstream field names change, every one of them binds to zero, and a $0 bridged TVL at full health would be a wrong number that looks measured."
   - "Weekly move: L2Beat's own change7d on total value secured, converted from a ratio to a percentage. The excess subtracts the median change across every live project above $200M of value secured."
-  - "The $200M floor exists because the median is a yardstick. Without it, one small chain doubling on an incentive program sets the reference move the whole cohort is judged against."
+  - "The $200M floor exists because the median is a yardstick. L2Beat tracks about a hundred projects and most of them are small, so without a floor the many dust chains outnumber the rest and their moves, which are incentive programs rather than capital rotation, own the middle of the sorted list."
   - "Cohort composition: every live project above the floor votes, layer 3s and projects L2Beat currently has under review included. They are counted, not filtered, because dropping them would make the yardstick a judgement rather than a measurement; chain_tvs_cohort_size, _layer3 and _under_review publish the composition. Below five projects no median is published and the excess series is cleared rather than frozen."
   - "Rows: every chain in the OCB registry that carries an L2Beat project id, each verified against a live read of the endpoint. Several ids differ from the OCB slug (polygon-pos, zksync2, roninnetwork, worldchain, mantapacific, galxegravity, nova, polygonzkevm, bobanetwork, immutablezkevm)."
   - "The membership rule is presence in L2Beat's scaling summary, not a category. L2Beat files some rows as optimistic or ZK rollups and others under other labels, and Polygon PoS, Gnosis and Hyperliquid run their own consensus while still posting to a host chain. A settled L1 has no host chain and so no bridged balance: it is absent rather than shown at zero."
-  - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing, the previous value carries forward, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success rate each row reports, and freshness is chain_kpis_l2beat_last_success_unix rather than the scrape clock, so a stale upstream shows as stale on the page."
+  - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing, the previous value carries forward, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success rate each row reports."
+  - "Freshness reads L2Beat's own chart.syncedUntil, not the Prometheus scrape and not the time of our fetch. The first is always seconds old because the harness re-exports carried-forward gauges; the second stays green when L2Beat answers 200 with stale numbers. A row whose weekly move is missing keeps its balance and loses only its two weekly columns, rather than publishing a flat week that never happened."
   - "Every aggregate column reads the latest value rather than a window statistic, so the board and the origin panels always describe the same instant. p50, p90, p99 and the mean are equal by construction; the sample count is the number of Prometheus scrapes in the 24h window (about 2,880 at a 30 second scrape), not a count of measurements, since the underlying value refreshes every 15 minutes."
   - "L2Beat's figures are a third-party measurement, credited as the source. OCB does not re-derive the escrow balances; this bench republishes the split and computes the cohort-relative move on top of it."
 
@@ -77,12 +78,16 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-k
 
 prometheus:
   window: 24h
-  expected_freshness_seconds: 2700
-  # The scrape clock would read ~20 s old whatever L2Beat does, because the
-  # harness re-exports a carried-forward gauge every 30 s. This is the
-  # timestamp of the last fetch that actually published a chain.
+  # Three clocks, and only the third one stops when upstream does. The
+  # Prometheus scrape reads ~20 s old whatever happens, because the harness
+  # re-exports a carried-forward gauge every 30 s. Our own fetch time reads
+  # under 15 min whenever the HTTP call succeeds, including when L2Beat is
+  # serving stale numbers with a 200. chart.syncedUntil is when L2Beat last
+  # computed a point: hourly, and 87 min behind when this was written. The
+  # window below covers that normal lag plus a missed hourly point.
+  expected_freshness_seconds: 14400
   freshness_metric: chain_kpis_health
-  freshness_timestamp_metric: chain_kpis_l2beat_last_success_unix
+  freshness_timestamp_metric: chain_kpis_l2beat_synced_until_unix
 
 panel_main_description: "Value secured that arrived from another chain, canonical plus external, in USD. The complement is value minted on the chain itself."
 
