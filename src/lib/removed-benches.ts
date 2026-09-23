@@ -94,14 +94,9 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
-  // bridges: 261 on-chain execution, 263 realized cost, 264 SOL->X quotes
-  // (2026-09-22: held on dev with the rest of the bridge work)
-  "bridge-execution-latency",
-  "bridge-realized-cost",
-  "bridge-quote-latency-solana",
-  // 268 terminal fill quality: method still moving (13 audits, last change
-  // 2026-09-21)
-  "terminal-fill-quality",
+  // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
+  // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
+  // list with release/2026-09-23.
   // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
   // but the 24h success window has not filled since the last rebuild, so a
   // production board would rank rows on a partial window. Un-gate once the
