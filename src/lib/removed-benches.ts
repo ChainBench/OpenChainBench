@@ -108,6 +108,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // window is full and a re-audit is clean (2 rounds so far, last change
   // 2026-09-23).
   "chain-bridged-tvl",
+  // 274 protocol P/F: first deploy of the protocol-valuation harness, no
+  // 24h window yet and no audit round. Un-gate after both.
+  "protocol-pf-ratio",
 ]);
 
 /**
