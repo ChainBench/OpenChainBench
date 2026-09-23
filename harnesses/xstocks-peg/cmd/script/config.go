@@ -23,12 +23,12 @@ import (
 // under 2bp (2026-07-13). All mints 8 decimals.
 
 const (
-	usdcMint     = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-	oneShareRaw  = 100000000 // 1e8 = 1 share at 8 decimals, pre-multiplier
-	pollInterval = 60 * time.Second
-	httpTimeout  = 15 * time.Second
-	quoteGap     = 1100 * time.Millisecond // lite tier: stay well under 60 req/min
-	issuerLabel  = "xstocks"
+	usdcMint        = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	oneShareRaw     = 100000000 // 1e8 = 1 share at 8 decimals, pre-multiplier
+	pollInterval    = 60 * time.Second
+	httpTimeout     = 15 * time.Second
+	quoteGap        = 1100 * time.Millisecond // lite tier: stay well under 60 req/min
+	issuerLabel     = "xstocks"
 	logThresholdBps = 100.0
 )
 

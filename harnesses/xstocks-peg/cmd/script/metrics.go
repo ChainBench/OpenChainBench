@@ -53,6 +53,11 @@ var (
 		Name: "tsp_health",
 		Help: "1 when the last tick produced a deviation sample for the asset, 0 otherwise.",
 	}, []string{"asset"})
+
+	tspLastSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tsp_last_success_timestamp_seconds",
+		Help: "Unix time of the last tick on which the asset produced a deviation sample. A stamp that stops advancing is a frozen leg, which a scrape age cannot show.",
+	}, []string{"asset"})
 )
 
 func startMetricsServer(addr string) error {

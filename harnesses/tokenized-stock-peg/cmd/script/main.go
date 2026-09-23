@@ -4,15 +4,25 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
+
+// rpcHost is the RPC URL's host only: a keyed URL must not reach the log
+// ring served at /logs.
+func rpcHost() string {
+	if u, err := url.Parse(rpcURL()); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return "(unparsed)"
+}
 
 func main() {
 	installLogCapture()
 	fmt.Println("=== Tokenized Stock Peg Harness ===")
 	fmt.Println("OpenChainBench — Robinhood Chain tokenized equities vs Nasdaq reference.")
-	fmt.Printf("Cohort: %d assets | poll: %s | RPC: %s\n", len(assets), pollInterval, rpcURL())
+	fmt.Printf("Cohort: %d assets | poll: %s | RPC host: %s\n", len(assets), pollInterval, rpcHost())
 	for _, a := range assets {
 		fmt.Printf("  - %-6s token=%s pool=%s… fee=%.2f%%\n", a.Symbol, a.Token[:10]+"…", a.PoolID[:14], float64(a.FeePPM)/10000)
 	}
@@ -58,17 +68,31 @@ func main() {
 			if hasPool {
 				tspPriceOnchain.WithLabelValues(sym, "robinhood").Set(pool)
 			}
+			// One session at a time: the deviation gauge for every other
+			// market_state is deleted, or Prometheus keeps scraping the last
+			// regular tick all night and the 24h "regular" median becomes
+			// that one frozen tick (audit 2026-09-23: 73 % of the samples).
+			for _, other := range []string{"pre", "regular", "post", "closed", "unknown"} {
+				if other != state {
+					tspDeviationBps.DeleteLabelValues(sym, other, "robinhood")
+				}
+			}
 			if hasRef && hasPool && ref.Price > 0 {
 				dev := math.Abs(pool-ref.Price) / ref.Price * 10000
 				tspDeviationBps.WithLabelValues(sym, state, "robinhood").Set(dev)
 				tspHealth.WithLabelValues(sym).Set(1)
+				tspLastSuccess.WithLabelValues(sym).Set(float64(now.Unix()))
 				flag := ""
 				if dev > logThresholdBps && state == "regular" {
 					flag = "  <-- wide"
 				}
 				fmt.Printf("[%s][%s] pool=%.2f ref=%.2f dev=%.1fbps%s\n", sym, state, pool, ref.Price, dev, flag)
 			} else {
+				// A failed leg publishes nothing: the frozen gauge is the
+				// failure mode the freshness stamp above exists to expose.
 				tspHealth.WithLabelValues(sym).Set(0)
+				tspDeviationBps.DeleteLabelValues(sym, state, "robinhood")
+				tspPriceOnchain.DeleteLabelValues(sym, "robinhood")
 			}
 		}
 	}
