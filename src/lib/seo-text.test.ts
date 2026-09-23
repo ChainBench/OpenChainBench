@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { capDescription } from "./seo-text";
+import { capDescription, capSnippet } from "./seo-text";
 
 // The 2026-09-22 audit found 5 of 29 sampled pages shipping a meta
 // description cut mid-clause with an ellipsis, /products/mobula's
@@ -42,7 +42,7 @@ describe("capDescription", () => {
 });
 
 describe("capSnippet: cut placement (RWA audit 2026-09-23)", () => {
-  it("does not treat an abbreviation's period as a sentence end", () => {
+  test("does not treat an abbreviation's period as a sentence end", () => {
     const s =
       "USDY ranks #1 of 4 on RWA yield deviation at 2.00 bps (30d avg). 1 live benchmark, 1 first-place finish. Ondo USDY is a yield-bearing tokenized U.S. Treasury note for non-US holders, accruing daily.";
     const out = capSnippet(s);
@@ -51,7 +51,7 @@ describe("capSnippet: cut placement (RWA audit 2026-09-23)", () => {
     expect(out.length).toBeLessThanOrEqual(155);
   });
 
-  it("never cuts inside a parenthesis", () => {
+  test("never cuts inside a parenthesis", () => {
     const s =
       "Does USDY trade at its NAV? Live basis between Ondo's tokenized treasury market price (Orca pool, Jupiter route) and the redemption price Ondo publishes onchain, in bps.";
     const out = capSnippet(s);
