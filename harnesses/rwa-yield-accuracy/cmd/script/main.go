@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -35,11 +37,30 @@ var probes = []IssuerProbe{
 	// NewBENJIProbe(),  // TODO: waiting Franklin NAV endpoint confirmation
 }
 
+// rpcHost is the RPC URL's host only: a keyed URL must never reach the
+// container log or the /logs ring.
+func rpcHost() string {
+	if u, err := url.Parse(rpcURL()); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return "(unparsed)"
+}
+
+// scrubURL replaces the RPC URL (which go-ethereum's *url.Error text
+// repeats, key included) with its host before a message is logged.
+func scrubURL(msg string) string {
+	full := rpcURL()
+	if full == "" {
+		return msg
+	}
+	return strings.ReplaceAll(msg, full, rpcHost())
+}
+
 func main() {
 	installLogCapture()
 	fmt.Println("=== RWA Yield Accuracy Harness ===")
 	fmt.Println("OpenChainBench № 089 - on-chain delivered yield vs advertised APY.")
-	fmt.Printf("Cohort: %d tokens | RPC: %s\n", len(probes), rpcURL())
+	fmt.Printf("Cohort: %d tokens | RPC host: %s\n", len(probes), rpcHost())
 	for _, p := range probes {
 		fmt.Printf("  - %s/%s on %s\n", p.Issuer(), p.Slug(), p.Chain())
 	}
@@ -126,16 +147,17 @@ func main() {
 // so a transient RPC hiccup can't flip a healthy row to zero.
 func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, promised *promisedStore) {
 	labels := []string{probe.Issuer(), probe.Slug(), probe.Chain()}
+	var last *Measurement
 
 	tick := func() {
-		probeCtx, cancel := context.WithTimeout(ctx, httpTimeout)
+		probeCtx, cancel := context.WithTimeout(ctx, measureTimeout)
 		defer cancel()
 
 		m, err := probe.Measure(probeCtx, rpc)
 		if err != nil {
 			classifyAndCount(probe, err)
 			probeOK.WithLabelValues(labels...).Set(0)
-			fmt.Printf("[%s] probe error: %v\n", probe.Slug(), err)
+			fmt.Printf("[%s] probe error: %s\n", probe.Slug(), scrubURL(err.Error()))
 			return
 		}
 
@@ -168,6 +190,7 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 
 		probeOK.WithLabelValues(labels...).Set(1)
 		lastMeasured.WithLabelValues(labels...).Set(float64(m.MeasuredAt.Unix()))
+		last = m
 
 		fmt.Printf("[%s] delivered_30d=%d bps 7d=%d bps supply=%s AUM=%s\n",
 			probe.Slug(),
@@ -178,16 +201,30 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 		)
 	}
 
-	// Fire immediately, then tick.
+	// The measurement (two print searches per window, a few dozen archive
+	// calls) runs hourly, as the spec says; the deviation against the
+	// hot-reloaded reference APY is republished every minute from the
+	// last measurement, so a config edit lands within a scrape.
 	tick()
-	t := time.NewTicker(pollInterval)
-	defer t.Stop()
+	measure := time.NewTicker(windowRecomputeInterval)
+	defer measure.Stop()
+	republish := time.NewTicker(pollInterval)
+	defer republish.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-t.C:
+		case <-measure.C:
 			tick()
+		case <-republish.C:
+			if last != nil {
+				if promisedBpsVal, ok := promised.get(probe.Slug()); ok {
+					promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))
+					deviationBps30d.WithLabelValues(labels...).Set(float64(last.DeliveredBps30d - promisedBpsVal))
+					deviationBps7d.WithLabelValues(labels...).Set(float64(last.DeliveredBps7d - promisedBpsVal))
+					deviationBpsLifetime.WithLabelValues(labels...).Set(float64(last.DeliveredBpsLifetime - promisedBpsVal))
+				}
+			}
 		}
 	}
 }

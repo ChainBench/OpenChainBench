@@ -16,7 +16,7 @@ category: RWA
 # on-chain NAV function and Franklin has not published a JSON endpoint.
 status: live
 metric: Yield deviation
-unit: bps
+unit: bp
 higher_is_better: false
 
 seo_intro: |

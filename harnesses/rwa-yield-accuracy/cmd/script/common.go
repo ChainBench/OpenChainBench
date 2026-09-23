@@ -48,10 +48,14 @@ func annualizedYieldBps(supplyEnd, supplyStart, windowDays float64) int {
 // navReader returns a NAV-like value as it stood at a block (nil = latest).
 type navReader func(ctx context.Context, block *big.Int) (float64, error)
 
-// printLookback bounds the search for the print behind a sampled value:
-// every NAV source in the cohort steps at most once a day, so two days
-// covers a weekend gap and a late print.
-const printLookback = 48 * time.Hour
+// printLookback bounds the search for the print behind a sampled value.
+// The NAV sources step at most once a day and some only on business
+// days, so a Friday print is 72 h old on Monday and 96 h after a holiday;
+// five days covers that. A value still unchanged at the edge is an
+// error, not an estimate: clamping to the edge moved the 30d yield about
+// 12 bps either way twice a week on the business-day feeds (review
+// 2026-09-23).
+const printLookback = 5 * 24 * time.Hour
 
 // windowYield is a print-anchored, compounded yield over a window.
 type windowYield struct {
@@ -104,9 +108,9 @@ func printAnchoredYield(ctx context.Context, rpc *ethclient.Client, latest uint6
 // printTime finds when the value read at `at` was printed: the lowest
 // block in the lookback window that already carries it, by binary
 // search (a NAV only moves forward, so "carries the same value" is
-// monotone in the block number). Falls back to the lookback edge when
-// the value is older than the window, which biases the span long and
-// the yield low rather than the reverse.
+// monotone in the block number). A value older than the lookback is an
+// error: the caller publishes nothing rather than a span guessed from
+// the window edge.
 func printTime(ctx context.Context, rpc *ethclient.Client, read navReader, at *big.Int, value float64) (time.Time, error) {
 	lo := blockOffsetBySeconds(at.Uint64(), int64(printLookback.Seconds()))
 	hi := new(big.Int).Set(at)
@@ -120,7 +124,7 @@ func printTime(ctx context.Context, rpc *ethclient.Client, read navReader, at *b
 	if ok, err := same(lo); err != nil {
 		return time.Time{}, err
 	} else if ok {
-		hi = lo // older than the lookback: use its edge
+		return time.Time{}, fmt.Errorf("value unchanged for more than %s before block %s", printLookback, at)
 	}
 	for new(big.Int).Sub(hi, lo).Cmp(big.NewInt(1)) > 0 {
 		mid := new(big.Int).Rsh(new(big.Int).Add(lo, hi), 1)

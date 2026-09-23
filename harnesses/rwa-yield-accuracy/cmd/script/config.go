@@ -14,6 +14,9 @@ const (
 	windowRecomputeInterval = time.Hour
 	promisedReloadInterval  = 60 * time.Second
 	httpTimeout             = 30 * time.Second
+	// A measurement is two print searches per window (binary search over
+	// two days of blocks, one archive call per step) for two windows.
+	measureTimeout = 3 * time.Minute
 )
 
 // Rolling window sizes for delivered-yield computation.
