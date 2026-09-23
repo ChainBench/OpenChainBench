@@ -37,7 +37,11 @@ const usd = (v: number | null | undefined): string => {
   return `$${v.toFixed(0)}`;
 };
 
-const CEX_SLUGS = new Set(PERP_VENUES.filter((v) => v.venueType === "cex").map((v) => v.slug));
+// Cohort keys and their product slugs both: the funding benches key the
+// Coinbase perp book coinbase-international while the cohort says coinbase.
+const CEX_SLUGS = new Set(
+  PERP_VENUES.filter((v) => v.venueType === "cex").flatMap((v) => [v.slug, perpProductSlug(v.slug)]),
+);
 
 /** Leader among the measured venues: the funding benches also rank the
  *  centralised books, which a report on perp DEXes does not crown. */
@@ -163,6 +167,13 @@ export default async function StateOfPerpDexesQ3Page() {
   // column on CEX rows is OpenChainBench's own average of that series.
   const cexVol24h = cex.reduce((s, v) => s + (v.volume24h ?? 0), 0);
   const measuredVol24h = measured.reduce((s, v) => s + (v.volume24h ?? 0), 0);
+  // The multiple is quotable, so it needs most of both sides present: a
+  // partial harness cycle (a few DEX rows answered, the CEX list cached)
+  // would otherwise publish an inflated ratio.
+  const measuredWith24h = measured.filter((v) => v.volume24h != null).length;
+  const cexWith24h = cex.filter((v) => v.volume24h != null).length;
+  const scaleReady =
+    cexVol24h > 0 && measuredVol24h > 0 && measured.length > 0 && measuredWith24h >= 0.8 * measured.length && cexWith24h >= 5;
   const asOfIso = cohort ? new Date(cohort.asOf * 1000).toISOString() : null;
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}${PATH}`;
@@ -267,7 +278,7 @@ export default async function StateOfPerpDexesQ3Page() {
             {byVolume[1] ? `, ahead of ${byVolume[1].name} (${usd(byVolume[1].volume30d)})` : ""}
             {byVolume[2] ? ` and ${byVolume[2].name} (${usd(byVolume[2].volume30d)})` : ""}.
             {top3Share != null ? ` The top three carry ${(top3Share * 100).toFixed(0)} percent of the ${usd(totalVol)} the measured cohort traded over 30 days;` : ""} cohort open interest stands at {usd(cohort!.totals.cohortOpenInterest)}.
-            {cexVol24h > 0 && measuredVol24h > 0 ? ` For scale, on the same 24-hour window the measured cohort traded ${usd(measuredVol24h)} while the centralised books the board carries as reference declared ${usd(cexVol24h)} of derivatives volume to CoinGecko, ${(cexVol24h / measuredVol24h).toFixed(1)} times as much; the CEX figure is venue-reported, not an OpenChainBench measurement.` : ""}
+            {scaleReady ? ` For scale, on the same 24-hour window the measured cohort traded ${usd(measuredVol24h)} while the centralised books the board carries as reference declared ${usd(cexVol24h)} of derivatives volume to CoinGecko, ${(cexVol24h / measuredVol24h).toFixed(1)} times as much; the CEX figure is venue-reported, not an OpenChainBench measurement.` : ""}
           </p>
         ) : (
           <p className="mt-3 text-sm text-ink-faint italic">Cohort data is temporarily unavailable.</p>
