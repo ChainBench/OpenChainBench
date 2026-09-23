@@ -137,6 +137,12 @@ func (s *ApexNativeSource) Fetch() (*SourceResult, error) {
 
 	s.mu.Lock()
 	var volSum, oiSum, topVol float64
+	// Funding is a rate, not a total: a snapshot kept through a degraded
+	// refresh (under 90 % of contracts answered) must not republish a
+	// frozen rate as fresh. Two TTLs is one missed refresh; beyond that
+	// the funding surface goes quiet and the router's five-minute reap
+	// drops the venue's rate (same gate as edgeX, review 2026-09-23).
+	fundingFresh := time.Since(s.cacheTS) < 2*apexCacheTTL
 	for _, l := range live {
 		row, ok := s.cache[l.cross]
 		if !ok {
@@ -149,7 +155,9 @@ func (s *ApexNativeSource) Fetch() (*SourceResult, error) {
 		oiSum += row.oi * row.mark
 		switch l.base {
 		case "BTC", "ETH", "SOL":
-			res.SetFunding(venue, l.base, fundingPoint{Bps24h: row.funding * 24 * 10000, IntervalHours: 1})
+			if fundingFresh {
+				res.SetFunding(venue, l.base, fundingPoint{Bps24h: row.funding * 24 * 10000, IntervalHours: 1})
+			}
 		}
 	}
 	cached := len(s.cache)
