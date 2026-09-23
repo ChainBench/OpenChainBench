@@ -21,8 +21,8 @@ import (
 // keeps polling DefiLlama so the page still renders the DeFi cards.
 
 const (
-	mobulaBase  = "https://api.mobula.io"
-	mobulaUA    = "OCB-chain-kpis/1.0"
+	mobulaBase = "https://api.mobula.io"
+	mobulaUA   = "OCB-chain-kpis/1.0"
 )
 
 var httpClientMobula = &http.Client{Timeout: 15 * time.Second}
