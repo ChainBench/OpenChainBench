@@ -146,7 +146,10 @@ function Th({ children, href, title }: { children: React.ReactNode; href?: strin
 function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; showFees: boolean; benchHref: (b: string) => string }) {
   const best: Partial<Record<NumKey, string>> = {};
   const fullMonth = list.filter((r) => (r.funding30dSamples ?? 0) >= FULL_MONTH_MIN);
-  for (const k of ["allInBps", "slippage100kBps", "takerFeeBps", "funding24hBps", "funding7dBps"] as NumKey[]) {
+  // No 7d highlight: the 7d figure is a total over the days measured and
+  // rows carry no 7d sample count to gate it on, so the shortest window
+  // would win (the 30d column is gated on FULL_MONTH_MIN).
+  for (const k of ["allInBps", "slippage100kBps", "takerFeeBps", "funding24hBps"] as NumKey[]) {
     best[k] = cheapest(list, k)?.slug;
   }
   best.funding30dBps = cheapest(fullMonth, "funding30dBps")?.slug;
@@ -184,7 +187,7 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
                   </>
                 )}
                 <Cell v={r.funding24hBps} best={best.funding24hBps === r.slug} signed />
-                <Cell v={r.funding7dBps} best={best.funding7dBps === r.slug} signed />
+                <Cell v={r.funding7dBps} signed />
                 <td className={`num mono tabular-nums px-2 py-2 text-right whitespace-nowrap${r.funding30dBps == null ? " text-ink-faint text-[11px]" : best.funding30dBps === r.slug ? " text-teal-700 font-semibold" : ""}`}>
                   {fmtSignedBps(r.funding30dBps)}
                   {partial && (

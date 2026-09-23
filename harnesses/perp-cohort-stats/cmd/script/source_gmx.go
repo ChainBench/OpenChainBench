@@ -151,7 +151,9 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 		}
 	}
 	res.SetIfPositive(venue, mVolume24h, total)
-	res.SetIfPositive(venue, mActiveMarkets, float64(s.markets()))
+	if n, ok := s.markets(); ok {
+		res.SetIfPositive(venue, mActiveMarkets, float64(n))
+	}
 	if b := s.breadth(); b != nil {
 		res.SetBreadth(venue, b)
 	}
@@ -167,8 +169,10 @@ type gmxMarkets struct {
 
 // markets counts the listed perp markets on Arbitrum and Avalanche from
 // GET <chain>-api.gmxinfra.io/markets: a market with the zero index
-// token is a spot-only (swap) pool, not a perp (127 + 16 on 2026-09-23).
-func (s *GMXNativeSource) markets() int {
+// token is a spot-only (swap) pool, not a perp (132 + 19 rows, 141
+// listed perps on 2026-09-23). Both catalogues or nothing: a one-chain
+// count would win over the DefiLlama fallback and read as a delisting.
+func (s *GMXNativeSource) markets() (int, bool) {
 	const zero = "0x0000000000000000000000000000000000000000"
 	var n int
 	for _, chain := range []string{"arbitrum", "avalanche"} {
@@ -177,18 +181,18 @@ func (s *GMXNativeSource) markets() int {
 		resp, err := s.client.Do(req)
 		if err != nil {
 			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, classifyError(err.Error())).Inc()
-			continue
+			return 0, false
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
 			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
-			continue
+			return 0, false
 		}
 		var m gmxMarkets
 		if err := json.Unmarshal(body, &m); err != nil {
 			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
-			continue
+			return 0, false
 		}
 		for _, mk := range m.Markets {
 			if mk.IsListed && mk.IndexToken != zero {
@@ -196,7 +200,7 @@ func (s *GMXNativeSource) markets() int {
 			}
 		}
 	}
-	return n
+	return n, true
 }
 
 // gmxTokens is GET arbitrum-api.gmxinfra.io/tokens: every token GMX v2

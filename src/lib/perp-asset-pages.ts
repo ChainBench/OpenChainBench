@@ -159,11 +159,15 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
   // Every block has to answer; a timed-out 30d query would otherwise
   // publish a complete-looking snapshot with a column of nulls and the
   // previous good blob would be replaced by it.
-  // Cohort feed first, bench feed only for cells the cohort lacks.
-  const f24 = [...f24a, ...f24b];
-  const f7 = [...f7a, ...f7b];
-  const f30 = [...f30a, ...f30b];
-  const n30 = [...n30a, ...n30b];
+  // Two funding feeds per (venue, asset): the cohort harness and the
+  // perp-fees bench. The one with the longer 30d history wins the four
+  // funding cells, the other fills what it lacks. A venue that gains a
+  // native cohort feed (Aster, 2026-09-23) keeps its month of bench
+  // history until the native series has more samples than the bench one.
+  const fundingFeeds = [
+    { f24: f24a, f7: f7a, f30: f30a, n30: n30a },
+    { f24: f24b, f7: f7b, f30: f30b, n30: n30b },
+  ];
   if (f24a.length === 0 || allIn.length === 0 || f30a.length === 0 || f7a.length === 0) return null;
 
   const assets: PerpAssetCode[] = ["ETH", "BTC", "SOL"];
@@ -199,10 +203,21 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
         if (target[field] == null) target[field] = s.value;
       }
     };
-    put(f24, "asset", "funding24hBps");
-    put(f7, "asset", "funding7dBps");
-    put(f30, "asset", "funding30dBps");
-    put(n30, "asset", "funding30dSamples");
+    const pick = (samples: Sample[], slug: string): number | null =>
+      samples.find((s) => s.labels.asset === asset && venueSlug(s.labels.venue ?? "") === slug)?.value ?? null;
+    for (const row of rows.values()) {
+      const nA = pick(fundingFeeds[0].n30, row.slug) ?? 0;
+      const nB = pick(fundingFeeds[1].n30, row.slug) ?? 0;
+      const order = nB > nA ? [fundingFeeds[1], fundingFeeds[0]] : [fundingFeeds[0], fundingFeeds[1]];
+      for (const fd of order) {
+        if (row.funding24hBps == null) row.funding24hBps = pick(fd.f24, row.slug);
+        if (row.funding7dBps == null) row.funding7dBps = pick(fd.f7, row.slug);
+        if (row.funding30dBps == null) {
+          row.funding30dBps = pick(fd.f30, row.slug);
+          if (row.funding30dBps != null) row.funding30dSamples = pick(fd.n30, row.slug);
+        }
+      }
+    }
     put(allIn, "chain", "allInBps");
     put(taker, "chain", "takerFeeBps");
     put(tier100k, "chain", "slippage100kBps");

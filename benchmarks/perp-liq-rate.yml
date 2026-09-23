@@ -99,10 +99,6 @@ faq:
   - q: "Is this an apples-to-apples comparison across all venues?"
     a: "Yes for OI and liquidation definition: both sides use notional USD (position size including leverage) at all venues with available data. Hyperliquid, Lighter, dYdX and Paradex use current mark price for OI; Gains uses entry-price notional from the protocol's internal accounting (oiLongCollateral), which may differ from current-price notional if ETH/BTC prices have moved significantly since positions were opened. The main non-comparability is GMX with 0 liquidation data and Aevo/Paradex with typically low liquidation counts. The OI numbers are comparable across all venues."
 
-# Headline view: the ETH series (the copy speaks of ETH; the tabs switch).
-# Without the pin the unfiltered query returned one series per chain and
-# the loader kept whichever came first (audit 2026-09-23).
-aggregate_filters: { chain: ETH }
 dimensions:
   chain:
     - { value: ETH, label: ETH }

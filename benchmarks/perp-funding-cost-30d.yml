@@ -46,7 +46,7 @@ abstract: |
   is multiplied by the days measured, not by 30, so the figure is what
   the position accumulated, never a projection.
 methodology:
-  - "Source series: perp_venue_funding_24h_bps{venue,asset} from the perp-cohort-stats harness (native venue APIs for the DEXs and Kalshi, the Mobula funding aggregator for the CEX rows), sampled every 60 seconds and read here on an hourly grid ([30d:1h])."
+  - "Source series: perp_venue_funding_24h_bps{venue,asset} from the perp-cohort-stats harness (each venue's own rate endpoint where the harness reads one: Kalshi, Vest, StandX, ApeX, Polymarket, Extended, edgeX, Pacifica, Aster, Lighter; the Mobula funding aggregator for Hyperliquid and the CEX rows), sampled every 60 seconds and read here on an hourly grid ([30d:1h])."
   - "30d cost = avg_over_time(series[30d:1h]) x min(days measured, 30), where days measured = count_over_time(series[30d:1h]) / 24. A venue with a full month in the window pays average daily cost x 30; a venue measured for 3 days pays average x 3, the funding it accumulated, not a month projected from three days. 7d cost is the same with a 7 day cap (mean column)."
   - "Columns: p50 = ETH 30d, p90 = BTC 30d, p99 = SOL 30d, mean = ETH 7d. The column labels are inherited from the latency template; the values are signed bps."
   - "Sign: positive means the long paid funding to shorts; negative means shorts paid longs. Lower ranks first, so on a month where shorts paid, the venue that paid longs the most is first."
@@ -71,7 +71,7 @@ faq:
   - q: "Is this what I would have paid?"
     a: "For a long of constant notional held the whole window, yes, to the precision of a per-minute sample of the quoted rate. A position opened mid-window, resized, or held on a venue that settles funding in discrete 8-hour steps (Kalshi) pays the settlements it was open for; the bench does not model entries and exits."
   - q: "Why are CEXs on a perp DEX bench?"
-    a: "Because the reference a carry trader compares a DEX against is Binance, Bybit or OKX. The CEX rows come from the same Mobula funding feed the perp-funding bench uses; the DEX and Kalshi rows come from each venue's own API."
+    a: "Because the reference a carry trader compares a DEX against is Binance, Bybit or OKX. The CEX rows come from the same Mobula funding feed the perp-funding bench uses (so does Hyperliquid's); the other DEX rows and Kalshi come from each venue's own API."
   - q: "Why do Kalshi, Vest, StandX and ApeX show a low-sample badge?"
     a: "They joined the cohort on 2026-09-22. Their figure is the funding accumulated over the days measured since then, not a month; the sample count on the row says how many hours are in it. They take a rank once they pass three days (10 percent of a month) and lose the badge at 15 days."
 
