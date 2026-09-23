@@ -1,5 +1,6 @@
 import { ogResponse } from "@/lib/og-response";
-import { CHAIN_BY_SLUG, getBenchmarksForChain } from "@/lib/chains";
+import { CHAIN_BY_SLUG,  } from "@/lib/chains";
+import { getBenchmarksForChain } from "@/lib/chain-benches";
 
 export const runtime = "nodejs";
 // Share cards change slowly (title, leader, headline value); crawlers
