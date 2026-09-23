@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: stri
     return markdown(perpsHubMarkdown(cohort), "/perps");
   }
   if (head === "rwa" && slug === undefined) {
-    const slugs = ["rwa-yield-accuracy", "usdy-nav-basis", "tokenized-stock-peg", "xstocks-peg", "tokenized-stock-weekend-drift"];
+    const slugs = ["rwa-yield-accuracy", "usdy-nav-basis", "tokenized-stock-peg", "xstocks-peg", "tokenized-stock-weekend-drift", "rwa-solana-depth"];
     const benches = (await Promise.all(slugs.map((s) => getBenchmark(s)))).filter((b): b is NonNullable<typeof b> => !!b);
     return markdown(rwaHubMarkdown(benches), "/rwa");
   }

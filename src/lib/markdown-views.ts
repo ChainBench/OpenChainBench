@@ -224,11 +224,11 @@ export function productMarkdown(p: ProviderProfile): string {
  *  top rows each, in the order the hub shows them. */
 export function rwaHubMarkdown(benches: Benchmark[]): string {
   const md: string[] = [];
-  md.push(`# Tokenized RWA benchmarks: price, NAV and yield, measured`);
+  md.push(`# Tokenized RWA benchmarks: price, depth, NAV and yield, measured`);
   md.push("");
   md.push(`- Page: ${SITE.url}/rwa`);
   md.push(`- License: CC-BY-4.0`);
-  md.push(`- What this is: on-chain reads of what tokenized stocks, treasuries and yield funds do (price against the market, basis to the published NAV, yield delivered against yield advertised), not a ranking of declared value.`);
+  md.push(`- What this is: on-chain reads of what tokenized stocks, treasuries and yield funds do (price against the market, what $100k sells for on Solana, basis to the published NAV, yield delivered against a dated reference, the on-chain supply with and without an open market), not a ranking of declared value.`);
   md.push("");
   for (const b of benches) {
     const insufficient = isInsufficient(b);

@@ -110,6 +110,14 @@ metric_panels:
     unit: usd
     higher_is_better: true
     description: "Token supply of the Solana mint, valued at the executable $100 price (BUIDL at $1.00 by design)."
+  - id: supply_units
+    label: Supply (units)
+    metric: rwa_onchain_supply_units
+    label_key: asset
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Token supply of the Solana mint in units, for the rows with no price to value it at (USTB)."
 
 ledger_columns:
   - { label: "Cost $100k", slot: p50 }
@@ -117,6 +125,7 @@ ledger_columns:
   - { label: "Cost $1k", panel: cost1k }
   - { label: "p99 $100k", slot: p99 }
   - { label: "On-chain supply", panel: supply }
+  - { label: "Supply (units)", panel: supply_units }
 
 providers:
   - slug: usdy
