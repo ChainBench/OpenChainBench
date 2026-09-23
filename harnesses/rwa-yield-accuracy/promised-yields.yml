@@ -18,19 +18,21 @@
 # quarterly fact sheet or SEC filing to guard against the marketing
 # page drifting from the regulated disclosure.
 
-updated: 2026-07-22
+updated: 2026-09-23
 
 issuers:
   - token: usdy
-    promised_apy_bps: 355
+    promised_apy_bps: 360
     source: "https://ondo.finance/usdy"
-    source_date: 2026-07-22
+    source_date: 2026-09-23
     notes: "Ondo USDY current APY as displayed on the retail dashboard. Rebase happens daily via the token contract; delivered yield is directly measurable from totalSupply growth. Value is net of the 20 bps Ondo fee. Rate reflects Fed policy: 3.55% at the time of this update, down from ~5.4% a year earlier."
 
   # The four entries below remain in the file so the harness reloader
   # keeps their promised APYs current for the day the corresponding
   # probes flip active. They are NOT scraped or displayed on the bench
   # page while status: staging.
+    refresh_note: "2026-09-23: 3.60% APY on the USDY page, portfolio as of 2026-09-22; was 355 on 2026-07-22."
+
   - token: buidl
     promised_apy_bps: 350
     source: "https://securitize.io/primary-market/buidl"
@@ -44,19 +46,22 @@ issuers:
     notes: "Franklin OnChain U.S. Government Money Fund 7-day SEC yield estimate (probe inactive; NAV endpoint TBD)."
 
   - token: ustb
-    promised_apy_bps: 352
-    source: "https://superstate.com/ustb"
-    source_date: 2026-07-22
+    promised_apy_bps: 378
+    source: "https://yields.llama.fi/pools (project invesco-ustb, Ethereum)"
+    source_date: 2026-09-23
     notes: "Superstate USTB 30-day yield as displayed on superstate.com (7-day SEC yield not published there). Probe inactive; treasury wallet verification pending."
+    refresh_note: "2026-09-23: 3.78% (30-day mean 3.52%) on the DefiLlama yields feed; superstate.com renders client-side and could not be read that day. Was 352 on 2026-07-22."
 
   - token: ousg
-    promised_apy_bps: 350
+    promised_apy_bps: 348
     source: "https://ondo.finance/ousg"
-    source_date: 2026-07-22
+    source_date: 2026-09-23
     notes: "Ondo OUSG NAV-appreciation yield estimate (probe inactive; NAV endpoint TBD)."
+    refresh_note: "2026-09-23: 3.48% 30-day yield on the OUSG page (the headline APY slot rendered 0.00% that day); was 350 on 2026-07-22."
 
   - token: syrup-usdc
-    promised_apy_bps: 482
-    source: "https://yields.llama.fi/pools"
-    source_date: 2026-07-24
+    promised_apy_bps: 516
+    source: "https://yields.llama.fi/pools (project maple, Ethereum USDC pool)"
+    source_date: 2026-09-23
     notes: "Maple SyrupUSDC base APY (loan-book yield only, excludes SYRUP token incentives). Sourced from DefiLlama filter {project:maple, symbol:USDC, chain:Ethereum}. Delivered yield measured via ERC-4626 convertToAssets rate delta - matches the base disclosure, not the boosted APY."
+    refresh_note: "2026-09-23: 5.16% (30-day mean 4.99%); was 482 on 2026-07-24."

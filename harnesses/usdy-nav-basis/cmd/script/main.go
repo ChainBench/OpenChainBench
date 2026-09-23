@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -38,9 +37,22 @@ import (
 // All legs keyless. One Hermes GET + one Solana RPC POST per tick.
 
 const (
-	navFeedID    = "e3d1723999820435ebab53003a542ff26847720692af92523eea613a9a28d500"
-	marketFeedID = "e393449f6aff8a4b6d3e1165a7c9ebec103685f3b41e60db4277b5b6d10e7326"
+	// Ondo's RWADynamicOracle for USDY on Ethereum: getPrice() returns the
+	// current redemption price per USDY, 18 decimals. This is the rate a
+	// redeeming holder receives, published by the issuer onchain. Until
+	// 2026-08-26 the NAV came from the Pyth Hermes RR feed; Hermes price
+	// updates now answer 401 without a key, and the harness ran a month
+	// on frozen gauges before anyone noticed (fixed 2026-09-23).
+	ondoOracle   = "0xA0219AA5B31e65Bc920B5b6DFb8EdF0988121De0"
+	getPriceSel  = "0x98d5fdca"
 	orcaPool     = "AGXrswVDRoUf62UX9voTXv6TCGw6fBUEwDpyUd9YdZfD"
+	usdyMint     = "A1KLoBrKBde8Ty9qtNQUtq3C2ortoC3u7twggz7sEto6"
+	usdcMint     = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	jupiterQuote = "https://lite-api.jup.ag/swap/v1/quote"
+	// Jupiter quote size: $1,000 of USDY (6 decimals), the retail clip the
+	// perp-fees benches also price; the executable price includes the
+	// route's impact, which is the point of a market leg.
+	jupiterAmount = "1000000000"
 
 	pollInterval = 60 * time.Second
 	httpTimeout  = 15 * time.Second
@@ -54,7 +66,7 @@ var (
 
 	navGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "usdy_nav_usd",
-		Help: "USDY official redemption rate from the Pyth RR feed.",
+		Help: "USDY official redemption price from Ondo's RWADynamicOracle on Ethereum (getPrice, 18 decimals).",
 	})
 
 	marketPrice = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -83,7 +95,7 @@ func envDefault(key, def string) string {
 func main() {
 	installLogCapture()
 	fmt.Println("=== USDY NAV Basis Harness ===")
-	fmt.Println("OpenChainBench — USDY market price vs official redemption rate, keyless.")
+	fmt.Println("OpenChainBench — USDY market price vs official redemption rate (Ondo onchain oracle).")
 
 	go func() {
 		mux := http.NewServeMux()
@@ -100,12 +112,14 @@ func main() {
 
 	client := &http.Client{Timeout: httpTimeout}
 	tick := func() {
-		nav, market := fetchHermes(client)
+		nav := fetchOndoNAV(client)
 		orca := fetchOrca(client)
+		jup := fetchJupiter(client)
 
 		if nav <= 0 {
 			healthGauge.WithLabelValues("orca-solana").Set(0)
-			healthGauge.WithLabelValues("pyth-market").Set(0)
+			healthGauge.WithLabelValues("jupiter-solana").Set(0)
+			fmt.Println("[nav] no redemption price this tick (see usdy_source_call_total{source=\"ondo\"})")
 			return
 		}
 		navGauge.Set(nav)
@@ -122,7 +136,7 @@ func main() {
 			fmt.Printf("[%s] price=%.6f nav=%.6f basis=%+.1fbps\n", venue, price, nav, bps)
 		}
 		emit("orca-solana", orca)
-		emit("pyth-market", market)
+		emit("jupiter-solana", jup)
 	}
 
 	tick()
@@ -133,51 +147,84 @@ func main() {
 	}
 }
 
-// fetchHermes returns (nav, market) from one Hermes call.
-func fetchHermes(client *http.Client) (float64, float64) {
-	url := "https://hermes.pyth.network/v2/updates/price/latest?ids[]=0x" + navFeedID + "&ids[]=0x" + marketFeedID
-	req, _ := http.NewRequest("GET", url, nil)
+// fetchOndoNAV reads getPrice() on Ondo's USDY oracle through the
+// Ethereum RPC in RPC_ETHEREUM (a keyed endpoint on the VPS; the public
+// default is rate limited but works for one call a minute).
+func fetchOndoNAV(client *http.Client) float64 {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"%s","data":"%s"},"latest"]}`,
+		ondoOracle, getPriceSel,
+	))
+	req, _ := http.NewRequest("POST", envDefault("RPC_ETHEREUM", "https://ethereum-rpc.publicnode.com"), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
 	resp, err := client.Do(req)
 	if err != nil {
-		sourceCall.WithLabelValues("hermes", "network").Inc()
-		return 0, 0
+		sourceCall.WithLabelValues("ondo", "network").Inc()
+		return 0
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != 200 {
-		sourceCall.WithLabelValues("hermes", fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
-		return 0, 0
+		sourceCall.WithLabelValues("ondo", fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+		return 0
 	}
 	var envel struct {
-		Parsed []struct {
-			ID    string `json:"id"`
-			Price struct {
-				Price string `json:"price"`
-				Expo  int    `json:"expo"`
-			} `json:"price"`
-		} `json:"parsed"`
+		Result string `json:"result"`
 	}
-	if err := json.Unmarshal(raw, &envel); err != nil {
-		sourceCall.WithLabelValues("hermes", "parse").Inc()
-		return 0, 0
+	if err := json.Unmarshal(raw, &envel); err != nil || len(envel.Result) < 3 {
+		sourceCall.WithLabelValues("ondo", "parse").Inc()
+		return 0
 	}
-	nav, market := 0.0, 0.0
-	for _, p := range envel.Parsed {
-		v, err := strconv.ParseFloat(p.Price.Price, 64)
-		if err != nil {
-			continue
-		}
-		val := v * math.Pow10(p.Price.Expo)
-		switch strings.TrimPrefix(strings.ToLower(p.ID), "0x") {
-		case navFeedID:
-			nav = val
-		case marketFeedID:
-			market = val
-		}
+	wei, ok := new(big.Int).SetString(strings.TrimPrefix(envel.Result, "0x"), 16)
+	if !ok || wei.Sign() <= 0 {
+		sourceCall.WithLabelValues("ondo", "decode").Inc()
+		return 0
 	}
-	sourceCall.WithLabelValues("hermes", "ok").Inc()
-	return nav, market
+	f, _ := new(big.Float).Quo(new(big.Float).SetInt(wei), big.NewFloat(1e18)).Float64()
+	// USDY started at $1 in 2023 and accrues about 4 to 5 % a year; a
+	// price outside [1, 2] is a wrong oracle, not a NAV.
+	if f < 1 || f > 2 {
+		sourceCall.WithLabelValues("ondo", "range").Inc()
+		return 0
+	}
+	sourceCall.WithLabelValues("ondo", "ok").Inc()
+	return f
+}
+
+// fetchJupiter returns the executable USDY price in USDC for a $1,000
+// clip routed by Jupiter (lite API, keyless): out / in, both 6 decimals.
+func fetchJupiter(client *http.Client) float64 {
+	url := jupiterQuote + "?inputMint=" + usdyMint + "&outputMint=" + usdcMint + "&amount=" + jupiterAmount + "&slippageBps=50"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	resp, err := client.Do(req)
+	if err != nil {
+		sourceCall.WithLabelValues("jupiter", "network").Inc()
+		return 0
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != 200 {
+		sourceCall.WithLabelValues("jupiter", fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+		return 0
+	}
+	var q struct {
+		InAmount  string `json:"inAmount"`
+		OutAmount string `json:"outAmount"`
+	}
+	if err := json.Unmarshal(raw, &q); err != nil {
+		sourceCall.WithLabelValues("jupiter", "parse").Inc()
+		return 0
+	}
+	in, err1 := strconv.ParseFloat(q.InAmount, 64)
+	out, err2 := strconv.ParseFloat(q.OutAmount, 64)
+	if err1 != nil || err2 != nil || in <= 0 || out <= 0 {
+		sourceCall.WithLabelValues("jupiter", "decode").Inc()
+		return 0
+	}
+	sourceCall.WithLabelValues("jupiter", "ok").Inc()
+	return out / in
 }
 
 // fetchOrca decodes the whirlpool sqrtPrice (u128 LE at bytes 65..81);
