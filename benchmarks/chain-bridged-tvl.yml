@@ -3,8 +3,8 @@ slug: chain-bridged-tvl
 number: "273"
 title: "Bridged TVL by chain: how much of a chain's capital came from somewhere else"
 seo_title: "Bridged TVL by chain: {{best_name}} holds {{best_p50}}"
-seo_description: "{{best_name}} holds {{best_p50}} of bridged capital, the most of {{ranked_count}} chains. Native, canonical and external split, plus the weekly move against peers."
-subtitle: "Value secured by each chain that arrived from somewhere else, split into canonical (locked in the chain's own escrow on its host chain) and external (a third-party bridge). The complement is native: minted here. The weekly columns move with total value secured, not with the bridged part alone, and the one to read is the move against the cohort median, because in an up week every raw number rises."
+seo_description: "{{best_name}} holds {{best_p50}}, the most of {{ranked_count}} chains. Value secured that arrived from elsewhere, canonical plus external, from L2Beat, with the weekly move against peers."
+subtitle: "L2Beat's value secured per chain, restricted to what arrived from elsewhere: canonical (locked in the chain's own escrow on its host chain) plus external (a third-party bridge). The complement is native, minted here. The weekly columns move with the whole balance, and the one to read is the move against the cohort median."
 category: Blockchains
 status: live
 metric: Bridged TVL
@@ -61,8 +61,8 @@ methodology:
   - "Weekly move: L2Beat's own change7d on total value secured, converted from a ratio to a percentage. The excess subtracts the median change across every live project above $200M of value secured."
   - "The $200M floor exists because the median is a yardstick. Without it, one small chain doubling on an incentive program sets the reference move the whole cohort is judged against."
   - "Cohort composition: every live project above the floor votes, layer 3s and projects L2Beat currently has under review included. They are counted, not filtered, because dropping them would make the yardstick a judgement rather than a measurement; chain_tvs_cohort_size, _layer3 and _under_review publish the composition. Below five projects no median is published and the excess series is cleared rather than frozen."
-  - "Rows: the 20 chains in the OCB registry that carry an L2Beat project id, verified against a live read of the endpoint. Three ids differ from the OCB slug (polygon-pos, zksync2, roninnetwork)."
-  - "The membership rule is presence in L2Beat's scaling summary, not a category. L2Beat files 9 of the 20 as optimistic or ZK rollups and the rest under other labels, and Polygon PoS, Gnosis and Hyperliquid run their own consensus while still posting to a host chain. A settled L1 has no host chain and so no bridged balance: it is absent rather than shown at zero."
+  - "Rows: every chain in the OCB registry that carries an L2Beat project id, each verified against a live read of the endpoint. Several ids differ from the OCB slug (polygon-pos, zksync2, roninnetwork, worldchain, mantapacific, galxegravity, nova, polygonzkevm, bobanetwork, immutablezkevm)."
+  - "The membership rule is presence in L2Beat's scaling summary, not a category. L2Beat files some rows as optimistic or ZK rollups and others under other labels, and Polygon PoS, Gnosis and Hyperliquid run their own consensus while still posting to a host chain. A settled L1 has no host chain and so no bridged balance: it is absent rather than shown at zero."
   - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing, the previous value carries forward, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success rate each row reports, and freshness is chain_kpis_l2beat_last_success_unix rather than the scrape clock, so a stale upstream shows as stale on the page."
   - "Every aggregate column reads the latest value rather than a window statistic, so the board and the origin panels always describe the same instant. p50, p90, p99 and the mean are equal by construction; the sample count is the number of Prometheus scrapes in the 24h window (about 2,880 at a 30 second scrape), not a count of measurements, since the underlying value refreshes every 15 minutes."
   - "L2Beat's figures are a third-party measurement, credited as the source. OCB does not re-derive the escrow balances; this bench republishes the split and computes the cohort-relative move on top of it."
@@ -132,13 +132,13 @@ metric_panels:
 
 faq:
   - q: "What is the difference between bridged TVL and the TVL on DefiLlama?"
-    a: "DefiLlama's chain TVL counts what DeFi protocols on the chain hold. Bridged TVL counts what the chain's bridge secures, which includes capital sitting idle in wallets and is usually the larger of the two. Neither is more correct; they answer different questions, and the board carries both so they can be read side by side."
+    a: "DefiLlama publishes two figures a reader may confuse with this one: its chain TVL counts what DeFi protocols on the chain hold, and its own Bridged TVL page counts all tokens held on a chain. This board republishes L2Beat's value secured instead, canonical plus external with native excluded. The three answer different questions, so one chain can show three different numbers, and only the L2Beat one is on this page."
   - q: "What does a bridged share of 100 percent mean?"
     a: "That every dollar the chain secures was escrowed on its host chain and nothing was minted locally. It is a statement about where the capital came from, not about its safety: canonical escrow is the chain's own bridge, the one whose security L2Beat rates separately."
   - q: "Why rank on bridged TVL rather than on the weekly change?"
     a: "Because a size ranking is stable and a weekly ranking is not. In a broad up week every chain rises, so a change ranking mostly reorders the market's own move. The weekly columns are on the page, and the one to read is the excess against the cohort median."
   - q: "Where are Ethereum, Solana and BNB?"
-    a: "They are not in L2Beat's scaling summary, which is the source for this board. A chain with no host chain has nothing escrowed elsewhere, so there is no bridged balance to report. Note the rule is not 'only rollups': Polygon PoS, Gnosis and Hyperliquid run their own consensus and are tracked. Those L1s appear on the other chain benchmarks with their DeFi TVL, stablecoin supply and native market cap."
+    a: "They are not in L2Beat's scaling summary, which is the source for this board. A chain with no host chain has nothing escrowed elsewhere, so there is no bridged balance to report. Note the rule is not 'only rollups': Polygon PoS, Gnosis and Hyperliquid run their own consensus and are tracked. Those L1s are ranked on the other Blockchains benchmarks linked at the foot of this page."
   - q: "Does a high bridged share mean the chain is risky?"
     a: "No, and the tab does not rank it as better or worse. It says the capital came from elsewhere, which is what a scaling chain is designed for. It becomes a risk reading only next to the bridge's own security rating, which is L2Beat's subject rather than this bench's."
 providers:

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { rowHref } from "@/lib/row-link";
 
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -844,13 +845,15 @@ function Row({
         <div className="flex flex-col gap-1 min-w-0">
           <span className="flex items-center gap-2 min-w-0">
             <ProviderLogo slug={r.slug} name={r.name} size={20} />
-            {isRegion(r.slug) || isHexAddressSlug(r.slug) ? (
-              // Hex builder addresses (HL frontends not yet in
-              // builders.json) have no /products/<slug> page — the
-              // route is blacklisted in providers.ts, so a link would
-              // 404. Render as plain text until the builder is added
-              // to the registry, at which point it gets a real slug
-              // and the link reappears automatically.
+            {rowHref(benchmark, r) === null ? (
+              // No document to point at. Hex builder addresses (HL
+              // frontends not yet in builders.json) have no
+              // /products/<slug> page — the route is blacklisted in
+              // providers.ts, so a link would 404. Chain rows whose slug
+              // the registry does not know are the same case: /products
+              // 404s for three of bench 273's rows today. Render as plain
+              // text; the link reappears when the row gets a real
+              // document.
               <span
                 className="font-semibold truncate min-w-0 min-w-[50px]"
                 style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
@@ -860,7 +863,7 @@ function Row({
               </span>
             ) : (
               <Link
-                href={`/products/${r.slug}`}
+                href={rowHref(benchmark, r) ?? "#"}
                 className="font-semibold hover:underline underline-offset-2 truncate min-w-0 min-w-[50px]"
                 style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
                 itemProp="url"

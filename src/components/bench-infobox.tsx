@@ -1,5 +1,6 @@
 import type { Benchmark } from "@/types/benchmark";
 import { nounLabel } from "@/lib/row-noun";
+import { valueQualifier } from "@/lib/value-window";
 import { displayResults } from "@/lib/provider-filters";
 import { leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
@@ -123,7 +124,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
             ) : null}
           </InfoPair>
           {top && (
-            <InfoPair label={`Leader (${benchmark.window ?? "24h"})`}>
+            <InfoPair label={`Leader (${valueQualifier(benchmark)})`}>
               <span className="font-medium text-ink">{top.name}</span>
               <span className="text-ink-faint">
                 {" "}
