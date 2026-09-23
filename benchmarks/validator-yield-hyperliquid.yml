@@ -11,6 +11,7 @@ status: live
 metric: Net yield
 unit: bps
 higher_is_better: true
+row_noun: { one: validator, many: validators }
 
 disclaimer: |
   net_yield = predictedApr.day x uptimeFraction from /info validatorSummaries. No MEV layer at the validator level on Hyperliquid; the centralised sequencer captures order-flow value upstream. Jailed validators land at 0 bps regardless of published APR. APRs cluster at 200 to 225 bps across the active set; commission rate is the primary differentiator for delegators.

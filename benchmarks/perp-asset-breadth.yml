@@ -10,6 +10,7 @@ status: live
 metric: Non-crypto markets
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 disclaimer: |
   Counts reflect each venue's live market catalog at query time, mainnet
   only. The asset class comes from the venue's own metadata where it

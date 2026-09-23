@@ -54,6 +54,7 @@ status: live
 metric: Block time
 unit: ms
 higher_is_better: false
+row_noun: { one: chain, many: chains }
 
 seo_intro: |
   This benchmark measures the live block time of every major Ethereum Layer 2, the actual wall-clock interval between two consecutive newHeads events on the sequencer, not the marketing figure each chain advertises. Arbitrum One leads with sub-second blocks (~250 ms median), built on Nitro's fast-finality fork. Optimism, Base, Blast and Mantle all cluster around the 2 s OP Stack default. zkSync Era, Linea and Scroll show batched cadence with p50 around 3-6 s and a long tail on idle gaps. Taiko's based rollup sits at the 3 s mark. The p99 column reveals stalls 2-3× the nominal block time on every L2, the part marketing pages never quote.

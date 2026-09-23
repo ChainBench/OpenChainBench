@@ -11,6 +11,7 @@ status: live
 metric: All-in cost
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark answers the question every perp DEX comparison article

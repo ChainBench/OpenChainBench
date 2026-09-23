@@ -335,6 +335,26 @@ export const SpecSchema = z
      * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
 
+    /**
+     * What one row IS, for the sentences that name the cohort. Defaults to
+     * provider / providers, which is right for an RPC or data-API bench and
+     * wrong for a bench whose rows are chains, venues or apps.
+     *
+     * It matters more than it looks: the noun lands in the quotable TL;DR
+     * (`data-llm-canonical`), the StatisticalReport JSON-LD, /api/stat,
+     * /api/citable, llms.txt, the Results heading, the table caption and
+     * the infobox. Bench 273 shipped "across 41 ranked providers" about a
+     * board of chains, which is the one sentence the page marks for an
+     * answer engine to quote (SEO audit 2026-09-23).
+     */
+    row_noun: z
+      .object({
+        one: z.string().min(1).max(24),
+        many: z.string().min(1).max(24),
+      })
+      .strict()
+      .optional(),
+
     /* Editorial copy */
     // Schema accepts up to schema.org's Dataset description ceiling (5000) so
     // existing rich abstracts do not fail Zod parse and break the bench page.

@@ -11,6 +11,7 @@ status: live
 metric: Markets per $M TVL
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   TVL from DefiLlama /protocol/{slug} currentChainTvls, excluding staking and pool2 categories. Market count from each venue's native API (same source as the perp-active-markets bench). The ratio reflects architectural choices, not absolute liquidity: a high ratio means the venue can list many markets cheaply, not that each market has deep liquidity. Compare with perp-volume-share for the liquidity angle.

@@ -7,6 +7,7 @@
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+import { nounFor } from "@/lib/row-noun";
 
 /** Minimum measured success rate (in percent, 0-100) for a provider to
  *  contribute to the headline leader claim. Providers with a real
@@ -250,7 +251,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   // checkable, and not the page title (55 to 95 characters that every
   // quoting surface repeated, audit 2026-09-22).
   const ranked = rankedCandidates(b).length;
-  const rest = `${windowSuffix(b.unit, b.window ?? "24h")} across ${ranked} ranked ${ranked === 1 ? "provider" : "providers"}.`;
+  const rest = `${windowSuffix(b.unit, b.window ?? "24h")} across ${ranked} ranked ${nounFor(b, ranked)}.`;
   const tied = leaderNames(b);
   if (tied.length > 1) {
     const both = tied.length === 2;

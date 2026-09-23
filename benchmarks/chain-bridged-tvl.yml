@@ -10,6 +10,7 @@ status: live
 metric: Bridged TVL
 unit: usd
 higher_is_better: true
+row_noun: { one: chain, many: chains }
 
 disclaimer: |
   Bridged TVL is value secured by the chain's bridge, not value locked in
@@ -93,6 +94,20 @@ metric_panels:
     unit: pct
     higher_is_better: true
     description: "Share of value secured that came from another chain. 100 percent means nothing was minted locally; a low number means the chain's balance is mostly its own issuance. Neither end is better: the tab sorts descending like the board, and the order is a reading aid, not a ranking."
+  - id: change_7d
+    label: 7d change
+    label_key: chain
+    metric: chain_tvs_change_7d_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "Change in total value secured over the trailing week, on the whole balance and not on the bridged part alone. Mostly the market's move: rank on the next column instead."
+  - id: excess_7d
+    label: 7d vs peers
+    label_key: chain
+    metric: chain_tvs_change_7d_excess_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "The weekly move minus the median move across every live L2Beat project above $200M. Positive means the chain gained ground on its peers."
   - id: native
     label: Native
     label_key: chain
@@ -114,20 +129,6 @@ metric_panels:
     unit: usd
     higher_is_better: true
     description: "Value brought over by a third-party bridge rather than the chain's canonical one."
-  - id: change_7d
-    label: 7d change
-    label_key: chain
-    metric: chain_tvs_change_7d_pct{}
-    unit: pct
-    higher_is_better: true
-    description: "Change in total value secured over the trailing week, on the whole balance and not on the bridged part alone. Mostly the market's move: rank on the next column instead."
-  - id: excess_7d
-    label: 7d vs peers
-    label_key: chain
-    metric: chain_tvs_change_7d_excess_pct{}
-    unit: pct
-    higher_is_better: true
-    description: "The weekly move minus the median move across every live L2Beat project above $200M. Positive means the chain gained ground on its peers."
 
 faq:
   - q: "What is the difference between bridged TVL and the TVL on DefiLlama?"

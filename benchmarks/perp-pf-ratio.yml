@@ -12,6 +12,7 @@ status: live
 metric: P/F ratio
 unit: x
 higher_is_better: false
+row_noun: { one: protocol, many: protocols }
 
 disclaimer: |
   P/F = circulating market cap (CoinGecko) / annualized fees (DeFiLlama dailyFees, trailing 30d x 365/30), on the DeFiLlama parent the token accrues from. Fees include the share paid to liquidity providers; P/S uses protocol revenue only. Low-float tokens show a much higher FDV/F than P/F. Pre-TGE venues are listed unranked with fees and OI, no ratio. A low multiple is not a recommendation.

@@ -11,6 +11,7 @@ status: live
 metric: Funding cost to hold a long 24h
 unit: bp
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   Funding is signed. Positive means longs pay shorts, negative means longs get paid to hold. Venues settle on different native periods (1h for Hyperliquid and dYdX, 4h or 8h elsewhere); every figure is normalized from the venue's own quoted rate and interval before ranking. Funding is only the holding cost. Opening costs (taker fee, spread, impact) are the companion bench perp-fees.
