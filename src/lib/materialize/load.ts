@@ -172,6 +172,7 @@ export function buildEditorial(
     chart: chartFromSpec(spec),
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
+    rowNoun: spec.row_noun,
     abstract: spec.abstract,
     methodology: spec.methodology,
     findings: spec.findings,

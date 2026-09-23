@@ -14,7 +14,14 @@ import { fmtUnit } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
 import { isHexAddressSlug } from "@/lib/providers";
 import { rankedCandidates, rpcChainLabel } from "@/lib/citation";
+import { countRows, nounFor, nounLabel } from "@/lib/row-noun";
 import type { Benchmark } from "@/types/benchmark";
+
+/** How many metric panels the server table carries. Three keeps the row
+ *  readable at phone width next to the rank, name, headline and success
+ *  columns; a bench with ten panels (perp-pf-ratio) would otherwise ship a
+ *  table nobody can scan. The rest stay in the interactive tabs. */
+const MAX_STATIC_PANELS = 3;
 
 export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const rows = rankResults(displayResults(benchmark.results), benchmark.higherIsBetter);
@@ -25,6 +32,15 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   // The TL;DR, the leader and /api/stat rank the 50 % floor cohort; the
   // table shows the 5 % floor cohort. Say both when they differ.
   const ranked = rankedCandidates(benchmark).length;
+  const rowNounOne = nounFor(benchmark, 1);
+  // Metric panels are tabs in the interactive body, so the served HTML
+  // carried the headline and nothing else: bench 273's origin split and
+  // its two weekly columns existed for a reader and not for a crawler
+  // (SEO audit 2026-09-23). Render the first few here, inside the same
+  // horizontal scroller, so the table stays readable on a phone.
+  const panels = (benchmark.metricPanels ?? [])
+    .filter((p) => p.values && Object.keys(p.values).length > 0)
+    .slice(0, MAX_STATIC_PANELS);
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
     : chain && ranked < rows.length
@@ -32,8 +48,8 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
     : chain
     ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
     : ranked < rows.length
-    ? `Results: ${rows.length} providers measured, ${ranked} ranked by ${benchmark.metric} (p50, ${win})`
-    : `Results: ${rows.length} providers ranked by ${benchmark.metric} (p50, ${win})`;
+    ? `Results: ${countRows(benchmark, rows.length)} measured, ${ranked} ranked by ${benchmark.metric} (p50, ${win})`
+    : `Results: ${countRows(benchmark, rows.length)} ranked by ${benchmark.metric} (p50, ${win})`;
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (
     <section className="mt-8" aria-labelledby="results">
@@ -43,15 +59,18 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
-            {benchmark.title}: {benchmark.metric} per provider, last {win === "24h" ? "24 hours" : win}.
+            {benchmark.title}: {benchmark.metric} per {rowNounOne}, last {win === "24h" ? "24 hours" : win}.
           </caption>
           <thead>
             <tr className="border-y-2 border-ink text-left">
               <th scope="col" className="py-2 pr-3">№</th>
-              <th scope="col" className="py-2 pr-3">Provider</th>
+              <th scope="col" className="py-2 pr-3">{nounLabel(benchmark)}</th>
               <th scope="col" className="py-2 px-3 text-right">p50</th>
               {showTail && <th scope="col" className="py-2 px-3 text-right">p90</th>}
               {showTail && <th scope="col" className="py-2 px-3 text-right">p99</th>}
+              {panels.map((p) => (
+                <th key={p.id} scope="col" className="py-2 px-3 text-right">{p.label}</th>
+              ))}
               <th scope="col" className="py-2 pl-3 text-right">Success</th>
             </tr>
           </thead>
@@ -75,6 +94,14 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                 <td className="py-2 px-3 text-right tabular-nums">{fmtUnit(r.ms.p50, benchmark.unit)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p99, benchmark.unit)}</td>}
+                {panels.map((p) => {
+                  const v = p.values?.[r.slug];
+                  return (
+                    <td key={p.id} className="py-2 px-3 text-right tabular-nums text-ink-soft">
+                      {v == null || !Number.isFinite(v) ? "—" : fmtUnit(v, p.unit ?? benchmark.unit)}
+                    </td>
+                  );
+                })}
                 <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
               </tr>
             ))}

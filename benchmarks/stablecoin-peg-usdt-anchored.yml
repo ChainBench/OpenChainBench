@@ -11,6 +11,7 @@ status: live
 metric: USDT-pair spread
 unit: bps
 higher_is_better: false
+row_noun: { one: stablecoin, many: stablecoins }
 
 seo_intro: |
   This benchmark answers the question every CEX trader has when

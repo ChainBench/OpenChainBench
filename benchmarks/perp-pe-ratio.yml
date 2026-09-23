@@ -12,6 +12,7 @@ status: live
 metric: P/E ratio
 unit: x
 higher_is_better: false
+row_noun: { one: protocol, many: protocols }
 
 disclaimer: |
   P/E = fully diluted valuation (CoinGecko) divided by annualized protocol revenue (DeFiLlama dailyRevenue, 30-day trailing average x365). Protocol revenue = fees accruing to the treasury or token holders, not total user fees. Tokens without a CoinGecko listing show no P/E. FDV reflects total supply at current price, not circulating supply; tokens with large unvested allocations will show inflated FDV-based P/E. Updated hourly.

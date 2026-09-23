@@ -11,6 +11,7 @@ status: live
 metric: Days since last exploit
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   This benchmark counts recorded incidents only. Absence from the registry does not prove a protocol is exploit-free: it means no incident matching the criteria (direct theft or loss of user funds via a security vulnerability) has been documented in the tracked sources as of the registry timestamp shown on each row. The registry is human-curated and updated when a new incident is confirmed. The registry date and source links are embedded in the harness.

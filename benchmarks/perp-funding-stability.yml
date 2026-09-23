@@ -11,6 +11,7 @@ status: live
 metric: 24h ETH funding stddev
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   Ranked only with 24 hours of funding history (288 samples) and a stddev above zero: a young listing, or a venue whose rate has not moved since listing (Ondo Perps at launch, Polymarket in July), reads artificially stable and shows as Provisional, never as the leader. Stability is not directionality: a persistently positive but tight band ranks above a rate that flips every settlement.

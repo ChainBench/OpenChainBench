@@ -1,4 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
+import { nounLabel } from "@/lib/row-noun";
 import { displayResults } from "@/lib/provider-filters";
 import { leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
@@ -130,7 +131,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
               </span>
             </InfoPair>
           )}
-          <InfoPair label="Providers">{providerCount} tracked</InfoPair>
+          <InfoPair label={nounLabel(benchmark)}>{providerCount} tracked</InfoPair>
           {lastRunIso && (
             <InfoPair label="Last measured">
               <time

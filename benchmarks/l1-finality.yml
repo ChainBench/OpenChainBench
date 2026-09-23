@@ -84,6 +84,7 @@ status: live
 metric: Finality time
 unit: s
 higher_is_better: false
+row_noun: { one: chain, many: chains }
 
 abstract: |
   We measure the live gap between every L1 chain's latest block and its

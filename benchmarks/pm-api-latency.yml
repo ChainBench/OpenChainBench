@@ -12,6 +12,7 @@ status: live
 metric: API latency (price endpoint)
 unit: ms
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   When the Polymarket API stops answering, the only pages that notice are

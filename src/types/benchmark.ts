@@ -279,6 +279,10 @@ export type Benchmark = {
   metric: string;
   unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd" | "gwei" | "x" | "sol";
   higherIsBetter: boolean;
+  /** What one row is. Absent means provider / providers. Read through
+   * `rowNoun()` in src/lib/row-noun.ts, never directly, so every surface
+   * falls back the same way. */
+  rowNoun?: { one: string; many: string };
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
    * a matching `<label>="<value>"` injected. */
