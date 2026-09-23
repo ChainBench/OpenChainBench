@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -22,19 +23,26 @@ import (
 // usdy-nav-basis: live basis between USDY's (Ondo tokenized treasury)
 // onchain market price and its official redemption rate (NAV).
 //
-// NAV leg: Pyth Hermes "Crypto.USDY/USD.RR" redemption-rate feed. The
-// same Hermes call also carries the Pyth USDY/USD market composite,
-// which doubles as a cross-check venue row. Market leg: the Orca
-// whirlpool USDY/USDC on Solana (deepest genuine pool, ~$2.9M),
-// decoded straight from getAccountInfo (sqrtPrice u128 LE at bytes
-// 65..81, both mints 6 decimals so no scale factor).
+// NAV leg: getPrice() on Ondo's RWADynamicOracle for USDY on Ethereum,
+// the redemption price the issuer publishes onchain (one eth_call a
+// minute through RPC_ETHEREUM). Market legs, both executable prices for
+// a sale of 1,000 USDY into USDC quoted by Jupiter's keyless lite API:
+// "orca-solana" restricted to the Orca whirlpool (dexes=Whirlpool, fee
+// and impact included) and "jupiter-solana" on the best open route. The
+// whirlpool mid decoded from getAccountInfo (sqrtPrice u128 LE at bytes
+// 65..81, both mints 6 decimals) is exported as a reference gauge only.
+//
+// History: until 2026-08-26 the NAV and a market composite came from one
+// Pyth Hermes call; Hermes then put price updates behind a key (401),
+// the harness failed silently and the gauges stayed frozen for a month.
+// A failed leg now deletes its gauge children instead.
 //
 // Excluded, verified 2026-07-13: the Arbitrum Camelot pool holds 232
 // USDY against 7M USDC (drained), its price sits ~345 bps off NAV and
 // moves nothing; kept out of the ranking, documented in the spec as
 // the cautionary example of why pool depth gates peg quality.
 //
-// All legs keyless. One Hermes GET + one Solana RPC POST per tick.
+// One eth_call, one Solana getAccountInfo and two Jupiter quotes per tick.
 
 const (
 	// Ondo's RWADynamicOracle for USDY on Ethereum: getPrice() returns the
@@ -49,9 +57,9 @@ const (
 	usdyMint     = "A1KLoBrKBde8Ty9qtNQUtq3C2ortoC3u7twggz7sEto6"
 	usdcMint     = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 	jupiterQuote = "https://lite-api.jup.ag/swap/v1/quote"
-	// Jupiter quote size: $1,000 of USDY (6 decimals), the retail clip the
-	// perp-fees benches also price; the executable price includes the
-	// route's impact, which is the point of a market leg.
+	// Jupiter quote size: 1,000 USDY (6 decimals), about $1,150 at the
+	// 2026-09 NAV; the executable price includes fee and route impact,
+	// which is the point of a market leg.
 	jupiterAmount = "1000000000"
 
 	pollInterval = 60 * time.Second
@@ -83,6 +91,16 @@ var (
 		Name: "usdy_health",
 		Help: "1 when the venue produced a basis sample on the last tick.",
 	}, []string{"venue"})
+
+	lastSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "usdy_last_success_timestamp_seconds",
+		Help: "Unix time of the last tick on which the venue produced a basis sample. A gauge that stops advancing is a frozen leg, which a scrape timestamp cannot show (the Hermes leg froze for a month in 2026-08).",
+	}, []string{"venue"})
+
+	poolMid = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "usdy_pool_mid_price_usd",
+		Help: "Orca USDY/USDC whirlpool mid price decoded from the pool account (reference only; the ranked venues are executable prices).",
+	})
 )
 
 func envDefault(key, def string) string {
@@ -111,32 +129,50 @@ func main() {
 	}()
 
 	client := &http.Client{Timeout: httpTimeout}
+	venues := []string{"orca-solana", "jupiter-solana"}
+	// A failed leg publishes nothing: the gauge child goes, so a frozen
+	// value can never sit in a 24h median as if it were measured (the
+	// Hermes leg did exactly that for a month, 2026-08-26 to 09-23).
+	fail := func(venue string) {
+		healthGauge.WithLabelValues(venue).Set(0)
+		basisBps.DeleteLabelValues(venue)
+		marketPrice.DeleteLabelValues(venue)
+	}
 	tick := func() {
 		nav := fetchOndoNAV(client)
-		orca := fetchOrca(client)
-		jup := fetchJupiter(client)
-
 		if nav <= 0 {
-			healthGauge.WithLabelValues("orca-solana").Set(0)
-			healthGauge.WithLabelValues("jupiter-solana").Set(0)
+			for _, v := range venues {
+				fail(v)
+			}
 			fmt.Println("[nav] no redemption price this tick (see usdy_source_call_total{source=\"ondo\"})")
 			return
 		}
 		navGauge.Set(nav)
+		if mid := fetchOrca(client); mid > 0 && math.Abs(mid-nav)/nav < 0.05 {
+			poolMid.Set(mid)
+		}
 
+		// Both ranked legs are executable prices for the same 1,000 USDY
+		// sale, quoted by Jupiter: one restricted to the Orca whirlpool
+		// (fee and impact included), one on the best open route. Like
+		// for like; a pool mid against an executable quote crowned the
+		// worse exit (audit 2026-09-23).
 		emit := func(venue string, price float64) {
-			if price <= 0 {
-				healthGauge.WithLabelValues(venue).Set(0)
+			// A price more than 5 % from NAV is a wrong decode or a broken
+			// route, not a market: USDY has never traded that far.
+			if price <= 0 || math.Abs(price-nav)/nav > 0.05 {
+				fail(venue)
 				return
 			}
 			marketPrice.WithLabelValues(venue).Set(price)
 			bps := (price - nav) / nav * 10000
 			basisBps.WithLabelValues(venue).Set(bps)
 			healthGauge.WithLabelValues(venue).Set(1)
+			lastSuccess.WithLabelValues(venue).Set(float64(time.Now().Unix()))
 			fmt.Printf("[%s] price=%.6f nav=%.6f basis=%+.1fbps\n", venue, price, nav, bps)
 		}
-		emit("orca-solana", orca)
-		emit("jupiter-solana", jup)
+		emit("orca-solana", fetchJupiter(client, "Whirlpool"))
+		emit("jupiter-solana", fetchJupiter(client, ""))
 	}
 
 	tick()
@@ -192,10 +228,15 @@ func fetchOndoNAV(client *http.Client) float64 {
 	return f
 }
 
-// fetchJupiter returns the executable USDY price in USDC for a $1,000
-// clip routed by Jupiter (lite API, keyless): out / in, both 6 decimals.
-func fetchJupiter(client *http.Client) float64 {
+// fetchJupiter returns the executable USDY price in USDC for a sale of
+// 1,000 USDY (about $1,150 at today's NAV) routed by Jupiter (lite API,
+// keyless): out / in, both 6 decimals. `dexes` restricts the route to
+// one venue ("Whirlpool" = the Orca pool); empty means the best route.
+func fetchJupiter(client *http.Client, dexes string) float64 {
 	url := jupiterQuote + "?inputMint=" + usdyMint + "&outputMint=" + usdcMint + "&amount=" + jupiterAmount + "&slippageBps=50"
+	if dexes != "" {
+		url += "&dexes=" + dexes
+	}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
 	resp, err := client.Do(req)

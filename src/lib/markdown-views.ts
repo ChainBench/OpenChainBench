@@ -23,6 +23,16 @@ import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 
 function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
+  // A bench that repurposes the p50/p90/p99/mean slots declares
+  // ledger_columns; the Markdown then names the slots the way the table
+  // does instead of printing a signed 30d deviation as "p99".
+  const slotCols = (b.ledgerColumns ?? []).filter((c) => c.slot);
+  if (slotCols.length > 0) {
+    return ranked.map((r, i) => {
+      const cells = slotCols.map((c) => `${c.label} ${fmtUnit(r.ms[c.slot as "p50" | "p90" | "p99" | "mean"], c.unit ?? b.unit)}`);
+      return `${i + 1}. **${r.name}**: ${cells.join(", ")} (success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`;
+    });
+  }
   return ranked.map(
     (r, i) =>
       `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,

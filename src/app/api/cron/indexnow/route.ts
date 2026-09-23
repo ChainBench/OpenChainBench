@@ -149,6 +149,7 @@ async function buildFingerprintMap(
     "/prediction-markets",
     "/hyperliquid",
     "/perps",
+    "/rwa",
     "/chains",
     "/contribute",
     "/partners",

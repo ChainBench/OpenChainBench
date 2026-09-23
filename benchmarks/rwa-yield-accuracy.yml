@@ -4,12 +4,13 @@ slug: rwa-yield-accuracy
 number: "089"
 title: Which tokenized T-bill or yield fund actually pays what it promises
 seo_title: "Tokenized treasury and yield fund promised vs delivered 2026"
-seo_description: "Signed bps deviation between advertised APY and on-chain distributed yield for USDY, USTB, OUSG and SyrupUSDC. Measured live over 30 days, keyless, reproducible."
+seo_description: "How far USDY, USTB, OUSG and SyrupUSDC sit from the APY they advertise, in bps over 30 days, with the sign beside it. Delivered yield read on-chain, reproducible."
 subtitle: How far the yield each tokenized U.S. Treasury actually distributes on-chain sits from the APY it advertises, in basis points over 30 days; the closest tracker ranks first, and the signed gap (paid less or more than promised) is the column beside it.
 
 category: RWA
-# Live cohort: USDY (rebase), USTB (monthly USDC dividend), OUSG
-# (NAV via Ondo's Aave-style on-chain oracle), SyrupUSDC (ERC-4626).
+# Live cohort, all read as NAV appreciation: USDY and OUSG (Ondo's
+# on-chain oracle), USTB (Superstate's Chainlink NAV feed), SyrupUSDC
+# (ERC-4626 share price).
 # BUIDL + BENJI dormant: BUIDL because distributor mints conflate yield
 # with new subscriptions, BENJI because the Ethereum wrapper has no
 # on-chain NAV function and Franklin has not published a JSON endpoint.
@@ -22,11 +23,11 @@ seo_intro: |
   Every tokenized U.S. Treasury on the market publishes an APY.
   Ondo USDY, Superstate USTB, Ondo OUSG, Maple SyrupUSDC, each
   advertises a yield on its public dashboard. This page measures what
-  they actually pay their token holders on-chain, using each issuer's
-  own distribution mechanism (daily rebase, monthly USDC dividend,
-  on-chain NAV oracle, or ERC-4626 share price), and compares it to
-  the advertised number. The delta in basis points, sign preserved,
-  is the honest read on whether the tokenized wrapper delivers what
+  they actually pay their token holders on-chain, as the growth of
+  each token's NAV read from the issuer's own oracle, Chainlink feed
+  or ERC-4626 share price, and compares it to
+  the advertised number. The gap in basis points, closest first, with
+  the sign in the next column, is the honest read on whether the tokenized wrapper delivers what
   the marketing page claims. Every measurement traces back to an
   on-chain event and a citable issuer disclosure. No opinion, just
   the two numbers side by side. BlackRock BUIDL and Franklin BENJI
@@ -37,21 +38,22 @@ abstract: |
   For each tokenized T-bill in the cohort we compute the delivered
   yield over a 30-day rolling window from the issuer's own on-chain
   distribution mechanism, then compare to the promised APY published
-  on the issuer's official dashboard. Deviation is expressed in basis
-  points with sign preserved: negative means the token paid less than
-  advertised over the window, positive means more. The three
-  distribution mechanisms measured are rebase (USDY), monthly USDC
-  dividend transfers (USTB) and NAV appreciation via on-chain oracle
-  (OUSG) or ERC-4626 vault share price (SyrupUSDC). Windows: 30-day
-  rolling annualized as the headline, plus 7d and lifetime for
-  volatility context. BUIDL and BENJI are not yet active: BUIDL's
+  on the issuer's official dashboard (or, where that page cannot be
+  read by machine, the 30-day mean on a public yields feed). The
+  headline is the absolute gap in basis points, closest first; the
+  signed gap sits beside it, negative when the token paid less than
+  advertised over the window, positive when more. Every live token is
+  measured the same way, as NAV appreciation: Ondo's on-chain oracle
+  for USDY and OUSG, Superstate's Chainlink NAV feed for USTB, the
+  ERC-4626 share price for SyrupUSDC. Windows: 30-day rolling
+  annualized as the headline, 7-day beside it. BUIDL and BENJI are not yet active: BUIDL's
   distributor mints conflate new subscriptions with yield; BENJI's
   Ethereum wrapper exposes no on-chain NAV.
 
 methodology:
   - "Cohort: USDY (Ondo), USTB (Superstate), OUSG (Ondo), SyrupUSDC (Maple). BUIDL (BlackRock) and BENJI (Franklin Templeton) measurement is currently paused: BUIDL's distributor mints conflate new subscriptions with yield distribution, making the dividend-event model inaccurate; BENJI's Ethereum wrapper exposes no on-chain NAV function and Franklin has not yet published a machine-readable NAV endpoint."
-  - "Delivered yield: derived per issuer from on-chain events. Rebase-model tokens compare totalSupply snapshots (t=now vs t=window ago). Dividend-model tokens sum USDC Transfer events from the treasury wallet to holders across the window. NAV-model tokens compare share NAV snapshots published by the issuer (fetched via the issuer's public endpoint, cross-checked with the smart contract's own price oracle where one exists)."
-  - "Promised yield: the APY the issuer publishes on its dashboard or fact sheet, read by hand and logged in the harness config with URL and date (last pass 2026-09-23: USDY 3.60%, OUSG 3.48%, USTB 3.78%, SyrupUSDC 5.16%; the previous pass was 2026-07-22). A stale promised value shows up as a deviation that is the curation's, not the issuer's; the Promised column shows the value in force."
+  - "Delivered yield: NAV appreciation over the window, annualized, read on-chain. USDY and OUSG from Ondo's price oracle (USDY's Ethereum totalSupply shrinks as holders bridge to Solana, so a rebase read would show a negative yield), USTB from Superstate's Chainlink NAV feed (no dividend transfers, the yield is entirely NAV growth), SyrupUSDC from convertToAssets() on the ERC-4626 vault."
+  - "Promised yield: the APY the issuer publishes, read by hand and logged in the harness config with URL and date. Last pass 2026-09-23: USDY 3.60% and OUSG 3.48% from Ondo's pages; USTB 3.52% and SyrupUSDC 4.99% as the 30-day mean on the DefiLlama yields feed (like for like with a 30-day delivered yield; those issuer pages render client-side). Previous pass 2026-07-22. A stale promised value is the curation's deviation, not the issuer's."
   - "Windows: headline is the absolute 30-day rolling deviation (closest tracker first); the signed 30-day figure and the 7-day absolute deviation are the next columns. The harness also exposes a lifetime-since-inception series, but it is only computed for the dormant BUIDL adapter and reads zero for the live cohort, so it is not shown."
   - "Sign: delivered minus promised, in basis points, in the Signed 30d column. Negative means the token paid less than advertised over the window, positive means more. The ranking uses the absolute value: overdelivering by 20 bps is as far from the promise as underdelivering by 20 bps."
   - "Fees: promised APY is stated net of management fees. Delivered yield is measured on the same net basis. Any residual structural deviation typically reflects distribution timing (dividend-style tokens accrue daily but pay monthly), weekend accrual conventions (T-bills yield on business days only), or measurement methodology, not accounting."
@@ -61,16 +63,16 @@ methodology:
 
 findings:
   - "{{best_name}} tracks its advertised yield most tightly, {{best_p50}} from its promise over the last 30 days across {{count}} measured providers; the Signed 30d column says which way."
-  - "Rebase-model tokens (USDY) are the most transparent to measure. Delivered yield is a direct function of totalSupply growth on-chain, with no off-chain NAV, no distribution schedule and no treasury wallet to identify."
-  - "Dividend-model tokens (USTB) settle monthly. A 30-day rolling window that starts mid-cycle will underrepresent yield until the next distribution lands. The lifetime column is the honest cross-model comparison; the 30d column is the live signal."
-  - "NAV-model tokens (OUSG, SyrupUSDC) derive yield from on-chain oracle or ERC-4626 share price. Any measurable deviation typically reflects a data pipeline gap (missed NAV update, weekend interpolation) rather than a delivery gap."
+  - "USDY looks like a rebase token but is not measured as one: its Ethereum totalSupply shrinks as holders bridge to Solana, Aptos and Sui, so supply growth would read as a negative yield. The harness reads Ondo's on-chain price oracle instead, the same one OUSG uses, so both Ondo tokens are on one method."
+  - "All four live tokens are NAV-appreciation instruments read daily (oracle, Chainlink feed or vault share price), so a 30-day window sees a smooth accrual; the gaps that remain are the advertised figure's own window and rounding, and the days the reference rate moved before the issuer's page did. The 7d column is the live signal."
+  - "A measurable gap on a NAV-model token (an oracle, a Chainlink feed, an ERC-4626 share price) more often reflects the reference than the fund: a missed NAV update, weekend interpolation, or the advertised APY's own convention (a 7-day SEC yield against a 30-day realized one)."
   - "A persistent negative deviation greater than 20 bps warrants investigation. It can point to a management-fee timing gap, a distribution cycle mismatch, or a methodology difference between advertised APY (often SEC-standard 7-day yield) and realized post-fee yield. This benchmark reports the number; the interpretation belongs to the reader and, ultimately, the issuer's own fund managers."
 
 faq:
   - q: "Why does the delivered yield sometimes differ from the advertised APY?"
-    a: "Three main reasons. First, distribution timing: dividend-style tokens like USTB accrue yield daily but pay it monthly, so a 30-day window that starts mid-cycle undersamples. Second, weekend and holiday accrual: U.S. Treasuries do not yield on Saturdays, Sundays or federal holidays, so a naive calendar-day annualization differs from the SEC's own convention. Third, management-fee timing: fees are accrued daily but recognized at the fund level on different schedules, which can create a 5 to 30 bps short-window gap even when the annual net yield matches the advertised APY exactly."
+    a: "Three main reasons. First, the advertised figure's window: an issuer quotes a 7-day SEC yield or a spot APY while the bench realizes 30 days, so a rate move inside the month opens a gap that closes as the window rolls. Second, weekend and holiday accrual: U.S. Treasuries do not yield on Saturdays, Sundays or federal holidays, so a naive calendar-day annualization differs from the SEC's own convention. Third, management-fee timing: fees are accrued daily but recognized at the fund level on different schedules, which can create a 5 to 30 bps short-window gap even when the annual net yield matches the advertised APY exactly."
   - q: "Which distribution model is the most transparent?"
-    a: "Rebase, exemplified by USDY. Delivered yield is a pure function of totalSupply at t=now versus t=window ago, both readable on-chain by anyone. Dividend-style (USTB) is one step less transparent: delivered yield sums USDC Transfer events from the treasury wallet, which requires knowing the treasury address (documented here). NAV-style (OUSG) is the least on-chain-native: the daily NAV is set by the fund manager off-chain and posted daily; a delayed NAV update looks like a yield gap even when the underlying portfolio is fine. SyrupUSDC sits between: its ERC-4626 convertToAssets share price is fully on-chain but the underlying loan book is off-chain."
+    a: "The ERC-4626 share price (SyrupUSDC): convertToAssets is computed by the vault contract from its own accounting, readable by anyone, though the underlying loan book is off-chain. An issuer oracle or Chainlink NAV feed (USDY, OUSG, USTB) is one step less native: the daily NAV is set by the fund administrator off-chain and posted on-chain, so a delayed update looks like a yield gap even when the portfolio is fine. A pure rebase read would be the most native of all, but USDY's multi-chain supply makes it unusable on Ethereum (see the findings)."
   - q: "Where does the promised yield come from?"
     a: "From each issuer's own public dashboard or fund fact sheet, read by hand; each entry in the harness config logs the source URL and the date the value was last read, and the Promised column shows the value in force. The readings are not weekly in practice (2026-07-22, then 2026-09-23), so a deviation can be the curation lagging a rate move rather than the issuer. When an issuer updates the advertised APY, the change is picked up on the next config reload."
   - q: "Can this benchmark tell me if an issuer is misrepresenting yield?"
@@ -102,7 +104,7 @@ metric_panels:
     label_key: token
     unit: bps
     higher_is_better: true
-    description: "Annualized yield actually distributed on-chain over the trailing 30 days, from the issuer's own mechanism (rebase, dividend transfers, NAV oracle, ERC-4626 share price)."
+    description: "Annualized yield actually accrued on-chain over the trailing 30 days: NAV growth from Ondo's oracle (USDY, OUSG), Superstate's Chainlink NAV feed (USTB) or the ERC-4626 share price (SyrupUSDC)."
   - id: aum
     label: AUM
     metric: rwa_yield_aum_usd
@@ -126,8 +128,8 @@ providers:
   # can emit a defensible number; kept in methodology text as context.
   - slug: usdy
     name: USDY
-    tag: "Ondo, Ethereum + Solana + Aptos + Sui, daily rebase"
-    formula: "USDY totalSupply growth (t=now vs t=30d ago), annualized. Rebase happens daily via the smart contract; delivered yield is a direct function of supply growth. Compared to Ondo's stated APY."
+    tag: "Ondo, Ethereum + Solana + Aptos + Sui, NAV from Ondo's oracle"
+    formula: "Growth of USDY's price on Ondo's on-chain oracle, now vs 30 days ago, annualized (totalSupply is unusable on Ethereum: holders bridge out, so supply shrinks). Compared to Ondo's stated APY."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="usdy"})
       p90: abs(rwa_yield_deviation_bps_7d{token="usdy"})
@@ -139,8 +141,8 @@ providers:
 
   - slug: ustb
     name: USTB
-    tag: "Superstate, Ethereum, monthly USDC dividend"
-    formula: "Sum of USDC Transfer events from the Superstate treasury wallet to USTB holders over 30d, divided by average USTB supply, annualized. Compared to Superstate's stated APY."
+    tag: "Superstate, Ethereum, NAV from the Chainlink feed"
+    formula: "Growth of the USTB NAV published on Superstate's Chainlink feed, now vs 30 days ago, annualized; there are no dividend transfers, the yield is NAV growth. Compared to the 30-day mean APY on the DefiLlama yields feed."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="ustb"})
       p90: abs(rwa_yield_deviation_bps_7d{token="ustb"})

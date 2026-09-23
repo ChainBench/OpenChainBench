@@ -47,7 +47,7 @@ const SEGMENTS: Segment[] = [
     label: "Tokenized stocks",
     question: "Does the on-chain price track the real market, and what happens when Nasdaq is closed?",
     benches: [
-      { slug: "tokenized-stock-peg", what: "Robinhood Chain tokens on Uniswap v4 against the Nasdaq price, regular hours." },
+      { slug: "tokenized-stock-peg", what: "Robinhood Chain tokens: the Uniswap v4 pool spot price against the Nasdaq price, regular hours." },
       { slug: "xstocks-peg", what: "Backed xStocks on Solana, Jupiter executable price against the Nasdaq price." },
       { slug: "tokenized-stock-weekend-drift", what: "How far each tokenized stock wanders from Friday close over the 60-hour weekend." },
     ],
@@ -193,7 +193,7 @@ export default async function RwaHubPage() {
     {
       q: "Which tokenized stock tracks the real market most closely?",
       a: stockLead || xLead
-        ? `${[stockLead ? `${stockLead.name} on Robinhood Chain (${fmtUnit(stockLead.value, "bps")} median deviation from Nasdaq in regular hours)` : null, xLead ? `${xLead.name} among xStocks on Solana (${fmtUnit(xLead.value, "bps")})` : null].filter(Boolean).join(" and ")}, as of ${asOfLabel}. Both benches read the executable on-chain price every minute against the same reference feed.`
+        ? `${[stockLead ? `${stockLead.name} on Robinhood Chain (${fmtUnit(stockLead.value, "bps")} median deviation from Nasdaq in regular hours)` : null, xLead ? `${xLead.name} among xStocks on Solana (${fmtUnit(xLead.value, "bps")})` : null].filter(Boolean).join(" and ")}, as of ${asOfLabel}. Both benches read the on-chain price every minute against the same reference feed (the Uniswap v4 pool spot on Robinhood Chain, the Jupiter executable price on Solana).`
         : "The tokenized-stock-peg and xstocks-peg benches rank it live; the figure was unavailable when this page rendered.",
     },
     {
@@ -205,7 +205,7 @@ export default async function RwaHubPage() {
     {
       q: "Which tokenized treasury pays what it promises?",
       a: yieldLead
-        ? `${yieldLead.name} tracked its advertised APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each issuer's own mechanism distributed on-chain (rebase, dividend, NAV oracle, vault share price) with the APY on its dashboard, read by hand and dated.`
+        ? `${yieldLead.name} tracked its advertised APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth from the issuer's oracle or Chainlink feed, or the ERC-4626 share price) with the APY the issuer advertises, read by hand and dated.`
         : "The rwa-yield-accuracy bench compares delivered on-chain yield with the advertised APY for USDY, USTB, OUSG and SyrupUSDC.",
     },
     {
@@ -340,7 +340,7 @@ export default async function RwaHubPage() {
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <h2 className="label-mono text-ink-faint mb-2">How OpenChainBench measures</h2>
         <p>
-          Five harnesses, all open: tokenized-stock-peg and xstocks-peg read the executable on-chain price of each equity every minute against a public reference and label the market session; usdy-nav-basis reads Ondo&apos;s on-chain redemption price and two Solana venues every minute; rwa-yield-accuracy derives each fund&apos;s distributed yield from its own on-chain mechanism and compares it with the APY the issuer advertises. Sources and methodology are on each bench page; every page answers <code>Accept: text/markdown</code>.
+          Five harnesses, all open: tokenized-stock-peg reads each pool&apos;s spot price on Robinhood Chain and xstocks-peg the Jupiter executable price on Solana, every minute against a public reference, labelled by market session; usdy-nav-basis reads Ondo&apos;s on-chain redemption price and two Solana venues every minute; rwa-yield-accuracy derives each fund&apos;s distributed yield from its own on-chain mechanism and compares it with the APY the issuer advertises. Sources and methodology are on each bench page; every page answers <code>Accept: text/markdown</code>.
         </p>
       </footer>
     </article>

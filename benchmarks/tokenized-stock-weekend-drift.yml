@@ -21,7 +21,7 @@ seo_intro: |
   during those 60 hours before the Monday open snaps it back. Same
   data pipeline as the tokenized stock peg benchmark, filtered to the
   closed session and aggregated per weekend. The interesting rows are
-  the thin pools: MU and AMD drift multiple hundreds of basis
+  the thin pools: the 1 percent-fee names can drift by hundreds of basis
   points on a quiet Sunday because no arbitrageur has a reference to
   arb against until the bell rings on Monday. The chart nobody else
   publishes.
@@ -40,13 +40,13 @@ methodology:
   - "Session windows come from Yahoo currentTradingPeriod (holiday aware), which the harness already labels; the closed state runs from post-market close (roughly 21:00 UTC) to the next regular open (roughly 13:30 UTC)."
   - "Weekend max drift: max_over_time(tsp_deviation_bps{issuer=\"robinhood\", market_state=\"closed\"}[72h]), aggregated per calendar weekend and labeled with the ISO week. The 72h window covers all pre-market and after-hours slots on either side of the weekend, not just the 60h weekend gap."
   - "Cohort: the 6 tokenized equities measured by the tokenized stock peg bench (NVDA, AAPL, PLTR, META, AMD, MU). Same pool addresses, same reference, same fee tiers; the five pools that froze at their last swap (GOOGL, TSLA, MSFT, AMZN, SPY) are out of both benches until they trade again."
-  - "The measurement is a bound, not a fair value: an AMM can sit anywhere inside its fee band without creating arbitrage, so weekend drift on a 2 percent fee pool starts at 200 bps by construction. Read the drift number alongside the pool fee, disclosed on the tokenized-stock-peg page."
+  - "The measurement is a bound, not a fair value: an AMM can sit anywhere inside its fee band without creating arbitrage, so weekend drift on a 1 percent fee pool (AAPL, PLTR, AMD, MU) can reach 100 bps by construction, 30 bps on the 0.3 percent pools (NVDA, META). Read the drift number alongside the pool fee, disclosed on the tokenized-stock-peg page."
   - "Not a claim about corporate fair value: the reference is Friday close, not the theoretical opening indication. When earnings, dividends or macro events happen on the weekend, Monday open will differ from Friday close by the same amount whether the pool moved or not."
 
 findings:
   - "{{best_name}} held tightest last weekend at {{best_p50}} (max drift, bps) across {{count}} tokenized equities."
   - "{{name:aapl}} ({{p50:aapl}}) and {{name:nvda}} ({{p50:nvda}}) have the most active pools of the cohort, and their weekend drift is the closest read on what a 24/7 stock is worth on a Sunday when nobody has a reference to arb against."
-  - "The largest weekend drifts come from the thin-pool symbols (MU, AMD, PLTR) sitting on the 2 percent fee tier at pool depths in the low tens of thousands. That is not a peg failure, it is the arithmetic of a wide fee band with no arbitrageur reference during the 60 hour Nasdaq close."
+  - "The largest weekend drifts come from the thin-pool symbols (MU, AMD, PLTR) sitting on the 1 percent fee tier at pool depths in the low tens of thousands, against 0.3 percent on NVDA and META. That is not a peg failure, it is the arithmetic of a wide fee band with no arbitrageur reference during the 60 hour Nasdaq close."
   - "Every reading resets at Monday open. The page is the only place that captures the intra-weekend maximum before the reset happens."
 
 faq:
@@ -57,7 +57,7 @@ faq:
   - q: "Is a high drift bad?"
     a: "It reads as inefficient markets on paper, but during the 60 hour Nasdaq close there is no fair value to converge to, and every drift closes at the next open. The number matters most for downstream products (lending, structured payoffs) that use the tokenized price as an oracle when the real market is closed."
   - q: "Which stocks drift the most on weekends?"
-    a: "The pattern is fee tier times pool depth. On the current cohort, MU, AMD, PLTR (2 percent fee tier, sub 50k depth) hit the widest weekend drifts, sometimes several hundred basis points. GOOGL, SPY and TSLA (0.3 percent fee tier, several hundred thousand of depth) drift the least."
+    a: "The pattern is fee tier times pool depth. On the current cohort, MU, AMD and PLTR (1 percent fee tier, sub 50k depth) drift the most over a weekend, AAPL and NVDA (the most active pools, 1 and 0.3 percent) the least, META in between. A wide fee band means arbitrageurs let the pool wander further before a trade pays, and a thin pool moves further on each trade that does happen."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/tokenized-stock-peg
 

@@ -281,7 +281,7 @@ export async function GET(req: NextRequest) {
   let hubsFailed = 0;
 
   await Promise.all(
-    ["/perps"].map(async (path) => {
+    ["/perps", "/rwa"].map(async (path) => {
       const r = await warmFetch(path);
       if (r === "ok") hubsWarmed += 1;
       else hubsFailed += 1;

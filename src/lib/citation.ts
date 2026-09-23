@@ -52,9 +52,14 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
   );
   // Chain RPC pages do not fall back: crowning a 23 % success endpoint
   // as "the fastest Starknet RPC" in the TL;DR, StatisticalReport and
-  // /api/stat is worse than saying nobody cleared the floor.
+  // /api/stat is worse than saying nobody cleared the floor. Elsewhere
+  // the fallback is the pool the table itself shows (the 5 % display
+  // floor), never every live row: a gauge frozen for a month at 0.9 %
+  // success was crowned "closest to NAV" while the table excluded it
+  // (usdy-nav-basis audit, 2026-09-23).
+  const shown = displayResults(b.results).filter((r) => !r.unrankedLabel);
   const pool =
-    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : live;
+    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : shown;
   if (!b.expectedN) return pool;
   return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
