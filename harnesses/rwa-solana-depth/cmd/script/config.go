@@ -40,8 +40,8 @@ const (
 	pollInterval   = 5 * time.Minute
 	supplyInterval = 10 * time.Minute
 	httpTimeout    = 15 * time.Second
-	quoteGap       = 2500 * time.Millisecond
-	rateLimitPause = 20 * time.Second
+	quoteGap       = 5 * time.Second
+	rateLimitPause = 30 * time.Second
 	refUSD         = 100.0
 )
 

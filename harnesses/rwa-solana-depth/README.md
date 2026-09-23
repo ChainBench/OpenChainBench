@@ -48,7 +48,7 @@ go run ./cmd/script
 ```
 
 The Jupiter quotes are keyless (lite tier, 60 requests a minute per address, shared with the other
-harnesses on the host; the harness spaces them 2.5 s apart and backs off 20 s on a 429). `XS_SOLANA_RPC` is read when
+harnesses on the host; the harness spaces them 5 s apart and backs off 30 s on a 429). `XS_SOLANA_RPC` is read when
 `RWA_SOLANA_RPC` is unset so the container can share the xstocks-peg env
 file.
 
