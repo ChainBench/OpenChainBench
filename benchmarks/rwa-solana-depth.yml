@@ -5,7 +5,7 @@ number: "278"
 title: Tokenized RWA on Solana, what a $100k sale actually costs
 seo_title: "Solana RWA liquidity 2026: what $100k of USDY, PAXG and xStocks sell for"
 seo_description: "Executable depth of tokenized real-world assets on Solana: the cost of selling $1k, $10k and $100k of USDY, PAXG and 12 xStocks on Jupiter, in bps, and the on-chain supply that has no market at all (BUIDL, USTB)."
-subtitle: "Cost of selling $100,000 of each tokenized real-world asset on Solana through Jupiter, relative to a $100 sale of the same asset on the same tick, measured every two minutes; the on-chain supply of each asset is read from its mint, including the funds that have no open market."
+subtitle: "Cost of selling $100,000 of each tokenized real-world asset on Solana through Jupiter, relative to a $100 sale of the same asset on the same tick, measured every five minutes; the on-chain supply of each asset is read from its mint, including the funds that have no open market."
 
 category: RWA
 status: live
@@ -30,7 +30,7 @@ seo_intro: |
   on-chain supply, because a chart of declared value shows neither.
 
 abstract: |
-  Every two minutes, for each asset with an open market, the harness
+  Every five minutes, for each asset with an open market, the harness
   asks Jupiter's quote API what $100, $1,000, $10,000 and $100,000
   worth of the token sell for against USDC (the dollar sizes are
   converted to token amounts at the previous tick's price). The cost of
@@ -46,7 +46,7 @@ abstract: |
   declared total that cannot be sold.
 
 methodology:
-  - "Quotes: Jupiter lite-api /swap/v1/quote, token to USDC, slippage 100 bps, one route search per size, spaced 1.1 seconds apart (the free tier allows 60 requests a minute). Four quotes per routed asset per tick: $100 (reference), $1k, $10k, $100k. Sizes are token amounts computed from the previous tick's $100 price, so a fast market moves the dollar size by the same percentage as the price; the cost is a ratio of two prices on the same tick and does not move with it."
+  - "Quotes: Jupiter lite-api /swap/v1/quote, token to USDC, slippage 100 bps, one route search per size, 2.5 seconds apart (the free tier allows 60 requests a minute per address, shared with the sibling harnesses). Four quotes per routed asset per tick: $100 (reference), $1k, $10k, $100k. Sizes are token amounts at the previous tick's $100 price, so a fast market moves the dollar size by the same percentage as the price; the cost is a ratio of two prices on the same tick and does not move with it."
   - "Cost = 10000 x (1 - USDC received per raw unit at the size / USDC received per raw unit at $100), in basis points. Positive is a worse price at size, the normal case; a small negative reading happens when a larger sale reaches a better pool split than the $100 quote. Published as rwa_depth_cost_1k_bps, rwa_depth_cost_10k_bps and rwa_depth_cost_100k_bps per asset; a size Jupiter could not route this tick has its gauge deleted, never held."
   - "Headline: 24-hour median of the $100k cost (quantile_over_time 0.5), p90 and p99 of the same series; the $1k and $10k medians are panels. Ranked lowest first. A row needs a route at $100k on 90 percent of the ticks to keep its reliability; rwa_depth_route_ok is 1 when the $100k quote returned a route."
   - "On-chain supply: getTokenSupply on the mint every ten minutes through a keyed Solana RPC, published as rwa_onchain_supply_units and, valued at the $100 executable price per raw unit, rwa_onchain_supply_usd. Raw units on both sides, so a Token-2022 scaled-UI mint (seven xStocks) needs no multiplier. BUIDL is valued at its designed $1.00 per unit (dividends are paid in new units); USTB on Solana has no price this page can defend, so only its unit supply is shown."
@@ -62,7 +62,7 @@ findings:
 
 faq:
   - q: "What does the cost of a $100k sale mean here?"
-    a: "It is the basis points lost by selling $100,000 worth of the token on Jupiter compared with selling $100 of it at the same moment: the price impact of size, route fees included. It is measured from Jupiter's quote API, the same route a Solana wallet would take, every two minutes, and the page ranks the 24-hour median. It is not the cost of redeeming through the issuer."
+    a: "It is the basis points lost by selling $100,000 worth of the token on Jupiter compared with selling $100 of it at the same moment: the price impact of size, route fees included. It is measured from Jupiter's quote API, the same route a Solana wallet would take, every five minutes, and the page ranks the 24-hour median. It is not the cost of redeeming through the issuer."
   - q: "Why are BUIDL and USTB on the page if they cannot be sold?"
     a: "Because they are most of the declared value. BlackRock's BUIDL mint on Solana holds close to a billion dollars and Superstate's USTB mint a few million, and neither has a route on Jupiter: they are transfer-restricted funds that never trade on an open pool. The page lists them unranked as No open market, with the supply read from the mint, so a reader sees which part of Solana's RWA total is tradable and which part is a redemption queue."
   - q: "Why does USDY sell $100,000 at zero cost?"
@@ -77,7 +77,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-sol
 prometheus:
   window: 24h
   freshness_timestamp_metric: rwa_depth_last_success_timestamp_seconds
-  expected_freshness_seconds: 600
+  expected_freshness_seconds: 1200
 
 metric_panels:
   - id: cost1k

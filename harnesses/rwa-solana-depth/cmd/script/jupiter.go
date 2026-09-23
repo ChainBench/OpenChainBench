@@ -54,6 +54,11 @@ func sellQuote(client *http.Client, mint string, amountRaw *big.Int) (out float6
 		mint, usdcMint, amountRaw.String(),
 	)
 	raw, status := jupGet(client, url)
+	if status == "http_429" {
+		sourceCall.WithLabelValues("jup_quote", "http_429").Inc()
+		time.Sleep(rateLimitPause)
+		raw, status = jupGet(client, url)
+	}
 	var q quoteResp
 	if raw != nil {
 		_ = json.Unmarshal(raw, &q)

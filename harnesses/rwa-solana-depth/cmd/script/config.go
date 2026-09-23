@@ -17,10 +17,12 @@ import (
 // mint and its cost is "no route", which the bench lists unranked.
 //
 // Quotes: Jupiter lite-api /swap/v1/quote, token -> USDC, one route
-// search per size, spaced quoteGap apart (lite tier: 60 req/min). Four
-// quotes per routed asset per tick ($100, $1k, $10k, $100k) plus one
-// unit quote for a new asset, so a 14-asset cohort takes about a minute;
-// the tick is two minutes.
+// search per size, spaced quoteGap apart (lite tier: 60 req/min per
+// address, shared with the other harnesses on the host). Four quotes
+// per routed asset per tick ($100, $1k, $10k, $100k) plus one unit quote
+// for a new asset, so a 14-asset cohort takes about two and a half
+// minutes; the tick is five minutes. A 429 pauses rateLimitPause and
+// retries once.
 //
 // Supply: getTokenSupply on the mint every supplyInterval through the
 // keyed Solana RPC (publicnode refuses the call without a key). The USD
@@ -29,11 +31,17 @@ import (
 // handling here: both sides are raw units.
 
 const (
-	usdcMint       = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-	pollInterval   = 120 * time.Second
+	usdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	// Five-minute tick and 2.5 s between quotes: the VPS address also
+	// carries the xstocks-peg and usdy-nav-basis quotes, and Jupiter's
+	// lite tier counts the address (60 requests a minute). A two-minute
+	// tick at 1.1 s pushed the shared budget over and half the ticks came
+	// back 429 (2026-09-23).
+	pollInterval   = 5 * time.Minute
 	supplyInterval = 10 * time.Minute
 	httpTimeout    = 15 * time.Second
-	quoteGap       = 1100 * time.Millisecond
+	quoteGap       = 2500 * time.Millisecond
+	rateLimitPause = 20 * time.Second
 	refUSD         = 100.0
 )
 

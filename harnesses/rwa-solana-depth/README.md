@@ -8,7 +8,7 @@ all, BUIDL and USTB, which the bench lists unranked).
 
 ## What it does
 
-Every two minutes, per routed asset:
+Every five minutes, per routed asset:
 
 1. `$100` sale quote (`/swap/v1/quote`, token to USDC) at the previous
    tick's price, giving the reference USDC per raw unit;
@@ -47,8 +47,8 @@ LISTEN_ADDR=:2112
 go run ./cmd/script
 ```
 
-The Jupiter quotes are keyless (lite tier, 60 requests a minute; the
-harness spaces them 1.1 s apart). `XS_SOLANA_RPC` is read when
+The Jupiter quotes are keyless (lite tier, 60 requests a minute per address, shared with the other
+harnesses on the host; the harness spaces them 2.5 s apart and backs off 20 s on a 429). `XS_SOLANA_RPC` is read when
 `RWA_SOLANA_RPC` is unset so the container can share the xstocks-peg env
 file.
 
