@@ -5,8 +5,9 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import {
   CHAINS,
   CHAIN_BY_SLUG,
-  getBenchmarksForChain,
+  
 } from "@/lib/chains";
+import { getBenchmarksForChain } from "@/lib/chain-benches";
 import { fmtUnit } from "@/lib/format";
 import {
   fetchChainKpis,
