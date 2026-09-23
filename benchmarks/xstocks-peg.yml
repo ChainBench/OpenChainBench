@@ -4,7 +4,7 @@ slug: xstocks-peg
 number: "077"
 title: xStocks price accuracy, live onchain vs Nasdaq across 12 equities on Solana
 seo_title: "xStocks price vs Nasdaq 2026: {{best_name}} closest, {{best_p50}}"
-seo_description: "{{count}} xStocks on Solana against the real share price, regular hours, last 5 sessions: {{best_name}} closest at {{best_p50}}, {{worst_name}} furthest at {{worst_p50}}."
+seo_description: "{{ranked_count}} xStocks on Solana against the real share price, regular hours, last 5 sessions: {{best_name}} closest at {{best_p50}}, {{worst_name}} furthest at {{worst_p50}}."
 subtitle: "Absolute deviation between each xStock's executable Jupiter price on Solana and its real market reference, in basis points, labeled by market session. Companion to the Robinhood Chain tokenized stock bench: same metric, same reference, a different on-chain leg (an executable Jupiter quote here, a Uniswap v4 pool spot there), so the two pages read as a head to head with that difference disclosed."
 
 category: RWA

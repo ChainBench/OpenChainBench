@@ -146,6 +146,10 @@ export type RwaTotals = {
   /** False when a routed asset with a supply has no ranked cost right now:
    *  the liquid share is then unknown, not zero. */
   liquidKnown: boolean;
+  /** False when a routed asset has no USD supply right now (its price is
+   *  lost, or its supply read failed): the measured total and the liquid
+   *  share are then unknown, not smaller. */
+  measuredKnown: boolean;
   assets: number;
 };
 
@@ -165,9 +169,19 @@ export function totals(benches: RwaBenches): RwaTotals {
   let liquidUsd = 0;
   let noMarketUsd = 0;
   let liquidKnown = true;
+  let measuredKnown = true;
   for (const r of depth?.results ?? []) {
     const usd = panelValue(depth, "supply", r.slug);
-    if (usd == null) continue;
+    if (usd == null) {
+      // A routed row with no dollar value (price lost, or supply read
+      // failed) makes both totals unknown; an unranked row without a
+      // value (USTB, units only) is simply not counted (review 2 2026-09-23).
+      if (!r.unrankedLabel) {
+        measuredKnown = false;
+        liquidKnown = false;
+      }
+      continue;
+    }
     if (r.unrankedLabel) {
       measuredUsd += usd;
       noMarketUsd += usd;
@@ -185,7 +199,7 @@ export function totals(benches: RwaBenches): RwaTotals {
   for (const s of RWA_BENCH_SLUGS) for (const r of benches[s]?.results ?? []) assets.add(r.slug);
   // Venues of the NAV bench are not assets.
   for (const r of benches["usdy-nav-basis"]?.results ?? []) assets.delete(r.slug);
-  return { measuredUsd, liquidUsd, noMarketUsd, liquidKnown, assets: assets.size };
+  return { measuredUsd, liquidUsd, noMarketUsd, liquidKnown, measuredKnown, assets: assets.size };
 }
 
 /** Newest citable timestamp across the live benches. */

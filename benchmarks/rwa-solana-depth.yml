@@ -23,8 +23,8 @@ seo_intro: |
   Solana aggregator every wallet routes through, at three sizes, and
   publishes the cost of each size against a $100 sale of the same
   asset on the same tick. The answer splits the category in two: USDY,
-  PAXG and the index xStocks fill $100,000 within a few basis points,
-  single-stock xStocks cost 20 to 500, and the largest funds on the
+  PAXG and the index xStocks fill $100,000 within tens of basis points,
+  single-stock xStocks cost more, the thinnest names hundreds, and the largest funds on the
   chain by declared value (BUIDL at about a billion dollars, USTB)
   have no route at all, because they are transfer-restricted and never
   trade. Both halves are on the page, the second one unranked with its
@@ -57,7 +57,7 @@ methodology:
   - "Reproducibility: harness source at github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-solana-depth; every quote URL is public and keyless, the supply read needs any Solana RPC that serves getTokenSupply."
 
 findings:
-  - "{{best_name}} is the tokenized RWA that sells cheapest at size on Solana: {{best_p50}} of cost on a $100,000 sale (24h median) across {{count}} ranked assets."
+  - "{{best_name}} is the tokenized RWA that sells cheapest at size on Solana: {{best_p50}} of cost on a $100,000 sale (24h median) across {{ranked_count}} ranked assets."
   - "The category splits in three: a tokenized dollar with a market maker quoting size (USDY fills $100,000 flat on Manifest), tokenized gold and the index xStocks (PAXG, SPYx, QQQx) within tens of basis points, and single-stock xStocks where a $100,000 sale costs 20 to over 500 basis points on the thinnest names. Same chain, same aggregator, same day."
   - "The two largest treasury funds on the chain by declared value are the unranked rows: BUIDL's Solana mint holds close to a billion dollars and Jupiter has no route for one unit of it; USTB's Solana mint the same. Declared value counts them; executable depth cannot."
   - "The $1k column is the retail truth: every routed asset sells $1,000 within about 20 basis points. The gap between the $1k and $100k columns is the depth of the pool behind the token, which no declared-value figure describes."
@@ -67,8 +67,8 @@ faq:
     a: "It is the basis points lost by selling $100,000 worth of the token on Jupiter compared with selling $100 of it at the same moment: the price impact of size, route fees included. It is measured from Jupiter's quote API, the same route a Solana wallet would take, every ten minutes, and the page ranks the 24-hour median. It is not the cost of redeeming through the issuer."
   - q: "Why are BUIDL and USTB on the page if they cannot be sold?"
     a: "Because they are most of the declared value. BlackRock's BUIDL mint on Solana holds close to a billion dollars and Superstate's USTB mint a few million, and neither has a route on Jupiter: they are transfer-restricted funds that never trade on an open pool. The page lists them unranked as No open market, with the supply read from the mint, so a reader sees which part of Solana's RWA total is tradable and which part is a redemption queue."
-  - q: "Why does USDY sell $100,000 at zero cost?"
-    a: "Because a market maker quotes it at size on Manifest, a Solana order book, at a fixed price on both sides. The cost is measured against the $100 sale on the same route, so a flat quote reads zero; the usdy-nav-basis bench measures the separate question of how far that quoted price sits from Ondo's published NAV."
+  - q: "Why can USDY sell $100,000 at no cost?"
+    a: "When it does, it is because a market maker quotes it at size on Manifest, a Solana order book, at one price on both sides for as long as the resting orders cover the sale (about $114,000 on 2026-09-23; a $500,000 sale already spilled into a pool at 14 bps). The cost is measured against the $100 sale on the same route, so a flat quote reads zero; the usdy-nav-basis bench measures the separate question of how far that quoted price sits from Ondo's published NAV."
   - q: "Is a high cost a problem with the token?"
     a: "It is a fact about the pool behind it, not about the issuer's backing. A single-stock xStock with a few tens of thousands of dollars of liquidity cannot absorb a $100,000 sale without moving through its whole range; the token still tracks its stock at retail size, which the xstocks-peg bench measures. The two benches together describe the asset: price accuracy at $1 and depth at $100,000."
   - q: "Where do the dollar sizes come from if prices move?"

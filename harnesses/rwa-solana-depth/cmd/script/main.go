@@ -27,12 +27,15 @@ func main() {
 
 	client := &http.Client{Timeout: httpTimeout}
 	lastPrice := map[string]float64{}
+	lastPriceAt := map[string]time.Time{}
 	lastSupply := time.Time{}
 	supplyRaw := map[string]float64{}
 
 	tick := func() {
 		now := time.Now()
-		if now.Sub(lastSupply) >= supplyInterval {
+		// Half a tick of tolerance: the tick's own duration made an exact
+		// comparison skip one supply read in three (review 2 2026-09-23).
+		if now.Sub(lastSupply) >= supplyInterval-pollInterval/2 {
 			n := 0
 			for _, a := range assets {
 				raw, ui, ok := tokenSupply(client, a.Mint)
@@ -76,6 +79,7 @@ func main() {
 			res, price := measureDepth(client, a, lastPrice[a.Slug])
 			if price > 0 {
 				lastPrice[a.Slug] = price
+				lastPriceAt[a.Slug] = time.Now()
 			}
 			for _, s := range sizes {
 				if v, ok := res.CostBps[s.Suffix]; ok {
@@ -98,10 +102,17 @@ func main() {
 					supplyUSD.WithLabelValues(a.Slug, a.Issuer).Set(raw * perRaw)
 				}
 			} else {
-				// No executable price this tick: the USD value of the supply
-				// goes with it (the unit supply stays, it is a chain read).
+				// No executable price this tick. The supply keeps the last good
+				// price for up to two ticks (one failed $100 quote must not blank
+				// the hub's totals), then the USD value goes; the unit supply
+				// stays, it is a chain read.
 				depthPrice.DeleteLabelValues(a.Slug, a.Issuer)
-				supplyUSD.DeleteLabelValues(a.Slug, a.Issuer)
+				raw, haveRaw := supplyRaw[a.Slug]
+				if p, ok := lastPrice[a.Slug]; ok && haveRaw && time.Since(lastPriceAt[a.Slug]) <= 2*pollInterval {
+					supplyUSD.WithLabelValues(a.Slug, a.Issuer).Set(raw * p / pow10(a.Decimals))
+				} else {
+					supplyUSD.DeleteLabelValues(a.Slug, a.Issuer)
+				}
 			}
 			if res.Route100k {
 				depthHealth.WithLabelValues(a.Slug).Set(1)
