@@ -12,6 +12,80 @@
  */
 
 const RAW: Record<string, string> = {
+  // Bench 274 (protocol P/F). 67 of its 80 rows rendered as initials
+  // chips because the board is market-wide and most of these
+  // protocols had never appeared on an OCB bench before. Marks are
+  // each protocol's own, fetched once from DeFiLlama's icon CDN and
+  // committed like every other logo here rather than hotlinked.
+  "aave": "/logos/aave.webp",
+  "aerodrome": "/logos/aerodrome.webp",
+  "alphafi": "/logos/alphafi.webp",
+  "ansem-io": "/logos/ansem-io.webp",
+  "apex-protocol": "/logos/apex-protocol.webp",
+  "benqi": "/logos/benqi.webp",
+  "blend": "/logos/blend.webp",
+  "bonk-fun": "/logos/bonk-fun.webp",
+  "cap": "/logos/cap.webp",
+  "centrifuge": "/logos/centrifuge.webp",
+  "cetus": "/logos/cetus.webp",
+  "chainflip": "/logos/chainflip.webp",
+  "compound-finance": "/logos/compound-finance.webp",
+  "convex-finance": "/logos/convex-finance.webp",
+  "cowswap": "/logos/cowswap.webp",
+  "curve-finance": "/logos/curve-finance.webp",
+  "definitive": "/logos/definitive.webp",
+  "dolomite": "/logos/dolomite.webp",
+  "ekubo-protocol": "/logos/ekubo-protocol.webp",
+  "ether-fi": "/logos/ether-fi.webp",
+  "euler": "/logos/euler.webp",
+  "fluid": "/logos/fluid.webp",
+  "frax-finance": "/logos/frax-finance.webp",
+  "gains-network": "/logos/gains-network.webp",
+  "graphite-protocol": "/logos/graphite-protocol.webp",
+  "humidifi": "/logos/humidifi.webp",
+  "hyperlend": "/logos/hyperlend.webp",
+  "hyperswap": "/logos/hyperswap.webp",
+  "justlend": "/logos/justlend.webp",
+  "kamino": "/logos/kamino.webp",
+  "kinetiq": "/logos/kinetiq.webp",
+  "lido": "/logos/lido.webp",
+  "lista-dao": "/logos/lista-dao.webp",
+  "maple-finance": "/logos/maple-finance.webp",
+  "meteora": "/logos/meteora.webp",
+  "meth-protocol": "/logos/meth-protocol.webp",
+  "moonwell": "/logos/moonwell.webp",
+  "morpho": "/logos/morpho.webp",
+  "navi-protocol": "/logos/navi-protocol.webp",
+  "nest": "/logos/nest.webp",
+  "ondo-finance": "/logos/ondo-finance.webp",
+  "orca": "/logos/orca.png",
+  "pair": "/logos/pair.webp",
+  "pendle": "/logos/pendle.webp",
+  "pons": "/logos/pons.webp",
+  "pump": "/logos/pump.webp",
+  "quickswap": "/logos/quickswap.webp",
+  "ramsesx": "/logos/ramsesx.webp",
+  "re": "/logos/re.webp",
+  "rhea-finance": "/logos/rhea-finance.webp",
+  "rocket-pool": "/logos/rocket-pool.webp",
+  "sanctum": "/logos/sanctum.webp",
+  "saphyre": "/logos/saphyre.webp",
+  "securitize": "/logos/securitize.webp",
+  "stader": "/logos/stader.webp",
+  "stake-link": "/logos/stake-link.webp",
+  "stakewise": "/logos/stakewise.webp",
+  "stonkfun": "/logos/stonkfun.webp",
+  "suilend-protocol": "/logos/suilend-protocol.webp",
+  "sun": "/logos/sun.webp",
+  "the-vault": "/logos/the-vault.webp",
+  "thorchain-dex": "/logos/thorchain-dex.webp",
+  "uniswap": "/logos/uniswap.webp",
+  "usd-ai": "/logos/usd-ai.webp",
+  "velodrome": "/logos/velodrome.webp",
+  "velora": "/logos/velora.webp",
+  "venus": "/logos/venus.webp",
+  "world-liberty-financial": "/logos/world-liberty-financial.webp",
+
   // ─── Fiat on-ramps (bench 262) ───
   // Official brand assets: MoonPay mark from dev.moonpay.com, Transak widget
   // logo from assets.transak.com, Ramp sign from ramp.network, Mercuryo
@@ -642,8 +716,6 @@ const RAW: Record<string, string> = {
   peaq: "/logos/peaq.png",
 
   // ─── Wave-6 Cosmos RPC providers ───
-  ecostake: "/logos/ecostake.png",
-  autostake: "/logos/autostake.png",
   stavr: "/logos/stavr.png",
 
   // ─── Stellar Soroban RPC providers (bench № 210) ───

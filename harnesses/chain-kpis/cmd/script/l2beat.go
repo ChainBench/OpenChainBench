@@ -126,6 +126,21 @@ type cohort struct {
 // the floor, so the harness publishes none and deletes any stale one.
 const minCohort = 5
 
+// forgetChain deletes everything a chain was publishing. Called on every
+// refusal path: a row whose data we have just declined to trust must not
+// keep answering queries with the last value it had. Without this the
+// board carried a refused chain for 22.8 hours, the time its 24h success
+// rate needs to decay below the 5 % display floor.
+func forgetChain(slug string) {
+	chainBridgedTvlUsd.DeleteLabelValues(slug)
+	chainTvsUsd.DeleteLabelValues(slug)
+	chainTvsChange7dPct.DeleteLabelValues(slug)
+	chainTvsChange7dExcessPct.DeleteLabelValues(slug)
+	for _, origin := range []string{"native", "canonical", "external"} {
+		chainValueSecuredUsd.DeleteLabelValues(slug, origin)
+	}
+}
+
 func fetchAllL2Beat(cfg *Config) {
 	start := time.Now()
 	summary, err := fetchL2BeatSummary()
@@ -178,21 +193,25 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 		p, found := summary.Projects[c.L2Beat]
 		if !found || p.IsArchived {
 			// A renamed or retired L2Beat id is a mapping bug, not a
-			// transport failure: say so in the log and leave the previous
-			// gauge to carry forward, as the other sources do.
+			// transport failure: say so in the log, and stop publishing the
+			// chain. Carrying it forward is what the per-chain DefiLlama
+			// fetch does, because there the row is fixed and only the value
+			// moves; here the row set is itself the measurement.
 			missing = append(missing, c.Slug)
 			chainKpisFetchErrors.WithLabelValues(c.Slug, "l2beat", "not_tracked").Inc()
 			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(0)
+			forgetChain(c.Slug)
 			continue
 		}
 
 		b := p.Tvs.Breakdown
 		if b.Total <= 0 {
-			// Same guard as the DefiLlama TVL fetch: a zero total renders
-			// as a broken "$0" card rather than as "no data".
+			// A zero total renders as a broken "$0" card rather than as
+			// "no data", so the row goes rather than showing one.
 			missing = append(missing, c.Slug)
 			chainKpisFetchErrors.WithLabelValues(c.Slug, "l2beat", "empty_series").Inc()
 			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(0)
+			forgetChain(c.Slug)
 			continue
 		}
 		// The three origins must reconstruct the total. If upstream renames
@@ -204,6 +223,7 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 			missing = append(missing, c.Slug)
 			chainKpisFetchErrors.WithLabelValues(c.Slug, "l2beat", "schema_drift").Inc()
 			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(0)
+			forgetChain(c.Slug)
 			log.Printf("[l2beat][%s] origins do not reconstruct the total (residual %.4f); not publishing", c.Slug, residual)
 			continue
 		}
