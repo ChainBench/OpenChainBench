@@ -1,5 +1,6 @@
-// chain-kpis is a small Prom-exporter harness that polls DefiLlama and
-// Mobula for per-chain KPIs the OCB site renders on /chains/<slug>.
+// chain-kpis is a small Prom-exporter harness that polls DefiLlama,
+// Mobula and L2Beat for per-chain KPIs the OCB site renders on
+// /chains/<slug> and on bench 273 chain-bridged-tvl.
 //
 //	─── Gauges exposed ───────────────────────────────────────────────
 //	chain_tvl_usd{chain}                       — DefiLlama TVL

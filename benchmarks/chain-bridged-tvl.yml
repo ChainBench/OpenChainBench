@@ -33,7 +33,8 @@ seo_intro: |
   which is what separates a chain that gained ground from one that merely
   floated up with everything else. The cohort median, its size and how
   much of it L2Beat currently has under review are published as their own
-  series, so the subtraction can be checked rather than believed.
+  Prometheus series, so the subtraction can be re-derived from the source
+  rather than believed.
 
 abstract: |
   The chain-kpis harness reads l2beat.com/api/scaling/summary once every
@@ -44,9 +45,10 @@ abstract: |
   chain_tvs_usd as the total, chain_tvs_change_7d_pct as the raw weekly
   move and chain_tvs_change_7d_excess_pct as that move minus the median of
   every live project above a $200M size floor. The median and the cohort
-  size are published as chain_tvs_cohort_median_7d_pct and
-  chain_tvs_cohort_size so the subtraction can be checked rather than
-  taken on trust. Rows are the chains in the OCB registry that L2Beat
+  size are published as chain_tvs_cohort_median_7d_pct,
+  chain_tvs_cohort_size, chain_tvs_cohort_layer3 and
+  chain_tvs_cohort_under_review, so the subtraction can be re-derived from
+  the series rather than taken on trust. Rows are the chains in the OCB registry that L2Beat
   tracks in its scaling summary, whatever category it files them under;
   settled L1s carry no id because a chain with no host chain has no bridged
   balance to report.
@@ -398,3 +400,276 @@ providers:
       success: avg_over_time(chain_kpis_health{chain="mode",source="l2beat"}[24h])
       sample_size: count_over_time(chain_bridged_tvl_usd{chain="mode"}[24h])
       series: chain_bridged_tvl_usd{chain="mode"}
+
+  - slug: starknet
+    name: Starknet
+    tag: ZK Rollup on Ethereum, SN Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"starknet\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="starknet"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="starknet"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="starknet"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="starknet"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="starknet",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="starknet"}[24h])
+      series: chain_bridged_tvl_usd{chain="starknet"}
+
+  - slug: world-chain
+    name: World Chain
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"world-chain\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="world-chain"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="world-chain"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="world-chain"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="world-chain"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="world-chain",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="world-chain"}[24h])
+      series: chain_bridged_tvl_usd{chain="world-chain"}
+
+  - slug: ink
+    name: Ink
+    tag: Optimistic Rollup on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"ink\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="ink"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="ink"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="ink"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="ink"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="ink",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="ink"}[24h])
+      series: chain_bridged_tvl_usd{chain="ink"}
+
+  - slug: morph
+    name: Morph
+    tag: Optimistic Rollup on Ethereum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"morph\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="morph"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="morph"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="morph"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="morph"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="morph",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="morph"}[24h])
+      series: chain_bridged_tvl_usd{chain="morph"}
+
+  - slug: xlayer
+    name: X Layer
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"xlayer\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="xlayer"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="xlayer"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="xlayer"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="xlayer"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="xlayer",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="xlayer"}[24h])
+      series: chain_bridged_tvl_usd{chain="xlayer"}
+
+  - slug: manta
+    name: Manta Pacific
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"manta\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="manta"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="manta"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="manta"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="manta"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="manta",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="manta"}[24h])
+      series: chain_bridged_tvl_usd{chain="manta"}
+
+  - slug: bob
+    name: BOB
+    tag: Optimistic Rollup on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"bob\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="bob"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="bob"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="bob"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="bob"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="bob",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="bob"}[24h])
+      series: chain_bridged_tvl_usd{chain="bob"}
+
+  - slug: abstract
+    name: Abstract
+    tag: ZK Rollup on Ethereum, ZK Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"abstract\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="abstract"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="abstract"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="abstract"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="abstract"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="abstract",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="abstract"}[24h])
+      series: chain_bridged_tvl_usd{chain="abstract"}
+
+  - slug: gravity
+    name: Gravity
+    tag: Other on Ethereum, Arbitrum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"gravity\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="gravity"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="gravity"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="gravity"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="gravity"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="gravity",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="gravity"}[24h])
+      series: chain_bridged_tvl_usd{chain="gravity"}
+
+  - slug: lisk
+    name: Lisk
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"lisk\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="lisk"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="lisk"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="lisk"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="lisk"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="lisk",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="lisk"}[24h])
+      series: chain_bridged_tvl_usd{chain="lisk"}
+
+  - slug: metis
+    name: Metis
+    tag: Other on Ethereum, OVM
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"metis\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="metis"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="metis"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="metis"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="metis"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="metis",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="metis"}[24h])
+      series: chain_bridged_tvl_usd{chain="metis"}
+
+  - slug: immutable
+    name: Immutable zkEVM
+    tag: Other on Ethereum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"immutable\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="immutable"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="immutable"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="immutable"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="immutable"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="immutable",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="immutable"}[24h])
+      series: chain_bridged_tvl_usd{chain="immutable"}
+
+  - slug: apechain
+    name: ApeChain
+    tag: Other on Arbitrum One, Arbitrum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"apechain\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="apechain"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="apechain"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="apechain"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="apechain"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="apechain",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="apechain"}[24h])
+      series: chain_bridged_tvl_usd{chain="apechain"}
+
+  - slug: zircuit
+    name: Zircuit
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"zircuit\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="zircuit"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="zircuit"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="zircuit"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="zircuit"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="zircuit",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="zircuit"}[24h])
+      series: chain_bridged_tvl_usd{chain="zircuit"}
+
+  - slug: arbitrum-nova
+    name: Arbitrum Nova
+    tag: Optimistic Rollup on Ethereum, Arbitrum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"arbitrum-nova\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="arbitrum-nova"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="arbitrum-nova"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="arbitrum-nova"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="arbitrum-nova"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="arbitrum-nova",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="arbitrum-nova"}[24h])
+      series: chain_bridged_tvl_usd{chain="arbitrum-nova"}
+
+  - slug: polygon-zkevm
+    name: Polygon zkEVM
+    tag: Other on Ethereum, Agglayer CDK
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"polygon-zkevm\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="polygon-zkevm"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="polygon-zkevm"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="polygon-zkevm"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="polygon-zkevm"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="polygon-zkevm",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="polygon-zkevm"}[24h])
+      series: chain_bridged_tvl_usd{chain="polygon-zkevm"}
+
+  - slug: boba
+    name: Boba Network
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"boba\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="boba"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="boba"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="boba"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="boba"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="boba",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="boba"}[24h])
+      series: chain_bridged_tvl_usd{chain="boba"}
+
+  - slug: zora
+    name: Zora
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"zora\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="zora"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="zora"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="zora"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="zora"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="zora",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="zora"}[24h])
+      series: chain_bridged_tvl_usd{chain="zora"}
+
+  - slug: reya
+    name: Reya Network
+    tag: Other on Ethereum, Arbitrum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"reya\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="reya"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="reya"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="reya"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="reya"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="reya",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="reya"}[24h])
+      series: chain_bridged_tvl_usd{chain="reya"}
+
+  - slug: cyber
+    name: Cyber
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"cyber\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="cyber"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="cyber"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="cyber"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="cyber"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="cyber",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="cyber"}[24h])
+      series: chain_bridged_tvl_usd{chain="cyber"}
+
+  - slug: hemi
+    name: Hemi
+    tag: Other on Ethereum, OP Stack
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"hemi\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="hemi"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="hemi"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="hemi"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="hemi"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="hemi",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="hemi"}[24h])
+      series: chain_bridged_tvl_usd{chain="hemi"}

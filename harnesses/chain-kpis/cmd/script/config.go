@@ -18,7 +18,7 @@ type Config struct {
 	// How often DefiLlama is polled per chain. 15 min is the conservative
 	// default: their public API is generous but the TVL value barely moves
 	// inside a 15-min window (intra-day deltas are noise vs the day-over-
-	// day signal we surface on the chain page). 4 ticks/h × 31 mapped
+	// day signal we surface on the chain page). 4 ticks/h × the DefiLlama-mapped
 	// chains × 3 endpoints = 372 req/h, well under any sane rate-limit
 	// ceiling.
 	DefillamaRefreshInterval time.Duration
@@ -26,7 +26,7 @@ type Config struct {
 	// Mobula tick. Faster because we own the source — and native-token
 	// prices move on shorter cycles than DEX-TVL aggregates. 5 min keeps
 	// the price card fresh without hammering. Native calls dedup by
-	// symbol, so one tick is ~19 native plus ~27 stats requests, under
+	// symbol, so one tick is a request per unique native symbol plus one per Mobula-mapped chain, under
 	// 600 req/h, fine on a paid key.
 	MobulaRefreshInterval time.Duration
 
