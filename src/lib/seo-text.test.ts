@@ -40,3 +40,22 @@ describe("capDescription", () => {
     expect(s[kept.length]).toBe(" ");
   });
 });
+
+describe("capSnippet: cut placement (RWA audit 2026-09-23)", () => {
+  it("does not treat an abbreviation's period as a sentence end", () => {
+    const s =
+      "USDY ranks #1 of 4 on RWA yield deviation at 2.00 bps (30d avg). 1 live benchmark, 1 first-place finish. Ondo USDY is a yield-bearing tokenized U.S. Treasury note for non-US holders, accruing daily.";
+    const out = capSnippet(s);
+    expect(out.endsWith("U.S..")).toBe(false);
+    expect(out.endsWith("U.S.")).toBe(false);
+    expect(out.length).toBeLessThanOrEqual(155);
+  });
+
+  it("never cuts inside a parenthesis", () => {
+    const s =
+      "Does USDY trade at its NAV? Live basis between Ondo's tokenized treasury market price (Orca pool, Jupiter route) and the redemption price Ondo publishes onchain, in bps.";
+    const out = capSnippet(s);
+    expect((out.match(/\(/g) ?? []).length).toBe((out.match(/\)/g) ?? []).length);
+    expect(out).not.toContain("(Orca pool.");
+  });
+});
