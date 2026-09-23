@@ -1,0 +1,1180 @@
+# OpenChainBench. Bench 274
+slug: protocol-pf-ratio
+number: "274"
+title: "Price to fees across DeFi: what the market pays per dollar of protocol fees"
+seo_title: "DeFi P/F ratio: {{best_name}} cheapest at {{best_p50}}"
+seo_description: "{{best_name}} is the cheapest at {{best_p50}} annualized fees of {{ranked_count}} tokens ranked. P/F against each protocol's own category median, with float and the monthly fee trend."
+subtitle: "Circulating market cap divided by annualized fees, for every protocol that earns real fees and has a listed token. The number to read is not the ratio but the column beside it: a P/F of 1.05 is ordinary for a launchpad and cheap for a yield protocol, so each row is compared to the median of its own category rather than to the market."
+category: Trading
+status: live
+metric: P/F ratio
+row_noun: { one: protocol, many: protocols }
+unit: x
+higher_is_better: false
+
+disclaimer: |
+  A screen, not a verdict, and not advice. P/F = circulating market cap
+  (CoinGecko) / annualized fees (DeFiLlama, trailing 30d x 365/30) summed
+  across every fee adapter that accrues to the token. Fees include the
+  share paid to liquidity providers. A low multiple can mean the market
+  expects fees to fall, that the fees were incentivised, or that the token
+  has no claim on them. Read it with the float, the category median and the
+  monthly fee trend, then do your own work.
+
+seo_intro: |
+  Price to fees is the on-chain cousin of a price to sales multiple:
+  market cap on top, a year of fees at the bottom. Published on its own it
+  invites a false comparison, because the multiple a category trades at is
+  itself a fact about the category. On the day this bench was written the
+  median launchpad traded at about one times annualized fees and the median
+  yield protocol at about seventeen, so a protocol at 1.5 is expensive in
+  one column of the market and cheap in another. Every row here therefore
+  carries its own category median next to it, and the ratio of the two is
+  what says whether a protocol is cheap against the protocols it actually
+  competes with. Float sits beside both, because a multiple on a token with
+  most of its supply unvested is a multiple on a market cap that does not
+  yet exist.
+
+abstract: |
+  The protocol-valuation harness joins three DeFiLlama reads and one from
+  CoinGecko, hourly. /overview/fees gives one row per fee adapter with its
+  trailing 30d, prior 30d and 1y totals; /protocols gives the child
+  protocols, some carrying a CoinGecko id; /config gives the 849 parent
+  protocols, 451 of them with one. The third read is what makes the board
+  possible: a fee adapter is per product (GMX V1 Perps, GMX V2 Perps, GMX
+  Solana) and the token belongs to the parent, which has no row in
+  /protocols at all. Resolving only through the adapter's own row finds 90
+  tokens; adding the parent table finds 259. Adapters that resolve to the
+  same token are summed rather than ranked apart, because one market cap
+  divided by the fees of one product would price the token several times
+  over. CoinGecko /coins/markets supplies market cap, fully diluted
+  valuation, circulating and total supply, and the 30-day price change.
+  Gauges are protocol_pf_ratio, protocol_pf_fdv_ratio, protocol_float_pct,
+  protocol_fees_30d_usd, protocol_fee_growth_30d_pct,
+  protocol_price_change_30d_pct, protocol_category_pf_median,
+  protocol_pf_vs_category_ratio and protocol_diverging.
+
+methodology:
+  - "P/F = circulating market cap / annualized fees, where annualized fees are the trailing 30 day sum x 365/30. Same cut as benches 234 and 265, so the three valuation boards stay comparable."
+  - "Fees are summed across every DeFiLlama adapter that accrues to the token. Uniswap V2, V3 and V4 are one row; GMX's five products are one row. Ranking them apart would divide one market cap by a fraction of its own revenue."
+  - "The token is resolved through DeFiLlama's own links, not by name matching: the adapter's defillamaId joins to /protocols, and when that row carries no CoinGecko id the parent protocol from /config does. 102 of the tokens on the board are found only through the parent."
+  - "Peer comparison: each row carries the median P/F of its DeFiLlama category, and protocol_pf_vs_category_ratio is the row divided by that median. A category needs at least 5 tokens before a median is published; a row in a smaller category shows its ratio with no comparison rather than a comparison against one or two protocols."
+  - "Float floor: a token with less than 10 percent of supply circulating is not ranked. Its market cap is a fraction of what the token will be, so the ratio reads near zero and would lead an ascending board. Six of the twelve cheapest rows were low-float tokens before this floor was applied."
+  - "Fee floor: 100,000 USD of trailing 30 day fees. Below it the annualized denominator is small enough that one day's adapter output moves the ratio by a multiple."
+  - "The board shows the largest fee earners that sit in a peer group; the harness publishes every row that clears the floors, so the cut is editorial and the full set is queryable. The smallest published row earned about 380,000 USD in 30 days."
+  - "protocol_diverging is 1 when three things hold at once: fees grew month over month, the token fell over 30 days, and the P/F sits below the category median. The third clause is what stops it naming every protocol having a bad month."
+  - "Cadence: hourly. DeFiLlama's fee series is daily and CoinGecko's free tier is rate limited, so a faster poll would spend requests re-reading numbers that have not moved. p50, p90, p99 and the mean read the same gauge and are equal by construction."
+  - "The cohort is rebuilt from upstream every poll and the per-protocol series are reset with it, so a token that is delisted or drops below a floor loses its row rather than carrying a stale valuation forward."
+
+findings:
+  - "{{best_name}} is the cheapest of the {{ranked_count}} ranked protocols at {{best_p50}} annualized fees."
+  - "A ratio only means something inside its category: the medians published alongside the board span more than an order of magnitude, so the same multiple reads as expensive in one column of the market and cheap in another."
+  - "{{worst_name}} is the most expensive on the board at {{worst_p50}} on today's fee run rate."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/protocol-valuation
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 7200
+  freshness_metric: protocol_valuation_health
+  freshness_timestamp_metric: protocol_valuation_last_success_unix
+
+panel_main_description: "Circulating market cap divided by annualized fees. Lower means the market pays less per dollar of fees the protocol collects."
+
+metric_panels:
+  - id: pf_vs_category
+    label: vs category
+    label_key: protocol
+    metric: protocol_pf_vs_category_ratio{}
+    unit: x
+    higher_is_better: false
+    description: "This protocol's P/F divided by the median P/F of its category. Below 1 is cheaper than the protocols it competes with; this is the column to read, not the raw ratio."
+  - id: fee_growth
+    label: Fees MoM
+    label_key: protocol
+    metric: protocol_fee_growth_30d_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "Change in 30 day fees against the prior 30 days. The revenue side of the trend."
+  - id: price_change
+    label: Token 30d
+    label_key: protocol
+    metric: protocol_price_change_30d_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "Token price change over the same window. Fees up while this is down is the divergence the board screens for."
+  - id: float_pct
+    label: Float
+    label_key: protocol
+    metric: protocol_float_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "Circulating supply as a percent of total supply. The gap between P/F and FDV/F is this number."
+  - id: pf_fdv
+    label: FDV / fees
+    label_key: protocol
+    metric: protocol_pf_fdv_ratio{}
+    unit: x
+    higher_is_better: false
+    description: "Fully diluted valuation divided by annualized fees. The conservative multiple: it prices unvested supply as if it were already trading."
+  - id: fees_30d
+    label: Fees 30d
+    label_key: protocol
+    metric: protocol_fees_30d_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Trailing 30 day fees in USD, summed across every adapter that accrues to this token."
+
+faq:
+  - q: "What does a P/F of 2 mean?"
+    a: "That the market values the token at two years of its current fee run rate. It is the same idea as a price to sales multiple, with annualized protocol fees in place of revenue. Low means the market pays little per dollar of fees; it does not mean the token is underpriced."
+  - q: "Why compare to a category median instead of the whole market?"
+    a: "Because the multiple a category trades at is itself a fact about the category, and it varies by more than an order of magnitude across the board. A single market-wide median would rank the categories and call it a ranking of protocols."
+  - q: "Why are tokens with a small float excluded?"
+    a: "Because their market cap is a fraction of what the token will be once supply vests, so the ratio reads near zero and takes the top of an ascending board. The FDV column is the honest view for those tokens, and the float floor is 10 percent of total supply."
+  - q: "Are Uniswap V2, V3 and V4 three rows?"
+    a: "No. They accrue to one token, so their fees are summed into one row. Ranking them apart would divide one market cap by a fraction of its own revenue three times."
+  - q: "Is a diverging row a buy signal?"
+    a: "No. It says fees grew while the token fell and the protocol is cheaper than its peers, which is a place to start work, not a conclusion. Fees can be incentivised, a token can have no claim on them, and a market can be right to re-rate a protocol down."
+  - q: "How is the token found for each protocol?"
+    a: "Through DeFiLlama's own links rather than by matching names. The fee adapter's defillamaId joins to the protocol catalogue, and where that row carries no CoinGecko id the parent protocol supplies it. A protocol with no listed token has no row here; most of the fee universe is in that state."
+providers:
+  - slug: uniswap
+    name: Uniswap
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"uniswap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="uniswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="uniswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="uniswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="uniswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="uniswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="uniswap"}[24h])
+      series: protocol_pf_ratio{protocol="uniswap"}
+
+  - slug: pump
+    name: Pump
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"pump\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="pump"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="pump"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="pump"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="pump"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="pump"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="pump"}[24h])
+      series: protocol_pf_ratio{protocol="pump"}
+
+  - slug: pons
+    name: Pons
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"pons\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="pons"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="pons"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="pons"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="pons"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="pons"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="pons"}[24h])
+      series: protocol_pf_ratio{protocol="pons"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperliquid\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="hyperliquid"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="hyperliquid"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="hyperliquid"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="hyperliquid"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="hyperliquid"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="hyperliquid"}[24h])
+      series: protocol_pf_ratio{protocol="hyperliquid"}
+
+  - slug: lido
+    name: Lido
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"lido\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="lido"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="lido"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="lido"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="lido"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="lido"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="lido"}[24h])
+      series: protocol_pf_ratio{protocol="lido"}
+
+  - slug: raydium
+    name: Raydium
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"raydium\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="raydium"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="raydium"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="raydium"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="raydium"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="raydium"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="raydium"}[24h])
+      series: protocol_pf_ratio{protocol="raydium"}
+
+  - slug: aave
+    name: Aave
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"aave\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="aave"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="aave"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="aave"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="aave"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="aave"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="aave"}[24h])
+      series: protocol_pf_ratio{protocol="aave"}
+
+  - slug: meteora
+    name: Meteora
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"meteora\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="meteora"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="meteora"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="meteora"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="meteora"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="meteora"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="meteora"}[24h])
+      series: protocol_pf_ratio{protocol="meteora"}
+
+  - slug: sky
+    name: Sky
+    tag: CDP, cdp P/F median 2.26
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"sky\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="sky"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="sky"}[24h])
+      series: protocol_pf_ratio{protocol="sky"}
+
+  - slug: pancakeswap
+    name: Pancakeswap
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"pancakeswap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="pancakeswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="pancakeswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="pancakeswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="pancakeswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="pancakeswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="pancakeswap"}[24h])
+      series: protocol_pf_ratio{protocol="pancakeswap"}
+
+  - slug: stonkfun
+    name: Stonkfun
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"stonkfun\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="stonkfun"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="stonkfun"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="stonkfun"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="stonkfun"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="stonkfun"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="stonkfun"}[24h])
+      series: protocol_pf_ratio{protocol="stonkfun"}
+
+  - slug: jupiter
+    name: Jupiter
+    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"jupiter\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="jupiter"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="jupiter"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="jupiter"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="jupiter"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="jupiter"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="jupiter"}[24h])
+      series: protocol_pf_ratio{protocol="jupiter"}
+
+  - slug: aerodrome
+    name: Aerodrome
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"aerodrome\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="aerodrome"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="aerodrome"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="aerodrome"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="aerodrome"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="aerodrome"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="aerodrome"}[24h])
+      series: protocol_pf_ratio{protocol="aerodrome"}
+
+  - slug: morpho
+    name: Morpho
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"morpho\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="morpho"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="morpho"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="morpho"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="morpho"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="morpho"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="morpho"}[24h])
+      series: protocol_pf_ratio{protocol="morpho"}
+
+  - slug: ether-fi
+    name: Ether Fi
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"ether-fi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="ether-fi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="ether-fi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="ether-fi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="ether-fi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="ether-fi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="ether-fi"}[24h])
+      series: protocol_pf_ratio{protocol="ether-fi"}
+
+  - slug: spark
+    name: Spark
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"spark\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="spark"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="spark"}[24h])
+      series: protocol_pf_ratio{protocol="spark"}
+
+  - slug: securitize
+    name: Securitize
+    tag: RWA, rwa P/F median 4.32
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"securitize\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="securitize"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="securitize"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="securitize"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="securitize"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="securitize"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="securitize"}[24h])
+      series: protocol_pf_ratio{protocol="securitize"}
+
+  - slug: world-liberty-financial
+    name: World Liberty Financial
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"world-liberty-financial\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="world-liberty-financial"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[24h])
+      series: protocol_pf_ratio{protocol="world-liberty-financial"}
+
+  - slug: orca
+    name: Orca
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"orca\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="orca"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="orca"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="orca"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="orca"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="orca"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="orca"}[24h])
+      series: protocol_pf_ratio{protocol="orca"}
+
+  - slug: jito
+    name: Jito
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"jito\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="jito"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="jito"}[24h])
+      series: protocol_pf_ratio{protocol="jito"}
+
+  - slug: maple-finance
+    name: Maple Finance
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"maple-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="maple-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="maple-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="maple-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="maple-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="maple-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="maple-finance"}[24h])
+      series: protocol_pf_ratio{protocol="maple-finance"}
+
+  - slug: ondo-finance
+    name: Ondo Finance
+    tag: RWA, rwa P/F median 4.32
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"ondo-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="ondo-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="ondo-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="ondo-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="ondo-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="ondo-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="ondo-finance"}[24h])
+      series: protocol_pf_ratio{protocol="ondo-finance"}
+
+  - slug: sanctum
+    name: Sanctum
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"sanctum\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="sanctum"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="sanctum"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="sanctum"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="sanctum"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="sanctum"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="sanctum"}[24h])
+      series: protocol_pf_ratio{protocol="sanctum"}
+
+  - slug: aster
+    name: Aster
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"aster\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="aster"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="aster"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="aster"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="aster"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="aster"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="aster"}[24h])
+      series: protocol_pf_ratio{protocol="aster"}
+
+  - slug: centrifuge
+    name: Centrifuge
+    tag: RWA, rwa P/F median 4.32
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"centrifuge\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="centrifuge"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="centrifuge"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="centrifuge"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="centrifuge"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="centrifuge"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="centrifuge"}[24h])
+      series: protocol_pf_ratio{protocol="centrifuge"}
+
+  - slug: lighter
+    name: Lighter
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"lighter\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="lighter"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="lighter"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="lighter"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="lighter"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="lighter"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="lighter"}[24h])
+      series: protocol_pf_ratio{protocol="lighter"}
+
+  - slug: edgex
+    name: Edgex
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"edgex\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="edgex"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="edgex"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="edgex"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="edgex"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="edgex"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="edgex"}[24h])
+      series: protocol_pf_ratio{protocol="edgex"}
+
+  - slug: gmx
+    name: GMX
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"gmx\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="gmx"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="gmx"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="gmx"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="gmx"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="gmx"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="gmx"}[24h])
+      series: protocol_pf_ratio{protocol="gmx"}
+
+  - slug: o1-exchange
+    name: O1 Exchange
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"o1-exchange\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="o1-exchange"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="o1-exchange"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="o1-exchange"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="o1-exchange"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="o1-exchange"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="o1-exchange"}[24h])
+      series: protocol_pf_ratio{protocol="o1-exchange"}
+
+  - slug: ramsesx
+    name: Ramsesx
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"ramsesx\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="ramsesx"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="ramsesx"}[24h])
+      series: protocol_pf_ratio{protocol="ramsesx"}
+
+  - slug: marinade
+    name: Marinade
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"marinade\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="marinade"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="marinade"}[24h])
+      series: protocol_pf_ratio{protocol="marinade"}
+
+  - slug: fluid
+    name: Fluid
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"fluid\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="fluid"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="fluid"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="fluid"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="fluid"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="fluid"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="fluid"}[24h])
+      series: protocol_pf_ratio{protocol="fluid"}
+
+  - slug: curve-finance
+    name: Curve Finance
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"curve-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="curve-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="curve-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="curve-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="curve-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="curve-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="curve-finance"}[24h])
+      series: protocol_pf_ratio{protocol="curve-finance"}
+
+  - slug: rocket-pool
+    name: Rocket Pool
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"rocket-pool\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="rocket-pool"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="rocket-pool"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="rocket-pool"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="rocket-pool"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="rocket-pool"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="rocket-pool"}[24h])
+      series: protocol_pf_ratio{protocol="rocket-pool"}
+
+  - slug: compound-finance
+    name: Compound Finance
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"compound-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="compound-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="compound-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="compound-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="compound-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="compound-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="compound-finance"}[24h])
+      series: protocol_pf_ratio{protocol="compound-finance"}
+
+  - slug: convex-finance
+    name: Convex Finance
+    tag: Yield, yield P/F median 16.66
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"convex-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="convex-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="convex-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="convex-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="convex-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="convex-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="convex-finance"}[24h])
+      series: protocol_pf_ratio{protocol="convex-finance"}
+
+  - slug: graphite-protocol
+    name: Graphite Protocol
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"graphite-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="graphite-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="graphite-protocol"}
+
+  - slug: kinetiq
+    name: Kinetiq
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"kinetiq\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="kinetiq"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="kinetiq"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="kinetiq"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="kinetiq"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="kinetiq"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="kinetiq"}[24h])
+      series: protocol_pf_ratio{protocol="kinetiq"}
+
+  - slug: cowswap
+    name: Cowswap
+    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"cowswap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="cowswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="cowswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="cowswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="cowswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="cowswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="cowswap"}[24h])
+      series: protocol_pf_ratio{protocol="cowswap"}
+
+  - slug: usd-ai
+    name: Usd Ai
+    tag: RWA, rwa P/F median 4.32
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"usd-ai\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="usd-ai"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="usd-ai"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="usd-ai"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="usd-ai"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="usd-ai"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="usd-ai"}[24h])
+      series: protocol_pf_ratio{protocol="usd-ai"}
+
+  - slug: justlend
+    name: Justlend
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"justlend\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="justlend"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="justlend"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="justlend"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="justlend"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="justlend"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="justlend"}[24h])
+      series: protocol_pf_ratio{protocol="justlend"}
+
+  - slug: re
+    name: Re
+    tag: RWA, rwa P/F median 4.32
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"re\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="re"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="re"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="re"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="re"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="re"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="re"}[24h])
+      series: protocol_pf_ratio{protocol="re"}
+
+  - slug: thorchain-dex
+    name: Thorchain Dex
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"thorchain-dex\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="thorchain-dex"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[24h])
+      series: protocol_pf_ratio{protocol="thorchain-dex"}
+
+  - slug: chainflip
+    name: Chainflip
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"chainflip\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="chainflip"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="chainflip"}[24h])
+      series: protocol_pf_ratio{protocol="chainflip"}
+
+  - slug: lista-dao
+    name: Lista Dao
+    tag: CDP, cdp P/F median 2.26
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"lista-dao\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="lista-dao"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="lista-dao"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="lista-dao"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="lista-dao"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="lista-dao"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="lista-dao"}[24h])
+      series: protocol_pf_ratio{protocol="lista-dao"}
+
+  - slug: venus
+    name: Venus
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"venus\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="venus"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="venus"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="venus"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="venus"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="venus"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="venus"}[24h])
+      series: protocol_pf_ratio{protocol="venus"}
+
+  - slug: drift
+    name: Drift
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"drift\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="drift"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="drift"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="drift"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="drift"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="drift"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="drift"}[24h])
+      series: protocol_pf_ratio{protocol="drift"}
+
+  - slug: meth-protocol
+    name: mETH Protocol
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"meth-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="meth-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="meth-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="meth-protocol"}
+
+  - slug: euler
+    name: Euler
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"euler\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="euler"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="euler"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="euler"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="euler"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="euler"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="euler"}[24h])
+      series: protocol_pf_ratio{protocol="euler"}
+
+  - slug: dolomite
+    name: Dolomite
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"dolomite\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="dolomite"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="dolomite"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="dolomite"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="dolomite"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="dolomite"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="dolomite"}[24h])
+      series: protocol_pf_ratio{protocol="dolomite"}
+
+  - slug: hyperlend
+    name: Hyperlend
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperlend\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="hyperlend"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="hyperlend"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="hyperlend"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="hyperlend"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="hyperlend"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="hyperlend"}[24h])
+      series: protocol_pf_ratio{protocol="hyperlend"}
+
+  - slug: quickswap-dex
+    name: Quickswap Dex
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"quickswap-dex\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="quickswap-dex"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[24h])
+      series: protocol_pf_ratio{protocol="quickswap-dex"}
+
+  - slug: benqi
+    name: Benqi
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"benqi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="benqi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="benqi"}[24h])
+      series: protocol_pf_ratio{protocol="benqi"}
+
+  - slug: sun
+    name: Sun
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"sun\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="sun"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="sun"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="sun"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="sun"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="sun"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="sun"}[24h])
+      series: protocol_pf_ratio{protocol="sun"}
+
+  - slug: kyberswap
+    name: Kyberswap
+    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"kyberswap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="kyberswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="kyberswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="kyberswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="kyberswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="kyberswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="kyberswap"}[24h])
+      series: protocol_pf_ratio{protocol="kyberswap"}
+
+  - slug: stakewise
+    name: Stakewise
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"stakewise\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="stakewise"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="stakewise"}[24h])
+      series: protocol_pf_ratio{protocol="stakewise"}
+
+  - slug: hyperswap
+    name: Hyperswap
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperswap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="hyperswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="hyperswap"}[24h])
+      series: protocol_pf_ratio{protocol="hyperswap"}
+
+  - slug: definitive
+    name: Definitive
+    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"definitive\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="definitive"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="definitive"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="definitive"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="definitive"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="definitive"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="definitive"}[24h])
+      series: protocol_pf_ratio{protocol="definitive"}
+
+  - slug: pendle
+    name: Pendle
+    tag: Yield, yield P/F median 16.66
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"pendle\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="pendle"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="pendle"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="pendle"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="pendle"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="pendle"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="pendle"}[24h])
+      series: protocol_pf_ratio{protocol="pendle"}
+
+  - slug: gains-network
+    name: Gains Network
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"gains-network\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="gains-network"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="gains-network"}[24h])
+      series: protocol_pf_ratio{protocol="gains-network"}
+
+  - slug: cetus
+    name: Cetus
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"cetus\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="cetus"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="cetus"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="cetus"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="cetus"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="cetus"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="cetus"}[24h])
+      series: protocol_pf_ratio{protocol="cetus"}
+
+  - slug: derive
+    name: Derive
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"derive\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="derive"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="derive"}[24h])
+      series: protocol_pf_ratio{protocol="derive"}
+
+  - slug: moonwell
+    name: Moonwell
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"moonwell\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="moonwell"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="moonwell"}[24h])
+      series: protocol_pf_ratio{protocol="moonwell"}
+
+  - slug: sushi
+    name: Sushi
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"sushi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="sushi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="sushi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="sushi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="sushi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="sushi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="sushi"}[24h])
+      series: protocol_pf_ratio{protocol="sushi"}
+
+  - slug: pair
+    name: Pair
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"pair\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="pair"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="pair"}[24h])
+      series: protocol_pf_ratio{protocol="pair"}
+
+  - slug: stake-link
+    name: Stake Link
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"stake-link\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="stake-link"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="stake-link"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="stake-link"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="stake-link"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="stake-link"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="stake-link"}[24h])
+      series: protocol_pf_ratio{protocol="stake-link"}
+
+  - slug: nest
+    name: Nest
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"nest\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="nest"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="nest"}[24h])
+      series: protocol_pf_ratio{protocol="nest"}
+
+  - slug: rhea-finance
+    name: Rhea Finance
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"rhea-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="rhea-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="rhea-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="rhea-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="rhea-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="rhea-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="rhea-finance"}[24h])
+      series: protocol_pf_ratio{protocol="rhea-finance"}
+
+  - slug: frax-finance
+    name: Frax Finance
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"frax-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="frax-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="frax-finance"}[24h])
+      series: protocol_pf_ratio{protocol="frax-finance"}
+
+  - slug: the-vault
+    name: The Vault
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"the-vault\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="the-vault"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="the-vault"}[24h])
+      series: protocol_pf_ratio{protocol="the-vault"}
+
+  - slug: saphyre
+    name: Saphyre
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"saphyre\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="saphyre"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="saphyre"}[24h])
+      series: protocol_pf_ratio{protocol="saphyre"}
+
+  - slug: cap
+    name: Cap
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"cap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="cap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="cap"}[24h])
+      series: protocol_pf_ratio{protocol="cap"}
+
+  - slug: navi-protocol
+    name: Navi Protocol
+    tag: Lending, lending P/F median 2.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"navi-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="navi-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="navi-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="navi-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="navi-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="navi-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="navi-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="navi-protocol"}
+
+  - slug: apex-protocol
+    name: Apex Protocol
+    tag: Derivatives, derivatives P/F median 8.56
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"apex-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="apex-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="apex-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="apex-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="apex-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="apex-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="apex-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="apex-protocol"}
+
+  - slug: ansem-io
+    name: Ansem Io
+    tag: Launchpad, launchpad P/F median 1.05
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"ansem-io\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="ansem-io"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="ansem-io"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="ansem-io"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="ansem-io"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="ansem-io"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="ansem-io"}[24h])
+      series: protocol_pf_ratio{protocol="ansem-io"}
+
+  - slug: velora
+    name: Velora
+    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"velora\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="velora"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="velora"}[24h])
+      series: protocol_pf_ratio{protocol="velora"}
+
+  - slug: stader
+    name: Stader
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"stader\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="stader"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="stader"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="stader"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="stader"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="stader"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="stader"}[24h])
+      series: protocol_pf_ratio{protocol="stader"}
+
+  - slug: velodrome
+    name: Velodrome
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"velodrome\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="velodrome"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="velodrome"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="velodrome"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="velodrome"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="velodrome"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="velodrome"}[24h])
+      series: protocol_pf_ratio{protocol="velodrome"}
+
+  - slug: alphafi
+    name: Alphafi
+    tag: Liquid Staking, liquid staking P/F median 1.67
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"alphafi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="alphafi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="alphafi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="alphafi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="alphafi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="alphafi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="alphafi"}[24h])
+      series: protocol_pf_ratio{protocol="alphafi"}
+
+  - slug: humidifi
+    name: Humidifi
+    tag: Dexs, dexs P/F median 3.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"humidifi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="humidifi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="humidifi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="humidifi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="humidifi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="humidifi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="humidifi"}[24h])
+      series: protocol_pf_ratio{protocol="humidifi"}
