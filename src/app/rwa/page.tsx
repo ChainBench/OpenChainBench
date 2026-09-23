@@ -49,7 +49,7 @@ const SEGMENTS: Segment[] = [
     benches: [
       { slug: "tokenized-stock-peg", what: "Robinhood Chain tokens: the Uniswap v4 pool spot price against the Nasdaq price, regular hours." },
       { slug: "xstocks-peg", what: "Backed xStocks on Solana, Jupiter executable price against the Nasdaq price." },
-      { slug: "tokenized-stock-weekend-drift", what: "How far each tokenized stock wanders from Friday close over the 60-hour weekend." },
+      { slug: "tokenized-stock-weekend-drift", what: "How far each tokenized stock wanders from Friday close over the weekend, Friday close to Monday open." },
     ],
   },
 ];
@@ -78,9 +78,9 @@ function describe(benches: Record<string, Benchmark | null>): string {
   const stockLead = lead(benches["tokenized-stock-peg"]);
   const xLead = lead(benches["xstocks-peg"]);
   const parts: string[] = [];
-  if (yieldLead) parts.push(`${yieldLead.name} pays closest to its reference yield (${fmtUnit(yieldLead.value, "bps")} off over 30 days)`);
-  if (stockLead) parts.push(`${stockLead.name} tracks Nasdaq tightest on Robinhood Chain (${fmtUnit(stockLead.value, "bps")})`);
-  if (xLead) parts.push(`${xLead.name} on Solana (${fmtUnit(xLead.value, "bps")})`);
+  if (yieldLead) parts.push(`${yieldLead.name} pays closest to its reference yield (${fmtUnit(yieldLead.value, "bp")} off over 30 days)`);
+  if (stockLead) parts.push(`${stockLead.name} tracks Nasdaq tightest on Robinhood Chain (${fmtUnit(stockLead.value, "bp")})`);
+  if (xLead) parts.push(`${xLead.name} on Solana (${fmtUnit(xLead.value, "bp")})`);
   const live = ALL_SLUGS.filter((s) => benches[s] && !isInsufficient(benches[s]!)).length;
   return capSnippet(
     parts.length > 0
@@ -179,10 +179,10 @@ export default async function RwaHubPage() {
   const wkLead = lead(benches["tokenized-stock-weekend-drift"]);
 
   const leadSentence = [
-    yieldLead ? `${yieldLead.name} pays closest to its reference yield, ${fmtUnit(yieldLead.value, "bps")} off over the trailing 30 days` : null,
-    stockLead ? `${stockLead.name} is the tokenized stock that tracks Nasdaq tightest on Robinhood Chain at ${fmtUnit(stockLead.value, "bps")}` : null,
-    xLead ? `${xLead.name} on Solana at ${fmtUnit(xLead.value, "bps")}` : null,
-    navLead ? `USDY trades ${fmtUnit(navLead.value, "bps")} from its published NAV on ${navLead.name}` : null,
+    yieldLead ? `${yieldLead.name} pays closest to its reference yield, ${fmtUnit(yieldLead.value, "bp")} off over the trailing 30 days` : null,
+    stockLead ? `${stockLead.name} is the tokenized stock that tracks Nasdaq tightest on Robinhood Chain at ${fmtUnit(stockLead.value, "bp")}` : null,
+    xLead ? `${xLead.name} on Solana at ${fmtUnit(xLead.value, "bp")}` : null,
+    navLead ? `USDY trades ${fmtUnit(navLead.value, "bp")} from its published NAV on ${navLead.name}` : null,
   ].filter(Boolean).join("; ");
 
   const faq = [
@@ -193,26 +193,26 @@ export default async function RwaHubPage() {
     {
       q: "Which tokenized stock tracks the real market most closely?",
       a: stockLead || xLead
-        ? `${[stockLead ? `${stockLead.name} on Robinhood Chain (${fmtUnit(stockLead.value, "bps")} median deviation from Nasdaq in regular hours)` : null, xLead ? `${xLead.name} among xStocks on Solana (${fmtUnit(xLead.value, "bps")})` : null].filter(Boolean).join(" and ")}, as of ${asOfLabel}. Both benches read the on-chain price every minute against the same reference feed (the Uniswap v4 pool spot on Robinhood Chain, the Jupiter executable price on Solana).`
+        ? `${[stockLead ? `${stockLead.name} on Robinhood Chain (${fmtUnit(stockLead.value, "bp")} median deviation from Nasdaq in regular hours)` : null, xLead ? `${xLead.name} among xStocks on Solana (${fmtUnit(xLead.value, "bp")})` : null].filter(Boolean).join(" and ")}, as of ${asOfLabel}. Both benches read the on-chain price every minute against the same reference feed (the Uniswap v4 pool spot on Robinhood Chain, the Jupiter executable price on Solana).`
         : "The tokenized-stock-peg and xstocks-peg benches rank it live; the figure was unavailable when this page rendered.",
     },
     {
       q: "Does USDY trade at its NAV?",
       a: navLead
-        ? `Not exactly: the closest venue, ${navLead.name}, sits ${fmtUnit(navLead.value, "bps")} from the redemption price Ondo publishes on-chain (24h median of the absolute basis). A persistent discount is the price of exiting now rather than redeeming through the issuer.`
+        ? `Not exactly: the closest venue, ${navLead.name}, sits ${fmtUnit(navLead.value, "bp")} from the redemption price Ondo publishes on-chain (24h median of the absolute basis). A persistent discount is the price of exiting now rather than redeeming through the issuer.`
         : "The usdy-nav-basis bench measures it every minute against the redemption price Ondo publishes on-chain.",
     },
     {
       q: "Which tokenized treasury pays what its reference yield says?",
       a: yieldLead
-        ? `${yieldLead.name} tracked its reference APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth between two daily prints from the issuer's oracle or Chainlink feed, or the ERC-4626 share price, compounded over the real span) with a reference APY read by hand and dated: the 30-day mean on the DefiLlama yields feed for every token, the same window as the delivered figure (the issuer's own displayed APY is kept in the notes).`
+        ? `${yieldLead.name} tracked its reference APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bp")} off. The bench compares the yield each token accrued on-chain (NAV growth between two daily prints from the issuer's oracle or Chainlink feed, or the ERC-4626 share price, compounded over the real span) with a reference APY read by hand and dated: the 30-day mean on the DefiLlama yields feed for every token, the same window as the delivered figure (the issuer's own displayed APY is kept in the notes).`
         : "The rwa-yield-accuracy bench compares delivered on-chain yield with a 30-day reference APY for USDY, USTB, OUSG and SyrupUSDC.",
     },
     {
       q: "What happens to tokenized stocks over the weekend?",
       a: wkLead
-        ? `They drift. With Nasdaq closed for 60 hours nobody has a reference to arbitrage against, so pool prices wander; ${wkLead.name} wandered least last weekend at ${fmtUnit(wkLead.value, "bps")} of maximum deviation from Friday's close, thin pools several hundred basis points.`
-        : "The tokenized-stock-weekend-drift bench measures the maximum deviation from Friday close across the 60-hour closed-market window.",
+        ? `They drift. With Nasdaq closed for about 65 hours nobody has a reference to arbitrage against, so pool prices wander; ${wkLead.name} wandered least last weekend at ${fmtUnit(wkLead.value, "bp")} of maximum deviation from Friday's close, thin pools several hundred basis points.`
+        : "The tokenized-stock-weekend-drift bench measures the maximum deviation from Friday close from Friday close to Monday open.",
     },
     {
       q: "Can I cite these numbers?",

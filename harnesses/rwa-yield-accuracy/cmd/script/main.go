@@ -174,7 +174,15 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 			windowDays30d.WithLabelValues(labels...).Set(m.SpanDays30d)
 			windowDays7d.WithLabelValues(labels...).Set(m.SpanDays7d)
 		}
-		deliveredBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime))
+		// The live cohort has no lifetime figure (the adapters return 0); a
+		// published 0 read as "minus the promised APY" in the lifetime
+		// deviation, which no spec reads but the /metrics page showed.
+		if m.DeliveredBpsLifetime != 0 {
+			deliveredBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime))
+		} else {
+			deliveredBpsLifetime.DeleteLabelValues(labels...)
+			deviationBpsLifetime.DeleteLabelValues(labels...)
+		}
 
 		// Supply / AUM context.
 		totalSupply.WithLabelValues(labels...).Set(m.TotalSupplyUnits)
@@ -191,7 +199,9 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 			promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))
 			deviationBps30d.WithLabelValues(labels...).Set(float64(m.DeliveredBps30d - promisedBpsVal))
 			deviationBps7d.WithLabelValues(labels...).Set(float64(m.DeliveredBps7d - promisedBpsVal))
-			deviationBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime - promisedBpsVal))
+			if m.DeliveredBpsLifetime != 0 {
+				deviationBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime - promisedBpsVal))
+			}
 		}
 
 		probeOK.WithLabelValues(labels...).Set(1)
@@ -237,7 +247,9 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 					promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))
 					deviationBps30d.WithLabelValues(labels...).Set(float64(last.DeliveredBps30d - promisedBpsVal))
 					deviationBps7d.WithLabelValues(labels...).Set(float64(last.DeliveredBps7d - promisedBpsVal))
-					deviationBpsLifetime.WithLabelValues(labels...).Set(float64(last.DeliveredBpsLifetime - promisedBpsVal))
+					if last.DeliveredBpsLifetime != 0 {
+						deviationBpsLifetime.WithLabelValues(labels...).Set(float64(last.DeliveredBpsLifetime - promisedBpsVal))
+					}
 				}
 			}
 		}

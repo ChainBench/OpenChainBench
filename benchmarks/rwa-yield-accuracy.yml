@@ -89,15 +89,19 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-yie
 
 prometheus:
   window: 30d
-  freshness_metric: rwa_yield_last_measured_unix
+  freshness_timestamp_metric: rwa_yield_last_measured_unix
   expected_freshness_seconds: 3600
+
+# success is a publication gate (measurement under two hours old), not a
+# probe success rate, so the ledger hides Success and Reliability.
+ledger_reliability: false
 
 metric_panels:
   - id: promised
     label: Promised APY
     metric: rwa_yield_promised_bps
     label_key: token
-    unit: bps
+    unit: bp
     higher_is_better: true
     tab: false
     description: "Reference APY the deviation is measured against: the 30-day mean on the DefiLlama yields feed for every token, read by hand and dated; the issuer's displayed figure is in the config notes."
@@ -105,7 +109,7 @@ metric_panels:
     label: Delivered 30d
     metric: rwa_yield_delivered_bps_30d
     label_key: token
-    unit: bps
+    unit: bp
     higher_is_better: true
     description: "Annualized yield actually accrued on-chain over the trailing 30 days: NAV growth from Ondo's oracle (USDY, OUSG), Superstate's Chainlink NAV feed (USTB) or the ERC-4626 share price (SyrupUSDC)."
   - id: aum

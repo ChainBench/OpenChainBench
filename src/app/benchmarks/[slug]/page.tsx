@@ -397,6 +397,7 @@ export default async function BenchmarkPage({
             p50: valueInDeclaredUnit(leaderResult.ms.p50, benchmark.unit),
             p90: valueInDeclaredUnit(leaderResult.ms.p90, benchmark.unit),
             p99: valueInDeclaredUnit(leaderResult.ms.p99, benchmark.unit),
+            mean: valueInDeclaredUnit(leaderResult.ms.mean, benchmark.unit),
           }
         : null,
   });

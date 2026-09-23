@@ -5,7 +5,7 @@ number: "079"
 title: Tokenized stock weekend drift, how far each equity wanders Friday to Monday
 seo_title: "Tokenized stock weekend drift 2026"
 seo_description: "How far do onchain tokenized stocks drift from Friday close during the weekend? NVDA, AAPL, META, PLTR, AMD and MU measured live on Robinhood Chain, in bps."
-subtitle: "Maximum deviation between each tokenized stock's pool price and Friday's Nasdaq close, measured every minute from the last regular tick on Friday (20:00 UTC) to the first regular tick on Monday (13:30 UTC), one value per completed weekend."
+subtitle: "Maximum deviation between each tokenized stock's pool price and Friday's Nasdaq close, measured every minute from the last regular tick on Friday (4 pm New York) to the first regular tick on Monday (9:30 am), one value per completed weekend."
 
 category: RWA
 status: live
@@ -32,17 +32,18 @@ abstract: |
   deviation between the Uniswap v4 pool price on Robinhood Chain and
   the last Yahoo regular-hours close (the reference holds Friday's
   close all weekend). When regular trading resumes after a gap of 40
-  hours or more (a weekend, or a holiday weekend), it publishes the
-  maximum of that deviation over the gap, per symbol, as
-  tsp_weekend_drift_bps, and the time the gap ended. The headline is
-  that last completed weekend. A rolling 72-hour maximum over the
+  hours or more that contains a Saturday (a weekend, or a holiday
+  weekend; a midweek holiday is not one), it publishes the maximum of
+  that deviation over the gap, per symbol, as tsp_weekend_drift_bps,
+  and the time the gap ended. The headline is that last completed
+  weekend, shown for eight days after it ended and blank after that. A rolling 72-hour maximum over the
   closed series, which this page used until 2026-09-23, mixed
   weeknights with two weekends and ranked the rows almost upside down.
 
 methodology:
-  - "Data source: the tokenized-stock-peg harness itself. It accumulates the maximum |deviation| per symbol from the last regular tick before a gap to the first regular tick after it and, when the gap lasted 40 hours or more, publishes tsp_weekend_drift_bps and tsp_weekend_drift_end_unix. On start it backfills the last completed weekend from Prometheus (session-gated maximum of the closed series over the 66 hours ending at the most recent Monday 13:30 UTC), so a redeploy does not blank the page."
-  - "Session windows come from Yahoo currentTradingPeriod (holiday aware), which the harness labels every tick; the weekend gap runs from Friday's regular close (20:00 UTC) through post-market, the closed nights and Monday pre-market to the regular open (13:30 UTC), about 65 hours, longer on a holiday weekend."
-  - "Headline: last_over_time(tsp_weekend_drift_bps{asset}[8d]), the last completed weekend; the sample count is the number of weekends published in the trailing five weeks. The reference is Friday's close throughout (Yahoo's regularMarketPrice does not move over the weekend), so the figure is the pool's own wandering, not a Monday gap."
+  - "Data source: the tokenized-stock-peg harness itself. When regular trading resumes after a gap of 40 hours or more that contains a Saturday, it reads the maximum |deviation| per symbol over that exact gap (every non-regular minute, session-gated) from Prometheus and publishes tsp_weekend_drift_bps and tsp_weekend_drift_end_unix; a symbol with no sample in the gap has its value deleted. On start it finds the last completed weekend the same way, so a restart, even mid-weekend, loses nothing."
+  - "Session windows come from Yahoo currentTradingPeriod (holiday aware), which the harness labels every tick; the weekend gap runs from Friday's regular close (4 pm New York) through post-market, the closed nights and Monday pre-market to the regular open (9:30 am New York), about 65 hours, longer on a holiday weekend. Thanksgiving's Wednesday-to-Friday gap is over 40 hours but holds no Saturday, so it is not counted."
+  - "Headline: the last published weekend, shown only while its end stamp (tsp_weekend_drift_end_unix) is under eight days old, so a value the harness holds from an older weekend is never presented as last weekend; the sample count is the number of weekends published in the trailing five weeks (changes of the end stamp plus one). The reference is Friday's close throughout (Yahoo's regularMarketPrice does not move over the weekend), so the figure is the pool's own wandering, not a Monday gap."
   - "Cohort: the 6 tokenized equities measured by the tokenized stock peg bench (NVDA, AAPL, PLTR, META, AMD, MU). Same pool addresses, same reference, same fee tiers; the five pools that froze at their last swap (GOOGL, TSLA, MSFT, AMZN, SPY) are out of both benches until they trade again."
   - "The measurement is a bound, not a fair value: an AMM can sit anywhere inside its fee band without creating arbitrage, so weekend drift on a 1 percent fee pool (AAPL, PLTR, AMD, MU) can reach 100 bps by construction, 30 bps on the 0.3 percent pools (NVDA, META). Read the drift number alongside the pool fee, disclosed on the tokenized-stock-peg page."
   - "Not a claim about corporate fair value: the reference is Friday close, not the theoretical opening indication. When earnings, dividends or macro events happen on the weekend, Monday open will differ from Friday close by the same amount whether the pool moved or not."
@@ -50,7 +51,7 @@ methodology:
 findings:
   - "{{best_name}} held tightest last weekend at {{best_p50}} (max drift, bps) across {{count}} tokenized equities."
   - "{{name:aapl}} ({{p50:aapl}}) and {{name:nvda}} ({{p50:nvda}}) have the most active pools of the cohort, and their weekend drift is the closest read on what a 24/7 stock is worth on a Sunday when nobody has a reference to arb against."
-  - "The largest weekend drifts come from the thin-pool symbols (MU, AMD, PLTR) sitting on the 1 percent fee tier at pool depths in the low tens of thousands, against 0.3 percent on NVDA and META. That is not a peg failure, it is the arithmetic of a wide fee band with no arbitrageur reference during the 60 hour Nasdaq close."
+  - "The largest weekend drifts come from the thin-pool symbols (MU, AMD, PLTR) sitting on the 1 percent fee tier at pool depths in the low tens of thousands, against 0.3 percent on NVDA and META. That is not a peg failure, it is the arithmetic of a wide fee band with no arbitrageur reference during the 65 hour Nasdaq close."
   - "Every reading resets at Monday open; the page keeps the maximum the weekend reached before the reset, and the next weekend replaces it on Monday."
 
 faq:
@@ -75,12 +76,12 @@ providers:
     tag: "Nvidia, ~$290k pool depth, 0.3% fee"
     formula: "Maximum deviation between the NVDA pool on Robinhood Chain and Friday's Nasdaq close from Friday's last regular tick to Monday's first, published by the harness when regular trading resumes, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="nvda"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}
 
   - slug: aapl
@@ -88,12 +89,12 @@ providers:
     tag: "Apple, ~$330k pool depth, 1% fee"
     formula: "Maximum deviation between the AAPL pool on Robinhood Chain and Friday's Nasdaq close from Friday's last regular tick to Monday's first, published by the harness when regular trading resumes, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="aapl"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}
 
   - slug: meta
@@ -101,12 +102,12 @@ providers:
     tag: "Meta, ~$89k pool depth, 0.3% fee"
     formula: "Maximum deviation between the META pool and Friday's Nasdaq close, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="meta"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}
 
   - slug: amd
@@ -114,12 +115,12 @@ providers:
     tag: "AMD, ~$25k pool depth, 1% fee"
     formula: "Maximum deviation between the AMD pool and Friday's Nasdaq close, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="amd"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}
 
   - slug: pltr
@@ -127,12 +128,12 @@ providers:
     tag: "Palantir, ~$31k pool depth, 1% fee"
     formula: "Maximum deviation between the PLTR pool and Friday's Nasdaq close, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="pltr"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}
 
   - slug: mu
@@ -140,10 +141,10 @@ providers:
     tag: "Micron, ~$35k pool depth, 1% fee"
     formula: "Maximum deviation between the MU pool and Friday's Nasdaq close, in bps."
     queries:
-      p50: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
-      p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
-      p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
-      mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
+      p50: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[8d])) < 691200))
+      p90: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[8d])) < 691200))
+      p99: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[8d])) < 691200))
+      mean: (last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d]) and on(asset) ((time() - last_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[8d])) < 691200))
       success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="mu"}[24h]) or on() vector(0))
-      sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[35d]) > 0) or vector(0)
+      sample_size: (max(changes(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[35d])) + 1) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}

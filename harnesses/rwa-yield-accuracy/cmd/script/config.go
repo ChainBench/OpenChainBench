@@ -19,7 +19,9 @@ const (
 	measureTimeout = 3 * time.Minute
 	// A last good measurement stays published, with probe_ok at 1, for
 	// this long after it was taken; beyond that a failing probe reads 0.
-	staleAfter = 3 * time.Hour
+	// The same bound as the spec's success gate (7200 s on the age of
+	// rwa_yield_last_measured_unix), so the harness and the page agree.
+	staleAfter = 2 * time.Hour
 )
 
 // Rolling window sizes for delivered-yield computation.

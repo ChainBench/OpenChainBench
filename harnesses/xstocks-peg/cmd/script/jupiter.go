@@ -44,32 +44,46 @@ func jupGet(client *http.Client, url string) ([]byte, string) {
 }
 
 // fetchMultipliers returns the Token-2022 ScaledUiAmount multiplier per
-// mint, read on-chain from the mint account's scaledUiAmountConfig
-// extension in one getMultipleAccounts call (jsonParsed): newMultiplier
-// once its effective timestamp has passed, multiplier before. Jupiter's
+// mint. Mints without the extension (Scaled false in the config) map to
+// 1.0 without a network call. A scaled mint is read on-chain from the
+// mint account's scaledUiAmountConfig extension in one
+// getMultipleAccounts call (jsonParsed): newMultiplier once its effective
+// timestamp has passed, multiplier before; Jupiter's scaledUiConfig is
+// the fallback for the scaled mints the chain read missed. Jupiter's
 // price/v3 used to carry usdPricePrescaled at the top level; the field
 // moved under scaledUiConfig and the harness silently read a multiplier
 // of 1.0 for every mint, which put the seven scaled xStocks 17 to 59 bps
-// above their reference (audit 2026-09-23). The chain is the source now,
-// Jupiter's scaledUiConfig the fallback. Mints without the extension
-// map to 1.0; a scaled mint the tick could not read is absent from the
-// map, and the caller publishes nothing for it.
+// above their reference (audit 2026-09-23). A scaled mint whose
+// multiplier neither source returned as a positive number is absent from
+// the map, and the caller publishes nothing for it: a scaled mint priced
+// at 1.0 is that bug again, whatever put the 1.0 there.
 func fetchMultipliers(client *http.Client) map[string]float64 {
 	out := map[string]float64{}
+	scaled := map[string]bool{}
 	ids := make([]string, 0, len(assets))
 	for _, a := range assets {
+		if !a.Scaled {
+			out[a.Mint] = 1
+			continue
+		}
+		scaled[a.Mint] = true
 		ids = append(ids, a.Mint)
 	}
-	if m := fetchMultipliersOnchain(client, ids); m != nil {
-		for k, v := range m {
-			out[k] = v
-		}
+	for k, v := range fetchMultipliersOnchain(client, ids) {
+		out[k] = v
 	}
-	if len(out) == len(ids) {
+	if len(out) == len(assets) {
 		return out
 	}
-	// Fallback: Jupiter's scaledUiConfig for the mints the chain read missed.
-	raw, status := jupGet(client, "https://lite-api.jup.ag/price/v3?ids="+strings.Join(ids, ","))
+	// Fallback: Jupiter's scaledUiConfig for the scaled mints the chain
+	// read missed.
+	missing := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := out[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	raw, status := jupGet(client, "https://lite-api.jup.ag/price/v3?ids="+strings.Join(missing, ","))
 	if raw == nil {
 		tspSourceCall.WithLabelValues("jup_price", status).Inc()
 		return out
@@ -87,18 +101,20 @@ func fetchMultipliers(client *http.Client) map[string]float64 {
 	}
 	now := time.Now().Unix()
 	for mint, v := range flat {
-		if _, ok := out[mint]; ok {
+		if _, ok := out[mint]; ok || !scaled[mint] || v.ScaledUiConfig == nil {
 			continue
 		}
-		if v.ScaledUiConfig == nil {
-			continue
+		if m := effectiveMultiplier(v.ScaledUiConfig.Multiplier, v.ScaledUiConfig.NewMultiplier, v.ScaledUiConfig.NewMultiplierEffectiveTimestamp, now); m > 0 {
+			out[mint] = m
 		}
-		out[mint] = effectiveMultiplier(v.ScaledUiConfig.Multiplier, v.ScaledUiConfig.NewMultiplier, v.ScaledUiConfig.NewMultiplierEffectiveTimestamp, now)
 	}
 	tspSourceCall.WithLabelValues("jup_price", "ok").Inc()
 	return out
 }
 
+// effectiveMultiplier is the multiplier in force: the scheduled one once
+// its timestamp has passed, the current one before, and 0 (unknown) when
+// neither is a positive number.
 func effectiveMultiplier(current, next float64, effectiveAt, now int64) float64 {
 	if next > 0 && effectiveAt > 0 && now >= effectiveAt {
 		return next
@@ -106,13 +122,18 @@ func effectiveMultiplier(current, next float64, effectiveAt, now int64) float64 
 	if current > 0 {
 		return current
 	}
-	return 1
+	return 0
 }
 
-// fetchMultipliersOnchain reads every mint account in one call. A mint
-// without the scaledUiAmountConfig extension is 1.0; a mint the RPC did
-// not return is left out.
+// fetchMultipliersOnchain reads the given (scaled) mint accounts in one
+// call and returns a multiplier only for the accounts that carry the
+// scaledUiAmountConfig extension with a positive multiplier; a mint the
+// RPC did not return, or returned without the extension, is left out.
 func fetchMultipliersOnchain(client *http.Client, mints []string) map[string]float64 {
+	out := map[string]float64{}
+	if len(mints) == 0 {
+		return out
+	}
 	quoted := make([]string, len(mints))
 	for i, m := range mints {
 		quoted[i] = `"` + m + `"`
@@ -124,13 +145,13 @@ func fetchMultipliersOnchain(client *http.Client, mints []string) map[string]flo
 	resp, err := client.Do(req)
 	if err != nil {
 		tspSourceCall.WithLabelValues("solana_rpc", "network").Inc()
-		return nil
+		return out
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != 200 {
 		tspSourceCall.WithLabelValues("solana_rpc", fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
-		return nil
+		return out
 	}
 	var envel struct {
 		Result struct {
@@ -154,24 +175,23 @@ func fetchMultipliersOnchain(client *http.Client, mints []string) map[string]flo
 	}
 	if err := json.Unmarshal(raw, &envel); err != nil || len(envel.Result.Value) != len(mints) {
 		tspSourceCall.WithLabelValues("solana_rpc", "parse").Inc()
-		return nil
+		return out
 	}
 	now := time.Now().Unix()
-	out := map[string]float64{}
 	for i, acct := range envel.Result.Value {
 		if acct == nil {
 			continue
 		}
-		m := 1.0
 		for _, e := range acct.Data.Parsed.Info.Extensions {
 			if e.Extension != "scaledUiAmountConfig" {
 				continue
 			}
 			cur, _ := strconv.ParseFloat(e.State.Multiplier, 64)
 			next, _ := strconv.ParseFloat(e.State.NewMultiplier, 64)
-			m = effectiveMultiplier(cur, next, e.State.NewMultiplierEffectiveTimestamp, now)
+			if m := effectiveMultiplier(cur, next, e.State.NewMultiplierEffectiveTimestamp, now); m > 0 {
+				out[mints[i]] = m
+			}
 		}
-		out[mints[i]] = m
 	}
 	tspSourceCall.WithLabelValues("solana_rpc", "ok").Inc()
 	return out
