@@ -34,26 +34,31 @@ seo_intro: |
   to each other instead of one standing in for the other.
 
 abstract: |
-  The pm-cohort-stats harness reads each venue from the best source it has.
-  Polymarket through its gamma API, Kalshi through its native REST
-  endpoints, Limitless and Myriad through their own APIs, and the rest
-  through DefiLlama's prediction-market category, where protocol TVL stands
-  in for open interest and /summary/dexs supplies volume. Gauges are
+  The pm-cohort-stats harness reads each venue from the best source it has,
+  and for open interest that is more often DefiLlama than the venue.
+  Kalshi publishes open interest natively. Polymarket's gamma field is
+  deprecated and reads far below the protocol's tracked value, so
+  Polymarket and Limitless use DefiLlama protocol TVL; Myriad's native
+  figure is AMM liquidity. Every row says on its own tag which source it
+  came from. The rest of the cohort is read from DefiLlama's
+  prediction-market category, where protocol TVL stands in for open
+  interest and /summary/dexs supplies volume. Gauges are
   pm_venue_open_interest_usd, pm_venue_volume_24h_usd,
   pm_venue_volume_30d_usd and pm_venue_active_markets, one series per
-  venue. The cohort was widened from five venues to seventeen on
-  2026-09-23; rows below $500,000 of open interest are not ranked, because
-  a venue holding tens of thousands moves by tens of percent on one
-  position.
+  venue, one writer per gauge. The cohort was widened from five venues to
+  seventeen on 2026-09-23; rows below $500,000 of open interest are not
+  ranked, because a venue holding tens of thousands moves by tens of
+  percent on one position. Where a venue's own API can only be read in
+  part, the partial figure is withheld rather than published as a total.
 
 methodology:
-  - "Open interest: the value of positions still open, in USD. Polymarket, Kalshi, Limitless and Myriad publish it natively. For venues with no public API it is DefiLlama's protocol TVL, which is a proxy and is labelled as one on each row."
+  - "Open interest: the value of positions still open, in USD. Kalshi publishes it natively. Polymarket and Limitless use DefiLlama protocol TVL, because gamma's openInterest field is deprecated and reads an order of magnitude low; Myriad's native figure is AMM liquidity rather than positions. For venues with no public API it is DefiLlama protocol TVL throughout. Each row's tag names its own source, and TVL is a proxy wherever it appears."
   - "Volume: each venue's own figure where its API gives one, otherwise DefiLlama /summary/dexs for that protocol. Both windows, 24 hours and 30 days, come from the same source for a given venue so the ratio between them is internally consistent."
   - "Turnover is 24h volume over open interest. Below 1x a venue holds more than it trades in a day, which is what long-dated markets look like; well above 1x the book turns over repeatedly, which is what short-dated contracts look like. It is a description, not a ranking."
-  - "Kalshi's volume comes from DefiLlama rather than its own trades endpoint. Unauthenticated, that endpoint returns only the public slice: $2.26M against DefiLlama's $424.8M for the same venue and window on 2026-09-23. With an API key the native figure is the better source and the harness prefers it again."
-  - "Polymarket's own gamma API and DefiLlama disagree on its 24h volume by an order of magnitude ($5.3M against $61.8M on 2026-09-23). The gamma figure is published here because it is the venue's own, paginated to exhaustion rather than truncated, but the two are not reconciled and the gap is not explained by pagination."
+  - "Kalshi's volume comes from DefiLlama rather than from the harness's own read. Unauthenticated, the fetcher sums the /events catalog and reaches $2.26M against DefiLlama's $424.8M for the same venue and window on 2026-09-23, because the catalog walk is capped well short of the full book. With an API key the native figure is the better source and the harness prefers it again."
+  - "Polymarket's 24h volume is DefiLlama's. The harness also walks gamma, and that walk is truncated, not exhausted: gamma caps limit at 100 however much you ask for, and refuses offsets past 2100 with a 422 naming /markets/keyset for deeper pagination. The walk therefore stops at exactly 2,100 markets and $5.37M against DefiLlama's $61.8M, and the same cut is why no active-market count is published for Polymarket. Measured against gamma directly on 2026-09-23."
   - "Size floor: $500,000 of open interest. Below it one position moves a venue by tens of percent, and the board would rank position-opening events. Venues under the floor keep publishing their gauges and are absent from the ranking."
-  - "A venue with no open interest at all is absent rather than shown at zero. Polymarket US is in that state: a CFTC-regulated exchange has no on-chain balance and its API publishes no open interest, though its volume is among the largest in the category."
+  - "A venue with no readable open interest is absent rather than shown at zero. Polymarket US is in that state: a CFTC-regulated exchange has no on-chain balance for DefiLlama to measure, and while its own API does publish per-market open interest, reading it costs one request per market. Its volume is among the largest in the category and is published."
   - "Cadence: native fetchers every 5 minutes, the DefiLlama aggregate every 15. The headline is a 24h average, so a single print does not move a row."
 
 findings:
@@ -66,7 +71,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-coho
 prometheus:
   window: 24h
   expected_freshness_seconds: 3600
-  freshness_metric: pm_health
+  freshness_metric: pm_cohort_stats_last_tick_unix
 
 panel_main_description: "Value of positions still open on the venue, in USD. Money at risk, not money traded."
 
@@ -83,7 +88,10 @@ metric_panels:
     label_key: venue
     metric: pm_venue_volume_24h_usd{} / pm_venue_open_interest_usd{}
     unit: x
-    higher_is_better: true
+    # The description calls this a description and not a ranking, so the
+    # panel must not sort it as one: a high turnover is not a better
+    # venue, it is a different kind of venue.
+    higher_is_better: false
     description: "24h volume divided by open interest: how many times the book turns over in a day. Below 1x means long-dated positions held rather than traded; well above means short-dated contracts. A description, not a ranking."
   - id: volume_30d
     label: Volume 30d
@@ -98,7 +106,7 @@ metric_panels:
     metric: pm_venue_active_markets{}
     unit: count
     higher_is_better: true
-    description: "Markets currently open for trading, where the venue's API publishes a count. Kalshi lists tens of thousands of short-dated contracts; Polymarket a few thousand longer-dated ones."
+    description: "Markets open for trading, where the venue publishes a count readable in full. Kalshi lists tens of thousands. Polymarket is blank on purpose: its offset API refuses past 2,100 and its real book is 193,732, so a cheap count would be a 1% sample."
 
 faq:
   - q: "Why rank on open interest rather than volume?"
@@ -114,169 +122,182 @@ faq:
 providers:
   - slug: polymarket
     name: Polymarket
-    tag: Polygon, order book, gamma API
+    tag: Polygon, order book; open interest from DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"polymarket\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="polymarket"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="polymarket"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
-      success: avg_over_time(pm_health{venue="polymarket"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="polymarket"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
       series: pm_venue_open_interest_usd{venue="polymarket"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h]) >= bool 500000)
 
   - slug: kalshi
     name: Kalshi
-    tag: CFTC-regulated exchange, native REST
+    tag: CFTC-regulated exchange; open interest native, volume from DefiLlama
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"kalshi\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="kalshi"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="kalshi"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
-      success: avg_over_time(pm_health{venue="kalshi"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="kalshi"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
       series: pm_venue_open_interest_usd{venue="kalshi"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h]) >= bool 500000)
 
   - slug: rain
     name: Rain
-    tag: Arbitrum
+    tag: Arbitrum; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"rain\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="rain"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="rain"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
-      success: avg_over_time(pm_health{venue="rain"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="rain"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
       series: pm_venue_open_interest_usd{venue="rain"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="rain"}[24h]) >= bool 500000)
 
   - slug: predict-fun
     name: Predict Fun
-    tag: Blast and BNB Chain
+    tag: BNB Chain and Blast; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predict-fun\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="predict-fun"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="predict-fun"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
-      success: avg_over_time(pm_health{venue="predict-fun"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="predict-fun"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
       series: pm_venue_open_interest_usd{venue="predict-fun"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h]) >= bool 500000)
 
   - slug: opinion
     name: OPINION
-    tag: BNB Chain
+    tag: BNB Chain; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"opinion\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="opinion"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="opinion"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
-      success: avg_over_time(pm_health{venue="opinion"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="opinion"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
       series: pm_venue_open_interest_usd{venue="opinion"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h]) >= bool 500000)
 
   - slug: sport-fun
     name: Sport.fun
-    tag: Base, fantasy football player shares rather than event outcomes
+    tag: Base, fantasy football player shares rather than event outcomes; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"sport-fun\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="sport-fun"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="sport-fun"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
-      success: avg_over_time(pm_health{venue="sport-fun"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="sport-fun"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
       series: pm_venue_open_interest_usd{venue="sport-fun"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h]) >= bool 500000)
 
   - slug: augur
     name: Augur
-    tag: Ethereum, the original on-chain prediction market
+    tag: Ethereum, the original on-chain prediction market; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"augur\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="augur"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="augur"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
-      success: avg_over_time(pm_health{venue="augur"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="augur"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
       series: pm_venue_open_interest_usd{venue="augur"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="augur"}[24h]) >= bool 500000)
 
   - slug: levr-bet
     name: Levr Bet
-    tag: Monad, 2x to 5x leverage on single-game sports lines
+    tag: Monad, 2x to 5x leverage on single-game sports lines; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"levr-bet\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="levr-bet"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="levr-bet"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
-      success: avg_over_time(pm_health{venue="levr-bet"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="levr-bet"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
       series: pm_venue_open_interest_usd{venue="levr-bet"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h]) >= bool 500000)
 
   - slug: pascal
     name: Pascal
-    tag: Solana
+    tag: Solana; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"pascal\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="pascal"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="pascal"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
-      success: avg_over_time(pm_health{venue="pascal"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="pascal"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
       series: pm_venue_open_interest_usd{venue="pascal"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h]) >= bool 500000)
 
   - slug: predictstreet
     name: PredictStreet
-    tag: ADI Chain, fully collateralized in USDC.e
+    tag: ADI Chain, fully collateralized in USDC.e; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predictstreet\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="predictstreet"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="predictstreet"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
-      success: avg_over_time(pm_health{venue="predictstreet"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="predictstreet"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
       series: pm_venue_open_interest_usd{venue="predictstreet"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h]) >= bool 500000)
 
   - slug: overtime
     name: Overtime
-    tag: On-chain sportsbook across six chains, AMM liquidity
+    tag: On-chain sportsbook across six chains; DefiLlama TVL is pool bankroll, not positions
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"overtime\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="overtime"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="overtime"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
-      success: avg_over_time(pm_health{venue="overtime"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="overtime"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
       series: pm_venue_open_interest_usd{venue="overtime"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h]) >= bool 500000)
 
   - slug: azuro
     name: Azuro
-    tag: Liquidity layer for betting front ends, six chains
+    tag: Liquidity layer for betting front ends, six chains; DefiLlama TVL is LP liquidity, not positions
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"azuro\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="azuro"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="azuro"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
-      success: avg_over_time(pm_health{venue="azuro"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="azuro"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
       series: pm_venue_open_interest_usd{venue="azuro"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h]) >= bool 500000)
 
   - slug: trueo
     name: Trueo
-    tag: Base today, Ethereum mainnet announced; optimistic oracle, own TruthMarketManager
+    tag: Base today, Ethereum mainnet announced; optimistic oracle; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"trueo\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
       p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="trueo"}[24h])
       p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="trueo"}[24h])
       mean: avg_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
-      success: avg_over_time(pm_health{venue="trueo"}[24h])
+      success: avg_over_time((min by (venue) (time() - pm_cohort_stats_last_refresh_timestamp_seconds{venue="trueo"}) < bool 900)[24h:5m])
       sample_size: count_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
       series: pm_venue_open_interest_usd{venue="trueo"}
+      ranked: (avg_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h]) >= bool 500000)

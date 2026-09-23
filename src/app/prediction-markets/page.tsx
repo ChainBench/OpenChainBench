@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchPmCohort, type PmCohortSummary } from "@/lib/pm-stats";
-import { REMOVED_ANSWER_SLUGS } from "@/lib/removed-benches";
+import { AnswersForBench } from "@/components/answers-for-bench";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import {
@@ -32,28 +32,13 @@ import {
  * because it lists venue identities, not metric values.
  */
 
-// Filtered through REMOVED_ANSWER_SLUGS below: this hand-written list was
-// the only live pointer to /answers/polymarket-fees-explained, which 404s
-// (SEO audit 2026-09-22).
-const ANSWERS = [
-  { slug: "how-long-does-polymarket-take-to-resolve", question: "How long does Polymarket take to resolve a market?" },
-  { slug: "polymarket-vs-kalshi-resolution-speed", question: "Polymarket vs Kalshi, which resolves prediction markets faster?" },
-  { slug: "which-prediction-market-has-the-strictest-rate-limits", question: "Which prediction market API has the strictest rate limits?" },
-  { slug: "polymarket-fees-explained", question: "What fees does Polymarket charge?" },
-  { slug: "polymarket-vs-kalshi-fees", question: "Polymarket vs Kalshi fees, which is cheaper to trade?" },
-  { slug: "is-polymarket-safe", question: "Is Polymarket safe to use?" },
-  { slug: "best-prediction-market-for-sports", question: "Which prediction market is best for sports?" },
-  { slug: "best-prediction-market-for-politics", question: "Which prediction market is best for politics and elections?" },
-  { slug: "manifold-markets-vs-polymarket", question: "Manifold Markets vs Polymarket, which should you use?" },
-  { slug: "is-polymarket-legal-in-the-us", question: "Is Polymarket legal in the United States?" },
-  { slug: "prediction-market-api-for-developers", question: "Which prediction market API is best for developers?" },
-] as const;
 
 const FALLBACK_DESCRIPTION =
   "Every tracked prediction market on one cross-venue leaderboard: open interest, 24h volume, turnover, resolution delay and API latency.";
 
-const TITLE =
-  "Prediction market leaderboard 2026: open interest, volume, turnover";
+// 57 characters. page-metadata ships hub titles without the brand
+// suffix, so this is the full SERP string.
+const TITLE = "Prediction market leaderboard 2026: open interest";
 
 // Same numbers as the lede and the table, read from the same cohort.
 // 158 characters at most: the SERP truncates beyond that.
@@ -105,11 +90,32 @@ export default async function PredictionMarketsHubPage() {
     : null;
   // Widest turnover spread in the cohort: the one reading on this page
   // that no venue publishes about itself and no aggregator prints.
+  // Ranked venues only, matching the bench's own $500k floor: below it a
+  // single position moves a venue by tens of percent, and the FAQ was
+  // quoting Myriad's $38.6k book as the cohort's turnover leader.
+  const RANK_FLOOR_USD = 500_000;
   const byTurnover = (cohort?.venues ?? [])
-    .filter((v) => v.turnover24h != null)
+    .filter(
+      (v) =>
+        v.turnover24h != null &&
+        !v.playMoney &&
+        v.openInterest != null &&
+        v.openInterest >= RANK_FLOOR_USD,
+    )
     .sort((a, b) => (b.turnover24h ?? 0) - (a.turnover24h ?? 0));
   const fastest = byTurnover[0] ?? null;
   const slowest = byTurnover[byTurnover.length - 1] ?? null;
+
+  // Both legs from the same venues, or the ratio describes no one. The
+  // cohort totals include venues that report only volume (Polymarket US)
+  // or only open interest (Rain, Augur), so they cannot divide.
+  const bothLegs = (cohort?.venues ?? []).filter(
+    (v) => !v.playMoney && v.volume24h != null && v.openInterest != null && v.openInterest > 0,
+  );
+  const cohortTurnover = bothLegs.length
+    ? bothLegs.reduce((t, v) => t + (v.volume24h ?? 0), 0) /
+      bothLegs.reduce((t, v) => t + (v.openInterest ?? 0), 0)
+    : null;
   const leadSentence =
     lead && lead.openInterest != null
       ? `${lead.name} holds ${fmtUSD(lead.openInterest)} of open interest, the largest of ${tracked} tracked venues.`
@@ -137,7 +143,7 @@ export default async function PredictionMarketsHubPage() {
         },
         {
           q: "Where do the open interest and volume numbers come from?",
-          a: "From each venue's own public API where it has one (Polymarket gamma, Kalshi REST, Limitless, Myriad, Manifold), and from the DefiLlama protocol and DEX aggregates for the rest, polled by the pm-cohort-stats harness and normalized to USD. Where a venue's own feed is a partial view, the aggregate wins: Kalshi's unauthenticated trades endpoint reports a fraction of the book, so its volume is taken from the aggregate.",
+          a: "Open interest comes from the venue where the venue publishes a usable figure and from DefiLlama protocol TVL otherwise, and for open interest that is more often DefiLlama: Kalshi publishes it natively, while Polymarket's gamma field is deprecated and reads an order of magnitude low, so Polymarket and Limitless use TVL. Volume is each venue's own where its API gives one, otherwise DefiLlama. Where a venue's own read is a partial view the aggregate wins: unauthenticated, the harness can only sum Kalshi's event catalog and reaches $2.26M against DefiLlama's $424.8M for the same day, so Kalshi's volume is the aggregate's. Every row's tag names its own source.",
         },
         {
           q: "Why do some venues show no latency or resolution figure?",
@@ -261,7 +267,7 @@ export default async function PredictionMarketsHubPage() {
       <header className="mb-8">
         <p className="label-mono text-teal-600 mb-2">Prediction markets</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Prediction markets, measured neutrally.
+          Prediction market leaderboard: open interest, volume, turnover.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           {leadSentence} Every venue ranks itself on the metric it picks.
@@ -303,7 +309,7 @@ export default async function PredictionMarketsHubPage() {
             <span className="text-ink">pm-api-latency</span>
           </Link>
           <Link
-            href="/benchmarks/polymarket-resolution-delay"
+            href="/benchmarks/pm-resolution-delay"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
             <span
@@ -362,12 +368,8 @@ export default async function PredictionMarketsHubPage() {
             />
             <SummaryCard
               label="Cohort turnover"
-              value={fmtTurnover(
-                cohort.totals.openInterest > 0
-                  ? cohort.totals.volume24h / cohort.totals.openInterest
-                  : null,
-              )}
-              tip="Total 24h volume over total open interest. Dominated by the two largest venues, which sit at opposite ends of the per-venue range."
+              value={fmtTurnover(cohortTurnover)}
+              tip={`24h volume over open interest across the ${bothLegs.length} venues that publish both, so the ratio describes the same set on each side. Dominated by the two largest, which sit at opposite ends of the per-venue range.`}
             />
             <SummaryCard
               label="Active markets"
@@ -386,25 +388,54 @@ export default async function PredictionMarketsHubPage() {
             />
           </section>
 
+          <h2 className="display text-2xl text-ink mt-10 mb-1">
+            Every tracked venue, ranked by open interest
+          </h2>
+          <p className="text-sm text-ink-soft mb-3 max-w-2xl">
+            {tracked} venues carry at least one live measurement. Sort any
+            column; venues below the {fmtUSD(RANK_FLOOR_USD)} open-interest
+            floor keep their figures but are not ranked.
+          </p>
           <PmHubTabs cohort={cohort} />
 
-          <section className="mt-10">
-            <p className="label-mono text-teal-600 mb-3 text-[11px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-              Measured answers
-            </p>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ANSWERS.filter((a) => !REMOVED_ANSWER_SLUGS.has(a.slug)).map((a) => (
-                <li key={a.slug}>
-                  <Link
-                    href={`/answers/${a.slug}`}
-                    className="card-soft flex items-start gap-2 rounded-lg border border-ink/10 px-4 py-3 text-sm text-ink hover:border-teal-500/40 hover:bg-teal-500/5 transition-colors"
+          {/* The FAQPage JSON-LD above described questions that existed
+              nowhere on the page. Structured data is meant to describe
+              what a reader can see, so render the same list. */}
+          {faq.length > 0 && (
+            <section className="mt-12 max-w-3xl">
+              <h2 className="display text-2xl text-ink mb-4">
+                Questions about this leaderboard
+              </h2>
+              <dl className="space-y-4">
+                {faq.map((f) => (
+                  <div
+                    key={f.q}
+                    className="card-soft rounded-lg border border-ink/10 px-4 py-3"
                   >
-                    {a.question}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
+                    <dt className="text-[15px] font-medium text-ink">{f.q}</dt>
+                    <dd className="mt-1.5 text-sm text-ink-soft leading-relaxed">
+                      {f.a}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          {/* Goes through loadAllAnswers, which drops answers whose bench
+              was removed from this deployment. The hand-written list this
+              replaces linked three 404s, including one whose answer is
+              still status:live but whose bench went in 2026-07. */}
+          <AnswersForBench
+            benchSlugs={[
+              "pm-open-interest",
+              "pm-api-latency",
+              "pm-resolution-delay",
+              "pm-ws-latency",
+              "pm-rate-limits",
+            ]}
+            heading="Questions these benchmarks answer"
+          />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source:{" "}
@@ -419,7 +450,7 @@ export default async function PredictionMarketsHubPage() {
             (volume, OI, active markets, top market, markets &gt;$1M)
             plus the live PM bench fleet (api latency, resolution delay,
             ws latency). All gauges scraped from the public OCB Prom,
-            refresh interval 60s. Click a venue row above to open its
+            Click a venue row above to open its
             dedicated product page. Hover the dotted underline on any
             value to see how it is computed.
           </p>
@@ -433,10 +464,10 @@ export default async function PredictionMarketsHubPage() {
           </Link>
           ,{" "}
           <Link
-            href="/benchmarks/polymarket-resolution-delay"
+            href="/benchmarks/pm-resolution-delay"
             className="underline"
           >
-            /benchmarks/polymarket-resolution-delay
+            /benchmarks/pm-resolution-delay
           </Link>
           ,{" "}
           <Link href="/benchmarks/pm-ws-latency" className="underline">
@@ -451,7 +482,7 @@ export default async function PredictionMarketsHubPage() {
       )}
 
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
-        <p className="label-mono text-ink-faint mb-2">Methodology</p>
+        <h2 className="label-mono text-ink-faint mb-2">How OpenChainBench measures this</h2>
         <p>
           Venue rows aggregate the public APIs of each platform, normalized
           to USD and UTC days. Venues without a public API are read from

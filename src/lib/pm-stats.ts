@@ -27,6 +27,10 @@ export type PmVenueRow = {
   name: string;
   type: PmVenueType;
   chain?: string;
+  /** true when the venue trades play money. Its figures are converted
+   *  for order-of-magnitude comparability and shown on its own row, but
+   *  they are not real capital and never enter a USD cohort total. */
+  playMoney?: boolean;
   /** false = hub-only venue (volume tracked but no bench probes; no /products page) */
   benched: boolean;
   externalUrl?: string;
@@ -80,6 +84,7 @@ type VenueSeed = {
   chain?: string;
   benched?: boolean;
   externalUrl?: string;
+  playMoney?: boolean;
 };
 
 type DataFeedSeed = {
@@ -100,7 +105,9 @@ const PM_VENUES: VenueSeed[] = [
   { slug: "kalshi",        name: "Kalshi",        type: "offchain" },
   { slug: "limitless",     name: "Limitless",     type: "onchain",  chain: "base" },
   { slug: "myriad",        name: "Myriad",        type: "onchain",  chain: "abstract" },
-  { slug: "manifold",      name: "Manifold",      type: "offchain" },
+  // Mana, converted at the legacy charity rate. Comparable in order of
+  // magnitude, not dollars at risk.
+  { slug: "manifold",      name: "Manifold",      type: "offchain", playMoney: true },
 
   // Venues fed by the DefiLlama aggregate (2026-09-23). They carry open
   // interest and volume but no latency, resolution or market-count
@@ -188,13 +195,15 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
       prom,
       `1000 * histogram_quantile(0.5, sum by (venue, le) (rate(pmapi_request_duration_seconds_bucket{class="price",conn="warm"}[24h])))`,
     ),
-    // Median resolution delay across the trailing 30d window, in seconds.
-    // The harness exposes a histogram with no venue label today (single
-    // venue: Polymarket), so this resolves to a single series we attach
-    // to polymarket only.
+    // Median resolution delay across the trailing 30d window, in seconds,
+    // per venue. Grouping by (le) alone drops the `venue` label the bench
+    // filters on, collapsing every venue into one series that was then
+    // attributed to Polymarket and called a cohort median (SEO audit
+    // 2026-09-23). Kalshi is measured by this bench and was showing a
+    // dash because of it.
     queryVector(
       prom,
-      `histogram_quantile(0.5, sum by (le) (rate(pmres_resolution_delay_seconds_bucket[30d])))`,
+      `histogram_quantile(0.5, sum by (venue, le) (rate(pmres_resolution_delay_seconds_bucket[30d])))`,
     ),
   ]);
 
@@ -210,6 +219,7 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
       chain: v.chain,
       benched: v.benched ?? true,
       externalUrl: v.externalUrl,
+      playMoney: v.playMoney,
       volume30d: null,
       volume24h: null,
       openInterest: null,
@@ -226,7 +236,14 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     series: { labels: Record<string, string>; value: number }[] | null,
     field: keyof Omit<
       PmVenueRow,
-      "slug" | "name" | "type" | "chain" | "benched" | "externalUrl" | "turnover24h"
+      | "slug"
+      | "name"
+      | "type"
+      | "chain"
+      | "benched"
+      | "externalUrl"
+      | "turnover24h"
+      | "playMoney"
     >,
   ) => {
     for (const s of series ?? []) {
@@ -246,13 +263,13 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
   apply(marketsAbove1m, "marketsAbove1m");
   apply(apiLatencyP50, "p50ApiLatencyMs");
 
-  // Resolution delay is venue free in the current harness; attribute the
-  // single series to Polymarket. When the bench grows to cover more
-  // venues, the gauge will sprout a `venue` label and this block will
-  // pick it up automatically via the apply() path above.
-  const resolutionSeries = resolutionDelayP50 ?? [];
-  for (const s of resolutionSeries) {
-    const v = s.labels.venue ?? "polymarket";
+  // Seconds on the wire, minutes on the row. A series with no venue
+  // label is dropped rather than pinned to Polymarket: an unlabelled
+  // histogram is every venue at once, and naming one of them makes a
+  // cohort figure look like a venue's own.
+  for (const s of resolutionDelayP50 ?? []) {
+    const v = s.labels.venue;
+    if (!v) continue;
     const row = byVenue.get(v);
     if (!row) continue;
     row.medianResolutionDelayMin = Number.isFinite(s.value) ? s.value / 60 : null;
@@ -280,9 +297,13 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
   let totalActiveMarkets = 0;
   let tracked = 0;
   for (const r of venues) {
-    if (r.volume30d != null) totalVolume30d += r.volume30d;
-    if (r.volume24h != null) totalVolume24h += r.volume24h;
-    if (r.openInterest != null) totalOpenInterest += r.openInterest;
+    // Play money keeps its row and its turnover; it does not get added
+    // to a dollar figure the page then labels as capital at risk.
+    if (!r.playMoney) {
+      if (r.volume30d != null) totalVolume30d += r.volume30d;
+      if (r.volume24h != null) totalVolume24h += r.volume24h;
+      if (r.openInterest != null) totalOpenInterest += r.openInterest;
+    }
     if (r.activeMarkets != null) totalActiveMarkets += r.activeMarkets;
     // Turnover needs both legs from the same venue. Rain and Augur
     // publish an open interest with no volume; they get a dash, not a
