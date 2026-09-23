@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { CHAINS, getBenchmarksForChain, type ChainEntry } from "@/lib/chains";
+import { CHAINS,  type ChainEntry } from "@/lib/chains";
+import { getBenchmarksForChain } from "@/lib/chain-benches";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";

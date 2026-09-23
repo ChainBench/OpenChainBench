@@ -179,3 +179,160 @@ func TestSlugifyIsStableAcrossPunctuation(t *testing.T) {
 		}
 	}
 }
+
+// The category is the peer group, and the peer group is the comparison the
+// page calls the column to read. Taking whichever adapter /overview/fees
+// listed first filed Drift (a perp DEX) under Liquid Staking and Sanctum (a
+// liquid staking protocol) under Dexs, which both read the wrong median and
+// shifted the median their real peers read against.
+func TestTheCategoryComesFromWhereTheFeesActuallyAre(t *testing.T) {
+	fees := []feeAdapter{
+		// Listed first, small: a spot DEX product of a perp protocol.
+		{Name: "Drift Spot", DefillamaID: "1", ParentProtocol: "parent#drift", Category: "Dexs", Total30d: 100_000},
+		// Listed later, large: the perp engine that is most of its fees.
+		{Name: "Drift Perps", DefillamaID: "2", ParentProtocol: "parent#drift", Category: "Derivatives", Total30d: 900_000},
+	}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "Drift Spot", ParentProtocol: "parent#drift"},
+		{ID: float64(2), Name: "Drift Perps", ParentProtocol: "parent#drift"},
+	}
+	parents := []llamaParent{{ID: "parent#drift", Name: "Drift", GeckoID: "drift-protocol"}}
+
+	cohort, _, _ := joinCohort(fees, protocols, parents, 100_000)
+	if len(cohort) != 1 {
+		t.Fatalf("got %d rows, want 1", len(cohort))
+	}
+	if cohort[0].Category != "Derivatives" {
+		t.Fatalf("category = %q, want Derivatives: 90%% of the fees are there", cohort[0].Category)
+	}
+}
+
+// The floor belongs on the token. Applying it per adapter dropped every
+// sub-floor product out of a multi-product token's sum, and excluded a
+// token whose adapters only clear the floor together — while the
+// methodology promised fees summed across every adapter.
+func TestTheFeeFloorAppliesToTheTokenNotTheAdapter(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "Thing A", DefillamaID: "1", Category: "Dexs", Total30d: 60_000},
+		{Name: "Thing B", DefillamaID: "2", Category: "Dexs", Total30d: 60_000},
+		{Name: "Thing C", DefillamaID: "3", Category: "Dexs", Total30d: 60_000},
+	}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "Thing A", GeckoID: "thing"},
+		{ID: float64(2), Name: "Thing B", GeckoID: "thing"},
+		{ID: float64(3), Name: "Thing C", GeckoID: "thing"},
+	}
+	cohort, st, _ := joinCohort(fees, protocols, nil, 100_000)
+	if len(cohort) != 1 {
+		t.Fatalf("three $60k adapters on one token sum to $180k and must publish; got %d rows", len(cohort))
+	}
+	if cohort[0].Fees30d != 180_000 {
+		t.Fatalf("fees = %v, want 180000: every adapter counts toward the sum", cohort[0].Fees30d)
+	}
+	if st.BelowFloor != 0 {
+		t.Fatalf("BelowFloor = %d, want 0", st.BelowFloor)
+	}
+
+	// And a token that genuinely stays under the floor is still dropped,
+	// and counted so the cohort's shape stays visible.
+	small := []feeAdapter{{Name: "Dust", DefillamaID: "9", Category: "Dexs", Total30d: 10_000}}
+	smallProt := []llamaProtocol{{ID: float64(9), Name: "Dust", GeckoID: "dust"}}
+	out, st2, _ := joinCohort(small, smallProt, nil, 100_000)
+	if len(out) != 0 || st2.BelowFloor != 1 {
+		t.Fatalf("got %d rows, BelowFloor=%d; want 0 / 1", len(out), st2.BelowFloor)
+	}
+}
+
+// A token whose products are evenly matched must not flip category between
+// polls: a label that oscillates moves its row between peer groups and
+// moves both medians with it.
+func TestAnEvenSplitPicksAStableCategory(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "X A", DefillamaID: "1", Category: "Lending", Total30d: 500_000},
+		{Name: "X B", DefillamaID: "2", Category: "Dexs", Total30d: 500_000},
+	}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "X A", GeckoID: "x"},
+		{ID: float64(2), Name: "X B", GeckoID: "x"},
+	}
+	first, _, _ := joinCohort(fees, protocols, nil, 1)
+	// Same input, adapters in the other order.
+	rev := []feeAdapter{fees[1], fees[0]}
+	second, _, _ := joinCohort(rev, protocols, nil, 1)
+	if first[0].Category != second[0].Category {
+		t.Fatalf("category flipped with input order: %q vs %q", first[0].Category, second[0].Category)
+	}
+}
+
+// A token whose largest fee adapter went silent upstream publishes a P/F
+// built on a fraction of its revenue. DeFiLlama's Drift Trade adapter
+// reports $0 over 30 days after $11.1M over the year, so only Drift's
+// $1.2M staking product reaches the token: its whole market cap divided by
+// a tenth of its fees read as the cheapest thing in its peer group.
+func TestASilentAdapterMarksTheTokenIncomplete(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "Drift Trade", DefillamaID: "1", ParentProtocol: "parent#drift", Category: "Derivatives", Total30d: 0, Total1y: 11_095_038},
+		{Name: "Drift Staked SOL", DefillamaID: "2", ParentProtocol: "parent#drift", Category: "Liquid Staking", Total30d: 1_206_437, Total1y: 14_000_000},
+	}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "Drift Trade", ParentProtocol: "parent#drift"},
+		{ID: float64(2), Name: "Drift Staked SOL", ParentProtocol: "parent#drift"},
+	}
+	parents := []llamaParent{{ID: "parent#drift", Name: "Drift", GeckoID: "drift-protocol"}}
+
+	cohort, st, _ := joinCohort(fees, protocols, parents, 100_000)
+	if len(cohort) != 1 || !cohort[0].Incomplete {
+		t.Fatalf("expected one incomplete row, got %+v", cohort)
+	}
+	if cohort[0].SilentFees1y != 11_095_038 {
+		t.Fatalf("silent 1y = %v, want 11095038: the size of the gap has to be visible",
+			cohort[0].SilentFees1y)
+	}
+	if st.Incomplete != 1 {
+		t.Fatalf("stats Incomplete = %d, want 1", st.Incomplete)
+	}
+}
+
+// An incomplete row keeps its gauges but must not set the yardstick its
+// peers are measured against, nor fire the screen.
+func TestAnIncompleteRowLeavesTheMedianAndTheScreen(t *testing.T) {
+	mk := func(slug string, mcap float64, incomplete bool) Protocol {
+		return Protocol{Slug: slug, GeckoID: slug, Category: "Dexs", Fees30d: 1e6, Prev30d: 5e5, Incomplete: incomplete}
+	}
+	cohort := []Protocol{
+		mk("a", 10e6, false), mk("b", 20e6, false), mk("c", 30e6, false),
+		mk("d", 40e6, false), mk("e", 50e6, false),
+		// Same fees, a tenth of the market cap: it would be the cheapest
+		// row and would drag the median down with it.
+		mk("broken", 1e6, true),
+	}
+	markets := map[string]cgMarket{}
+	for i, p := range cohort {
+		markets[p.GeckoID] = cgMarket{Mcap: float64(i+1) * 10e6, Circ: 90, Total: 100}
+	}
+	markets["broken"] = cgMarket{Mcap: 1e6, Circ: 90, Total: 100}
+
+	rows := buildRows(cohort, markets, 10)
+	medians := CategoryMedians(rows)
+	withBroken := median([]float64{})
+	_ = withBroken
+
+	var broken Row
+	vals := []float64{}
+	for _, r := range rows {
+		if r.Slug == "broken" {
+			broken = r
+		} else if r.HasPF {
+			vals = append(vals, r.PF)
+		}
+	}
+	if broken.Slug == "" {
+		t.Fatal("the incomplete row was dropped; it should still publish")
+	}
+	if broken.Diverging() {
+		t.Error("an incomplete row fired the screen")
+	}
+	if got, want := medians["Dexs"], median(vals); got != want {
+		t.Errorf("median %v includes the incomplete row (want %v over the other five)", got, want)
+	}
+}

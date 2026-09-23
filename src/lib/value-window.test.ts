@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  specValueKind,
   valueColumnLabel,
   valueQualifier,
   valueReadingPhrase,
@@ -47,5 +48,59 @@ describe("valueQualifier: window totals", () => {
     expect(valueQualifier({ unit: "bp", valueKind: "total", window: "30d" })).toBe("30 days at the average daily rate");
     expect(valueSuffix({ unit: "bp", valueKind: "total", window: "7d" })).toBe("(7 days at the average daily rate)");
     expect(valueColumnLabel({ unit: "bp", valueKind: "total" })).toBe("Total");
+  });
+});
+
+describe("specValueKind, derived from the spec", () => {
+  const one = (q: string) => ({ providers: [{ queries: { p50: q } }] });
+
+  it("recognises a point read", () => {
+    expect(specValueKind(one('last_over_time(chain_bridged_tvl_usd{chain="base"}[1h])')))
+      .toBe("latest");
+  });
+
+  it("recognises a window average scaled to the window as a total", () => {
+    expect(specValueKind(one("avg_over_time(x[30d:1h]) * 30"))).toBe("total");
+    expect(specValueKind(one("avg_over_time(x[7d:1h]) * 7"))).toBe("total");
+    expect(specValueKind(one("avg_over_time(x[24h]) * 365 / 100"))).toBeUndefined();
+  });
+
+  it("refuses a window statistic", () => {
+    expect(specValueKind(one("avg_over_time(x[24h])"))).toBeUndefined();
+    expect(specValueKind(one("quantile_over_time(0.5, x[24h])"))).toBeUndefined();
+    expect(specValueKind(one("x"))).toBeUndefined();
+  });
+
+  it("refuses a bench where only some providers are point reads", () => {
+    expect(
+      specValueKind({
+        providers: [
+          { queries: { p50: "last_over_time(x[1h])" } },
+          { queries: { p50: "avg_over_time(y[24h])" } },
+        ],
+      }),
+    ).toBeUndefined();
+  });
+
+  it("says nothing about a spec with no provider queries", () => {
+    expect(specValueKind({})).toBeUndefined();
+    expect(specValueKind({ providers: [] })).toBeUndefined();
+    expect(specValueKind({ providers: [{ queries: {} }] })).toBeUndefined();
+  });
+});
+
+describe("both loaders derive the same kind", () => {
+  // The first attempt put the derivation in overlayEditorial only, and the
+  // path that actually serves the page is buildEditorial: rowNoun and
+  // valueKind shipped in one PR and reached different numbers of surfaces,
+  // so the headline kept saying "(24h)" while the noun was already fixed.
+  // One exported function, used by both, is the guard.
+  it("is one exported function, not two copies", () => {
+    const spec = { providers: [{ queries: { p50: "last_over_time(x[1h])" } }] };
+    const fromEitherLoader = specValueKind(spec);
+    expect(fromEitherLoader).toBe("latest");
+    expect(valueQualifier({ unit: "usd", valueKind: fromEitherLoader })).toBe(
+      "latest value",
+    );
   });
 });

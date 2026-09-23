@@ -56,12 +56,15 @@ abstract: |
 
 methodology:
   - "P/F = circulating market cap / annualized fees, where annualized fees are the trailing 30 day sum x 365/30. Same cut as benches 234 and 265, so the three valuation boards stay comparable."
-  - "Fees are summed across every DeFiLlama adapter that accrues to the token. Uniswap V2, V3 and V4 are one row; GMX's five products are one row. Ranking them apart would divide one market cap by a fraction of its own revenue."
+  - "Fees are the total DeFiLlama reports for the protocols behind the token, summed across every adapter: Uniswap V2, V3 and V4 are one row, GMX's five products are one row. Ranking them apart would divide one market cap by a fraction of its own revenue. Total, not revenue: most of a DEX's fees go to liquidity providers and most of a staking protocol's to stakers, so this is what users paid, not what the token earns."
   - "The token is resolved through DeFiLlama's own links, not by name matching: the adapter's defillamaId joins to /protocols, and when that row carries no CoinGecko id the parent protocol from /config does. 102 of the tokens on the board are found only through the parent."
-  - "Peer comparison: each row carries the median P/F of its DeFiLlama category, and protocol_pf_vs_category_ratio is the row divided by that median. A category needs at least 5 tokens before a median is published; a row in a smaller category shows its ratio with no comparison rather than a comparison against one or two protocols."
+  - "Category: the one carrying most of the token's fees, not the one its first-listed adapter sits in. Drift files a small spot product under Dexs and earns most of its fees on perps, so taking the first would compare it to liquid staking protocols and drag their median with it."
+  - "Peer comparison: each row carries the median P/F of its category, and protocol_pf_vs_category_ratio is the row divided by that median. A category needs at least 5 tokens before a median is published; a row in a smaller category shows its ratio with no comparison rather than a comparison against one or two protocols."
   - "Float floor: a token with less than 10 percent of supply circulating is not ranked. Its market cap is a fraction of what the token will be, so the ratio reads near zero and would lead an ascending board. Six of the twelve cheapest rows were low-float tokens before this floor was applied."
-  - "Fee floor: 100,000 USD of trailing 30 day fees. Below it the annualized denominator is small enough that one day's adapter output moves the ratio by a multiple."
+  - "Fee floor: 100,000 USD of trailing 30 day fees, applied to the token after its adapters are summed rather than to each adapter. A token whose products only clear the floor together belongs on the board, and a multi-product token must not lose its smaller products out of its own denominator."
   - "The board shows the largest fee earners that sit in a peer group; the harness publishes every row that clears the floors, so the cut is editorial and the full set is queryable. The smallest published row earned about 380,000 USD in 30 days."
+  - "A protocol whose fee history is shorter than the windows shows its ratio and no trend: with no prior 30 days there is no month-over-month figure, and the divergence screen cannot fire without one. Four rows are in that state today and none of them is among the twenty cheapest, because the float and fee floors already keep new launches off the head of the board."
+  - "A token with a fee adapter reporting nothing over 30 days after real fees over the year has a published total short of its revenue, and is excluded from the board, from its category median and from the screen. DeFiLlama's Drift Trade adapter is in that state: it reports $0 after $11.1M over the year, so only Drift's $1.2M staking product reaches the token. protocol_fees_incomplete and protocol_silent_adapter_fees_1y_usd publish the flag and the size of the gap."
   - "protocol_diverging is 1 when three things hold at once: fees grew month over month, the token fell over 30 days, and the P/F sits below the category median. The third clause is what stops it naming every protocol having a bad month."
   - "Cadence: hourly. DeFiLlama's fee series is daily and CoinGecko's free tier is rate limited, so a faster poll would spend requests re-reading numbers that have not moved. p50, p90, p99 and the mean read the same gauge and are equal by construction."
   - "The cohort is rebuilt from upstream every poll and the per-protocol series are reset with it, so a token that is delisted or drops below a floor loses its row rather than carrying a stale valuation forward."
@@ -123,7 +126,7 @@ metric_panels:
     metric: protocol_fees_30d_usd{}
     unit: usd
     higher_is_better: true
-    description: "Trailing 30 day fees in USD, summed across every adapter that accrues to this token."
+    description: "Trailing 30 day fees in USD, total across every adapter of the protocols behind this token, including the share paid to liquidity providers and stakers."
 
 faq:
   - q: "What does a P/F of 2 mean?"
@@ -141,7 +144,7 @@ faq:
 providers:
   - slug: uniswap
     name: Uniswap
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"uniswap\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="uniswap"}[2h])
@@ -154,7 +157,7 @@ providers:
 
   - slug: pump
     name: Pump
-    tag: Launchpad, launchpad P/F median 1.05
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"pump\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="pump"}[2h])
@@ -167,7 +170,7 @@ providers:
 
   - slug: pons
     name: Pons
-    tag: Launchpad, launchpad P/F median 1.05
+    tag: Launchpad, launchpad P/F median 1.41
     formula: "last_over_time(protocol_pf_ratio{protocol=\"pons\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="pons"}[2h])
@@ -180,7 +183,7 @@ providers:
 
   - slug: hyperliquid
     name: Hyperliquid
-    tag: Derivatives, derivatives P/F median 8.56
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperliquid\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="hyperliquid"}[2h])
@@ -193,7 +196,7 @@ providers:
 
   - slug: lido
     name: Lido
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"lido\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="lido"}[2h])
@@ -206,7 +209,7 @@ providers:
 
   - slug: raydium
     name: Raydium
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"raydium\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="raydium"}[2h])
@@ -219,7 +222,7 @@ providers:
 
   - slug: aave
     name: Aave
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"aave\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="aave"}[2h])
@@ -232,7 +235,7 @@ providers:
 
   - slug: meteora
     name: Meteora
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"meteora\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="meteora"}[2h])
@@ -243,22 +246,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="meteora"}[24h])
       series: protocol_pf_ratio{protocol="meteora"}
 
-  - slug: sky
-    name: Sky
-    tag: CDP, cdp P/F median 2.26
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"sky\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="sky"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="sky"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="sky"}[24h])
-      series: protocol_pf_ratio{protocol="sky"}
-
   - slug: pancakeswap
-    name: Pancakeswap
-    tag: Dexs, dexs P/F median 3.43
+    name: PancakeSwap
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"pancakeswap\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="pancakeswap"}[2h])
@@ -270,8 +260,8 @@ providers:
       series: protocol_pf_ratio{protocol="pancakeswap"}
 
   - slug: stonkfun
-    name: Stonkfun
-    tag: Launchpad, launchpad P/F median 1.05
+    name: StonkFun
+    tag: Launchpad, launchpad P/F median 1.41
     formula: "last_over_time(protocol_pf_ratio{protocol=\"stonkfun\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="stonkfun"}[2h])
@@ -284,7 +274,7 @@ providers:
 
   - slug: jupiter
     name: Jupiter
-    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"jupiter\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="jupiter"}[2h])
@@ -297,7 +287,7 @@ providers:
 
   - slug: aerodrome
     name: Aerodrome
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"aerodrome\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="aerodrome"}[2h])
@@ -310,7 +300,7 @@ providers:
 
   - slug: morpho
     name: Morpho
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"morpho\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="morpho"}[2h])
@@ -322,8 +312,8 @@ providers:
       series: protocol_pf_ratio{protocol="morpho"}
 
   - slug: ether-fi
-    name: Ether Fi
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    name: ether.fi
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"ether-fi\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="ether-fi"}[2h])
@@ -334,22 +324,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="ether-fi"}[24h])
       series: protocol_pf_ratio{protocol="ether-fi"}
 
-  - slug: spark
-    name: Spark
-    tag: Lending, lending P/F median 2.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"spark\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="spark"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="spark"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="spark"}[24h])
-      series: protocol_pf_ratio{protocol="spark"}
-
   - slug: securitize
     name: Securitize
-    tag: RWA, rwa P/F median 4.32
+    tag: RWA, rwa P/F median 4.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"securitize\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="securitize"}[2h])
@@ -362,7 +339,7 @@ providers:
 
   - slug: world-liberty-financial
     name: World Liberty Financial
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"world-liberty-financial\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="world-liberty-financial"}[2h])
@@ -375,7 +352,7 @@ providers:
 
   - slug: orca
     name: Orca
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"orca\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="orca"}[2h])
@@ -386,22 +363,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="orca"}[24h])
       series: protocol_pf_ratio{protocol="orca"}
 
-  - slug: jito
-    name: Jito
-    tag: Liquid Staking, liquid staking P/F median 1.67
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"jito\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="jito"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="jito"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="jito"}[24h])
-      series: protocol_pf_ratio{protocol="jito"}
-
   - slug: maple-finance
     name: Maple Finance
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"maple-finance\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="maple-finance"}[2h])
@@ -414,7 +378,7 @@ providers:
 
   - slug: ondo-finance
     name: Ondo Finance
-    tag: RWA, rwa P/F median 4.32
+    tag: RWA, rwa P/F median 4.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"ondo-finance\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="ondo-finance"}[2h])
@@ -427,7 +391,7 @@ providers:
 
   - slug: sanctum
     name: Sanctum
-    tag: Dexs, dexs P/F median 3.43
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"sanctum\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="sanctum"}[2h])
@@ -440,7 +404,7 @@ providers:
 
   - slug: aster
     name: Aster
-    tag: Derivatives, derivatives P/F median 8.56
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"aster\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="aster"}[2h])
@@ -451,9 +415,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="aster"}[24h])
       series: protocol_pf_ratio{protocol="aster"}
 
+  - slug: bonk-fun
+    name: BONK.fun
+    tag: Launchpad, launchpad P/F median 1.41
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"bonk-fun\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="bonk-fun"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="bonk-fun"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="bonk-fun"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="bonk-fun"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="bonk-fun"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="bonk-fun"}[24h])
+      series: protocol_pf_ratio{protocol="bonk-fun"}
+
   - slug: centrifuge
     name: Centrifuge
-    tag: RWA, rwa P/F median 4.32
+    tag: RWA, rwa P/F median 4.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"centrifuge\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="centrifuge"}[2h])
@@ -466,7 +443,7 @@ providers:
 
   - slug: lighter
     name: Lighter
-    tag: Derivatives, derivatives P/F median 8.56
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"lighter\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="lighter"}[2h])
@@ -478,8 +455,8 @@ providers:
       series: protocol_pf_ratio{protocol="lighter"}
 
   - slug: edgex
-    name: Edgex
-    tag: Derivatives, derivatives P/F median 8.56
+    name: edgeX
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"edgex\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="edgex"}[2h])
@@ -490,9 +467,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="edgex"}[24h])
       series: protocol_pf_ratio{protocol="edgex"}
 
+  - slug: kamino
+    name: Kamino
+    tag: Lending, lending P/F median 3.22
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"kamino\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="kamino"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="kamino"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="kamino"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="kamino"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="kamino"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="kamino"}[24h])
+      series: protocol_pf_ratio{protocol="kamino"}
+
   - slug: gmx
     name: GMX
-    tag: Derivatives, derivatives P/F median 8.56
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"gmx\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="gmx"}[2h])
@@ -504,8 +494,8 @@ providers:
       series: protocol_pf_ratio{protocol="gmx"}
 
   - slug: o1-exchange
-    name: O1 Exchange
-    tag: Launchpad, launchpad P/F median 1.05
+    name: o1.exchange
+    tag: Launchpad, launchpad P/F median 1.41
     formula: "last_over_time(protocol_pf_ratio{protocol=\"o1-exchange\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="o1-exchange"}[2h])
@@ -517,8 +507,8 @@ providers:
       series: protocol_pf_ratio{protocol="o1-exchange"}
 
   - slug: ramsesx
-    name: Ramsesx
-    tag: Dexs, dexs P/F median 3.43
+    name: RamsesX
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"ramsesx\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
@@ -529,22 +519,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="ramsesx"}[24h])
       series: protocol_pf_ratio{protocol="ramsesx"}
 
-  - slug: marinade
-    name: Marinade
-    tag: Liquid Staking, liquid staking P/F median 1.67
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"marinade\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="marinade"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="marinade"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="marinade"}[24h])
-      series: protocol_pf_ratio{protocol="marinade"}
-
   - slug: fluid
     name: Fluid
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"fluid\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="fluid"}[2h])
@@ -557,7 +534,7 @@ providers:
 
   - slug: curve-finance
     name: Curve Finance
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"curve-finance\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="curve-finance"}[2h])
@@ -570,7 +547,7 @@ providers:
 
   - slug: rocket-pool
     name: Rocket Pool
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"rocket-pool\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="rocket-pool"}[2h])
@@ -583,7 +560,7 @@ providers:
 
   - slug: compound-finance
     name: Compound Finance
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"compound-finance\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="compound-finance"}[2h])
@@ -607,22 +584,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="convex-finance"}[24h])
       series: protocol_pf_ratio{protocol="convex-finance"}
 
-  - slug: graphite-protocol
-    name: Graphite Protocol
-    tag: Launchpad, launchpad P/F median 1.05
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"graphite-protocol\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="graphite-protocol"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[24h])
-      series: protocol_pf_ratio{protocol="graphite-protocol"}
-
   - slug: kinetiq
     name: Kinetiq
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"kinetiq\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="kinetiq"}[2h])
@@ -633,9 +597,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="kinetiq"}[24h])
       series: protocol_pf_ratio{protocol="kinetiq"}
 
+  - slug: graphite-protocol
+    name: Graphite Protocol
+    tag: Launchpad, launchpad P/F median 1.41
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"graphite-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="graphite-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="graphite-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="graphite-protocol"}
+
   - slug: cowswap
-    name: Cowswap
-    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    name: CoWSwap
+    tag: DEX Aggregator, dex aggregator P/F median 3.19
     formula: "last_over_time(protocol_pf_ratio{protocol=\"cowswap\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="cowswap"}[2h])
@@ -647,8 +624,8 @@ providers:
       series: protocol_pf_ratio{protocol="cowswap"}
 
   - slug: usd-ai
-    name: Usd Ai
-    tag: RWA, rwa P/F median 4.32
+    name: USD AI
+    tag: RWA, rwa P/F median 4.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"usd-ai\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="usd-ai"}[2h])
@@ -660,8 +637,8 @@ providers:
       series: protocol_pf_ratio{protocol="usd-ai"}
 
   - slug: justlend
-    name: Justlend
-    tag: Lending, lending P/F median 2.56
+    name: JustLend
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"justlend\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="justlend"}[2h])
@@ -674,7 +651,7 @@ providers:
 
   - slug: re
     name: Re
-    tag: RWA, rwa P/F median 4.32
+    tag: RWA, rwa P/F median 4.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"re\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="re"}[2h])
@@ -686,8 +663,8 @@ providers:
       series: protocol_pf_ratio{protocol="re"}
 
   - slug: thorchain-dex
-    name: Thorchain Dex
-    tag: Dexs, dexs P/F median 3.43
+    name: THORChain DEX
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"thorchain-dex\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[2h])
@@ -698,22 +675,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="thorchain-dex"}[24h])
       series: protocol_pf_ratio{protocol="thorchain-dex"}
 
-  - slug: chainflip
-    name: Chainflip
-    tag: Dexs, dexs P/F median 3.43
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"chainflip\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="chainflip"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="chainflip"}[24h])
-      series: protocol_pf_ratio{protocol="chainflip"}
-
   - slug: lista-dao
-    name: Lista Dao
-    tag: CDP, cdp P/F median 2.26
+    name: Lista DAO
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"lista-dao\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="lista-dao"}[2h])
@@ -724,9 +688,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="lista-dao"}[24h])
       series: protocol_pf_ratio{protocol="lista-dao"}
 
+  - slug: chainflip
+    name: Chainflip
+    tag: Dexs, dexs P/F median 3.27
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"chainflip\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="chainflip"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="chainflip"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="chainflip"}[24h])
+      series: protocol_pf_ratio{protocol="chainflip"}
+
   - slug: venus
     name: Venus
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"venus\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="venus"}[2h])
@@ -739,7 +716,7 @@ providers:
 
   - slug: drift
     name: Drift
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"drift\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="drift"}[2h])
@@ -752,7 +729,7 @@ providers:
 
   - slug: meth-protocol
     name: mETH Protocol
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"meth-protocol\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
@@ -765,7 +742,7 @@ providers:
 
   - slug: euler
     name: Euler
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"euler\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="euler"}[2h])
@@ -778,7 +755,7 @@ providers:
 
   - slug: dolomite
     name: Dolomite
-    tag: Lending, lending P/F median 2.56
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"dolomite\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="dolomite"}[2h])
@@ -790,8 +767,8 @@ providers:
       series: protocol_pf_ratio{protocol="dolomite"}
 
   - slug: hyperlend
-    name: Hyperlend
-    tag: Lending, lending P/F median 2.56
+    name: HyperLend
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperlend\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="hyperlend"}[2h])
@@ -802,35 +779,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="hyperlend"}[24h])
       series: protocol_pf_ratio{protocol="hyperlend"}
 
-  - slug: quickswap-dex
-    name: Quickswap Dex
-    tag: Dexs, dexs P/F median 3.43
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"quickswap-dex\"}[2h])"
+  - slug: quickswap
+    name: Quickswap
+    tag: Dexs, dexs P/F median 3.27
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"quickswap\"}[2h])"
     queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="quickswap-dex"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="quickswap-dex"}[24h])
-      series: protocol_pf_ratio{protocol="quickswap-dex"}
-
-  - slug: benqi
-    name: Benqi
-    tag: Lending, lending P/F median 2.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"benqi\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="benqi"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="benqi"}[24h])
-      series: protocol_pf_ratio{protocol="benqi"}
+      p50: last_over_time(protocol_pf_ratio{protocol="quickswap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="quickswap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="quickswap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="quickswap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="quickswap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="quickswap"}[24h])
+      series: protocol_pf_ratio{protocol="quickswap"}
 
   - slug: sun
-    name: Sun
-    tag: Dexs, dexs P/F median 3.43
+    name: SUN
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"sun\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="sun"}[2h])
@@ -841,9 +805,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="sun"}[24h])
       series: protocol_pf_ratio{protocol="sun"}
 
+  - slug: benqi
+    name: Benqi
+    tag: Liquid Staking, liquid staking P/F median 1.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"benqi\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="benqi"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="benqi"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="benqi"}[24h])
+      series: protocol_pf_ratio{protocol="benqi"}
+
   - slug: kyberswap
-    name: Kyberswap
-    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    name: KyberSwap
+    tag: DEX Aggregator, dex aggregator P/F median 3.19
     formula: "last_over_time(protocol_pf_ratio{protocol=\"kyberswap\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="kyberswap"}[2h])
@@ -855,8 +832,8 @@ providers:
       series: protocol_pf_ratio{protocol="kyberswap"}
 
   - slug: stakewise
-    name: Stakewise
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    name: StakeWise
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"stakewise\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
@@ -868,8 +845,8 @@ providers:
       series: protocol_pf_ratio{protocol="stakewise"}
 
   - slug: hyperswap
-    name: Hyperswap
-    tag: Dexs, dexs P/F median 3.43
+    name: HyperSwap
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperswap\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
@@ -882,7 +859,7 @@ providers:
 
   - slug: definitive
     name: Definitive
-    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    tag: DEX Aggregator, dex aggregator P/F median 3.19
     formula: "last_over_time(protocol_pf_ratio{protocol=\"definitive\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="definitive"}[2h])
@@ -906,22 +883,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="pendle"}[24h])
       series: protocol_pf_ratio{protocol="pendle"}
 
-  - slug: gains-network
-    name: Gains Network
-    tag: Derivatives, derivatives P/F median 8.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"gains-network\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="gains-network"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="gains-network"}[24h])
-      series: protocol_pf_ratio{protocol="gains-network"}
-
   - slug: cetus
     name: Cetus
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"cetus\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="cetus"}[2h])
@@ -932,35 +896,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="cetus"}[24h])
       series: protocol_pf_ratio{protocol="cetus"}
 
-  - slug: derive
-    name: Derive
-    tag: Derivatives, derivatives P/F median 8.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"derive\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="derive"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="derive"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="derive"}[24h])
-      series: protocol_pf_ratio{protocol="derive"}
-
-  - slug: moonwell
-    name: Moonwell
-    tag: Lending, lending P/F median 2.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"moonwell\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="moonwell"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="moonwell"}[24h])
-      series: protocol_pf_ratio{protocol="moonwell"}
-
   - slug: sushi
     name: Sushi
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"sushi\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="sushi"}[2h])
@@ -971,9 +909,48 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="sushi"}[24h])
       series: protocol_pf_ratio{protocol="sushi"}
 
+  - slug: gains-network
+    name: Gains Network
+    tag: Derivatives, derivatives P/F median 6.43
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"gains-network\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="gains-network"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="gains-network"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="gains-network"}[24h])
+      series: protocol_pf_ratio{protocol="gains-network"}
+
+  - slug: moonwell
+    name: Moonwell
+    tag: Lending, lending P/F median 3.22
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"moonwell\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="moonwell"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="moonwell"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="moonwell"}[24h])
+      series: protocol_pf_ratio{protocol="moonwell"}
+
+  - slug: frax-finance
+    name: Frax Finance
+    tag: RWA, rwa P/F median 4.27
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"frax-finance\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="frax-finance"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="frax-finance"}[24h])
+      series: protocol_pf_ratio{protocol="frax-finance"}
+
   - slug: pair
-    name: Pair
-    tag: Launchpad, launchpad P/F median 1.05
+    name: PAIR
+    tag: Launchpad, launchpad P/F median 1.41
     formula: "last_over_time(protocol_pf_ratio{protocol=\"pair\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
@@ -985,8 +962,8 @@ providers:
       series: protocol_pf_ratio{protocol="pair"}
 
   - slug: stake-link
-    name: Stake Link
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    name: stake.link
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"stake-link\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="stake-link"}[2h])
@@ -998,8 +975,8 @@ providers:
       series: protocol_pf_ratio{protocol="stake-link"}
 
   - slug: nest
-    name: Nest
-    tag: Dexs, dexs P/F median 3.43
+    name: nest
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"nest\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
@@ -1012,7 +989,7 @@ providers:
 
   - slug: rhea-finance
     name: Rhea Finance
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"rhea-finance\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="rhea-finance"}[2h])
@@ -1023,22 +1000,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="rhea-finance"}[24h])
       series: protocol_pf_ratio{protocol="rhea-finance"}
 
-  - slug: frax-finance
-    name: Frax Finance
-    tag: Liquid Staking, liquid staking P/F median 1.67
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"frax-finance\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="frax-finance"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="frax-finance"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="frax-finance"}[24h])
-      series: protocol_pf_ratio{protocol="frax-finance"}
-
   - slug: the-vault
     name: The Vault
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"the-vault\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
@@ -1051,7 +1015,7 @@ providers:
 
   - slug: saphyre
     name: Saphyre
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"saphyre\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
@@ -1062,22 +1026,9 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="saphyre"}[24h])
       series: protocol_pf_ratio{protocol="saphyre"}
 
-  - slug: cap
-    name: Cap
-    tag: Lending, lending P/F median 2.56
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"cap\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="cap"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="cap"}[24h])
-      series: protocol_pf_ratio{protocol="cap"}
-
   - slug: navi-protocol
-    name: Navi Protocol
-    tag: Lending, lending P/F median 2.56
+    name: NAVI Protocol
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"navi-protocol\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="navi-protocol"}[2h])
@@ -1088,9 +1039,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="navi-protocol"}[24h])
       series: protocol_pf_ratio{protocol="navi-protocol"}
 
+  - slug: cap
+    name: cap
+    tag: Lending, lending P/F median 3.22
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"cap\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="cap"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="cap"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="cap"}[24h])
+      series: protocol_pf_ratio{protocol="cap"}
+
   - slug: apex-protocol
-    name: Apex Protocol
-    tag: Derivatives, derivatives P/F median 8.56
+    name: ApeX Protocol
+    tag: Derivatives, derivatives P/F median 6.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"apex-protocol\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="apex-protocol"}[2h])
@@ -1102,8 +1066,8 @@ providers:
       series: protocol_pf_ratio{protocol="apex-protocol"}
 
   - slug: ansem-io
-    name: Ansem Io
-    tag: Launchpad, launchpad P/F median 1.05
+    name: Ansem.io
+    tag: Launchpad, launchpad P/F median 1.41
     formula: "last_over_time(protocol_pf_ratio{protocol=\"ansem-io\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="ansem-io"}[2h])
@@ -1116,7 +1080,7 @@ providers:
 
   - slug: velora
     name: Velora
-    tag: DEX Aggregator, dex aggregator P/F median 3.47
+    tag: DEX Aggregator, dex aggregator P/F median 3.19
     formula: "last_over_time(protocol_pf_ratio{protocol=\"velora\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
@@ -1127,9 +1091,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="velora"}[24h])
       series: protocol_pf_ratio{protocol="velora"}
 
+  - slug: blend
+    name: Blend
+    tag: Lending, lending P/F median 3.22
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"blend\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="blend"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="blend"}[24h])
+      series: protocol_pf_ratio{protocol="blend"}
+
   - slug: stader
     name: Stader
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    tag: Liquid Staking, liquid staking P/F median 1.43
     formula: "last_over_time(protocol_pf_ratio{protocol=\"stader\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="stader"}[2h])
@@ -1142,7 +1119,7 @@ providers:
 
   - slug: velodrome
     name: Velodrome
-    tag: Dexs, dexs P/F median 3.43
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"velodrome\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="velodrome"}[2h])
@@ -1153,9 +1130,22 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="velodrome"}[24h])
       series: protocol_pf_ratio{protocol="velodrome"}
 
+  - slug: suilend-protocol
+    name: Suilend Protocol
+    tag: Lending, lending P/F median 3.22
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"suilend-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="suilend-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="suilend-protocol"}
+
   - slug: alphafi
-    name: Alphafi
-    tag: Liquid Staking, liquid staking P/F median 1.67
+    name: AlphaFi
+    tag: Lending, lending P/F median 3.22
     formula: "last_over_time(protocol_pf_ratio{protocol=\"alphafi\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="alphafi"}[2h])
@@ -1167,8 +1157,8 @@ providers:
       series: protocol_pf_ratio{protocol="alphafi"}
 
   - slug: humidifi
-    name: Humidifi
-    tag: Dexs, dexs P/F median 3.43
+    name: HumidiFi
+    tag: Dexs, dexs P/F median 3.27
     formula: "last_over_time(protocol_pf_ratio{protocol=\"humidifi\"}[2h])"
     queries:
       p50: last_over_time(protocol_pf_ratio{protocol="humidifi"}[2h])
@@ -1178,3 +1168,16 @@ providers:
       success: avg_over_time(protocol_valuation_health{protocol="humidifi"}[24h])
       sample_size: count_over_time(protocol_pf_ratio{protocol="humidifi"}[24h])
       series: protocol_pf_ratio{protocol="humidifi"}
+
+  - slug: ekubo-protocol
+    name: Ekubo Protocol
+    tag: Dexs, dexs P/F median 3.27
+    formula: "last_over_time(protocol_pf_ratio{protocol=\"ekubo-protocol\"}[2h])"
+    queries:
+      p50: last_over_time(protocol_pf_ratio{protocol="ekubo-protocol"}[2h])
+      p90: last_over_time(protocol_pf_ratio{protocol="ekubo-protocol"}[2h])
+      p99: last_over_time(protocol_pf_ratio{protocol="ekubo-protocol"}[2h])
+      mean: last_over_time(protocol_pf_ratio{protocol="ekubo-protocol"}[2h])
+      success: avg_over_time(protocol_valuation_health{protocol="ekubo-protocol"}[24h])
+      sample_size: count_over_time(protocol_pf_ratio{protocol="ekubo-protocol"}[24h])
+      series: protocol_pf_ratio{protocol="ekubo-protocol"}

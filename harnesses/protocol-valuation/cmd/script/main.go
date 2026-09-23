@@ -119,7 +119,7 @@ func poll(cfg *Config) {
 			diverging++
 		}
 	}
-	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped) -> %d rows, %d peer groups, %d diverging, %v\n",
-		st.Adapters, st.Mapped, st.ViaParent, st.Merged, st.Unmapped,
-		len(rows), len(medians), diverging, time.Since(start).Round(time.Millisecond))
+	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped, %d below floor) -> %d rows, %d incomplete, %d peer groups, %d diverging, %v\n",
+		st.Adapters, st.Mapped, st.ViaParent, st.Merged, st.Unmapped, st.BelowFloor,
+		len(rows), st.Incomplete, len(medians), diverging, time.Since(start).Round(time.Millisecond))
 }

@@ -74,7 +74,19 @@ type Protocol struct {
 	Fees30d  float64
 	Prev30d  float64
 	Fees1y   float64
+	// True when one of this token's adapters reports nothing over 30 days
+	// after real fees over the year. The published total is then knowably
+	// short of the protocol's revenue, so the ratio built on it is too.
+	Incomplete bool
+	// What the silent adapters earned over the past year, so the size of
+	// the gap is visible rather than asserted.
+	SilentFees1y float64
 }
+
+// A silent adapter is one reporting nothing this month after this much
+// over the year. Below it, a dormant or retired product would flag a token
+// whose fees really are what they say.
+const silentAdapterYearUSD = 1_000_000
 
 func getJSON(rawURL string, out any) error {
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
@@ -121,6 +133,14 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 
 type cohortStats struct {
 	Adapters, Mapped, Unmapped, ViaParent, Merged int
+	// Tokens with a silent adapter: published, but out of the ranking and
+	// out of the medians.
+	Incomplete int
+	// Tokens dropped because their summed fees stayed under the floor.
+	// Counted because the floor moved from the adapter to the token, and
+	// the difference between those two rules is a cohort-size change a
+	// reader should be able to see.
+	BelowFloor int
 }
 
 // joinCohort is the pure part, so the mapping is testable without the
@@ -139,10 +159,16 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 
 	var st cohortStats
 	acc := map[string]*Protocol{}
+	// Category is decided per token after the loop, by fee weight, so an
+	// adapter's own category is carried alongside its contribution.
+	catWeight := map[string]map[string]float64{}
+
 	for _, f := range fees {
-		if f.Total30d <= minFees30d {
-			continue
-		}
+		// The floor belongs on the token, not on the adapter. Applying it
+		// here dropped every sub-floor product of a multi-product token out
+		// of the sum, and excluded a token whose adapters only clear the
+		// floor together — while the methodology said fees are summed
+		// across every adapter that accrues to it.
 		st.Adapters++
 
 		gecko, name, via := "", "", ""
@@ -164,8 +190,9 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 
 		e, seen := acc[gecko]
 		if !seen {
-			e = &Protocol{GeckoID: gecko, Name: name, Category: f.Category, Via: via}
+			e = &Protocol{GeckoID: gecko, Name: name, Via: via}
 			acc[gecko] = e
+			catWeight[gecko] = map[string]float64{}
 			if via == "parent" {
 				st.ViaParent++
 			}
@@ -181,16 +208,49 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 		e.Fees30d += f.Total30d
 		e.Prev30d += f.Total60dto30d
 		e.Fees1y += f.Total1y
+		catWeight[gecko][f.Category] += f.Total30d
+		if f.Total30d == 0 && f.Total1y > silentAdapterYearUSD {
+			e.Incomplete = true
+			e.SilentFees1y += f.Total1y
+		}
 	}
 
 	out := make([]Protocol, 0, len(acc))
-	for _, e := range acc {
+	for gecko, e := range acc {
+		// The token's category is the one its fees mostly come from, not
+		// the one /overview/fees happened to list first. Taking the first
+		// filed Drift under Liquid Staking and Sanctum under Dexs, which
+		// is not cosmetic: the category median is the comparison the page
+		// calls the column to read, and a mis-filed row both reads against
+		// the wrong median and shifts the median its peers read against.
+		e.Category = dominantCategory(catWeight[gecko])
+		if e.Incomplete {
+			st.Incomplete++
+		}
 		sort.Strings(e.Adapters)
 		e.Slug = slugify(e.Name)
+		if e.Fees30d <= minFees30d {
+			st.BelowFloor++
+			continue
+		}
 		out = append(out, *e)
 	}
+	st.Mapped = len(out)
 	sort.Slice(out, func(i, j int) bool { return out[i].Fees30d > out[j].Fees30d })
 	return out, st, nil
+}
+
+// dominantCategory is the category carrying the most of a token's fees.
+// Ties break alphabetically so the label does not flip between polls on a
+// token whose products are evenly matched.
+func dominantCategory(weights map[string]float64) string {
+	best, bestW := "", -1.0
+	for cat, w := range weights {
+		if w > bestW || (w == bestW && cat < best) {
+			best, bestW = cat, w
+		}
+	}
+	return best
 }
 
 // cgMarket is the slice of /coins/markets this harness uses.
