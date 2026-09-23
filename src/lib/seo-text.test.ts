@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { capDescription } from "./seo-text";
+import { capDescription, capSnippet } from "./seo-text";
 
 // The 2026-09-22 audit found 5 of 29 sampled pages shipping a meta
 // description cut mid-clause with an ellipsis, /products/mobula's
@@ -39,4 +39,30 @@ describe("capDescription", () => {
     expect(s.startsWith(kept)).toBe(true);
     expect(s[kept.length]).toBe(" ");
   });
+});
+
+describe("capSnippet: cut placement (RWA audit 2026-09-23)", () => {
+  test("does not treat an abbreviation's period as a sentence end", () => {
+    const s =
+      "USDY ranks #1 of 4 on RWA yield deviation at 2.00 bps (30d avg). 1 live benchmark, 1 first-place finish. Ondo USDY is a yield-bearing tokenized U.S. Treasury note for non-US holders, accruing daily.";
+    const out = capSnippet(s);
+    expect(out.endsWith("U.S..")).toBe(false);
+    expect(out.endsWith("U.S.")).toBe(false);
+    expect(out.length).toBeLessThanOrEqual(155);
+  });
+
+  test("never cuts inside a parenthesis", () => {
+    const s =
+      "Does USDY trade at its NAV? Live basis between Ondo's tokenized treasury market price (Orca pool, Jupiter route) and the redemption price Ondo publishes onchain, in bps.";
+    const out = capSnippet(s);
+    expect((out.match(/\(/g) ?? []).length).toBe((out.match(/\)/g) ?? []).length);
+    expect(out).not.toContain("(Orca pool.");
+  });
+});
+
+test("capSnippet: a stray closing parenthesis costs no character", () => {
+  const s = "Alpha) beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega alpha beta gamma delta epsilon zeta eta theta iota.";
+  const out = capSnippet(s);
+  expect(out.startsWith("Alpha) beta")).toBe(true);
+  expect(out.length).toBeLessThanOrEqual(155);
 });

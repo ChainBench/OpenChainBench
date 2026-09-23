@@ -77,7 +77,10 @@ export function DistributionChart({
 
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
-  const live = liveResults(results);
+  // A declared unranked row ("No open market" on rwa-solana-depth) is
+  // stored live with every percentile at 0, which this ascending sort
+  // would draw as the cheapest sale; it is not a measurement.
+  const live = liveResults(results).filter((r) => !r.unrankedLabel);
 
   // Sort once; sort order does NOT depend on the excluded set, so a
   // row stays in its slot when toggled and the rank #N is stable.

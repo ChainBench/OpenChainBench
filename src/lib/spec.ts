@@ -456,7 +456,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
   // v82: add bench 277 pm-open-interest. Bench SET changed.
-  ["bench-unfiltered-v82", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v83: add bench 278 rwa-solana-depth. Bench SET changed.
+  ["bench-unfiltered-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 

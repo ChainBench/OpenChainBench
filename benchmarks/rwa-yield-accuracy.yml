@@ -17,6 +17,7 @@ category: RWA
 status: live
 metric: Yield deviation
 unit: bp
+row_noun: { one: token, many: tokens }
 higher_is_better: false
 
 seo_intro: |
@@ -60,7 +61,7 @@ methodology:
   - "Sign and convention: delivered minus promised, in basis points, in the Signed 30d column; negative means the token paid less than advertised over the window. Both sides are compounded annual rates (an APY of A grows a balance by (1+A)^(days/365)); truncating a simple annualization used to cost every row 6 to 12 bps. The ranking uses the absolute value."
   - "Fees: promised APY is stated net of management fees. Delivered yield is measured on the same net basis. Any residual structural deviation typically reflects distribution timing (dividend-style tokens accrue daily but pay monthly), weekend accrual conventions (T-bills yield on business days only), or measurement methodology, not accounting."
   - "Cadence: on-chain reads every 60 seconds. The 30d and 7d yields are recomputed hourly (the print search is a few dozen archive calls per token). The reference-APY config is reloaded every 60 seconds; its values are read by hand, dated per entry, refreshed best effort (2026-07-22, then 2026-09-23)."
-  - "Window edges: the feeds print once per business day, and USTB books the weekend in Monday's print, so the 30d figure moves when an edge crosses a weekend print (2026-09-23, 16:11 to 16:36 UTC: the start crossed the Aug 24 print and USTB went from 360 to 385 bps, the span from 33.0 to 30.0 days). Read the 30d column as a band of about plus or minus 15 bps around the fund's rate, not a point. Both anchors are real prints, so each figure is exact for the days it spans."
+  - "Window edges: the feeds print once per business day, and USTB books the weekend in Monday's print, so the 30d figure moves when an edge crosses a weekend print (2026-09-23, 16:11 to 16:36 UTC: the start crossed the Aug 24 print and USTB's delivered yield went from 360 to 385 bps, the span from 33.0 to 30.0 days). Read the 30d column as a band of about plus or minus 15 bps around the fund's rate, not a point. Both anchors are real prints, so each figure is exact for the days it spans."
   - "Multi-chain tokens: USDY exists on Ethereum plus Solana, Aptos, Sui. V1 measures the Ethereum instance; V2 will surface per-chain deviations weighted by supply."
   - "Reproducibility: harness source at github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-yield-accuracy. Every delivered-yield number derives from a public RPC read (contract address, event signature, block range documented). Every promised-yield number cites its source URL and date."
 
@@ -148,7 +149,7 @@ providers:
 
   - slug: ustb
     name: USTB
-    tag: "Superstate, Ethereum, NAV from the Chainlink feed"
+    tag: "Superstate (the Invesco Short Duration US Government Securities Fund since 2026), Ethereum, NAV from the Chainlink feed"
     formula: "Growth of the USTB NAV on Superstate's Chainlink feed between two daily prints, compounded over their span; no dividend transfers. Compared to the reference APY (DefiLlama 30-day mean); superstate.com displays no machine-readable figure."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="ustb"})

@@ -37,10 +37,25 @@ export function capSnippet(input: string | undefined, max = 155): string {
   const s = (input ?? "").replace(/\s+/g, " ").trim();
   if (s.length <= max) return s;
   const head = s.slice(0, max);
-  const lastDot = head.lastIndexOf(". ");
+  // A period that closes an abbreviation ("U.S. Treasury", "e.g. ") is not
+  // a sentence end: the USDY product page shipped "tokenized U.S.." (RWA
+  // audit 2026-09-23).
+  const abbrev = (t: string) => /(?:^|\s)(?:[A-Za-z]\.)+$/.test(t);
+  let lastDot = head.lastIndexOf(". ");
+  while (lastDot > 60 && abbrev(head.slice(0, lastDot + 1))) lastDot = head.lastIndexOf(". ", lastDot - 1);
   if (lastDot > 60) return head.slice(0, lastDot + 1);
-  const lastComma = head.lastIndexOf(", ");
-  const cut = lastComma > 60 ? head.slice(0, lastComma) : head.slice(0, head.lastIndexOf(" "));
+  // The clause cut must not land inside a parenthesis: "(Orca pool, Jupiter
+  // route)" was cut at its inner comma and shipped as "(Orca pool." (RWA
+  // audit 2026-09-23). Walk back to the last ", " whose prefix has balanced
+  // parentheses; if none, cut before the unmatched "(".
+  const balanced = (t: string) => (t.match(/\(/g)?.length ?? 0) === (t.match(/\)/g)?.length ?? 0);
+  let lastComma = head.lastIndexOf(", ");
+  while (lastComma > 60 && !balanced(head.slice(0, lastComma))) {
+    lastComma = head.lastIndexOf(", ", lastComma - 1);
+  }
+  let cut = lastComma > 60 ? head.slice(0, lastComma) : head.slice(0, head.lastIndexOf(" "));
+  const open = cut.lastIndexOf("(");
+  if (!balanced(cut) && open > 60) cut = cut.slice(0, open);
   return cut.replace(/[,;:\s]+$/, "") + ".";
 }
 

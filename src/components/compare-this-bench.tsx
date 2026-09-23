@@ -55,6 +55,10 @@ export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) 
   // out of the ad-hoc compare graph so we don't blur the two
   // discovery paths.
   if (benchmark.category === "Blockchains") return null;
+  // RWA rows are assets (AAPL, NVDA, USDY), not providers: "AAPL vs NVDA"
+  // is not a comparison a reader makes, and the pages sat indexed outside
+  // the sitemap (RWA audit 2026-09-23).
+  if (benchmark.category === "RWA") return null;
 
   const live = liveResults(benchmark.results);
   const ranked = rankResults(live, benchmark.higherIsBetter).filter(

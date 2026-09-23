@@ -83,6 +83,13 @@ export function isPairLinkable(
   b: ProviderAppearance[],
 ): boolean {
   if (getComparePair(pairSlug) !== undefined) return true;
+  // RWA rows are assets (AAPL, NVDA, USDY), not providers: a pair whose
+  // shared benches are all RWA is not a comparison a reader makes, and
+  // eight such pages sat indexed outside the sitemap (RWA audit
+  // 2026-09-23).
+  const bSlugs = new Set(b.map((x) => x.benchmark.slug));
+  const shared = a.filter((x) => bSlugs.has(x.benchmark.slug));
+  if (shared.length > 0 && shared.every((x) => x.benchmark.category === "RWA")) return false;
   return liveSharedBenchCount(a, b) >= MIN_LIVE_SHARED_FOR_LINK;
 }
 import { loadAllAlternatives } from "@/lib/alternatives";
