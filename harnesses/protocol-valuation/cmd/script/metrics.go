@@ -53,6 +53,14 @@ var (
 	pvSilentFees1y = gaugeVec("protocol_silent_adapter_fees_1y_usd",
 		"What this token's silent adapters earned over the past year, so the size of the gap is visible.", "protocol")
 
+	// The display name belongs with the data. Reconstructing it from the
+	// slug title-cased 26 of 80 rows wrongly ("Ramsesx" for RamsesX,
+	// "Ether Fi" for ether.fi, "Cowswap" for CoWSwap), and the leader's
+	// name is the most quoted word on the page.
+	pvInfo = gaugeVec("protocol_info",
+		"Always 1. Carries the protocol's display name and category as labels, so a board can be generated from the series rather than from the slug.",
+		"protocol", "name", "category")
+
 	pvHealth = gaugeVec("protocol_valuation_health",
 		"1 if this protocol resolved to a token with a market cap on the last poll.", "protocol")
 
@@ -92,7 +100,7 @@ func init() {
 		pvMcap, pvFDV, pvFloat, pvPriceChg,
 		pvPF, pvPFfdv,
 		pvCategoryMedianPF, pvCategorySize, pvPFvsCategory, pvDiverging,
-		pvIncomplete, pvSilentFees1y,
+		pvIncomplete, pvSilentFees1y, pvInfo,
 		pvHealth,
 		pvCohortSize, pvAdapters, pvUnmapped, pvViaParent, pvMerged,
 		pvPeerGroups, pvLastSuccessUnix, pvFetchErrors,
@@ -110,7 +118,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 	for _, v := range []*prometheus.GaugeVec{
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth, pvMcap, pvFDV,
 		pvFloat, pvPriceChg, pvPF, pvPFfdv, pvPFvsCategory, pvDiverging,
-		pvIncomplete, pvSilentFees1y,
+		pvIncomplete, pvSilentFees1y, pvInfo,
 		pvHealth, pvCategoryMedianPF, pvCategorySize,
 	} {
 		v.Reset()
@@ -122,6 +130,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		pvAnnualFees.WithLabelValues(r.Slug).Set(r.AnnualFees)
 		pvMcap.WithLabelValues(r.Slug).Set(r.Mcap)
 		pvHealth.WithLabelValues(r.Slug).Set(1)
+		pvInfo.WithLabelValues(r.Slug, r.Name, r.Category).Set(1)
 		pvIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.Incomplete))
 		if r.SilentFees1y > 0 {
 			pvSilentFees1y.WithLabelValues(r.Slug).Set(r.SilentFees1y)
