@@ -118,6 +118,17 @@ const CATEGORY_NOUN: Record<string, string> = {
  *  metric) when even that runs long. Full titles are 45 to 65 characters
  *  and ate the whole 158-character snippet before the second value
  *  (audit 2026-09-19, major 3: /products/relay cut mid-sentence). */
+function firstClause(line: string): string {
+  const parts = line.split(/(?<=[.;])\s|,\s/);
+  let clause = parts[0] ?? "";
+  let i = 1;
+  while (/(?:^|\s)(?:[A-Za-z]\.)+$/.test(clause) && i < parts.length) {
+    clause = `${clause} ${parts[i]}`;
+    i += 1;
+  }
+  return clause.replace(/[,;:\s]+$/, "");
+}
+
 function shortBenchLabel(b: { slug: string; title: string; category: string; metric: string }): string {
   const m = b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i) ?? b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i);
   if (m && b.slug.endsWith("-rpc")) return `${m[1]} RPC`;
@@ -243,9 +254,10 @@ export async function generateMetadata({
   // capSnippet, not capDescription: a registry line longer than the
   // budget with no sentence end inside it shipped "(Hyperliquid referral…"
   // on /products/invo; the snippet capper closes on a clause instead.
-  const registryClause = registryLine
-    ? (registryLine.split(/(?<=[.;])\s|,\s/)[0] ?? "").replace(/[,;:\s]+$/, "")
-    : "";
+  // The first clause ends at a sentence end, a semicolon or a comma, but
+  // not at an abbreviation's period: "tokenized U.S. Treasury" split at
+  // "U.S." and shipped as "U.S.." on /products/usdy (RWA audit 2026-09-23).
+  const registryClause = registryLine ? firstClause(registryLine) : "";
   // The budget the ranks get is what remains after the prefix that will
   // actually precede them (a registry line of 80 characters or less), so
   // capSnippet's cut never lands inside the rank list or before it
