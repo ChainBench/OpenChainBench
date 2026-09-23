@@ -19,6 +19,10 @@ import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 
 export const PERP_ASSET_PAGES_KEY = "perp-asset-pages";
 
+/** Hourly samples that count as a full month behind a 30d average
+ *  (24 of 30 days; the same floor ranks perp-funding-cost-30d). */
+export const FULL_MONTH_SAMPLES = 576;
+
 export type PerpAssetCode = "ETH" | "BTC" | "SOL";
 
 export const PERP_ASSETS: { slug: string; asset: PerpAssetCode; name: string }[] = [
@@ -161,11 +165,14 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
   // Every block has to answer; a timed-out 30d query would otherwise
   // publish a complete-looking snapshot with a column of nulls and the
   // previous good blob would be replaced by it.
-  // Two funding feeds per (venue, asset): the cohort harness and the
-  // perp-fees bench. The one with the longer 30d history wins the four
-  // funding cells, the other fills what it lacks. A venue that gains a
-  // native cohort feed (Aster, 2026-09-23) keeps its month of bench
-  // history until the native series has more samples than the bench one.
+  // Two funding feeds per (venue, asset): the cohort harness first, the
+  // perp-funding bench feed for cells it lacks. The bench feed takes the
+  // four funding cells only when the cohort history is under a full month
+  // and the bench one is longer: a venue that gains a native cohort feed
+  // (Aster, 2026-09-23) keeps its month of bench history until the native
+  // series fills, while Hyperliquid and the CEX rows, present in both
+  // feeds with a full month, stay on the cohort (Mobula) feed the page
+  // copy names.
   const fundingFeeds = [
     { f24: f24a, f7: f7a, f30: f30a, n30: n30a },
     { f24: f24b, f7: f7b, f30: f30b, n30: n30b },
@@ -210,7 +217,7 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     for (const row of rows.values()) {
       const nA = pick(fundingFeeds[0].n30, row.slug) ?? 0;
       const nB = pick(fundingFeeds[1].n30, row.slug) ?? 0;
-      const order = nB > nA ? [fundingFeeds[1], fundingFeeds[0]] : [fundingFeeds[0], fundingFeeds[1]];
+      const order = nA < FULL_MONTH_SAMPLES && nB > nA ? [fundingFeeds[1], fundingFeeds[0]] : [fundingFeeds[0], fundingFeeds[1]];
       for (const fd of order) {
         if (row.funding24hBps == null) row.funding24hBps = pick(fd.f24, row.slug);
         if (row.funding7dBps == null) row.funding7dBps = pick(fd.f7, row.slug);

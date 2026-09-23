@@ -59,6 +59,9 @@ const MONTH_OF_HOURS = 720;
 // answered on 2026-09-22), so a full month is 80 % of the grid.
 const FULL_MONTH_MIN = MONTH_OF_HOURS * 0.8;
 const daysMeasured = (samples: number | null): number => Math.round(((samples ?? 0) / 24) * 10) / 10;
+// The 7d cell is a week at the average daily cost; it needs most of a
+// week behind the average (80 % of 168 hours) or it reads "not measured".
+const WEEK_MIN_SAMPLES = 168 * 0.8;
 
 type NumKey = "allInBps" | "takerFeeBps" | "slippage100kBps" | "funding24hBps" | "funding7dBps" | "funding30dBps";
 
@@ -168,7 +171,7 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
               </>
             )}
             <Th href="/benchmarks/perp-funding" title="Cost of holding a long for 24 hours at the current rate, 24h average; positive means the long pays (bench perp-funding)">Funding 24h</Th>
-            <Th title="A week of funding at the average daily cost over the trailing 7 days">Funding 7d</Th>
+            <Th title="A week of funding at the average daily cost over the trailing 7 days; not measured until most of a week is behind the average">Funding 7d</Th>
             <Th href="/benchmarks/perp-funding-cost-30d" title="A month of funding at the average daily cost over the trailing 30 days; a day count marks an average taken over less than the month (bench perp-funding-cost-30d)">Funding 30d</Th>
           </tr>
         </thead>
@@ -187,7 +190,7 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
                   </>
                 )}
                 <Cell v={r.funding24hBps} best={best.funding24hBps === r.slug} signed />
-                <Cell v={r.funding7dBps} signed />
+                <Cell v={(r.funding30dSamples ?? 0) >= WEEK_MIN_SAMPLES ? r.funding7dBps : null} signed />
                 <td className={`num mono tabular-nums px-2 py-2 text-right whitespace-nowrap${r.funding30dBps == null ? " text-ink-faint text-[11px]" : best.funding30dBps === r.slug ? " text-teal-700 font-semibold" : ""}`}>
                   {fmtSignedBps(r.funding30dBps)}
                   {partial && (
@@ -287,7 +290,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     },
     {
       q: "How is funding over 7 and 30 days computed?",
-      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series on an hourly grid and multiply by 7 and 30: a week or a month of funding at the average daily cost the venue quoted, in basis points of notional. Hours the harness could not read are left out of the average, never filled with the last rate. A venue with less than the month behind its average shows its day count next to the figure and is not named the cheapest to hold.",
+      a: "The cohort harness records every minute each venue's current funding rate normalised to the cost of holding a long for 24 hours. The 7d and 30d columns average that series on an hourly grid and multiply by 7 and 30: a week or a month of funding at the average daily cost the venue quoted, in basis points of notional. A rate no source refreshed for five minutes is dropped, not repeated, so hours the harness could not read leave the average. A venue with less than the month behind its average shows its day count next to the figure and is not named the cheapest to hold.",
     },
     {
       q: "Why is a cell marked not measured?",

@@ -2092,7 +2092,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   edgex: {
     url: "https://edgex.exchange",
     description:
-      "zkSync-based perp DEX with low taker fees and a documented public REST API.",
+      "StarkEx-settled perp DEX with low taker fees and a documented public REST API.",
     twitter: "@edgex_exchange",
   },
   extended: {

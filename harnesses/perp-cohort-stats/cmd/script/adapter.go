@@ -775,7 +775,7 @@ func (r *Router) Sweep() {
 				perpVenueFunding24hBps.WithLabelValues(venueSlug, asset).Set(p.Bps24h)
 				perpVenueFundingIntervalHours.WithLabelValues(venueSlug, asset).Set(p.IntervalHours)
 				perpVenueLastRefreshUnix.WithLabelValues(venueSlug, name).Set(float64(tickTS))
-				perpVenueFundingRefreshUnix.WithLabelValues(venueSlug).Set(float64(tickTS))
+				perpVenueFundingRefreshUnix.WithLabelValues(venueSlug, asset).Set(float64(tickTS))
 				r.fundingCarrySet(venueSlug, asset, p, tickTS)
 			}
 		}
@@ -798,7 +798,7 @@ func (r *Router) Sweep() {
 	// memory and never republish ghost values forever. Cohort metrics
 	// are pruned against the canonical Registry (rename = remove from
 	// registry + re-add under new slug = old slug evicted). Funding is a
-	// rate, not a total: a (venue, asset) no source has refreshed for 30
+	// rate, not a total: a (venue, asset) no source has refreshed for five
 	// minutes leaves the carry AND the gauge, so a frozen rate never sits
 	// in a 24h or 30d average as if it were measured (review 2026-09-23;
 	// the window used to be 24h and the gauge child was never deleted).
@@ -829,8 +829,9 @@ func (r *Router) reapCohortCarry() {
 // signal: if Mobula stopped publishing a venue for 24h it should fall
 // off the gauge.
 // fundingCarryMaxAgeSec is how long a funding rate outlives its last
-// refresh: two Mobula misses, or one edgeX cache TTL past its own gate.
-const fundingCarryMaxAgeSec int64 = 30 * 60
+// refresh: five ticks at the 60 s sweep. A rate is not a total, and
+// five minutes of the last value is the most a 24h average may carry.
+const fundingCarryMaxAgeSec int64 = 5 * 60
 
 func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 	r.fundCarryM.Lock()
