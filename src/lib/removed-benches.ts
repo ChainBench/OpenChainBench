@@ -111,6 +111,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 274 protocol P/F: first deploy of the protocol-valuation harness, no
   // 24h window yet and no audit round. Un-gate after both.
   "protocol-pf-ratio",
+  // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
+  // window yet and no audit round. Un-gate after both.
+  "chain-stablecoin-flow",
 ]);
 
 /**

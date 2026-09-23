@@ -67,8 +67,20 @@ func fetchDefillamaChain(c Chain) {
 		fmt.Printf("[defillama][%s] dex24h error: %v\n", c.Slug, err)
 	}
 
-	if mcap, err := defillamaStablesMcap(c.DefiLlama); err == nil {
-		chainStablesMcapUsd.WithLabelValues(c.Slug).Set(mcap)
+	if st, err := defillamaStables(c.DefiLlama); err == nil {
+		chainStablesMcapUsd.WithLabelValues(c.Slug).Set(st.Now)
+		// The changes are only published when the history is long enough
+		// to difference. A chain DefiLlama started tracking last week
+		// would otherwise show a 30-day move measured against its own
+		// first data point, which reads as a flood of capital arriving.
+		if st.Has7d {
+			chainStablesChange7dPct.WithLabelValues(c.Slug).Set(st.Chg7d)
+			chainStablesNet7dUsd.WithLabelValues(c.Slug).Set(st.Net7d)
+		}
+		if st.Has30d {
+			chainStablesChange30dPct.WithLabelValues(c.Slug).Set(st.Chg30d)
+			chainStablesNet30dUsd.WithLabelValues(c.Slug).Set(st.Net30d)
+		}
 		anyOK = true
 	} else {
 		chainKpisFetchErrors.WithLabelValues(c.Slug, "defillama", classifyError(err.Error())).Inc()
@@ -122,24 +134,36 @@ func defillamaDexVolume24h(chainName string) (float64, error) {
 	return resp.Total24h, nil
 }
 
-// defillamaStablesMcap reads /stablecoincharts/<chain> and returns the
-// last sample's USD-pegged total. No `stablecoin=<id>` query param: that
-// param filters to ONE pegged asset (id 1 = USDT) and the API answers
-// 200 + empty body on chains where that specific asset has no recorded
-// issuance (Base, Blast, Stellar), which is what nulled their stables
-// card. The unfiltered call returns the chain-wide aggregate.
-// Chains DefiLlama tracks for TVL but not for stablecoins (Litecoin)
-// answer 404 and land in the not_found error bucket, gauge unpublished.
-func defillamaStablesMcap(chainName string) (float64, error) {
+// stablesSeries is the chain's stablecoin float now, and how far it has
+// moved. Net is the dollar change, which is the figure that says how much
+// capital arrived; the percentage is what makes chains of different sizes
+// comparable.
+type stablesSeries struct {
+	Now            float64
+	Chg7d, Net7d   float64
+	Chg30d, Net30d float64
+	Has7d, Has30d  bool
+}
+
+// defillamaStables reads /stablecoincharts/<chain>, the chain's full daily
+// stablecoin history, and returns the latest float with its 7 and 30 day
+// moves. No `stablecoin=<id>` query param: that param filters to ONE
+// pegged asset (id 1 = USDT) and the API answers 200 + empty body on
+// chains where that specific asset has no recorded issuance (Base, Blast,
+// Stellar), which is what nulled their stables card. The unfiltered call
+// returns the chain-wide aggregate. Chains DefiLlama tracks for TVL but
+// not for stablecoins (Litecoin) answer 404 and land in the not_found
+// bucket with the gauges unpublished.
+func defillamaStables(chainName string) (stablesSeries, error) {
 	url := fmt.Sprintf("%s/stablecoincharts/%s", stablesLlamaBase, encodePath(chainName))
 	body, err := getJSON(httpClientDefillama, url)
 	if err != nil {
-		return 0, err
+		return stablesSeries{}, err
 	}
 	// Typed sentinel so an empty 200 logs as "not_tracked" rather than
 	// spamming parse_error.
 	if len(body) == 0 {
-		return 0, fmt.Errorf("not_tracked")
+		return stablesSeries{}, fmt.Errorf("not_tracked")
 	}
 	// DefiLlama returns `date` as a stringified unix timestamp here (the
 	// /v2/historicalChainTvl endpoint returns int64 — different convention
@@ -152,12 +176,38 @@ func defillamaStablesMcap(chainName string) (float64, error) {
 		} `json:"totalCirculatingUSD"`
 	}
 	if err := json.Unmarshal(body, &arr); err != nil {
-		return 0, fmt.Errorf("parse_error: %w", err)
+		return stablesSeries{}, fmt.Errorf("parse_error: %w", err)
 	}
 	if len(arr) == 0 {
-		return 0, fmt.Errorf("empty_series")
+		return stablesSeries{}, fmt.Errorf("empty_series")
 	}
-	return arr[len(arr)-1].TotalCirculatingUSD.PeggedUSD, nil
+
+	vals := make([]float64, len(arr))
+	for i, p := range arr {
+		vals[i] = p.TotalCirculatingUSD.PeggedUSD
+	}
+	return stablesFromDaily(vals), nil
+}
+
+// stablesFromDaily differences a daily series. Split out so the window
+// arithmetic is testable without a fetch: an off-by-one here is a wrong
+// number that looks perfectly reasonable on the page.
+func stablesFromDaily(vals []float64) stablesSeries {
+	n := len(vals)
+	s := stablesSeries{Now: vals[n-1]}
+	// A zero or missing base makes a percentage meaningless rather than
+	// infinite, so both windows are gated on a real starting value.
+	if n >= 8 && vals[n-8] > 0 {
+		s.Net7d = s.Now - vals[n-8]
+		s.Chg7d = 100 * (s.Now/vals[n-8] - 1)
+		s.Has7d = true
+	}
+	if n >= 31 && vals[n-31] > 0 {
+		s.Net30d = s.Now - vals[n-31]
+		s.Chg30d = 100 * (s.Now/vals[n-31] - 1)
+		s.Has30d = true
+	}
+	return s
 }
 
 // encodePath is a minimal URL path-segment encoder. DefiLlama chain names
