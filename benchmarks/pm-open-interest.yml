@@ -1,0 +1,282 @@
+# OpenChainBench. Bench 277
+slug: pm-open-interest
+number: "277"
+title: "Prediction market open interest: where capital actually sits"
+seo_title: "Prediction market open interest: {{best_name}} holds {{best_p50}}"
+seo_description: "{{best_name}} holds {{best_p50}} of open interest, the most of {{ranked_count}} prediction markets. Open positions, 24h and 30d volume, and turnover per venue."
+subtitle: "Capital held in open positions on each prediction market, in USD. Unlike volume it only counts money still at risk, so a venue that trades a lot and settles fast reads small here and a venue holding long-dated markets reads large. The turnover column is the ratio of the two, and the two rank very differently."
+category: Trading
+status: live
+metric: Open interest
+row_noun: { one: venue, many: venues }
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Open interest is not measured the same way everywhere. Venues with a
+  dedicated public API report it natively; the rest are read from
+  DefiLlama's protocol TVL, which is the closest public proxy and is not
+  the same thing. A CFTC-regulated exchange has no on-chain balance and
+  therefore no row when its API does not publish one. Size here says where
+  capital sits, not whether a venue is liquid or well run.
+
+seo_intro: |
+  Prediction markets are ranked by volume almost everywhere, and volume is
+  the easier number to move. Open interest is the money still at risk: it
+  only counts positions nobody has closed, so it cannot be inflated by
+  trading a market back and forth. The two disagree sharply across this
+  cohort. Polymarket holds the largest book of open positions and turns
+  over a fraction of it a day, while Kalshi trades many times its own open
+  interest in the same window, which is what a venue full of short-dated
+  contracts looks like. Neither pattern is better; they are different
+  products. This board publishes the open interest, the volume on both a
+  24-hour and a 30-day window, and the ratio, so the two readings sit next
+  to each other instead of one standing in for the other.
+
+abstract: |
+  The pm-cohort-stats harness reads each venue from the best source it has.
+  Polymarket through its gamma API, Kalshi through its native REST
+  endpoints, Limitless and Myriad through their own APIs, and the rest
+  through DefiLlama's prediction-market category, where protocol TVL stands
+  in for open interest and /summary/dexs supplies volume. Gauges are
+  pm_venue_open_interest_usd, pm_venue_volume_24h_usd,
+  pm_venue_volume_30d_usd and pm_venue_active_markets, one series per
+  venue. The cohort was widened from five venues to seventeen on
+  2026-09-23; rows below $500,000 of open interest are not ranked, because
+  a venue holding tens of thousands moves by tens of percent on one
+  position.
+
+methodology:
+  - "Open interest: the value of positions still open, in USD. Polymarket, Kalshi, Limitless and Myriad publish it natively. For venues with no public API it is DefiLlama's protocol TVL, which is a proxy and is labelled as one on each row."
+  - "Volume: each venue's own figure where its API gives one, otherwise DefiLlama /summary/dexs for that protocol. Both windows, 24 hours and 30 days, come from the same source for a given venue so the ratio between them is internally consistent."
+  - "Turnover is 24h volume over open interest. Below 1x a venue holds more than it trades in a day, which is what long-dated markets look like; well above 1x the book turns over repeatedly, which is what short-dated contracts look like. It is a description, not a ranking."
+  - "Kalshi's volume comes from DefiLlama rather than its own trades endpoint. Unauthenticated, that endpoint returns only the public slice: $2.26M against DefiLlama's $424.8M for the same venue and window on 2026-09-23. With an API key the native figure is the better source and the harness prefers it again."
+  - "Polymarket's own gamma API and DefiLlama disagree on its 24h volume by an order of magnitude ($5.3M against $61.8M on 2026-09-23). The gamma figure is published here because it is the venue's own, paginated to exhaustion rather than truncated, but the two are not reconciled and the gap is not explained by pagination."
+  - "Size floor: $500,000 of open interest. Below it one position moves a venue by tens of percent, and the board would rank position-opening events. Venues under the floor keep publishing their gauges and are absent from the ranking."
+  - "A venue with no open interest at all is absent rather than shown at zero. Polymarket US is in that state: a CFTC-regulated exchange has no on-chain balance and its API publishes no open interest, though its volume is among the largest in the category."
+  - "Cadence: native fetchers every 5 minutes, the DefiLlama aggregate every 15. The headline is a 24h average, so a single print does not move a row."
+
+findings:
+  - "{{best_name}} holds the largest book of open positions at {{best_p50}}, of the {{ranked_count}} prediction markets ranked."
+  - "Open interest and volume rank this cohort very differently: the venue holding the most open positions is not the venue trading the most, and the turnover column is where that shows."
+  - "{{worst_name}} holds the least of the ranked venues at {{worst_p50}}."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-cohort-stats
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 3600
+  freshness_metric: pm_health
+
+panel_main_description: "Value of positions still open on the venue, in USD. Money at risk, not money traded."
+
+metric_panels:
+  - id: volume_24h
+    label: Volume 24h
+    label_key: venue
+    metric: pm_venue_volume_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Notional traded over the last 24 hours. The number every other prediction-market ranking uses, and the easier of the two to move."
+  - id: turnover
+    label: Turnover
+    label_key: venue
+    metric: pm_venue_volume_24h_usd{} / pm_venue_open_interest_usd{}
+    unit: x
+    higher_is_better: true
+    description: "24h volume divided by open interest: how many times the book turns over in a day. Below 1x means long-dated positions held rather than traded; well above means short-dated contracts. A description, not a ranking."
+  - id: volume_30d
+    label: Volume 30d
+    label_key: venue
+    metric: pm_venue_volume_30d_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Notional traded over the last 30 days, from the same source as the 24h figure for a given venue."
+  - id: active_markets
+    label: Active markets
+    label_key: venue
+    metric: pm_venue_active_markets{}
+    unit: count
+    higher_is_better: true
+    description: "Markets currently open for trading, where the venue's API publishes a count. Kalshi lists tens of thousands of short-dated contracts; Polymarket a few thousand longer-dated ones."
+
+faq:
+  - q: "Why rank on open interest rather than volume?"
+    a: "Because open interest is the money still at risk. Volume counts every trade including a position opened and closed in the same hour, so it can be moved by trading a market back and forth; open interest only counts what nobody has closed. Both are on the board and they rank the cohort very differently."
+  - q: "What does a turnover above 1x mean?"
+    a: "That the venue traded more than its whole open book in a day, which is the signature of short-dated contracts: markets that open, fill and settle within hours. Below 1x means positions are held rather than traded. Neither is better; they are different products."
+  - q: "Is the open interest measured the same way for every venue?"
+    a: "No, and each row says which source it uses. Polymarket, Kalshi, Limitless and Myriad publish it natively. The rest are read from DefiLlama's protocol TVL, which is the closest public proxy for a venue with no public API, and is not the same measurement."
+  - q: "Why is Polymarket US missing?"
+    a: "It has no open interest to publish. A CFTC-regulated exchange holds no on-chain balance and its API does not report one, so it has no row on a board ranked by open interest, even though its volume is among the largest in the category."
+  - q: "Why are small venues excluded?"
+    a: "Because a venue holding tens of thousands of dollars moves by tens of percent on a single position, so a board including them would rank position-opening events. The floor is $500,000 of open interest; venues under it still publish their gauges."
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon, order book, gamma API
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"polymarket\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="polymarket"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
+      success: avg_over_time(pm_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="polymarket"}[24h])
+      series: pm_venue_open_interest_usd{venue="polymarket"}
+
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated exchange, native REST
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"kalshi\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="kalshi"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
+      success: avg_over_time(pm_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="kalshi"}[24h])
+      series: pm_venue_open_interest_usd{venue="kalshi"}
+
+  - slug: rain
+    name: Rain
+    tag: Arbitrum
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"rain\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="rain"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="rain"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
+      success: avg_over_time(pm_health{venue="rain"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="rain"}[24h])
+      series: pm_venue_open_interest_usd{venue="rain"}
+
+  - slug: predict-fun
+    name: Predict Fun
+    tag: Blast and BNB Chain
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predict-fun\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="predict-fun"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="predict-fun"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
+      success: avg_over_time(pm_health{venue="predict-fun"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])
+      series: pm_venue_open_interest_usd{venue="predict-fun"}
+
+  - slug: opinion
+    name: OPINION
+    tag: BNB Chain
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"opinion\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="opinion"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="opinion"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
+      success: avg_over_time(pm_health{venue="opinion"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="opinion"}[24h])
+      series: pm_venue_open_interest_usd{venue="opinion"}
+
+  - slug: sport-fun
+    name: Sport.fun
+    tag: Base, sports markets
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"sport-fun\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="sport-fun"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="sport-fun"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
+      success: avg_over_time(pm_health{venue="sport-fun"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
+      series: pm_venue_open_interest_usd{venue="sport-fun"}
+
+  - slug: augur
+    name: Augur
+    tag: Ethereum, the original on-chain prediction market
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"augur\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="augur"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="augur"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
+      success: avg_over_time(pm_health{venue="augur"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="augur"}[24h])
+      series: pm_venue_open_interest_usd{venue="augur"}
+
+  - slug: levr-bet
+    name: Levr Bet
+    tag: Monad
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"levr-bet\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="levr-bet"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="levr-bet"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
+      success: avg_over_time(pm_health{venue="levr-bet"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
+      series: pm_venue_open_interest_usd{venue="levr-bet"}
+
+  - slug: pascal
+    name: Pascal
+    tag: Solana
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"pascal\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="pascal"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="pascal"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
+      success: avg_over_time(pm_health{venue="pascal"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="pascal"}[24h])
+      series: pm_venue_open_interest_usd{venue="pascal"}
+
+  - slug: predictstreet
+    name: PredictStreet
+    tag: ADI
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predictstreet\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="predictstreet"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="predictstreet"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
+      success: avg_over_time(pm_health{venue="predictstreet"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
+      series: pm_venue_open_interest_usd{venue="predictstreet"}
+
+  - slug: overtime
+    name: Overtime
+    tag: Arbitrum and Base, sports markets
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"overtime\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="overtime"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="overtime"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
+      success: avg_over_time(pm_health{venue="overtime"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
+      series: pm_venue_open_interest_usd{venue="overtime"}
+
+  - slug: azuro
+    name: Azuro
+    tag: Polygon and Base, liquidity layer for betting front ends
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"azuro\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="azuro"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="azuro"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
+      success: avg_over_time(pm_health{venue="azuro"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])
+      series: pm_venue_open_interest_usd{venue="azuro"}
+
+  - slug: trueo
+    name: Trueo
+    tag: Base today, Ethereum mainnet announced; optimistic oracle, own TruthMarketManager
+    formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"trueo\"}[24h])"
+    queries:
+      p50: avg_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
+      p90: quantile_over_time(0.90, pm_venue_open_interest_usd{venue="trueo"}[24h])
+      p99: quantile_over_time(0.99, pm_venue_open_interest_usd{venue="trueo"}[24h])
+      mean: avg_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
+      success: avg_over_time(pm_health{venue="trueo"}[24h])
+      sample_size: count_over_time(pm_venue_open_interest_usd{venue="trueo"}[24h])
+      series: pm_venue_open_interest_usd{venue="trueo"}

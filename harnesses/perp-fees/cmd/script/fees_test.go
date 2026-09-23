@@ -128,10 +128,10 @@ func TestWalkBookCapped_AcceptableNotional(t *testing.T) {
 
 func TestTotalBookNotional(t *testing.T) {
 	levels := []bookLevel{
-		{Px: 2000, Sz: 1},  // $2000
-		{Px: 2001, Sz: 2},  // $4002
-		{Px: 0, Sz: 100},   // skipped
-		{Px: 2002, Sz: 0},  // skipped
+		{Px: 2000, Sz: 1}, // $2000
+		{Px: 2001, Sz: 2}, // $4002
+		{Px: 0, Sz: 100},  // skipped
+		{Px: 2002, Sz: 0}, // skipped
 	}
 	want := 2000.0 + 4002.0
 	got := totalBookNotional(levels)
@@ -283,7 +283,10 @@ func TestHLTakerFeeConversion(t *testing.T) {
 
 func TestDYdXFeeConversion(t *testing.T) {
 	// ppm=500 → bps=5, ppm=200 → bps=2
-	cases := []struct{ ppm int64; wantBps float64 }{
+	cases := []struct {
+		ppm     int64
+		wantBps float64
+	}{
 		{500, 5.0},
 		{200, 2.0},
 		{100, 1.0},
@@ -464,7 +467,10 @@ func TestGMX_NegativeImpactFactor_RealisticValue(t *testing.T) {
 // ── notionalLabel ─────────────────────────────────────────────────────────
 
 func TestNotionalLabel(t *testing.T) {
-	cases := []struct{ n float64; want string }{
+	cases := []struct {
+		n    float64
+		want string
+	}{
 		{1000, "1000"},
 		{10000, "10000"},
 		{100000, "100000"},

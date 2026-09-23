@@ -455,7 +455,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v82: add bench 277 pm-open-interest. Bench SET changed.
+  ["bench-unfiltered-v82", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -684,7 +685,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v73: lockstep with bench-unfiltered-v79 (bench 274 audit).
   // v74: lockstep with bench-unfiltered-v80 (bench 274 names).
   // v75: lockstep with bench-unfiltered-v81 (add bench 276).
-  ["all-benchmarks-v75", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v76: lockstep with bench-unfiltered-v82 (add bench 277).
+  ["all-benchmarks-v76", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
