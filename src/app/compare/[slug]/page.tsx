@@ -212,8 +212,10 @@ export async function generateMetadata({
   // must not 404) but are marked noindex so direct hits stop counting
   // against the domain. Mirrors the >= 2 live-shared emission floor in
   // src/lib/compare/adhoc-pairs.ts so the sitemap never advertises a
-  // noindexed URL. Live rule matches liveResults(): not "unavailable"
-  // and p50 > 0, read off the already-loaded appearances.
+  // noindexed URL. Live rule matches isLiveAppearance() in
+  // related-providers.ts (not "unavailable" and p50 > 0), so the link gate
+  // and this page agree; liveResults() itself keeps zero and negative rows
+  // since bench 263.
   const aLive = new Set(
     a.appearances
       .filter(
