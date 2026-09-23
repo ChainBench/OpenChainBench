@@ -179,7 +179,7 @@ providers:
 
   - slug: sport-fun
     name: Sport.fun
-    tag: Base, sports markets
+    tag: Base, fantasy football player shares rather than event outcomes
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"sport-fun\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="sport-fun"}[24h])
@@ -205,7 +205,7 @@ providers:
 
   - slug: levr-bet
     name: Levr Bet
-    tag: Monad
+    tag: Monad, 2x to 5x leverage on single-game sports lines
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"levr-bet\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="levr-bet"}[24h])
@@ -231,7 +231,7 @@ providers:
 
   - slug: predictstreet
     name: PredictStreet
-    tag: ADI
+    tag: ADI Chain, fully collateralized in USDC.e
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predictstreet\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="predictstreet"}[24h])
@@ -244,7 +244,7 @@ providers:
 
   - slug: overtime
     name: Overtime
-    tag: Arbitrum and Base, sports markets
+    tag: On-chain sportsbook across six chains, AMM liquidity
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"overtime\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="overtime"}[24h])
@@ -257,7 +257,7 @@ providers:
 
   - slug: azuro
     name: Azuro
-    tag: Polygon and Base, liquidity layer for betting front ends
+    tag: Liquidity layer for betting front ends, six chains
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"azuro\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="azuro"}[24h])

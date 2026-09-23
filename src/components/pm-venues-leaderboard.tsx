@@ -339,6 +339,9 @@ function fmtTurnover(v: number | null): string {
   // Two decimals under 10x, one above: Polymarket lives at 0.02 and
   // Myriad at 16.9, and a single scale that reads both is worth the
   // extra branch.
+  // A book that turned over $681 against $837k of open interest did not
+  // turn over none of it. Below the display floor, say so.
+  if (v > 0 && v < 0.01) return "<0.01×";
   return v < 10 ? `${v.toFixed(2)}×` : `${v.toFixed(1)}×`;
 }
 

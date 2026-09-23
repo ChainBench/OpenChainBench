@@ -722,6 +722,25 @@ const RAW: Record<string, string> = {
   gateway: "/logos/gateway.svg",
   sorobanrpc: "/logos/sorobanrpc.svg",
   lightsail: "/logos/lightsail.svg",
+
+  // ─── Prediction market venues (bench 277 open interest) ───
+  // Eleven of the thirteen rows rendered as initials chips: the cohort
+  // went from six venues to seventeen and none of the new ones had
+  // appeared on an OCB bench before. Each mark is the protocol's own,
+  // fetched once from DeFiLlama's icon CDN and committed rather than
+  // hotlinked, like the bench 274 batch above. All eleven are opaque
+  // square marks, so none needs a light or dark chip.
+  rain: "/logos/rain.webp",
+  "predict-fun": "/logos/predict-fun.webp",
+  opinion: "/logos/opinion.webp",
+  "sport-fun": "/logos/sport-fun.webp",
+  augur: "/logos/augur.webp",
+  "levr-bet": "/logos/levr-bet.webp",
+  predictstreet: "/logos/predictstreet.webp",
+  pascal: "/logos/pascal.webp",
+  overtime: "/logos/overtime.webp",
+  trueo: "/logos/trueo.webp",
+  azuro: "/logos/azuro.webp",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
