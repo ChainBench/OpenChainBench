@@ -59,6 +59,7 @@ function lintPlaceholders(
 
 async function main() {
   const issues: Issue[] = [];
+  const liveSlugs: { file: string; slug: string }[] = [];
 
   const files = (await fs.readdir(SPECS_DIR)).filter(
     (f) => f.endsWith(".yml") || f.endsWith(".yaml")
@@ -190,6 +191,7 @@ async function main() {
     ];
     lintPlaceholders(issues, f, templated, providerSlugs, chainValues, tierValues);
     specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, tiers: tierValues, rpc: spec.slug.endsWith("-rpc") });
+    if (spec.status === "live") liveSlugs.push({ file: f, slug: spec.slug });
   }
 
   // answers/*.yml render through the same template engine against the
@@ -236,6 +238,27 @@ async function main() {
         issues.push({ file, level: "error", message: `${name}: {{count}} followed by a typed cohort list "${m[0].slice(0, 60)}"; drop the list, the count is live` });
       }
     }
+  }
+
+  // A live spec with no entry in the published map falls back to the
+  // 2025-01-01 floor, and every JSON-LD datePublished, the citation date
+  // and the Dataset temporalCoverage then claim a history the series does
+  // not have. Regenerating is one command; forgetting it is silent.
+  try {
+    const raw = await fs.readFile(path.join(process.cwd(), "src/data/bench-published.json"), "utf8");
+    const published = JSON.parse(raw) as Record<string, string>;
+    for (const { file, slug } of liveSlugs) {
+      if (!published[slug]) {
+        issues.push({
+          file,
+          level: "error",
+          message: `slug "${slug}" is missing from src/data/bench-published.json, so every datePublished, the citation date and the Dataset temporalCoverage would fall back to 2025-01-01; run \`node scripts/generate-bench-published.mjs\` and commit the result`,
+        });
+      }
+    }
+  } catch {
+    // No map in this checkout: the dates fall back everywhere, which is a
+    // repo-shape problem rather than a spec problem.
   }
 
   if (issues.length === 0) {

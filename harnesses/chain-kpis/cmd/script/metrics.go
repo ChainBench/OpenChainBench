@@ -88,6 +88,27 @@ var (
 			Help: "Number of live L2Beat projects above the size floor that the median is taken over.",
 		},
 	)
+	chainTvsCohortUnderReview = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_cohort_under_review",
+			Help: "How many of the median cohort L2Beat currently marks under review. They are counted, not filtered; this says how much of the yardstick rests on figures being re-verified.",
+		},
+	)
+	chainTvsCohortLayer3 = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_cohort_layer3",
+			Help: "How many of the median cohort are layer 3s settling on another rollup rather than on an L1.",
+		},
+	)
+	// Freshness for the bench. Separate from chain_kpis_last_refresh_timestamp_seconds,
+	// which carries a source label: a max() over that stays fresh on the
+	// DefiLlama tick while L2Beat is hours stale.
+	chainKpisL2BeatLastSuccessUnix = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_kpis_l2beat_last_success_unix",
+			Help: "Unix timestamp of the last L2Beat fetch that published at least one chain.",
+		},
+	)
 
 	// Mobula-sourced ────────────────────────────────────────────────
 	chainNativePriceUsd = prometheus.NewGaugeVec(
@@ -161,6 +182,8 @@ func init() {
 		chainTvsUsd, chainValueSecuredUsd, chainBridgedTvlUsd,
 		chainTvsChange7dPct, chainTvsChange7dExcessPct,
 		chainTvsCohortMedian7dPct, chainTvsCohortSize,
+		chainTvsCohortUnderReview, chainTvsCohortLayer3,
+		chainKpisL2BeatLastSuccessUnix,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
 		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
 		chainKpisLastTickUnix,
