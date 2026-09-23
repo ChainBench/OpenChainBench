@@ -51,3 +51,27 @@ export function valueReadingPhrase(b: WindowBench): string {
   if (b.hasDistribution === false) return `Live value over the last ${win === "24h" ? "24 hours" : win}`;
   return `Live p50 over the last ${win === "24h" ? "24 hours" : win}`;
 }
+
+/**
+ * "latest" when every provider's headline query is a point read. A bench
+ * built on `last_over_time(...)` measures a gauge as it stands, so calling
+ * the result a 24-hour median claims a statistic nothing computed.
+ *
+ * Lives here rather than in spec.ts because both loaders need it and
+ * load.ts must not import spec.ts (spec.ts imports load.ts). Deriving it
+ * in only one of them is how the first attempt shipped: the overlay had
+ * it, the materialize path did not, and the page kept saying "(24h)".
+ */
+export function specValueKind(spec: {
+  providers?: { queries?: { p50?: string } }[];
+}): "latest" | undefined {
+  const providers = spec.providers ?? [];
+  let sawQueries = false;
+  for (const p of providers) {
+    const q = p.queries?.p50?.trim();
+    if (!q) continue;
+    sawQueries = true;
+    if (!q.startsWith("last_over_time(")) return undefined;
+  }
+  return sawQueries ? "latest" : undefined;
+}
