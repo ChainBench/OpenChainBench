@@ -221,6 +221,8 @@ export type ProviderAppearance = {
     | "status"
     | "lastRunAt"
     | "hasDistribution"
+    | "window"
+    | "valueKind"
   > & {
     /** Chain dimension values from the spec, when present. Stored on the
      *  appearance so /products/[slug] can render chain-aware chips without
@@ -431,6 +433,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           status: b.status,
           lastRunAt: b.lastRunAt,
           hasDistribution: b.hasDistribution,
+          window: b.window,
+          valueKind: b.valueKind,
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
@@ -519,6 +523,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
             status: b.status,
             lastRunAt: b.lastRunAt,
             hasDistribution: b.hasDistribution,
+            window: b.window,
+            valueKind: b.valueKind,
             chainDimensions: b.dimensions?.chain,
             bestPerChain: benchBestPerChain,
             regionDimensions: b.dimensions?.region,

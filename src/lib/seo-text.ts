@@ -54,7 +54,8 @@ export function capSnippet(input: string | undefined, max = 155): string {
     lastComma = head.lastIndexOf(", ", lastComma - 1);
   }
   let cut = lastComma > 60 ? head.slice(0, lastComma) : head.slice(0, head.lastIndexOf(" "));
-  if (!balanced(cut)) cut = cut.slice(0, cut.lastIndexOf("("));
+  const open = cut.lastIndexOf("(");
+  if (!balanced(cut) && open > 60) cut = cut.slice(0, open);
   return cut.replace(/[,;:\s]+$/, "") + ".";
 }
 

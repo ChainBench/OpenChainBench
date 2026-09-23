@@ -37,6 +37,12 @@ func main() {
 			for _, a := range assets {
 				raw, ui, ok := tokenSupply(client, a.Mint)
 				if !ok {
+					// A failed read publishes nothing: a held supply would be
+					// re-valued at every new price and counted in the hub's
+					// totals for as long as the RPC stays down (review 2026-09-23).
+					delete(supplyRaw, a.Slug)
+					supplyUnits.DeleteLabelValues(a.Slug, a.Issuer)
+					supplyUSD.DeleteLabelValues(a.Slug, a.Issuer)
 					continue
 				}
 				supplyRaw[a.Slug] = raw
@@ -92,7 +98,10 @@ func main() {
 					supplyUSD.WithLabelValues(a.Slug, a.Issuer).Set(raw * perRaw)
 				}
 			} else {
+				// No executable price this tick: the USD value of the supply
+				// goes with it (the unit supply stays, it is a chain read).
 				depthPrice.DeleteLabelValues(a.Slug, a.Issuer)
+				supplyUSD.DeleteLabelValues(a.Slug, a.Issuer)
 			}
 			if res.Route100k {
 				depthHealth.WithLabelValues(a.Slug).Set(1)

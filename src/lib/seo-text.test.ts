@@ -59,3 +59,10 @@ describe("capSnippet: cut placement (RWA audit 2026-09-23)", () => {
     expect(out).not.toContain("(Orca pool.");
   });
 });
+
+test("capSnippet: a stray closing parenthesis costs no character", () => {
+  const s = "Alpha) beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega alpha beta gamma delta epsilon zeta eta theta iota.";
+  const out = capSnippet(s);
+  expect(out.startsWith("Alpha) beta")).toBe(true);
+  expect(out.length).toBeLessThanOrEqual(155);
+});

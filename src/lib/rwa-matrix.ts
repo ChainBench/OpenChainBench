@@ -137,35 +137,55 @@ export function fundRows(benches: RwaBenches): FundRow[] {
 }
 
 export type RwaTotals = {
-  /** Sum of the on-chain supply the depth bench values, USD. */
+  /** Sum of the on-chain supply of the rows in the total's row set, USD. */
   measuredUsd: number;
   /** Supply of the assets whose $100k sale costs 25 bp or less. */
   liquidUsd: number;
   /** Supply of the assets the depth bench lists as No open market. */
   noMarketUsd: number;
+  /** False when a routed asset with a supply has no ranked cost right now:
+   *  the liquid share is then unknown, not zero. */
+  liquidKnown: boolean;
   assets: number;
 };
 
 export const LIQUID_BPS = 25;
 
+/**
+ * The three totals are sums over one row set: the routed rows the depth
+ * bench ranks right now plus its declared unranked rows. A routed row the
+ * bench does not rank (route failing, sample under the floor) is in none
+ * of them, and marks the liquid share unknown, so a Jupiter outage reads
+ * as "…" and never as "$0 sells $100k" against a held supply (review
+ * 2026-09-23).
+ */
 export function totals(benches: RwaBenches): RwaTotals {
   const depth = benches["rwa-solana-depth"];
   let measuredUsd = 0;
   let liquidUsd = 0;
   let noMarketUsd = 0;
+  let liquidKnown = true;
   for (const r of depth?.results ?? []) {
     const usd = panelValue(depth, "supply", r.slug);
     if (usd == null) continue;
-    measuredUsd += usd;
-    if (r.unrankedLabel) noMarketUsd += usd;
+    if (r.unrankedLabel) {
+      measuredUsd += usd;
+      noMarketUsd += usd;
+      continue;
+    }
     const cost = rankedValue(depth, r.slug);
-    if (cost != null && cost <= LIQUID_BPS) liquidUsd += usd;
+    if (cost == null) {
+      liquidKnown = false;
+      continue;
+    }
+    measuredUsd += usd;
+    if (cost <= LIQUID_BPS) liquidUsd += usd;
   }
   const assets = new Set<string>();
   for (const s of RWA_BENCH_SLUGS) for (const r of benches[s]?.results ?? []) assets.add(r.slug);
   // Venues of the NAV bench are not assets.
   for (const r of benches["usdy-nav-basis"]?.results ?? []) assets.delete(r.slug);
-  return { measuredUsd, liquidUsd, noMarketUsd, assets: assets.size };
+  return { measuredUsd, liquidUsd, noMarketUsd, liquidKnown, assets: assets.size };
 }
 
 /** Newest citable timestamp across the live benches. */

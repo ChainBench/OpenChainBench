@@ -8,7 +8,7 @@ all, BUIDL and USTB, which the bench lists unranked).
 
 ## What it does
 
-Every five minutes, per routed asset:
+Every ten minutes, per routed asset:
 
 1. `$100` sale quote (`/swap/v1/quote`, token to USDC) at the previous
    tick's price, giving the reference USDC per raw unit;
