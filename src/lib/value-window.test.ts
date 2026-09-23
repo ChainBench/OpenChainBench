@@ -41,3 +41,11 @@ describe("valueQualifier", () => {
     expect(valueQualifier({ unit: "usd", window: "7d" })).toBe("7d");
   });
 });
+
+describe("valueQualifier: window totals", () => {
+  it("a window average scaled to the window is a total, not an average", () => {
+    expect(valueQualifier({ unit: "bp", valueKind: "total", window: "30d" })).toBe("30 days at the average daily rate");
+    expect(valueSuffix({ unit: "bp", valueKind: "total", window: "7d" })).toBe("(7 days at the average daily rate)");
+    expect(valueColumnLabel({ unit: "bp", valueKind: "total" })).toBe("Total");
+  });
+});

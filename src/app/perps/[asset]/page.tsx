@@ -174,7 +174,7 @@ function VenueTable({ list, showFees, benchHref }: { list: PerpAssetVenueRow[]; 
               </>
             )}
             <Th href="/benchmarks/perp-funding" title="Cost of holding a long for 24 hours at the current rate, 24h average; positive means the long pays (bench perp-funding)">Funding 24h</Th>
-            <Th title="A week of funding at the average daily cost over the trailing 7 days; not measured until most of a week is behind the average">Funding 7d</Th>
+            <Th title="A week of funding at the average daily cost over the trailing 7 days; shown once the venue has most of a week of hours in the 30-day window">Funding 7d</Th>
             <Th href="/benchmarks/perp-funding-cost-30d" title="A month of funding at the average daily cost over the trailing 30 days; a day count marks an average taken over less than the month (bench perp-funding-cost-30d)">Funding 30d</Th>
           </tr>
         </thead>

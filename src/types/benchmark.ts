@@ -334,7 +334,7 @@ export type Benchmark = {
    *  then call the number a 24-hour anything: a slow gauge scraped every
    *  30 seconds has no distribution and no window. Derived from the live
    *  spec in spec.ts, like hasDistribution. */
-  valueKind?: "latest";
+  valueKind?: "latest" | "total";
   bestPerChain?: Record<string, ProviderResult>;
   /** Per-chain trailing provider, populated in lockstep with
    *  `bestPerChain` (same key set, same population conditions). Powers

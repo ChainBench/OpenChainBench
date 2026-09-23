@@ -849,16 +849,26 @@ const loadSpecs = cache(loadSpecsUncached);
  */
 function specValueKind(spec: {
   providers?: { queries?: { p50?: string } }[];
-}): "latest" | undefined {
+}): "latest" | "total" | undefined {
   const providers = spec.providers ?? [];
   let sawQueries = false;
+  let allLatest = true;
+  let allTotal = true;
   for (const p of providers) {
     const q = p.queries?.p50?.trim();
     if (!q) continue;
     sawQueries = true;
-    if (!q.startsWith("last_over_time(")) return undefined;
+    if (!q.startsWith("last_over_time(")) allLatest = false;
+    // "total": a window average scaled to the window's length
+    // (`avg_over_time(x[30d:1h]) * 30` on perp-funding-cost-30d): a month
+    // at the average daily rate, which the qualifier must not call an
+    // average of the month.
+    if (!/^avg_over_time\(.+\)\s*\*\s*\d+$/.test(q)) allTotal = false;
   }
-  return sawQueries ? "latest" : undefined;
+  if (!sawQueries) return undefined;
+  if (allLatest) return "latest";
+  if (allTotal) return "total";
+  return undefined;
 }
 
 function specHasDistribution(spec: {

@@ -198,11 +198,19 @@ func (s *GMXNativeSource) markets() (int, bool) {
 			return 0, false
 		}
 		seen := map[string]bool{}
+		before := n
 		for _, mk := range m.Markets {
 			if mk.IsListed && mk.IndexToken != zero && !seen[mk.IndexToken] {
 				seen[mk.IndexToken] = true
 				n++
 			}
+		}
+		// A 200 with nothing listed (renamed key, empty page) is not an
+		// answer: the DefiLlama fallback keeps the cell rather than a
+		// one-chain count reading as a delisting.
+		if n == before {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "empty_catalogue").Inc()
+			return 0, false
 		}
 	}
 	return n, true
