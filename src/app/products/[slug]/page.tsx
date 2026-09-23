@@ -224,12 +224,6 @@ export async function generateMetadata({
   // follows as a whole sentence that capSnippet may drop, so it never eats
   // the second rank either (audit 2026-09-23).
   const rankSentence = (ranks: string[]) => `${p.name} ranks ${ranks.join(", ")} (p50, 24h).`;
-  const fittedRanks =
-    metaRanked.length > 1 && rankSentence(metaRanked).length > 155 ? metaRanked.slice(0, 1) : metaRanked;
-  const measuredLead =
-    fittedRanks.length > 0
-      ? `${rankSentence(fittedRanks)} ${benchCount} live ${benchWord}${winSuffix}.`
-      : fallbackDescription;
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
@@ -247,11 +241,37 @@ export async function generateMetadata({
   const registryClause = registryLine
     ? (registryLine.split(/(?<=[.;])\s|,\s/)[0] ?? "").replace(/[,;:\s]+$/, "")
     : "";
+  // The budget the ranks get is what remains after the prefix that will
+  // actually precede them (a registry line of 80 characters or less), so
+  // capSnippet's cut never lands inside the rank list or before it
+  // (review 2026-09-23: /products/edgex shipped its registry line and no
+  // number when the fit ignored the prefix). One less than the cap keeps
+  // the rank sentence's ". " boundary inside capSnippet's head. When even
+  // one rank does not fit behind the prefix, the prefix goes, not the rank.
+  const shortRegistry = registryLine && registryLine.length <= 80 ? registryLine : "";
+  const budgetAfter = (prefix: string) => 155 - (prefix ? prefix.length + 1 : 0) - 1;
+  const fitRanks = (prefix: string) => {
+    if (metaRanked.length === 0) return [];
+    if (metaRanked.length > 1 && rankSentence(metaRanked).length <= budgetAfter(prefix)) return metaRanked;
+    return rankSentence(metaRanked.slice(0, 1)).length <= budgetAfter(prefix) ? metaRanked.slice(0, 1) : [];
+  };
+  let prefix = shortRegistry;
+  let fittedRanks = fitRanks(prefix);
+  if (fittedRanks.length === 0 && prefix && metaRanked.length > 0) {
+    prefix = "";
+    fittedRanks = fitRanks(prefix);
+  }
+  const measuredLead =
+    fittedRanks.length > 0
+      ? `${rankSentence(fittedRanks)} ${benchCount} live ${benchWord}${winSuffix}.`
+      : metaRanked.length > 0
+        ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]} (p50, 24h).`
+        : fallbackDescription;
   const description = capSnippet(
     !registryLine
       ? measuredLead
-      : registryLine.length <= 80
-        ? `${registryLine} ${measuredLead}`.trim()
+      : prefix
+        ? `${prefix} ${measuredLead}`.trim()
         : `${measuredLead} ${registryClause}${registryClause ? "." : ""}`.trim(),
   );
 

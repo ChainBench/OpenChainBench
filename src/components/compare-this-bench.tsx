@@ -14,8 +14,10 @@
  *
  * No-op when:
  *   - the bench category is Blockchains (chains have their own hubs)
- *   - fewer than 3 usable pairs can be built (skip HL builder hex
- *     slugs, dedupe canonical pairs)
+ *   - no usable pair can be built (skip HL builder hex slugs, dedupe
+ *     canonical pairs); one pair renders as one chip (audit 2026-09-23:
+ *     the two highest-impression perp pages rendered no head-to-head
+ *     block at the old floor of three)
  */
 
 import Link from "next/link";

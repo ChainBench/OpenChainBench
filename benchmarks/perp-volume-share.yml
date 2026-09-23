@@ -58,7 +58,7 @@ methodology:
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across {{count}} measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across {{ranked_count}} ranked perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM AMM perp DEX on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum, Base, Polygon and MegaETH."

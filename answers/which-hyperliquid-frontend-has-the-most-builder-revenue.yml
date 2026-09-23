@@ -29,7 +29,7 @@ faq:
     a: "104 Hyperliquid frontends with a known builder address. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and PvP UIs (pvp.trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread.fi, Moonbot, Hyperdash), based.app, defi.app and HIP-3 deployers. The registry is curated and new addresses ship via public PR."
   - q: "Why are some frontends at zero?"
     a: "Three reasons. The frontend stopped operating or has not routed any attributed fills in the window. The frontend never enabled the builder code attribution system. The frontend uses a builder address not yet in the registry. The 'time since last fill' companion separates these cases: a frontend with hours of inactivity is in the first bucket, a frontend with consistent zero across all timeframes is in the second or third."
-  - q: "Why does Phantom Perps usually lead?"
+  - q: "What kind of frontend collects the most builder fees?"
     a: "Consumer wallets integrate Hyperliquid trading directly inside the wallet UI. Their effective fee is typically in the 5 to 10 basis point range and the user base is large. The combination of wide reach times a moderate fee produces the highest absolute revenue. Pro terminals sit below because they charge less per dollar routed by design, even though their notional volume can be comparable."
   - q: "How often does the page refresh?"
     a: "Every 30 seconds. The harness re-reads the local hl node hourly file every 30 seconds and Prometheus scrapes the gauges on the same cadence. The page itself uses incremental static regeneration with a 60 second window, so headline values are at most 90 seconds stale plus chain propagation delay."
