@@ -10,6 +10,7 @@
  */
 
 import { cache } from "react";
+import { specValueKind } from "@/lib/value-window";
 import { unstable_cache } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
@@ -846,25 +847,6 @@ const loadSpecs = cache(loadSpecsUncached);
  * queries at all, so the caller can fall back to whatever the snapshot held
  * rather than asserting "no distribution" about a spec it could not read.
  */
-/**
- * "latest" when every provider's headline query is a point read. A bench
- * built on `last_over_time(...)` measures a gauge as it stands, so calling
- * the result a 24-hour median claims a statistic nothing computed.
- */
-function specValueKind(spec: {
-  providers?: { queries?: { p50?: string } }[];
-}): "latest" | undefined {
-  const providers = spec.providers ?? [];
-  let sawQueries = false;
-  for (const p of providers) {
-    const q = p.queries?.p50?.trim();
-    if (!q) continue;
-    sawQueries = true;
-    if (!q.startsWith("last_over_time(")) return undefined;
-  }
-  return sawQueries ? "latest" : undefined;
-}
-
 function specHasDistribution(spec: {
   providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
 }): boolean | undefined {
