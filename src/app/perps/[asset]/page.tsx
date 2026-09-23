@@ -61,6 +61,9 @@ const FULL_MONTH_MIN = MONTH_OF_HOURS * 0.8;
 const daysMeasured = (samples: number | null): number => Math.round(((samples ?? 0) / 24) * 10) / 10;
 // The 7d cell is a week at the average daily cost; it needs most of a
 // week behind the average (80 % of 168 hours) or it reads "not measured".
+// Rows carry no 7d sample count, so the 30d count stands in: for a venue
+// younger than a month it is its age in hours, which is what the gate
+// needs; for an older venue with gaps it can only overstate the week.
 const WEEK_MIN_SAMPLES = 168 * 0.8;
 
 type NumKey = "allInBps" | "takerFeeBps" | "slippage100kBps" | "funding24hBps" | "funding7dBps" | "funding30dBps";
