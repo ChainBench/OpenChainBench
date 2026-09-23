@@ -51,12 +51,26 @@ type l2beatProject struct {
 			External  float64 `json:"external"`
 		} `json:"breakdown"`
 		// Change7d is a ratio, not a percentage: 0.152 means +15.2%.
-		Change7d float64 `json:"change7d"`
+		//
+		// A pointer, not a float64, for the same reason the origin fields
+		// are guarded: if the key is renamed or nulled upstream, a plain
+		// float decodes as 0 for every project, the median becomes 0, and
+		// all twenty rows publish a weekly move of exactly zero at full
+		// health. A nil is a missing value and is treated as one.
+		Change7d *float64 `json:"change7d"`
 	} `json:"tvs"`
 }
 
 type l2beatSummary struct {
 	Projects map[string]l2beatProject `json:"projects"`
+	Chart    struct {
+		// Unix seconds of the last point L2Beat has actually computed.
+		// Without it, "fresh" means only that our HTTP call succeeded: if
+		// L2Beat stops syncing and keeps answering 200, every tick
+		// republishes the same hour-old numbers at full health and the
+		// page never says so. This is the timestamp the bench reads.
+		SyncedUntil int64 `json:"syncedUntil"`
+	} `json:"chart"`
 }
 
 // cohortMedianChange7d is the median 7-day change across every live
@@ -71,10 +85,10 @@ type l2beatSummary struct {
 func cohortMedianChange7d(projects map[string]l2beatProject, floorUSD float64) (c cohort) {
 	changes := []float64{}
 	for _, p := range projects {
-		if p.IsArchived || p.Tvs.Breakdown.Total < floorUSD {
+		if p.IsArchived || p.Tvs.Breakdown.Total < floorUSD || p.Tvs.Change7d == nil {
 			continue
 		}
-		changes = append(changes, 100*p.Tvs.Change7d)
+		changes = append(changes, 100*(*p.Tvs.Change7d))
 		c.Size++
 		if p.IsUnderReview {
 			c.UnderReview++
@@ -200,7 +214,20 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 		chainBridgedTvlUsd.WithLabelValues(c.Slug).Set(b.Canonical + b.External)
 		chainTvsUsd.WithLabelValues(c.Slug).Set(b.Total)
 
-		change := 100 * p.Tvs.Change7d
+		if p.Tvs.Change7d == nil {
+			// The level is good, only the weekly move is missing. Publish
+			// the balance and drop this chain's two weekly series rather
+			// than printing a zero move that reads as "flat week".
+			chainTvsChange7dPct.DeleteLabelValues(c.Slug)
+			chainTvsChange7dExcessPct.DeleteLabelValues(c.Slug)
+			chainKpisLastRefresh.WithLabelValues(c.Slug, "l2beat").Set(now)
+			chainKpisHealth.WithLabelValues(c.Slug, "l2beat").Set(1)
+			chainKpisFetchLatencyMs.WithLabelValues(c.Slug, "l2beat").Set(elapsed)
+			published++
+			continue
+		}
+
+		change := 100 * (*p.Tvs.Change7d)
 		chainTvsChange7dPct.WithLabelValues(c.Slug).Set(change)
 		if co.OK {
 			// The absolute move is mostly the market's move. In the week
@@ -222,12 +249,17 @@ func publishL2Beat(summary *l2beatSummary, cfg *Config, elapsed float64) {
 	}
 
 	if published > 0 {
-		// The freshness gauge the bench reads. It has to be its own bare
-		// metric: chain_kpis_last_refresh_timestamp_seconds carries a
-		// source label, so a max() over it stays fresh on DefiLlama's tick
-		// while L2Beat is hours stale, and the page would claim a
-		// freshness it does not have.
+		// Two different clocks, and the bench reads the second one.
+		//
+		// LastSuccess says when our fetch last worked. SyncedUntil says
+		// when L2Beat last computed a point, which today runs about 90
+		// minutes behind on an hourly series. If L2Beat stalls and keeps
+		// answering 200, only SyncedUntil stops moving, so that is what
+		// "last measured" has to mean on the page.
 		chainKpisL2BeatLastSuccessUnix.Set(now)
+		if summary.Chart.SyncedUntil > 0 {
+			chainKpisL2BeatSyncedUntilUnix.Set(float64(summary.Chart.SyncedUntil))
+		}
 		chainKpisLastTickUnix.Set(now)
 	}
 

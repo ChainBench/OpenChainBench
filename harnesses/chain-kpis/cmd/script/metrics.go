@@ -42,7 +42,7 @@ var (
 	chainTvsUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "chain_tvs_usd",
-			Help: "Total value secured by this rollup in USD, all origins. Source: L2Beat /api/scaling/summary. Updated every 15 min.",
+			Help: "Total value secured by this chain in USD, all origins. Source: L2Beat /api/scaling/summary. Updated every 15 min.",
 		},
 		[]string{"chain"},
 	)
@@ -106,7 +106,13 @@ var (
 	chainKpisL2BeatLastSuccessUnix = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "chain_kpis_l2beat_last_success_unix",
-			Help: "Unix timestamp of the last L2Beat fetch that published at least one chain.",
+			Help: "Unix timestamp of the last L2Beat fetch that published at least one chain. Says our call worked, not that upstream is current.",
+		},
+	)
+	chainKpisL2BeatSyncedUntilUnix = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_kpis_l2beat_synced_until_unix",
+			Help: "Unix timestamp of the last point L2Beat has computed (chart.syncedUntil). The series is hourly and normally runs 1-2h behind, so this is the only clock that stops when upstream stalls while still answering 200.",
 		},
 	)
 
@@ -183,7 +189,7 @@ func init() {
 		chainTvsChange7dPct, chainTvsChange7dExcessPct,
 		chainTvsCohortMedian7dPct, chainTvsCohortSize,
 		chainTvsCohortUnderReview, chainTvsCohortLayer3,
-		chainKpisL2BeatLastSuccessUnix,
+		chainKpisL2BeatLastSuccessUnix, chainKpisL2BeatSyncedUntilUnix,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
 		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
 		chainKpisLastTickUnix,

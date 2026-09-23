@@ -431,10 +431,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v73: bench 273 audit round 1: panel directions, last_over_time
   // aggregates and a freshness_timestamp_metric; v72 entries keep the old
   // panels and the 24h-mean headline.
+  // v74: bench 273 audit round 2: 21 chains added to the board (20 to 41
+  // rows) and freshness moved onto L2Beat's own sync clock.
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v73", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v74", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -655,7 +657,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
   // v66: lockstep with bench-unfiltered-v72 (add bench 273 chain-bridged-tvl).
   // v67: lockstep with bench-unfiltered-v73 (bench 273 audit round 1).
-  ["all-benchmarks-v67", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v68: lockstep with bench-unfiltered-v74 (bench 273 audit round 2).
+  ["all-benchmarks-v68", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

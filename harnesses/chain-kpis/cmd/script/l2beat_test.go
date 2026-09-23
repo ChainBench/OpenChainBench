@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"math"
+	"os"
+	"regexp"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,7 +17,7 @@ func proj(total, native, canonical, external, change7d float64, archived bool) l
 	p.Tvs.Breakdown.Native = native
 	p.Tvs.Breakdown.Canonical = canonical
 	p.Tvs.Breakdown.External = external
-	p.Tvs.Change7d = change7d
+	p.Tvs.Change7d = &change7d
 	return p
 }
 
@@ -106,7 +108,11 @@ func TestMedianIsTheAverageOfTheTwoMiddlesWhenEven(t *testing.T) {
 // on 2026-09-23. Guards the field names: change7d is a ratio, not a percent,
 // and the breakdown keys are the ones we read.
 func TestParsesTheLivePayloadShape(t *testing.T) {
-	const body = `{"projects":{"base":{"id":"base","name":"Base Chain","isArchived":false,
+	// syncedUntil 1790157600 is 2026-09-23 10:00:00 UTC, read live at
+	// 11:29 UTC: the series is hourly and was 89 minutes behind, which is
+	// why the bench reads this clock and not our own fetch time.
+	const body = `{"chart":{"syncedUntil":1790157600},
+	  "projects":{"base":{"id":"base","name":"Base Chain","isArchived":false,
 	  "tvs":{"breakdown":{"total":16441422848,"native":8222340259.25,
 	  "canonical":3121029128.129638,"external":5098059233.275391,
 	  "stablecoin":4792403636,"btc":4165800685},"change7d":0.1524300323433938}}}}`
@@ -130,8 +136,63 @@ func TestParsesTheLivePayloadShape(t *testing.T) {
 	if math.Abs(bridged-8219088361)/bridged > 0.001 {
 		t.Fatalf("bridged TVL = %.0f, want ~8219088361", bridged)
 	}
-	if p.Tvs.Change7d > 1 {
-		t.Fatalf("change7d = %v; it is a ratio, a value above 1 means the unit changed upstream", p.Tvs.Change7d)
+	if p.Tvs.Change7d == nil {
+		t.Fatalf("change7d did not bind; the key was renamed upstream")
+	}
+	if *p.Tvs.Change7d > 1 {
+		t.Fatalf("change7d = %v; it is a ratio, a value above 1 means the unit changed upstream", *p.Tvs.Change7d)
+	}
+	if s.Chart.SyncedUntil == 0 {
+		t.Fatalf("chart.syncedUntil did not bind; it is the only clock that stops when L2Beat stalls while still answering 200")
+	}
+}
+
+// The weekly columns need the same guard as the origin fields. A plain
+// float64 would decode a renamed or null change7d as 0 for every project:
+// the median becomes 0, and all twenty rows publish a flat week at full
+// health. A missing value has to read as missing.
+func TestAMissingChange7dDropsTheWeeklySeriesNotTheRow(t *testing.T) {
+	chainBridgedTvlUsd.Reset()
+	chainTvsChange7dPct.Reset()
+	chainTvsChange7dExcessPct.Reset()
+
+	noChange := proj(16441422848, 8222340259, 3121029128, 5098059233, 0, false)
+	noChange.Tvs.Change7d = nil
+	s := &l2beatSummary{Projects: map[string]l2beatProject{
+		"base":     noChange,
+		"arbitrum": proj(11874269184, 3692575462, 3803950446, 4377743276, 0.1020, false),
+		"optimism": proj(1930874112, 392793661, 1192897272, 345183179, 0.1990, false),
+		"mantle":   proj(1528454272, 46692460, 818479451, 663282361, 0.0750, false),
+		"linea":    proj(384864000, 1925419, 133260387, 249678194, 0.1220, false),
+		"celo":     proj(262609296, 243129539, 2587787, 16891970, 0.0430, false),
+	}}
+	publishL2Beat(s, &Config{L2BeatMedianFloorUSD: 200e6}, 1)
+
+	// The balance is still good, so the row stays.
+	if got := readGaugeVec(t, chainBridgedTvlUsd, "base"); math.Abs(got-8219088361) > 1 {
+		t.Errorf("base bridged = %.0f; a missing weekly move must not drop the level", got)
+	}
+	// Its two weekly series must not exist rather than read zero.
+	for name, g := range map[string]*prometheus.GaugeVec{
+		"change": chainTvsChange7dPct, "excess": chainTvsChange7dExcessPct,
+	} {
+		ch := make(chan prometheus.Metric, 64)
+		g.Collect(ch)
+		close(ch)
+		for m := range ch {
+			d := &dto.Metric{}
+			_ = m.Write(d)
+			for _, l := range d.GetLabel() {
+				if l.GetValue() == "base" {
+					t.Errorf("base still has a %s series (%v); a nil change7d must delete it", name, d.GetGauge().GetValue())
+				}
+			}
+		}
+	}
+	// And a project with no weekly move must not vote on the median.
+	co := cohortMedianChange7d(s.Projects, 200e6)
+	if co.Size != 5 {
+		t.Errorf("cohort size %d, want 5: the project with a nil change7d voted", co.Size)
 	}
 }
 
@@ -291,4 +352,42 @@ func countSeries(t *testing.T, g *prometheus.GaugeVec) int {
 		n++
 	}
 	return n
+}
+
+// Every registry chain that carries an L2Beat id must also be a row on the
+// bench, and the reverse. The first audit round shipped a board whose copy
+// said "the chains L2Beat tracks" while 21 such chains had no row, three of
+// them large enough to vote on the median every other row is judged
+// against. A mismatch here is that bug coming back.
+func TestEveryMappedChainHasABenchRow(t *testing.T) {
+	spec, err := os.ReadFile("../../../../benchmarks/chain-bridged-tvl.yml")
+	if err != nil {
+		t.Skipf("spec not readable from here: %v", err)
+	}
+	rows := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(?m)^  - slug: ([a-z0-9-]+)$`).FindAllSubmatch(spec, -1) {
+		rows[string(m[1])] = true
+	}
+	if len(rows) == 0 {
+		t.Fatalf("parsed no provider rows out of the spec")
+	}
+
+	mapped := map[string]bool{}
+	for _, c := range Registry {
+		if c.L2Beat != "" {
+			mapped[c.Slug] = true
+		}
+	}
+
+	for slug := range mapped {
+		if !rows[slug] {
+			t.Errorf("%s carries an L2Beat id but has no row on bench 273", slug)
+		}
+	}
+	for slug := range rows {
+		if !mapped[slug] {
+			t.Errorf("bench 273 has a row for %s, which carries no L2Beat id", slug)
+		}
+	}
+	t.Logf("%d mapped chains, %d bench rows", len(mapped), len(rows))
 }

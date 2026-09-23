@@ -102,9 +102,11 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 268 terminal fill quality: method still moving (13 audits, last change
   // 2026-09-21)
   "terminal-fill-quality",
-  // 273 bridged TVL: the chain-kpis harness on the VPS has not been
-  // rebuilt with the L2Beat source yet, so production would render an
-  // empty board. Un-gate after the rebuild publishes chain_bridged_tvl_usd.
+  // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
+  // but the 24h success window has not filled since the last rebuild, so a
+  // production board would rank rows on a partial window. Un-gate once the
+  // window is full and a re-audit is clean (2 rounds so far, last change
+  // 2026-09-23).
   "chain-bridged-tvl",
 ]);
 

@@ -32,7 +32,8 @@ result is fanned out over the registry rows that carry an L2Beat id.
 | `chain_tvs_cohort_median_7d_pct` | derived, no labels: median 7d move above the size floor | 15 min |
 | `chain_tvs_cohort_size` / `_under_review` / `_layer3` | derived, no labels: the cohort's composition | 15 min |
 | `chain_kpis_health{chain, source}` | 1 if the last fetch for that source returned data | per source |
-| `chain_kpis_l2beat_last_success_unix` | freshness for bench 273, no labels | 15 min |
+| `chain_kpis_l2beat_last_success_unix` | when our fetch last worked, no labels | 15 min |
+| `chain_kpis_l2beat_synced_until_unix` | L2Beat's own `chart.syncedUntil`: when it last computed a point | 15 min |
 
 ### Reading the L2Beat gauges
 
@@ -42,6 +43,14 @@ reconstruct the total, and the harness refuses to publish a row whose
 origins miss the total by more than 0.1 % — if upstream renames a field,
 every value binds to zero and a `$0` bridged TVL at full health would be a
 wrong number that looks measured.
+
+Freshness has three clocks and only one of them is honest. The Prometheus
+scrape is always seconds old, because the harness re-exports carried-forward
+gauges every 30 s. `chain_kpis_l2beat_last_success_unix` says our HTTP call
+worked, which stays green when L2Beat answers 200 with stale numbers.
+`chain_kpis_l2beat_synced_until_unix` is L2Beat's own last computed point:
+the series is hourly and normally runs 1-2 h behind (94 min on 2026-09-23),
+and it is the only one that stops when upstream stalls. Bench 273 reads it.
 
 `chain_tvs_change_7d_excess_pct` is the metric to rank on, not the raw
 change. In a broad up week every chain's raw number rises, so a raw
@@ -73,32 +82,30 @@ Plus observability:
 
 ## Chain registry
 
-The set of chains (slug, DefiLlama name, Mobula name, native symbol) is
-hardcoded in `cmd/script/registry.go`. It MUST mirror the OCB site's
-`src/lib/chains.ts` registry. Adding a new chain:
+The set of chains (slug, DefiLlama name, Mobula name, native symbol,
+L2Beat id) is hardcoded in `cmd/script/registry.go`. It MUST mirror the OCB
+site's `src/lib/chains.ts` registry. Adding a new chain:
 
 1. Append to `Registry` in `cmd/script/registry.go`
 2. Append to `CHAINS` in `src/lib/chains.ts` on the OCB site
-3. Redeploy both
+3. If it carries an `L2Beat` id, add a provider row to
+   `benchmarks/chain-bridged-tvl.yml` — `TestEveryMappedChainHasABenchRow`
+   fails otherwise. That test exists because the first cut of bench 273
+   shipped a board whose copy said "the chains L2Beat tracks" while 21 such
+   chains had no row, three of them large enough to vote on the median
+   every other row was judged against.
+4. Redeploy both
 
 Names were verified live against DefiLlama `/v2/chains` and Mobula
 `/api/1/blockchains`. Empty `DefiLlama`/`Mobula` fields = source confirmed
 unsupported for that chain (e.g. Monero on DefiLlama; Stellar, Cardano,
 Litecoin, Monero on Mobula). The page renders only the cards with data.
 
-## Env vars
-
-| Var | Default | Required |
-|---|---|---|
-| `MOBULA_API_KEY` | (empty) | Required for `mobula-native` and `mobula-stats` fetchers; without it the harness logs a warning and skips Mobula. DefiLlama still works. |
-| `DEFILLAMA_REFRESH_MINUTES` | `15` | Optional override. |
-| `MOBULA_REFRESH_MINUTES` | `5` | Optional override. |
-
 ## Port
 
 Hardcoded `:2112` per the OCB harness convention. The shared Prom-gateway
-on Railway is configured to scrape `:2112` from every OCB harness. Do not
-listen on `$PORT` — Railway sets that env var for its proxy layer; the
+on the OCB VPS is configured to scrape `:2112` from every OCB harness. Do not
+listen on `$PORT` — the OCB VPS sets that env var for its proxy layer; the
 harness ignores it.
 
 ## Graceful degradation
