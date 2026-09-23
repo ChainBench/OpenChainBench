@@ -2,12 +2,12 @@
 
 slug: l1-finality
 number: "006"
-title: Fastest L1 blockchain finality, live across 11 chains
-seo_title: "L1 finality 2026: {{best_name}} fastest at {{best_p50}}, {{count}} chains live"
-seo_description: "{{best_name}} leads L1 finality at {{best_p50}} (p50, 24h) across 11 chains. Ethereum, Solana, Bitcoin, SUI, Gram: live wall-clock measurements, not whitepaper claims."
-subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
+title: Fastest L1 blockchain finality, live wall-clock measurement per chain
+seo_title: "Fastest L1 finality 2026: {{best_name}} at {{best_p50}}, {{count}} chains"
+seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest of {{count}} L1s measured live. Ethereum, Solana, Bitcoin, BNB, Stellar: wall-clock, not whitepaper."
+subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, BNB, Stellar and 4 more chains, refreshed every 10 seconds.
 seo_intro: |
-  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and Gram finality time (formerly TON) both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
+  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. Gram finality time (formerly TON) sits under one second via BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
 
 faq:
   - q: "What is blockchain finality?"
@@ -18,8 +18,6 @@ faq:
     a: "Ethereum finality time measured live on this page is {{p50:ethereum}} (p50, 24h). Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, about 12.8 minutes in the ideal case. Observed wall-clock finality runs longer because a block lands mid-epoch and waits before the two-epoch countdown starts. The live table above shows the measured value. The benchmark polls eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and reports the timestamp delta."
   - q: "What is Solana finality time?"
     a: "Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (24h average). The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level, not finalized."
-  - q: "What is SUI finality time?"
-    a: "SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains."
   - q: "What is Gram finality time?"
     a: "Gram's BAG consensus (the network formerly branded TON, with native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
   - q: "What is Stellar finality time?"
@@ -29,11 +27,11 @@ faq:
   - q: "What is BNB Chain finality time?"
     a: "BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as latest and T2 when it crosses the finalized threshold."
   - q: "Which blockchain has the fastest finality time?"
-    a: "Sub-second BFT chains lead. Gram and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum finalizes in minutes (about 12.8 in the ideal case, longer as observed; the live table shows the current p50), and probabilistic chains trail by confirmation-depth convention: Litecoin and Monero at 15 to 30 minutes, Bitcoin at roughly one hour for 6 confirmations."
+    a: "Sub-second BFT chains lead: {{best_name}} posts the lowest median at {{best_p50}} (p50, 24h). {{name:bnb}} follows at {{p50:bnb}} and {{name:avalanche}} at {{p50:avalanche}} via their fast-finality forks. {{name:solana}} finalized clocks {{p50:solana}} and {{name:ethereum}} {{p50:ethereum}}. Probabilistic chains trail by confirmation-depth convention: {{name:litecoin}} at {{p50:litecoin}} and {{name:bitcoin}} at {{p50:bitcoin}} for 6 confirmations."
   - q: "What is Bitcoin finality time?"
     a: "Bitcoin never reaches absolute finality. Nakamoto consensus gives probabilistic finality: any block can in principle be reorganized, with a probability that falls exponentially as more blocks are mined on top. The exchange-industry deposit convention is 6 confirmations, roughly one hour at the 10-minute target block interval, and that is what this benchmark measures: {{p50:bitcoin}} (p50, 24h) wall-clock from a block first appearing at the chain tip to reaching 6 confirmations, timed with the harness clock rather than miner-set block timestamps. Variance is high because block intervals are Poisson distributed; a lucky streak settles in about 30 minutes, an unlucky one takes well over 90. Six confirmations is a risk threshold, not a protocol guarantee, and deep reorgs remain possible with vanishing probability."
   - q: "How is L1 finality time measured on this page?"
-    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, SUI, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
 
 per_chain_explainer:
   - slug: ethereum
@@ -52,10 +50,6 @@ per_chain_explainer:
     h2: "Hedera finality time"
     body: |
       Hedera finality time is documented at 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. This chain is excluded from the live leaderboard for that reason. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview.
-  - slug: sui
-    h2: "SUI finality time"
-    body: |
-      SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps, so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains. Measured via `sui_getLatestCheckpointSequenceNumber` minus a 5-checkpoint lookback.
   - slug: gram
     h2: "Gram finality time"
     body: |
@@ -90,6 +84,7 @@ status: live
 metric: Finality time
 unit: s
 higher_is_better: false
+row_noun: { one: chain, many: chains }
 
 abstract: |
   We measure the live gap between every L1 chain's latest block and its
@@ -133,7 +128,6 @@ methodology:
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
-  - "{{name:sui}} returns {{p50:sui}} (p50, 24 h), matching its Mysticeti DAG BFT design. The chain exposes ms timestamps so the measurement is genuinely sub-second."
   - "{{name:ethereum}} sits at {{p50:ethereum}} (24 h average), consistent with the 2-epoch Casper FFG design (32 slots × 12 s × 2 = 12.8 min ideal) plus the mid-epoch wait before the countdown starts."
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
   - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (24 h average) by construction, set by the chosen confirmation depth."

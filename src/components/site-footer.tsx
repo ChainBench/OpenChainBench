@@ -36,6 +36,7 @@ export function SiteFooter() {
               ...(isDevOnlyRoute("/speedtest-rpc") ? [] : [{ label: "RPC Speed Test", href: "/speedtest-rpc" }]),
               { label: "Data APIs", href: "/data-api" },
               { label: "Perpetuals", href: "/perps" },
+              { label: "Tokenized RWA", href: "/rwa" },
               { label: "Bridge", href: "/bridge" },
               { label: "Compare", href: "/compare" },
               { label: "Alternatives", href: "/alternatives" },

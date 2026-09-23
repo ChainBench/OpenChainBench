@@ -11,6 +11,7 @@ status: live
 metric: Net yield
 unit: bps
 higher_is_better: true
+row_noun: { one: chain, many: chains }
 
 disclaimer: |
   Honest scope. (1) `net_yield = gross_apr × uptime`. NOT "yield net of MEV", Stakewiz `total_apy` already folds Jito MEV into gross, MEV is INCLUDED. `mev_share_bps` exists for transparency, not subtraction. (2) Solana median is dragged by ~42 vals at 0% APY (commission 100% or zero leader slots). (3) Hyperliquid: centralised sequencer, no separate MEV layer, ~30 vals only. (4) Ethereum: one network-average consensus-layer APR from the beacon spec formula, execution tips and MEV excluded.
@@ -158,7 +159,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="solana"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="solana"})
       mean: avg(ocb_validator_net_yield_bps{chain="solana"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="solana"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="solana"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="solana"}
       series: ocb_chain_median_net_yield_bps{chain="solana"}
 
@@ -171,7 +172,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="hyperliquid"})
       mean: avg(ocb_validator_net_yield_bps{chain="hyperliquid"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="hyperliquid"}
       series: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
 
@@ -184,7 +185,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="ethereum"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="ethereum"})
       mean: avg(ocb_validator_net_yield_bps{chain="ethereum"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="ethereum"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="ethereum"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="ethereum"}
       series: ocb_chain_median_net_yield_bps{chain="ethereum"}
 
@@ -197,7 +198,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="cardano"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="cardano"})
       mean: avg(ocb_validator_net_yield_bps{chain="cardano"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="cardano"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="cardano"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="cardano"}
       series: ocb_chain_median_net_yield_bps{chain="cardano"}
 
@@ -210,7 +211,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="sui"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="sui"})
       mean: avg(ocb_validator_net_yield_bps{chain="sui"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="sui"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="sui"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="sui"}
       series: ocb_chain_median_net_yield_bps{chain="sui"}
 
@@ -223,7 +224,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="cosmos-hub"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="cosmos-hub"})
       mean: avg(ocb_validator_net_yield_bps{chain="cosmos-hub"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="cosmos-hub"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="cosmos-hub"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="cosmos-hub"}
       series: ocb_chain_median_net_yield_bps{chain="cosmos-hub"}
 
@@ -236,7 +237,7 @@ providers:
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="avalanche"})
       p99: quantile(0.99, ocb_validator_net_yield_bps{chain="avalanche"})
       mean: avg(ocb_validator_net_yield_bps{chain="avalanche"})
-      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="avalanche"}[24h]) / 100, 1)
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="avalanche"}[24h])) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="avalanche"}
       series: ocb_chain_median_net_yield_bps{chain="avalanche"}
 

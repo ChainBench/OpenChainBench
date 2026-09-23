@@ -15,7 +15,7 @@ import (
 var (
 	promisedBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rwa_yield_promised_bps",
-		Help: "Advertised APY in basis points, sourced from the issuer's public dashboard. Reloaded from promised-yields.yml every 60 seconds so a manual weekly update lands within one scrape cycle.",
+		Help: "Reference APY the deviation is measured against, in bps: the 30-day mean APY on the DefiLlama yields feed for every token (promised-yields.yml, read by hand, dated per entry; the issuer-displayed figure is in the notes).",
 	}, []string{"issuer", "token", "chain"})
 
 	deliveredBps30d = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -26,6 +26,16 @@ var (
 	deliveredBps7d = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rwa_yield_delivered_bps_7d",
 		Help: "Delivered yield over a rolling 7-day window, annualized. Same computation as 30d, shorter window for volatility context.",
+	}, []string{"issuer", "token", "chain"})
+
+	windowDays30d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rwa_yield_window_days_30d",
+		Help: "Days between the two NAV prints the 30d delivered yield spans (about 30; the yield is compounded over this span).",
+	}, []string{"issuer", "token", "chain"})
+
+	windowDays7d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rwa_yield_window_days_7d",
+		Help: "Days between the two NAV prints the 7d delivered yield spans.",
 	}, []string{"issuer", "token", "chain"})
 
 	deliveredBpsLifetime = promauto.NewGaugeVec(prometheus.GaugeOpts{

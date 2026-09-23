@@ -12,8 +12,8 @@ import (
 // Editable by hand + versioned in the repo so every value is
 // traceable to a source URL and date.
 type promisedYieldsFile struct {
-	Updated string           `yaml:"updated"`
-	Issuers []promisedEntry  `yaml:"issuers"`
+	Updated string          `yaml:"updated"`
+	Issuers []promisedEntry `yaml:"issuers"`
 }
 
 type promisedEntry struct {
@@ -28,9 +28,9 @@ type promisedEntry struct {
 // promised-yields.yml every promisedReloadInterval. Reads are lock-
 // free-fast via atomic map swap.
 type promisedStore struct {
-	mu   sync.RWMutex
+	mu      sync.RWMutex
 	byToken map[string]int
-	path string
+	path    string
 }
 
 func newPromisedStore(path string) *promisedStore {

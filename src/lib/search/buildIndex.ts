@@ -103,6 +103,12 @@ const STATIC_PAGES: Array<{ url: string; title: string; description: string; tag
     tags: ["derivatives", "futures"],
   },
   {
+    url: "/rwa",
+    title: "Tokenized RWA hub",
+    description: "Tokenized stocks, treasuries and yield funds measured on-chain: price against the market, NAV basis, yield delivered against yield promised.",
+    tags: ["rwa", "tokenized", "treasuries", "stocks"],
+  },
+  {
     url: "/prediction-markets",
     title: "Prediction markets",
     description: "Prediction market benchmarks across Polymarket and competitors.",

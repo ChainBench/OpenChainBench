@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,7 @@ func NewMobulaPairsSource(apiKey string) *MobulaPairsSource {
 func (s *MobulaPairsSource) Name() string { return srcMobulaPairs }
 
 type mobulaPair struct {
+	Name       string `json:"name"` // "BTC/USD"
 	Dex        string `json:"dex"`
 	Chain      string `json:"chain"`
 	AssetClass string `json:"assetClass"`
@@ -94,24 +96,41 @@ func (s *MobulaPairsSource) Fetch() (*SourceResult, error) {
 			byClass[p.Dex] = map[string]int{}
 		}
 		byClass[p.Dex][p.AssetClass]++
+		// Only the pairs Mobula has classified as crypto feed the cohort
+		// known-crypto set used for the HIP-3 dexes (breadth.go). The
+		// `new` bucket is unclassified, not crypto: Lighter's recent
+		// stock, gold and JPY listings sit there and would turn the same
+		// symbols on Hyperliquid xyz into crypto. The base is the part
+		// before the slash ("BOT/USD" -> BOT).
+		if i := strings.Index(p.Name, "/"); i > 0 {
+			switch p.AssetClass {
+			case classCrypto:
+				res.AddCryptoSymbol(baseSymbol(p.Name[:i]))
+			case classForex, classStocks, classIndices, classCommodities:
+				res.AddRWASymbol(baseSymbol(p.Name[:i]))
+			}
+		}
 	}
 	for dex, n := range counts {
 		res.Set(dex, mActiveMarkets, float64(n))
 	}
 
-	// nonCore classes are the asset classes beyond crypto that represent
-	// genuine breadth: forex, stocks, indices, commodities.
-	// degen and new are excluded (leverage variants and unclassified crypto).
-	nonCore := map[string]bool{"forex": true, "stocks": true, "indices": true, "commodities": true}
+	// Mobula's degen (leverage variants of crypto pairs) and new
+	// (listed, not yet classified) buckets are crypto for the breadth
+	// gauges; the four non-crypto classes map one to one. See breadth.go.
 	for dex, classes := range byClass {
-		total := 0
+		b := breadthCounter{}
 		for class, n := range classes {
-			perpVenueMarketsByClass.WithLabelValues(dex, class).Set(float64(n))
-			if nonCore[class] {
-				total += n
+			switch class {
+			case classForex, classStocks, classIndices, classCommodities:
+				b[class] += n
+			default:
+				// crypto, degen (leverage variants), new (unclassified):
+				// none of them is a non-crypto market for the ranking.
+				b[classCrypto] += n
 			}
 		}
-		perpVenueNoncoreMarketsTotal.WithLabelValues(dex).Set(float64(total))
+		res.SetBreadth(dex, b)
 	}
 
 	fmt.Printf("[perp-cohort][mobula_pairs] ok: %d dexes, counts=%v\n", len(counts), counts)

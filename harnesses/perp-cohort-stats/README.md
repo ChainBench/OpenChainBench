@@ -57,7 +57,7 @@ Today's set:
 |---|---|---|
 | `TICK_INTERVAL_SECONDS` | `60` | Optional override |
 | `MOBULA_API_KEY` | hardcoded fallback | Optional override |
-| `MOBULA_FUNDING_VENUES` | 12-venue CEFI cohort | Optional override |
+| `MOBULA_FUNDING_VENUES` | 11-venue CEFI cohort (Lighter reads its own endpoint) | Optional override |
 
 ## Port
 

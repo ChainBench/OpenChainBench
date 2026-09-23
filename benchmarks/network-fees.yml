@@ -125,6 +125,7 @@ status: live
 metric: Native transfer fee USD
 unit: usd
 higher_is_better: false
+row_noun: { one: chain, many: chains }
 
 abstract: |
   Every 30 seconds we ask each of {{count}} chains for its current native

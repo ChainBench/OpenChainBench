@@ -12,6 +12,18 @@ import (
 // Paradex (Starknet appchain). Public no-auth REST. The book endpoint
 // caps at depth=100 (~$1M visible on majors), so the $1M tier can be
 // legitimately skipped when the visible book thins out.
+//
+// Two books, two fee schedules. Paradex classifies every order as Retail
+// (placed from the UI, or from the API with an interactive token) or Pro
+// (plain API). Retail orders pay the interactive fee (0 bps taker as of
+// 2026-09) and cross the interactive book, which includes the RPI
+// (Retail Price Improvement) maker liquidity; Pro orders pay the api fee
+// (2 bps) and only see the API book, RPI excluded. The two books differ
+// by a lot on the thinner pairs: on 2026-09-22 SOL showed a 0.03 %
+// spread on the interactive book and 1.4 % on the API book. The bench
+// measures what a trader opening a position gets, so it reads the
+// interactive book and the interactive fee; the API-only figures are
+// what an algorithmic taker pays and are documented in the spec.
 
 const paradexBase = "https://api.prod.paradex.trade/v1"
 
@@ -19,11 +31,14 @@ type paradexMarkets struct {
 	Results []struct {
 		Symbol    string `json:"symbol"`
 		FeeConfig struct {
-			APIFee struct {
+			InteractiveFee struct {
 				TakerFee struct {
-					Fee string `json:"fee"` // decimal, e.g. "0.0002"
+					Fee string `json:"fee"` // decimal, "0" as of 2026-09
 				} `json:"taker_fee"`
-			} `json:"api_fee"`
+				MakerFee struct {
+					Fee string `json:"fee"` // decimal, "0" as of 2026-09
+				} `json:"maker_fee"`
+			} `json:"interactive_fee"`
 		} `json:"fee_config"`
 	} `json:"results"`
 }
@@ -45,7 +60,8 @@ func fetchParadex(v VenueConfig) PerpSample {
 	client := &http.Client{Timeout: 8 * time.Second}
 	market := v.Asset + "-USD-PERP"
 
-	// 1) Taker fee from the market's fee config (api tier, not the UI one).
+	// 1) Taker fee from the market's fee config: the interactive (Retail)
+	//    schedule, the one a UI or interactive-token order pays.
 	var mkts paradexMarkets
 	if err := paradexGet(client, fmt.Sprintf("%s/markets?market=%s", paradexBase, market), &mkts); err != nil {
 		s.Err = fmt.Sprintf("markets: %v", err)
@@ -57,12 +73,16 @@ func fetchParadex(v VenueConfig) PerpSample {
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	rate, _ := strconv.ParseFloat(mkts.Results[0].FeeConfig.APIFee.TakerFee.Fee, 64)
+	rate, _ := strconv.ParseFloat(mkts.Results[0].FeeConfig.InteractiveFee.TakerFee.Fee, 64)
 	s.TakerFeeBps = rate * 10000
+	if mk, err := strconv.ParseFloat(mkts.Results[0].FeeConfig.InteractiveFee.MakerFee.Fee, 64); err == nil {
+		s.MakerFeeBps, s.HasMakerFee = mk*10000, true
+	}
 
-	// 2) Orderbook (max depth 100).
+	// 2) Interactive orderbook (max depth 100): API book plus RPI levels,
+	//    what a Retail order crosses.
 	var book paradexBook
-	if err := paradexGet(client, fmt.Sprintf("%s/orderbook/%s?depth=100", paradexBase, market), &book); err != nil {
+	if err := paradexGet(client, fmt.Sprintf("%s/orderbook/%s/interactive?depth=100", paradexBase, market), &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s

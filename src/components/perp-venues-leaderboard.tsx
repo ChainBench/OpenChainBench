@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PerpVenueRow } from "@/lib/perp-stats";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 
 /**
  * Sortable + searchable venue leaderboard for /perps. Mirrors the PM
@@ -34,9 +35,13 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
 
+  // 24h volume over open interest, the figure the perp-volume-oi-ratio
+  // bench ranks (0.3x to 3x is the order-book band, 8x and above the flag).
+  // The column read 30-day volume over OI until 2026-09-23, thirty times
+  // the bench's number under the same label.
   const ratio = (r: PerpVenueRow) =>
-    r.volume30d != null && r.openInterest != null && r.openInterest > 0
-      ? r.volume30d / r.openInterest
+    r.volume24h != null && r.openInterest != null && r.openInterest > 0
+      ? r.volume24h / r.openInterest
       : null;
 
   const filtered = useMemo(() => {
@@ -135,7 +140,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                 dir={sortDir}
                 onClick={() => setSort("volOiRatio")}
               >
-                Vol/OI
+                Vol/OI 24h
               </ThSort>
               <ThSort
                 active={sortKey === "activeMarkets"}
@@ -155,9 +160,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              // GMX v2's product slug is "gmx"; all others match cohort slug.
-              const productHref =
-                r.slug === "gmx-v2" ? "/products/gmx#perp" : `/products/${r.slug}#perp`;
+              const productHref = `/products/${perpProductSlug(r.slug)}#perp`;
               const vor = ratio(r);
               return (
                 <tr
@@ -175,7 +178,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ProviderLogo
-                        slug={r.slug === "gmx-v2" ? "gmx" : r.slug}
+                        slug={perpProductSlug(r.slug)}
                         name={r.name}
                         size={18}
                       />
@@ -297,15 +300,15 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
-  // Color bands: <80x normal (teal), 80-300x elevated (amber), >300x flag (red).
-  // Loosened from the original 50/200 thresholds because zero-fee venues
-  // (Lighter, ~115x today) and MM-heavy order books legitimately churn
-  // their OI multiple times per day without it being wash-traded. Only
-  // sustained ratios above 300x warrant a visual flag now.
+  // Same bands as the perp-volume-oi-ratio bench, on 24h volume: 0.3x to
+  // 4x is where order books with real holders (0.3x to 3x) and pool or
+  // oracle venues (1x to 4x) sit (teal); under 0.3x the volume may be
+  // thin against the positions, 4x to 8x is a high-churn book (amber);
+  // 8x and above is where the volume figure deserves a second look (red).
   const band =
-    ratio < 80
+    ratio >= 0.3 && ratio <= 4
       ? { fg: "text-teal-700", bg: "bg-teal-500/10", border: "border-teal-500/30" }
-      : ratio <= 300
+      : ratio < 8
         ? { fg: "text-amber-700", bg: "bg-amber-500/10", border: "border-amber-500/30" }
         : { fg: "text-red-700", bg: "bg-red-500/10", border: "border-red-500/30" };
   return (
@@ -313,11 +316,13 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
       className="px-3 py-2 tabular-nums"
       style={{ fontFamily: "var(--font-mono, monospace)" }}
       title={
-        ratio < 80
-          ? "Vol / OI under 80x is typical for an active order-book venue."
-          : ratio <= 300
-            ? "Vol / OI above 80x means high churn, common for zero-fee venues like Lighter or MM-heavy books running incentive programs."
-            : "Vol / OI above 300x typically indicates wash trading and is worth a closer look."
+        ratio >= 0.3 && ratio <= 4
+          ? "24h volume over open interest between 0.3x and 4x: order books with real holders sit at 0.3x to 3x, pool and oracle venues at 1x to 4x (bench perp-volume-oi-ratio)."
+          : ratio < 0.3
+            ? "24h volume over open interest under 0.3x: positions turn over slowly, the volume may be thin against them."
+            : ratio < 8
+              ? "24h volume over open interest between 4x and 8x: a high-churn book, common on zero-fee venues and incentive programs."
+              : "24h volume over open interest of 8x and above: the book turns over more than eight times a day, where the volume figure deserves a second look."
       }
     >
       <span

@@ -3,14 +3,15 @@
 slug: perp-volume-share
 number: "041"
 title: Perp DEX volume share, live 24h notional ranked
-seo_title: "Perp DEX 24h volume: {{best_name}} leads at {{best_p50}}, live"
-seo_description: "{{best_name}} leads perp DEX volume at {{best_p50}} in 24h across {{count}} venues (Hyperliquid, Aster, Lighter, Ondo Perps, GMX, Gains, dYdX, Paradex and more), read from each venue's API every 5 minutes."
+seo_title: "Perp DEX 24h volume: {{best_name}} leads at {{best_p50}}"
+seo_description: "{{best_name}} leads perp DEX 24h volume at {{best_p50}} across {{count}} venues, Hyperliquid, Aster, Lighter, Kalshi and more, read from each venue's API every 5 minutes."
 subtitle: 24h rolling perpetual futures notional volume in USD across the major decentralized venues, Ondo Perps included. Higher means more flow. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
 unit: usd
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark ranks the major onchain perp venues by 24 hour rolling
@@ -19,20 +20,20 @@ seo_intro: |
   venue's public API every 5 minutes, read the venue's own trailing 24
   hour taker notional in USD, and publish a single gauge per venue.
   The cohort covers {{count}} venues with live data today, among them Hyperliquid, GMX V2, Gains, Aster,
-  Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex,
+  Lighter, GRVT, Extended, Pacifica, Nado, dYdX v4, Aevo, Paradex,
   Polymarket, Orderly, Backpack and Ondo Perps. Headline number is the 24h average of the live 24h gauge so
   a single noisy print does not move the ranking. The companion benches
   price the cost side (perp-fees for opening, perp-funding for holding);
   this one prices flow.
 
 abstract: |
-  The bench polls 15 perp DEX venues every 5 minutes for the trailing
+  The bench polls every venue in the cohort every 5 minutes for the trailing
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   GMX V2 stats API (hourly buckets summed across Arbitrum and Avalanche),
   Gains backend volume-mix API (auto + direct notional, DefiLlama perimeter), Aster fapi 24h ticker
   per instrument, Lighter public stats endpoint, GRVT public markets,
-  Extended API, Pacifica onchain reads, Vertex indexer, dYdX v4 indexer
+  Extended API, Pacifica onchain reads, Nado archive, dYdX v4 indexer
   perpetualMarkets, Aevo public markets, Paradex markets summary. Each
   value carries a freshness timestamp and a health gauge so a stale or
   errored venue does not poison the leaderboard. Higher is better.
@@ -47,7 +48,8 @@ methodology:
   - "GRVT: public markets endpoint, 24h volume per instrument summed in USD."
   - "Extended: public markets API, 24h volume per instrument summed in USD."
   - "Pacifica: onchain reads on the Solana program state for trailing 24h taker notional."
-  - "Vertex: public indexer, 24h volume per product summed across all perps."
+  - "Nado (the Vertex team's venue on Ink, published as Vertex until 2026-09-22): archive market_snapshots, cumulative volume per product diffed 24h apart and summed."
+  - "Kalshi: margin/markets volume_24h_notional_value_dollars summed. Vest: /v2/ticker/24hr quoteVolume summed. StandX: summary.volume_quote_24h. ApeX Omni: turnover24h per live contract. Jupiter Perps: market-stats volume for SOL, ETH, WBTC. Lighter RH: exchangeStats daily_quote_token_volume. trade.xyz: dayNtlVlm of the xyz dex universe."
   - "dYdX v4: indexer perpetualMarkets, volume24H summed across markets in USD."
   - "Aevo: public markets endpoint, 24h volume per instrument summed in USD."
   - "Paradex: markets summary on Starknet L2, 24h volume summed across perps."
@@ -57,7 +59,7 @@ methodology:
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 15 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across {{ranked_count}} ranked perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM AMM perp DEX on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum, Base, Polygon and MegaETH."
@@ -67,7 +69,7 @@ findings:
   - "{{name:pacifica}} sits at {{p50:pacifica}} of 24h notional. Solana-native onchain perps."
   - "{{name:extended}} sits at {{p50:extended}} of 24h notional. StarkEx-based perps venue."
   - "{{name:dydx}} sits at {{p50:dydx}} of 24h notional. Cosmos appchain orderbook."
-  - "{{name:vertex}} sits at {{p50:vertex}} of 24h notional. Arbitrum orderbook plus AMM hybrid."
+  - "{{name:nado}} sits at {{p50:nado}} of 24h notional. Ink orderbook DEX by the Vertex team."
   - "{{name:paradex}} sits at {{p50:paradex}} of 24h notional. Starknet L2 perps."
   - "{{name:aevo}} sits at {{p50:aevo}} of 24h notional. Optimism L2 orderbook perps."
   - "{{name:orderly}} sits at {{p50:orderly}} of 24h notional. Cross-chain CLOB infrastructure on Arbitrum and Base."
@@ -82,11 +84,11 @@ prometheus:
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The trailing 24 hour taker notional volume of 11 major perp DEX venues in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
+    a: "The trailing 24 hour taker notional volume of every perp DEX venue in the cohort, in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
   - q: "Why 24h rolling instead of daily snapshots?"
     a: "Every venue in the cohort publishes a live rolling 24 hour window on its own public API, so a rolling comparison sidesteps timezone bucketing and the noise of a single calendar day. The 24h average smooths intraday micro-spikes without hiding regime shifts within the window."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, GMX V2, Gains, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex, Polymarket, Orderly and Backpack: 15 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, GMX V2, Gains, Aster, Lighter, GRVT, Extended, Pacifica, Nado, dYdX v4, Aevo, Paradex, Polymarket, Orderly, Backpack, Ondo Perps, Vest, StandX, ApeX Omni, Jupiter Perps, Lighter RH and trade.xyz, plus Kalshi as the regulated US venue: {{count}} venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is this the same as DeFiLlama volume?"
     a: "Methodology is similar in spirit but each venue is queried directly here, not via an aggregator. Numbers should sit close to DeFiLlama on most days, divergences usually mean a downstream feed lagged."
 
@@ -194,18 +196,18 @@ providers:
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h])
       series: perp_venue_volume_24h_usd{venue="pacifica"}
 
-  - slug: vertex
-    name: Vertex
-    tag: Arbitrum orderbook plus AMM hybrid
-    formula: "24h volume from the Vertex public indexer per product, summed across all perps in USD; headline is the 24h time average."
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook DEX by the Vertex team (the row read as Vertex until 2026-09-22)
+    formula: "24h volume from the Nado public archive (market_snapshots, cumulative volumes diffed 24h apart) summed across live perp products in USD; headline is the 24h time average."
     queries:
-      p50: avg_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      mean: avg_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      success: avg_over_time(perp_venue_health{venue="vertex"}[24h])
-      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="vertex"}[24h])
-      series: perp_venue_volume_24h_usd{venue="vertex"}
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="nado"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nado"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      series: perp_venue_volume_24h_usd{venue="nado"}
 
   - slug: dydx
     name: dYdX v4
@@ -297,3 +299,87 @@ providers:
       success: avg_over_time(perp_venue_health{venue="backpack"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="backpack"}[24h])
       series: perp_venue_volume_24h_usd{venue="backpack"}
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, 25 perps on crypto and metals, 8 h funding
+    formula: "volume_24h_notional_value_dollars summed across active markets from GET /trade-api/v2/margin/markets (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      series: perp_venue_volume_24h_usd{venue="kalshi"}
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, crypto plus US equities, indices and FX perps
+    formula: "quoteVolume summed across GET /v2/ticker/24hr rows (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="vest"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="vest"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      success: avg_over_time(perp_venue_health{venue="vest"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="vest"}[24h])
+      series: perp_venue_volume_24h_usd{venue="vest"}
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain, 13 markets incl. gold, silver, oil
+    formula: "summary.volume_quote_24h from GET /api/query_market_overview (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="standx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="standx"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="standx"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      series: perp_venue_volume_24h_usd{venue="standx"}
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, crypto and US stock contracts
+    formula: "turnover24h summed across live perpetual and stock contracts from GET /api/v3/ticker (one call per market, 5 min cache), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="apex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="apex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="apex"}
+  - slug: jupiter
+    name: Jupiter Perps
+    tag: Solana, JLP pool as counterparty, SOL, ETH, WBTC
+    formula: "volume from GET /v1/market-stats summed over the three markets (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="jupiter"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      series: perp_venue_volume_24h_usd{venue="jupiter"}
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment, separate books on api.rh.lighter.xyz
+    formula: "daily_quote_token_volume summed across GET /api/v1/exchangeStats rows on the Robinhood deployment (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      series: perp_venue_volume_24h_usd{venue="lighter-rh"}
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex, equities, metals, FX and index perps
+    formula: "dayNtlVlm summed across the xyz dex universe from POST /info metaAndAssetCtxs dex=xyz (24h), in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      series: perp_venue_volume_24h_usd{venue="trade-xyz"}

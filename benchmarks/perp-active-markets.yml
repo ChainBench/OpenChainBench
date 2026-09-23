@@ -3,14 +3,15 @@
 slug: perp-active-markets
 number: "116"
 title: Most tradable markets on a perp DEX, live count per venue
-seo_title: "Perp DEX markets: {{best_name}} lists {{best_p50}}, live count"
-seo_description: "{{best_name}} lists the most perpetual markets, {{best_p50}} live, across {{count}} venues (Hyperliquid, Aster, Lighter, Ondo Perps, dYdX, Paradex, edgeX and more), counted from each venue's API every 5 minutes."
+seo_title: "Perp DEX markets: {{best_name}} lists {{best_p50}} live"
+seo_description: "{{best_name}} lists the most perp markets, {{best_p50}} live, across {{count}} venues: Hyperliquid, Aster, Lighter, Ondo, dYdX, Paradex, edgeX and more, counted every 5 minutes."
 subtitle: Live count of active perpetual futures markets per venue, polled every 5 minutes from each venue's public API. Higher means more tradable instruments across crypto, forex, stocks, indices and commodities.
 category: Trading
 status: live
 metric: Active markets
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark ranks the major onchain perp venues by total active markets.
@@ -26,7 +27,7 @@ abstract: |
   of active markets per venue. Sources: native API for most venues (Hyperliquid
   info metaAndAssetCtxs, Lighter orderBookDetails with market_type==perp filter,
   dYdX v4 indexer perpetualMarkets, Paradex markets summary, edgeX native markets,
-  Aster fapi exchangeInfo PERPETUAL instruments, Vertex indexer, GRVT markets,
+  Aster fapi exchangeInfo PERPETUAL instruments, Nado gateway, GRVT markets,
   Extended public markets, Aevo markets, Pacifica Solana program state, Ostium
   subgraph, Polymarket perps tickers). Gains uses the Mobula perp pairs
   catalog (dex=gains, mainnet chains only, arbitrum-sepolia excluded), the same
@@ -39,9 +40,10 @@ methodology:
   - "Lighter: orderBookDetails, count of markets where market_type==perp and status==active. Native API, mainnet only."
   - "dYdX v4: indexer perpetualMarkets, count of non-deactivated markets."
   - "Paradex: markets summary endpoint on Starknet L2, count of active perp markets."
-  - "edgeX: native markets endpoint, count of active perp markets on zkSync."
+  - "edgeX: native markets endpoint, count of active perp markets on its StarkEx-settled book."
   - "Aster: fapi exchangeInfo, count of instruments with contractType==PERPETUAL and status==TRADING on BNB Chain."
-  - "Vertex: public indexer, count of active perp products on Arbitrum."
+  - "Nado (the Vertex team's venue on Ink, published as Vertex until 2026-09-22): gateway /v1/symbols, count of perp products with trading_status live."
+  - "Kalshi: margin/markets rows with status active. Vest: /v2/ticker/latest rows with status TRADING. StandX: summary.symbol_count. ApeX Omni: live perpetual and stock contracts. Jupiter Perps: markets answering market-stats. Lighter RH: active perp books on api.rh.lighter.xyz. trade.xyz: non-delisted xyz dex universe."
   - "GRVT: public markets endpoint, count of active instruments on ZK Stack."
   - "Extended: public markets API, count of active perp markets on StarkEx."
   - "Aevo: public markets endpoint, count of active perp instruments on OP Stack."
@@ -56,7 +58,7 @@ findings:
   - "{{best_name}} leads the cohort with {{best_p50}} active markets across the {{count}} measured perp DEX venues."
   - "{{name:gains}} lists {{p50:gains}} active markets, spanning crypto, forex, stocks, indices and commodities. The widest multi-asset catalog among EVM perp DEXes."
   - "{{name:aster}} lists {{p50:aster}} active markets. BNB Chain perps with a Binance-compatible API."
-  - "{{name:edgex}} lists {{p50:edgex}} active markets. zkSync-based offchain CLOB."
+  - "{{name:edgex}} lists {{p50:edgex}} active markets. StarkEx-settled offchain CLOB."
   - "{{name:extended}} lists {{p50:extended}} active markets. StarkEx-based perps venue."
   - "{{name:aevo}} lists {{p50:aevo}} active markets. Optimism L2 orderbook, options-focused history."
   - "{{name:lighter}} lists {{p50:lighter}} active markets. Zero taker fee onchain orderbook on zkSync."
@@ -66,7 +68,7 @@ findings:
   - "{{name:ostium}} lists {{p50:ostium}} active markets. Synthetic perps on Arbitrum, FX and commodities alongside crypto."
   - "{{name:pacifica}} lists {{p50:pacifica}} active markets. Solana-native onchain perps."
   - "{{name:paradex}} lists {{p50:paradex}} active markets. Starknet L2 perps."
-  - "{{name:vertex}} lists {{p50:vertex}} active markets. Arbitrum orderbook plus AMM hybrid."
+  - "{{name:nado}} lists {{p50:nado}} active markets. Ink orderbook DEX by the Vertex team."
   - "{{name:polymarket}} lists {{p50:polymarket}} active markets. Polygon perps, launched 2026-07."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
@@ -82,8 +84,8 @@ faq:
     a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory Gains exposes on its interface."
   - q: "Is market count a good proxy for venue breadth?"
     a: "It is the fastest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
-  - q: "Why is Aster first if Gains covers more asset classes?"
-    a: "Aster lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
+  - q: "Can a venue with more asset classes rank below one with more instruments?"
+    a: "Yes. Aster, for example, lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
 
 providers:
   - slug: aster
@@ -127,7 +129,7 @@ providers:
   - slug: edgex
     name: edgeX
     tag: zkSync-based offchain CLOB
-    formula: "Count of active perp markets from edgeX native markets endpoint on zkSync."
+    formula: "Count of contracts with enableTrade and enableDisplay in the edgeX v2 getMetaData catalog (175 on 2026-09-22). Before 2026-09-22 the v1 catalog was counted whole, retired rows included (292), so the series steps down on that date."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="edgex"}[24h])
       p90: quantile_over_time(0.90, perp_venue_active_markets{venue="edgex"}[24h])
@@ -254,18 +256,18 @@ providers:
       sample_size: count_over_time(perp_venue_active_markets{venue="paradex"}[24h])
       series: perp_venue_active_markets{venue="paradex"}
 
-  - slug: vertex
-    name: Vertex
-    tag: Arbitrum orderbook plus AMM hybrid
-    formula: "Count of active perp products from the Vertex public indexer on Arbitrum."
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook DEX by the Vertex team (the row read as Vertex until 2026-09-22)
+    formula: "Count of perp products with trading_status live from the Nado public gateway /v1/symbols."
     queries:
-      p50: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="vertex"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="vertex"}[24h])
-      mean: avg_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      success: avg_over_time(perp_venue_health{venue="vertex"}[24h])
-      sample_size: count_over_time(perp_venue_active_markets{venue="vertex"}[24h])
-      series: perp_venue_active_markets{venue="vertex"}
+      p50: avg_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="nado"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nado"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="nado"}[24h])
+      series: perp_venue_active_markets{venue="nado"}
 
   - slug: polymarket
     name: Polymarket
@@ -279,3 +281,87 @@ providers:
       success: avg_over_time(perp_venue_health{venue="polymarket"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="polymarket"}[24h])
       series: perp_venue_active_markets{venue="polymarket"}
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange, crypto and metals perps
+    formula: "Count of markets with status active from GET /trade-api/v2/margin/markets."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="kalshi"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="kalshi"}[24h])
+      series: perp_venue_active_markets{venue="kalshi"}
+  - slug: vest
+    name: Vest
+    tag: zk perp exchange, crypto plus US equities, indices and FX
+    formula: "Count of symbols with status TRADING in GET /v2/ticker/latest (544 listed, about 90 open at a time; equities follow exchange hours)."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="vest"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="vest"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      success: avg_over_time(perp_venue_health{venue="vest"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="vest"}[24h])
+      series: perp_venue_active_markets{venue="vest"}
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain
+    formula: "summary.symbol_count from GET /api/query_market_overview."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="standx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="standx"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="standx"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="standx"}[24h])
+      series: perp_venue_active_markets{venue="standx"}
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook perps, crypto and US stock contracts
+    formula: "Count of perpetualContract and stockContract rows with enableTrade and enableDisplay in GET /api/v3/symbols; prediction contracts excluded."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="apex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="apex"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="apex"}[24h])
+      series: perp_venue_active_markets{venue="apex"}
+  - slug: jupiter
+    name: Jupiter Perps
+    tag: Solana, JLP pool as counterparty
+    formula: "Markets answering GET /v1/market-stats (SOL, ETH, WBTC)."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="jupiter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="jupiter"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="jupiter"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="jupiter"}[24h])
+      series: perp_venue_active_markets{venue="jupiter"}
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment
+    formula: "Count of perp markets with status active in GET /api/v1/orderBookDetails on api.rh.lighter.xyz."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="lighter-rh"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="lighter-rh"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="lighter-rh"}[24h])
+      series: perp_venue_active_markets{venue="lighter-rh"}
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex
+    formula: "Count of non-delisted universe entries from POST /info metaAndAssetCtxs dex=xyz."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="trade-xyz"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="trade-xyz"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
+      series: perp_venue_active_markets{venue="trade-xyz"}

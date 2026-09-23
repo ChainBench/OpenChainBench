@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { leader, fieldValue, rankedCandidates } from "./citation";
+import { leader, fieldValue, rankedCandidates, leaderNames } from "./citation";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(
@@ -182,5 +182,42 @@ describe("cohortSummaries", () => {
 
   test("empty on a bench without tiers", () => {
     expect(cohortSummaries(bench([r("a", "A", 1)]), "https://x")).toEqual([]);
+  });
+});
+
+describe("headline ties", () => {
+  // rpc-reliability, 2026-09-22: Tenderly, Flashbots, Base and Arbitrum all
+  // sat at 0 incidents and the sentence read "Tenderly posts the lowest
+  // reliability incidents at 0", which claims a ranking over three providers
+  // that did exactly as well.
+  function counts(results: ProviderResult[]): Benchmark {
+    return { ...bench(results), metric: "Reliability incidents", unit: "count" };
+  }
+
+  test("names every provider sharing the top value instead of crowning one", () => {
+    const s = headlineSentence(
+      counts([r("tenderly", "Tenderly", 0), r("flashbots", "Flashbots", 0), r("base", "Base", 0), r("optimism", "Optimism", 1)]),
+    );
+    expect(s).toContain("Tenderly, Flashbots and Base");
+    expect(s).toContain("tied at 0");
+  });
+
+  test("two tied providers read as a pair", () => {
+    const s = headlineSentence(counts([r("a", "Alpha", 0), r("b", "Bravo", 0), r("c", "Cee", 3)]));
+    expect(s).toContain("Alpha and Bravo");
+  });
+
+  test("a unique top value keeps the single-leader wording", () => {
+    const s = headlineSentence(counts([r("a", "Alpha", 0), r("b", "Bravo", 2)]));
+    expect(s).toContain("Alpha posts the lowest");
+    expect(s).not.toContain("tied at");
+  });
+
+  test("a higher-is-better tie says all lead", () => {
+    const b = { ...counts([r("a", "Alpha", 9), r("b", "Bravo", 9)]), higherIsBetter: true };
+    // Two tied providers read "both", three or more "all" (audit 2026-09-22).
+    expect(headlineSentence(b)).toContain("Alpha and Bravo both lead on");
+    expect(leaderNames(b)).toEqual(["Alpha", "Bravo"]);
+    expect(headlineSentence(b)).not.toContain(b.title);
   });
 });

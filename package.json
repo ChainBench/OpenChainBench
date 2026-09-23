@@ -2,7 +2,7 @@
   "name": "openchainbench",
   "version": "0.1.0",
   "private": true,
-  "description": "Open benchmarks for crypto infrastructure — aggregators, bridges, price feeds.",
+  "description": "Open benchmarks for crypto infrastructure \u2014 aggregators, bridges, price feeds.",
   "scripts": {
     "dev": "next dev",
     "prebuild": "tsx scripts/emit-page-mtimes.ts",
@@ -12,6 +12,7 @@
     "test": "bun test src/",
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-specs.ts",
+    "check:scalars": "tsx scripts/check-scalar-cardinality.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
     "rpc-hub:dry-run": "tsx scripts/dry-run-rpc-hub.ts",
     "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm test",

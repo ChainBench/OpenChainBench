@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+// deviationMethod labels every deviation sample with the pricing method
+// in force: "scaled_v2" reads the ScaledUiAmount multiplier on-chain.
+const deviationMethod = "scaled_v2"
+
 func main() {
 	installLogCapture()
 	fmt.Println("=== xStocks Peg Harness ===")
@@ -59,17 +63,31 @@ func main() {
 			if hasPool {
 				tspPriceOnchain.WithLabelValues(sym, issuerLabel).Set(pool)
 			}
+			// One session at a time: the deviation gauge for every other
+			// market_state is deleted, or Prometheus keeps scraping the last
+			// regular tick all night and the 24h "regular" median becomes
+			// that one frozen tick (audit 2026-09-23: 73 % of the samples).
+			for _, other := range []string{"pre", "regular", "post", "closed", "unknown"} {
+				if other != state {
+					tspDeviationBps.DeleteLabelValues(sym, other, issuerLabel, deviationMethod)
+				}
+			}
 			if hasRef && hasPool && ref.Price > 0 {
 				dev := math.Abs(pool-ref.Price) / ref.Price * 10000
-				tspDeviationBps.WithLabelValues(sym, state, issuerLabel).Set(dev)
+				tspDeviationBps.WithLabelValues(sym, state, issuerLabel, deviationMethod).Set(dev)
 				tspHealth.WithLabelValues(sym).Set(1)
+				tspLastSuccess.WithLabelValues(sym).Set(float64(now.Unix()))
 				flag := ""
 				if dev > logThresholdBps && state == "regular" {
 					flag = "  <-- wide"
 				}
 				fmt.Printf("[%s][%s] pool=%.2f ref=%.2f dev=%.1fbps%s\n", sym, state, pool, ref.Price, dev, flag)
 			} else {
+				// A failed leg publishes nothing: the frozen gauge is the
+				// failure mode the freshness stamp above exists to expose.
 				tspHealth.WithLabelValues(sym).Set(0)
+				tspDeviationBps.DeleteLabelValues(sym, state, issuerLabel, deviationMethod)
+				tspPriceOnchain.DeleteLabelValues(sym, issuerLabel)
 			}
 		}
 	}

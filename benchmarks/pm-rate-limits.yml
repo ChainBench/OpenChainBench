@@ -12,6 +12,7 @@ status: live
 metric: Warm book latency
 unit: ms
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   Every prediction market venue documents its API rate limits differently,

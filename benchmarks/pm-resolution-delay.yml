@@ -12,6 +12,7 @@ status: live
 metric: Resolution delay
 unit: s
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   The most asked question about prediction markets after "is it legal" is "how

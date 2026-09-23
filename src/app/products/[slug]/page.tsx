@@ -1,6 +1,19 @@
+import { distinctBenchCount } from "@/lib/providers";
 import type { Metadata } from "next";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { isDevOnlyBench } from "@/lib/removed-benches";
+
+/** Appearances the site still has a page for. A retired bench returns 410,
+ *  so counting it, linking it or quoting its rank describes a cohort that
+ *  no longer exists: /products/mobula linked two of them and printed their
+ *  ranks in its first 300 words (SEO audit 2026-09-22). */
+function livingAppearances<T extends { benchmark: { slug: string } }>(xs: T[]): T[] {
+  return xs.filter(
+    (a) => !REMOVED_BENCH_SLUGS.has(a.benchmark.slug) && !isDevOnlyBench(a.benchmark.slug),
+  );
+}
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
@@ -9,7 +22,8 @@ import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { valueQualifier } from "@/lib/value-window";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
   getProviderRegistry,
@@ -97,6 +111,7 @@ const CATEGORY_NOUN: Record<string, string> = {
   Trading: "trading",
   Wallets: "wallet",
   RPCs: "RPC",
+  RWA: "RWA",
 };
 
 /** "Arbitrum RPC" for a chain RPC bench; the title up to its first comma
@@ -104,6 +119,17 @@ const CATEGORY_NOUN: Record<string, string> = {
  *  metric) when even that runs long. Full titles are 45 to 65 characters
  *  and ate the whole 158-character snippet before the second value
  *  (audit 2026-09-19, major 3: /products/relay cut mid-sentence). */
+function firstClause(line: string): string {
+  const parts = line.split(/(?<=[.;])\s|,\s/);
+  let clause = parts[0] ?? "";
+  let i = 1;
+  while (/(?:^|\s)(?:[A-Za-z]\.)+$/.test(clause) && i < parts.length) {
+    clause = `${clause} ${parts[i]}`;
+    i += 1;
+  }
+  return clause.replace(/[,;:\s]+$/, "");
+}
+
 function shortBenchLabel(b: { slug: string; title: string; category: string; metric: string }): string {
   const m = b.title.match(/^([A-Za-z0-9 .-]+?) RPC endpoints/i) ?? b.title.match(/free ([A-Za-z0-9 .-]+?) RPC/i);
   if (m && b.slug.endsWith("-rpc")) return `${m[1]} RPC`;
@@ -126,6 +152,14 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
+  // Alias → canonical, mirrored in the page component below: a
+  // metadata-only redirect leaves a cached 404 behind (merkle, 2026-07-11).
+  {
+    const resolved = await getProvider(slug);
+    if (resolved && resolved.slug.toLowerCase() !== slug.toLowerCase()) {
+      permanentRedirect(`/products/${resolved.slug}`);
+    }
+  }
   // /products/<slug> is the one canonical page per product since
   // 2026-09-17. The former /hyperliquid/<slug> and /perp/<slug> detail
   // routes 308 here (next.config redirects) and their content is a view
@@ -145,13 +179,22 @@ export async function generateMetadata({
   // at position 4, 0 clicks each on 2026-09-19) land next to the brand's
   // own site; the title has to say what this page adds, independent
   // measurement, and the description has to carry the numbers.
-  const title = `${p.name} benchmark: live rank and measured numbers`;
+  const appearances = livingAppearances(p.appearances);
+  const benchCount = distinctBenchCount(appearances);
+  // The category the product is actually in, taken from the bench it
+  // ranks highest on, so the blue line answers "what is this" before it
+  // answers "how does it rank". Brand queries carried 690 impressions and
+  // zero clicks against the old generic title (SEO audit 2026-09-22).
+  const topCategory = [...appearances].sort((a, b) => a.rank - b.rank)[0]?.benchmark.category;
+  const categoryNoun = topCategory ? (CATEGORY_NOUN[topCategory] ?? topCategory.toLowerCase()) : "";
+  const title = categoryNoun
+    ? `${p.name}: ${categoryNoun} benchmark ${new Date().getUTCFullYear()}, live rank`
+    : `${p.name} benchmark: live rank and measured numbers`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
   // first word is the provider name, which is what the SERP snippet keeps
   // when it truncates.
-  const benchCount = p.appearances.length;
   const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
@@ -174,7 +217,7 @@ export async function generateMetadata({
   // value, then the registry one-liner if room remains. The dated
   // "As of" belongs in the page body (TL;DR, JSON-LD dateModified), not
   // in 22 characters of the snippet.
-  const metaRanked = [...p.appearances]
+  const metaRanked = [...appearances]
     .filter((a) => a.rank > 0 && a.result.ms.p50 !== 0)
     // Tie-break on the size of the field a rank was earned in (#1 of 6
     // before #1 of 2), then the title; the alphabetical break opened
@@ -184,15 +227,71 @@ export async function generateMetadata({
     // Always the denominator and, on a tier-dimensioned bench, the cohort:
     // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
     // cohort and Alchemy the private one (audit 2026-09-21).
-    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
-  const measuredLead =
-    metaRanked.length > 0
-      ? `${p.name} ranks ${metaRanked.join(", ")} (p50, 24h). ${benchCount} live ${benchWord}${winSuffix}.`
-      : fallbackDescription;
+    // Each rank carries its own bench's qualifier: a 7d session median, a
+    // 30d figure and last weekend's maximum were all labelled "(p50, 24h)"
+    // by one trailing suffix (RWA audit 2026-09-23).
+    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)} (${valueQualifier(a.benchmark)})`);
+  // Count first, ranks second: the 158-character cap lands inside the
+  // rank list on providers with two long bench labels, and a sentence
+  // cut on a numeral ("at 4.") is what the snippet then shows (audit
+  // 2026-09-22). The count sentence is complete however the cut falls.
+  // Ranks first, sized to the budget: the second rank joins only when the
+  // rank sentence itself fits the 155-character snippet, so the cap never
+  // lands inside the rank list (audit 2026-09-22), and the count sentence
+  // follows as a whole sentence that capSnippet may drop, so it never eats
+  // the second rank either (audit 2026-09-23).
+  const rankSentence = (ranks: string[]) => `${p.name} ranks ${ranks.join(", ")}.`;
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
-  const description = capDescription(`${measuredLead} ${registryLine}`.trim(), 158);
+  // What it is, then how it ranks, but only when both fit. Registry
+  // descriptions run to a median of 166 characters against a 155 cap, so
+  // leading with the whole one-liner dropped every number from all 220
+  // product snippets (regression from 2026-09-22, caught the same night by
+  // the next audit). The vendor's own SERP result already says what the
+  // product is; the ranks are the only thing ours carries that theirs does
+  // not. A short one-liner leads; a long one follows the ranks, trimmed to
+  // its first clause.
+  // capSnippet, not capDescription: a registry line longer than the
+  // budget with no sentence end inside it shipped "(Hyperliquid referral…"
+  // on /products/invo; the snippet capper closes on a clause instead.
+  // The first clause ends at a sentence end, a semicolon or a comma, but
+  // not at an abbreviation's period: "tokenized U.S. Treasury" split at
+  // "U.S." and shipped as "U.S.." on /products/usdy (RWA audit 2026-09-23).
+  const registryClause = registryLine ? firstClause(registryLine) : "";
+  // The budget the ranks get is what remains after the prefix that will
+  // actually precede them (a registry line of 80 characters or less), so
+  // capSnippet's cut never lands inside the rank list or before it
+  // (review 2026-09-23: /products/edgex shipped its registry line and no
+  // number when the fit ignored the prefix). One less than the cap keeps
+  // the rank sentence's ". " boundary inside capSnippet's head. When even
+  // one rank does not fit behind the prefix, the prefix goes, not the rank.
+  const shortRegistry = registryLine && registryLine.length <= 80 ? registryLine : "";
+  const budgetAfter = (prefix: string) => 155 - (prefix ? prefix.length + 1 : 0) - 1;
+  const fitRanks = (prefix: string) => {
+    if (metaRanked.length === 0) return [];
+    if (metaRanked.length > 1 && rankSentence(metaRanked).length <= budgetAfter(prefix)) return metaRanked;
+    return rankSentence(metaRanked.slice(0, 1)).length <= budgetAfter(prefix) ? metaRanked.slice(0, 1) : [];
+  };
+  let prefix = shortRegistry;
+  let fittedRanks = fitRanks(prefix);
+  if (fittedRanks.length === 0 && prefix && metaRanked.length > 0) {
+    prefix = "";
+    fittedRanks = fitRanks(prefix);
+  }
+  const measuredLead =
+    fittedRanks.length > 0
+      ? `${rankSentence(fittedRanks)} ${benchCount} live ${benchWord}${winSuffix}.`
+      : metaRanked.length > 0
+        ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]}.`
+        : fallbackDescription;
+  const description = capSnippet(
+    !registryLine
+      ? measuredLead
+      : prefix
+        ? `${prefix} ${measuredLead}`.trim()
+        : `${measuredLead} ${registryClause}${registryClause ? "." : ""}`.trim(),
+  );
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
@@ -206,12 +305,32 @@ export async function generateMetadata({
   const canonicalUrl = isChain
     ? `${SITE.url}/chains/${p.slug}`
     : `${SITE.url}/products/${p.slug}`;
+  // Newest measurement across the provider's appearances: the online
+  // date scholarly and answer-engine crawlers read from citation_* meta
+  // (the bench pages carry the same set; the product template had none).
+  const lastRuns = p.appearances
+    .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t));
+  const newestLastRunIso =
+    lastRuns.length > 0 ? new Date(Math.max(...lastRuns)).toISOString().slice(0, 10) : null;
   return {
-    title,
+    // The layout appends " · OpenChainBench" (17 characters); past 43 the
+    // tail of the title is what the SERP cuts, so long titles ship
+    // absolute and short ones keep the suffix (audit 2026-09-22).
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description, type: "profile", url: canonicalUrl },
     twitter: { card: "summary_large_image", site: SITE.twitter, title, description },
+    other: {
+      citation_title: title,
+      citation_author: "OpenChainBench",
+      citation_publisher: "OpenChainBench",
+      ...(newestLastRunIso ? { citation_online_date: newestLastRunIso } : {}),
+      citation_public_url: canonicalUrl,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench",
+    },
   };
 }
 
@@ -239,6 +358,14 @@ export default async function ProviderPage({
   }
   const p = await getProvider(slug);
   if (!p) notFound();
+  // One URL per product. getProvider resolves aliases, so a request for a
+  // non-canonical slug would otherwise answer 200 on a second URL; a 308
+  // sends the link equity to the canonical one instead. This also closes
+  // the /hyperliquid/<slug> and /perp/<slug> rewrites, which 308 here
+  // without checking that the slug exists.
+  if (p.slug.toLowerCase() !== slug.toLowerCase()) {
+    permanentRedirect(`/products/${p.slug}`);
+  }
   const reg = getProviderRegistry(p.slug);
   // Bench pages this deployment indexes (worker sitemap minus expired
   // chain pages). An appearance on a thin or expired chain RPC bench is
@@ -250,7 +377,9 @@ export default async function ProviderPage({
     ? new Set(sitemapBlob.benches.filter((b) => !isExpiredRpcPage(b)).map((b) => b.slug))
     : null;
   const canLink = (benchSlug: string) =>
-    !benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug);
+    !REMOVED_BENCH_SLUGS.has(benchSlug) &&
+    !isDevOnlyBench(benchSlug) &&
+    (!benchSlug.endsWith("-rpc") || !linkableBench || linkableBench.has(benchSlug));
 
   // Degraded-read tripwire: a provider listed on several benches never
   // loses EVERY rank in the same cycle — that signature means the store
@@ -348,7 +477,9 @@ export default async function ProviderPage({
     return !!r && (r.feep50 != null || r.quotep50 != null);
   });
 
-  const sorted = [...p.appearances].sort((a, b) => {
+  // Same rule as generateMetadata: nothing that 410s gets counted or shown.
+  const living = livingAppearances(p.appearances);
+  const sorted = [...living].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
     // Larger field first (see metaRanked), then the title.
     if (a.totalRanked !== b.totalRanked) return b.totalRanked - a.totalRanked;
@@ -372,13 +503,21 @@ export default async function ProviderPage({
   const proseParts: string[] = [];
   if (topLines.length > 0) {
     proseParts.push(
-      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${p.appearances.length} live OpenChainBench ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
+      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
     );
     proseParts.push(`${topLines.join(", ")}.`);
   } else {
     proseParts.push(
-      `${p.name} performance benchmarks, live across ${p.appearances.length} ${p.appearances.length === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
+      `${p.name} performance benchmarks, live across ${distinctBenchCount(p.appearances)} ${distinctBenchCount(p.appearances) === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
     );
+  }
+  // Dated, like the bench TL;DR: the newest measurement behind the
+  // sentence above, so a quoted line carries its own as-of.
+  const proseRuns = p.appearances
+    .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t));
+  if (proseRuns.length > 0) {
+    proseParts.push(`Data as of ${new Date(Math.max(...proseRuns)).toISOString().slice(0, 10)} UTC.`);
   }
   const productProse = proseParts.join(" ");
 
@@ -555,7 +694,7 @@ export default async function ProviderPage({
         identifier: p.slug,
         description: capDescription(
           reg?.description ??
-            `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+            `Crypto-infrastructure provider tracked by OpenChainBench across ${distinctBenchCount(p.appearances)} live benchmarks.`,
           990,
         ),
         ...(sameAs.length > 0 ? { sameAs } : {}),
@@ -600,6 +739,29 @@ export default async function ProviderPage({
       // the Organization above plus the Dataset references it links to via
       // `subjectOf`. Removing SoftwareApplication drops the failed rich
       // result attempt without losing any real signal.
+      {
+        "@type": "ItemList",
+        "@id": `${url}#ranks`,
+        name: `${p.name}: rank on every live OpenChainBench benchmark`,
+        // Indexable bench pages only, like subjectOf above: a ListItem URL
+        // into a noindex page is a crawl hint into a page we asked engines
+        // to skip.
+        numberOfItems: sorted.filter((a) => a.rank > 0 && canLink(a.benchmark.slug)).length,
+        itemListElement: sorted
+          .filter((a) => a.rank > 0 && canLink(a.benchmark.slug))
+          .map((a, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: `#${a.rank} of ${a.totalRanked} on ${a.benchmark.title}`,
+            url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+            item: {
+              "@type": "PropertyValue",
+              name: a.benchmark.metric,
+              value: a.result.ms.p50,
+              unitText: a.benchmark.unit,
+            },
+          })),
+      },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
         { name: "Products", item: `${SITE.url}/products` },
@@ -656,7 +818,7 @@ export default async function ProviderPage({
                   {productProse}
                 </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
-                  {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
+                  {distinctBenchCount(p.appearances)} {distinctBenchCount(p.appearances) === 1 ? "benchmark" : "benchmarks"}
                   {p.wins > 0 && (
                     <>
                       <span className="text-ink-faint"> · </span>
@@ -756,6 +918,7 @@ export default async function ProviderPage({
                 chainLabel={perpContext.chainLabel}
                 externalUrl={perpContext.externalUrl}
                 benchRows={perpContext.benchRows}
+                venueType={perpContext.venueType}
               />
             ),
           });

@@ -38,9 +38,11 @@ type Config struct {
 
 func loadConfig() *Config {
 	c := &Config{
-		TickInterval:        60 * time.Second,
-		MobulaAPIKey:        "",
-		MobulaFundingVenues: "binance,bybit,okx,hyperliquid,gate,lighter,kucoin,mexc,bitget,kraken,coinbase,deribit",
+		TickInterval: 60 * time.Second,
+		MobulaAPIKey: "",
+		// lighter left out since 2026-09-23: it has a native funding source, and
+		// a Mobula row would silently take over on a tick the native call fails.
+		MobulaFundingVenues: "binance,bybit,okx,hyperliquid,gate,kucoin,mexc,bitget,kraken,coinbase,deribit",
 	}
 
 	if v := os.Getenv("TICK_INTERVAL_SECONDS"); v != "" {

@@ -197,6 +197,27 @@ export const COMPARE_PAIRS: ComparePair[] = [
     publishedAt: "2026-06-17",
     hero: "perp-volume",
   },
+  // Phase 4 (2026-09-23): the regulated book against the largest DEX, the
+  // HIP-3 deployer against its host, and the two US-facing venues that
+  // run both prediction markets and perps.
+  {
+    slug: "hyperliquid-vs-kalshi",
+    providerA: "hyperliquid",
+    providerB: "kalshi",
+    publishedAt: "2026-09-23",
+  },
+  {
+    slug: "hyperliquid-vs-xyz",
+    providerA: "hyperliquid",
+    providerB: "xyz",
+    publishedAt: "2026-09-23",
+  },
+  {
+    slug: "kalshi-vs-polymarket",
+    providerA: "kalshi",
+    providerB: "polymarket",
+    publishedAt: "2026-09-23",
+  },
   {
     slug: "jupiter-vs-mobula",
     providerA: "jupiter",

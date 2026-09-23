@@ -147,7 +147,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %), each chain's median weighted by its flow on a multi-chain product; they do not sum to the median loss, the per-swap sums do (audit table).</span>
+        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %), each chain&apos;s median weighted by its flow on a multi-chain product; they do not sum to the median loss, the per-swap sums do (audit table).</span>
         {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />

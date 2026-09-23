@@ -22,7 +22,12 @@ import {
   writeCohortSnapshot,
 } from "@/lib/cohort-snapshot";
 
-export type PerpVenueType = "onchain";
+// "onchain": DEX (orderbook or pool settled on a chain). "regulated": a
+// licensed exchange with a margin account (Kalshi, CFTC DCM). "cex": a
+// centralised book whose volume, OI and market count are what it reports
+// to CoinGecko (not an OpenChainBench measurement), kept behind the hub's
+// venue-type selector as the reference next to the measured rows.
+export type PerpVenueType = "onchain" | "regulated" | "cex";
 
 export type PerpVenueRow = {
   slug: string;
@@ -92,10 +97,10 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
   { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
-  { slug: "vertex",      name: "Vertex",      chain: "Arbitrum",      venueType: "onchain" },
+  { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet",      venueType: "onchain" },
   { slug: "aster",       name: "Aster",       chain: "BNB Chain",     venueType: "onchain" },
-  { slug: "edgex",       name: "EdgeX",       chain: "zkSync",        venueType: "onchain" },
+  { slug: "edgex",       name: "EdgeX",       chain: "StarkEx",        venueType: "onchain" },
   { slug: "extended",    name: "Extended",    chain: "Starknet",      venueType: "onchain" },
   { slug: "aevo",        name: "Aevo",        chain: "OP Stack",      venueType: "onchain" },
   { slug: "pacifica",    name: "Pacifica",    chain: "Solana",        venueType: "onchain" },
@@ -106,9 +111,28 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "kiloex",     name: "KiloEx",     chain: "BSC, Base, opBNB", venueType: "onchain" },
   { slug: "orderly",    name: "Orderly",    chain: "Multi-chain",   venueType: "onchain" },
   { slug: "backpack",   name: "Backpack",   chain: "Solana",        venueType: "onchain" },
+  { slug: "kalshi",     name: "Kalshi",     chain: "US, CFTC DCM",  venueType: "regulated" },
+  { slug: "vest",       name: "Vest",       chain: "Vest zk appchain", venueType: "onchain" },
+  { slug: "standx",     name: "StandX",     chain: "BNB Chain",     venueType: "onchain" },
+  { slug: "apex",       name: "ApeX Omni",  chain: "Omnichain",     venueType: "onchain" },
+  { slug: "jupiter",    name: "Jupiter Perps", chain: "Solana",     venueType: "onchain" },
+  { slug: "lighter-rh", name: "Lighter RH", chain: "Lighter L2, Robinhood", venueType: "onchain" },
+  { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
+  { slug: "binance",    name: "Binance",    chain: "Offchain",      venueType: "cex" },
+  { slug: "okx",        name: "OKX",        chain: "Offchain",      venueType: "cex" },
+  { slug: "bybit",      name: "Bybit",      chain: "Offchain",      venueType: "cex" },
+  { slug: "gate",       name: "Gate",       chain: "Offchain",      venueType: "cex" },
+  { slug: "coinbase",   name: "Coinbase International", chain: "Offchain", venueType: "cex" },
+  { slug: "bitget",     name: "Bitget",     chain: "Offchain",      venueType: "cex" },
+  { slug: "deribit",    name: "Deribit",    chain: "Offchain",      venueType: "cex" },
+  { slug: "kraken",     name: "Kraken",     chain: "Offchain",      venueType: "cex" },
+  { slug: "kucoin",     name: "KuCoin",     chain: "Offchain",      venueType: "cex" },
+  { slug: "mexc",       name: "MEXC",       chain: "Offchain",      venueType: "cex" },
 ];
 
-function promUrl(): string | null {
+/** PROMETHEUS_URL when the process can reach Prom (the worker); null on
+ *  Vercel, where every reader goes through the worker-written snapshots. */
+export function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
@@ -272,6 +296,9 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
   let cohortOpenInterest = 0;
   let trackedVenues = 0;
   for (const r of venues) {
+    // Totals describe the measured cohort (DEX and regulated); the CEX
+    // reference rows are venue-reported and sit behind the hub selector.
+    if (r.venueType === "cex") continue;
     if (r.volume30d != null) {
       cohortVolume30d += r.volume30d;
       trackedVenues += 1;
@@ -279,6 +306,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
     if (r.openInterest != null) cohortOpenInterest += r.openInterest;
   }
   const fundingValues = venues
+    .filter((r) => r.venueType !== "cex")
     .map((r) => r.funding24hBpsEth)
     .filter((v): v is number => v != null && Number.isFinite(v));
   const avgFunding24hEth = fundingValues.length
@@ -416,6 +444,10 @@ export async function fetchPerpByAssetMatrixFresh(): Promise<PerpAssetRow[]> {
 
   const byVenue = new Map<string, PerpAssetRow>();
   for (const v of PERP_VENUES) {
+    // Measured venues only: the CEX rows have Mobula funding series for
+    // these assets and would otherwise land here unlabelled, outside the
+    // venue-type selector (which filters the venues tab, not this one).
+    if (v.venueType === "cex") continue;
     byVenue.set(v.slug, {
       slug: v.slug,
       name: v.name,

@@ -283,6 +283,113 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     founded: 2010,
   },
 
+  // ─── Prediction markets, bench 277 cohort ─────────────────────
+  // Added 2026-09-23 with bench 277. Every one is classified
+  // "Prediction Market" by DefiLlama, which is also where their open
+  // interest is read from. They are not all the same product: two are
+  // sportsbooks, one is a liquidity layer other front ends draw on, and
+  // one trades fantasy player shares rather than event outcomes. The
+  // descriptions say which, because the category label does not.
+  rain: {
+    url: "https://www.rain.one",
+    description:
+      "Prediction market protocol on Arbitrum with user-created markets and tradable options. No public REST API; open interest is read from the DefiLlama protocol aggregate.",
+    twitter: "@Rain__Protocol",
+    chains: ["Arbitrum"],
+    github: "https://github.com/rain1-labs",
+  },
+  "predict-fun": {
+    url: "https://predict.fun",
+    description:
+      "Prediction market on BNB Chain and Blast covering sports, crypto and world events. Pays yield on collateral backing open positions rather than leaving it idle.",
+    twitter: "@predictdotfun",
+    chains: ["BNB Chain", "Blast"],
+    docs: "https://docs.predict.fun",
+  },
+  opinion: {
+    url: "https://app.opinion.trade",
+    description:
+      "Prediction exchange on BNB Chain trading macroeconomic releases, forecasts and news as standardized contracts, resolved through its own on-chain oracle.",
+    twitter: "@opinionlabsxyz",
+    chains: ["BNB Chain"],
+    docs: "https://docs.opinion.trade",
+  },
+  "sport-fun": {
+    url: "https://pro.sport.fun",
+    description:
+      "Fantasy football market on Base: users trade fractional shares in individual players whose value tracks real match performance, collateralized in a USDC-pegged unit. Classified as a prediction market by DefiLlama, though it trades player shares rather than binary event outcomes.",
+    twitter: "@sportfun",
+    chains: ["Base"],
+    docs: "https://docs.sport.fun",
+  },
+  augur: {
+    url: "https://augur.net",
+    description:
+      "The original on-chain prediction market, live on Ethereum since 2018. Permissionless market creation with reporter-based resolution and no cap on position size.",
+    twitter: "@AugurProject",
+    chains: ["Ethereum"],
+    github: "https://github.com/AugurProject",
+    founded: 2015,
+  },
+  "levr-bet": {
+    url: "https://levr.bet",
+    description:
+      "Prediction markets on Monad offering 2x to 5x leverage on single-game sports lines.",
+    twitter: "@Levr_Bet",
+    chains: ["Monad"],
+  },
+  predictstreet: {
+    url: "https://adipredictstreet.com",
+    description:
+      "Binary YES/NO outcome exchange on ADI Chain covering sports and general events. Every position is fully collateralized in USDC.e and settled on-chain.",
+    twitter: "@Predictstreet",
+    chains: ["ADI Chain"],
+    docs: "https://docs.adipredictstreet.com",
+  },
+  pascal: {
+    url: "https://www.pascal.trade",
+    description:
+      "Non-custodial prediction market exchange on Solana.",
+    twitter: "@pascaldottrade",
+    chains: ["Solana"],
+    docs: "https://docs.pascal.trade",
+  },
+  overtime: {
+    url: "https://www.overtimemarkets.xyz",
+    description:
+      "On-chain sportsbook and digital options venue built on the Thales contracts, running across six chains with Chainlink feeds for settlement and AMM-backed liquidity pools rather than a book.",
+    twitter: "@Overtime_io",
+    chains: ["Optimism", "Arbitrum", "Polygon", "Base", "Ethereum", "BNB Chain"],
+    docs: "https://docs.overtime.io",
+    github: "https://github.com/thales-markets",
+  },
+  trueo: {
+    url: "https://trueo.com",
+    description:
+      "Yield-bearing prediction market on Base. Each market commits its title, resolution criteria and approved sources on-chain at launch, and resolves through an optimistic oracle with bonded disputes. No public REST or GraphQL API; the deployment, including TruthMarketManager, is published and markets are enumerable from it on-chain.",
+    twitter: "@Trueo_app",
+    chains: ["Base"],
+    docs: "https://docs.trueo.com",
+    github: "https://github.com/trueo-protocol",
+    longDescription:
+      "Trueo settles binary outcome markets on Base through an optimistic oracle: an outcome is proposed against a bond, and anyone may dispute it within the challenge window, with an Oracle Council and a set of attesters backing resolution. Collateral held against open positions earns yield rather than sitting idle. Contract addresses are published at docs.trueo.com/deployments, including TruthMarketManager at 0x61A98Bef11867c69489B91f340fE545eEfc695d7, whose clones are the individual markets; there is no REST or GraphQL API and no subgraph, so OpenChainBench reads Trueo through the DefiLlama protocol aggregate. Trueo announced on 2026-09-21 that it is migrating the protocol to Ethereum mainnet while Base continues to trade, settle and redeem.",
+    features: [
+      "Optimistic oracle with bonded disputes",
+      "Resolution criteria committed on-chain at launch",
+      "Yield on collateral backing open positions",
+      "No public API; contracts published",
+    ],
+  },
+  azuro: {
+    url: "https://azuro.org",
+    description:
+      "Liquidity and infrastructure layer for on-chain betting rather than a venue of its own: front ends draw on its Liquidity Tree pool design. Live on six chains, so its open interest aggregates the apps built on it.",
+    twitter: "@azuroprotocol",
+    chains: ["Polygon", "Base", "Chiliz", "Linea", "Arbitrum", "Gnosis"],
+    docs: "https://gem.azuro.org",
+    github: "https://github.com/Azuro-protocol",
+  },
+
   // ─── Solana transaction landing services ──────────────────────
   jito: {
     url: "https://www.jito.wtf",
@@ -383,10 +490,10 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Orca is Solana's concentrated liquidity DEX. Its USDY/USDC whirlpool is the deepest genuine venue for Ondo's tokenized treasury and the market leg of the USDY NAV basis benchmark.",
   },
-  "pyth-market": {
-    url: "https://pyth.network",
+  "jupiter-solana": {
+    url: "https://jup.ag",
     description:
-      "Pyth Network's USDY/USD market composite aggregates USDY trading into one feed. Measured against Pyth's own USDY redemption rate feed on the NAV basis benchmark.",
+      "Jupiter's best open route for selling USDY into USDC on Solana, quoted through its public API. Its executable price is measured against the redemption price Ondo publishes on-chain on the USDY NAV basis benchmark.",
   },
   slash: {
     url: "https://slash.trade",
@@ -1339,6 +1446,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
     twitter: "@moonshotapp",
   },
+  "coinbase-international": {
+    url: "https://international.coinbase.com",
+    description:
+      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@CoinbaseIntExch",
+  },
   coinbase: {
     url: "https://www.coinbase.com",
     description:
@@ -1910,11 +2023,62 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Derive (formerly Lyra) is an options and perpetuals exchange on its own OP Stack rollup with an off-chain orderbook and on-chain settlement. DRV is the protocol token.",
     twitter: "@derivexyz",
   },
+  bitget: {
+    url: "https://www.bitget.com",
+    description:
+      "Centralised exchange with a USDT-margined perpetual futures book (Bitget Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@bitgetglobal",
+  },
+  gate: {
+    url: "https://www.gate.com",
+    description:
+      "Centralised exchange with a perpetual futures book (Gate Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@gate_io",
+  },
+  kucoin: {
+    url: "https://www.kucoin.com",
+    description:
+      "Centralised exchange with a perpetual futures book (KuCoin Futures). On OpenChainBench as a funding reference row from the Mobula feed; CoinGecko lists no derivatives entry for it, so volume and open interest are not shown.",
+    twitter: "@kucoincom",
+  },
+  mexc: {
+    url: "https://www.mexc.com",
+    description:
+      "Centralised exchange with a perpetual futures book (MEXC Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@MEXC_Official",
+  },
+  deribit: {
+    url: "https://www.deribit.com",
+    description:
+      "Centralised derivatives exchange, options and perpetual futures on BTC, ETH and a few majors. On OpenChainBench as a funding reference row from the Mobula feed; CoinGecko's figures for it are options-heavy and would not describe a perp book, so volume and open interest are not shown.",
+    twitter: "@DeribitExchange",
+  },
   nado: {
     url: "https://nado.xyz",
     description:
       "Nado is an orderbook perpetuals DEX on Ink, the Kraken-backed L2, with a central limit orderbook and cross-margin. No token has launched yet.",
     twitter: "@nadoHQ",
+  },
+  vest: {
+    url: "https://vest.exchange",
+    description:
+      "Vest is a zk-settled perpetuals exchange listing crypto next to US equities, indices and FX perps under a {TICKER}-USD-PERP convention, with a public REST API (ticker, funding, order book) and no open-interest feed.",
+    twitter: "@VestExchange",
+    docs: "https://docs.vest.exchange/vest-api",
+  },
+  standx: {
+    url: "https://standx.com",
+    description:
+      "StandX is a DUSD-margined perpetuals DEX on BNB Chain (13 markets in 2026-09: majors plus gold, silver, oil and a few equities) with a public market-overview endpoint carrying volume, open interest and hourly funding per market.",
+    twitter: "@StandX_Official",
+    docs: "https://docs.standx.com/standx-api/standx-api",
+  },
+  "lighter-rh": {
+    url: "https://rh.lighter.xyz",
+    description:
+      "Lighter's Robinhood deployment: the same zk order-book engine as Lighter mainnet on a separate host (api.rh.lighter.xyz) with its own books, listing US equities next to crypto perps.",
+    twitter: "@Lighter_xyz",
+    docs: "https://apidocs.lighter.xyz/",
   },
   decibel: {
     url: "https://decibel.trade",
@@ -2032,16 +2196,10 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana perp DEX with hybrid AMM/orderbook model, sub-second matching via Anchor program.",
     twitter: "@DriftProtocol",
   },
-  vertex: {
-    url: "https://www.nado.xyz",
-    description:
-      "Arbitrum perp and spot orderbook DEX with off-chain matching and on-chain settlement. Migrating to Ink Foundation.",
-    twitter: "@vertex_protocol",
-  },
   edgex: {
     url: "https://edgex.exchange",
     description:
-      "zkSync-based perp DEX with low taker fees and a documented public REST API.",
+      "StarkEx-settled perp DEX with low taker fees and a documented public REST API.",
     twitter: "@edgex_exchange",
   },
   extended: {
@@ -2155,7 +2313,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   usdy: {
     url: "https://ondo.finance/usdy",
     description:
-      "Ondo USDY is a yield-bearing tokenized U.S. Treasury note. Rebases on Ethereum, also issued on Solana, Aptos and Sui. Delivered yield on bench 089 is read from Ondo's on-chain oracle rather than Ethereum totalSupply to avoid bridge-flow noise.",
+      "Ondo USDY is a yield-bearing tokenized U.S. Treasury note that accrues in price (rUSDY is its rebasing wrapper); issued on Ethereum, Solana, Aptos and Sui. Delivered yield on bench 089 is read from Ondo's on-chain oracle rather than Ethereum totalSupply to avoid bridge-flow noise.",
     twitter: "@OndoFinance",
     docs: "https://docs.ondo.finance/",
   },
@@ -2172,6 +2330,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Superstate USTB is a tokenized short-duration U.S. Treasury fund. NAV-accrual model, share price published on-chain via a Chainlink NAV feed. Delivered yield on bench 089 reads the Chainlink feed at latest and t-30d blocks.",
     twitter: "@superstateinc",
     docs: "https://superstate.com/legal",
+  },
+  paxg: {
+    url: "https://paxos.com/paxgold/",
+    description:
+      "PAX Gold (PAXG) is Paxos's tokenized gold, one token per fine troy ounce held in London vaults, issued natively on Ethereum and Solana. On bench 278 its Solana depth is measured against USDC through Jupiter.",
+    twitter: "@Paxos",
+    docs: "https://docs.paxos.com/",
+  },
+  buidl: {
+    url: "https://securitize.io/blackrock",
+    description:
+      "BUIDL is BlackRock's USD Institutional Digital Liquidity Fund, a tokenized money-market fund issued through Securitize at a fixed $1.00 per unit with dividends paid in new units. Transfer-restricted: bench 278 lists its Solana mint (close to a billion dollars) as having no open market.",
+    twitter: "@Securitize",
+    docs: "https://securitize.io/learn/press/blackrock-launches-first-tokenized-fund-buidl-on-the-ethereum-network",
   },
   "syrup-usdc": {
     url: "https://syrup.fi",

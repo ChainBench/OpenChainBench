@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-// VertexNativeSource hits the Vertex (now rebranded "Nado") indexer:
+// VertexNativeSource reads Nado (the Vertex team's orderbook DEX on Ink,
+// the venue the cohort published as "vertex" until 2026-09-22):
 //
 //	GET  https://gateway.prod.nado.xyz/v1/symbols        (perp universe)
 //	POST https://archive.prod.nado.xyz/v1                (market_snapshots)
@@ -63,11 +64,11 @@ type vertexSymbol struct {
 }
 
 type vertexSnapshot struct {
-	Timestamp             int64             `json:"timestamp"`
-	CumulativeVolumes     map[string]string `json:"cumulative_volumes"`
-	OpenInterests         map[string]string `json:"open_interests"`
-	CumulativeTakerFees   map[string]string `json:"cumulative_taker_fees"`
-	CumulativeMakerFees   map[string]string `json:"cumulative_maker_fees"`
+	Timestamp           int64             `json:"timestamp"`
+	CumulativeVolumes   map[string]string `json:"cumulative_volumes"`
+	OpenInterests       map[string]string `json:"open_interests"`
+	CumulativeTakerFees map[string]string `json:"cumulative_taker_fees"`
+	CumulativeMakerFees map[string]string `json:"cumulative_maker_fees"`
 }
 
 type vertexSnapshotResponse struct {
@@ -76,7 +77,7 @@ type vertexSnapshotResponse struct {
 
 func (s *VertexNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
-	venue := "vertex"
+	venue := "nado"
 
 	// Step 1: enumerate live perp products.
 	symbolsBody, err := s.get("https://gateway.prod.nado.xyz/v1/symbols")

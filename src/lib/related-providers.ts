@@ -45,35 +45,33 @@ function isLiveAppearance(a: ProviderAppearance): boolean {
 /** Two appearances on the same bench are comparable only in the same
  *  access cohort: on a chain RPC page a public gateway and a keyed
  *  provider are never ranked together, and the compare page
- *  (sharedBenchSlugs) refuses the pair, so the link must too. */
-function sameCohort(a: ProviderAppearance, b: ProviderAppearance): boolean {
-  return (a.tier ?? null) === (b.tier ?? null);
-}
-
-/** Benches both providers appear on, same cohort only (live or not). */
+ *  (sharedBenchSlugs) refuses the pair, so the link must too. Benches
+ *  both providers appear on, same cohort only (live or not). */
 export function sharedBenchCount(
   a: ProviderAppearance[],
   b: ProviderAppearance[],
 ): number {
-  const aByBench = new Map(a.map((x) => [x.benchmark.slug, x] as const));
-  let n = 0;
+  // Keyed by (bench, cohort), not by bench: a provider on both cohorts of
+  // one bench (QuickNode on arc-rpc) collapsed to its last appearance and
+  // the count depended on the argument order (release review 2026-09-24).
+  const mine = new Set(a.map((x) => `${x.benchmark.slug}|${x.tier ?? ""}`));
+  const counted = new Set<string>();
   for (const x of b) {
-    const mine = aByBench.get(x.benchmark.slug);
-    if (mine && sameCohort(mine, x)) n += 1;
+    if (mine.has(`${x.benchmark.slug}|${x.tier ?? ""}`)) counted.add(x.benchmark.slug);
   }
-  return n;
+  return counted.size;
 }
 
 export function liveSharedBenchCount(
   a: ProviderAppearance[],
   b: ProviderAppearance[],
 ): number {
-  const aLive = new Map(a.filter(isLiveAppearance).map((x) => [x.benchmark.slug, x] as const));
-  let n = 0;
+  const mine = new Set(a.filter(isLiveAppearance).map((x) => `${x.benchmark.slug}|${x.tier ?? ""}`));
+  const counted = new Set<string>();
   for (const x of b) {
-    const mine = aLive.get(x.benchmark.slug);
-    if (isLiveAppearance(x) && mine && sameCohort(mine, x)) n += 1;
+    if (isLiveAppearance(x) && mine.has(`${x.benchmark.slug}|${x.tier ?? ""}`)) counted.add(x.benchmark.slug);
   }
+  const n = counted.size;
   return n;
 }
 
@@ -83,6 +81,13 @@ export function isPairLinkable(
   b: ProviderAppearance[],
 ): boolean {
   if (getComparePair(pairSlug) !== undefined) return true;
+  // RWA rows are assets (AAPL, NVDA, USDY), not providers: a pair whose
+  // shared benches are all RWA is not a comparison a reader makes, and
+  // eight such pages sat indexed outside the sitemap (RWA audit
+  // 2026-09-23).
+  const bSlugs = new Set(b.map((x) => x.benchmark.slug));
+  const shared = a.filter((x) => bSlugs.has(x.benchmark.slug));
+  if (shared.length > 0 && shared.every((x) => x.benchmark.category === "RWA")) return false;
   return liveSharedBenchCount(a, b) >= MIN_LIVE_SHARED_FOR_LINK;
 }
 import { loadAllAlternatives } from "@/lib/alternatives";

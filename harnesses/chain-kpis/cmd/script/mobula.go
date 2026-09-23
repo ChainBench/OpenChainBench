@@ -21,8 +21,8 @@ import (
 // keeps polling DefiLlama so the page still renders the DeFi cards.
 
 const (
-	mobulaBase  = "https://api.mobula.io"
-	mobulaUA    = "OCB-chain-kpis/1.0"
+	mobulaBase = "https://api.mobula.io"
+	mobulaUA   = "OCB-chain-kpis/1.0"
 )
 
 var httpClientMobula = &http.Client{Timeout: 15 * time.Second}
@@ -96,6 +96,7 @@ func fetchMobulaNative(cfg *Config, symbol string, chains []Chain) {
 			chainNativeMcapUsd.WithLabelValues(c.Slug, symbol).Set(resp.Data.MarketCap)
 		}
 		chainKpisLastRefresh.WithLabelValues(c.Slug, "mobula-native").Set(float64(time.Now().Unix()))
+		chainKpisHealth.WithLabelValues(c.Slug, "mobula-native").Set(1)
 	}
 	chainKpisLastTickUnix.Set(float64(time.Now().Unix()))
 }
@@ -134,6 +135,7 @@ func fetchMobulaChainStats(cfg *Config, c Chain) {
 		}
 	}
 	chainKpisLastRefresh.WithLabelValues(c.Slug, "mobula-stats").Set(float64(time.Now().Unix()))
+	chainKpisHealth.WithLabelValues(c.Slug, "mobula-stats").Set(1)
 }
 
 // getJSONWithAuth is the auth-bearing variant of getJSON.

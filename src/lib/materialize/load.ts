@@ -18,6 +18,7 @@ import type {
   ProviderResult,
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
+import { specValueKind } from "@/lib/value-window";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -65,11 +66,13 @@ export type BenchmarkFilters = {
   kind?: string;
   venue?: string;
   amount_usd?: string;
+  /** Trade-size bucket; injects the `bucket` label like the others. */
+  bucket?: string;
   /** Access cohort (public / keyed). Selects providers, injects no label. */
   tier?: string;
 };
 
-const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "tier"] as const;
+const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 export function filterSig(f: BenchmarkFilters): string {
@@ -170,6 +173,8 @@ export function buildEditorial(
     chart: chartFromSpec(spec),
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
+    rowNoun: spec.row_noun,
+    valueKind: specValueKind(spec),
     abstract: spec.abstract,
     methodology: spec.methodology,
     findings: spec.findings,

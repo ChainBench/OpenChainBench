@@ -19,11 +19,11 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Daily cross-chain volume of trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan) on closed UTC days, per-chain split, trends, fees and ratings.";
+  "Cross-chain daily volume, fill quality, active wallets and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Trading app volume 2026: GMGN vs Axiom vs FOMO, per UTC day",
+  title: "Trading app benchmarks 2026: volume, fill quality, wallets",
   description: DESCRIPTION,
 });
 
@@ -339,9 +339,6 @@ export default async function TradingAppsHubPage() {
                   </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
-// The ItemList and the "Active benchmarks" count name only the benches this
-// deployment serves (bench 268 is dev-only on production).
-const BENCH_SLUGS = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
                     const isBest = val !== null && val === bests[col.key];
                     const formula = formulaOf(col.key, row.slug);
                     const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";

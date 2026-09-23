@@ -7,6 +7,8 @@
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+import { nounFor } from "@/lib/row-noun";
+import { valueSuffix } from "@/lib/value-window";
 
 /** Minimum measured success rate (in percent, 0-100) for a provider to
  *  contribute to the headline leader claim. Providers with a real
@@ -50,9 +52,14 @@ export function citationCandidates(b: Benchmark): ProviderResult[] {
   );
   // Chain RPC pages do not fall back: crowning a 23 % success endpoint
   // as "the fastest Starknet RPC" in the TL;DR, StatisticalReport and
-  // /api/stat is worse than saying nobody cleared the floor.
+  // /api/stat is worse than saying nobody cleared the floor. Elsewhere
+  // the fallback is the pool the table itself shows (the 5 % display
+  // floor), never every live row: a gauge frozen for a month at 0.9 %
+  // success was crowned "closest to NAV" while the table excluded it
+  // (usdy-nav-basis audit, 2026-09-23).
+  const shown = displayResults(b.results).filter((r) => !r.unrankedLabel);
   const pool =
-    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : live;
+    reliable.length > 0 ? reliable : rpcChainLabel(b) ? [] : shown;
   if (!b.expectedN) return pool;
   return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
@@ -111,13 +118,42 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };
 }
 
-/** Honest window wording per unit. "(p50, 24h)" is only true for latency
- *  style benches; USD revenue and count benches repurpose the p50 slot as
- *  a plain rolling-window figure and percentile wording would mislead. */
-function windowSuffix(unit: string, window = "24h"): string {
-  if (unit === "usd" || unit === "count") return `(${window})`;
-  if (unit === "pct" || unit === "bps") return `(${window} avg)`;
-  return `(p50, ${window})`;
+/** Every provider tied with the leader on the displayed figure, leader
+ *  first, the full set (the headline sentence names at most four and
+ *  counts the rest). The comparison is on the displayed figure, not the
+ *  raw float: two providers shown as "0" are tied to a reader whatever
+ *  the eleventh decimal says. One entry when the top value is unique,
+ *  none when there is no leader. Feeds {{best_name}} / {{best_names}},
+ *  the headline and the `leaders` field of /api/stat and /api/citable, so
+ *  a title, a TL;DR and a JSON record never disagree on who is first
+ *  (perp-cost-slope crowned Gains in the title while its body said Gains
+ *  and GMX v2 were tied, audit 2026-09-22). */
+export function leaders(b: Benchmark): { name: string; slug: string; value: number }[] {
+  const top = leader(b);
+  if (!top) return [];
+  const shown = (v: number) => fmtUnit(v, b.unit);
+  const target = shown(top.value);
+  return rankedCandidates(b)
+    .filter((r) => shown(r.ms.p50) === target)
+    .map((r) => ({ name: r.name, slug: r.slug, value: r.ms.p50 }));
+}
+
+export function leaderNames(b: Benchmark): string[] {
+  return leaders(b).map((l) => l.name);
+}
+
+/** "A", "A and B", "A, B and C". */
+export function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** Honest window wording. Delegates to the shared qualifier so the
+ *  quotable sentence, the table header, the infobox and the Dataset all
+ *  describe the same number the same way. */
+function windowSuffix(b: Parameters<typeof valueSuffix>[0]): string {
+  return valueSuffix(b);
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
@@ -210,9 +246,37 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     return { claim, rest: `(p50, 24h, 3 regions).` };
   }
   const verb = b.higherIsBetter ? "leads" : "posts the lowest";
+  // A tie is not a win. rpc-reliability had four providers at 0 incidents
+  // and the sentence crowned whichever one sorted first: "Tenderly posts
+  // the lowest reliability incidents at 0" reads as a ranking over three
+  // providers that did exactly as well. Name them all instead; the
+  // single-leader wording is untouched when the top value is unique.
+  // The qualifier carries the cohort size, the fact that makes the claim
+  // checkable, and not the page title (55 to 95 characters that every
+  // quoting surface repeated, audit 2026-09-22).
+  const ranked = rankedCandidates(b).length;
+  const rest = `${windowSuffix(b)} across ${ranked} ranked ${nounFor(b, ranked)}.`;
+  const tied = leaderNames(b);
+  if (tied.length > 1) {
+    const both = tied.length === 2;
+    const allVerb = b.higherIsBetter
+      ? both
+        ? "both lead on"
+        : "all lead on"
+      : both
+        ? "both post the lowest"
+        : "all post the lowest";
+    // Four names at most in a sentence meant to be quoted; a bench where
+    // everyone reads 0 says how many more share the figure.
+    const named = tied.length > 4 ? `${joinNames(tied.slice(0, 4))} and ${tied.length - 4} more` : joinNames(tied);
+    return {
+      claim: `${named} ${allVerb} ${metricInSentence(b.metric)}, tied at ${value}`,
+      rest,
+    };
+  }
   return {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
-    rest: `${windowSuffix(b.unit, b.window ?? "24h")} on ${b.title}.`,
+    rest,
   };
 }
 

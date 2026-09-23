@@ -3,21 +3,22 @@
 slug: perp-fees
 number: "007"
 title: Cheapest perp DEX, live all-in cost from $1k to $1M on ETH, BTC and SOL
-seo_title: "Cheapest perp DEX: {{best_name}} at {{best_p50}} all in, live"
-seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). ETH, BTC and SOL market orders at $1k, $100k and $1M across {{count}} venues, ranked live."
+seo_title: "Cheapest perp DEX: {{best_name}} at {{best_p50}} all in"
+seo_description: "{{best_name}} leads at {{best_p50}} all-in (24h avg): taker fee plus spread plus impact on ETH, BTC and SOL at $1k, $100k and $1M, {{ranked_count}} of {{count}} venues ranked live."
 subtitle: "All-in cost in basis points to open a long, measured on ETH, BTC and SOL at three order sizes: $1k where fees decide, $100k where impact appears, $1M where book depth takes over. Taker fee plus half-spread plus impact, read live from public APIs across {{count}} venues including Lighter, Hyperliquid, Polymarket, Paradex, Extended, Aster and edgex."
 category: Trading
 status: live
 metric: All-in cost
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark answers the question every perp DEX comparison article
   refuses to answer with real numbers. what does it actually cost to
   open a $1000 ETH long 10x position right now, all-in, on each major
-  decentralized venue. Published fee schedules quote a taker rate of
-  0 bps (Lighter), 4.5 bps (Hyperliquid), 5 bps (dYdX) or 6 bps (GMX),
+  decentralized venue. Published fee schedules quote taker rates from
+  zero to single-digit basis points (the table carries each venue's),
   but the rack rate is half the story. The other half is the spread you
   cross at market and the price impact you eat at $1000 notional, both
   of which are missing from every comparison roundup currently ranking
@@ -56,7 +57,8 @@ methodology:
   - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) on the ETH/USD, BTC/USD and SOL/USD markets + gmxinfra REST for funding. Oracle priced, no orderbook: the spread term is zero."
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
   - "Gains (Gains v8 on Base): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. SOL has `spreadP` 0 on-chain (Gains prices that pair's spread dynamically), so its figure is the open fee alone. Values in 1e10 precision per Gains v8 convention. Fee tier cached 1h, pair config 6h."
-  - "Paradex: `/markets` fee config for the api-tier taker rate + `/orderbook?depth=100` walk. The book endpoint caps at 100 levels (about $1M visible on majors), so the $1M tier can be skipped when the visible book thins."
+  - "Paradex: `/markets` fee config for the interactive (Retail) taker rate, 0 bps as of 2026-09, + `/orderbook/{market}/interactive?depth=100` walk. Paradex runs two books: the interactive one includes RPI (Retail Price Improvement) maker liquidity and is what UI and interactive-token orders cross; the plain `/orderbook` is the API book, RPI excluded, crossed by Pro (plain API) orders at the 2 bps api-tier fee."
+  - "Paradex, continued: the two books diverge on thin pairs (SOL on 2026-09-22: 0.03 % spread on the interactive book against 1.4 % on the API book), so the bench reads the interactive book as the cost of opening a position; an algorithmic taker should add 2 bps and expect the wider API book. The endpoint caps at 100 levels, so the $1M tier can be skipped when the visible book thins."
   - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint; the documented base rate of 2.5 bps is used and this is the one venue where the fee is not read live."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Notional tiers: the same measurement runs at $1,000, $10,000, $100,000 and $1,000,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, Gains) charge a flat percentage of size, so their figure repeats across tiers."
@@ -118,6 +120,10 @@ faq:
 # server-side so each tab is its own ranking. Note: the harness uses
 # `chain` as the metric label even though semantically it's the
 # underlying asset, to reuse the existing dimension-filter mechanism.
+# Headline view: the ETH series (the copy speaks of ETH; the tabs switch).
+# Without the pin the unfiltered query returned one series per chain and
+# the loader kept whichever came first (audit 2026-09-23).
+aggregate_filters: { chain: ETH }
 dimensions:
   chain:
     - { value: ETH, label: ETH }
@@ -217,8 +223,8 @@ providers:
 
   - slug: paradex
     name: Paradex
-    tag: Starknet appchain perps, 2 bps api taker tier
-    formula: "Average over 24h of (api-tier taker rate from the Paradex /markets fee config + half-spread plus impact from the /orderbook asks, depth 100, walked for $1000 of buy notional in the selected asset), in bps."
+    tag: Starknet appchain perps, Retail (interactive) book, 0 bps interactive taker tier
+    formula: "Average over 24h of (interactive-tier taker rate from the Paradex /markets fee config + half-spread plus impact from the /orderbook/{market}/interactive asks, depth 100, walked for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="paradex"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="paradex"}[24h])

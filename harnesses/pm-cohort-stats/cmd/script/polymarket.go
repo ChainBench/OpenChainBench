@@ -110,6 +110,7 @@ func fetchPolymarketVenue(v Venue) {
 		topVol24     float64
 		above1mCount float64
 		pagesOK      int
+		truncated    bool
 	)
 
 	for page := 0; page < polymarketMaxPages; page++ {
@@ -121,7 +122,14 @@ func fetchPolymarketVenue(v Venue) {
 			// pass the deep-pagination ceiling. Treat it as a clean
 			// end-of-list rather than a fetch failure so the error counter
 			// stays meaningful for real outages.
+			// NOT an end-of-list. gamma refuses offsets past 2100 with
+			// "offset too large, use /markets/keyset for deeper
+			// pagination", and the real book is 193,732 active markets
+			// (measured 2026-09-23 via a full keyset walk). Everything
+			// this loop accumulates is therefore a 1% sample, which is
+			// why none of it is published below.
 			if contains(err.Error(), "status_422") && contains(err.Error(), "offset too large") {
+				truncated = true
 				break
 			}
 			pmCohortStatsFetchErrors.WithLabelValues(v.Slug, "polymarket", classifyError(err.Error())).Inc()
@@ -226,23 +234,35 @@ func fetchPolymarketVenue(v Venue) {
 		return
 	}
 
-	pmVenueVolume24hUsd.WithLabelValues(v.Slug).Set(vol24Sum)
-	pmVenueVolume30dUsd.WithLabelValues(v.Slug).Set(vol30Sum)
+	// Everything below the ceiling is a partial view of a 193,732-market
+	// book, so nothing derived from a truncated walk is published. An
+	// incomplete sum is not a small error on this venue: it was 8.7% of
+	// DefiLlama's volume and 1.1% of the market count.
+	//
+	// Volume has exactly one writer either way. Even a complete keyset
+	// walk returns $32.8M against DefiLlama's $61.8M, so publishing both
+	// would leave the gauge alternating between two defensible numbers
+	// every five minutes, which is what it did all of 2026-09-23.
+	// DefiLlama owns it, as it does for Kalshi and the same reason.
+	if !truncated {
+		pmVenueVolume24hUsd.WithLabelValues(v.Slug).Set(vol24Sum)
+		pmVenueVolume30dUsd.WithLabelValues(v.Slug).Set(vol30Sum)
+		pmVenueActiveMarkets.WithLabelValues(v.Slug).Set(activeCount)
+		pmVenueTopMarketVolume24hUsd.WithLabelValues(v.Slug).Set(topVol24)
+		pmVenueMarketsAbove1m.WithLabelValues(v.Slug).Set(above1mCount)
+	}
 	// Gamma's openInterest is deprecated and returns 0 across the board;
 	// skip the Set when it is zero so the DefiLlama loop's TVL-as-OI
 	// fallback can populate the gauge without being clobbered here.
 	if oiSum > 0 {
 		pmVenueOpenInterestUsd.WithLabelValues(v.Slug).Set(oiSum)
 	}
-	pmVenueActiveMarkets.WithLabelValues(v.Slug).Set(activeCount)
-	pmVenueTopMarketVolume24hUsd.WithLabelValues(v.Slug).Set(topVol24)
-	pmVenueMarketsAbove1m.WithLabelValues(v.Slug).Set(above1mCount)
 
 	pmCohortStatsLastRefresh.WithLabelValues(v.Slug, "polymarket").Set(float64(time.Now().Unix()))
 	pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
 
-	fmt.Printf("[polymarket][%s] pages=%d active=%.0f vol24h=%.0f vol30d=%.0f oi=%.0f top24h=%.0f above1m=%.0f (includes closed-market vol24h)\n",
-		v.Slug, pagesOK, activeCount, vol24Sum, vol30Sum, oiSum, topVol24, above1mCount)
+	fmt.Printf("[polymarket][%s] pages=%d truncated=%t active=%.0f vol24h=%.0f vol30d=%.0f oi=%.0f top24h=%.0f above1m=%.0f (truncated=true means gamma's offset ceiling was hit and nothing here is published)\n",
+		v.Slug, pagesOK, truncated, activeCount, vol24Sum, vol30Sum, oiSum, topVol24, above1mCount)
 }
 
 // getJSON is a tiny wrapper around the HTTP GET that returns the body bytes

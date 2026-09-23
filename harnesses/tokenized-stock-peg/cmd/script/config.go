@@ -11,7 +11,7 @@ import (
 // Nasdaq/NYSE price from Yahoo Finance, deviation in basis points,
 // labeled by market session state.
 //
-// Cohort: the 11 official "<Company> • Robinhood Token" equities whose
+// Cohort: the 6 official "<Company> • Robinhood Token" equities whose
 // USDG pool has real liquidity and swap activity (verified 2026-07-13
 // via Blockscout + PoolManager extsload sweep). Excluded and why:
 // SPCX (SpaceX is not listed, no reference price exists), SNDK + QQQ
@@ -25,11 +25,11 @@ import (
 // whose direction depends on the ordering.
 
 const (
-	rpcDefault      = "https://rpc.mainnet.chain.robinhood.com"
-	stateView       = "0xF3334192D15450CdD385c8B70e03f9A6bD9E673b"
-	getSlot0Sel     = "0xc815641c" // StateView.getSlot0(bytes32) — live-verified
-	pollInterval    = 60 * time.Second
-	httpTimeout     = 15 * time.Second
+	rpcDefault   = "https://rpc.mainnet.chain.robinhood.com"
+	stateView    = "0xF3334192D15450CdD385c8B70e03f9A6bD9E673b"
+	getSlot0Sel  = "0xc815641c" // StateView.getSlot0(bytes32) — live-verified
+	pollInterval = 60 * time.Second
+	httpTimeout  = 15 * time.Second
 	// A tokenized stock more than this far from its reference during
 	// regular hours is displayed but flagged; used only for logging.
 	logThresholdBps = 100.0

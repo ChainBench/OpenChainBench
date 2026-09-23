@@ -17,8 +17,9 @@ import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
-import { getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
-import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { getProvider, getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
+import { isPairLinkable } from "@/lib/related-providers";
+import { isExpiredPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -184,6 +185,10 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/prediction-markets`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/rpc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE.url}/perps/eth`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/perps/btc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/perps/sol`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/rwa`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
@@ -193,6 +198,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     ...(isDevOnlyRoute("/rpc-map")
       ? []
       : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
+    { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
@@ -303,9 +309,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // The worker publishes every dev bench; production must not list a
     // page it does not serve.
     if (isDevOnlyBench(b.slug)) return [];
-    // Expired chain RPC pages render noindex; never list them even if the
-    // blob still carries them.
-    if (isExpiredRpcPage(b)) return [];
+    // Expired pages render noindex; never list them even if the blob still
+    // carries them. Any bench, not just chain RPC ones — a bench below
+    // quorum keeps serving its last good render, and after a week that
+    // render must not be advertised to crawlers.
+    if (isExpiredPage(b)) return [];
     // Editorial change only. lastRunAt is a data timestamp, not a page
     // change; with an empty manifest it stamped 857 of 879 entries with
     // one day on production (2026-09-19). Fall back to the page module's
@@ -373,8 +381,21 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const candidateSlugs = [
     ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS, ...cohortProviderSlugs]),
   ];
+  // Alias slugs 308 to their canonical product page (btc-usd -> bitcoin,
+  // arc-quicknode -> quicknode, base-official -> base); 19 of them sat in
+  // the sitemap as "Page with redirect" (release audit 2026-09-24). The
+  // same resolver the page runs decides.
+  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  const canonicalProfileSlugs = new Set(profiles.map((p) => p.slug));
+  const redirectingSlugs = new Set<string>();
+  for (const slug of candidateSlugs) {
+    if (canonicalProfileSlugs.has(slug)) continue;
+    const resolved = await getProvider(slug).catch(() => undefined);
+    if (resolved && resolved.slug.toLowerCase() !== slug.toLowerCase()) redirectingSlugs.add(slug);
+  }
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;
+    if (redirectingSlugs.has(slug)) return false;
     // Same blacklist as the product index: hex builder addresses and dead
     // composite slugs 404 on /products/<slug> (nine 0x... URLs in the
     // production sitemap failed the deploy smoke on 2026-09-21; they are
@@ -471,12 +492,16 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // no sitemap entry (2026-09-19); 383 compare URLs carried impressions
   // against 19 listed. lastmod: the newest spec among the shared benches.
   const curatedCompareSlugs = new Set(COMPARE_PAIRS.map((p) => p.slug));
-  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
   const benchSlugsByProvider = new Map(
     profiles.map((p) => [p.slug, new Set(p.appearances.map((a) => a.benchmark.slug))]),
   );
+  const appearancesByProvider = new Map(profiles.map((p) => [p.slug, p.appearances]));
+  // Same predicate as the link graph: a pair the pages would not link
+  // (asset-vs-asset RWA pairs, noindexed) does not go in the sitemap either
+  // (release audit 2026-09-24: six such URLs).
   const adHocCompareRoutes: MetadataRoute.Sitemap = adHocPairs(profiles)
     .filter((pair) => !curatedCompareSlugs.has(pair.slug))
+    .filter((pair) => isPairLinkable(pair.slug, appearancesByProvider.get(pair.a) ?? [], appearancesByProvider.get(pair.b) ?? []))
     .map((pair) => {
       const aB = benchSlugsByProvider.get(pair.a) ?? new Set<string>();
       const shared = [...(benchSlugsByProvider.get(pair.b) ?? [])].filter((s) => aB.has(s));

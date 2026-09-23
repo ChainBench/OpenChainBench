@@ -9,25 +9,68 @@ import (
 	"time"
 )
 
-// edgeX (offchain CLOB perp DEX). Public no-auth REST. Contract IDs are
-// resolved via GET /api/v1/public/meta/getMetaData; hardcoded here after a
-// one-time lookup (verified via getMetaData on 2026-07-16). The taker fee
-// is not exposed by any public endpoint: the documented base rate
-// (3.8 bps, edgex-1.gitbook.io) is used and disclosed in the spec formula.
-// TODO: switch to fee schedule API when edgeX ships one.
+// edgeX (offchain CLOB perp DEX). Public no-auth REST, v2 API since
+// 2026-09-22: the v1 host (pro.edgex.exchange/api/v1) kept answering 200
+// with an empty data array on every quote endpoint, which the harness
+// read as empty_orderbook on all three assets for weeks. Contract IDs
+// are resolved via GET /api/v2/public/meta/getMetaData; hardcoded here
+// after a lookup on 2026-09-22 (v2 renumbered them to 30000xxx). The
+// fee schedule IS exposed, on getMetaData: each contract carries
+// defaultTakerFeeRate and defaultMakerFeeRate. The harness used to pin the
+// taker at the documented 3.8 bps; it now reads both, which makes the rate
+// self-correcting and gives the fee band its floor (2026-09-23).
 
-const edgexBase = "https://pro.edgex.exchange"
+const edgexBase = "https://edgex-prod-v2.edgex.exchange"
 
-// Documented base taker rate (3.8 bps = 0.00038). Revisit if edgeX ships a
-// public fees endpoint.
-const edgexTakerBps = 3.8
+// Fallback for the tick where getMetaData is unreachable: the documented
+// base rate. A wrong-but-documented taker beats no row at all, and the
+// maker simply stays absent, which is what "we could not read it" should
+// look like.
+const edgexTakerBpsFallback = 3.8
 
-// Asset → contractId map. Verified via getMetaData on 2026-07-16. If edgeX
-// re-numbers contracts, update these IDs (or wire in a dynamic lookup).
+type edgexMetaResp struct {
+	Data struct {
+		ContractList []struct {
+			ContractID          string `json:"contractId"`
+			DefaultTakerFeeRate string `json:"defaultTakerFeeRate"`
+			DefaultMakerFeeRate string `json:"defaultMakerFeeRate"`
+		} `json:"contractList"`
+	} `json:"data"`
+}
+
+// edgexFeeRates reads the published schedule for one contract. Returns
+// ok=false when the call fails or the contract is absent, and the caller
+// then falls back to the documented taker with no maker.
+func edgexFeeRates(client *http.Client, contractID string) (taker, maker float64, ok bool) {
+	var meta edgexMetaResp
+	url := fmt.Sprintf("%s/api/v2/public/meta/getMetaData", edgexBase)
+	if err := edgexGet(client, url, &meta); err != nil {
+		return 0, 0, false
+	}
+	for _, c := range meta.Data.ContractList {
+		if c.ContractID != contractID {
+			continue
+		}
+		t, errT := strconv.ParseFloat(c.DefaultTakerFeeRate, 64)
+		m, errM := strconv.ParseFloat(c.DefaultMakerFeeRate, 64)
+		if errT != nil || t <= 0 {
+			return 0, 0, false
+		}
+		if errM != nil {
+			return t * 10000, 0, false
+		}
+		return t * 10000, m * 10000, true
+	}
+	return 0, 0, false
+}
+
+// Asset → contractId map. Verified via v2 getMetaData on 2026-09-22
+// (BTCUSDC, ETHUSDC, SOLUSDC). If edgeX re-numbers contracts again,
+// update these IDs (or wire in a dynamic lookup).
 var edgexContractIDs = map[string]string{
-	"ETH": "10000002",
-	"BTC": "10000001",
-	"SOL": "10000003",
+	"ETH": "30000002",
+	"BTC": "30000001",
+	"SOL": "30000003",
 }
 
 type edgexDepthResp struct {
@@ -56,10 +99,15 @@ func fetchEdgex(v VenueConfig) PerpSample {
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	s.TakerFeeBps = edgexTakerBps
+	if taker, maker, ok := edgexFeeRates(client, contractID); ok {
+		s.TakerFeeBps = taker
+		s.MakerFeeBps, s.HasMakerFee = maker, true
+	} else {
+		s.TakerFeeBps = edgexTakerBpsFallback
+	}
 
 	var book edgexDepthResp
-	url := fmt.Sprintf("%s/api/v1/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)
+	url := fmt.Sprintf("%s/api/v2/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)
 	if err := edgexGet(client, url, &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()

@@ -197,15 +197,19 @@ function useEased(target: number | null, tauMs = 220): number | null {
   const [value, setValue] = useState<number | null>(target);
   const valueRef = useRef<number | null>(target);
   useEffect(() => {
+    // The two instant cases (target cleared, first value after a clear)
+    // publish on the next frame rather than synchronously: a setState in
+    // the effect body cascades a render, and one frame is invisible on a
+    // dial that eases over 220 ms anyway.
     if (target == null) {
       valueRef.current = null;
-      setValue(null);
-      return;
+      const raf = requestAnimationFrame(() => setValue(null));
+      return () => cancelAnimationFrame(raf);
     }
     if (valueRef.current == null) {
       valueRef.current = target;
-      setValue(target);
-      return;
+      const raf = requestAnimationFrame(() => setValue(target));
+      return () => cancelAnimationFrame(raf);
     }
     let raf = 0;
     let last = performance.now();
@@ -463,11 +467,17 @@ export function SpeedtestRpcClient() {
   const pickedChainRef = useRef<string | null>(null);
   const [contribOff, setContribOff] = useState(false);
   useEffect(() => {
-    try {
-      setContribOff(localStorage.getItem(CONTRIBUTE_PREF_KEY) === "off");
-    } catch {
-      /* storage blocked */
-    }
+    // Read on the next frame, not synchronously in the effect body: the
+    // stored preference cannot be read during SSR anyway, and a
+    // synchronous setState here cascades a render on every mount.
+    const raf = requestAnimationFrame(() => {
+      try {
+        setContribOff(localStorage.getItem(CONTRIBUTE_PREF_KEY) === "off");
+      } catch {
+        /* storage blocked */
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
   const [prefillState, setPrefillState] = useState<"idle" | "validating" | "done">("idle");
   const [skippedProviders, setSkippedProviders] = useState<string[]>([]);
@@ -576,7 +586,11 @@ export function SpeedtestRpcClient() {
       staleRounds: 0,
       lastMs: null,
     }));
-    setEndpoints(eps);
+    // React gets copies: `eps` stays this run's private bookkeeping (the
+    // loops below mutate status, samples and staleRounds on it), and every
+    // visible update goes through patch(). Handing the same objects to
+    // setEndpoints made those mutations writes to state behind React's back.
+    setEndpoints(eps.map((e) => ({ ...e, samples: [] })));
     setStage("testing");
     setElapsed(0);
     setRound(0);
@@ -631,8 +645,11 @@ export function SpeedtestRpcClient() {
     // endpoint — every needle lives simultaneously, speedtest-style.
     // RPC payloads are a few KB, so uplink contention is negligible
     // against the 10-500ms latencies being measured.
-    const tEnd = performance.now() + durationSec * 1000;
+    // start() runs from the Start click, never during render, and the
+    // clock IS what this benchmark measures.
+    // eslint-disable-next-line react-hooks/purity
     const t0 = performance.now();
+    const tEnd = t0 + durationSec * 1000;
     let roundNo = 0;
     const timer = setInterval(
       () => setElapsed(Math.min(durationSec, (performance.now() - t0) / 1000)),

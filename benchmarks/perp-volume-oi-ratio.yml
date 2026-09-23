@@ -1,0 +1,364 @@
+# OpenChainBench. Bench 271
+slug: perp-volume-oi-ratio
+number: "271"
+title: "Perp DEX volume to open interest: 24h turnover per dollar of OI, live"
+seo_title: "Perp DEX volume/OI ratio: {{best_name}} at {{best_p50}} turnover"
+seo_description: "{{best_name}} turns over {{best_p50}} of its open interest a day, {{worst_name}} {{worst_p50}}. 24h volume over OI for {{count}} perp venues, the screen for volume that no position backs."
+subtitle: "24h traded notional divided by open interest, per venue. A ratio of 1.0x means the venue trades its whole open interest once a day. Order-book venues with real position holders sit between 0.3x and 3x; a ratio far above that means volume that no open position backs (incentive farming, wash trading, or a very short-horizon retail flow). Lower ranks first; read the bands, not the rank alone."
+category: Trading
+status: live
+metric: "Volume / OI (24h)"
+unit: x
+higher_is_better: false
+row_noun: { one: venue, many: venues }
+disclaimer: |
+  The ratio is a screen, not a verdict. Both terms are the venue's own
+  figures (24h volume and open interest as each API reports them, in USD),
+  so a venue that counts both legs of a fill moves its ratio without
+  changing anything real. A very low ratio (Ostium, 0.2x) means positions
+  held for days on thin daily volume; a very high one (Kalshi, above 40x)
+  means a day of trading dwarfs what stays open. The bands in the
+  methodology say what each range usually means.
+seo_intro: |
+  Volume is the number every perp DEX leaderboard sorts by, and the one
+  easiest to manufacture: points programs, maker rebates and self-matched
+  flow all inflate it. Open interest is harder to fake, because a position
+  has to be collateralised and held. The ratio of the two says how much of
+  the reported volume is backed by positions that exist at the end of the
+  day. Binance and Bybit historically run at about 1x to 2x on the majors;
+  Hyperliquid at 0.5x with a large, sticky open interest; a venue at 8x or
+  40x is turning its book over many times a day. This page publishes the
+  ratio for {{count}} venues from the same volume and open-interest
+  gauges the /perps hub shows, refreshed every minute, with a 24-hour
+  average so a single print does not move the board. It is the screen to
+  read before believing a volume ranking.
+abstract: |
+  For every venue in the perp cohort the harness publishes
+  perp_venue_volume_24h_usd (24h traded notional from the venue's own API)
+  and perp_venue_oi_usd (open interest in USD, from the venue's API or,
+  for GMX v2, from DefiLlama). The bench divides the 24h time average of
+  the first by the 24h time average of the second. The result is the
+  number of times a venue turned its open interest over in a day. Venues
+  where one of the two series is missing (Vest publishes no open interest)
+  are left out rather than shown at zero. The ranking sorts ascending so
+  the venues whose volume is most position-backed read first, but the
+  interesting reading is the distribution: order-book venues with real
+  holders cluster between 0.3x and 3x, oracle and pool venues between 1x
+  and 4x, and outliers above 8x are where the volume figure deserves a
+  second look.
+methodology:
+  - "Cadence: both gauges come from the perp-cohort-stats harness (every 60 seconds, one native call per venue); the ratio is computed in PromQL at query time from 24h time averages."
+  - "Ratio = avg_over_time(perp_venue_volume_24h_usd[24h]) / avg_over_time(perp_venue_oi_usd[24h]), per venue. Volume is the venue's own rolling 24h notional; OI is the venue's own USD open interest (GMX v2: DefiLlama)."
+  - "Bands: 0.3x to 3x is the range of order-book venues with real position holders (Hyperliquid 0.5x, dYdX 1.3x, Lighter 2.5x on 2026-09-22); 1x to 4x for pool and oracle venues (Gains 1.4x, GMX v2 4.0x); above 8x the daily volume is many multiples of what stays open (Pacifica 8.5x, Kalshi 41x)."
+  - "Venues without one of the two series are excluded: Vest publishes no open interest; SynFutures, KiloEx, Orderly and Backpack publish no OI to the harness."
+  - "Both terms are as the venue reports them. A venue counting both legs of every fill doubles its ratio against one that counts one; the bench does not normalise that, the venue formula on each row says what the API returns."
+  - "Ranking sorts ascending (lower is first) so the venues whose volume is most backed by open positions lead; the subtitle and the bands are the reading, not the rank alone."
+  - "A one-print spike does not move the board: both terms are 24h time averages of gauges sampled every minute."
+findings:
+  - "{{best_name}} turns over {{best_p50}} of its open interest a day, the most position-backed volume of the {{count}} venues; {{worst_name}} sits at {{worst_p50}}."
+  - "{{name:hyperliquid}} reads {{p50:hyperliquid}}: a day of trading is half its open interest, the signature of a large, sticky position base."
+  - "{{name:lighter}} reads {{p50:lighter}} and {{name:extended}} {{p50:extended}}, in the upper half of the order-book range; {{name:pacifica}} at {{p50:pacifica}} and {{name:kalshi}} at {{p50:kalshi}} are the outliers where the volume figure deserves a second look."
+  - "Pool and oracle venues sit between 1x and 4x: {{name:gains}} {{p50:gains}}, {{name:gmx-v2}} {{p50:gmx-v2}}, {{name:jupiter}} {{p50:jupiter}}."
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 600
+  freshness_metric: perp_venue_volume_24h_usd
+faq:
+  - q: "What does a volume to open interest ratio of 2x mean?"
+    a: "That the venue traded twice its open interest in 24 hours. If $1B of positions are open and $2B changed hands, the ratio is 2x. Order-book venues with real position holders usually sit between 0.3x and 3x; higher means most of the day's volume was opened and closed within the day."
+  - q: "Is a high ratio proof of wash trading?"
+    a: "No. It is a screen. Incentive programs, maker rebates, market-maker inventory recycling and a retail flow that day-trades all push the ratio up without self-matching. A ratio far above the cohort, sustained, is where to look; the bench publishes the number and the bands, not a verdict."
+  - q: "Why does the ranking put the lowest ratio first?"
+    a: "Because the question the bench answers is which venues' volume is backed by positions that exist at the end of the day. The rank is one reading; a very low ratio can also mean a venue where positions sit for days on thin volume (Ostium). The bands in the methodology are the second reading."
+  - q: "Where do volume and open interest come from?"
+    a: "From each venue's own public API through the perp-cohort-stats harness: Hyperliquid metaAndAssetCtxs, Lighter exchangeStats and orderBookDetails, Aster ticker/24hr and openInterest, dYdX perpetualMarkets, Kalshi margin/markets, and so on, every 60 seconds. GMX v2 open interest comes from DefiLlama. The per-venue formula on each row names the source."
+  - q: "Why are Vest, SynFutures and KiloEx missing?"
+    a: "Vest publishes no open interest on its API; SynFutures and KiloEx are read through CoinGecko, which carries volume only. Without a denominator the ratio would be undefined, so those venues are left out rather than shown at zero."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 orderbook, volume and OI from metaAndAssetCtxs
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"hyperliquid\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"hyperliquid\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h])
+      series: perp_venue_volume_24h_usd{venue="hyperliquid"} / perp_venue_oi_usd{venue="hyperliquid"}
+
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup orderbook, exchangeStats volume, orderBookDetails OI
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"lighter\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"lighter\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="lighter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="lighter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h])
+      series: perp_venue_volume_24h_usd{venue="lighter"} / perp_venue_oi_usd{venue="lighter"}
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain orderbook, ticker/24hr volume, per-symbol openInterest
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"aster\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"aster\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aster"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="aster"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aster"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="aster"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aster"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aster"}[24h])
+      success: avg_over_time(perp_venue_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h])
+      series: perp_venue_volume_24h_usd{venue="aster"} / perp_venue_oi_usd{venue="aster"}
+
+  - slug: extended
+    name: Extended
+    tag: Starknet orderbook, info/markets dailyVolume and openInterest
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"extended\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"extended\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="extended"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="extended"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="extended"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="extended"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="extended"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="extended"}[24h])
+      success: avg_over_time(perp_venue_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h])
+      series: perp_venue_volume_24h_usd{venue="extended"} / perp_venue_oi_usd{venue="extended"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain orderbook, indexer volume24H and openInterest x oracle
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"dydx\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"dydx\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="dydx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="dydx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="dydx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="dydx"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="dydx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="dydx"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h])
+      series: perp_venue_volume_24h_usd{venue="dydx"} / perp_venue_oi_usd{venue="dydx"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain orderbook, markets/summary volume_24h and open_interest x mark
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"paradex\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"paradex\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="paradex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="paradex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="paradex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="paradex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="paradex"} / perp_venue_oi_usd{venue="paradex"}
+
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx-settled orderbook, v2 getTicker value and openInterest x mark
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"edgex\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"edgex\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="edgex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="edgex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="edgex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="edgex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="edgex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="edgex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="edgex"} / perp_venue_oi_usd{venue="edgex"}
+
+  - slug: grvt
+    name: GRVT
+    tag: zkSync hybrid orderbook, native markets feed
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"grvt\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"grvt\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="grvt"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="grvt"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="grvt"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="grvt"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="grvt"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="grvt"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="grvt"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="grvt"}[24h])
+      success: avg_over_time(perp_venue_health{venue="grvt"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="grvt"}[24h])
+      series: perp_venue_volume_24h_usd{venue="grvt"} / perp_venue_oi_usd{venue="grvt"}
+
+  - slug: aevo
+    name: Aevo
+    tag: OP Stack rollup orderbook, native markets feed
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"aevo\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"aevo\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="aevo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aevo"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="aevo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aevo"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="aevo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aevo"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="aevo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="aevo"}[24h])
+      success: avg_over_time(perp_venue_health{venue="aevo"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="aevo"}[24h])
+      series: perp_venue_volume_24h_usd{venue="aevo"} / perp_venue_oi_usd{venue="aevo"}
+
+  - slug: pacifica
+    name: Pacifica
+    tag: Solana orderbook, native markets feed
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"pacifica\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"pacifica\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="pacifica"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="pacifica"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="pacifica"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="pacifica"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="pacifica"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="pacifica"}[24h])
+      success: avg_over_time(perp_venue_health{venue="pacifica"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="pacifica"}[24h])
+      series: perp_venue_volume_24h_usd{venue="pacifica"} / perp_venue_oi_usd{venue="pacifica"}
+
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook DEX by the Vertex team, archive market_snapshots
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"nado\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"nado\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="nado"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="nado"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="nado"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="nado"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nado"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="nado"}[24h])
+      series: perp_venue_volume_24h_usd{venue="nado"} / perp_venue_oi_usd{venue="nado"}
+
+  - slug: ondo
+    name: Ondo Perps
+    tag: SGX-matched orderbook, contracts usdVolume and openInterestUsd
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"ondo\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"ondo\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="ondo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ondo"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="ondo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ondo"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="ondo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ondo"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="ondo"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ondo"}[24h])
+      success: avg_over_time(perp_venue_health{venue="ondo"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="ondo"}[24h])
+      series: perp_venue_volume_24h_usd{venue="ondo"} / perp_venue_oi_usd{venue="ondo"}
+
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon perps by Polymarket, native tickers
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"polymarket\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"polymarket\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="polymarket"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="polymarket"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="polymarket"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="polymarket"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      success: avg_over_time(perp_venue_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="polymarket"}[24h])
+      series: perp_venue_volume_24h_usd{venue="polymarket"} / perp_venue_oi_usd{venue="polymarket"}
+
+  - slug: gains
+    name: Gains
+    tag: Synthetic perps, oracle-priced; volume from the Gains backend, OI from DefiLlama
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"gains\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"gains\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gains"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="gains"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
+      series: perp_venue_volume_24h_usd{venue="gains"} / perp_venue_oi_usd{venue="gains"}
+
+  - slug: gmx-v2
+    name: GMX v2
+    tag: Arbitrum and Avalanche pool perps; volume from the Subsquid indexer, OI from DefiLlama
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"gmx-v2\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"gmx-v2\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gmx-v2"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gmx-v2"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gmx-v2"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="gmx-v2"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="gmx-v2"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gmx-v2"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gmx-v2"}[24h])
+      series: perp_venue_volume_24h_usd{venue="gmx-v2"} / perp_venue_oi_usd{venue="gmx-v2"}
+
+  - slug: jupiter
+    name: Jupiter Perps
+    tag: Solana JLP pool; market-stats volume, custody-derived OI
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"jupiter\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"jupiter\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="jupiter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="jupiter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="jupiter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="jupiter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="jupiter"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="jupiter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="jupiter"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="jupiter"}[24h])
+      series: perp_venue_volume_24h_usd{venue="jupiter"} / perp_venue_oi_usd{venue="jupiter"}
+
+  - slug: ostium
+    name: Ostium
+    tag: Synthetic RWA perps on Arbitrum; subgraph trade notional and pair OI
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"ostium\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"ostium\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="ostium"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ostium"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="ostium"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ostium"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="ostium"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ostium"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="ostium"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="ostium"}[24h])
+      success: avg_over_time(perp_venue_health{venue="ostium"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="ostium"}[24h])
+      series: perp_venue_volume_24h_usd{venue="ostium"} / perp_venue_oi_usd{venue="ostium"}
+
+  - slug: kalshi
+    name: Kalshi
+    tag: CFTC-regulated US exchange; margin/markets notional volume and OI
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"kalshi\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"kalshi\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="kalshi"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="kalshi"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="kalshi"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="kalshi"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="kalshi"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="kalshi"}[24h])
+      success: avg_over_time(perp_venue_health{venue="kalshi"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="kalshi"}[24h])
+      series: perp_venue_volume_24h_usd{venue="kalshi"} / perp_venue_oi_usd{venue="kalshi"}
+
+  - slug: standx
+    name: StandX
+    tag: DUSD-margined perps on BNB Chain; query_market_overview totals
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"standx\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"standx\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="standx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="standx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="standx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="standx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="standx"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="standx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="standx"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="standx"}[24h])
+      series: perp_venue_volume_24h_usd{venue="standx"} / perp_venue_oi_usd{venue="standx"}
+
+  - slug: apex
+    name: ApeX Omni
+    tag: Omnichain orderbook; per-market ticker turnover24h and openInterest x mark
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"apex\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"apex\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="apex"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="apex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="apex"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="apex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="apex"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="apex"}[24h])
+      success: avg_over_time(perp_venue_health{venue="apex"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="apex"}[24h])
+      series: perp_venue_volume_24h_usd{venue="apex"} / perp_venue_oi_usd{venue="apex"}
+
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter Robinhood deployment; exchangeStats volume, orderBookDetails OI
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"lighter-rh\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"lighter-rh\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter-rh"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter-rh"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="lighter-rh"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter-rh"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="lighter-rh"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter-rh"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter-rh"}[24h])
+      series: perp_venue_volume_24h_usd{venue="lighter-rh"} / perp_venue_oi_usd{venue="lighter-rh"}
+
+  - slug: trade-xyz
+    name: trade.xyz
+    tag: Hyperliquid HIP-3 xyz dex; dayNtlVlm and openInterest x mark of the xyz universe
+    formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"trade-xyz\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"trade-xyz\"}[24h])"
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="trade-xyz"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="trade-xyz"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="trade-xyz"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="trade-xyz"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="trade-xyz"}[24h])
+      success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
+      series: perp_venue_volume_24h_usd{venue="trade-xyz"} / perp_venue_oi_usd{venue="trade-xyz"}

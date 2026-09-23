@@ -25,7 +25,7 @@ export const BRAND_WHITELIST: ReadonlySet<string> = new Set([
   "publicnode", "drpc", "1rpc", "tenderly", "helius", "nodies",
   "lava", "meowrpc", "flashbots", "cloudflare",
   // Perp DEXes
-  "hyperliquid", "lighter", "dydx", "aster", "paradex", "gmx", "vertex",
+  "hyperliquid", "lighter", "dydx", "aster", "paradex", "gmx", "vertex", "nado", "kalshi",
   "ostium", "pacifica", "grvt", "extended", "edgex",
   // Bridges
   "debridge", "lifi", "relay", "across", "cctp", "near-intents",

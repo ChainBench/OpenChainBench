@@ -3,8 +3,8 @@
 slug: hyperliquid-hip3-deployers
 number: "035"
 title: Hyperliquid HIP-3 deployer revenue leaderboard
-seo_title: "Hyperliquid HIP-3 dex deployer fees 2026"
-seo_description: "{{best_name}} collected {{best_p50}} in HIP-3 deployer fees over 24h, the most of {{count}} builder-deployed dexes on Hyperliquid. Every deployer ranked live, read from a local hl node every 30 seconds."
+seo_title: "Hyperliquid HIP-3 deployers: {{count}} dexes ranked by fees"
+seo_description: "{{count}} HIP-3 builder dexes on Hyperliquid ranked by deployer fees: {{best_name}} collected {{best_p50}} in 24h. Live 24h, 7d and 30d windows from a local hl node."
 subtitle: How much USD deployer fee revenue each HIP-3 builder-deployed dex collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live
@@ -84,8 +84,8 @@ faq:
     a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet. The node writes every block of fills to disk; a Go harness running on the same host reads these files continuously, attributes namespaced fills to their dex, and aggregates per hour. No third party API, no internal Mobula service."
   - q: "How are dexes identified?"
     a: "By their on-chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The harness discovers the set dynamically from the fill stream and starts metering a brand new deployer with its first fill; the page lists each new namespace after a short spec review. Operating teams are resolved from the on-chain perpDexs registry, which publishes each namespace deployer address and full name."
-  - q: "Why is trade.xyz so far ahead?"
-    a: "It operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and xyz leads on both breadth and notional."
+  - q: "What puts a deployer at the top of this table?"
+    a: "Catalog depth and open interest. trade.xyz, for example, operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and through Q3 2026 trade.xyz led on both breadth and notional."
   - q: "What does the Effective fee bps column tell me?"
     a: "Deployer fees divided by notional volume, in basis points. It is the trader perspective: what a representative dollar of flow paid the dex operator. Two dexes with the same revenue can have very different fee rates if one routes ten times the volume."
   - q: "Why do 30 day figures look low for some dexes?"

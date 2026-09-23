@@ -1,0 +1,340 @@
+# OpenChainBench. Bench № 278
+
+slug: rwa-solana-depth
+number: "278"
+title: Tokenized RWA on Solana, what a $100k sale actually costs
+seo_title: "Solana RWA liquidity 2026: what $100k of USDY, PAXG and xStocks sell for"
+seo_description: "Executable depth of tokenized real-world assets on Solana: the cost of selling $1k, $10k and $100k of USDY, PAXG and 12 xStocks on Jupiter, in bps, and the on-chain supply that has no market at all (BUIDL, USTB)."
+subtitle: "Cost of selling $100,000 of each tokenized real-world asset on Solana through Jupiter, relative to a $100 sale of the same asset on the same tick, measured every ten minutes; the on-chain supply of each asset is read from its mint, including the funds that have no open market."
+
+category: RWA
+status: live
+metric: Cost of a $100k sale
+unit: bp
+row_noun: { one: tokenized asset, many: tokenized assets }
+higher_is_better: false
+
+seo_intro: |
+  Solana's tokenized real-world assets passed $4.6 billion of declared
+  value in September 2026, and dashboards rank the issuers by that
+  number. This page asks a different question of the same tokens: if
+  you held $100,000 of one and sold it on the open market right now,
+  what would you get back? The harness sends the sale to Jupiter, the
+  Solana aggregator every wallet routes through, at three sizes, and
+  publishes the cost of each size against a $100 sale of the same
+  asset on the same tick. The answer splits the category in two: USDY,
+  PAXG and the index xStocks fill $100,000 within tens of basis points,
+  single-stock xStocks cost more, the thinnest names hundreds, and the largest funds on the
+  chain by declared value (BUIDL at about a billion dollars, USTB)
+  have no route at all, because they are transfer-restricted and never
+  trade. Both halves are on the page, the second one unranked with its
+  on-chain supply, because a chart of declared value shows neither.
+
+abstract: |
+  Every ten minutes, for each asset with an open market, the harness
+  asks Jupiter's quote API what $100, $1,000, $10,000 and $100,000
+  worth of the token sell for against USDC (the $100 reference is sized
+  at the previous tick's price, the three sizes at this tick's
+  reference price). The cost of
+  a size is 10000 x (1 - price per unit at that size / price per unit
+  at $100), in basis points: the price impact of the sale, fees of the
+  route included, relative to the smallest sale Jupiter will price. The
+  headline is the 24-hour median of the $100,000 cost, lowest first.
+  For each asset, routed or not, getTokenSupply on the mint gives the
+  supply on Solana every ten minutes, valued at the executable $100
+  price where one exists (BUIDL at its designed $1.00 unit value). A
+  fund whose mint has no route on Jupiter (BUIDL, USTB) is listed
+  unranked as "No open market" with that supply: it is the part of the
+  declared total that cannot be sold.
+
+methodology:
+  - "Quotes: Jupiter lite-api /swap/v1/quote, token to USDC, slippage 100 bps, one route search per size, 5 seconds apart (the free tier allows 60 requests a minute per address, shared with the sibling harnesses). Four quotes per routed asset per tick: $100 (reference, sized at the previous tick's price), then $1k, $10k and $100k sized at this tick's reference price; the cost is a ratio of two quotes a few seconds apart on the same tick."
+  - "Cost = 10000 x (1 - USDC received per raw unit at the size / USDC received per raw unit at $100), in basis points. Positive is a worse price at size, the normal case; a small negative reading happens when a larger sale reaches a better pool split than the $100 quote. Published as rwa_depth_cost_1k_bps, rwa_depth_cost_10k_bps and rwa_depth_cost_100k_bps per asset; a size Jupiter could not route this tick has its gauge deleted, never held."
+  - "Headline: 24-hour median of the $100k cost (quantile_over_time 0.5), p90 and p99 of the same series; the $1k and $10k 24-hour medians are panels. Ranked lowest first. rwa_depth_route_ok is 1 on a tick where the $100k sale was priced and 0 otherwise (no route, or a quote that failed); its 24-hour average is the row's success, and the site ranks a row above 50 percent."
+  - "On-chain supply: getTokenSupply on the mint every ten minutes through a keyed Solana RPC, published as rwa_onchain_supply_units and, valued at the $100 executable price per raw unit, rwa_onchain_supply_usd. Raw units on both sides, so a Token-2022 scaled-UI mint (seven xStocks) needs no multiplier. BUIDL is valued at its designed $1.00 per unit (dividends are paid in new units); USTB on Solana has no price this page can defend, so only its unit supply is shown."
+  - "Cohort: USDY (Ondo), PAXG (Paxos), the 12 xStocks the xstocks-peg bench prices, and two funds with no open market listed unranked: BUIDL (BlackRock, mint GyWgeqpy...w6phr) and USTB (Superstate, the Invesco Short Duration US Government Securities Fund, mint CCz3SGVz...Vcjo2 from Superstate's contract list). OUSG's Solana mint had zero supply on 2026-09-23 and is out. Mints come from the issuers' documentation, not from a token-list search, which returns look-alikes for every fund."
+  - "What the cost is and is not: it is the price a seller gets from the open market on Solana today, routes and fees included, at the moment of the tick; it is not a redemption cost through the issuer (USDY, BUIDL and USTB redeem at NAV on the issuer's schedule) and not a statement about the asset's backing. A fund with no route is not broken: it is not sold on an open market by design, which is precisely the fact this page adds to the declared total."
+  - "Reproducibility: harness source at github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-solana-depth; every quote URL is public and keyless, the supply read needs any Solana RPC that serves getTokenSupply."
+
+findings:
+  - "{{best_name}} is the tokenized RWA that sells cheapest at size on Solana: {{best_p50}} of cost on a $100,000 sale (24h median) across {{ranked_count}} ranked assets."
+  - "The category splits in three: a tokenized dollar with a market maker quoting size (USDY fills $100,000 flat on Manifest), tokenized gold and the index xStocks (PAXG, SPYx, QQQx) within tens of basis points, and single-stock xStocks where a $100,000 sale costs 20 to over 500 basis points on the thinnest names. Same chain, same aggregator, same day."
+  - "The two largest treasury funds on the chain by declared value are the unranked rows: BUIDL's Solana mint holds close to a billion dollars and Jupiter has no route for one unit of it; USTB's Solana mint the same. Declared value counts them; executable depth cannot."
+  - "The $1k column is the retail truth: every routed asset sells $1,000 within about 20 basis points. The gap between the $1k and $100k columns is the depth of the pool behind the token, which no declared-value figure describes."
+
+faq:
+  - q: "What does the cost of a $100k sale mean here?"
+    a: "It is the basis points lost by selling $100,000 worth of the token on Jupiter compared with selling $100 of it at the same moment: the price impact of size, route fees included. It is measured from Jupiter's quote API, the same route a Solana wallet would take, every ten minutes, and the page ranks the 24-hour median. It is not the cost of redeeming through the issuer."
+  - q: "Why are BUIDL and USTB on the page if they cannot be sold?"
+    a: "Because they are most of the declared value. BlackRock's BUIDL mint on Solana holds close to a billion dollars and Superstate's USTB mint a few million, and neither has a route on Jupiter: they are transfer-restricted funds that never trade on an open pool. The page lists them unranked as No open market, with the supply read from the mint, so a reader sees which part of Solana's RWA total is tradable and which part is a redemption queue."
+  - q: "Why can USDY sell $100,000 at no cost?"
+    a: "When it does, it is because a market maker quotes it at size on Manifest, a Solana order book, at one price on both sides for as long as the resting orders cover the sale (about $114,000 on 2026-09-23; a $500,000 sale already spilled into a pool at 14 bps). The cost is measured against the $100 sale on the same route, so a flat quote reads zero; the usdy-nav-basis bench measures the separate question of how far that quoted price sits from Ondo's published NAV."
+  - q: "Is a high cost a problem with the token?"
+    a: "It is a fact about the pool behind it, not about the issuer's backing. A single-stock xStock with a few tens of thousands of dollars of liquidity cannot absorb a $100,000 sale without moving through its whole range; the token still tracks its stock at retail size, which the xstocks-peg bench measures. The two benches together describe the asset: price accuracy at $1 and depth at $100,000."
+  - q: "Where do the dollar sizes come from if prices move?"
+    a: "Each tick sizes the $100 reference sale at the previous tick's executable price, then sizes the $1,000, $10,000 and $100,000 sales at the reference price it just obtained. A price move between ticks shifts the reference by the same percentage, and the cost is a ratio of two quotes a few seconds apart on the same tick, so it is unaffected. The fill column shows the USDC actually received for the $100,000 sale."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-solana-depth
+
+prometheus:
+  window: 24h
+  freshness_timestamp_metric: rwa_depth_last_success_timestamp_seconds
+  expected_freshness_seconds: 1500
+
+metric_panels:
+  - id: cost1k
+    label: Cost $1k
+    metric: quantile_over_time(0.50, rwa_depth_cost_1k_bps{issuer!=""}[24h])
+    label_key: asset
+    unit: bp
+    higher_is_better: false
+    description: "Cost of selling $1,000 relative to $100, in basis points, 24h median."
+  - id: cost10k
+    label: Cost $10k
+    metric: quantile_over_time(0.50, rwa_depth_cost_10k_bps{issuer!=""}[24h])
+    label_key: asset
+    unit: bp
+    higher_is_better: false
+    description: "Cost of selling $10,000 relative to $100, in basis points, 24h median."
+  - id: fill
+    label: Fill $100k
+    metric: rwa_depth_fill_usd_100k
+    label_key: asset
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "USDC received for the $100,000 sale on the last tick."
+  - id: supply
+    label: On-chain supply
+    metric: rwa_onchain_supply_usd
+    label_key: asset
+    unit: usd
+    higher_is_better: true
+    description: "Token supply of the Solana mint, valued at the executable $100 price (BUIDL at $1.00 by design)."
+  - id: supply_units
+    label: Supply (units)
+    metric: rwa_onchain_supply_units
+    label_key: asset
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Token supply of the Solana mint in units, for the rows with no price to value it at (USTB)."
+
+ledger_columns:
+  - { label: "Cost $100k", slot: p50 }
+  - { label: "Cost $10k", panel: cost10k }
+  - { label: "Cost $1k", panel: cost1k }
+  - { label: "p99 $100k", slot: p99 }
+  - { label: "On-chain supply", panel: supply }
+  - { label: "Supply (units)", panel: supply_units }
+
+providers:
+  - slug: usdy
+    name: USDY
+    tag: "Ondo, tokenized treasury dollar, quoted at size on Manifest"
+    formula: "24h median of the cost of selling $100,000 of USDY on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="usdy"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="usdy"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="usdy"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="usdy"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="usdy"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="usdy"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="usdy"}
+
+  - slug: paxg
+    name: PAXG
+    tag: "Paxos, tokenized gold, one troy ounce per token"
+    formula: "24h median of the cost of selling $100,000 of PAXG on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="paxg"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="paxg"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="paxg"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="paxg"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="paxg"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="paxg"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="paxg"}
+
+  - slug: spy
+    name: SPYx
+    tag: "xStocks, S&P 500 ETF"
+    formula: "24h median of the cost of selling $100,000 of SPYx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="spy"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="spy"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="spy"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="spy"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="spy"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="spy"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="spy"}
+
+  - slug: qqq
+    name: QQQx
+    tag: "xStocks, Nasdaq-100 ETF"
+    formula: "24h median of the cost of selling $100,000 of QQQx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="qqq"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="qqq"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="qqq"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="qqq"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="qqq"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="qqq"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="qqq"}
+
+  - slug: tsla
+    name: TSLAx
+    tag: "xStocks, Tesla"
+    formula: "24h median of the cost of selling $100,000 of TSLAx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="tsla"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="tsla"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="tsla"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="tsla"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="tsla"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="tsla"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="tsla"}
+
+  - slug: nvda
+    name: NVDAx
+    tag: "xStocks, Nvidia"
+    formula: "24h median of the cost of selling $100,000 of NVDAx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="nvda"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="nvda"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="nvda"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="nvda"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="nvda"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="nvda"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="nvda"}
+
+  - slug: msft
+    name: MSFTx
+    tag: "xStocks, Microsoft"
+    formula: "24h median of the cost of selling $100,000 of MSFTx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="msft"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="msft"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="msft"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="msft"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="msft"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="msft"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="msft"}
+
+  - slug: aapl
+    name: AAPLx
+    tag: "xStocks, Apple"
+    formula: "24h median of the cost of selling $100,000 of AAPLx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="aapl"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="aapl"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="aapl"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="aapl"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="aapl"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="aapl"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="aapl"}
+
+  - slug: googl
+    name: GOOGLx
+    tag: "xStocks, Alphabet"
+    formula: "24h median of the cost of selling $100,000 of GOOGLx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="googl"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="googl"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="googl"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="googl"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="googl"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="googl"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="googl"}
+
+  - slug: meta
+    name: METAx
+    tag: "xStocks, Meta"
+    formula: "24h median of the cost of selling $100,000 of METAx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="meta"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="meta"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="meta"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="meta"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="meta"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="meta"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="meta"}
+
+  - slug: amzn
+    name: AMZNx
+    tag: "xStocks, Amazon"
+    formula: "24h median of the cost of selling $100,000 of AMZNx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="amzn"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="amzn"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="amzn"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="amzn"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="amzn"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="amzn"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="amzn"}
+
+  - slug: hood
+    name: HOODx
+    tag: "xStocks, Robinhood"
+    formula: "24h median of the cost of selling $100,000 of HOODx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="hood"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="hood"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="hood"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="hood"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="hood"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="hood"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="hood"}
+
+  - slug: coin
+    name: COINx
+    tag: "xStocks, Coinbase"
+    formula: "24h median of the cost of selling $100,000 of COINx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="coin"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="coin"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="coin"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="coin"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="coin"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="coin"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="coin"}
+
+  - slug: pltr
+    name: PLTRx
+    tag: "xStocks, Palantir"
+    formula: "24h median of the cost of selling $100,000 of PLTRx on Jupiter relative to a $100 sale on the same tick, in bps."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="pltr"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="pltr"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="pltr"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="pltr"}[24h])
+      success: (avg_over_time(rwa_depth_route_ok{asset="pltr"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_cost_100k_bps{asset="pltr"}[24h])
+      series: rwa_depth_cost_100k_bps{asset="pltr"}
+
+  - slug: buidl
+    name: BUIDL
+    tag: "BlackRock, Securitize; transfer-restricted, close to a billion dollars on the Solana mint"
+    unranked: "No open market"
+    formula: "Jupiter returns no route for one unit of the BUIDL mint on Solana; the on-chain supply, at the fund's designed $1.00 per unit, is the value that cannot be sold on an open market."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="buidl"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="buidl"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="buidl"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="buidl"}[24h])
+      success: (avg_over_time(rwa_depth_health{asset="buidl"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_health{asset="buidl"}[24h])
+      series: rwa_depth_route_ok{asset="buidl"}
+
+  - slug: ustb
+    name: USTB
+    tag: "Superstate, Invesco Short Duration US Government Securities Fund; transfer-restricted"
+    unranked: "No open market"
+    formula: "Jupiter returns no route for one unit of the USTB mint on Solana; the on-chain supply is shown in units (no executable price to value it at)."
+    queries:
+      p50: quantile_over_time(0.50, rwa_depth_cost_100k_bps{asset="ustb"}[24h])
+      p90: quantile_over_time(0.90, rwa_depth_cost_100k_bps{asset="ustb"}[24h])
+      p99: quantile_over_time(0.99, rwa_depth_cost_100k_bps{asset="ustb"}[24h])
+      mean: avg_over_time(rwa_depth_cost_100k_bps{asset="ustb"}[24h])
+      success: (avg_over_time(rwa_depth_health{asset="ustb"}[24h]) or on() vector(0))
+      sample_size: count_over_time(rwa_depth_health{asset="ustb"}[24h])
+      series: rwa_depth_route_ok{asset="ustb"}

@@ -2,6 +2,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fmtUnit } from "@/lib/format";
+import { rankingLines } from "@/lib/markdown-views";
 import {
   cohortViews,
   fieldValue,
@@ -88,21 +89,14 @@ export async function GET(req: Request) {
     if (!insufficient && v != null && lead) {
       lines.push(`- Headline: ${headlineSentence(b)}`);
       lines.push("");
-      lines.push(`**Rankings (p50, 24h):**`);
+      const headlineCol = (b.ledgerColumns ?? []).find((c) => c.slot === "p50")?.label;
+      lines.push(`**Rankings (${headlineCol ?? "p50"}, ${b.window ?? "24h"}):**`);
       // Shares `rankedCandidates` with `leader()` so the numbered list
       // below matches the Headline sentence above. Without the shared
       // filter, an LLM pasting this block would see e.g. "Etherscan
-      // leads" then a rankings list with Owlracle at #1.
-      const ranked = rankedCandidates(b);
-      for (let i = 0; i < ranked.length; i++) {
-        const r = ranked[i];
-        lines.push(
-          `${i + 1}. ${r.name}: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(
-            r.ms.p99,
-            b.unit,
-          )}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
-        );
-      }
+      // leads" then a rankings list with Owlracle at #1. The line format
+      // is the Markdown view's, which honours ledger_columns labels.
+      lines.push(...rankingLines(b, rankedCandidates(b)).map((l) => l.replace(/\*\*/g, "")));
     } else if (insufficient) {
       // Surface the same insufficient sentence the other citable surfaces
       // emit, so an LLM that pastes this Markdown into context never sees
