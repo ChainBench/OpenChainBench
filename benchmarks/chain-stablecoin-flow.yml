@@ -1,0 +1,372 @@
+# OpenChainBench. Bench 275
+slug: chain-stablecoin-flow
+number: "275"
+title: "Stablecoin flow by chain: where dollars actually moved over 30 days"
+seo_title: "Stablecoin flow by chain: {{best_name}} gained {{best_p50}}"
+seo_description: "{{best_name}} took in {{best_p50}} of stablecoins over 30 days, {{worst_name}} lost {{worst_p50}}. Net flow, the 7 and 30 day move and the float behind it for {{ranked_count}} chains."
+subtitle: "The dollar change in each chain's stablecoin float over the trailing 30 days. Unlike a TVL ranking this is a flow, not a level: it only moves when somebody mints or bridges dollars onto a chain, or takes them off. Chains below $100M of float are not ranked, because one mint moves them by a third."
+category: Blockchains
+status: live
+metric: Net stablecoin flow (30d)
+row_noun: { one: chain, many: chains }
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Stablecoin float is where dollars are parked, not what they do. A chain
+  can take in a billion that sits idle, and a chain can lose float to a
+  single issuer redeeming. The figure is DefiLlama's chain-wide pegged-USD
+  aggregate, every issuer combined; it does not separate a bridge inflow
+  from a native mint. Read the net dollars with the percentage beside them:
+  the same $400M is a rounding error on Ethereum and a doubling elsewhere.
+
+seo_intro: |
+  Bridged TVL says how much value a chain secures. It is a level, and a
+  level barely moves: an asset bridged eight months ago still counts today.
+  Stablecoin float answers the other question. Dollars only appear on a
+  chain when somebody mints or bridges them there on purpose, so the change
+  in that float over a month is about as close to a capital-flow reading as
+  public data gets. It also covers the chains bench 273 cannot: L2Beat
+  tracks scaling chains, so Solana, Tron and BNB have no row there, and
+  between them they hold more than $127B of stablecoins. The board ranks by
+  net dollars because that is the quantity that moved, with the percentage
+  alongside because $400M means different things at different sizes.
+
+abstract: |
+  The chain-kpis harness already read /stablecoincharts/<chain> for each
+  chain's current pegged-USD total and kept only the last point. That
+  endpoint returns the full daily history, so the same fetch now also
+  differences it: chain_stables_net_7d_usd and chain_stables_net_30d_usd
+  are the dollar changes, chain_stables_change_7d_pct and
+  chain_stables_change_30d_pct the percentages. No extra request. The
+  windows are published only when the history reaches back far enough to
+  difference, so a chain DefiLlama began tracking last week shows its float
+  and no change, rather than a 30-day move measured against its own first
+  data point. A chain whose float 30 days ago was zero publishes no
+  percentage either, because that is not a division.
+
+methodology:
+  - "Source: DefiLlama /stablecoincharts/<chain>, the chain-wide pegged-USD aggregate across every issuer, one point per day. Unfiltered: adding stablecoin=<id> narrows to a single asset and returns an empty 200 on chains where that asset has no issuance."
+  - "Net flow = today's float minus the float 30 days earlier, in dollars. The percentage is the same difference over the earlier value. Both windows count back by index on the daily series, so 7d is the point seven days back and not eight."
+  - "A window is published only when the series reaches that far back and the starting value is above zero. A chain newly tracked, or one whose float started at zero, shows its level and no change rather than an invented one."
+  - "Size floor: $100M of stablecoin float. Below it a single mint or redemption moves the percentage by tens of points, and the board would rank issuance events rather than capital movement. 17 of the 37 tracked chains sit under the floor today."
+  - "Ranking is by net dollars, because that is the quantity that actually moved. The percentage column is the size-adjusted reading and the two disagree on purpose: the largest net inflow and the largest percentage gain are rarely the same chain."
+  - "No cohort-relative column here, unlike bench 273. The 30-day changes across the ranked chains span negative to positive around a low single-digit median, so the raw number already separates chains that gained from chains that lost. On value secured they were all positive, which is why that board needs an excess column and this one does not."
+  - "Cadence: every 15 minutes, matched to the rest of the DefiLlama reads in the harness. The underlying series is daily, so p50, p90, p99 and the mean read the same value and are equal by construction."
+  - "Coverage: 37 of the 38 registry chains DefiLlama tracks for stablecoins. Litecoin answers 404 and is absent rather than shown at zero."
+
+findings:
+  - "{{best_name}} took in the most stablecoins of the {{ranked_count}} ranked chains, {{best_p50}} over 30 days."
+  - "{{worst_name}} lost the most at {{worst_p50}}, and a chain can shed float while its TVL holds: the two measure different things."
+  - "Net dollars and percentage gain rank differently by construction, because the same inflow is a rounding error on the largest chain and a step change on a smaller one."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-kpis
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 5400
+  freshness_metric: chain_kpis_health
+
+panel_main_description: "Dollar change in the chain's stablecoin float over the trailing 30 days. Positive means dollars arrived."
+
+metric_panels:
+  - id: change_30d
+    label: 30d change
+    label_key: chain
+    metric: chain_stables_change_30d_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "The same 30-day move as a percentage of the float it started from. The size-adjusted reading: a chain can lead on dollars and trail here."
+  - id: net_7d
+    label: Net 7d
+    label_key: chain
+    metric: chain_stables_net_7d_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Dollar change over the trailing week. Where the 30-day move is still running or has already turned."
+  - id: change_7d
+    label: 7d change
+    label_key: chain
+    metric: chain_stables_change_7d_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "The weekly move as a percentage of the float."
+  - id: float_usd
+    label: Stablecoin float
+    label_key: chain
+    metric: chain_stables_mcap_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Total pegged-USD circulating on the chain, every issuer combined. The base the other columns are measured against."
+
+faq:
+  - q: "Why stablecoin float rather than TVL?"
+    a: "Because TVL is a level and this is a flow. An asset bridged eight months ago still counts in TVL today; dollars only appear on a chain when somebody mints or bridges them there on purpose, so the monthly change in that float is closer to a reading of where capital is actually moving."
+  - q: "How does this differ from the bridged TVL board?"
+    a: "That board measures what a chain's bridge secures, from L2Beat, which tracks scaling chains only. Solana, Tron and BNB have no row there and hold more than $127B of stablecoins between them. This board covers them, and measures a different thing: dollars arriving rather than value at rest."
+  - q: "Why rank on dollars instead of percentage?"
+    a: "Because the dollar figure is the quantity that moved. The percentage is on the page beside it and the two rank differently on purpose: the same inflow is a rounding error on the largest chain and a step change on a smaller one."
+  - q: "Why are small chains excluded?"
+    a: "Because a chain with a few tens of millions of float moves tens of percent on one mint or one redemption, so a board including them would rank issuance events. The floor is $100M, and 17 of the 37 tracked chains sit under it today."
+  - q: "Does an inflow mean the chain is winning?"
+    a: "Not on its own. Dollars can arrive and sit idle, and they can leave because one issuer redeemed rather than because users left. The float is where money is parked, not what it does; read it next to the chain's DEX volume and TVL."
+providers:
+  - slug: ethereum
+    name: Ethereum
+    tag: $147.5B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"ethereum\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="ethereum"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="ethereum"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="ethereum"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="ethereum"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="ethereum",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="ethereum"}[24h])
+      series: chain_stables_net_30d_usd{chain="ethereum"}
+
+  - slug: tron
+    name: TRON
+    tag: $93.9B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"tron\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="tron"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="tron"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="tron"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="tron"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="tron",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="tron"}[24h])
+      series: chain_stables_net_30d_usd{chain="tron"}
+
+  - slug: bnb
+    name: BNB Chain
+    tag: $16.9B stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"bnb\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="bnb"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="bnb"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="bnb"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="bnb"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="bnb",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="bnb"}[24h])
+      series: chain_stables_net_30d_usd{chain="bnb"}
+
+  - slug: solana
+    name: Solana
+    tag: $16.8B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"solana\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="solana"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="solana"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="solana"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="solana"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="solana",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="solana"}[24h])
+      series: chain_stables_net_30d_usd{chain="solana"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: $7.8B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"hyperliquid\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="hyperliquid"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="hyperliquid"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="hyperliquid"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="hyperliquid"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="hyperliquid",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="hyperliquid"}[24h])
+      series: chain_stables_net_30d_usd{chain="hyperliquid"}
+
+  - slug: base
+    name: Base
+    tag: $5.0B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"base\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="base"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="base"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="base"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="base"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="base",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="base"}[24h])
+      series: chain_stables_net_30d_usd{chain="base"}
+
+  - slug: arbitrum
+    name: Arbitrum One
+    tag: $4.0B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"arbitrum\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="arbitrum"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="arbitrum"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="arbitrum"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="arbitrum"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="arbitrum",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="arbitrum"}[24h])
+      series: chain_stables_net_30d_usd{chain="arbitrum"}
+
+  - slug: polygon
+    name: Polygon PoS
+    tag: $3.4B stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"polygon\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="polygon"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="polygon"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="polygon"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="polygon"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="polygon",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="polygon"}[24h])
+      series: chain_stables_net_30d_usd{chain="polygon"}
+
+  - slug: avalanche
+    name: Avalanche
+    tag: $1.5B stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"avalanche\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="avalanche"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="avalanche"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="avalanche"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="avalanche"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="avalanche",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="avalanche"}[24h])
+      series: chain_stables_net_30d_usd{chain="avalanche"}
+
+  - slug: robinhood
+    name: Robinhood Chain
+    tag: $1.1B stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"robinhood\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="robinhood"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="robinhood"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="robinhood"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="robinhood"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="robinhood",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="robinhood"}[24h])
+      series: chain_stables_net_30d_usd{chain="robinhood"}
+
+  - slug: stellar
+    name: Stellar
+    tag: $905M stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"stellar\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="stellar"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="stellar"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="stellar"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="stellar"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="stellar",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="stellar"}[24h])
+      series: chain_stables_net_30d_usd{chain="stellar"}
+
+  - slug: gram
+    name: Gram
+    tag: $833M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"gram\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="gram"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="gram"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="gram"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="gram"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="gram",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="gram"}[24h])
+      series: chain_stables_net_30d_usd{chain="gram"}
+
+  - slug: monad
+    name: Monad
+    tag: $703M stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"monad\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="monad"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="monad"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="monad"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="monad"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="monad",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="monad"}[24h])
+      series: chain_stables_net_30d_usd{chain="monad"}
+
+  - slug: mantle
+    name: Mantle
+    tag: $567M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"mantle\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="mantle"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="mantle"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="mantle"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="mantle"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="mantle",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="mantle"}[24h])
+      series: chain_stables_net_30d_usd{chain="mantle"}
+
+  - slug: optimism
+    name: Optimism
+    tag: $547M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"optimism\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="optimism"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="optimism"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="optimism"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="optimism"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="optimism",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="optimism"}[24h])
+      series: chain_stables_net_30d_usd{chain="optimism"}
+
+  - slug: sui
+    name: Sui
+    tag: $489M stablecoin float, dollars leaving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"sui\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="sui"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="sui"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="sui"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="sui"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sui",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="sui"}[24h])
+      series: chain_stables_net_30d_usd{chain="sui"}
+
+  - slug: sei
+    name: Sei
+    tag: $304M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"sei\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="sei"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="sei"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="sei"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="sei"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sei",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="sei"}[24h])
+      series: chain_stables_net_30d_usd{chain="sei"}
+
+  - slug: cronos
+    name: Cronos
+    tag: $188M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"cronos\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="cronos"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="cronos"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="cronos"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="cronos"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="cronos",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="cronos"}[24h])
+      series: chain_stables_net_30d_usd{chain="cronos"}
+
+  - slug: sonic
+    name: Sonic
+    tag: $130M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"sonic\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="sonic"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="sonic"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="sonic"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="sonic"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sonic",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="sonic"}[24h])
+      series: chain_stables_net_30d_usd{chain="sonic"}
+
+  - slug: celo
+    name: Celo
+    tag: $114M stablecoin float, dollars arriving
+    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"celo\"}[2h])"
+    queries:
+      p50: last_over_time(chain_stables_net_30d_usd{chain="celo"}[2h])
+      p90: last_over_time(chain_stables_net_30d_usd{chain="celo"}[2h])
+      p99: last_over_time(chain_stables_net_30d_usd{chain="celo"}[2h])
+      mean: last_over_time(chain_stables_net_30d_usd{chain="celo"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="celo",source="defillama"}[24h])
+      sample_size: count_over_time(chain_stables_net_30d_usd{chain="celo"}[24h])
+      series: chain_stables_net_30d_usd{chain="celo"}

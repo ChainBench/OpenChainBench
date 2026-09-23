@@ -35,6 +35,41 @@ var (
 		[]string{"chain"},
 	)
 
+	// Where the money moved, from the same /stablecoincharts history the
+	// mcap gauge reads. L2Beat answers this for rollups; stablecoin float
+	// answers it for every chain, including the settled L1s L2Beat does
+	// not track. It is arguably the better measure: bridged TVL is a stock
+	// at rest, while a chain's stablecoin float only grows when someone
+	// mints or bridges dollars onto it on purpose.
+	chainStablesChange7dPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_stables_change_7d_pct",
+			Help: "Change in stablecoin float over the trailing 7 days, in percent. Source: DefiLlama /stablecoincharts.",
+		},
+		[]string{"chain"},
+	)
+	chainStablesChange30dPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_stables_change_30d_pct",
+			Help: "Change in stablecoin float over the trailing 30 days, in percent. Source: DefiLlama /stablecoincharts.",
+		},
+		[]string{"chain"},
+	)
+	chainStablesNet7dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_stables_net_7d_usd",
+			Help: "Dollar change in stablecoin float over the trailing 7 days. Positive means dollars arrived on this chain.",
+		},
+		[]string{"chain"},
+	)
+	chainStablesNet30dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_stables_net_30d_usd",
+			Help: "Dollar change in stablecoin float over the trailing 30 days. Positive means dollars arrived on this chain.",
+		},
+		[]string{"chain"},
+	)
+
 	// L2Beat-sourced ────────────────────────────────────────────────
 	// Value secured, split by where it came from. `chain_tvl_usd` above
 	// counts what DeFi protocols hold on the chain; these count what the
@@ -185,6 +220,8 @@ var (
 func init() {
 	prometheus.MustRegister(
 		chainTvlUsd, chainDexVolume24hUsd, chainStablesMcapUsd,
+		chainStablesChange7dPct, chainStablesChange30dPct,
+		chainStablesNet7dUsd, chainStablesNet30dUsd,
 		chainTvsUsd, chainValueSecuredUsd, chainBridgedTvlUsd,
 		chainTvsChange7dPct, chainTvsChange7dExcessPct,
 		chainTvsCohortMedian7dPct, chainTvsCohortSize,
