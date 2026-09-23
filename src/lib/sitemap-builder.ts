@@ -17,7 +17,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
-import { getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
+import { getProvider, getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
+import { isPairLinkable } from "@/lib/related-providers";
 import { isExpiredPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
@@ -380,8 +381,21 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const candidateSlugs = [
     ...new Set([...providerSlugs, ...hlBuilderSlugSet, ...PERP_PRODUCT_PILL_SLUGS, ...cohortProviderSlugs]),
   ];
+  // Alias slugs 308 to their canonical product page (btc-usd -> bitcoin,
+  // arc-quicknode -> quicknode, base-official -> base); 19 of them sat in
+  // the sitemap as "Page with redirect" (release audit 2026-09-24). The
+  // same resolver the page runs decides.
+  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  const canonicalProfileSlugs = new Set(profiles.map((p) => p.slug));
+  const redirectingSlugs = new Set<string>();
+  for (const slug of candidateSlugs) {
+    if (canonicalProfileSlugs.has(slug)) continue;
+    const resolved = await getProvider(slug).catch(() => undefined);
+    if (resolved && resolved.slug.toLowerCase() !== slug.toLowerCase()) redirectingSlugs.add(slug);
+  }
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;
+    if (redirectingSlugs.has(slug)) return false;
     // Same blacklist as the product index: hex builder addresses and dead
     // composite slugs 404 on /products/<slug> (nine 0x... URLs in the
     // production sitemap failed the deploy smoke on 2026-09-21; they are
@@ -478,12 +492,16 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // no sitemap entry (2026-09-19); 383 compare URLs carried impressions
   // against 19 listed. lastmod: the newest spec among the shared benches.
   const curatedCompareSlugs = new Set(COMPARE_PAIRS.map((p) => p.slug));
-  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
   const benchSlugsByProvider = new Map(
     profiles.map((p) => [p.slug, new Set(p.appearances.map((a) => a.benchmark.slug))]),
   );
+  const appearancesByProvider = new Map(profiles.map((p) => [p.slug, p.appearances]));
+  // Same predicate as the link graph: a pair the pages would not link
+  // (asset-vs-asset RWA pairs, noindexed) does not go in the sitemap either
+  // (release audit 2026-09-24: six such URLs).
   const adHocCompareRoutes: MetadataRoute.Sitemap = adHocPairs(profiles)
     .filter((pair) => !curatedCompareSlugs.has(pair.slug))
+    .filter((pair) => isPairLinkable(pair.slug, appearancesByProvider.get(pair.a) ?? [], appearancesByProvider.get(pair.b) ?? []))
     .map((pair) => {
       const aB = benchSlugsByProvider.get(pair.a) ?? new Set<string>();
       const shared = [...(benchSlugsByProvider.get(pair.b) ?? [])].filter((s) => aB.has(s));

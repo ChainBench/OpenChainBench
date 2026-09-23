@@ -3,8 +3,8 @@
 slug: solana-trading-platform-wars
 number: "201"
 title: "Trading platform leaderboard: GMGN vs Axiom vs Fomo vs pump.fun, live 24h volume"
-seo_title: "Trading app volume 24h: GMGN vs Axiom vs Fomo vs pump.fun"
-seo_description: "{{best_name}} leads {{count}} trading apps at {{best_p50}} 24h volume. GMGN, Axiom, Fomo, pump.fun, Trojan, Padre, Photon and BasedBot, from Dune datasets refreshed daily."
+seo_title: "Dune trading app volume: GMGN vs Axiom vs Fomo vs pump.fun"
+seo_description: "{{best_name}} leads {{ranked_count}} trading apps at {{best_p50}} on Dune community datasets, refreshed daily. GMGN, Axiom, Fomo, pump.fun, Trojan, Padre, Photon, BasedBot."
 subtitle: 24-hour trading volume per app and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed once a day.
 
 category: Trading

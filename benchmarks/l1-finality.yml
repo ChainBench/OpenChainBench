@@ -3,7 +3,7 @@
 slug: l1-finality
 number: "006"
 title: Fastest L1 blockchain finality, live wall-clock measurement per chain
-seo_title: "L1 finality 2026: {{count}} chains, Ethereum to Solana, live"
+seo_title: "Fastest L1 finality 2026: {{best_name}} at {{best_p50}}, {{count}} chains"
 seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest of {{count}} L1s measured live. Ethereum, Solana, Bitcoin, BNB, Stellar: wall-clock, not whitepaper."
 subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, BNB, Stellar and 4 more chains, refreshed every 10 seconds.
 seo_intro: |
