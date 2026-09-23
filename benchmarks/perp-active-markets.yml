@@ -11,6 +11,7 @@ status: live
 metric: Active markets
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark ranks the major onchain perp venues by total active markets.

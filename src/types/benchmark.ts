@@ -279,6 +279,10 @@ export type Benchmark = {
   metric: string;
   unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd" | "gwei" | "x" | "sol";
   higherIsBetter: boolean;
+  /** What one row is. Absent means provider / providers. Read through
+   * `rowNoun()` in src/lib/row-noun.ts, never directly, so every surface
+   * falls back the same way. */
+  rowNoun?: { one: string; many: string };
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
    * a matching `<label>="<value>"` injected. */
@@ -325,6 +329,12 @@ export type Benchmark = {
    *  percentile that was never computed. Derived from the live spec in
    *  spec.ts, so a YAML edit takes effect without a worker rewrite. */
   hasDistribution?: boolean;
+  /** "latest" when every provider reads a single instantaneous value
+   *  (`last_over_time`) rather than a window statistic. The UI must not
+   *  then call the number a 24-hour anything: a slow gauge scraped every
+   *  30 seconds has no distribution and no window. Derived from the live
+   *  spec in spec.ts, like hasDistribution. */
+  valueKind?: "latest";
   bestPerChain?: Record<string, ProviderResult>;
   /** Per-chain trailing provider, populated in lockstep with
    *  `bestPerChain` (same key set, same population conditions). Powers

@@ -11,6 +11,7 @@ status: live
 metric: 24h perp volume
 unit: usd
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark ranks the major onchain perp venues by 24 hour rolling

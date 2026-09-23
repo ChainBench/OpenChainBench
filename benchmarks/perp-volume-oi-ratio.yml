@@ -10,6 +10,7 @@ status: live
 metric: "Volume / OI (24h)"
 unit: x
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 disclaimer: |
   The ratio is a screen, not a verdict. Both terms are the venue's own
   figures (24h volume and open interest as each API reports them, in USD),

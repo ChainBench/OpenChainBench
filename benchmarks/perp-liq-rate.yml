@@ -11,6 +11,7 @@ status: live
 metric: Liquidation rate
 unit: pct
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   Every perpetual futures platform liquidates positions when a trader's

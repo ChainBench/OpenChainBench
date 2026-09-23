@@ -10,6 +10,7 @@ status: live
 metric: Slippage at $100k
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 seo_intro: |
   Rack-rate taker fees do not tell a trader which perp DEX fills a market
   order closer to mid: that depends on the depth of the visible orderbook

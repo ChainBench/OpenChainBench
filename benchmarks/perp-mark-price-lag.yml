@@ -11,6 +11,7 @@ status: live
 metric: Mark price deviation
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   Every perpetual DEX publishes a mark price: the price used to compute

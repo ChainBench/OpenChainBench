@@ -16,7 +16,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { readdirSync, writeFileSync } from "node:fs";
+import { readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -42,7 +42,16 @@ for (const slug of slugs) {
         continue;
       }
     }
-    console.warn(`[warn] no git log for ${slug}, skipping`);
+    // A spec that is written but not yet committed has no add-commit to
+    // read. Skipping it leaves the slug out of the map, and every
+    // datePublished, the citation date and the Dataset temporalCoverage
+    // then fall back to the 2025-01-01 floor — which is how two live
+    // benches ended up claiming twenty months of history they did not
+    // have (SEO audit 2026-09-23). The file's own mtime is the honest
+    // answer for a spec being added today.
+    const mtime = statSync(path.join(ROOT, "benchmarks", `${slug}.yml`)).mtime;
+    map[slug] = mtime.toISOString();
+    console.warn(`[warn] ${slug} is not committed yet; using its mtime (${map[slug].slice(0, 10)})`);
   } catch (e) {
     console.warn(`[warn] git log failed for ${slug}: ${e.message}`);
   }

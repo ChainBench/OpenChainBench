@@ -1,5 +1,6 @@
-// chain-kpis is a small Prom-exporter harness that polls DefiLlama and
-// Mobula for per-chain KPIs the OCB site renders on /chains/<slug>.
+// chain-kpis is a small Prom-exporter harness that polls DefiLlama,
+// Mobula and L2Beat for per-chain KPIs the OCB site renders on
+// /chains/<slug> and on bench 273 chain-bridged-tvl.
 //
 //	─── Gauges exposed ───────────────────────────────────────────────
 //	chain_tvl_usd{chain}                       — DefiLlama TVL
@@ -8,6 +9,11 @@
 //	chain_native_price_usd{chain, symbol}      — Mobula native price
 //	chain_native_mcap_usd{chain, symbol}       — Mobula native mcap
 //	chain_mobula_tokens_indexed{chain}         — Mobula tokens count
+//	chain_tvs_usd{chain}                       — L2Beat value secured
+//	chain_value_secured_usd{chain, origin}     — L2Beat native/canonical/external
+//	chain_bridged_tvl_usd{chain}               — L2Beat canonical + external
+//	chain_tvs_change_7d_pct{chain}             — L2Beat 7d change
+//	chain_tvs_change_7d_excess_pct{chain}      — 7d change minus cohort median
 //
 // Each gauge is publish-then-leave: if a fetch fails for one chain on
 // one source, the previous value carries forward via Prom retention,
@@ -30,7 +36,8 @@ import (
 
 func main() {
 	fmt.Println("=== chain-kpis harness ===")
-	fmt.Println("Per-chain TVL + DEX vol + stables (DefiLlama) and native price + mcap + tokens (Mobula).")
+	fmt.Println("Per-chain TVL + DEX vol + stables (DefiLlama), native price + mcap + tokens (Mobula),")
+	fmt.Println("and value secured split native/canonical/external with a cohort-relative 7d move (L2Beat).")
 	fmt.Println("Exposes /metrics on :2112.")
 
 	cfg := loadConfig()
@@ -62,6 +69,12 @@ func main() {
 		runMobulaLoop(cfg, stop)
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runL2BeatLoop(cfg, stop)
+	}()
+
 	<-sigChan
 	fmt.Println("\nShutting down...")
 	close(stop)
@@ -79,6 +92,21 @@ func runDefillamaLoop(cfg *Config, stop <-chan struct{}) {
 			return
 		case <-tick.C:
 			fetchAllDefillama()
+		}
+	}
+}
+
+func runL2BeatLoop(cfg *Config, stop <-chan struct{}) {
+	tick := time.NewTicker(cfg.L2BeatRefreshInterval)
+	defer tick.Stop()
+
+	fetchAllL2Beat(cfg)
+	for {
+		select {
+		case <-stop:
+			return
+		case <-tick.C:
+			fetchAllL2Beat(cfg)
 		}
 	}
 }

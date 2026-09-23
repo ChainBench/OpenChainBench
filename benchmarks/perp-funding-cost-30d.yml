@@ -10,6 +10,7 @@ status: live
 metric: Funding paid, 30d ETH long
 unit: bp
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 expected_n: 720
 disclaimer: |
   Every row is a month of funding at the venue's average daily cost over

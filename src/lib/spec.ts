@@ -175,6 +175,10 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // count benches are all written that way; latency benches are not.
     // Overlaid from the live YAML for the same reason as the fields above.
     hasDistribution: specHasDistribution(spec) ?? stored.hasDistribution,
+    // ...and when that single expression is a point read rather than an
+    // aggregate, the value has no window either. Without this the page
+    // labelled a last_over_time read "p50, 24h" in 42 places.
+    valueKind: specValueKind(spec) ?? stored.valueKind,
     expectedN: spec.expected_n ?? stored.expectedN,
   };
   // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
@@ -426,10 +430,25 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v70: bench 268 method v3: unit bp, Sandwiched panel and ledger column
   // removed, BullX and Nova out of the cohort; cached v69 entries keep the
   // old panels and providers.
+  // v72: add bench 273 chain-bridged-tvl (dev-only) + Blockchains category
+  // row. Bench SET grew.
+  // v73: bench 273 audit round 1: panel directions, last_over_time
+  // aggregates and a freshness_timestamp_metric; v72 entries keep the old
+  // panels and the 24h-mean headline.
+  // v74: bench 273 audit round 2: 21 chains added to the board (20 to 41
+  // rows) and freshness moved onto L2Beat's own sync clock.
+  // v76: add bench 274 protocol-pf-ratio (dev-only). Bench SET grew.
+  // v77: add bench 275 chain-stablecoin-flow (dev-only). Bench SET grew.
+  // v78: valueKind, and bench 273 copy (a hand-typed 20 against 41 rows,
+  // two FAQ answers the page contradicts). Cached entries carry the old
+  // wording into the Dataset and the quotable sentence.
+  // v75: row_noun on 31 specs. Cached entries carry the old editorial, so
+  // the quotable sentence would keep saying "providers" about chains and
+  // venues until they expire.
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v78", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -648,7 +667,14 @@ const loadAllBenchmarksCached = unstable_cache(
   // v62: lockstep with bench-unfiltered-v67 (add bench 267 trading-app-daily-volume).
   // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
   // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
-  ["all-benchmarks-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v66: lockstep with bench-unfiltered-v72 (add bench 273 chain-bridged-tvl).
+  // v67: lockstep with bench-unfiltered-v73 (bench 273 audit round 1).
+  // v68: lockstep with bench-unfiltered-v74 (bench 273 audit round 2).
+  // v69: lockstep with bench-unfiltered-v75 (row_noun).
+  // v70: lockstep with bench-unfiltered-v76 (add bench 274).
+  // v71: lockstep with bench-unfiltered-v77 (add bench 275).
+  // v72: lockstep with bench-unfiltered-v78 (valueKind + 273 copy).
+  ["all-benchmarks-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -816,6 +842,25 @@ const loadSpecs = cache(loadSpecsUncached);
  * queries at all, so the caller can fall back to whatever the snapshot held
  * rather than asserting "no distribution" about a spec it could not read.
  */
+/**
+ * "latest" when every provider's headline query is a point read. A bench
+ * built on `last_over_time(...)` measures a gauge as it stands, so calling
+ * the result a 24-hour median claims a statistic nothing computed.
+ */
+function specValueKind(spec: {
+  providers?: { queries?: { p50?: string } }[];
+}): "latest" | undefined {
+  const providers = spec.providers ?? [];
+  let sawQueries = false;
+  for (const p of providers) {
+    const q = p.queries?.p50?.trim();
+    if (!q) continue;
+    sawQueries = true;
+    if (!q.startsWith("last_over_time(")) return undefined;
+  }
+  return sawQueries ? "latest" : undefined;
+}
+
 function specHasDistribution(spec: {
   providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
 }): boolean | undefined {

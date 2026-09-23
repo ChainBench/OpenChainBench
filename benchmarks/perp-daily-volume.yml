@@ -12,6 +12,7 @@ status: live
 metric: Daily perp volume
 unit: usd
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   Volume is self-reported by each venue's public data surface and counted per UTC day, one side of each trade. Perimeters differ slightly per venue and are stated in the ledger notes. A closed day can be restated by a venue for one to two days; the harness re-reads the last three days every hour. Not a measure of organic flow: incentive programs and wash trading inflate notional on every venue.

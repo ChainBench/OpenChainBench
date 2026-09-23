@@ -11,6 +11,7 @@ status: live
 metric: Execution ratio
 unit: pct
 higher_is_better: true
+row_noun: { one: protocol, many: protocols }
 
 disclaimer: |
   Two caveats. (1) A low ratio is not a protocol failure. Some programs (Sky SBE) batch executions, so the executed_usd line is lumpy and routinely sits well below promised_usd inside a rolling window even though the long-run ratio converges to ~1. (2) The Sky leg requires an ETHERSCAN_API_KEY on the harness host. Without it the executed side returns 0 and the ratio reads 0; the live deployment has the key set.
