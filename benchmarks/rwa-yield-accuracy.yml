@@ -148,7 +148,7 @@ providers:
 
   - slug: ustb
     name: USTB
-    tag: "Superstate, Ethereum, NAV from the Chainlink feed"
+    tag: "Superstate (the Invesco Short Duration US Government Securities Fund since 2026), Ethereum, NAV from the Chainlink feed"
     formula: "Growth of the USTB NAV on Superstate's Chainlink feed between two daily prints, compounded over their span; no dividend transfers. Compared to the reference APY (DefiLlama 30-day mean); superstate.com displays no machine-readable figure."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="ustb"})

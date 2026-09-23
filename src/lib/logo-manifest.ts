@@ -652,10 +652,12 @@ const RAW: Record<string, string> = {
   "bitget-wallet": "/logos/bitget-wallet.png",
 
   // ─── RWA yield tokens (bench 089 rwa-yield-accuracy) ───
-  usdy: "/logos/usdy.svg",
-  ousg: "/logos/ousg.svg",
+  usdy: "/logos/usdy.png",
+  ousg: "/logos/ousg.png",
   ustb: "/logos/ustb.svg",
-  "syrup-usdc": "/logos/syrup-usdc.svg",
+  paxg: "/logos/paxg.png",
+  buidl: "/logos/buidl.png",
+  "syrup-usdc": "/logos/syrup-usdc.png",
 
   // ─── Wave-6 EVM RPC cluster chains (benches 152-166, 2026-08-04) ───
   boba: "/logos/boba.png",
