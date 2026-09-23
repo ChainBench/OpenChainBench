@@ -389,6 +389,7 @@ export default async function BenchmarkPage({
   const variableMeasured = buildBenchVariableMeasured({
     metric: benchmark.metric,
     unit: benchmark.unit,
+    ledgerColumns: benchmark.ledgerColumns,
     leader:
       currentLeader && leaderResult
         ? {

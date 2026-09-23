@@ -72,7 +72,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/usdy-na
 
 prometheus:
   window: 24h
-  freshness_metric: usdy_last_success_timestamp_seconds
+  freshness_timestamp_metric: usdy_last_success_timestamp_seconds
 
 metric_panels:
   - id: signed

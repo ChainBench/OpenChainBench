@@ -235,7 +235,10 @@ func fetchOndoNAV(client *http.Client) float64 {
 func fetchJupiter(client *http.Client, dexes string) float64 {
 	url := jupiterQuote + "?inputMint=" + usdyMint + "&outputMint=" + usdcMint + "&amount=" + jupiterAmount + "&slippageBps=50"
 	if dexes != "" {
-		url += "&dexes=" + dexes
+		// The restricted leg must be the named pool, not "any Orca route":
+		// single hop only, and the route plan is checked below against
+		// orcaPool (review 2026-09-23).
+		url += "&dexes=" + dexes + "&onlyDirectRoutes=true"
 	}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
@@ -253,9 +256,21 @@ func fetchJupiter(client *http.Client, dexes string) float64 {
 	var q struct {
 		InAmount  string `json:"inAmount"`
 		OutAmount string `json:"outAmount"`
+		RoutePlan []struct {
+			SwapInfo struct {
+				AmmKey string `json:"ammKey"`
+				Label  string `json:"label"`
+			} `json:"swapInfo"`
+		} `json:"routePlan"`
 	}
 	if err := json.Unmarshal(raw, &q); err != nil {
 		sourceCall.WithLabelValues("jupiter", "parse").Inc()
+		return 0
+	}
+	if dexes != "" && (len(q.RoutePlan) != 1 || q.RoutePlan[0].SwapInfo.AmmKey != orcaPool) {
+		// Another whirlpool or a two-hop route won the quote: that is
+		// not the pool the row is named after, publish nothing.
+		sourceCall.WithLabelValues("jupiter", "wrong_pool").Inc()
 		return 0
 	}
 	in, err1 := strconv.ParseFloat(q.InAmount, 64)

@@ -201,8 +201,30 @@ export type BenchDatasetInput = {
 export function buildBenchVariableMeasured(input: {
   metric: string;
   unit: string;
-  leader: { name: string; p50: number; p90: number; p99: number } | null;
+  leader: { name: string; p50: number; p90: number; p99: number; mean?: number } | null;
+  /** A bench that repurposes the p50/p90/p99/mean slots declares
+   *  ledger_columns; the PropertyValues then carry those labels and
+   *  units instead of calling a signed 30-day deviation "p99". */
+  ledgerColumns?: { label: string; slot?: "p50" | "p90" | "p99" | "mean"; unit?: string }[];
 }): Array<string | VariableMeasuredValue> {
+  const slotCols = (input.ledgerColumns ?? []).filter((c) => c.slot);
+  if (slotCols.length > 0 && input.leader) {
+    const l = input.leader;
+    const out: Array<string | VariableMeasuredValue> = [input.metric];
+    for (const c of slotCols) {
+      const value = c.slot === "mean" ? l.mean : c.slot ? l[c.slot] : undefined;
+      if (value == null || !Number.isFinite(value)) continue;
+      out.push({
+        "@type": "PropertyValue",
+        propertyID: `${input.metric.toLowerCase().replace(/\s+/g, "_")}_${c.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`,
+        name: `${input.metric}, ${c.label}`,
+        value,
+        unitText: c.unit ?? input.unit,
+      });
+    }
+    out.push("sample_size");
+    return out;
+  }
   if (!input.leader || input.leader.p50 <= 0) {
     return [
       input.metric,

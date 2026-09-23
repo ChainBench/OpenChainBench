@@ -22,7 +22,7 @@ import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 
-function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
+export function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
   // A bench that repurposes the p50/p90/p99/mean slots declares
   // ledger_columns; the Markdown then names the slots the way the table
   // does instead of printing a signed 30d deviation as "p99".
