@@ -17,7 +17,7 @@ import type { Benchmark } from "@/types/benchmark";
  * public chain, measured by OpenChainBench's own harnesses: whether a
  * tokenized stock trades at its Nasdaq price, whether a tokenized
  * treasury trades at its NAV, and whether a yield token pays the APY it
- * advertises. Every figure is the live value of a bench, linked.
+ * reference says. Every figure is the live value of a bench, linked.
  */
 
 export const revalidate = 3600;
@@ -36,9 +36,9 @@ const SEGMENTS: Segment[] = [
   {
     id: "treasuries",
     label: "Tokenized treasuries and yield funds",
-    question: "Does the token pay what it promises, and does the market price its NAV?",
+    question: "Does the token pay its reference yield, and does the market price its NAV?",
     benches: [
-      { slug: "rwa-yield-accuracy", what: "Yield distributed on-chain against the APY the issuer advertises, over 30 days." },
+      { slug: "rwa-yield-accuracy", what: "Yield accrued on-chain against a dated 30-day reference APY, over 30 days." },
       { slug: "usdy-nav-basis", what: "USDY market price against the redemption price Ondo publishes on-chain, every minute." },
     ],
   },
@@ -188,7 +188,7 @@ export default async function RwaHubPage() {
   const faq = [
     {
       q: "How is this different from an RWA dashboard like RWA.xyz?",
-      a: "Those dashboards rank issuers by the value they declare, and they are the right place for market size. This page ranks behaviour that can be read from a public chain without asking the issuer: whether a tokenized stock trades at the real market price, whether a tokenized treasury trades at its NAV, and whether a yield token distributes the APY it advertises. Every number is produced by an open harness, timestamped, and exposed as JSON.",
+      a: "Those dashboards rank issuers by the value they declare, and they are the right place for market size. This page ranks behaviour that can be read from a public chain without asking the issuer: whether a tokenized stock trades at the real market price, whether a tokenized treasury trades at its NAV, and whether a yield token accrues the yield a dated 30-day reference says. Every number is produced by an open harness, timestamped, and exposed as JSON.",
     },
     {
       q: "Which tokenized stock tracks the real market most closely?",
@@ -233,7 +233,7 @@ export default async function RwaHubPage() {
               "@type": "Dataset",
               "@id": `${pageUrl}#dataset`,
               name: "Tokenized real-world assets: price accuracy, NAV basis and yield delivered, per token",
-              description: `OpenChainBench measurements of tokenized stocks, treasuries and yield funds on public chains: deviation from the market price, basis to the published NAV, delivered against advertised yield, across ${live.length} live benchmarks.`,
+              description: `OpenChainBench measurements of tokenized stocks, treasuries and yield funds on public chains: deviation from the market price, basis to the published NAV, delivered against a dated reference yield, across ${live.length} live benchmarks.`,
               url: pageUrl,
               license: DATASET_LICENSE,
               creator: CREATOR_PUBLISHER,
@@ -271,7 +271,7 @@ export default async function RwaHubPage() {
         <p className="label-mono text-teal-600 mb-2">Tokenized real-world assets</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">RWA on-chain, measured: price, NAV and yield</h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Dashboards count what issuers declare. These benchmarks read what the tokens do on a public chain: whether a tokenized stock trades at the real market price, whether a tokenized treasury trades at its NAV, and whether a yield token pays the APY it advertises.
+          Dashboards count what issuers declare. These benchmarks read what the tokens do on a public chain: whether a tokenized stock trades at the real market price, whether a tokenized treasury trades at its NAV, and whether a yield token pays the yield its reference says.
           {leadSentence ? ` Right now ${leadSentence}.` : ""}
         </p>
         {asOfLabel && (
@@ -340,7 +340,7 @@ export default async function RwaHubPage() {
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <h2 className="label-mono text-ink-faint mb-2">How OpenChainBench measures</h2>
         <p>
-          Five harnesses, all open: tokenized-stock-peg reads each pool&apos;s spot price on Robinhood Chain and xstocks-peg the Jupiter executable price on Solana, every minute against a public reference, labelled by market session; usdy-nav-basis reads Ondo&apos;s on-chain redemption price and two Solana venues every minute; rwa-yield-accuracy derives each fund&apos;s distributed yield from its own on-chain mechanism and compares it with the APY the issuer advertises. Sources and methodology are on each bench page; every page answers <code>Accept: text/markdown</code>.
+          Five harnesses, all open: tokenized-stock-peg reads each pool&apos;s spot price on Robinhood Chain and xstocks-peg the Jupiter executable price on Solana, every minute against a public reference, labelled by market session; usdy-nav-basis reads Ondo&apos;s on-chain redemption price and two Solana venues every minute; rwa-yield-accuracy derives each fund&apos;s accrued yield from its NAV between two daily prints and compares it with a dated 30-day reference APY. Sources and methodology are on each bench page; every page answers <code>Accept: text/markdown</code>.
         </p>
       </footer>
     </article>

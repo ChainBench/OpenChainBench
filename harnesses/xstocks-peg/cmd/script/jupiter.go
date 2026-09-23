@@ -15,8 +15,9 @@ import (
 // Jupiter lite-api legs. Two swap quotes per symbol per tick (sell one
 // share, buy one share worth of USDC back), spaced quoteGap apart to
 // stay far under the lite tier's 60 req/min. The mid of the two
-// implied prices is the executable peg price. One batched price/v3
-// call per tick provides the ScaledUiAmount multiplier per mint.
+// implied prices is the executable peg price. The ScaledUiAmount
+// multiplier per mint comes from the chain (fetchMultipliersOnchain),
+// with Jupiter's scaledUiConfig as the fallback.
 
 const jupUA = "OpenChainBench/1.0 (+https://openchainbench.com)"
 

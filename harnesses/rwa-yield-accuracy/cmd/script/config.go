@@ -15,8 +15,11 @@ const (
 	promisedReloadInterval  = 60 * time.Second
 	httpTimeout             = 30 * time.Second
 	// A measurement is two print searches per window (binary search over
-	// two days of blocks, one archive call per step) for two windows.
+	// five days of blocks, one archive call per step) for two windows.
 	measureTimeout = 3 * time.Minute
+	// A last good measurement stays published, with probe_ok at 1, for
+	// this long after it was taken; beyond that a failing probe reads 0.
+	staleAfter = 3 * time.Hour
 )
 
 // Rolling window sizes for delivered-yield computation.

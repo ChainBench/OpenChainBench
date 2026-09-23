@@ -79,7 +79,7 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="nvda"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="nvda"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="nvda"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="nvda"}
 
@@ -92,7 +92,7 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="aapl"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="aapl"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="aapl"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="aapl"}
 
@@ -105,7 +105,7 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="meta"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="meta"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="meta"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="meta"}
 
@@ -118,7 +118,7 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="amd"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="amd"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="amd"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="amd"}
 
@@ -131,7 +131,7 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="pltr"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="pltr"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="pltr"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="pltr"}
 
@@ -144,6 +144,6 @@ providers:
       p90: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
       p99: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
       mean: last_over_time(tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}[8d])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="mu"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="mu"}[24h]) or on() vector(0))
       sample_size: count(count_over_time(tsp_weekend_drift_end_unix{benchmark="tokenized-stock-peg", asset="mu"}[35d]) > 0) or vector(0)
       series: tsp_weekend_drift_bps{benchmark="tokenized-stock-peg", asset="mu"}

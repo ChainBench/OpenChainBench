@@ -26,7 +26,8 @@ seo_intro: |
   they actually pay their token holders on-chain, as the growth of
   each token's NAV read from the issuer's own oracle, Chainlink feed
   or ERC-4626 share price, and compares it to
-  the advertised number. The gap in basis points, closest first, with
+  a dated reference APY (the 30-day mean on a public yields feed, the
+  same window as the measurement). The gap in basis points, closest first, with
   the sign in the next column, is the honest read on whether the tokenized wrapper delivers what
   the marketing page claims. Every measurement traces back to an
   on-chain event and a citable issuer disclosure. No opinion, just
@@ -38,8 +39,9 @@ abstract: |
   For each tokenized T-bill in the cohort we compute the delivered
   yield over a 30-day rolling window from the issuer's own on-chain
   distribution mechanism, then compare to the promised APY published
-  on the issuer's official dashboard (or, where that page cannot be
-  read by machine, the 30-day mean on a public yields feed). The
+  as a reference: the 30-day mean APY on the DefiLlama yields feed for
+  every token, read by hand and dated, the issuer's own displayed
+  figure kept in the notes. The
   headline is the absolute gap in basis points, closest first; the
   signed gap sits beside it, negative when the token paid less than
   advertised over the window, positive when more. Every live token is
@@ -135,8 +137,8 @@ providers:
       p90: abs(rwa_yield_deviation_bps_7d{token="usdy"})
       p99: rwa_yield_deviation_bps_30d{token="usdy"}
       mean: rwa_yield_delivered_bps_30d{token="usdy"}
-      success: rwa_yield_probe_ok{token="usdy"}
-      sample_size: count_over_time(rwa_yield_delivered_bps_30d{token="usdy"}[30d])
+      success: ((time() - rwa_yield_last_measured_unix{token="usdy"} < bool 7200) or on() vector(0))
+      sample_size: changes(rwa_yield_last_measured_unix{token="usdy"}[30d])
       series: rwa_yield_delivered_bps_30d{token="usdy"}
 
   - slug: ustb
@@ -148,8 +150,8 @@ providers:
       p90: abs(rwa_yield_deviation_bps_7d{token="ustb"})
       p99: rwa_yield_deviation_bps_30d{token="ustb"}
       mean: rwa_yield_delivered_bps_30d{token="ustb"}
-      success: rwa_yield_probe_ok{token="ustb"}
-      sample_size: count_over_time(rwa_yield_delivered_bps_30d{token="ustb"}[30d])
+      success: ((time() - rwa_yield_last_measured_unix{token="ustb"} < bool 7200) or on() vector(0))
+      sample_size: changes(rwa_yield_last_measured_unix{token="ustb"}[30d])
       series: rwa_yield_delivered_bps_30d{token="ustb"}
 
   - slug: ousg
@@ -161,8 +163,8 @@ providers:
       p90: abs(rwa_yield_deviation_bps_7d{token="ousg"})
       p99: rwa_yield_deviation_bps_30d{token="ousg"}
       mean: rwa_yield_delivered_bps_30d{token="ousg"}
-      success: rwa_yield_probe_ok{token="ousg"}
-      sample_size: count_over_time(rwa_yield_delivered_bps_30d{token="ousg"}[30d])
+      success: ((time() - rwa_yield_last_measured_unix{token="ousg"} < bool 7200) or on() vector(0))
+      sample_size: changes(rwa_yield_last_measured_unix{token="ousg"}[30d])
       series: rwa_yield_delivered_bps_30d{token="ousg"}
 
   - slug: syrup-usdc
@@ -174,6 +176,6 @@ providers:
       p90: abs(rwa_yield_deviation_bps_7d{token="syrup-usdc"})
       p99: rwa_yield_deviation_bps_30d{token="syrup-usdc"}
       mean: rwa_yield_delivered_bps_30d{token="syrup-usdc"}
-      success: rwa_yield_probe_ok{token="syrup-usdc"}
-      sample_size: count_over_time(rwa_yield_delivered_bps_30d{token="syrup-usdc"}[30d])
+      success: ((time() - rwa_yield_last_measured_unix{token="syrup-usdc"} < bool 7200) or on() vector(0))
+      sample_size: changes(rwa_yield_last_measured_unix{token="syrup-usdc"}[30d])
       series: rwa_yield_delivered_bps_30d{token="syrup-usdc"}

@@ -80,7 +80,7 @@ func main() {
 	// clients (USDY on Solana, BUIDL on Arbitrum, etc.).
 	rpc, err := ethclient.Dial(rpcURL())
 	if err != nil {
-		fmt.Printf("[fatal] rpc dial: %v\n", err)
+		fmt.Printf("[fatal] rpc dial: %s\n", scrubURL(err.Error()))
 		os.Exit(1)
 	}
 	defer rpc.Close()
@@ -149,16 +149,22 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 	labels := []string{probe.Issuer(), probe.Slug(), probe.Chain()}
 	var last *Measurement
 
-	tick := func() {
+	// tick returns true when a measurement landed. A failure keeps the
+	// last good measurement published and probe_ok at 1 while that
+	// measurement is under staleAfter old: one failed archive call among
+	// about 76 must not blank the row for an hour (review 2026-09-23).
+	tick := func() bool {
 		probeCtx, cancel := context.WithTimeout(ctx, measureTimeout)
 		defer cancel()
 
 		m, err := probe.Measure(probeCtx, rpc)
 		if err != nil {
 			classifyAndCount(probe, err)
-			probeOK.WithLabelValues(labels...).Set(0)
+			if last == nil || time.Since(last.MeasuredAt) > staleAfter {
+				probeOK.WithLabelValues(labels...).Set(0)
+			}
 			fmt.Printf("[%s] probe error: %s\n", probe.Slug(), scrubURL(err.Error()))
-			return
+			return false
 		}
 
 		// Delivered yields (always emitted, even if promised is missing).
@@ -199,24 +205,33 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 			shortNum(m.TotalSupplyUnits),
 			shortNum(m.AUMUSD),
 		)
+		return true
 	}
 
 	// The measurement (two print searches per window, a few dozen archive
 	// calls) runs hourly, as the spec says; the deviation against the
 	// hot-reloaded reference APY is republished every minute from the
 	// last measurement, so a config edit lands within a scrape.
-	tick()
-	measure := time.NewTicker(windowRecomputeInterval)
-	defer measure.Stop()
+	// Until a measurement succeeds, retry every pollInterval; then hourly.
+	ok := tick()
+	nextMeasure := time.Now().Add(pollInterval)
+	if ok {
+		nextMeasure = time.Now().Add(windowRecomputeInterval)
+	}
 	republish := time.NewTicker(pollInterval)
 	defer republish.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-measure.C:
-			tick()
 		case <-republish.C:
+			if time.Now().After(nextMeasure) {
+				if tick() {
+					nextMeasure = time.Now().Add(windowRecomputeInterval)
+				} else {
+					nextMeasure = time.Now().Add(pollInterval)
+				}
+			}
 			if last != nil {
 				if promisedBpsVal, ok := promised.get(probe.Slug()); ok {
 					promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))

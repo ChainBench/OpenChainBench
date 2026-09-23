@@ -99,7 +99,7 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="nvda", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="nvda", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="nvda", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="nvda"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="nvda"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="nvda", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="nvda", market_state="regular"}
   - slug: aapl
@@ -111,7 +111,7 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="aapl", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="aapl", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="aapl", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="aapl"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="aapl"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="aapl", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="aapl", market_state="regular"}
   - slug: pltr
@@ -123,7 +123,7 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="pltr", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="pltr", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="pltr", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="pltr"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="pltr"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="pltr", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="pltr", market_state="regular"}
   - slug: meta
@@ -135,7 +135,7 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="meta", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="meta", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="meta", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="meta"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="meta"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="meta", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="meta", market_state="regular"}
   - slug: amd
@@ -147,7 +147,7 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="amd", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="amd", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="amd", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="amd"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="amd"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="amd", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="amd", market_state="regular"}
   - slug: mu
@@ -159,6 +159,6 @@ providers:
       p90: quantile_over_time(0.90, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="mu", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       p99: quantile_over_time(0.99, (tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="mu", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       mean: avg_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="mu", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
-      success: avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="mu"}[24h])
+      success: (avg_over_time(tsp_health{benchmark="tokenized-stock-peg", asset="mu"}[24h]) or on() vector(0))
       sample_size: count_over_time((tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="mu", market_state="regular"} and on() (tsp_market_session{benchmark="tokenized-stock-peg", market_state="regular"} == 1))[7d:1m])
       series: tsp_deviation_bps{benchmark="tokenized-stock-peg", issuer="robinhood", asset="mu", market_state="regular"}
