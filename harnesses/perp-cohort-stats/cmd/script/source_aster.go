@@ -201,6 +201,8 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 	cached := len(s.oiCache)
 	s.oiMu.Unlock()
 
+	s.funding(res, venue)
+
 	res.SetIfPositive(venue, mVolume24h, volSum)
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(len(keep)))
@@ -285,4 +287,59 @@ func (s *AsterNativeSource) get(url string) ([]byte, error) {
 		return nil, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
 	}
 	return body, nil
+}
+
+type asterPremium struct {
+	Symbol          string `json:"symbol"`
+	LastFundingRate string `json:"lastFundingRate"`
+}
+
+type asterFundingInfo struct {
+	Symbol               string  `json:"symbol"`
+	FundingIntervalHours float64 `json:"fundingIntervalHours"`
+}
+
+// funding publishes BTC, ETH and SOL funding from /fapi/v1/premiumIndex
+// (the rate of the current interval) over the interval /fapi/v1/fundingInfo
+// declares per symbol (8 h on the majors, 4 h or 1 h on some alts).
+func (s *AsterNativeSource) funding(res *SourceResult, venue string) {
+	body, err := s.get("https://fapi.asterdex.com/fapi/v1/premiumIndex")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, classifyError(err.Error())).Inc()
+		return
+	}
+	var premiums []asterPremium
+	if err := json.Unmarshal(body, &premiums); err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, "parse").Inc()
+		return
+	}
+	intervals := map[string]float64{}
+	if body, err := s.get("https://fapi.asterdex.com/fapi/v1/fundingInfo"); err != nil {
+		// The majors settle every 8 h (the default below); the miss is
+		// counted so a change of interval does not go unnoticed.
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, classifyError(err.Error())).Inc()
+	} else {
+		var infos []asterFundingInfo
+		if err := json.Unmarshal(body, &infos); err != nil {
+			perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, "parse").Inc()
+		}
+		for _, i := range infos {
+			intervals[i.Symbol] = i.FundingIntervalHours
+		}
+	}
+	for _, p := range premiums {
+		asset := strings.TrimSuffix(p.Symbol, "USDT")
+		if !fundingAssets[asset] || asset == p.Symbol {
+			continue
+		}
+		fr, err := strconv.ParseFloat(p.LastFundingRate, 64)
+		if err != nil {
+			continue
+		}
+		interval := intervals[p.Symbol]
+		if interval <= 0 {
+			interval = 8
+		}
+		res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(fr, interval), IntervalHours: interval})
+	}
 }

@@ -299,18 +299,6 @@ export default async function PerpsHubPage() {
               <span className="text-ink">{b.label}</span>
             </Link>
           ))}
-          <Link
-            href="/reports/perps/state-of-perp-dexes-q3-2026"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 hover:bg-ink/5"
-          >
-            <span
-              className="label-mono text-ink-faint text-[10px]"
-              style={{ fontFamily: "var(--font-mono, monospace)" }}
-            >
-              Report
-            </span>
-            <span className="text-ink">State of perp DEXes, Q3 2026</span>
-          </Link>
           {["eth", "btc", "sol"].map((asset) => (
             <Link
               key={asset}
@@ -394,6 +382,9 @@ export default async function PerpsHubPage() {
 
           <PerpHubTabs cohort={cohort} byAsset={byAsset} />
 
+          <p className="mt-4 text-[11px] text-ink-faint italic">
+            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in and slippage columns the perp-fees order-book walk (11 venues), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
+          </p>
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Sources: live cohort harness perp-cohort-stats (volume, OI,
             fees, active markets, top market). perp-fees bench (007) for

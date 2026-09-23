@@ -143,7 +143,40 @@ func (s *LighterNativeSource) Fetch() (*SourceResult, error) {
 		}
 	}
 
+	s.funding(res, venue)
 	return res, nil
+}
+
+type lighterFundingRates struct {
+	FundingRates []struct {
+		Exchange string  `json:"exchange"`
+		Symbol   string  `json:"symbol"`
+		Rate     float64 `json:"rate"`
+	} `json:"funding_rates"`
+}
+
+// funding reads /funding-rates, which lists each market's current rate
+// on Lighter next to Binance, Bybit and Hyperliquid for comparison. The
+// feed is normalised to 8 hours (the Hyperliquid entry is exactly eight
+// times HL's hourly rate, checked 2026-09-23); Lighter itself settles
+// hourly, so the interval published is 1 h and the 24 h cost is rate x 3.
+func (s *LighterNativeSource) funding(res *SourceResult, venue string) {
+	body, err := s.get(s.base + "/funding-rates")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(err.Error())).Inc()
+		return
+	}
+	var fr lighterFundingRates
+	if err := json.Unmarshal(body, &fr); err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, "parse").Inc()
+		return
+	}
+	for _, r := range fr.FundingRates {
+		if r.Exchange != "lighter" || !fundingAssets[r.Symbol] {
+			continue
+		}
+		res.SetFunding(venue, r.Symbol, fundingPoint{Bps24h: fundingBps24h(r.Rate, 8), IntervalHours: 1})
+	}
 }
 
 func (s *LighterNativeSource) get(url string) ([]byte, error) {

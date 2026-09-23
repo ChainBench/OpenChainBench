@@ -14,7 +14,7 @@ higher_is_better: false
 row_noun: { one: venue, many: venues }
 
 disclaimer: |
-  Funding is signed. Positive means longs pay shorts, negative means longs get paid to hold. Venues settle on different native periods (1h for Hyperliquid and dYdX, 4h or 8h elsewhere); every figure is normalized from the venue's own quoted rate and interval before ranking. Funding is only the holding cost. Opening costs (taker fee, spread, impact) are the companion bench perp-fees.
+  Funding is signed. Positive means longs pay shorts, negative means longs get paid to hold. Venues settle on different native periods (hourly on Hyperliquid, dYdX, Lighter, Extended, Pacifica, Ondo, Vest, StandX and ApeX, every 4h on edgeX, every 8h on Kalshi, Aster and the CEX books); every figure is normalized from the venue's own quoted rate and interval before ranking. Funding is only the holding cost. Opening costs (taker fee, spread, impact) are the companion bench perp-fees.
 
 seo_intro: |
   This page answers one question. On which perp venue is it cheapest,
@@ -57,15 +57,16 @@ abstract: |
 
 methodology:
   - "Sources. One public, unauthenticated endpoint per venue: Hyperliquid info metaAndAssetCtxs (live 1h rate), Binance fapi premiumIndex plus fundingInfo for per pair intervals, Bybit v5 tickers plus instruments-info (interval in minutes), OKX public funding-rate (interval from settlement timestamps), dYdX v4 indexer perpetualMarkets (per hour rate), Paradex markets summary (8h period), Aster premiumIndex (Binance compatible)."
+  - "Native cohort feeds since 2026-09-23 (perp-cohort-stats harness): Lighter and Lighter RH from /funding-rates (8h-normalised feed, rate x 3), Extended from /info/markets (hourly), edgeX from getTicker (4h, interval from fundingTime to nextFundingTime), Pacifica from /info/prices (hourly); Aster reads premiumIndex plus fundingInfo there too."
   - "Normalization. Every venue quotes a rate for its own settlement period. The harness divides the quoted rate by the venue's interval in hours to get a per hour rate, then publishes per hour bps (rate times 10000), 24 hour hold cost (per hour times 24) and annualized percent (per hour times 24 times 365 times 100). A 0.01 percent per 8h rate and a 0.00125 percent per 1h rate are the same number on this page."
   - "Sign convention. Positive means longs pay shorts, negative means longs are paid to hold. Signs are preserved through every column; the ranking treats negative as cheaper, so a venue where the long side is being paid ranks first."
   - "Headline. Cost in bps of notional to hold an ETH long for 24 hours, averaged over the last 24 hours of one minute samples. The instantaneous rate moves every settlement; the 24 hour average is what a position opened yesterday actually paid. BTC and SOL columns are computed identically."
   - "Windows. The 7 day and 30 day columns are avg_over_time of the normalized hold cost series, the carry trader's view. A venue with attractive funding for one hour and brutal funding the rest of the week ranks accordingly on the longer windows."
   - "Cadence. The harness polls all venues in parallel every 60 seconds with a 10 second timeout per request; Prometheus scrapes every 30 seconds. End to end staleness is under two minutes in normal operation."
-  - "Failures. A venue that errors or times out keeps its previous gauge values and its perp_funding_venue_ok_unix timestamp stops advancing; the Success column turns red after 5 minutes of silence. No value on this page is ever interpolated or guessed."
-  - "Scope. BTC, ETH and SOL are the assets every venue in the cohort lists. GMX is excluded because its borrow fee model has no comparable funding rate. Lighter is excluded until the interval semantics of its public funding endpoint are documented; it joins the cohort once its numbers can be normalized honestly."
+  - "Failures. Cohort-harness rows (every venue except dYdX and Paradex) lose their gauge five minutes after the last refresh (ten for edgeX and ApeX, read through a ticker cache) and turn red at 15 minutes: a gap in the 24h average is a gap, never the last value repeated. The perp-funding-harness rows (dYdX, Paradex) keep their last value and turn red after 5 minutes of silence. Nothing is interpolated or guessed."
+  - "Scope. BTC, ETH and SOL are the assets every venue in the cohort lists. GMX is excluded because its borrow fee model has no comparable funding rate. Lighter joined on 2026-09-23 from its /funding-rates endpoint: the feed is normalised to 8 hours (its Hyperliquid entry is exactly eight times HL's hourly rate, and the native value matched the Mobula-sourced one to the second decimal at the switch), so the 24h figure is the rate times three."
   - "Funding versus fees. This bench prices holding. Its companion perp-fees prices opening (taker fee plus spread plus impact on a $1000 ETH long). Read both to know the all in cost of a trade you intend to hold."
-  - "Reproducibility. The harness source is open in the OCB harness tree (funding.go in the hyperliquid-frontends harness). Point it at the same public endpoints and you reproduce every number on this page."
+  - "Reproducibility. Both harnesses are open in the OCB harness tree: perp-cohort-stats (the native funding sources and the Mobula feed) and funding.go in the hyperliquid-frontends harness (dYdX, Paradex). Point them at the same public endpoints and you reproduce every number on this page."
 
 findings:
   - "{{best_name}} is currently the cheapest venue to hold an ETH long, at {{best_p50}} of notional per 24 hours (24h average, negative means longs get paid)."
@@ -88,10 +89,10 @@ faq:
     a: "Collecting the spread between venues or against spot. The classic carry: hold spot (or a long where funding is negative) and short the perp where funding is most positive; each settlement pays you the difference without directional exposure. The 7d and 30d columns show whether a spread persists long enough to cover execution costs."
   - q: "Why is the 24h average the headline instead of the live rate?"
     a: "The instantaneous rate can spike for a single settlement and revert. A position opened 24 hours ago paid the average, not the snapshot, so the headline is avg_over_time over 24 hours of one minute samples. The Per-hour rate tab shows the live normalized rate if you want the snapshot."
-  - q: "Why are GMX and Lighter not in the cohort?"
-    a: "GMX prices borrowing per side against pool utilization; there is no funding rate comparable to the order book venues, and pretending otherwise would be dishonest. Lighter publishes funding data but the interval semantics of its public endpoint are not documented; it joins once its numbers can be normalized with confidence."
+  - q: "Why is GMX not in the cohort, and how is Lighter normalised?"
+    a: "GMX prices borrowing per side against pool utilization; there is no funding rate comparable to the order book venues, and pretending otherwise would be dishonest. Lighter's /funding-rates endpoint lists each market's rate next to Binance, Bybit and Hyperliquid for comparison; the Hyperliquid entry equals eight times HL's hourly rate, so the feed is 8h-normalised and Lighter's 24h figure is the rate times three (Lighter itself settles hourly). The native value matched the Mobula-sourced one at the switch on 2026-09-23."
   - q: "How fresh are these numbers?"
-    a: "The harness polls every venue in parallel every 60 seconds and Prometheus scrapes every 30 seconds, so figures are at most about two minutes behind the venue APIs. A venue that stops responding keeps its last values and its Success column turns red after five minutes."
+    a: "The harnesses poll every venue in parallel every 60 seconds and Prometheus scrapes every 30 seconds, so figures are at most about two minutes behind the venue APIs. A cohort-harness row that stops responding loses its rate after five minutes (ten for edgeX and ApeX, which read a ticker cache) and its Success column turns red at 15; a perp-funding-harness row (dYdX, Paradex) keeps its last value and turns red after five minutes."
   - q: "Can I cite a value from this page?"
     a: "Yes. Every number is a Prometheus query over gauges the open source harness publishes from public venue endpoints. Cite the value and the timestamp at the top of the page; the harness source link is in the source field below."
 
@@ -195,16 +196,16 @@ providers:
 
   - slug: aster
     name: Aster
-    tag: BNB Chain perps DEX, Binance compatible API, 8h funding
-    formula: "lastFundingRate from the Binance compatible premiumIndex endpoint divided by the pair's funding interval (default 8h), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    tag: BNB Chain perps DEX, Binance compatible API, 8h funding (native)
+    formula: "lastFundingRate from GET /fapi/v1/premiumIndex over the interval /fapi/v1/fundingInfo declares per pair (8h on the majors), x 24/interval x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
     queries:
-      p50: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
-      p90: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="BTC"}[24h])
-      p99: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="SOL"}[24h])
-      mean: avg_over_time(perp_funding_annualized_pct{venue="aster",asset="ETH"}[24h])
-      success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
-      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
-      series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="aster",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
 
   - slug: ondo
     name: Ondo Perps
@@ -215,7 +216,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_last_refresh_unix{venue="ondo",source="ondo_native"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="ondo",asset="ETH"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="ondo",asset="ETH"}[24h])
   - slug: kalshi
@@ -227,7 +228,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_last_refresh_unix{venue="kalshi",source="kalshi_native"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="kalshi",asset="ETH"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="kalshi",asset="ETH"}[24h])
   - slug: vest
@@ -239,7 +240,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_last_refresh_unix{venue="vest",source="vest_native"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="vest",asset="ETH"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="vest",asset="ETH"}[24h])
   - slug: standx
@@ -251,7 +252,7 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_last_refresh_unix{venue="standx",source="standx_native"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="standx",asset="ETH"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="standx",asset="ETH"}[24h])
   - slug: apex
@@ -263,9 +264,70 @@ providers:
       p90: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="BTC"}[24h])
       p99: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="SOL"}[24h])
       mean: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h]) * 365 / 100
-      success: (perp_venue_last_refresh_unix{venue="apex",source="apex_native"} > bool (time() - 900))
+      success: ((perp_venue_funding_refresh_unix{venue="apex",asset="ETH"} > bool (time() - 900)) or on() vector(0))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+  - slug: lighter
+    name: Lighter
+    tag: Lighter L2 order book, hourly funding read from /funding-rates
+    formula: "rate for exchange lighter from GET /api/v1/funding-rates (feed normalised to 8h) x 3 x 10000, in bps per 24h hold; Lighter settles hourly; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="lighter",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter deployment for Robinhood, hourly funding
+    formula: "same feed on api.rh.lighter.xyz: rate for exchange lighter x 3 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="lighter-rh",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+  - slug: extended
+    name: Extended
+    tag: Starknet order book, hourly funding read from /info/markets
+    formula: "hourly fundingRate from GET /api/v1/info/markets x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="extended",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx order book, 4h funding read from getTicker
+    formula: "fundingRate per interval from GET /api/v2/public/quote/getTicker, interval from fundingTime to nextFundingTime (4h), x 24/interval x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="edgex",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+  - slug: pacifica
+    name: Pacifica
+    tag: Solana order book, hourly funding read from /info/prices
+    formula: "hourly funding from GET /api/v1/info/prices x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h]) * 365 / 100
+      success: ((perp_venue_funding_refresh_unix{venue="pacifica",asset="ETH"} > bool (time() - 900)) or on() vector(0))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+
 metric_panels:
   - id: annualized
     label: Annualized (ETH)

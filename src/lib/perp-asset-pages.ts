@@ -19,6 +19,10 @@ import { PERP_VENUE_META } from "@/lib/perp-venue-context";
 
 export const PERP_ASSET_PAGES_KEY = "perp-asset-pages";
 
+/** Hourly samples that count as a full month behind a 30d average
+ *  (24 of 30 days; the same floor ranks perp-funding-cost-30d). */
+export const FULL_MONTH_SAMPLES = 576;
+
 export type PerpAssetCode = "ETH" | "BTC" | "SOL";
 
 export const PERP_ASSETS: { slug: string; asset: PerpAssetCode; name: string }[] = [
@@ -49,15 +53,16 @@ export type PerpAssetVenueRow = {
   /** Share of 24h ticks where the $100k tier was filled (0 to 1). */
   slippage100kFill: number | null;
   /** Funding cost in bps to hold a long: 24h at the current rate (24h avg),
-   *  and the cost accumulated over the days measured in the trailing 7 and
-   *  30 (average daily cost x days measured, never projected). Signed,
-   *  positive means longs pay. */
+   *  and a week or a month at the average daily cost over the trailing 7
+   *  and 30 days (average x 7, average x 30). Signed, positive means longs
+   *  pay. funding30dSamples says how many hours are behind the month. */
   funding24hBps: number | null;
   funding7dBps: number | null;
   funding30dBps: number | null;
-  /** Hourly samples behind funding30dBps (720 for a full month). The 30d
-   *  figure is the cost accumulated over samples / 24 days; under a full
-   *  month it is a partial window (venue joined recently). */
+  /** Hourly samples behind funding30dBps (720 for a full month). Under
+   *  FULL_MONTH_MIN the month is extrapolated from a shorter window (the
+   *  venue joined recently, or its feed dropped hours) and the page marks
+   *  the day count. */
   funding30dSamples: number | null;
 };
 
@@ -118,28 +123,29 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     return null;
   }
 
-  // Funding: the cohort feed first (every venue and the Mobula CEX rows),
-  // the perp-funding bench feed for cells it lacks. 7d and 30d are the
-  // daily cost averaged over the window times the days in it: what a long
-  // held for the whole window paid.
+  // Funding: the cohort feed and the perp-funding bench feed, merged per
+  // (venue, asset) below. 7d and 30d are the daily cost averaged over the
+  // window times the days in the window: a week or a month of funding at
+  // the average daily cost actually quoted (same rule as bench
+  // perp-funding-cost-30d). A total over the days measured would rank on
+  // coverage: a venue that lost five days to an outage would beat an
+  // identical one on the missing days alone (review 2026-09-23).
   // The 7d and 30d windows are read on an hourly grid ([w:1h]): 720
   // points per series instead of 43,200 minutes, so the query stays well
-  // inside the client's 10 s timeout. The accumulated cost is the average
-  // daily cost times the days actually measured (count / 24, capped at
-  // the window): a venue three days old shows three days of funding, not
-  // a month projected from them.
+  // inside the client's 10 s timeout. The sample count travels with the
+  // 30d figure so the page can mark a window shorter than the month.
   // Two funding feeds, queried apart and merged cohort-first below: a
   // PromQL `or` keeps both when their label sets differ (the perp-funding
   // bench series carry extra labels), which duplicated Binance and OKX.
-  const accumulated = (metric: string, w: string, days: number) => {
+  const normalised = (metric: string, w: string, days: number) => {
     const sel = `${metric}{${ASSETS_RE}}[${w}:1h]`;
-    return `avg_over_time(${sel}) * clamp_max(count_over_time(${sel}) / 24, ${days})`;
+    return `avg_over_time(${sel}) * ${days}`;
   };
   const feeds = ["perp_venue_funding_24h_bps", "perp_funding_hold_24h_bps"] as const;
   const [[f24a, f24b], [f7a, f7b], [f30a, f30b], [n30a, n30b], allIn, taker, tier100k, fill100k] = await Promise.all([
     Promise.all(feeds.map((m) => queryVector(prom, `avg_over_time(${m}{${ASSETS_RE}}[24h])`))),
-    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "7d", 7)))),
-    Promise.all(feeds.map((m) => queryVector(prom, accumulated(m, "30d", 30)))),
+    Promise.all(feeds.map((m) => queryVector(prom, normalised(m, "7d", 7)))),
+    Promise.all(feeds.map((m) => queryVector(prom, normalised(m, "30d", 30)))),
     Promise.all(feeds.map((m) => queryVector(prom, `count_over_time(${m}{${ASSETS_RE}}[30d:1h])`))),
     queryVector(prom, `avg_over_time(perp_fees_all_in_bps{${CHAINS_RE}}[24h])`),
     queryVector(prom, `avg_over_time(perp_fees_taker_fee_bps{${CHAINS_RE}}[24h])`),
@@ -159,11 +165,18 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
   // Every block has to answer; a timed-out 30d query would otherwise
   // publish a complete-looking snapshot with a column of nulls and the
   // previous good blob would be replaced by it.
-  // Cohort feed first, bench feed only for cells the cohort lacks.
-  const f24 = [...f24a, ...f24b];
-  const f7 = [...f7a, ...f7b];
-  const f30 = [...f30a, ...f30b];
-  const n30 = [...n30a, ...n30b];
+  // Two funding feeds per (venue, asset): the cohort harness first, the
+  // perp-funding bench feed for cells it lacks. The bench feed takes the
+  // four funding cells only when the cohort history is under a full month
+  // and the bench one is longer: a venue that gains a native cohort feed
+  // (Aster, 2026-09-23) keeps its month of bench history until the native
+  // series fills, while Hyperliquid and the CEX rows, present in both
+  // feeds with a full month, stay on the cohort (Mobula) feed the page
+  // copy names.
+  const fundingFeeds = [
+    { f24: f24a, f7: f7a, f30: f30a, n30: n30a },
+    { f24: f24b, f7: f7b, f30: f30b, n30: n30b },
+  ];
   if (f24a.length === 0 || allIn.length === 0 || f30a.length === 0 || f7a.length === 0) return null;
 
   const assets: PerpAssetCode[] = ["ETH", "BTC", "SOL"];
@@ -199,10 +212,21 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
         if (target[field] == null) target[field] = s.value;
       }
     };
-    put(f24, "asset", "funding24hBps");
-    put(f7, "asset", "funding7dBps");
-    put(f30, "asset", "funding30dBps");
-    put(n30, "asset", "funding30dSamples");
+    const pick = (samples: Sample[], slug: string): number | null =>
+      samples.find((s) => s.labels.asset === asset && venueSlug(s.labels.venue ?? "") === slug)?.value ?? null;
+    for (const row of rows.values()) {
+      const nA = pick(fundingFeeds[0].n30, row.slug) ?? 0;
+      const nB = pick(fundingFeeds[1].n30, row.slug) ?? 0;
+      const order = nA < FULL_MONTH_SAMPLES && nB > nA ? [fundingFeeds[1], fundingFeeds[0]] : [fundingFeeds[0], fundingFeeds[1]];
+      for (const fd of order) {
+        if (row.funding24hBps == null) row.funding24hBps = pick(fd.f24, row.slug);
+        if (row.funding7dBps == null) row.funding7dBps = pick(fd.f7, row.slug);
+        if (row.funding30dBps == null) {
+          row.funding30dBps = pick(fd.f30, row.slug);
+          if (row.funding30dBps != null) row.funding30dSamples = pick(fd.n30, row.slug);
+        }
+      }
+    }
     put(allIn, "chain", "allInBps");
     put(taker, "chain", "takerFeeBps");
     put(tier100k, "chain", "slippage100kBps");

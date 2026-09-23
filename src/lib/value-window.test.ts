@@ -43,12 +43,26 @@ describe("valueQualifier", () => {
   });
 });
 
+describe("valueQualifier: window totals", () => {
+  it("a window average scaled to the window is a total, not an average", () => {
+    expect(valueQualifier({ unit: "bp", valueKind: "total", window: "30d" })).toBe("30 days at the average daily rate");
+    expect(valueSuffix({ unit: "bp", valueKind: "total", window: "7d" })).toBe("(7 days at the average daily rate)");
+    expect(valueColumnLabel({ unit: "bp", valueKind: "total" })).toBe("Total");
+  });
+});
+
 describe("specValueKind, derived from the spec", () => {
   const one = (q: string) => ({ providers: [{ queries: { p50: q } }] });
 
   it("recognises a point read", () => {
     expect(specValueKind(one('last_over_time(chain_bridged_tvl_usd{chain="base"}[1h])')))
       .toBe("latest");
+  });
+
+  it("recognises a window average scaled to the window as a total", () => {
+    expect(specValueKind(one("avg_over_time(x[30d:1h]) * 30"))).toBe("total");
+    expect(specValueKind(one("avg_over_time(x[7d:1h]) * 7"))).toBe("total");
+    expect(specValueKind(one("avg_over_time(x[24h]) * 365 / 100"))).toBeUndefined();
   });
 
   it("refuses a window statistic", () => {

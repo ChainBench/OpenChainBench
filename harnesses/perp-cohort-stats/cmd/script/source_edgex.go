@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -45,9 +46,13 @@ type EdgexNativeSource struct {
 }
 
 type edgexTickerRow struct {
-	value float64
-	oi    float64
-	mark  float64
+	name       string
+	value      float64
+	oi         float64
+	mark       float64
+	funding    float64 // rate per funding interval
+	intervalH  float64 // hours between fundingTime and nextFundingTime
+	hasFunding bool    // fundingRate parsed on the last refresh
 }
 
 // edgexHTTPClient routes through COHORT_PROXY_URL when set. edgeX
@@ -93,11 +98,14 @@ type edgexMetaResponse struct {
 type edgexTickerResponse struct {
 	Code string `json:"code"`
 	Data []struct {
-		ContractID   string `json:"contractId"`
-		ContractName string `json:"contractName"`
-		Value        string `json:"value"`
-		OpenInterest string `json:"openInterest"`
-		MarkPrice    string `json:"markPrice"`
+		ContractID      string `json:"contractId"`
+		ContractName    string `json:"contractName"`
+		Value           string `json:"value"`
+		OpenInterest    string `json:"openInterest"`
+		MarkPrice       string `json:"markPrice"`
+		FundingRate     string `json:"fundingRate"`
+		FundingTime     string `json:"fundingTime"`
+		NextFundingTime string `json:"nextFundingTime"`
 	} `json:"data"`
 }
 
@@ -148,6 +156,12 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 	s.mu.Lock()
 	var volSum, oiSum, topVol float64
 	var active int
+	// Funding is a rate, not a total: a snapshot kept through a degraded
+	// refresh (WAF) must not republish a frozen rate as fresh. Two TTLs is
+	// one missed refresh; beyond that the funding surface goes quiet, the
+	// router's five-minute reap deletes the gauge and the funding benches'
+	// success check (perp_venue_funding_refresh_unix) turns red.
+	fundingFresh := time.Since(s.cacheTS) < 2*edgexCacheTTL
 	for _, row := range s.cache {
 		if row.mark <= 0 {
 			continue
@@ -158,6 +172,9 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 			topVol = row.value
 		}
 		oiSum += row.oi * row.mark
+		if asset := strings.TrimSuffix(row.name, "USDC"); fundingFresh && row.hasFunding && fundingAssets[asset] && row.intervalH > 0 {
+			res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(row.funding, row.intervalH), IntervalHours: row.intervalH})
+		}
 	}
 	cached := len(s.cache)
 	s.mu.Unlock()
@@ -227,7 +244,14 @@ func (s *EdgexNativeSource) runRefresh(contracts []edgexContract) {
 		mark, _ := strconv.ParseFloat(row.MarkPrice, 64)
 		val, _ := strconv.ParseFloat(row.Value, 64)
 		oi, _ := strconv.ParseFloat(row.OpenInterest, 64)
-		fresh[c.ContractID] = edgexTickerRow{value: val, oi: oi, mark: mark}
+		fr, frErr := strconv.ParseFloat(row.FundingRate, 64)
+		t0, _ := strconv.ParseFloat(row.FundingTime, 64)
+		t1, _ := strconv.ParseFloat(row.NextFundingTime, 64)
+		intervalH := (t1 - t0) / 3600000
+		if intervalH <= 0 || intervalH > 24 {
+			intervalH = 4 // edgeX settles every 4 hours (verified 2026-09-23)
+		}
+		fresh[c.ContractID] = edgexTickerRow{name: row.ContractName, value: val, oi: oi, mark: mark, funding: fr, intervalH: intervalH, hasFunding: frErr == nil && row.FundingRate != ""}
 	}
 
 	// Only swap the cache in if we got a meaningful refresh; partial

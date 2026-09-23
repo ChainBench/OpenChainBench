@@ -51,11 +51,6 @@ export const REPORT_CATEGORY_META: Record<
     description:
       "Crypto data APIs benchmarked for price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.",
   },
-  perps: {
-    label: "Perp DEXes",
-    description:
-      "Perpetual futures venues measured from their public APIs: volume, open interest, all-in cost, funding, asset breadth and volume quality.",
-  },
 };
 
 /**
@@ -65,22 +60,8 @@ export const REPORT_CATEGORY_META: Record<
  * and the sitemap see them like the MDX reports.
  */
 export const LIVE_REPORTS: ReportMeta[] = [
-  {
-    title: "State of perp DEXes, Q3 2026: measured, not self-reported",
-    category: "Perp DEXes",
-    categorySlug: "perps",
-    slug: "state-of-perp-dexes-q3-2026",
-    publishedAt: "2026-09-23",
-    period: "Q3 2026",
-    summary:
-      "What the perp benchmarks measured at the end of the quarter: volume, open interest, all-in cost, funding, breadth beyond crypto, volume quality and token valuation, every figure live and linked to its bench.",
-    heroFinding:
-      "Every figure is the live value of a benchmark or of the cohort snapshot, linked to its source; the report never ages into a stale PDF.",
-    author: "OpenChainBench Research",
-    readingTime: 9,
-    canonical: "/reports/perps/state-of-perp-dexes-q3-2026",
-    live: true,
-  },
+  // The State of perp DEXes Q3 2026 report was withdrawn on 2026-09-23
+  // pending a rewrite; the mechanism stays for the next live report.
 ];
 
 function parseReport(filePath: string): Report {

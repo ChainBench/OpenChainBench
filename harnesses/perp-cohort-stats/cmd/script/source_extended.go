@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,8 @@ type extendedMarketStats struct {
 	DailyVolume  string `json:"dailyVolume"`
 	OpenInterest string `json:"openInterest"`
 	MarkPrice    string `json:"markPrice"`
+	// Hourly funding rate (Extended settles every hour).
+	FundingRate string `json:"fundingRate"`
 }
 
 type extendedMarket struct {
@@ -131,6 +134,11 @@ func (s *ExtendedNativeSource) Fetch() (*SourceResult, error) {
 		// shown in the UI), so no base*mark multiplication.
 		oi, _ := strconv.ParseFloat(m.MarketStats.OpenInterest, 64)
 		oiSum += oi
+		if asset := strings.TrimSuffix(m.Name, "-USD"); fundingAssets[asset] {
+			if fr, err := strconv.ParseFloat(m.MarketStats.FundingRate, 64); err == nil {
+				res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(fr, 1), IntervalHours: 1})
+			}
+		}
 	}
 
 	res.SetIfPositive(venue, mVolume24h, volSum)

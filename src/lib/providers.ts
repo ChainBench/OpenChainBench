@@ -12,6 +12,9 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { loadProvidersFromBlob } from "@/lib/bench-blob";
+import { isHexAddressSlug } from "@/lib/slug-shape";
+
+export { isHexAddressSlug };
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { liveResults } from "@/lib/provider-filters";
@@ -642,20 +645,16 @@ export const DEAD_COMPOSITE_SLUGS = new Set([
 // The HL bench page itself still lists every builder in its leaderboard
 // (that's the bench's job); only the dedicated /products/<hex> route is
 // suppressed.
-const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
 
 /** True when the slug looks like a raw hex builder address (e.g. an
  *  unidentified Hyperliquid frontend that hasn't been added to
  *  builders.json yet). The /products/<hex> route is blacklisted so
  *  these would 404 if linked. Used by ledger-table.tsx to render the
  *  row name as plain text instead of an anchor. */
-export function isHexAddressSlug(slug: string): boolean {
-  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
-}
 
 export function isBlacklistedSlug(slug: string): boolean {
   const lc = slug.toLowerCase();
-  return DEAD_COMPOSITE_SLUGS.has(lc) || HEX_ADDRESS_SLUG.test(lc);
+  return DEAD_COMPOSITE_SLUGS.has(lc) || isHexAddressSlug(lc);
 }
 
 // Cohort venues that should have a /products/<slug> page even when no
