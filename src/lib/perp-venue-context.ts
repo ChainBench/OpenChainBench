@@ -35,7 +35,7 @@ export const PERP_VENUE_META: Record<
   nado:        { url: "https://nado.xyz",        chainLabel: "Ink" },
   paradex:     { url: "https://paradex.trade",   chainLabel: "Starknet" },
   aster:       { url: "https://asterdex.com",    chainLabel: "BNB Chain" },
-  edgex:       { url: "https://pro.edgex.exchange", chainLabel: "zkSync" },
+  edgex:       { url: "https://pro.edgex.exchange", chainLabel: "StarkEx" },
   extended:    { url: "https://extended.exchange",  chainLabel: "Starknet" },
   aevo:        { url: "https://aevo.xyz",        chainLabel: "OP Stack" },
   pacifica:    { url: "https://pacifica.fi",     chainLabel: "Solana" },

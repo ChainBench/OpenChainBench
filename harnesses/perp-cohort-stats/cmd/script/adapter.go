@@ -775,6 +775,7 @@ func (r *Router) Sweep() {
 				perpVenueFunding24hBps.WithLabelValues(venueSlug, asset).Set(p.Bps24h)
 				perpVenueFundingIntervalHours.WithLabelValues(venueSlug, asset).Set(p.IntervalHours)
 				perpVenueLastRefreshUnix.WithLabelValues(venueSlug, name).Set(float64(tickTS))
+				perpVenueFundingRefreshUnix.WithLabelValues(venueSlug).Set(float64(tickTS))
 				r.fundingCarrySet(venueSlug, asset, p, tickTS)
 			}
 		}
@@ -796,11 +797,13 @@ func (r *Router) Sweep() {
 	// Reap stale carry entries so renamed/removed venues do not leak
 	// memory and never republish ghost values forever. Cohort metrics
 	// are pruned against the canonical Registry (rename = remove from
-	// registry + re-add under new slug = old slug evicted). Funding
-	// entries are pruned against a 24h max-age window so CEFI venues
-	// Mobula stopped covering also drop out.
+	// registry + re-add under new slug = old slug evicted). Funding is a
+	// rate, not a total: a (venue, asset) no source has refreshed for 30
+	// minutes leaves the carry AND the gauge, so a frozen rate never sits
+	// in a 24h or 30d average as if it were measured (review 2026-09-23;
+	// the window used to be 24h and the gauge child was never deleted).
 	r.reapCohortCarry()
-	r.reapFundingCarry(tickTS, 24*60*60)
+	r.reapFundingCarry(tickTS, fundingCarryMaxAgeSec)
 }
 
 // reapCohortCarry drops any venue from the cohort carry map that is
@@ -825,6 +828,10 @@ func (r *Router) reapCohortCarry() {
 // panels), so we cannot prune against Registry. Age is the next best
 // signal: if Mobula stopped publishing a venue for 24h it should fall
 // off the gauge.
+// fundingCarryMaxAgeSec is how long a funding rate outlives its last
+// refresh: two Mobula misses, or one edgeX cache TTL past its own gate.
+const fundingCarryMaxAgeSec int64 = 30 * 60
+
 func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 	r.fundCarryM.Lock()
 	defer r.fundCarryM.Unlock()
@@ -832,10 +839,13 @@ func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 		for asset, e := range perAsset {
 			if nowTS-e.RefreshTS > maxAgeSec {
 				delete(perAsset, asset)
+				perpVenueFunding24hBps.DeleteLabelValues(venue, asset)
+				perpVenueFundingIntervalHours.DeleteLabelValues(venue, asset)
 			}
 		}
 		if len(perAsset) == 0 {
 			delete(r.fundCarry, venue)
+			perpVenueFundingRefreshUnix.DeleteLabelValues(venue)
 		}
 	}
 }

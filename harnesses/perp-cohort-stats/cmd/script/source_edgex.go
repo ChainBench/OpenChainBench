@@ -158,8 +158,9 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 	var active int
 	// Funding is a rate, not a total: a snapshot kept through a degraded
 	// refresh (WAF) must not republish a frozen rate as fresh. Two TTLs is
-	// one missed refresh; beyond that the funding surface goes quiet and
-	// the 24h reap in the router drops the venue.
+	// one missed refresh; beyond that the funding surface goes quiet, the
+	// router's 30-minute reap deletes the gauge and the funding benches'
+	// success check (perp_venue_funding_refresh_unix) turns red.
 	fundingFresh := time.Since(s.cacheTS) < 2*edgexCacheTTL
 	for _, row := range s.cache {
 		if row.mark <= 0 {

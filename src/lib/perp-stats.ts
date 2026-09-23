@@ -100,7 +100,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet",      venueType: "onchain" },
   { slug: "aster",       name: "Aster",       chain: "BNB Chain",     venueType: "onchain" },
-  { slug: "edgex",       name: "EdgeX",       chain: "zkSync",        venueType: "onchain" },
+  { slug: "edgex",       name: "EdgeX",       chain: "StarkEx",        venueType: "onchain" },
   { slug: "extended",    name: "Extended",    chain: "Starknet",      venueType: "onchain" },
   { slug: "aevo",        name: "Aevo",        chain: "OP Stack",      venueType: "onchain" },
   { slug: "pacifica",    name: "Pacifica",    chain: "Solana",        venueType: "onchain" },

@@ -101,6 +101,13 @@ var (
 		},
 		[]string{"venue", "asset"},
 	)
+	perpVenueFundingRefreshUnix = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_funding_refresh_unix",
+			Help: "Unix timestamp of the last tick on which a source produced a funding rate for the venue. The carry-forward does not advance it, so a funding bench's success check reads the rate's own freshness, not the venue's volume feed.",
+		},
+		[]string{"venue"},
+	)
 	perpVenueLastRefreshUnix = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_last_refresh_unix",
@@ -146,7 +153,7 @@ func init() {
 		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
 		perpVenueTvlUsd,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
-		perpVenueLastRefreshUnix,
+		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
 		perpCohortLastTickUnix,
 	)
