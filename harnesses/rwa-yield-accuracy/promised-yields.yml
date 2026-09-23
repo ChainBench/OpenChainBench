@@ -1,37 +1,36 @@
-# Promised APY for each token in the rwa-yield-accuracy cohort.
+# Reference APY for each token in the rwa-yield-accuracy cohort.
 #
-# This file is the manual source of truth for what each issuer
-# ADVERTISES. Updated at least weekly. Each entry cites its source URL
-# and the date it was last read. When an issuer changes its advertised
-# APY, edit the value + source_date here; the harness reloads this
-# file every 60 seconds so a commit lands within a scrape cycle.
+# One convention for every row since 2026-09-23: the 30-day mean APY on
+# the DefiLlama yields feed (https://yields.llama.fi/pools, field
+# apyMean30d), the same window as the delivered figure the bench
+# measures. The issuer's own displayed APY, where a page is readable
+# (Ondo), is recorded in the notes for the reader; it is not the number
+# the deviation is computed against, because a spot figure against a
+# 30-day realized yield opens a gap that is the window's, not the fund's
+# (audit 2026-09-23: the choice moved USTB by 26 bps and SyrupUSDC by 17).
+# Read by hand, dated per entry; the harness reloads this file every 60
+# seconds and the Promised column on the bench page shows the value in
+# force. Refresh cadence is best effort, not weekly (the July values sat
+# unchanged for two months).
 #
-# Format:
 #   token: <slug>          — matches the provider slug in the bench spec
 #   promised_apy_bps: N    — e.g. 530 for 5.30%
-#   source: <URL>          — the exact page consulted
-#   source_date: YYYY-MM-DD — when this value was last verified
-#   notes: <string>        — methodology caveats (SEC 7-day vs current,
-#                            gross vs net, etc.)
-#
-# When adding a token, cross-check the value against the fund's
-# quarterly fact sheet or SEC filing to guard against the marketing
-# page drifting from the regulated disclosure.
-
+#   source: <URL>          — the feed or page consulted
+#   source_date: YYYY-MM-DD — when this value was last read
+#   refresh_note           — issuer-displayed figure that day, history
 updated: 2026-09-23
 
 issuers:
   - token: usdy
-    promised_apy_bps: 360
-    source: "https://ondo.finance/usdy"
+    promised_apy_bps: 357
+    source: "https://yields.llama.fi/pools (apyMean30d) project ondo-yield-assets, Ethereum USDY"
     source_date: 2026-09-23
-    notes: "Ondo USDY current APY as displayed on the retail dashboard. Rebase happens daily via the token contract; delivered yield is directly measurable from totalSupply growth. Value is net of the 20 bps Ondo fee. Rate reflects Fed policy: 3.60% at the 2026-09-23 reading (3.55% in July), down from ~5.4% a year earlier."
 
   # The four entries below remain in the file so the harness reloader
   # keeps their promised APYs current for the day the corresponding
   # probes flip active. They are NOT scraped or displayed on the bench
   # page while status: staging.
-    refresh_note: "2026-09-23: 3.60% APY on the USDY page, portfolio as of 2026-09-22; was 355 on 2026-07-22."
+    refresh_note: "DefiLlama 30-day mean 3.565% (spot 3.59%). Ondo's USDY page displayed 3.60% APY that day (3.55% on 2026-07-22). Measured as NAV growth on Ondo's oracle, not as a rebase: Ethereum supply shrinks as holders bridge out."
 
   - token: buidl
     promised_apy_bps: 350
@@ -47,21 +46,18 @@ issuers:
 
   - token: ustb
     promised_apy_bps: 352
-    source: "https://yields.llama.fi/pools (project invesco-ustb, Ethereum)"
+    source: "https://yields.llama.fi/pools (apyMean30d) project invesco-ustb, Ethereum"
     source_date: 2026-09-23
-    notes: "Superstate USTB 30-day yield as displayed on superstate.com (7-day SEC yield not published there). Probe inactive; treasury wallet verification pending."
-    refresh_note: "2026-09-23: 30-day mean APY 3.52% on the DefiLlama yields feed (spot 3.78% that day). The 30-day mean is the like-for-like figure against a 30-day delivered yield; superstate.com renders client-side and could not be read. Was 352 on 2026-07-22."
+    refresh_note: "DefiLlama 30-day mean 3.518% (spot 3.78%). superstate.com renders client-side and shows no machine-readable figure. Was 352 from the July reading."
 
   - token: ousg
-    promised_apy_bps: 348
-    source: "https://ondo.finance/ousg"
+    promised_apy_bps: 345
+    source: "https://yields.llama.fi/pools (apyMean30d) project ondo-yield-assets, Ethereum OUSG"
     source_date: 2026-09-23
-    notes: "Ondo OUSG NAV-appreciation yield estimate (probe inactive; NAV endpoint TBD)."
-    refresh_note: "2026-09-23: 3.48% 30-day yield on the OUSG page (the headline APY slot rendered 0.00% that day); was 350 on 2026-07-22."
+    refresh_note: "DefiLlama 30-day mean 3.451% (spot 3.72%). Ondo's OUSG page displayed a 3.48% 30-day yield that day. Probe active (Ondo oracle NAV)."
 
   - token: syrup-usdc
     promised_apy_bps: 499
-    source: "https://yields.llama.fi/pools (project maple, Ethereum USDC pool)"
+    source: "https://yields.llama.fi/pools (apyMean30d) project maple, Ethereum USDC pool"
     source_date: 2026-09-23
-    notes: "Maple SyrupUSDC base APY (loan-book yield only, excludes SYRUP token incentives). Sourced from DefiLlama filter {project:maple, symbol:USDC, chain:Ethereum}. Delivered yield measured via ERC-4626 convertToAssets rate delta - matches the base disclosure, not the boosted APY."
-    refresh_note: "2026-09-23: 30-day mean APY 4.99% on the DefiLlama yields feed (spot 5.16% that day), like for like against the 30-day delivered yield; was 482 on 2026-07-24."
+    refresh_note: "DefiLlama 30-day mean 4.992% base APY (spot 5.16%), SYRUP incentives excluded. Was 482 on 2026-07-24."

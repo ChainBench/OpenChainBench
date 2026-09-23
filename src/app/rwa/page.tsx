@@ -78,7 +78,7 @@ function describe(benches: Record<string, Benchmark | null>): string {
   const stockLead = lead(benches["tokenized-stock-peg"]);
   const xLead = lead(benches["xstocks-peg"]);
   const parts: string[] = [];
-  if (yieldLead) parts.push(`${yieldLead.name} pays closest to its advertised yield (${fmtUnit(yieldLead.value, "bps")} off over 30 days)`);
+  if (yieldLead) parts.push(`${yieldLead.name} pays closest to its reference yield (${fmtUnit(yieldLead.value, "bps")} off over 30 days)`);
   if (stockLead) parts.push(`${stockLead.name} tracks Nasdaq tightest on Robinhood Chain (${fmtUnit(stockLead.value, "bps")})`);
   if (xLead) parts.push(`${xLead.name} on Solana (${fmtUnit(xLead.value, "bps")})`);
   const live = ALL_SLUGS.filter((s) => benches[s] && !isInsufficient(benches[s]!)).length;
@@ -179,7 +179,7 @@ export default async function RwaHubPage() {
   const wkLead = lead(benches["tokenized-stock-weekend-drift"]);
 
   const leadSentence = [
-    yieldLead ? `${yieldLead.name} pays closest to the yield it advertises, ${fmtUnit(yieldLead.value, "bps")} off over the trailing 30 days` : null,
+    yieldLead ? `${yieldLead.name} pays closest to its reference yield, ${fmtUnit(yieldLead.value, "bps")} off over the trailing 30 days` : null,
     stockLead ? `${stockLead.name} is the tokenized stock that tracks Nasdaq tightest on Robinhood Chain at ${fmtUnit(stockLead.value, "bps")}` : null,
     xLead ? `${xLead.name} on Solana at ${fmtUnit(xLead.value, "bps")}` : null,
     navLead ? `USDY trades ${fmtUnit(navLead.value, "bps")} from its published NAV on ${navLead.name}` : null,
@@ -203,10 +203,10 @@ export default async function RwaHubPage() {
         : "The usdy-nav-basis bench measures it every minute against the redemption price Ondo publishes on-chain.",
     },
     {
-      q: "Which tokenized treasury pays what it promises?",
+      q: "Which tokenized treasury pays what its reference yield says?",
       a: yieldLead
-        ? `${yieldLead.name} tracked its advertised APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth between two daily prints from the issuer's oracle or Chainlink feed, or the ERC-4626 share price, compounded over the real span) with the APY the issuer advertises, read by hand and dated; for USTB and SyrupUSDC, whose pages are not machine-readable, the reference is the 30-day mean on the DefiLlama yields feed.`
-        : "The rwa-yield-accuracy bench compares delivered on-chain yield with the advertised APY for USDY, USTB, OUSG and SyrupUSDC.",
+        ? `${yieldLead.name} tracked its reference APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth between two daily prints from the issuer's oracle or Chainlink feed, or the ERC-4626 share price, compounded over the real span) with a reference APY read by hand and dated: the 30-day mean on the DefiLlama yields feed for every token, the same window as the delivered figure (the issuer's own displayed APY is kept in the notes).`
+        : "The rwa-yield-accuracy bench compares delivered on-chain yield with a 30-day reference APY for USDY, USTB, OUSG and SyrupUSDC.",
     },
     {
       q: "What happens to tokenized stocks over the weekend?",
@@ -245,7 +245,7 @@ export default async function RwaHubPage() {
                 { "@type": "PropertyValue", name: "Tokenized stock price deviation from market", unitText: "bps" },
                 { "@type": "PropertyValue", name: "Weekend drift from Friday close", unitText: "bps" },
                 { "@type": "PropertyValue", name: "USDY basis to published NAV", unitText: "bps" },
-                { "@type": "PropertyValue", name: "Delivered minus advertised yield, 30d", unitText: "bps" },
+                { "@type": "PropertyValue", name: "Delivered minus reference yield, 30d", unitText: "bps" },
               ],
             },
             {
@@ -295,7 +295,7 @@ export default async function RwaHubPage() {
       <section aria-labelledby="leaders">
         <h2 id="leaders" className="display text-xl sm:text-2xl text-ink mb-3">Leaders right now</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <LeadCard b={benches["rwa-yield-accuracy"]} label="Pays closest to its advertised yield" />
+          <LeadCard b={benches["rwa-yield-accuracy"]} label="Pays closest to its reference yield" />
           <LeadCard b={benches["usdy-nav-basis"]} label="USDY venue closest to NAV" />
           <LeadCard b={benches["tokenized-stock-peg"]} label="Tokenized stock closest to Nasdaq, Robinhood Chain" />
           <LeadCard b={benches["xstocks-peg"]} label="xStock closest to Nasdaq, Solana" />
@@ -318,10 +318,10 @@ export default async function RwaHubPage() {
       <section className="mt-12 max-w-3xl" aria-labelledby="scope">
         <h2 id="scope" className="display text-xl sm:text-2xl text-ink mb-3">What is measured, and what is not</h2>
         <ul className="text-sm text-ink-soft leading-relaxed space-y-2 list-disc pl-5">
-          <li>Every row is an on-chain read against a public reference: a Uniswap v4 or Orca pool state, a Jupiter quote, an issuer&apos;s oracle, a token&apos;s supply or share price. No figure comes from an issuer&apos;s own dashboard except the advertised APY, which is quoted as the promise being tested and dated.</li>
+          <li>Every row is read from a public chain or a keyless public quote API against a public reference: a Uniswap v4 pool state, a Jupiter quote, an issuer&apos;s oracle or Chainlink feed, a vault share price. No figure comes from an issuer&apos;s own dashboard; the yield bench&apos;s reference APY is a dated 30-day mean from a public feed, quoted as the promise being tested.</li>
           <li>No TVL or market-size ranking lives here. Declared value is a claim about custody off-chain; market data sites rank it. OpenChainBench ranks the behaviour a holder can verify.</li>
           <li>Transfer-restricted funds (BUIDL, BENJI, OUSG on the NAV side) cannot be market-tested because they never trade on an open pool; the pages say so rather than invent a price.</li>
-          <li>Cohorts are what the harnesses can read honestly: six Robinhood Chain stocks with active pools (five more froze at their last swap and left), twelve xStocks, two USDY venues, four yield funds. Growing them is a matter of sources, not of opinion.</li>
+          <li>Cohorts are what the harnesses can read honestly: six Robinhood Chain stocks with active pools (five more froze at their last swap and left), the xStocks with a Jupiter route, two USDY venues, four yield funds. Growing them is a matter of sources, not of opinion.</li>
         </ul>
       </section>
 

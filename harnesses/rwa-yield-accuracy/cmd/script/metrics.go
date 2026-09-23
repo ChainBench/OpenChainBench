@@ -15,7 +15,7 @@ import (
 var (
 	promisedBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rwa_yield_promised_bps",
-		Help: "Advertised APY in basis points, sourced from the issuer's public dashboard. Reloaded from promised-yields.yml every 60 seconds so a manual weekly update lands within one scrape cycle.",
+		Help: "Reference APY the deviation is measured against, in bps: the 30-day mean APY on the DefiLlama yields feed for every token (promised-yields.yml, read by hand, dated per entry; the issuer-displayed figure is in the notes).",
 	}, []string{"issuer", "token", "chain"})
 
 	deliveredBps30d = promauto.NewGaugeVec(prometheus.GaugeOpts{
