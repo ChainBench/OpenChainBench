@@ -35,6 +35,60 @@ var (
 		[]string{"chain"},
 	)
 
+	// L2Beat-sourced ────────────────────────────────────────────────
+	// Value secured, split by where it came from. `chain_tvl_usd` above
+	// counts what DeFi protocols hold on the chain; these count what the
+	// chain's bridge secures, which is a different and larger number.
+	chainTvsUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_usd",
+			Help: "Total value secured by this rollup in USD, all origins. Source: L2Beat /api/scaling/summary. Updated every 15 min.",
+		},
+		[]string{"chain"},
+	)
+	chainValueSecuredUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_value_secured_usd",
+			Help: "Value secured in USD by origin: native (minted here), canonical (locked in the chain's own escrow), external (third-party bridge). Source: L2Beat /api/scaling/summary. Updated every 15 min.",
+		},
+		[]string{"chain", "origin"},
+	)
+	chainBridgedTvlUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_bridged_tvl_usd",
+			Help: "Bridged TVL in USD: canonical + external, the value that arrived from another chain rather than being minted here. Source: L2Beat /api/scaling/summary. Updated every 15 min.",
+		},
+		[]string{"chain"},
+	)
+	chainTvsChange7dPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_change_7d_pct",
+			Help: "Change in total value secured over the trailing 7 days, in percent. Source: L2Beat /api/scaling/summary.",
+		},
+		[]string{"chain"},
+	)
+	chainTvsChange7dExcessPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_change_7d_excess_pct",
+			Help: "7-day change in value secured minus the cohort median, in percentage points. Positive means the chain gained ground on its peers; the raw change mostly tracks the market.",
+		},
+		[]string{"chain"},
+	)
+	// Cohort scalars: the yardstick the excess is measured against, published
+	// so a reader can check the subtraction instead of taking it on trust.
+	chainTvsCohortMedian7dPct = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_cohort_median_7d_pct",
+			Help: "Median 7-day change in value secured across every live L2Beat project above the size floor, in percent.",
+		},
+	)
+	chainTvsCohortSize = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_tvs_cohort_size",
+			Help: "Number of live L2Beat projects above the size floor that the median is taken over.",
+		},
+	)
+
 	// Mobula-sourced ────────────────────────────────────────────────
 	chainNativePriceUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -59,6 +113,19 @@ var (
 	)
 
 	// Observability ──────────────────────────────────────────────────
+	// 1 when the last fetch for this chain and source returned usable
+	// data, 0 when it did not. Benches read the 24h average of this as
+	// their success rate, the same shape as perp_venue_health and
+	// tx_fee_health. It is deliberately per source: DefiLlama can be
+	// healthy while L2Beat is down, and a chain page renders the half
+	// that works.
+	chainKpisHealth = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_kpis_health",
+			Help: "1 if the last fetch for this chain and source returned data, 0 otherwise.",
+		},
+		[]string{"chain", "source"},
+	)
 	chainKpisLastRefresh = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "chain_kpis_last_refresh_timestamp_seconds",
@@ -91,8 +158,11 @@ var (
 func init() {
 	prometheus.MustRegister(
 		chainTvlUsd, chainDexVolume24hUsd, chainStablesMcapUsd,
+		chainTvsUsd, chainValueSecuredUsd, chainBridgedTvlUsd,
+		chainTvsChange7dPct, chainTvsChange7dExcessPct,
+		chainTvsCohortMedian7dPct, chainTvsCohortSize,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
-		chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
+		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
 		chainKpisLastTickUnix,
 	)
 }
