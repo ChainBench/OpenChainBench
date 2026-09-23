@@ -81,7 +81,10 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 func applyPeerMedians(rows []Row) {
 	byCat := map[string][]float64{}
 	for _, r := range rows {
-		if r.HasPF {
+		// A knowably incomplete row must not set the yardstick: its ratio
+		// is built on a fraction of its own revenue, so including it drags
+		// the median its peers are measured against.
+		if r.HasPF && !r.Incomplete {
 			byCat[r.Category] = append(byCat[r.Category], r.PF)
 		}
 	}
@@ -104,7 +107,7 @@ func applyPeerMedians(rows []Row) {
 func CategoryMedians(rows []Row) map[string]float64 {
 	byCat := map[string][]float64{}
 	for _, r := range rows {
-		if r.HasPF {
+		if r.HasPF && !r.Incomplete {
 			byCat[r.Category] = append(byCat[r.Category], r.PF)
 		}
 	}
@@ -137,6 +140,7 @@ func median(vals []float64) float64 {
 // up, price down", which names every protocol having a bad month; with it,
 // the row also has to be cheap against the protocols it competes with.
 func (r Row) Diverging() bool {
-	return r.HasFeeGrowth && r.HasPriceChg && r.HasPF && r.HasPeerGroup &&
+	return !r.Incomplete &&
+		r.HasFeeGrowth && r.HasPriceChg && r.HasPF && r.HasPeerGroup &&
 		r.FeeGrowthPct > 0 && r.PriceChgPct < 0 && r.PF < r.CategoryMedianPF
 }

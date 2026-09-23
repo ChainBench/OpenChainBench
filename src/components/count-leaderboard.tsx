@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
+import { nounFor } from "@/lib/row-noun";
 import Link from "next/link";
 
 import type { Benchmark } from "@/types/benchmark";
@@ -27,15 +28,26 @@ export function CountLeaderboard({
   // Exclude +Inf from max so finite bars render at meaningful widths
   // instead of collapsing to 0% (Inf/Inf = NaN).
   const finiteVals = ranked.map((r) => r.ms.p50).filter(Number.isFinite);
-  const max = Math.max(...finiteVals) || 1;
+  // Scale on magnitude, not on value. A flow metric (bench 275, net
+  // stablecoin movement) has real negatives, and `p50 / max` gives them a
+  // negative CSS width, which the browser drops — the bar then takes its
+  // auto width and the worst outflow draws as long as the biggest inflow.
+  const max = Math.max(...finiteVals.map(Math.abs)) || 1;
+  const hasNegative = finiteVals.some((v) => v < 0);
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
-  const validRanked = ranked.filter((r) => r.ms.p50 > 0);
+  // Zero is a real reading on a flow metric and a missing one elsewhere,
+  // so only a bench that actually has negatives keeps its zero rows.
+  const validRanked = ranked.filter((r) =>
+    hasNegative ? Number.isFinite(r.ms.p50) : r.ms.p50 > 0,
+  );
   const leader = validRanked[0];
   const trailer = validRanked[validRanked.length - 1];
+  // A ratio across zero is meaningless: -$457M is not "885.9x worse" than
+  // $1.04M, it is on the other side of the axis.
   const rawGap =
-    leader && trailer && leader.ms.p50 > 0
+    leader && trailer && leader.ms.p50 > 0 && trailer.ms.p50 > 0
       ? benchmark.higherIsBetter
         ? leader.ms.p50 / trailer.ms.p50
         : trailer.ms.p50 / leader.ms.p50
@@ -75,7 +87,7 @@ export function CountLeaderboard({
               ? `${fmtValue(rangeMin.ms.p50, benchmark.unit)} → ${fmtValue(rangeMax.ms.p50, benchmark.unit)}`
               : "-"
           }
-          hint={`${validRanked.length} providers`}
+          hint={`${validRanked.length} ${nounFor(benchmark, validRanked.length)}`}
         />
         <CountStat
           label="Gap"
@@ -92,7 +104,10 @@ export function CountLeaderboard({
         <ol className="mt-4 space-y-3">
           {ranked.map((r, i) => {
             // +Inf venues get full-width bar (visually "worst"); finite bar otherwise.
-            const pct = Number.isFinite(r.ms.p50) ? (r.ms.p50 / max) * 100 : 100;
+            const pct = Number.isFinite(r.ms.p50)
+              ? (Math.abs(r.ms.p50) / max) * 100
+              : 100;
+            const isOutflow = Number.isFinite(r.ms.p50) && r.ms.p50 < 0;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
             const hasFormula = Boolean(r.formula);
             const isHovered = hoveredSlug === r.slug;
@@ -130,6 +145,13 @@ export function CountLeaderboard({
                     className="h-full"
                     style={{
                       width: `${pct}%`,
+                      // The sign has to be legible on the bar itself: two
+                      // bars of the same length, one an inflow and one an
+                      // outflow, otherwise read as the same result.
+                      opacity: isOutflow ? 0.45 : undefined,
+                      backgroundImage: isOutflow
+                        ? "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 6px)"
+                        : undefined,
                       background: color,
                       transition: "width 0.6s ease",
                     }}
