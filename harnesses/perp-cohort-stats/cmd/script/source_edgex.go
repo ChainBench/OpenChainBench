@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -45,9 +46,12 @@ type EdgexNativeSource struct {
 }
 
 type edgexTickerRow struct {
-	value float64
-	oi    float64
-	mark  float64
+	name      string
+	value     float64
+	oi        float64
+	mark      float64
+	funding   float64 // rate per funding interval
+	intervalH float64 // hours between fundingTime and nextFundingTime
 }
 
 // edgexHTTPClient routes through COHORT_PROXY_URL when set. edgeX
@@ -93,11 +97,14 @@ type edgexMetaResponse struct {
 type edgexTickerResponse struct {
 	Code string `json:"code"`
 	Data []struct {
-		ContractID   string `json:"contractId"`
-		ContractName string `json:"contractName"`
-		Value        string `json:"value"`
-		OpenInterest string `json:"openInterest"`
-		MarkPrice    string `json:"markPrice"`
+		ContractID      string `json:"contractId"`
+		ContractName    string `json:"contractName"`
+		Value           string `json:"value"`
+		OpenInterest    string `json:"openInterest"`
+		MarkPrice       string `json:"markPrice"`
+		FundingRate     string `json:"fundingRate"`
+		FundingTime     string `json:"fundingTime"`
+		NextFundingTime string `json:"nextFundingTime"`
 	} `json:"data"`
 }
 
@@ -158,6 +165,9 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 			topVol = row.value
 		}
 		oiSum += row.oi * row.mark
+		if asset := strings.TrimSuffix(row.name, "USDC"); fundingAssets[asset] && row.intervalH > 0 {
+			res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(row.funding, row.intervalH), IntervalHours: row.intervalH})
+		}
 	}
 	cached := len(s.cache)
 	s.mu.Unlock()
@@ -227,7 +237,14 @@ func (s *EdgexNativeSource) runRefresh(contracts []edgexContract) {
 		mark, _ := strconv.ParseFloat(row.MarkPrice, 64)
 		val, _ := strconv.ParseFloat(row.Value, 64)
 		oi, _ := strconv.ParseFloat(row.OpenInterest, 64)
-		fresh[c.ContractID] = edgexTickerRow{value: val, oi: oi, mark: mark}
+		fr, _ := strconv.ParseFloat(row.FundingRate, 64)
+		t0, _ := strconv.ParseFloat(row.FundingTime, 64)
+		t1, _ := strconv.ParseFloat(row.NextFundingTime, 64)
+		intervalH := (t1 - t0) / 3600000
+		if intervalH <= 0 || intervalH > 24 {
+			intervalH = 4 // edgeX settles every 4 hours (verified 2026-09-23)
+		}
+		fresh[c.ContractID] = edgexTickerRow{name: row.ContractName, value: val, oi: oi, mark: mark, funding: fr, intervalH: intervalH}
 	}
 
 	// Only swap the cache in if we got a meaningful refresh; partial

@@ -314,7 +314,7 @@ func priorityMap(venue, metric string) []string {
 		case "gains":
 			return []string{srcMobulaPairs}
 		case "gmx-v2":
-			return []string{srcDefillama}
+			return []string{srcGMXNative, srcDefillama}
 		case "dydx":
 			return []string{srcDydxNative}
 		case "paradex":

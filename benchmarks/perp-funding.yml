@@ -194,16 +194,16 @@ providers:
 
   - slug: aster
     name: Aster
-    tag: BNB Chain perps DEX, Binance compatible API, 8h funding
-    formula: "lastFundingRate from the Binance compatible premiumIndex endpoint divided by the pair's funding interval (default 8h), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    tag: BNB Chain perps DEX, Binance compatible API, 8h funding (native)
+    formula: "lastFundingRate from GET /fapi/v1/premiumIndex over the interval /fapi/v1/fundingInfo declares per pair (8h on the majors), x 24/interval x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
     queries:
-      p50: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
-      p90: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="BTC"}[24h])
-      p99: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="SOL"}[24h])
-      mean: avg_over_time(perp_funding_annualized_pct{venue="aster",asset="ETH"}[24h])
-      success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
-      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
-      series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="aster",source="aster_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="aster",asset="ETH"}[24h])
 
   - slug: ondo
     name: Ondo Perps
@@ -265,6 +265,67 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="apex",source="apex_native"} > bool (time() - 900))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="apex",asset="ETH"}[24h])
+  - slug: lighter
+    name: Lighter
+    tag: Lighter L2 order book, hourly funding read from /funding-rates
+    formula: "rate for exchange lighter from GET /api/v1/funding-rates (feed normalised to 8h) x 3 x 10000, in bps per 24h hold; Lighter settles hourly; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="lighter",source="lighter_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+  - slug: lighter-rh
+    name: Lighter RH
+    tag: Lighter deployment for Robinhood, hourly funding
+    formula: "same feed on api.rh.lighter.xyz: rate for exchange lighter x 3 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="lighter-rh",source="lighter_rh_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="lighter-rh",asset="ETH"}[24h])
+  - slug: extended
+    name: Extended
+    tag: Starknet order book, hourly funding read from /info/markets
+    formula: "hourly fundingRate from GET /api/v1/info/markets x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="extended",source="extended_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="extended",asset="ETH"}[24h])
+  - slug: edgex
+    name: edgeX
+    tag: StarkEx order book, 4h funding read from getTicker
+    formula: "fundingRate per interval from GET /api/v2/public/quote/getTicker, interval from fundingTime to nextFundingTime (4h), x 24/interval x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="edgex",source="edgex_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="edgex",asset="ETH"}[24h])
+  - slug: pacifica
+    name: Pacifica
+    tag: Solana order book, hourly funding read from /info/prices
+    formula: "hourly funding from GET /api/v1/info/prices x 24 x 10000, in bps per 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+      p90: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="BTC"}[24h])
+      p99: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="SOL"}[24h])
+      mean: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h]) * 365 / 100
+      success: (perp_venue_last_refresh_unix{venue="pacifica",source="pacifica_native"} > bool (time() - 900))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+      series: avg_over_time(perp_venue_funding_24h_bps{venue="pacifica",asset="ETH"}[24h])
+
 metric_panels:
   - id: annualized
     label: Annualized (ETH)

@@ -151,10 +151,52 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 		}
 	}
 	res.SetIfPositive(venue, mVolume24h, total)
+	res.SetIfPositive(venue, mActiveMarkets, float64(s.markets()))
 	if b := s.breadth(); b != nil {
 		res.SetBreadth(venue, b)
 	}
 	return res, nil
+}
+
+type gmxMarkets struct {
+	Markets []struct {
+		IndexToken string `json:"indexToken"`
+		IsListed   bool   `json:"isListed"`
+	} `json:"markets"`
+}
+
+// markets counts the listed perp markets on Arbitrum and Avalanche from
+// GET <chain>-api.gmxinfra.io/markets: a market with the zero index
+// token is a spot-only (swap) pool, not a perp (127 + 16 on 2026-09-23).
+func (s *GMXNativeSource) markets() int {
+	const zero = "0x0000000000000000000000000000000000000000"
+	var n int
+	for _, chain := range []string{"arbitrum", "avalanche"} {
+		req, _ := http.NewRequest("GET", fmt.Sprintf("https://%s-api.gmxinfra.io/markets", chain), nil)
+		req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com")
+		resp, err := s.client.Do(req)
+		if err != nil {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, classifyError(err.Error())).Inc()
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+			continue
+		}
+		var m gmxMarkets
+		if err := json.Unmarshal(body, &m); err != nil {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
+			continue
+		}
+		for _, mk := range m.Markets {
+			if mk.IsListed && mk.IndexToken != zero {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // gmxTokens is GET arbitrum-api.gmxinfra.io/tokens: every token GMX v2

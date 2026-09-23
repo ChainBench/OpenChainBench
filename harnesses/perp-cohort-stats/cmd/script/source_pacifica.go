@@ -45,6 +45,8 @@ type pacificaRow struct {
 	Mark         string `json:"mark"`
 	OpenInterest string `json:"open_interest"`
 	Volume24h    string `json:"volume_24h"`
+	// Hourly funding rate.
+	Funding string `json:"funding"`
 }
 
 type pacificaResponse struct {
@@ -85,6 +87,11 @@ func (s *PacificaNativeSource) Fetch() (*SourceResult, error) {
 		}
 		oiBase, _ := strconv.ParseFloat(r.OpenInterest, 64)
 		oiSum += oiBase * mark
+		if fundingAssets[r.Symbol] {
+			if fr, err := strconv.ParseFloat(r.Funding, 64); err == nil {
+				res.SetFunding(venue, r.Symbol, fundingPoint{Bps24h: fundingBps24h(fr, 1), IntervalHours: 1})
+			}
+		}
 	}
 
 	res.SetIfPositive(venue, mVolume24h, volSum)
