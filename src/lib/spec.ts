@@ -439,6 +439,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // rows) and freshness moved onto L2Beat's own sync clock.
   // v76: add bench 274 protocol-pf-ratio (dev-only). Bench SET grew.
   // v77: add bench 275 chain-stablecoin-flow (dev-only). Bench SET grew.
+  // v79: bench 274 audit: categories by fee weight, the fee floor moved
+  // onto the token, incomplete rows off the board. Providers and tags
+  // both changed, so cached entries hold the wrong peer medians.
   // v78: valueKind, and bench 273 copy (a hand-typed 20 against 41 rows,
   // two FAQ answers the page contradicts). Cached entries carry the old
   // wording into the Dataset and the quotable sentence.
@@ -448,7 +451,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v78", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v79", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -674,7 +677,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v70: lockstep with bench-unfiltered-v76 (add bench 274).
   // v71: lockstep with bench-unfiltered-v77 (add bench 275).
   // v72: lockstep with bench-unfiltered-v78 (valueKind + 273 copy).
-  ["all-benchmarks-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v73: lockstep with bench-unfiltered-v79 (bench 274 audit).
+  ["all-benchmarks-v73", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
