@@ -3,7 +3,7 @@
 slug: hyperliquid-frontends
 number: "030"
 title: Hyperliquid frontends builder revenue leaderboard
-seo_title: "Hyperliquid frontend builder fees: {{best_name}} at {{best_p50}}"
+seo_title: "Hyperliquid frontends: {{count}} apps ranked by builder fees"
 seo_description: "{{best_name}} earned {{best_p50}} in builder fees over 24h, the most of {{count}} Hyperliquid frontends ranked live by on-chain builder-code revenue."
 subtitle: How much USD builder fee revenue each Hyperliquid frontend collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
@@ -21,7 +21,7 @@ seo_intro: |
 
 
 abstract: |
-  The bench ranks 104 Hyperliquid frontends by the USD value of builder
+  The bench ranks every Hyperliquid frontend with a known builder address by the USD value of builder
   fees they collected over rolling 24 hour, 7 day and 30 day windows.
   Source data is a local hl node operated on OCB infrastructure that
   writes every block of fills to disk as one JSON line. A Go harness
@@ -77,10 +77,10 @@ faq:
   - q: "How is the 24 hour figure built?"
     a: "Same hourly bucket logic, last 24 buckets. The harness also keeps a separate fill-level window for the 24h companions that require per fill granularity (unique users, taker share, slippage proxy)."
   - q: "Which frontends are tracked?"
-    a: "104 Hyperliquid frontends with a known builder address. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and pvp UIs (pvp.trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread fi, Moonbot, Hyperdash), based.app, defi.app and HIP-3 deployers. The registry is in `miniapps/hyperliquid-frontends/local/builders.json` on the open mobula api repo. New addresses ship via public PR."
+    a: "Every Hyperliquid frontend with a known builder address, {{count}} today. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and pvp UIs (pvp.trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread fi, Moonbot, Hyperdash), based.app, defi.app and HIP-3 deployers. The registry is in `miniapps/hyperliquid-frontends/local/builders.json` on the open mobula api repo. New addresses ship via public PR."
   - q: "Why are some frontends at zero?"
     a: "Three reasons. The frontend stopped operating or hasn't routed any attributed fills in the window. The frontend never enabled the builder code attribution system. The frontend uses a builder address not yet in our registry. The Time since last fill companion separates these cases. A frontend with hours of inactivity is in the first bucket. A frontend with consistent zero across all timeframes is in the second or third."
-  - q: "Why does Phantom Perps usually lead?"
+  - q: "What kind of frontend collects the most builder fees?"
     a: "Consumer wallets integrate Hyperliquid trading directly inside the wallet UI. Their effective fee is typically in the 5 to 10 basis point range and the user base is large. The combination of wide reach times a moderate fee produces the highest absolute revenue. Pro terminals sit below because they charge less per dollar routed by design, even though their notional volume is comparable."
   - q: "How often does the page refresh?"
     a: "Every 30 seconds. The harness re-reads the local hl node hourly file every 30 seconds and Prometheus scrapes the gauges on the same cadence. The page itself uses incremental static regeneration with a 60 second window, so headline values are at most 90 seconds stale plus chain propagation delay."

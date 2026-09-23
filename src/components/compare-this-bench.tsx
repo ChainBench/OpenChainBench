@@ -44,7 +44,7 @@ const PAIR_INDEX_PATTERN: ReadonlyArray<readonly [number, number]> = [
   [1, 3],
 ];
 
-const MIN_PAIRS = 3;
+const MIN_PAIRS = 1;
 
 export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
   // Blockchains category = chain-slug results. The hub for chains

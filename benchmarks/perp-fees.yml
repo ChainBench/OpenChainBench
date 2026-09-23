@@ -16,8 +16,8 @@ seo_intro: |
   This benchmark answers the question every perp DEX comparison article
   refuses to answer with real numbers. what does it actually cost to
   open a $1000 ETH long 10x position right now, all-in, on each major
-  decentralized venue. Published fee schedules quote a taker rate of
-  0 bps (Lighter), 4.5 bps (Hyperliquid), 5 bps (dYdX) or 6 bps (GMX),
+  decentralized venue. Published fee schedules quote taker rates from
+  zero to single-digit basis points (the table carries each venue's),
   but the rack rate is half the story. The other half is the spread you
   cross at market and the price impact you eat at $1000 notional, both
   of which are missing from every comparison roundup currently ranking

@@ -26,7 +26,7 @@ seo_intro: |
   this one prices flow.
 
 abstract: |
-  The bench polls 15 perp DEX venues every 5 minutes for the trailing
+  The bench polls every venue in the cohort every 5 minutes for the trailing
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   GMX V2 stats API (hourly buckets summed across Arbitrum and Avalanche),
@@ -58,7 +58,7 @@ methodology:
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 15 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across {{count}} measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:gmx-v2}} sits at {{p50:gmx-v2}} of 24h notional. Multi-chain GLP/GM AMM perp DEX on Arbitrum and Avalanche."
   - "{{name:gains}} sits at {{p50:gains}} of 24h notional. Synthetic leveraged trading on Arbitrum, Base, Polygon and MegaETH."
@@ -83,7 +83,7 @@ prometheus:
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The trailing 24 hour taker notional volume of 11 major perp DEX venues in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
+    a: "The trailing 24 hour taker notional volume of every perp DEX venue in the cohort, in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
   - q: "Why 24h rolling instead of daily snapshots?"
     a: "Every venue in the cohort publishes a live rolling 24 hour window on its own public API, so a rolling comparison sidesteps timezone bucketing and the noise of a single calendar day. The 24h average smooths intraday micro-spikes without hiding regime shifts within the window."
   - q: "Which venues are in the cohort?"

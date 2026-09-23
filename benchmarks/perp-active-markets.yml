@@ -83,8 +83,8 @@ faq:
     a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory Gains exposes on its interface."
   - q: "Is market count a good proxy for venue breadth?"
     a: "It is the fastest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
-  - q: "Why is Aster first if Gains covers more asset classes?"
-    a: "Aster lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
+  - q: "Can a venue with more asset classes rank below one with more instruments?"
+    a: "Yes. Aster, for example, lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
 
 providers:
   - slug: aster
