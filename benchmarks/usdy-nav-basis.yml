@@ -86,7 +86,7 @@ providers:
       series: usdy_basis_bps{venue="orca-solana"}
   - slug: jupiter-solana
     name: Jupiter route (Solana)
-    tag: "Executable price of a $1,000 USDY sale into USDC, keyless quote API"
+    tag: "Executable price of a ~$1k USDY sale into USDC, keyless quote API"
     formula: "p50 over 24h of the absolute signed basis (bps) between the price Jupiter quotes for selling 1,000 USDY into USDC and the redemption price on Ondo's oracle."
     queries:
       p50: quantile_over_time(0.50, abs(usdy_basis_bps{venue="jupiter-solana"})[24h:])
