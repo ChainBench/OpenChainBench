@@ -296,8 +296,8 @@ providers:
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h]) >= bool 288) * (stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h]) > bool 0)
 
-  - slug: coinbase
-    name: Coinbase
+  - slug: coinbase-international
+    name: Coinbase International
     tag: Regulated US CEX, perpetuals via Mobula aggregator
     formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
     queries:

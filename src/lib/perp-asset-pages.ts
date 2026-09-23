@@ -77,7 +77,7 @@ const CEX_FUNDING_VENUES: Record<string, string> = {
   binance: "Binance",
   bybit: "Bybit",
   okx: "OKX",
-  coinbase: "Coinbase",
+  coinbase: "Coinbase International",
   kraken: "Kraken",
   bitget: "Bitget",
   gate: "Gate",

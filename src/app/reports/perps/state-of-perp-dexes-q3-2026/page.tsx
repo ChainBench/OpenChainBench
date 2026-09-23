@@ -9,6 +9,7 @@ import { fetchPerpCohort, PERP_VENUES, type PerpVenueRow } from "@/lib/perp-stat
 import { headlineSentence, isInsufficient, leader, rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { capSnippet } from "@/lib/seo-text";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 import type { Benchmark } from "@/types/benchmark";
 
 /**
@@ -105,7 +106,7 @@ function RankList({ b, n = 5, measuredOnly = false }: { b: Benchmark | null | un
       {rows.map((r, i) => (
         <li key={r.slug} className="tabular-nums">
           <span className="text-ink-faint mr-1.5">{i + 1}.</span>
-          <Link href={`/products/${r.slug}`} className="underline-offset-2 hover:underline">
+          <Link href={`/products/${perpProductSlug(r.slug)}`} className="underline-offset-2 hover:underline">
             {r.name}
           </Link>
           <span className="text-ink-soft"> {fmtUnit(r.ms.p50, b.unit)}</span>
@@ -174,7 +175,7 @@ export default async function StateOfPerpDexesQ3Page() {
   const breadthRanked = ranked(breadth);
   const breadthNonZero = breadthRanked.filter((r) => r.ms.p50 > 0).length;
   const volOiRanked = ranked(volOi);
-  const volOiHigh = volOiRanked.filter((r) => r.ms.p50 >= 8);
+  const volOiHigh = volOiRanked.slice(1).filter((r) => r.ms.p50 >= 8);
 
   const sections = [
     { id: "market", label: "Market map" },
@@ -276,7 +277,7 @@ export default async function StateOfPerpDexesQ3Page() {
             {byVolume.slice(0, 10).map((v, i) => (
               <li key={v.slug} className="tabular-nums">
                 <span className="text-ink-faint mr-1.5">{i + 1}.</span>
-                <Link href={`/products/${v.slug === "gmx-v2" ? "gmx" : v.slug === "trade-xyz" ? "xyz" : v.slug}#perp`} className="underline-offset-2 hover:underline">
+                <Link href={`/products/${perpProductSlug(v.slug)}#perp`} className="underline-offset-2 hover:underline">
                   {v.name}
                 </Link>
                 <span className="text-ink-soft"> {usd(v.volume30d)} · OI {usd(v.openInterest)}</span>

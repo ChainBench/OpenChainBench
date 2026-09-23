@@ -56,7 +56,7 @@ methodology:
 findings:
   - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days at {{best_p50}} of funding; {{worst_name}} cost {{worst_p50}}."
   - "{{name:hyperliquid}} accumulated {{p50:hyperliquid}}, {{name:lighter}} {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
-  - "{{name:okx}} {{p50:okx}}, {{name:coinbase}} {{p50:coinbase}}, {{name:kraken}} {{p50:kraken}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
+  - "{{name:okx}} {{p50:okx}}, {{name:coinbase-international}} {{p50:coinbase-international}}, {{name:kraken}} {{p50:kraken}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
   - "Rows with a low-sample badge (Kalshi, Vest, StandX, ApeX Omni) show the funding accumulated since they joined the cohort (average daily cost x days measured), not a month; the figure grows into a 30-day number over October and the row takes a rank after three days."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
@@ -219,8 +219,8 @@ providers:
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h])
       series: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) / 24, 30)
 
-  - slug: coinbase
-    name: Coinbase
+  - slug: coinbase-international
+    name: Coinbase International
     tag: CEX reference (Coinbase International), hourly funding, via the Mobula funding feed
     formula: "avg of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"}} over the days measured in the trailing 30 (hourly samples) x those days, capped at 30: bps of notional a long paid."
     queries:
