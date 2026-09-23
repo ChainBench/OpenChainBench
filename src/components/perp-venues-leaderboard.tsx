@@ -300,12 +300,13 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
-  // Same bands as the perp-volume-oi-ratio bench, on 24h volume: up to 3x
-  // is where order books with real holders sit (teal), 3x to 8x is a
-  // high-churn book, zero-fee or incentive-driven (amber), 8x and above is
-  // where the volume figure deserves a second look (red).
+  // Same bands as the perp-volume-oi-ratio bench, on 24h volume: 0.3x to
+  // 4x is where order books with real holders (0.3x to 3x) and pool or
+  // oracle venues (1x to 4x) sit (teal); under 0.3x the volume may be
+  // thin against the positions, 4x to 8x is a high-churn book (amber);
+  // 8x and above is where the volume figure deserves a second look (red).
   const band =
-    ratio <= 3
+    ratio >= 0.3 && ratio <= 4
       ? { fg: "text-teal-700", bg: "bg-teal-500/10", border: "border-teal-500/30" }
       : ratio < 8
         ? { fg: "text-amber-700", bg: "bg-amber-500/10", border: "border-amber-500/30" }
@@ -315,11 +316,13 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
       className="px-3 py-2 tabular-nums"
       style={{ fontFamily: "var(--font-mono, monospace)" }}
       title={
-        ratio <= 3
-          ? "24h volume over open interest up to 3x: the band where order books with real holders sit (bench perp-volume-oi-ratio)."
-          : ratio < 8
-            ? "24h volume over open interest between 3x and 8x: a high-churn book, common on zero-fee venues and incentive programs."
-            : "24h volume over open interest of 8x and above: the book turns over more than eight times a day, where the volume figure deserves a second look."
+        ratio >= 0.3 && ratio <= 4
+          ? "24h volume over open interest between 0.3x and 4x: order books with real holders sit at 0.3x to 3x, pool and oracle venues at 1x to 4x (bench perp-volume-oi-ratio)."
+          : ratio < 0.3
+            ? "24h volume over open interest under 0.3x: positions turn over slowly, the volume may be thin against them."
+            : ratio < 8
+              ? "24h volume over open interest between 4x and 8x: a high-churn book, common on zero-fee venues and incentive programs."
+              : "24h volume over open interest of 8x and above: the book turns over more than eight times a day, where the volume figure deserves a second look."
       }
     >
       <span

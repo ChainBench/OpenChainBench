@@ -314,12 +314,17 @@ func (s *AsterNativeSource) funding(res *SourceResult, venue string) {
 		return
 	}
 	intervals := map[string]float64{}
-	if body, err := s.get("https://fapi.asterdex.com/fapi/v1/fundingInfo"); err == nil {
+	if body, err := s.get("https://fapi.asterdex.com/fapi/v1/fundingInfo"); err != nil {
+		// The majors settle every 8 h (the default below); the miss is
+		// counted so a change of interval does not go unnoticed.
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, classifyError(err.Error())).Inc()
+	} else {
 		var infos []asterFundingInfo
-		if json.Unmarshal(body, &infos) == nil {
-			for _, i := range infos {
-				intervals[i.Symbol] = i.FundingIntervalHours
-			}
+		if err := json.Unmarshal(body, &infos); err != nil {
+			perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, "parse").Inc()
+		}
+		for _, i := range infos {
+			intervals[i.Symbol] = i.FundingIntervalHours
 		}
 	}
 	for _, p := range premiums {

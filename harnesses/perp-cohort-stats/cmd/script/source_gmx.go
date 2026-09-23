@@ -169,9 +169,12 @@ type gmxMarkets struct {
 
 // markets counts the listed perp markets on Arbitrum and Avalanche from
 // GET <chain>-api.gmxinfra.io/markets: a market with the zero index
-// token is a spot-only (swap) pool, not a perp (132 + 19 rows, 141
-// listed perps on 2026-09-23). Both catalogues or nothing: a one-chain
-// count would win over the DefiLlama fallback and read as a delisting.
+// token is a spot-only (swap) pool, not a perp. A perp market is one
+// index token per chain: GMX lists several pools per index (ETH/USDC,
+// ETH single-sided), which are one tradable market, so the count is
+// distinct index tokens (2026-09-23: 132 + 19 rows, 141 listed pools).
+// Both catalogues or nothing: a one-chain count would win over the
+// DefiLlama fallback and read as a delisting.
 func (s *GMXNativeSource) markets() (int, bool) {
 	const zero = "0x0000000000000000000000000000000000000000"
 	var n int
@@ -194,8 +197,10 @@ func (s *GMXNativeSource) markets() (int, bool) {
 			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
 			return 0, false
 		}
+		seen := map[string]bool{}
 		for _, mk := range m.Markets {
-			if mk.IsListed && mk.IndexToken != zero {
+			if mk.IsListed && mk.IndexToken != zero && !seen[mk.IndexToken] {
+				seen[mk.IndexToken] = true
 				n++
 			}
 		}

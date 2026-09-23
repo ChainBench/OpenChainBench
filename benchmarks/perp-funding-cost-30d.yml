@@ -12,12 +12,13 @@ unit: bp
 higher_is_better: false
 expected_n: 720
 disclaimer: |
-  A venue that joined the cohort less than 30 days ago (Kalshi, Vest,
-  StandX, ApeX Omni on 2026-09-22) shows the average daily cost times
-  the days it has been measured, with a sample count well under a month
-  of hours; the sample-health badge marks those rows and they are not
-  ranked before three days of data. Funding is signed: on a month where shorts paid longs the
-  figure is negative and "cheapest" means "was paid the most".
+  Every row is a month of funding at the venue's average daily cost over
+  the hours measured in the trailing 30 days (average x 30). A venue
+  ranks only with 576 of the 720 hours (24 days) behind that average;
+  under the floor the row is provisional, unranked, and shows its day
+  count (the venues added on 2026-09-22 and 2026-09-23 start there).
+  Funding is signed: on a month where shorts paid longs the figure is
+  negative and "cheapest" means "was paid the most".
 seo_intro: |
   A funding rate quoted per hour or per 8 hours says what a position pays
   right now. A trader who held an ETH long through September did not pay
@@ -43,8 +44,9 @@ abstract: |
   number of hours behind the average: 720 for a full month, and a venue
   ranks only with 576 of them (24 days), because a total over fewer days
   would rank on coverage rather than on cost. Under that floor the row
-  is shown unranked with its day count, its figure a month extrapolated
-  from the days measured, which the sample-health badge flags.
+  is provisional and unranked, with its day count: a month at the rate
+  of the days measured, which the sample-health badge flags until 15
+  days and the provisional label until 24.
 methodology:
   - "Source series: perp_venue_funding_24h_bps{venue,asset} from the perp-cohort-stats harness (each venue's own rate endpoint where the harness reads one: Kalshi, Vest, StandX, ApeX, Polymarket, Extended, edgeX, Pacifica, Aster, Lighter; the Mobula funding aggregator for Hyperliquid and the CEX rows), sampled every 60 seconds and read here on an hourly grid ([30d:1h])."
   - "30d cost = avg_over_time(series[30d:1h]) x 30: the average daily cost over the hours measured in the window, times a month. A venue is ranked only with 576 hourly samples (24 days) behind that average; under the floor the figure is a month at the rate of the days measured and the row carries its day count. 7d cost is avg_over_time(series[7d:1h]) x 7 (mean column)."
@@ -73,7 +75,7 @@ faq:
   - q: "Why are CEXs on a perp DEX bench?"
     a: "Because the reference a carry trader compares a DEX against is Binance, Bybit or OKX. The CEX rows come from the same Mobula funding feed the perp-funding bench uses (so does Hyperliquid's); the other DEX rows and Kalshi come from each venue's own API."
   - q: "Why do Kalshi, Vest, StandX and ApeX show a low-sample badge?"
-    a: "They joined the cohort on 2026-09-22 (Extended, edgeX, Pacifica, Aster and Lighter RH on 2026-09-23). Their figure is a month at the average daily cost of the days measured since then; the sample count on the row says how many hours are behind it. They take a rank once 576 hours (24 days) are, and lose the badge at 15 days."
+    a: "They joined the cohort on 2026-09-22 (Extended, edgeX, Pacifica, Aster and Lighter RH on 2026-09-23). Their figure is a month at the average daily cost of the days measured since then; the sample count on the row says how many hours are behind it. The badge goes at 15 days (half a month of samples), the provisional label and the rank come at 576 hours, 24 days."
 
 providers:
   - slug: hyperliquid
