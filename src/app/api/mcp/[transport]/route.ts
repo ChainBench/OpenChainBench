@@ -8,7 +8,6 @@ import {
   citableAsOf,
   citationQuote,
   cohortSummaries,
-  cohortViews,
   fieldValue,
   headlineSentence,
   isInsufficient,
@@ -16,7 +15,7 @@ import {
   rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
-import { fmtUnit } from "@/lib/format";
+import { benchMarkdown } from "@/lib/markdown-views";
 import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -546,60 +545,7 @@ const mcpHandler = createMcpHandler(
         // "Etherscan leads" then a numbered list with Owlracle at #1.
         const ranked = insufficient ? [] : rankedCandidates(b);
 
-        const md: string[] = [];
-        md.push(`# ${b.title}`);
-        md.push("");
-        md.push(`> ${b.subtitle}`);
-        md.push("");
-        md.push(`- Category: ${b.category}`);
-        md.push(`- Metric: ${b.metric} (${b.unit})`);
-        md.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
-        md.push(`- Source: ${b.source}`);
-        md.push(`- License: CC-BY-4.0`);
-        {
-          const asOf = citableAsOf(b);
-          md.push(`- Last sample: ${asOf ?? "(no measurement yet, draft)"}`);
-        }
-        md.push("");
-        md.push(`**Headline.** ${headlineSentence(b)}`);
-        md.push("");
-        md.push(`**Citation quote.** ${citationQuote(b, SITE.url)}`);
-        md.push("");
-        if (ranked.length > 0) {
-          md.push(`## Rankings (p50, 24h)`);
-          md.push("");
-          for (let i = 0; i < ranked.length; i++) {
-            const r = ranked[i];
-            md.push(
-              `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
-            );
-          }
-          md.push("");
-        }
-        for (const c of cohortViews(b).filter((v) => !v.headline)) {
-          const cohortRanked = rankedCandidates(c.bench);
-          md.push(`## ${c.label} cohort (ranked separately)`);
-          md.push("");
-          md.push(`Never compared with the rows above: different endpoints, 120 s cadence. Page: ${SITE.url}/benchmarks/${b.slug}#tier=${c.tier}, JSON: ${SITE.url}/api/stat/${b.slug}?tier=${c.tier}`);
-          md.push("");
-          md.push(`**Headline.** ${headlineSentence(c.bench)}`);
-          md.push("");
-          for (let i = 0; i < cohortRanked.length; i++) {
-            const r = cohortRanked[i];
-            md.push(
-              `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
-            );
-          }
-          md.push("");
-        }
-        if (b.methodology.length > 0) {
-          md.push(`## Methodology`);
-          md.push("");
-          for (const m of b.methodology) md.push(`- ${m}`);
-          md.push("");
-        }
-        md.push(`---`);
-        md.push(`Cite this benchmark: link ${SITE.url}/benchmarks/${b.slug} · JSON ${SITE.url}/api/stat/${b.slug}`);
+        const md = benchMarkdown(b);
 
         // We attach both Markdown (default rendering) and JSON (structured
         // access) so clients can pick whichever matches their context.
@@ -639,7 +585,7 @@ const mcpHandler = createMcpHandler(
         };
         return {
           contents: [
-            { uri: uri.href, mimeType: "text/markdown", text: md.join("\n") },
+            { uri: uri.href, mimeType: "text/markdown", text: md },
             { uri: `${uri.href}.json`, mimeType: "application/json", text: JSON.stringify(payload, null, 2) },
           ],
         };

@@ -61,6 +61,20 @@ var Registry = []Venue{
 	{Slug: "lighter-rh", Name: "Lighter RH", Type: "perp", Chain: "lighter-rh"},
 	// trade.xyz is the operator of Hyperliquid's `xyz` HIP-3 dex.
 	{Slug: "trade-xyz", Name: "trade.xyz", Type: "perp", Chain: "hyperliquid"},
+	// Centralised reference rows (phase 4, 2026-09-23): volume, OI and pair
+	// counts as reported to CoinGecko, funding from the Mobula feed. Type
+	// "cex" so the hub can keep them behind a selector; no bench ranks
+	// them on volume against the measured DEX rows.
+	{Slug: "binance", Name: "Binance", Type: "cex", Chain: "offchain"},
+	{Slug: "okx", Name: "OKX", Type: "cex", Chain: "offchain"},
+	{Slug: "bybit", Name: "Bybit", Type: "cex", Chain: "offchain"},
+	{Slug: "gate", Name: "Gate", Type: "cex", Chain: "offchain"},
+	{Slug: "coinbase", Name: "Coinbase International", Type: "cex", Chain: "offchain"},
+	{Slug: "bitget", Name: "Bitget", Type: "cex", Chain: "offchain"},
+	{Slug: "deribit", Name: "Deribit", Type: "cex", Chain: "offchain"},
+	{Slug: "kraken", Name: "Kraken", Type: "cex", Chain: "offchain"},
+	{Slug: "kucoin", Name: "KuCoin", Type: "cex", Chain: "offchain"},
+	{Slug: "mexc", Name: "MEXC", Type: "cex", Chain: "offchain"},
 }
 
 // VenueBySlug returns the Venue with the given slug, or nil if not found.

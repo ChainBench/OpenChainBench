@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PerpVenueRow } from "@/lib/perp-stats";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 
 /**
  * Sortable + searchable venue leaderboard for /perps. Mirrors the PM
@@ -155,9 +156,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              // GMX v2's product slug is "gmx"; all others match cohort slug.
-              const productHref =
-                r.slug === "gmx-v2" ? "/products/gmx#perp" : `/products/${r.slug}#perp`;
+              const productHref = `/products/${perpProductSlug(r.slug)}#perp`;
               const vor = ratio(r);
               return (
                 <tr
@@ -175,7 +174,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ProviderLogo
-                        slug={r.slug === "gmx-v2" ? "gmx" : r.slug}
+                        slug={perpProductSlug(r.slug)}
                         name={r.name}
                         size={18}
                       />

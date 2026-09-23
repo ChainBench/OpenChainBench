@@ -108,11 +108,19 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    // The three URL families with a Markdown variant (rewrites() above)
+    // vary on Accept, on the HTML side too: a shared cache keyed on the URL
+    // alone would otherwise hand a browser the Markdown an agent fetched
+    // first, or the reverse.
+    const varyAccept = { key: "Vary", value: "Accept" };
     return [
       {
         source: "/:path*",
         headers: SECURITY_HEADERS,
       },
+      { source: "/benchmarks/:slug", headers: [varyAccept] },
+      { source: "/products/:slug", headers: [varyAccept] },
+      { source: "/perps", headers: [varyAccept] },
       {
         // The RPC speed test fires fetch() at user-supplied endpoints
         // straight from the browser — the whole product. The site-wide
@@ -173,7 +181,30 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [
+    // Markdown negotiation: a client whose Accept header names
+    // text/markdown and not text/html (agents, curl) gets the Markdown
+    // view of a bench, the perps hub or a product at the page's own URL,
+    // served by /api/md/<path>. Browsers send text/html first and never
+    // match. The middleware stays a literal list of retired URLs.
+    // beforeFiles: /perps is a concrete page, and a bare array (afterFiles)
+    // runs after the filesystem match, so the rule would never fire there.
+    // Case-insensitive on the two media types (JS RegExp here takes no
+    // flags). The rule is deliberately simple, not a q-value comparison:
+    // any text/html token above q=0 keeps HTML, whatever q the markdown
+    // token carries, and a markdown token at q=0 is no preference. A
+    // client that wants Markdown sends `Accept: text/markdown` alone (or
+    // text/html;q=0), which is what agents and curl do; browsers never
+    // name text/markdown and always keep HTML.
+    const ci = (s: string) => s.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
+    const markdownOnly = [
+      { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9]))).*${ci("text/markdown")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9])).*$` },
+    ];
+    const beforeFiles = [
+      { source: "/benchmarks/:slug", has: markdownOnly, destination: "/api/md/benchmarks/:slug" },
+      { source: "/products/:slug", has: markdownOnly, destination: "/api/md/products/:slug" },
+      { source: "/perps", has: markdownOnly, destination: "/api/md/perps" },
+    ];
+    const afterFiles = [
       // PostHog reverse proxy — routes /ingest/* through the Next.js server
       // so ad-blockers that block posthog.com directly don't drop events.
       // api_host in posthog-provider.tsx is set to "/ingest" to match.
@@ -186,6 +217,7 @@ const nextConfig: NextConfig = {
         destination: "https://us.i.posthog.com/:path*",
       },
     ];
+    return { beforeFiles, afterFiles, fallback: [] };
   },
   async redirects() {
     // RPC cluster promotion (2026-07): the per-chain RPC leaderboards

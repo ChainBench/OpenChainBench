@@ -4,7 +4,7 @@ import { loadAlternativeSlugs } from "@/lib/alternatives";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
 import { findVenue, getPerpVolumeHistory } from "@/lib/perp-volume-history";
-import { PERP_VENUES } from "@/lib/perp-stats";
+import { PERP_VENUES, type PerpVenueType } from "@/lib/perp-stats";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { logoPath } from "@/lib/logo-manifest";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
@@ -53,6 +53,16 @@ export type PerpVenueSectionProps = {
   /** Per-bench cohort rows produced by the parent context (already
    *  warm in the same fetchPerpCohort cache as the hub). */
   benchRows: PerpVenueBenchRow[];
+  /** onchain, regulated or cex. CEX rows are venue-reported reference
+   *  rows on the leaderboard: the header and the KPI label say so, and
+   *  they never appear as "other venues" on a DEX page. */
+  venueType?: PerpVenueType;
+};
+
+const VENUE_TYPE_SENTENCE: Record<PerpVenueType, string> = {
+  onchain: "Perpetual DEX tracked by OpenChainBench",
+  regulated: "Regulated perp venue tracked by OpenChainBench",
+  cex: "Centralised perp venue, reference row on the perp leaderboard",
 };
 
 /** Benches whose results decide which other venues share a benchmark. */
@@ -75,6 +85,7 @@ export async function PerpVenueSection({
   externalUrl,
   cohortSlug,
   benchRows,
+  venueType = "onchain",
 }: PerpVenueSectionProps) {
   const [kpis, altSlugs, extRaw, volumeHistory, ...benchBlobs] = await Promise.all([
     fetchPerpVenueKpis(cohortSlug),
@@ -134,7 +145,7 @@ export async function PerpVenueSection({
   }
 
   const otherVenues = PERP_VENUES
-    .filter((v) => v.slug !== cohortSlug)
+    .filter((v) => v.slug !== cohortSlug && v.venueType !== "cex")
     .map((v) => ({
       ...v,
       sharedCount: benchBlobs.filter(
@@ -160,7 +171,7 @@ export async function PerpVenueSection({
           >
             {chainLabel}
           </span>
-          <span className="text-sm text-ink-muted">Perpetual DEX tracked by OpenChainBench</span>
+          <span className="text-sm text-ink-muted">{VENUE_TYPE_SENTENCE[venueType]}</span>
         </div>
         <a
           href={externalUrl}
@@ -174,7 +185,12 @@ export async function PerpVenueSection({
 
       {kpis && (
         <div className="mb-8">
-          <SectionLabel>Live KPIs</SectionLabel>
+          <SectionLabel>{venueType === "cex" ? "Venue-reported KPIs" : "Live KPIs"}</SectionLabel>
+          {venueType === "cex" && (
+            <p className="mb-3 text-xs text-ink-faint">
+              Volume, open interest and market count as the exchange reports them to CoinGecko, not an OpenChainBench measurement; funding from the same feed as the DEX rows.
+            </p>
+          )}
           <PerpVenueKpiStrip kpis={kpis} />
         </div>
       )}

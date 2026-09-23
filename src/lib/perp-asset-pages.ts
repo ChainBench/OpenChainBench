@@ -77,7 +77,7 @@ const CEX_FUNDING_VENUES: Record<string, string> = {
   binance: "Binance",
   bybit: "Bybit",
   okx: "OKX",
-  coinbase: "Coinbase",
+  coinbase: "Coinbase International",
   kraken: "Kraken",
   bitget: "Bitget",
   gate: "Gate",
@@ -185,7 +185,9 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
       funding30dSamples: null,
     });
     for (const v of PERP_VENUES) rows.set(v.slug, blank(v.slug, v.name, v.venueType));
-    for (const [slug, name] of Object.entries(CEX_FUNDING_VENUES)) rows.set(slug, blank(slug, name, "cex"));
+    // The registry row wins the display name (Coinbase International on
+    // the hub and here alike); the map only covers a CEX the registry lacks.
+    for (const [slug, name] of Object.entries(CEX_FUNDING_VENUES)) if (!rows.has(slug)) rows.set(slug, blank(slug, name, "cex"));
 
     // First writer wins: samples are ordered cohort feed then bench feed.
     const put = (samples: Sample[], labelKey: "asset" | "chain", field: keyof PerpAssetVenueRow) => {

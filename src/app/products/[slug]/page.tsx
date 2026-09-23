@@ -872,6 +872,7 @@ export default async function ProviderPage({
                 chainLabel={perpContext.chainLabel}
                 externalUrl={perpContext.externalUrl}
                 benchRows={perpContext.benchRows}
+                venueType={perpContext.venueType}
               />
             ),
           });

@@ -1339,6 +1339,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
     twitter: "@moonshotapp",
   },
+  "coinbase-international": {
+    url: "https://international.coinbase.com",
+    description:
+      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@CoinbaseIntExch",
+  },
   coinbase: {
     url: "https://www.coinbase.com",
     description:
@@ -1909,6 +1915,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Derive (formerly Lyra) is an options and perpetuals exchange on its own OP Stack rollup with an off-chain orderbook and on-chain settlement. DRV is the protocol token.",
     twitter: "@derivexyz",
+  },
+  bitget: {
+    url: "https://www.bitget.com",
+    description:
+      "Centralised exchange with a USDT-margined perpetual futures book (Bitget Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@bitgetglobal",
+  },
+  gate: {
+    url: "https://www.gate.com",
+    description:
+      "Centralised exchange with a perpetual futures book (Gate Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@gate_io",
+  },
+  kucoin: {
+    url: "https://www.kucoin.com",
+    description:
+      "Centralised exchange with a perpetual futures book (KuCoin Futures). On OpenChainBench as a funding reference row from the Mobula feed; CoinGecko lists no derivatives entry for it, so volume and open interest are not shown.",
+    twitter: "@kucoincom",
+  },
+  mexc: {
+    url: "https://www.mexc.com",
+    description:
+      "Centralised exchange with a perpetual futures book (MEXC Futures). On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+    twitter: "@MEXC_Official",
+  },
+  deribit: {
+    url: "https://www.deribit.com",
+    description:
+      "Centralised derivatives exchange, options and perpetual futures on BTC, ETH and a few majors. On OpenChainBench as a funding reference row from the Mobula feed; CoinGecko's figures for it are options-heavy and would not describe a perp book, so volume and open interest are not shown.",
+    twitter: "@DeribitExchange",
   },
   nado: {
     url: "https://nado.xyz",

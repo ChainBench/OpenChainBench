@@ -15,7 +15,14 @@ export type PerpHeadToHead = { slug: string; aName: string; bName: string; count
 export async function perpHeadToHead(limit = 8): Promise<PerpHeadToHead[]> {
   const profiles = await getProviders();
   const bySlug = new Map(profiles.map((p) => [p.slug, p]));
-  const slugs = [...new Set(PERP_VENUES.map((v) => PERP_VENUE_META[v.slug]?.productSlug ?? v.slug))];
+  // Measured venues only: the CEX rows share the funding benches with
+  // each other, which would clear the link threshold with no fee, volume,
+  // OI or slippage measurement behind the pair.
+  const slugs = [
+    ...new Set(
+      PERP_VENUES.filter((v) => v.venueType !== "cex").map((v) => PERP_VENUE_META[v.slug]?.productSlug ?? v.slug),
+    ),
+  ];
   const out: PerpHeadToHead[] = [];
   for (let i = 0; i < slugs.length; i++) {
     for (let j = i + 1; j < slugs.length; j++) {
