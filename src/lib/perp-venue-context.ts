@@ -66,9 +66,10 @@ export const PERP_VENUE_META: Record<
 };
 
 /**
- * Slugs that surface the /perps pill on the product header (mirrors
- * the /prediction-markets pattern). All cohort venues plus the GMX
- * product slug, which the cohort tracks under gmx-v2.
+ * Product slugs that surface the /perps pill on the product header
+ * (mirrors the /prediction-markets pattern): each cohort venue's product
+ * page, so gmx and xyz and coinbase-international rather than the cohort
+ * keys gmx-v2, trade-xyz and coinbase.
  */
 export const PERP_PRODUCT_PILL_SLUGS: ReadonlySet<string> = new Set(
   // A key with a productSlug is served by that product page, never by a

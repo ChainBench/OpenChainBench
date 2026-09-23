@@ -677,8 +677,10 @@ const PERP_VENUE_SEED = [
   { slug: "apex", name: "ApeX Omni" },
   { slug: "lighter-rh", name: "Lighter RH" },
   // The Coinbase perp row (cohort key "coinbase") is Coinbase
-  // International; the funding benches list it under "coinbase", so this
-  // page has no bench appearance of its own and needs the seed.
+  // International. The funding benches key it coinbase-international, so
+  // the page normally has appearances and the seed is skipped; it stays
+  // as the safety net so the page exists when those benches are draft or
+  // filtered out of a deploy.
   { slug: "coinbase-international", name: "Coinbase International" },
 ];
 

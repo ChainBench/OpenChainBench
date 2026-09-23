@@ -34,6 +34,7 @@ const usd = (v: number | null | undefined): string => {
   if (v == null || !Number.isFinite(v)) return "n/a";
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
   return `$${v.toFixed(0)}`;
 };
 
@@ -165,15 +166,24 @@ export default async function StateOfPerpDexesQ3Page() {
   const top3Share = lead && totalVol > 0 ? byVolume.slice(0, 3).reduce((s, v) => s + (v.volume30d ?? 0), 0) / totalVol : null;
   // 24h, the figure the venues actually report to CoinGecko; the 30-day
   // column on CEX rows is OpenChainBench's own average of that series.
-  const cexVol24h = cex.reduce((s, v) => s + (v.volume24h ?? 0), 0);
-  const measuredVol24h = measured.reduce((s, v) => s + (v.volume24h ?? 0), 0);
-  // The multiple is quotable, so it needs most of both sides present: a
-  // partial harness cycle (a few DEX rows answered, the CEX list cached)
-  // would otherwise publish an inflated ratio.
-  const measuredWith24h = measured.filter((v) => v.volume24h != null).length;
-  const cexWith24h = cex.filter((v) => v.volume24h != null).length;
+  // Sums over the rows that reported a 24h figure, and the sentence names
+  // those counts. The multiple is quotable, so it needs most of both sides
+  // present: nine tenths of the measured venues and six of the eight
+  // centralised books CoinGecko lists (Deribit and KuCoin are funding-only
+  // rows and never report here). A partial harness cycle would otherwise
+  // publish an inflated ratio.
+  const measuredReporting = measured.filter((v) => v.volume24h != null);
+  const cexReporting = cex.filter((v) => v.volume24h != null);
+  const measuredVol24h = measuredReporting.reduce((s, v) => s + (v.volume24h ?? 0), 0);
+  const cexVol24h = cexReporting.reduce((s, v) => s + (v.volume24h ?? 0), 0);
+  const CEX_REPORTERS = 8;
   const scaleReady =
-    cexVol24h > 0 && measuredVol24h > 0 && measured.length > 0 && measuredWith24h >= 0.8 * measured.length && cexWith24h >= 5;
+    cexVol24h > 0 &&
+    measuredVol24h > 0 &&
+    measured.length > 0 &&
+    measuredReporting.length >= 0.9 * measured.length &&
+    cexReporting.length >= 6 &&
+    cexReporting.length <= CEX_REPORTERS;
   const asOfIso = cohort ? new Date(cohort.asOf * 1000).toISOString() : null;
   const asOfLabel = asOfIso ? asOfIso.slice(0, 16).replace("T", " ") + " UTC" : null;
   const pageUrl = `${SITE.url}${PATH}`;
@@ -278,7 +288,7 @@ export default async function StateOfPerpDexesQ3Page() {
             {byVolume[1] ? `, ahead of ${byVolume[1].name} (${usd(byVolume[1].volume30d)})` : ""}
             {byVolume[2] ? ` and ${byVolume[2].name} (${usd(byVolume[2].volume30d)})` : ""}.
             {top3Share != null ? ` The top three carry ${(top3Share * 100).toFixed(0)} percent of the ${usd(totalVol)} the measured cohort traded over 30 days;` : ""} cohort open interest stands at {usd(cohort!.totals.cohortOpenInterest)}.
-            {scaleReady ? ` For scale, on the same 24-hour window the measured cohort traded ${usd(measuredVol24h)} while the centralised books the board carries as reference declared ${usd(cexVol24h)} of derivatives volume to CoinGecko, ${(cexVol24h / measuredVol24h).toFixed(1)} times as much; the CEX figure is venue-reported, not an OpenChainBench measurement.` : ""}
+            {scaleReady ? ` For scale, on the same 24-hour window the ${measuredReporting.length} measured venues that reported traded ${usd(measuredVol24h)} while ${cexReporting.length} centralised books the board carries as reference declared ${usd(cexVol24h)} of derivatives volume to CoinGecko, ${(cexVol24h / measuredVol24h).toFixed(1)} times as much; the CEX figure is venue-reported, not an OpenChainBench measurement.` : ""}
           </p>
         ) : (
           <p className="mt-3 text-sm text-ink-faint italic">Cohort data is temporarily unavailable.</p>

@@ -189,9 +189,12 @@ const nextConfig: NextConfig = {
     // beforeFiles: /perps is a concrete page, and a bare array (afterFiles)
     // runs after the filesystem match, so the rule would never fire there.
     // Case-insensitive on the two media types (JS RegExp here takes no
-    // flags). text/html blocks the rewrite unless its q-value is exactly
-    // zero (q=0, q=0.0); a fractional q like q=0.9 still ranks HTML
-    // above a markdown token that carries a lower q, so it stays HTML.
+    // flags). The rule is deliberately simple, not a q-value comparison:
+    // any text/html token above q=0 keeps HTML, whatever q the markdown
+    // token carries, and a markdown token at q=0 is no preference. A
+    // client that wants Markdown sends `Accept: text/markdown` alone (or
+    // text/html;q=0), which is what agents and curl do; browsers never
+    // name text/markdown and always keep HTML.
     const ci = (s: string) => s.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
     const markdownOnly = [
       { type: "header" as const, key: "accept", value: `^(?!.*${ci("text/html")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9]))).*${ci("text/markdown")}(?!\\s*;\\s*q=0(?:\\.0+)?(?![.0-9])).*$` },
