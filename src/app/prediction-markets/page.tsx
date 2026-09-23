@@ -1,10 +1,19 @@
 import Link from "next/link";
-import { fetchPmCohort } from "@/lib/pm-stats";
+import { fetchPmCohort, type PmCohortSummary } from "@/lib/pm-stats";
 import { REMOVED_ANSWER_SLUGS } from "@/lib/removed-benches";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
-import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import {
+  safeJsonLd,
+  buildBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
+} from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import {
+  buildCitationMeta,
+  CREATOR_PUBLISHER,
+  DATASET_LICENSE,
+} from "@/lib/dataset-jsonld";
 
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
@@ -40,19 +49,142 @@ const ANSWERS = [
   { slug: "prediction-market-api-for-developers", question: "Which prediction market API is best for developers?" },
 ] as const;
 
-const DESCRIPTION =
-  "Polymarket vs Kalshi plus Limitless and Myriad on one cross-venue leaderboard: volume, open interest, resolution delay and API latency.";
+const FALLBACK_DESCRIPTION =
+  "Every tracked prediction market on one cross-venue leaderboard: open interest, 24h volume, turnover, resolution delay and API latency.";
 
-export const metadata: import("next").Metadata = pageMetadata({
-  path: "/prediction-markets",
-  title: "Prediction markets leaderboard 2026",
-  description: DESCRIPTION,
-});
+const TITLE =
+  "Prediction market leaderboard 2026: open interest, volume, turnover";
+
+// Same numbers as the lede and the table, read from the same cohort.
+// 158 characters at most: the SERP truncates beyond that.
+function describe(cohort: PmCohortSummary | null): string {
+  if (!cohort) return FALLBACK_DESCRIPTION;
+  const lead = leaderByOi(cohort);
+  const n = cohort.totals.trackedVenues;
+  if (!lead || lead.openInterest == null) return FALLBACK_DESCRIPTION;
+  return `${lead.name} leads ${n} prediction markets on open interest at ${fmtUSD(lead.openInterest)}. Open interest, volume, turnover and resolution delay, measured live.`;
+}
+
+// Highest open interest among venues that report one. Sorted here rather
+// than relying on registry order, which puts Polymarket first whatever
+// the numbers say.
+function leaderByOi(cohort: PmCohortSummary) {
+  return (
+    [...cohort.venues]
+      .filter((v) => v.openInterest != null)
+      .sort((a, b) => (b.openInterest ?? -1) - (a.openInterest ?? -1))[0] ?? null
+  );
+}
+
+export async function generateMetadata(): Promise<import("next").Metadata> {
+  const cohort = await fetchPmCohort();
+  return {
+    ...pageMetadata({
+      path: "/prediction-markets",
+      title: TITLE,
+      description: describe(cohort),
+    }),
+    other: buildCitationMeta({
+      title: TITLE,
+      url: `${SITE.url}/prediction-markets`,
+      asOfIso: cohort ? new Date(cohort.asOf * 1000).toISOString() : null,
+      jsonUrl: `${SITE.url}/api/stat/pm-open-interest`,
+    }),
+  };
+}
 
 export const revalidate = 3600;
 
 export default async function PredictionMarketsHubPage() {
   const cohort = await fetchPmCohort();
+
+  const lead = cohort ? leaderByOi(cohort) : null;
+  const tracked = cohort?.totals.trackedVenues ?? 0;
+  const asOfLabel = cohort
+    ? `${new Date(cohort.asOf * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`
+    : null;
+  // Widest turnover spread in the cohort: the one reading on this page
+  // that no venue publishes about itself and no aggregator prints.
+  const byTurnover = (cohort?.venues ?? [])
+    .filter((v) => v.turnover24h != null)
+    .sort((a, b) => (b.turnover24h ?? 0) - (a.turnover24h ?? 0));
+  const fastest = byTurnover[0] ?? null;
+  const slowest = byTurnover[byTurnover.length - 1] ?? null;
+  const leadSentence =
+    lead && lead.openInterest != null
+      ? `${lead.name} holds ${fmtUSD(lead.openInterest)} of open interest, the largest of ${tracked} tracked venues.`
+      : "";
+
+  const faq = cohort
+    ? [
+        {
+          q: "Which prediction market has the most open interest right now?",
+          a:
+            lead && lead.openInterest != null
+              ? `${lead.name}, at ${fmtUSD(lead.openInterest)}. The table below ranks ${tracked} tracked venues by open interest as of ${asOfLabel}.`
+              : "The leaderboard below ranks every tracked venue by open interest, read from each venue's public API or from the DefiLlama aggregate.",
+        },
+        {
+          q: "What does turnover mean on this page?",
+          a:
+            fastest &&
+            slowest &&
+            fastest.turnover24h != null &&
+            slowest.turnover24h != null &&
+            fastest.slug !== slowest.slug
+              ? `24-hour volume divided by open interest: how many times a venue's book turns over in a day. ${slowest.name} sits at ${fmtTurnover(slowest.turnover24h)} and ${fastest.name} at ${fmtTurnover(fastest.turnover24h)}. A low figure means capital parked on long-dated outcomes; a high one means short-dated markets on a thin book. Two different businesses under one category label.`
+              : "24-hour volume divided by open interest: how many times a venue's book turns over in a day. A low figure means capital parked on long-dated outcomes, a high one means short-dated markets on a thin book.",
+        },
+        {
+          q: "Where do the open interest and volume numbers come from?",
+          a: "From each venue's own public API where it has one (Polymarket gamma, Kalshi REST, Limitless, Myriad, Manifold), and from the DefiLlama protocol and DEX aggregates for the rest, polled by the pm-cohort-stats harness and normalized to USD. Where a venue's own feed is a partial view, the aggregate wins: Kalshi's unauthenticated trades endpoint reports a fraction of the book, so its volume is taken from the aggregate.",
+        },
+        {
+          q: "Why do some venues show no latency or resolution figure?",
+          a: "Those columns come from separate probes (pm-api-latency, pm-resolution-delay, pm-ws-latency) which run against venues with a documented public API. A venue fed through the DefiLlama aggregate carries open interest and volume but no probe columns, and shows a dash rather than a zero.",
+        },
+        {
+          q: "Can I cite these numbers?",
+          a: "Yes. Every figure is reproducible from public sources, released under CC BY 4.0, and the bench pages expose machine-readable /api/stat endpoints with the same values and timestamp.",
+        },
+      ]
+    : [];
+  const faqLd = buildFaqPageJsonLd(
+    faq,
+    `${SITE.url}/prediction-markets`,
+    null,
+    "Prediction market leaderboard: frequently asked questions",
+  );
+
+  const datasetLd = cohort
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "@id": `${SITE.url}/prediction-markets#dataset`,
+        name: "Prediction market leaderboard: open interest, volume, turnover and resolution delay per venue",
+        description: `Cross-venue prediction market measurements by OpenChainBench: open interest, 24-hour and 30-day volume, turnover, active markets, resolution delay and API latency for ${tracked} tracked venues, from public venue APIs and the DefiLlama aggregate.`,
+        url: `${SITE.url}/prediction-markets`,
+        license: DATASET_LICENSE,
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
+        isAccessibleForFree: true,
+        dateModified: new Date(cohort.asOf * 1000).toISOString(),
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: `${SITE.url}/api/stat/pm-open-interest`,
+          },
+        ],
+        variableMeasured: [
+          { "@type": "PropertyValue", name: "Open interest", unitText: "USD" },
+          { "@type": "PropertyValue", name: "Volume 24h", unitText: "USD" },
+          { "@type": "PropertyValue", name: "Turnover, 24h volume over open interest" },
+          { "@type": "PropertyValue", name: "Median resolution delay", unitText: "min" },
+          { "@type": "PropertyValue", name: "p50 API latency", unitText: "ms" },
+        ],
+      }
+    : null;
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -74,13 +206,20 @@ export default async function PredictionMarketsHubPage() {
         name: "Prediction market venues tracked by OpenChainBench",
         description:
           "Prediction market venues tracked by OpenChainBench, with cross venue measurements of volume, resolution delay, API latency and data freshness.",
-        numberOfItems: cohort.venues.length,
-        itemListElement: cohort.venues.map((r, i) => ({
-          "@type": "ListItem",
-          position: i + 1,
-          name: r.name,
-          url: `${SITE.url}/products/${r.slug}`,
-        })),
+        // Ranked by the column the page sorts on, capped at 15 so the
+        // SERP card does not churn when a venue at the tail drops a
+        // series for one scrape.
+        numberOfItems: Math.min(15, cohort.venues.filter((r) => r.benched).length),
+        itemListElement: [...cohort.venues]
+          .filter((r) => r.benched)
+          .sort((a, b) => (b.openInterest ?? -1) - (a.openInterest ?? -1))
+          .slice(0, 15)
+          .map((r, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: r.name,
+            url: `${SITE.url}/products/${r.slug}`,
+          })),
       }
     : null;
 
@@ -97,11 +236,25 @@ export default async function PredictionMarketsHubPage() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
+      {datasetLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(datasetLd) }}
+        />
+      )}
       {itemListLd && (
         <script
           type="application/ld+json"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
           dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
+        />
+      )}
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }}
         />
       )}
 
@@ -111,11 +264,32 @@ export default async function PredictionMarketsHubPage() {
           Prediction markets, measured neutrally.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Every venue ranks itself on the metric it picks. OCB picks the
-          metrics, then ranks every venue on the same axis: resolution
-          honesty, API latency, data freshness. {DESCRIPTION}
+          {leadSentence} Every venue ranks itself on the metric it picks.
+          OCB picks the metrics, then ranks every venue on the same axis:
+          open interest, turnover, resolution honesty, API latency.
         </p>
+        {asOfLabel && (
+          <p className="mt-2 text-xs text-ink-muted">
+            Data as of{" "}
+            <time dateTime={new Date(cohort!.asOf * 1000).toISOString()}>
+              {asOfLabel}
+            </time>
+            , refreshed every five minutes.
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
+          <Link
+            href="/benchmarks/pm-open-interest"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Bench
+            </span>
+            <span className="text-ink">pm-open-interest</span>
+          </Link>
           <Link
             href="/benchmarks/pm-api-latency"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
@@ -175,15 +349,30 @@ export default async function PredictionMarketsHubPage() {
 
       {cohort ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+          <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
             <SummaryCard
-              label="Total volume 30d"
-              value={fmtUSD(cohort.totals.volume30d)}
+              label="Total open interest"
+              value={fmtUSD(cohort.totals.openInterest)}
               accent="#14b8a6"
+              tip="Sum of per-venue open interest across every venue that reports one. Venues that report none are skipped, not counted as zero."
+            />
+            <SummaryCard
+              label="Total volume 24h"
+              value={fmtUSD(cohort.totals.volume24h)}
+            />
+            <SummaryCard
+              label="Cohort turnover"
+              value={fmtTurnover(
+                cohort.totals.openInterest > 0
+                  ? cohort.totals.volume24h / cohort.totals.openInterest
+                  : null,
+              )}
+              tip="Total 24h volume over total open interest. Dominated by the two largest venues, which sit at opposite ends of the per-venue range."
             />
             <SummaryCard
               label="Active markets"
               value={fmtCount(cohort.totals.activeMarkets)}
+              tip="Only the six venues with a native fetcher publish a market count; the aggregate-fed venues do not."
             />
             <SummaryCard
               label="Cohort median resolution"
@@ -194,10 +383,6 @@ export default async function PredictionMarketsHubPage() {
               label="Cohort p50 API latency"
               value={fmtMs(cohort.totals.p50ApiLatencyMs)}
               tip="Median of per venue p50 latency on the warm price endpoint, trailing 24h."
-            />
-            <SummaryCard
-              label="Tracked venues"
-              value={`${cohort.venues.length}${cohort.dataFeeds.length > 0 ? ` + ${cohort.dataFeeds.length}` : ""}`}
             />
           </section>
 
@@ -269,11 +454,26 @@ export default async function PredictionMarketsHubPage() {
         <p className="label-mono text-ink-faint mb-2">Methodology</p>
         <p>
           Venue rows aggregate the public APIs of each platform, normalized
-          to USD and UTC days. Resolution delay comes from the
-          pm-resolution-delay bench (anchor: ProposePrice for UMA backed
-          markets). API latency is the 24h p50 of warm, non cached price
-          requests from us-east, eu-west and Singapore. Freshness compares
-          third party relays against the Polymarket CLOB T0 stream.
+          to USD and UTC days. Venues without a public API are read from
+          the DefiLlama protocol and DEX aggregates, which is also how a
+          venue too new to have documented endpoints enters the cohort.
+          Turnover is 24h volume over open interest, computed only where
+          both legs come from the same venue. Resolution delay comes from
+          the pm-resolution-delay bench (anchor: ProposePrice for UMA
+          backed markets). API latency is the 24h p50 of warm, non cached
+          price requests from us-east, eu-west and Singapore.
+        </p>
+        <p className="mt-3">
+          Two figures on this page disagree with a venue&rsquo;s own feed,
+          and the disagreement is deliberate. Kalshi&rsquo;s
+          unauthenticated trades endpoint reported $2.26M of 24h volume
+          against the aggregate&rsquo;s $424.8M on 2026-09-23: the public
+          slice is a partial view by construction, so the aggregate is
+          published instead. Polymarket&rsquo;s gamma open interest field
+          is deprecated and reads far below the protocol&rsquo;s tracked
+          value, so open interest for Polymarket and Limitless is the
+          DefiLlama protocol figure. Both substitutions are marked on the
+          cell.
         </p>
         <p className="mt-3">
           Data and methodology released under{" "}
@@ -335,6 +535,11 @@ function fmtUSD(v: number | null): string {
   if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
   return `$${v.toFixed(0)}`;
+}
+
+function fmtTurnover(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "...";
+  return v < 10 ? `${v.toFixed(2)}×` : `${v.toFixed(1)}×`;
 }
 
 function fmtCount(v: number | null): string {

@@ -56,12 +56,12 @@ import (
 // At 30 req/10s public budget we self-throttle to 1 req/s.
 
 const (
-	myriadBase      = "https://api-v2.myriadprotocol.com"
-	myriadUA        = "OCB-pm-cohort-stats/1.0"
-	myriadLimit     = 100
-	myriadMaxPages  = 50 // hard safety cap; live `total` is well under 5k today
-	myriadReqDelay  = 1 * time.Second
-	myriad1mFloor   = 1_000_000.0
+	myriadBase               = "https://api-v2.myriadprotocol.com"
+	myriadUA                 = "OCB-pm-cohort-stats/1.0"
+	myriadLimit              = 100
+	myriadMaxPages           = 50 // hard safety cap; live `total` is well under 5k today
+	myriadReqDelay           = 1 * time.Second
+	myriad1mFloor            = 1_000_000.0
 	myriadResolved24hCushion = 24 * time.Hour
 )
 

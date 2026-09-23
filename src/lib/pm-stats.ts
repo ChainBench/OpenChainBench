@@ -33,6 +33,11 @@ export type PmVenueRow = {
   volume30d: number | null;
   volume24h: number | null;
   openInterest: number | null;
+  /** 24h volume over open interest. How many times the book turns over
+   *  in a day: Polymarket sits near 0.02x (capital parked on long-dated
+   *  political markets), Myriad near 17x (short-dated crypto markets on
+   *  a thin book). Null unless the venue publishes both sides. */
+  turnover24h: number | null;
   activeMarkets: number | null;
   topMarketVolume24h: number | null;
   marketsAbove1m: number | null;
@@ -55,9 +60,15 @@ export type PmCohortSummary = {
   dataFeeds: PmDataFeedRow[];
   totals: {
     volume30d: number;
+    volume24h: number;
+    openInterest: number;
     activeMarkets: number;
     medianResolutionDelayMin: number | null;
     p50ApiLatencyMs: number | null;
+    /** Venues with at least one live measurement, not the length of the
+     *  seed list. The perps hub shipped a header reading "18 of 19" over
+     *  a table with 16 rows because it counted seeds; don't repeat it. */
+    trackedVenues: number;
   };
   asOf: number;
 };
@@ -78,13 +89,39 @@ type DataFeedSeed = {
   isReference: boolean;
 };
 
+// Mirrors `harnesses/pm-cohort-stats/cmd/script/registry.go`. A slug that
+// exists in the harness but not here is fetched from Prom and dropped by
+// the apply() loop below without a word, which is how this list sat at
+// five populated rows while the harness published sixteen.
 const PM_VENUES: VenueSeed[] = [
+  // Venues with their own fetcher: a native API, not an aggregate.
   { slug: "polymarket",    name: "Polymarket",    type: "onchain",  chain: "polygon" },
   { slug: "polymarket-us", name: "Polymarket US", type: "offchain", benched: false, externalUrl: "https://polymarketexchange.com" },
   { slug: "kalshi",        name: "Kalshi",        type: "offchain" },
   { slug: "limitless",     name: "Limitless",     type: "onchain",  chain: "base" },
   { slug: "myriad",        name: "Myriad",        type: "onchain",  chain: "abstract" },
   { slug: "manifold",      name: "Manifold",      type: "offchain" },
+
+  // Venues fed by the DefiLlama aggregate (2026-09-23). They carry open
+  // interest and volume but no latency, resolution or market-count
+  // probes, so the right-hand columns stay empty until a native fetcher
+  // exists for them. Each one is a row on bench pm-open-interest.
+  { slug: "rain",          name: "Rain",          type: "onchain",  chain: "arbitrum" },
+  { slug: "predict-fun",   name: "Predict Fun",   type: "onchain",  chain: "blast" },
+  { slug: "opinion",       name: "OPINION",       type: "onchain",  chain: "bnb" },
+  { slug: "sport-fun",     name: "Sport.fun",     type: "onchain",  chain: "base" },
+  { slug: "augur",         name: "Augur",         type: "onchain",  chain: "ethereum" },
+  { slug: "levr-bet",      name: "Levr Bet",      type: "onchain",  chain: "monad" },
+  { slug: "predictstreet", name: "PredictStreet", type: "onchain" },
+  { slug: "pascal",        name: "Pascal",        type: "onchain",  chain: "solana" },
+  { slug: "overtime",      name: "Overtime",      type: "onchain",  chain: "arbitrum" },
+  { slug: "trueo",         name: "Trueo",         type: "onchain",  chain: "base" },
+  { slug: "azuro",         name: "Azuro",         type: "onchain",  chain: "polygon" },
+
+  // Latency-only: probed by pm-api-latency and pm-rate-limits, no
+  // volume or open-interest series. PredictIt is real money under a
+  // CFTC no-action letter, Smarkets is an FCA-regulated exchange, and
+  // neither publishes a figure the cohort gauges can read.
   { slug: "predictit",     name: "PredictIt",     type: "offchain" },
   { slug: "smarkets",      name: "Smarkets",      type: "offchain" },
   { slug: "metaculus",     name: "Metaculus",     type: "offchain" },
@@ -103,7 +140,7 @@ function promUrl(): string | null {
  *  worker after every tierA sweep. Bump the suffix if the summary shape
  *  changes so a stale-shape blob can never deserialize into a misaligned
  *  payload. The cohort-snapshot module appends its own `:v1`. */
-export const PM_HUB_KEY = "pm-hub-v2";
+export const PM_HUB_KEY = "pm-hub-v3";
 
 /**
  * Fetch the venue + data feed cohort in one Promise.all fan out. Returns
@@ -174,6 +211,7 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
       volume30d: null,
       volume24h: null,
       openInterest: null,
+      turnover24h: null,
       activeMarkets: null,
       topMarketVolume24h: null,
       marketsAbove1m: null,
@@ -184,7 +222,10 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
 
   const apply = (
     series: { labels: Record<string, string>; value: number }[] | null,
-    field: keyof Omit<PmVenueRow, "slug" | "name" | "type" | "chain" | "benched" | "externalUrl">,
+    field: keyof Omit<
+      PmVenueRow,
+      "slug" | "name" | "type" | "chain" | "benched" | "externalUrl" | "turnover24h"
+    >,
   ) => {
     for (const s of series ?? []) {
       const v = s.labels.venue;
@@ -232,10 +273,30 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
   // (median of medians) which is good enough for a hero card.
   const venues = [...byVenue.values()];
   let totalVolume30d = 0;
+  let totalVolume24h = 0;
+  let totalOpenInterest = 0;
   let totalActiveMarkets = 0;
+  let tracked = 0;
   for (const r of venues) {
     if (r.volume30d != null) totalVolume30d += r.volume30d;
+    if (r.volume24h != null) totalVolume24h += r.volume24h;
+    if (r.openInterest != null) totalOpenInterest += r.openInterest;
     if (r.activeMarkets != null) totalActiveMarkets += r.activeMarkets;
+    // Turnover needs both legs from the same venue. Rain and Augur
+    // publish an open interest with no volume; they get a dash, not a
+    // zero, because a venue that reports nothing has not reported none.
+    if (r.volume24h != null && r.openInterest != null && r.openInterest > 0) {
+      r.turnover24h = r.volume24h / r.openInterest;
+    }
+    if (
+      r.volume30d != null ||
+      r.volume24h != null ||
+      r.openInterest != null ||
+      r.activeMarkets != null ||
+      r.p50ApiLatencyMs != null
+    ) {
+      tracked += 1;
+    }
   }
   const apiP50s = venues
     .map((r) => r.p50ApiLatencyMs)
@@ -249,7 +310,10 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     dataFeeds,
     totals: {
       volume30d: totalVolume30d,
+      volume24h: totalVolume24h,
+      openInterest: totalOpenInterest,
       activeMarkets: totalActiveMarkets,
+      trackedVenues: tracked,
       medianResolutionDelayMin: resDelays.length ? median(resDelays) : null,
       p50ApiLatencyMs: apiP50s.length ? median(apiP50s) : null,
     },

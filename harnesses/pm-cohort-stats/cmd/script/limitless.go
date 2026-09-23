@@ -68,11 +68,11 @@ var httpClientLimitless = &http.Client{Timeout: 20 * time.Second}
 // a stringified USD figure (native USDC, 1:1). Status FUNDED + null
 // winningOutcomeIndex = open. We filter to USDC collateral only.
 type limitlessMarket struct {
-	Volume           string `json:"volume"`
-	VolumeFormatted  string `json:"volumeFormatted"`
-	Status           string `json:"status"`
-	WinningOutcome   *int   `json:"winningOutcomeIndex"`
-	CollateralToken  struct {
+	Volume          string `json:"volume"`
+	VolumeFormatted string `json:"volumeFormatted"`
+	Status          string `json:"status"`
+	WinningOutcome  *int   `json:"winningOutcomeIndex"`
+	CollateralToken struct {
 		Symbol   string `json:"symbol"`
 		Decimals int    `json:"decimals"`
 	} `json:"collateralToken"`
@@ -109,9 +109,9 @@ func fetchLimitlessVenue(v Venue) {
 	pmVenueActiveMarkets.WithLabelValues(v.Slug).Set(float64(first.TotalMarketsCount))
 
 	var (
-		maxVol        float64
-		above1mCount  float64
-		pagesWalked   = 1
+		maxVol         float64
+		above1mCount   float64
+		pagesWalked    = 1
 		rowsConsidered int
 	)
 	process := func(rows []limitlessMarket) {

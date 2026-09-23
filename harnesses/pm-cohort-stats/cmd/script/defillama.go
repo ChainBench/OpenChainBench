@@ -31,9 +31,9 @@ import (
 // OCB page knows to render only the cards that have data.
 
 const (
-	defillamaBase    = "https://api.llama.fi"
-	defillamaUA      = "OCB-pm-cohort-stats/1.0"
-	defillamaPMCat   = "Prediction Market"
+	defillamaBase  = "https://api.llama.fi"
+	defillamaUA    = "OCB-pm-cohort-stats/1.0"
+	defillamaPMCat = "Prediction Market"
 )
 
 var httpClientDefillama = &http.Client{Timeout: 20 * time.Second}
@@ -48,8 +48,20 @@ var httpClientDefillama = &http.Client{Timeout: 20 * time.Second}
 // omitted now that the native /markets fetcher in myriad.go publishes
 // authoritative gauges from the venue's own API.
 var llamaNames = map[string]string{
-	"limitless":  "Limitless Exchange",
-	"polymarket": "Polymarket International",
+	"limitless":     "Limitless Exchange",
+	"polymarket":    "Polymarket International",
+	"polymarket-us": "Polymarket US",
+	"rain":          "Rain",
+	"predict-fun":   "Predict Fun",
+	"opinion":       "OPINION",
+	"sport-fun":     "Sport.fun",
+	"augur":         "Augur",
+	"levr-bet":      "Levr Bet",
+	"predictstreet": "PredictStreet",
+	"pascal":        "Pascal",
+	"overtime":      "Overtime",
+	"trueo":         "Trueo",
+	"azuro":         "Azuro",
 }
 
 type llamaProtocol struct {
@@ -124,55 +136,73 @@ func fetchAllDefillama() {
 	// /protocols only carries TVL; the dexs/summary endpoint exposes the actual
 	// aggregate trading volume that covers all markets including recently settled
 	// ones. This overrides the gamma-api vol24h/vol30d with a more complete figure.
-	fetchDefillamaPolymarketVolume()
+	fetchDefillamaVolumes()
 
 	pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
 }
 
-// fetchDefillamaPolymarketVolume queries DeFiLlama's /summary/dexs endpoint
-// for Polymarket's aggregate trading volume. The /protocols list only carries
-// TVL; this endpoint exposes total24h and total30d which cover all settled
-// and active markets — significantly more complete than summing volume24hr
-// from the active-only gamma-api pass. The slug tried first is
-// "polymarket-international"; "polymarket" is the fallback. If neither
-// resolves (endpoint unavailable or network error) the function returns
-// silently and the gamma-api values from the Polymarket fetcher carry forward.
-func fetchDefillamaPolymarketVolume() {
+// dexsSlugs maps an OCB venue slug to the slug DefiLlama uses on
+// /summary/dexs/<slug>. It is deliberately separate from llamaNames: the
+// volume endpoint keys on a slug, the protocol list on a display name, and
+// they disagree often enough (polymarket-international, sport.fun,
+// limitless-exchange, myriad-markets) that deriving one from the other
+// would silently drop rows.
+//
+// Verified 2026-09-23 by calling the endpoint for every venue: 13 of 16
+// answer. Augur, Levr Bet and Pascal do not, and their volume gauges stay
+// unpublished rather than reading zero.
+var dexsSlugs = map[string]string{
+	"polymarket":    "polymarket-international",
+	"polymarket-us": "polymarket-us",
+	"kalshi":        "kalshi",
+	"limitless":     "limitless-exchange",
+	"myriad":        "myriad-markets",
+	"rain":          "rain",
+	"predict-fun":   "predict-fun",
+	"opinion":       "opinion",
+	"sport-fun":     "sport.fun",
+	"predictstreet": "predictstreet",
+	"overtime":      "overtime",
+	"azuro":         "azuro",
+	"trueo":         "trueo",
+}
+
+// fetchDefillamaVolumes fills the volume gauges for every venue that has a
+// dexs slug. A venue with a dedicated fetcher that already publishes its
+// own volume keeps it: this only writes where the value is above zero, so
+// an endpoint that answers with zeros cannot blank a native reading.
+func fetchDefillamaVolumes() {
 	type dexsResp struct {
 		Total24h float64 `json:"total24h"`
 		Total7d  float64 `json:"total7d"`
 		Total30d float64 `json:"total30d"`
 	}
-
-	slugs := []string{"polymarket-international", "polymarket"}
-	var r dexsResp
-	var found bool
-	for _, s := range slugs {
-		url := fmt.Sprintf("%s/summary/dexs/%s", defillamaBase, s)
+	filled, empty := 0, []string{}
+	for venue, slug := range dexsSlugs {
+		url := fmt.Sprintf("%s/summary/dexs/%s", defillamaBase, slug)
 		body, err := getJSONDefillama(httpClientDefillama, url)
 		if err != nil {
+			empty = append(empty, venue)
 			continue
 		}
+		var r dexsResp
 		if err := json.Unmarshal(body, &r); err != nil {
+			empty = append(empty, venue)
 			continue
 		}
-		if r.Total24h > 0 || r.Total30d > 0 {
-			found = true
-			break
+		if r.Total24h <= 0 && r.Total30d <= 0 {
+			empty = append(empty, venue)
+			continue
 		}
+		if r.Total24h > 0 {
+			pmVenueVolume24hUsd.WithLabelValues(venue).Set(r.Total24h)
+		}
+		if r.Total30d > 0 {
+			pmVenueVolume30dUsd.WithLabelValues(venue).Set(r.Total30d)
+		}
+		filled++
 	}
-	if !found {
-		fmt.Printf("[defillama-vol][polymarket] dexs endpoint unavailable or zero; keeping gamma-api values\n")
-		return
-	}
-	if r.Total24h > 0 {
-		pmVenueVolume24hUsd.WithLabelValues("polymarket").Set(r.Total24h)
-	}
-	if r.Total30d > 0 {
-		pmVenueVolume30dUsd.WithLabelValues("polymarket").Set(r.Total30d)
-	}
-	fmt.Printf("[defillama-vol][polymarket] vol24h=%.0f vol7d=%.0f vol30d=%.0f\n",
-		r.Total24h, r.Total7d, r.Total30d)
+	fmt.Printf("[defillama-vol] volume published for %d venues (no data: %v)\n", filled, empty)
 }
 
 // normalizeName lower-cases and strips spaces / punctuation so

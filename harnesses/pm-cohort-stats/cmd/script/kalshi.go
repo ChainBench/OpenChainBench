@@ -207,7 +207,13 @@ func fetchKalshiVenue(v Venue) {
 	case topVol24Public > 0:
 		pmVenueTopMarketVolume24hUsd.WithLabelValues(v.Slug).Set(topVol24Public)
 	}
-	if vol24h > 0 {
+	// Only publish volume from a feed that can see the whole book. Without
+	// a key the trades endpoint returns the public slice, which on
+	// 2026-09-23 was $2.26M against DefiLlama's $424.8M for the same venue
+	// and window: publishing it would have put the busiest prediction
+	// market in the category near the bottom of a turnover screen.
+	// Authenticated, this fetcher is the better source and wins again.
+	if vol24h > 0 && kalshiAuth != nil {
 		pmVenueVolume24hUsd.WithLabelValues(v.Slug).Set(vol24h)
 		pmVenueVolume30dUsd.WithLabelValues(v.Slug).Set(vol30d)
 	}

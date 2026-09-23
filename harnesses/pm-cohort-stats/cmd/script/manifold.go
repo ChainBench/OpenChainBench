@@ -50,13 +50,13 @@ var httpClientManifold = &http.Client{Timeout: 30 * time.Second}
 // /v0/search-markets. Numbers are unboxed floats on this endpoint, so
 // no flexFloat is needed.
 type manifoldMarket struct {
-	Volume          float64 `json:"volume"`
-	Volume24Hours   float64 `json:"volume24Hours"`
-	TotalLiquidity  float64 `json:"totalLiquidity"`
-	Token           string  `json:"token"`
-	IsResolved      bool    `json:"isResolved"`
-	CloseTime       int64   `json:"closeTime"`
-	ResolutionTime  int64   `json:"resolutionTime"`
+	Volume         float64 `json:"volume"`
+	Volume24Hours  float64 `json:"volume24Hours"`
+	TotalLiquidity float64 `json:"totalLiquidity"`
+	Token          string  `json:"token"`
+	IsResolved     bool    `json:"isResolved"`
+	CloseTime      int64   `json:"closeTime"`
+	ResolutionTime int64   `json:"resolutionTime"`
 }
 
 func fetchAllManifold(rate float64) {
@@ -74,13 +74,13 @@ func fetchManifoldVenue(v Venue, rate float64) {
 	}()
 
 	var (
-		vol24Sum     float64 // mana (CASH rows convert to mana-equivalent via 1/rate so the USD-side
+		vol24Sum float64 // mana (CASH rows convert to mana-equivalent via 1/rate so the USD-side
 		// stays coherent, but for clarity we keep mana-side accumulators pure mana and
 		// add CASH contributions separately to the USD-side accumulators below).
-		oiSum         float64 // mana, open markets only
-		activeCount   float64
-		topVol24      float64 // mana, max across all sweeps
-		above1bMana   float64 // count where lifetime mana >= 1e9 (i.e. $1M at charity rate)
+		oiSum       float64 // mana, open markets only
+		activeCount float64
+		topVol24    float64 // mana, max across all sweeps
+		above1bMana float64 // count where lifetime mana >= 1e9 (i.e. $1M at charity rate)
 
 		// USD-side accumulators. For MANA rows: mana * rate. For CASH rows: value * 1.0.
 		vol24SumUsd float64
