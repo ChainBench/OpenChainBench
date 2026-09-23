@@ -66,7 +66,7 @@ prometheus:
 faq:
   - q: "What does capital efficiency mean here?"
     a: "It measures how many distinct perpetual markets a venue can sustain per $1M of trading collateral locked. Higher is more efficient: you get more instruments per dollar of capital. It does not measure depth per market."
-  - q: "Why does Gains win so clearly?"
+  - q: "Why do oracle venues score so high on this ratio?"
     a: "Gains uses synthetic oracles backed by a single shared liquidity pool (the GToken vault). Adding a new pair costs near zero additional capital. CLOB venues like Hyperliquid or GMX need per-pair market-maker inventory or per-pool collateral, so capital scales with pair count."
   - q: "Is capital efficiency always desirable?"
     a: "Not necessarily. Deep per-pair liquidity has value for large traders. A venue with hundreds of pairs on a few million dollars of TVL may have thin liquidity per pair. Pair this bench with perp-volume-share for the depth angle."

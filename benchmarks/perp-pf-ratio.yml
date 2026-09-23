@@ -3,7 +3,7 @@
 slug: perp-pf-ratio
 number: "265"
 title: "Perp DEX price to fees ratio 2026: Hyperliquid, Aster, Lighter, GMX, GNS live"
-seo_title: "Perp DEX P/F ratio: {{best_name}} lowest at {{best_p50}}"
+seo_title: "Perp DEX price to fees: {{best_name}} cheapest at {{best_p50}}"
 seo_description: "{{best_name}} is the cheapest perp DEX token at {{best_p50}} annualized fees. P/F, FDV/F, P/S, float and OI for {{count}} perp DEXs, live from DeFiLlama and CoinGecko."
 subtitle: Market cap divided by annualized trading fees (trailing 30 days) for every perp DEX with a listed token, alongside FDV, protocol revenue, float and open interest. Lower means the market pays less per dollar of fees. Same convention as the DeFiLlama P/F ranking, updated hourly.
 

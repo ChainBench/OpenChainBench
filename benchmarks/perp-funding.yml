@@ -37,8 +37,8 @@ seo_intro: |
   most negative or hold spot, and collect the difference.
 
 abstract: |
-  The bench polls the public funding endpoint of eight perpetual
-  venues every 60 seconds: Hyperliquid (metaAndAssetCtxs), Binance
+  The bench polls the public funding endpoint of every perpetual
+  venue every 60 seconds: Hyperliquid (metaAndAssetCtxs), Binance
   and Aster (premiumIndex plus fundingInfo for per pair intervals),
   Bybit (v5 tickers plus instruments-info), OKX (public funding-rate,
   interval derived from settlement timestamps), dYdX v4 (indexer
