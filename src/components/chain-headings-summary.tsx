@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+import { valueQualifier, valueReadingPhrase } from "@/lib/value-window";
 import {
   CHAIN_BY_SLUG,
   canonicalChainSlug,
@@ -59,7 +60,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
         {benchmark.metric} by chain
       </h2>
       <p className="mt-3 text-sm text-ink-muted">
-        Live p50 over the last 24 hours, ranked{" "}
+        {valueReadingPhrase(benchmark)} per {benchmark.category === "Blockchains" ? "chain" : "provider"}, ranked{" "}
         {benchmark.higherIsBetter ? "highest" : "lowest"} first.
         {/* Only promise an explainer on a bench that has one: benches
             without per-chain documents were telling the reader to look
@@ -115,7 +116,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
                 <span className="font-semibold text-ink">
                   {fmtUnit(r.ms.p50, benchmark.unit)}
                 </span>{" "}
-                p50 over the last 24 hours
+                {valueQualifier(benchmark) === "latest value" ? "latest value" : valueQualifier(benchmark)}
                 {r.successRate < 99
                   ? ` · ${r.successRate.toFixed(1)}% success rate`
                   : ""}

@@ -329,6 +329,12 @@ export type Benchmark = {
    *  percentile that was never computed. Derived from the live spec in
    *  spec.ts, so a YAML edit takes effect without a worker rewrite. */
   hasDistribution?: boolean;
+  /** "latest" when every provider reads a single instantaneous value
+   *  (`last_over_time`) rather than a window statistic. The UI must not
+   *  then call the number a 24-hour anything: a slow gauge scraped every
+   *  30 seconds has no distribution and no window. Derived from the live
+   *  spec in spec.ts, like hasDistribution. */
+  valueKind?: "latest";
   bestPerChain?: Record<string, ProviderResult>;
   /** Per-chain trailing provider, populated in lockstep with
    *  `bestPerChain` (same key set, same population conditions). Powers

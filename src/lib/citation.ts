@@ -8,6 +8,7 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { nounFor } from "@/lib/row-noun";
+import { valueSuffix } from "@/lib/value-window";
 
 /** Minimum measured success rate (in percent, 0-100) for a provider to
  *  contribute to the headline leader claim. Providers with a real
@@ -143,13 +144,11 @@ export function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** Honest window wording per unit. "(p50, 24h)" is only true for latency
- *  style benches; USD revenue and count benches repurpose the p50 slot as
- *  a plain rolling-window figure and percentile wording would mislead. */
-function windowSuffix(unit: string, window = "24h"): string {
-  if (unit === "usd" || unit === "count") return `(${window})`;
-  if (unit === "pct" || unit === "bps") return `(${window} avg)`;
-  return `(p50, ${window})`;
+/** Honest window wording. Delegates to the shared qualifier so the
+ *  quotable sentence, the table header, the infobox and the Dataset all
+ *  describe the same number the same way. */
+function windowSuffix(b: Parameters<typeof valueSuffix>[0]): string {
+  return valueSuffix(b);
 }
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
@@ -251,7 +250,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   // checkable, and not the page title (55 to 95 characters that every
   // quoting surface repeated, audit 2026-09-22).
   const ranked = rankedCandidates(b).length;
-  const rest = `${windowSuffix(b.unit, b.window ?? "24h")} across ${ranked} ranked ${nounFor(b, ranked)}.`;
+  const rest = `${windowSuffix(b)} across ${ranked} ranked ${nounFor(b, ranked)}.`;
   const tied = leaderNames(b);
   if (tied.length > 1) {
     const both = tied.length === 2;
