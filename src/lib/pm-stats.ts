@@ -114,7 +114,9 @@ const PM_VENUES: VenueSeed[] = [
   { slug: "levr-bet",      name: "Levr Bet",      type: "onchain",  chain: "monad" },
   { slug: "predictstreet", name: "PredictStreet", type: "onchain" },
   { slug: "pascal",        name: "Pascal",        type: "onchain",  chain: "solana" },
-  { slug: "overtime",      name: "Overtime",      type: "onchain",  chain: "arbitrum" },
+  // Overtime and Azuro each run on six chains; the field names the
+  // largest deployment, and the venue's product page lists them all.
+  { slug: "overtime",      name: "Overtime",      type: "onchain",  chain: "optimism" },
   { slug: "trueo",         name: "Trueo",         type: "onchain",  chain: "base" },
   { slug: "azuro",         name: "Azuro",         type: "onchain",  chain: "polygon" },
 

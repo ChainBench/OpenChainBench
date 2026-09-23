@@ -539,6 +539,9 @@ function fmtUSD(v: number | null): string {
 
 function fmtTurnover(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "...";
+  // A book that turned over $681 against $837k of open interest did not
+  // turn over none of it. Below the display floor, say so.
+  if (v > 0 && v < 0.01) return "<0.01×";
   return v < 10 ? `${v.toFixed(2)}×` : `${v.toFixed(1)}×`;
 }
 

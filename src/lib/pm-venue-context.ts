@@ -18,6 +18,9 @@ import { logoPath } from "@/lib/logo-manifest";
  * full PM venue dashboard when the slug matches a tracked venue).
  */
 
+// A slug missing here gets no PM dashboard at all: getPmVenueContext
+// returns null before it ever looks at the cohort. Keep it in step with
+// PM_VENUES in pm-stats.ts and the harness registry.
 export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> = {
   polymarket: { url: "https://polymarket.com", chainLabel: "Polygon" },
   "polymarket-us": { url: "https://polymarketexchange.com", chainLabel: "Offchain US" },
@@ -28,6 +31,27 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   predictit: { url: "https://www.predictit.org", chainLabel: "Offchain US" },
   smarkets: { url: "https://smarkets.com", chainLabel: "Offchain UK" },
   metaculus: { url: "https://www.metaculus.com", chainLabel: "Offchain" },
+
+  // Bench 277 cohort. Chain labels name every deployment for the
+  // multi-chain ones rather than the largest, because this string is
+  // the page's only answer to "where does this run".
+  rain: { url: "https://www.rain.one", chainLabel: "Arbitrum" },
+  "predict-fun": { url: "https://predict.fun", chainLabel: "BNB Chain, Blast" },
+  opinion: { url: "https://app.opinion.trade", chainLabel: "BNB Chain" },
+  "sport-fun": { url: "https://pro.sport.fun", chainLabel: "Base" },
+  augur: { url: "https://augur.net", chainLabel: "Ethereum" },
+  "levr-bet": { url: "https://levr.bet", chainLabel: "Monad" },
+  predictstreet: { url: "https://adipredictstreet.com", chainLabel: "ADI Chain" },
+  pascal: { url: "https://www.pascal.trade", chainLabel: "Solana" },
+  overtime: {
+    url: "https://www.overtimemarkets.xyz",
+    chainLabel: "Optimism, Arbitrum, Polygon, Base, Ethereum, BNB Chain",
+  },
+  trueo: { url: "https://trueo.com", chainLabel: "Base" },
+  azuro: {
+    url: "https://azuro.org",
+    chainLabel: "Polygon, Base, Chiliz, Linea, Arbitrum, Gnosis",
+  },
 };
 
 export const PM_FEED_META: Record<string, { url?: string }> = {
@@ -101,34 +125,61 @@ export function benchRowsForVenue(
   cohort: PmCohortSummary,
   venue: PmVenueRow,
 ): PmVenueBenchRow[] {
-  const cohortSize = cohort.venues.length;
+  // Each card's population is the set of venues that publish that
+  // metric, never the registry length: six venues have an API latency,
+  // so "3 of 20" would be a claim about fourteen venues that were never
+  // measured.
+  const oi = rankWithinCohort(cohort.venues, "openInterest", venue.slug, "desc");
+  const turn = rankWithinCohort(cohort.venues, "turnover24h", venue.slug, "desc");
+  const api = rankWithinCohort(cohort.venues, "p50ApiLatencyMs", venue.slug);
+  const res = rankWithinCohort(cohort.venues, "medianResolutionDelayMin", venue.slug);
   return [
+    {
+      benchSlug: "pm-open-interest",
+      label: "Open interest",
+      blurb: "Capital held against open positions, 24h average.",
+      rank: oi.rank,
+      cohortSize: oi.of,
+      value: fmtUSD(venue.openInterest),
+      vsMedian: null,
+      tone: "teal",
+    },
+    {
+      benchSlug: "pm-open-interest",
+      label: "Turnover",
+      blurb: "24h volume over open interest: how often the book turns.",
+      rank: turn.rank,
+      cohortSize: turn.of,
+      value: fmtTurnover(venue.turnover24h),
+      vsMedian: null,
+      tone: "cyan",
+    },
     {
       benchSlug: "pm-api-latency",
       label: "API latency",
       blurb: "Warm price endpoint, 24h p50 across 3 regions.",
-      rank: rankWithinCohort(cohort.venues, "p50ApiLatencyMs", venue.slug),
-      cohortSize,
+      rank: api.rank,
+      cohortSize: api.of,
       value: fmtMs(venue.p50ApiLatencyMs),
       vsMedian: null,
-      tone: "teal",
+      tone: "indigo",
     },
     {
       benchSlug: "pm-resolution-delay",
       label: "Resolution delay",
       blurb: "ProposePrice anchor to QuestionResolved block, median.",
-      rank: rankWithinCohort(cohort.venues, "medianResolutionDelayMin", venue.slug),
-      cohortSize,
+      rank: res.rank,
+      cohortSize: res.of,
       value: fmtMinutes(venue.medianResolutionDelayMin),
       vsMedian: null,
-      tone: "cyan",
+      tone: "violet",
     },
     {
       benchSlug: "pm-ws-latency",
       label: "WS latency",
       blurb: "Connect-to-snapshot and trade publication lag on the venue WebSocket.",
       rank: null,
-      cohortSize,
+      cohortSize: 0,
       value: null,
       vsMedian: null,
       tone: "indigo",
@@ -138,7 +189,7 @@ export function benchRowsForVenue(
       label: "Rate limits",
       blurb: "Warm endpoint behavior under daily ramp tests.",
       rank: null,
-      cohortSize,
+      cohortSize: 0,
       value: null,
       vsMedian: null,
       tone: "violet",
@@ -161,18 +212,44 @@ export function benchRowsForDataFeed(feed: PmDataFeedRow): PmVenueBenchRow[] {
   ];
 }
 
+/**
+ * Rank a venue on one metric, and report the population the rank is out
+ * of. The two must travel together: a rank taken over the venues that
+ * publish a metric, printed against the size of the whole registry,
+ * silently claims the unmeasured venues were measured and lost.
+ *
+ * `dir` is "asc" where lower is better (latency, resolution delay) and
+ * "desc" where higher is (open interest, turnover).
+ */
 function rankWithinCohort(
   venues: PmVenueRow[],
-  key: "p50ApiLatencyMs" | "medianResolutionDelayMin",
+  key: "p50ApiLatencyMs" | "medianResolutionDelayMin" | "openInterest" | "turnover24h",
   slug: string,
-): number | null {
+  dir: "asc" | "desc" = "asc",
+): { rank: number | null; of: number } {
   const populated = venues
     .map((r) => ({ slug: r.slug, v: r[key] }))
     .filter((r) => r.v != null && Number.isFinite(r.v as number));
-  if (populated.length === 0) return null;
-  populated.sort((a, b) => (a.v as number) - (b.v as number));
+  if (populated.length === 0) return { rank: null, of: 0 };
+  const sign = dir === "desc" ? -1 : 1;
+  populated.sort((a, b) => sign * ((a.v as number) - (b.v as number)));
   const idx = populated.findIndex((r) => r.slug === slug);
-  return idx >= 0 ? idx + 1 : null;
+  return { rank: idx >= 0 ? idx + 1 : null, of: populated.length };
+}
+
+function fmtUSD(v: number | null): string | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function fmtTurnover(v: number | null): string | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  if (v > 0 && v < 0.01) return "<0.01\u00d7";
+  return v < 10 ? `${v.toFixed(2)}\u00d7` : `${v.toFixed(1)}\u00d7`;
 }
 
 function fmtMinutes(v: number | null): string | null {
