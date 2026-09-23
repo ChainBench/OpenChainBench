@@ -4,7 +4,7 @@ slug: tokenized-stock-weekend-drift
 number: "079"
 title: Tokenized stock weekend drift, how far each equity wanders Friday to Monday
 seo_title: "Tokenized stock weekend drift 2026: {{best_p50}} to {{worst_p50}}"
-seo_description: "Last weekend {{best_name}} held closest to Friday's close ({{best_p50}} max drift) and {{worst_name}} moved furthest ({{worst_p50}}), across {{count}} Robinhood Chain tokenized stocks."
+seo_description: "Last weekend {{best_name}} held closest to Friday's close ({{best_p50}} max drift) and {{worst_name}} moved furthest ({{worst_p50}}), across {{ranked_count}} Robinhood Chain tokenized stocks."
 subtitle: "Maximum deviation between each tokenized stock's pool price and Friday's Nasdaq close, measured every minute from the last regular tick on Friday (4 pm New York) to the first regular tick on Monday (9:30 am), one value per completed weekend."
 
 category: RWA
@@ -63,7 +63,7 @@ faq:
   - q: "Is a high drift bad?"
     a: "It reads as inefficient markets on paper, but while Nasdaq is closed there is no fair value to converge to, and every drift closes at the next open. The number matters most for downstream products (lending, structured payoffs) that use the tokenized price as an oracle when the real market is closed."
   - q: "Which stocks drift the most on weekends?"
-    a: "Last completed weekend, {{worst_name}} drifted furthest from Friday's close, at {{worst_p50}}, and {{best_name}} the least, at {{best_p50}}; the table ranks all {{count}}. The order changes from one weekend to the next: with Nasdaq closed there is no live price to arbitrage against, so fee tier and pool depth decide how far each trade moves a pool, not where it stops."
+    a: "Last completed weekend, {{worst_name}} drifted furthest from Friday's close, at {{worst_p50}}, and {{best_name}} the least, at {{best_p50}}; the table ranks all {{ranked_count}}. The order changes from one weekend to the next: with Nasdaq closed there is no live price to arbitrage against, so fee tier and pool depth decide how far each trade moves a pool, not where it stops."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/tokenized-stock-peg
 

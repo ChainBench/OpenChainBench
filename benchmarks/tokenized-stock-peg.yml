@@ -4,7 +4,7 @@ slug: tokenized-stock-peg
 number: "076"
 title: Tokenized stock price accuracy, live onchain vs Nasdaq across 6 equities
 seo_title: "Tokenized stock price vs Nasdaq 2026: {{best_name}} closest, {{best_p50}}"
-seo_description: "{{count}} Robinhood Chain tokenized stocks against the real share price, regular hours, last 5 sessions: {{best_name}} closest at {{best_p50}}, {{worst_name}} furthest at {{worst_p50}}."
+seo_description: "{{ranked_count}} Robinhood Chain tokenized stocks against the real share price, regular hours, last 5 sessions: {{best_name}} closest at {{best_p50}}, {{worst_name}} furthest at {{worst_p50}}."
 subtitle: "Absolute deviation between each tokenized equity's Uniswap v4 pool price on Robinhood Chain and its real market reference price, in basis points, labeled by market session. A live, keyless measurement of whether onchain stocks track their underlying."
 
 category: RWA

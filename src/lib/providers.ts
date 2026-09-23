@@ -732,7 +732,10 @@ const buildProvidersCached = unstable_cache(
   // nado. /products/vest, /products/standx and /products/lighter-rh were
   // 404 on staging while the v7 list outlived the deploy.
   // v9 (2026-09-23): coinbase-international joined PERP_VENUE_SEED.
-  ["providers-v9"],
+  // v10 (2026-09-23): bench 278 rwa-solana-depth added paxg and buidl, and
+  // appearances gained window and valueKind; /products/paxg was 404 and
+  // every RWA rank read "(24h avg)" while the v9 list outlived the deploy.
+  ["providers-v10"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

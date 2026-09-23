@@ -167,7 +167,11 @@ func bigToFloat(i *big.Int) float64 {
 // call).
 func tokenSupply(client *http.Client, mint string) (raw float64, ui float64, ok bool) {
 	body := []byte(`{"jsonrpc":"2.0","id":1,"method":"getTokenSupply","params":["` + mint + `"]}`)
-	req, _ := http.NewRequest("POST", solanaRPC(), bytes.NewReader(body))
+	req, err := http.NewRequest("POST", solanaRPC(), bytes.NewReader(body))
+	if err != nil {
+		sourceCall.WithLabelValues("solana_rpc", "request_build").Inc()
+		return 0, 0, false
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", jupUA)
 	resp, err := client.Do(req)

@@ -2313,7 +2313,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   usdy: {
     url: "https://ondo.finance/usdy",
     description:
-      "Ondo USDY is a yield-bearing tokenized U.S. Treasury note. Rebases on Ethereum, also issued on Solana, Aptos and Sui. Delivered yield on bench 089 is read from Ondo's on-chain oracle rather than Ethereum totalSupply to avoid bridge-flow noise.",
+      "Ondo USDY is a yield-bearing tokenized U.S. Treasury note that accrues in price (rUSDY is its rebasing wrapper); issued on Ethereum, Solana, Aptos and Sui. Delivered yield on bench 089 is read from Ondo's on-chain oracle rather than Ethereum totalSupply to avoid bridge-flow noise.",
     twitter: "@OndoFinance",
     docs: "https://docs.ondo.finance/",
   },
@@ -2330,6 +2330,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Superstate USTB is a tokenized short-duration U.S. Treasury fund. NAV-accrual model, share price published on-chain via a Chainlink NAV feed. Delivered yield on bench 089 reads the Chainlink feed at latest and t-30d blocks.",
     twitter: "@superstateinc",
     docs: "https://superstate.com/legal",
+  },
+  paxg: {
+    url: "https://paxos.com/paxgold/",
+    description:
+      "PAX Gold (PAXG) is Paxos's tokenized gold, one token per fine troy ounce held in London vaults, issued natively on Ethereum and Solana. On bench 278 its Solana depth is measured against USDC through Jupiter.",
+    twitter: "@Paxos",
+    docs: "https://docs.paxos.com/",
+  },
+  buidl: {
+    url: "https://securitize.io/blackrock",
+    description:
+      "BUIDL is BlackRock's USD Institutional Digital Liquidity Fund, a tokenized money-market fund issued through Securitize at a fixed $1.00 per unit with dividends paid in new units. Transfer-restricted: bench 278 lists its Solana mint (close to a billion dollars) as having no open market.",
+    twitter: "@Securitize",
+    docs: "https://securitize.io/learn/press/blackrock-launches-first-tokenized-fund-buidl-on-the-ethereum-network",
   },
   "syrup-usdc": {
     url: "https://syrup.fi",

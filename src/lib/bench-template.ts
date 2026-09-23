@@ -311,11 +311,15 @@ export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
     renderTemplate(m, benchmark),
   );
   benchmark.subtitle = renderTemplate(benchmark.subtitle, benchmark);
+  // A one-clause templated title or description renders to "" when the
+  // bench has no live row (every placeholder unresolved, the clause
+  // pruned); "" is not nullish, so the page's `?? title` fallback did not
+  // fire and <title> shipped empty (review 2 2026-09-23). Store undefined.
   if (benchmark.seoTitle) {
-    benchmark.seoTitle = renderTemplate(benchmark.seoTitle, benchmark);
+    benchmark.seoTitle = renderTemplate(benchmark.seoTitle, benchmark).trim() || undefined;
   }
   if (benchmark.seoDescription) {
-    benchmark.seoDescription = renderTemplate(benchmark.seoDescription, benchmark);
+    benchmark.seoDescription = renderTemplate(benchmark.seoDescription, benchmark).trim() || undefined;
   }
   if (benchmark.seoIntro) {
     benchmark.seoIntro = renderTemplate(benchmark.seoIntro, benchmark);
