@@ -29,6 +29,19 @@ type Config struct {
 	// symbol, so one tick is ~19 native plus ~27 stats requests, under
 	// 600 req/h, fine on a paid key.
 	MobulaRefreshInterval time.Duration
+
+	// L2Beat tick. One unauthenticated request per tick covers the whole
+	// cohort (~280 KB), so 15 min costs 4 req/h in total, not per chain.
+	// Matched to the DefiLlama cadence because the two feed the same
+	// cards and a reader comparing TVL with value secured should not be
+	// comparing two different instants.
+	L2BeatRefreshInterval time.Duration
+
+	// Size floor for the cohort the 7-day median is taken over. The median
+	// is a yardstick, and a yardstick that lets $2M chains vote moves on
+	// one airdrop. $200M keeps the cohort to chains whose weekly move is
+	// capital rotating rather than a single incentive program.
+	L2BeatMedianFloorUSD float64
 }
 
 func loadConfig() *Config {
@@ -36,6 +49,8 @@ func loadConfig() *Config {
 		MobulaAPIKey:             os.Getenv("MOBULA_API_KEY"),
 		DefillamaRefreshInterval: 15 * time.Minute,
 		MobulaRefreshInterval:    5 * time.Minute,
+		L2BeatRefreshInterval:    15 * time.Minute,
+		L2BeatMedianFloorUSD:     200e6,
 	}
 
 	if v := os.Getenv("DEFILLAMA_REFRESH_MINUTES"); v != "" {
@@ -49,7 +64,26 @@ func loadConfig() *Config {
 		}
 	}
 
-	fmt.Printf("Config: chains=%d, defillama_every=%v, mobula_every=%v, mobula_key=%v\n",
-		len(Registry), c.DefillamaRefreshInterval, c.MobulaRefreshInterval, c.MobulaAPIKey != "")
+	if v := os.Getenv("L2BEAT_REFRESH_MINUTES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.L2BeatRefreshInterval = time.Duration(n) * time.Minute
+		}
+	}
+	if v := os.Getenv("L2BEAT_MEDIAN_FLOOR_USD"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil && n > 0 {
+			c.L2BeatMedianFloorUSD = n
+		}
+	}
+
+	rollups := 0
+	for _, ch := range Registry {
+		if ch.L2Beat != "" {
+			rollups++
+		}
+	}
+
+	fmt.Printf("Config: chains=%d (%d with an L2Beat id), defillama_every=%v, mobula_every=%v, l2beat_every=%v, l2beat_floor=$%.0fM, mobula_key=%v\n",
+		len(Registry), rollups, c.DefillamaRefreshInterval, c.MobulaRefreshInterval,
+		c.L2BeatRefreshInterval, c.L2BeatMedianFloorUSD/1e6, c.MobulaAPIKey != "")
 	return c
 }

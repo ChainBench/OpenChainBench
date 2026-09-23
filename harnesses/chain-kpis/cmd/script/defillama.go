@@ -77,6 +77,9 @@ func fetchDefillamaChain(c Chain) {
 
 	if anyOK {
 		chainKpisLastRefresh.WithLabelValues(c.Slug, "defillama").Set(float64(time.Now().Unix()))
+		chainKpisHealth.WithLabelValues(c.Slug, "defillama").Set(1)
+	} else {
+		chainKpisHealth.WithLabelValues(c.Slug, "defillama").Set(0)
 	}
 	chainKpisLastTickUnix.Set(float64(time.Now().Unix()))
 }

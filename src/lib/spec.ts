@@ -426,10 +426,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v70: bench 268 method v3: unit bp, Sandwiched panel and ledger column
   // removed, BullX and Nova out of the cohort; cached v69 entries keep the
   // old panels and providers.
+  // v72: add bench 273 chain-bridged-tvl (dev-only) + Blockchains category
+  // row. Bench SET grew.
   // v71: keyed RPC cohort folded into the chain pages (tier dimension):
   // 9 keyed-rpc-* specs gone, robinhood-rpc (243) and arc-rpc (270)
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
-  ["bench-unfiltered-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -648,7 +650,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v62: lockstep with bench-unfiltered-v67 (add bench 267 trading-app-daily-volume).
   // v64: lockstep with bench-unfiltered-v69 (keyed RPC cohort).
   // v65: lockstep with bench-unfiltered-v71 (keyed cohort folded into chain pages).
-  ["all-benchmarks-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v66: lockstep with bench-unfiltered-v72 (add bench 273 chain-bridged-tvl).
+  ["all-benchmarks-v66", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
