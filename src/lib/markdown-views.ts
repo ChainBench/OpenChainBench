@@ -7,6 +7,7 @@
  * The MCP resource for a bench renders the same text, so an agent gets
  * one document whichever door it comes through.
  */
+import { distinctBenchCount } from "@/lib/providers";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import {
@@ -184,7 +185,7 @@ export function productMarkdown(p: ProviderProfile): string {
   md.push(`# ${p.name}: OpenChainBench measurements`);
   md.push("");
   md.push(`- Page: ${SITE.url}/products/${p.slug}`);
-  md.push(`- Live benchmarks: ${p.appearances.length}${p.wins > 0 ? `, ${p.wins} first-place ${p.wins === 1 ? "finish" : "finishes"}` : ""}`);
+  md.push(`- Live benchmarks: ${distinctBenchCount(p.appearances)}${p.wins > 0 ? `, ${p.wins} first-place ${p.wins === 1 ? "finish" : "finishes"}` : ""}`);
   md.push(`- License: CC-BY-4.0`);
   const runs = p.appearances
     .map((a) => Date.parse(a.benchmark.lastRunAt ?? ""))

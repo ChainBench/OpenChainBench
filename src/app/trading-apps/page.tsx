@@ -339,9 +339,6 @@ export default async function TradingAppsHubPage() {
                   </td>
                   {COLUMNS.map((col) => {
                     const val = row[col.key];
-// The ItemList and the "Active benchmarks" count name only the benches this
-// deployment serves (bench 268 is dev-only on production).
-const BENCH_SLUGS = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
                     const isBest = val !== null && val === bests[col.key];
                     const formula = formulaOf(col.key, row.slug);
                     const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";

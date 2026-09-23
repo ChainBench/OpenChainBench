@@ -208,6 +208,14 @@ function profileDisplayName(
   return titleCaseSlug(canonSlug);
 }
 
+/** Number of distinct benches a provider appears on. A provider in both
+ *  cohorts of one tier-dimensioned bench (QuickNode on arc-rpc: public
+ *  row and keyed row) has two appearances there and must count it once
+ *  (release review 2026-09-24). */
+export function distinctBenchCount(appearances: readonly { benchmark: { slug: string } }[]): number {
+  return new Set(appearances.map((a) => a.benchmark.slug)).size;
+}
+
 export type ProviderAppearance = {
   benchmark: Pick<
     Benchmark,
@@ -609,8 +617,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
   );
   profiles.sort((a, b) => {
     if (a.wins !== b.wins) return b.wins - a.wins;
-    if (a.appearances.length !== b.appearances.length) {
-      return b.appearances.length - a.appearances.length;
+    if (distinctBenchCount(a.appearances) !== distinctBenchCount(b.appearances)) {
+      return distinctBenchCount(b.appearances) - distinctBenchCount(a.appearances);
     }
     return a.name.localeCompare(b.name);
   });

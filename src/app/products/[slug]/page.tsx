@@ -1,3 +1,4 @@
+import { distinctBenchCount } from "@/lib/providers";
 import type { Metadata } from "next";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { isExpiredRpcPage } from "@/lib/provider-filters";
@@ -179,7 +180,7 @@ export async function generateMetadata({
   // own site; the title has to say what this page adds, independent
   // measurement, and the description has to carry the numbers.
   const appearances = livingAppearances(p.appearances);
-  const benchCount = appearances.length;
+  const benchCount = distinctBenchCount(appearances);
   // The category the product is actually in, taken from the bench it
   // ranks highest on, so the blue line answers "what is this" before it
   // answers "how does it rank". Brand queries carried 690 impressions and
@@ -507,7 +508,7 @@ export default async function ProviderPage({
     proseParts.push(`${topLines.join(", ")}.`);
   } else {
     proseParts.push(
-      `${p.name} performance benchmarks, live across ${p.appearances.length} ${p.appearances.length === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
+      `${p.name} performance benchmarks, live across ${distinctBenchCount(p.appearances)} ${distinctBenchCount(p.appearances) === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
     );
   }
   // Dated, like the bench TL;DR: the newest measurement behind the
@@ -693,7 +694,7 @@ export default async function ProviderPage({
         identifier: p.slug,
         description: capDescription(
           reg?.description ??
-            `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+            `Crypto-infrastructure provider tracked by OpenChainBench across ${distinctBenchCount(p.appearances)} live benchmarks.`,
           990,
         ),
         ...(sameAs.length > 0 ? { sameAs } : {}),
@@ -817,7 +818,7 @@ export default async function ProviderPage({
                   {productProse}
                 </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
-                  {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
+                  {distinctBenchCount(p.appearances)} {distinctBenchCount(p.appearances) === 1 ? "benchmark" : "benchmarks"}
                   {p.wins > 0 && (
                     <>
                       <span className="text-ink-faint"> · </span>

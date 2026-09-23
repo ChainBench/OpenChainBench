@@ -1,3 +1,4 @@
+import { distinctBenchCount } from "@/lib/providers";
 import { getProviders } from "@/lib/providers";
 import { ProvidersTable } from "@/components/providers-table";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -18,7 +19,7 @@ export default async function ProvidersIndex() {
     slug: p.slug,
     name: p.name,
     type: p.type,
-    appearances: p.appearances.length,
+    appearances: distinctBenchCount(p.appearances),
     wins: p.wins,
     categories: p.categories,
   }));
