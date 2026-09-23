@@ -35,6 +35,9 @@ type paradexMarkets struct {
 				TakerFee struct {
 					Fee string `json:"fee"` // decimal, "0" as of 2026-09
 				} `json:"taker_fee"`
+				MakerFee struct {
+					Fee string `json:"fee"` // decimal, "0" as of 2026-09
+				} `json:"maker_fee"`
 			} `json:"interactive_fee"`
 		} `json:"fee_config"`
 	} `json:"results"`
@@ -72,6 +75,9 @@ func fetchParadex(v VenueConfig) PerpSample {
 	}
 	rate, _ := strconv.ParseFloat(mkts.Results[0].FeeConfig.InteractiveFee.TakerFee.Fee, 64)
 	s.TakerFeeBps = rate * 10000
+	if mk, err := strconv.ParseFloat(mkts.Results[0].FeeConfig.InteractiveFee.MakerFee.Fee, 64); err == nil {
+		s.MakerFeeBps, s.HasMakerFee = mk*10000, true
+	}
 
 	// 2) Interactive orderbook (max depth 100): API book plus RPI levels,
 	//    what a Retail order crosses.

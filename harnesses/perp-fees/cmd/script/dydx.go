@@ -137,6 +137,7 @@ func fetchDYdX(v VenueConfig) PerpSample {
 	t0 := feeParams.Params.Tiers[0]
 	// ppm = parts per million; bps = ppm / 100
 	s.TakerFeeBps = float64(t0.TakerFeePpm) / 100.0
+	s.MakerFeeBps, s.HasMakerFee = float64(t0.MakerFeePpm)/100.0, true
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	// Notional tiers: rewalk the already-fetched book at $1k/$10k/$100k.
