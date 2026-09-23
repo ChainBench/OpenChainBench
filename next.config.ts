@@ -108,19 +108,19 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    // The three URL families with a Markdown variant (rewrites() above)
-    // vary on Accept, on the HTML side too: a shared cache keyed on the URL
-    // alone would otherwise hand a browser the Markdown an agent fetched
-    // first, or the reverse.
-    const varyAccept = { key: "Vary", value: "Accept" };
+    // No `Vary: Accept` on the HTML side of the three Markdown families
+    // (rewrites() above): the app router replaces a configured Vary with
+    // its own (rsc, next-router-state-tree, ...), verified on staging, so
+    // the rule never reached a response. Isolation of the two
+    // representations does not need it on Vercel: the header-conditioned
+    // rewrite changes the origin path to /api/md/<path>, so the CDN keys
+    // the two documents apart (checked: HTML after Markdown stays HTML and
+    // the reverse). The Markdown route sets its own Vary: Accept.
     return [
       {
         source: "/:path*",
         headers: SECURITY_HEADERS,
       },
-      { source: "/benchmarks/:slug", headers: [varyAccept] },
-      { source: "/products/:slug", headers: [varyAccept] },
-      { source: "/perps", headers: [varyAccept] },
       {
         // The RPC speed test fires fetch() at user-supplied endpoints
         // straight from the browser — the whole product. The site-wide
