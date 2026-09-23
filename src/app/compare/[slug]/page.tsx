@@ -249,7 +249,13 @@ export async function generateMetadata({
   // /compare/fomo-vs-invo sits at exactly two live shared benches and earns
   // 36 of the site's 289 clicks, and a 404 there would be self-inflicted.
   if (!isCurated && sharedSlugsForMeta.length < 2) notFound();
-  const dataThin = !isCurated && liveSharedCount < 2;
+  // A pair whose shared benches are all RWA compares assets (AAPL vs
+  // NVDA), not providers; it stays reachable and noindexed, and the link
+  // graph no longer points at it (isPairLinkable, RWA audit 2026-09-23).
+  const allRwa =
+    sharedSlugsForMeta.length > 0 &&
+    sharedSlugsForMeta.every((s) => a.appearances.find((x) => x.benchmark.slug === s)?.benchmark.category === "RWA");
+  const dataThin = !isCurated && (liveSharedCount < 2 || allRwa);
 
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had

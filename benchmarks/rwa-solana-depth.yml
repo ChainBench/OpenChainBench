@@ -11,6 +11,7 @@ category: RWA
 status: live
 metric: Cost of a $100k sale
 unit: bp
+row_noun: { one: tokenized asset, many: tokenized assets }
 higher_is_better: false
 
 seo_intro: |

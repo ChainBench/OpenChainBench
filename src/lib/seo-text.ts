@@ -39,8 +39,17 @@ export function capSnippet(input: string | undefined, max = 155): string {
   const head = s.slice(0, max);
   const lastDot = head.lastIndexOf(". ");
   if (lastDot > 60) return head.slice(0, lastDot + 1);
-  const lastComma = head.lastIndexOf(", ");
-  const cut = lastComma > 60 ? head.slice(0, lastComma) : head.slice(0, head.lastIndexOf(" "));
+  // The clause cut must not land inside a parenthesis: "(Orca pool, Jupiter
+  // route)" was cut at its inner comma and shipped as "(Orca pool." (RWA
+  // audit 2026-09-23). Walk back to the last ", " whose prefix has balanced
+  // parentheses; if none, cut before the unmatched "(".
+  const balanced = (t: string) => (t.match(/\(/g)?.length ?? 0) === (t.match(/\)/g)?.length ?? 0);
+  let lastComma = head.lastIndexOf(", ");
+  while (lastComma > 60 && !balanced(head.slice(0, lastComma))) {
+    lastComma = head.lastIndexOf(", ", lastComma - 1);
+  }
+  let cut = lastComma > 60 ? head.slice(0, lastComma) : head.slice(0, head.lastIndexOf(" "));
+  if (!balanced(cut)) cut = cut.slice(0, cut.lastIndexOf("("));
   return cut.replace(/[,;:\s]+$/, "") + ".";
 }
 

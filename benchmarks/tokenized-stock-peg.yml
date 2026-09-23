@@ -3,26 +3,27 @@
 slug: tokenized-stock-peg
 number: "076"
 title: Tokenized stock price accuracy, live onchain vs Nasdaq across 6 equities
-seo_title: "Tokenized stock price tracker 2026"
-seo_description: "Do tokenized stocks track the real market? NVDA, AAPL, META, PLTR, AMD and MU on Robinhood Chain vs their Nasdaq price, deviation in bps, live and keyless."
-subtitle: "Absolute deviation between each tokenized equity's Uniswap v4 pool price on Robinhood Chain and its real market reference price, in basis points, labeled by market session. The only live public measurement of whether onchain stocks actually track their underlying."
+seo_title: "Tokenized stock price vs Nasdaq 2026: {{best_name}} closest, {{best_p50}}"
+seo_description: "{{count}} Robinhood Chain tokenized stocks against the real share price, regular hours, last 5 sessions: {{best_name}} closest at {{best_p50}}, {{worst_name}} furthest at {{worst_p50}}."
+subtitle: "Absolute deviation between each tokenized equity's Uniswap v4 pool price on Robinhood Chain and its real market reference price, in basis points, labeled by market session. A live, keyless measurement of whether onchain stocks track their underlying."
 
 category: RWA
 status: live
 metric: Price deviation
 unit: bp
+row_noun: { one: tokenized stock, many: tokenized stocks }
 higher_is_better: false
 
 seo_intro: |
   Robinhood Chain tokenizes ~95 equities, and its Uniswap v4 pools trade
   them 24/7 while the Nasdaq closes every evening and every weekend.
-  This page answers the question that setup begs. how far does the
+  This page answers the question that setup begs: how far does the
   onchain price drift from the real one. Every 60 seconds we read each
   pool's spot price straight from the chain (StateView getSlot0, keyless)
   and compare it to the live reference price, labeling every sample with
   the market session it was taken in (pre, regular, post, closed). The
   regular-hours deviation is the headline ranking; the closed-state
-  series is the weekend drift nobody else publishes: what AAPL is worth
+  series is the weekend drift, one value per weekend: what AAPL is worth
   onchain on a Saturday when no market maker has a reference to arb
   against. Of the ~95 tokenized equities only 14 have pools with real
   liquidity; we measure the 6 whose pool still trades against the
@@ -63,7 +64,7 @@ findings:
 
 faq:
   - q: "Do tokenized stocks track their real market price?"
-    a: "During regular Nasdaq hours, mostly yes: arbitrageurs keep the Uniswap v4 pools within tens of basis points of the reference on the liquid names, and this page shows the live per-symbol number. Outside market hours the tether loosens, the pools keep trading around the clock with no authoritative reference, and the closed-session drift measured here is the honest answer to how far a 24/7 stock wanders from its 9:30-to-4 anchor."
+    a: "During regular Nasdaq hours, mostly yes: arbitrageurs keep the Uniswap v4 pools within tens of basis points of the reference on the liquid names, and this page shows the live per-symbol number. Outside market hours the pools keep trading with no live reference; those samples are labelled and exported but not ranked here, and the weekend's maximum drift per stock is published on tokenized-stock-weekend-drift."
   - q: "What happens to tokenized stock prices on weekends?"
     a: "The pools trade continuously, so the onchain price becomes pure supply and demand against the Friday close. The harness samples that drift every minute all weekend and the companion bench tokenized-stock-weekend-drift publishes the maximum per symbol; this page ranks regular hours only. Monday pre-market is compared against the previous close (the reference feed carries no pre-market print), so the snap-back shows up in the first regular session."
   - q: "Why only 6 stocks when Robinhood tokenized about 95?"

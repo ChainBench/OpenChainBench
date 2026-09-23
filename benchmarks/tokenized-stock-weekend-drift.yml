@@ -3,14 +3,15 @@
 slug: tokenized-stock-weekend-drift
 number: "079"
 title: Tokenized stock weekend drift, how far each equity wanders Friday to Monday
-seo_title: "Tokenized stock weekend drift 2026"
-seo_description: "How far do onchain tokenized stocks drift from Friday close during the weekend? NVDA, AAPL, META, PLTR, AMD and MU measured live on Robinhood Chain, in bps."
+seo_title: "Tokenized stock weekend drift 2026: {{best_p50}} to {{worst_p50}}"
+seo_description: "Last weekend {{best_name}} held closest to Friday's close ({{best_p50}} max drift) and {{worst_name}} moved furthest ({{worst_p50}}), across {{count}} Robinhood Chain tokenized stocks."
 subtitle: "Maximum deviation between each tokenized stock's pool price and Friday's Nasdaq close, measured every minute from the last regular tick on Friday (4 pm New York) to the first regular tick on Monday (9:30 am), one value per completed weekend."
 
 category: RWA
 status: live
 metric: Weekend max drift
 unit: bp
+row_noun: { one: tokenized stock, many: tokenized stocks }
 higher_is_better: false
 
 seo_intro: |
@@ -24,8 +25,8 @@ seo_intro: |
   publishes one value per completed weekend. The interesting rows are
   the thin pools: the 1 percent-fee names can drift by hundreds of basis
   points on a quiet Sunday because no arbitrageur has a reference to
-  arb against until the bell rings on Monday. The chart nobody else
-  publishes.
+  arb against until the bell rings on Monday. One value per weekend,
+  per stock, from a public harness.
 
 abstract: |
   Every 60 seconds outside regular hours, the harness records the
@@ -45,13 +46,13 @@ methodology:
   - "Session windows come from Yahoo currentTradingPeriod (holiday aware), which the harness labels every tick; the weekend gap runs from Friday's regular close (4 pm New York) through post-market, the closed nights and Monday pre-market to the regular open (9:30 am New York), about 65 hours, longer on a holiday weekend. Thanksgiving's Wednesday-to-Friday gap is over 40 hours but holds no Saturday, so it is not counted."
   - "Headline: the weekend the harness currently publishes (a 10-minute read, so a deleted value is gone within minutes), shown only while its end stamp (tsp_weekend_drift_end_unix) is under eight days old, so an older weekend is never shown as last weekend. The sample count is the number of weekends published in the trailing five weeks (changes of the end stamp plus one). The reference is Friday's close all weekend (Yahoo's price does not move), so the figure is the pool's own wandering."
   - "Cohort: the 6 tokenized equities measured by the tokenized stock peg bench (NVDA, AAPL, PLTR, META, AMD, MU). Same pool addresses, same reference, same fee tiers; the five pools that froze at their last swap (GOOGL, TSLA, MSFT, AMZN, SPY) are out of both benches until they trade again."
-  - "The measurement is a bound, not a fair value: an AMM can sit anywhere inside its fee band without creating arbitrage, so weekend drift on a 1 percent fee pool (AAPL, PLTR, AMD, MU) can reach 100 bps by construction, 30 bps on the 0.3 percent pools (NVDA, META). Read the drift number alongside the pool fee, disclosed on the tokenized-stock-peg page."
+  - "Not a fair value: an AMM can rest anywhere inside its fee band without creating arbitrage (up to 100 bps from a live price on the 1 percent pools AAPL, PLTR, AMD and MU, 30 bps on the 0.3 percent pools NVDA and META), and over a weekend there is no live price to arbitrage against, so drift can exceed that band. Read the drift number alongside the pool fee, disclosed on the tokenized-stock-peg page."
   - "Not a claim about corporate fair value: the reference is Friday close, not the theoretical opening indication. When earnings, dividends or macro events happen on the weekend, Monday open will differ from Friday close by the same amount whether the pool moved or not."
 
 findings:
   - "{{best_name}} held tightest last weekend at {{best_p50}} (max drift, bps) across {{count}} tokenized equities."
   - "{{name:aapl}} ({{p50:aapl}}) and {{name:nvda}} ({{p50:nvda}}) have the most active pools of the cohort, and their weekend drift is the closest read on what a 24/7 stock is worth on a Sunday when nobody has a reference to arb against."
-  - "The largest weekend drifts come from the thin-pool symbols (MU, AMD, PLTR) sitting on the 1 percent fee tier at pool depths in the low tens of thousands, against 0.3 percent on NVDA and META. That is not a peg failure, it is the arithmetic of a wide fee band with no arbitrageur reference during the 65 hour Nasdaq close."
+  - "A pool's fee tier bounds how far it can rest from a live price without arbitrage (1 percent on AAPL, PLTR, AMD and MU, 0.3 percent on NVDA and META). Over a weekend there is no live price, so drift can run past that band, which is why the order moves from one weekend to the next."
   - "Every reading resets at Monday open; the page keeps the maximum the weekend reached before the reset, and the next weekend replaces it on Monday."
 
 faq:
@@ -62,7 +63,7 @@ faq:
   - q: "Is a high drift bad?"
     a: "It reads as inefficient markets on paper, but while Nasdaq is closed there is no fair value to converge to, and every drift closes at the next open. The number matters most for downstream products (lending, structured payoffs) that use the tokenized price as an oracle when the real market is closed."
   - q: "Which stocks drift the most on weekends?"
-    a: "The pattern is fee tier times pool depth. On the current cohort, MU, AMD and PLTR (1 percent fee tier, sub 50k depth) drift the most over a weekend, AAPL and NVDA (the most active pools, 1 and 0.3 percent) the least, META in between. A wide fee band means arbitrageurs let the pool wander further before a trade pays, and a thin pool moves further on each trade that does happen."
+    a: "Last completed weekend, {{worst_name}} drifted furthest from Friday's close, at {{worst_p50}}, and {{best_name}} the least, at {{best_p50}}; the table ranks all {{count}}. The order changes from one weekend to the next: with Nasdaq closed there is no live price to arbitrage against, so fee tier and pool depth decide how far each trade moves a pool, not where it stops."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/tokenized-stock-peg
 

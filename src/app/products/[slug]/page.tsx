@@ -21,6 +21,7 @@ import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
+import { valueQualifier } from "@/lib/value-window";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
@@ -109,6 +110,7 @@ const CATEGORY_NOUN: Record<string, string> = {
   Trading: "trading",
   Wallets: "wallet",
   RPCs: "RPC",
+  RWA: "RWA",
 };
 
 /** "Arbitrum RPC" for a chain RPC bench; the title up to its first comma
@@ -213,7 +215,10 @@ export async function generateMetadata({
     // Always the denominator and, on a tier-dimensioned bench, the cohort:
     // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
     // cohort and Alchemy the private one (audit 2026-09-21).
-    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)}`);
+    // Each rank carries its own bench's qualifier: a 7d session median, a
+    // 30d figure and last weekend's maximum were all labelled "(p50, 24h)"
+    // by one trailing suffix (RWA audit 2026-09-23).
+    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)} (${valueQualifier(a.benchmark)})`);
   // Count first, ranks second: the 158-character cap lands inside the
   // rank list on providers with two long bench labels, and a sentence
   // cut on a numeral ("at 4.") is what the snippet then shows (audit
@@ -223,7 +228,7 @@ export async function generateMetadata({
   // lands inside the rank list (audit 2026-09-22), and the count sentence
   // follows as a whole sentence that capSnippet may drop, so it never eats
   // the second rank either (audit 2026-09-23).
-  const rankSentence = (ranks: string[]) => `${p.name} ranks ${ranks.join(", ")} (p50, 24h).`;
+  const rankSentence = (ranks: string[]) => `${p.name} ranks ${ranks.join(", ")}.`;
   const registryLine = reg?.description
     ? stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")
     : "";
@@ -265,7 +270,7 @@ export async function generateMetadata({
     fittedRanks.length > 0
       ? `${rankSentence(fittedRanks)} ${benchCount} live ${benchWord}${winSuffix}.`
       : metaRanked.length > 0
-        ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]} (p50, 24h).`
+        ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]}.`
         : fallbackDescription;
   const description = capSnippet(
     !registryLine

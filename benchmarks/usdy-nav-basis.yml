@@ -3,8 +3,8 @@
 slug: usdy-nav-basis
 number: "078"
 title: USDY NAV basis, live market price vs official redemption rate
-seo_title: "USDY price vs NAV 2026"
-seo_description: "Does USDY trade at its NAV? Live basis between Ondo's tokenized treasury market price (Orca pool, Jupiter route) and the redemption price Ondo publishes onchain, in bps."
+seo_title: "USDY price vs NAV 2026: {{best_p50}} basis to Ondo's redemption"
+seo_description: "Does USDY trade at its NAV? A 1,000 USDY sale on {{best_name}} fills {{best_p50}} from the redemption price Ondo publishes onchain (24h median)."
 subtitle: "Signed basis between USDY's onchain market price and the redemption price Ondo publishes onchain, in basis points. Tokenized treasuries are the largest RWA segment; this is the live answer to whether the market actually prices the NAV."
 
 category: RWA
