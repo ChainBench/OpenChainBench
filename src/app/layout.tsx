@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
@@ -10,39 +10,57 @@ import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
 import { PHProvider } from "@/components/posthog-provider";
 
-const inter = Inter({
+// Self-hosted rather than next/font/google. The Google loader resolves
+// every family over the network at BUILD time, so an unreachable
+// fonts.googleapis.com fails the deploy: it did twice in twenty minutes
+// on 2026-09-23, on JetBrains Mono and then Inter, from commits that
+// touched no font code. These read off disk instead.
+//
+// Variable faces, latin subset, fetched once from Google's own CDN and
+// committed under ./fonts with their OFL licences. One file per family
+// covers the whole weight axis, so the weights listed here are no longer
+// a subset of what is available - any value in the range works.
+const inter = localFont({
+  src: "./fonts/Inter-latin.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "100 900",
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Arial", "sans-serif"],
 });
 
-const interTight = Inter_Tight({
+const interTight = localFont({
+  src: "./fonts/InterTight-latin.woff2",
   variable: "--font-inter-tight",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: "100 900",
   display: "swap",
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Arial", "sans-serif"],
 });
 
 // preload: false on the serif + mono families: they style prose/labels
-// below the fold, and their 3 woff2 preloads competed with LCP-critical
+// below the fold, and their woff2 preloads competed with LCP-critical
 // Inter/Inter Tight for bandwidth on first paint. display: swap still
 // applies, so they load lazily without invisible text.
-const sourceSerif = Source_Serif_4({
+const sourceSerif = localFont({
+  src: [
+    { path: "./fonts/SourceSerif4-latin.woff2", style: "normal", weight: "200 900" },
+    { path: "./fonts/SourceSerif4-Italic-latin.woff2", style: "italic", weight: "200 900" },
+  ],
   variable: "--font-source-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["italic", "normal"],
   display: "swap",
   preload: false,
+  // The CLS fallback defaults to Arial; a serif measured against a sans
+  // is the wrong metric to size-adjust from.
+  adjustFontFallback: "Times New Roman",
+  fallback: ["Iowan Old Style", "Times New Roman", "Georgia", "serif"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "./fonts/JetBrainsMono-latin.woff2",
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: "100 800",
   display: "swap",
   preload: false,
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
 });
 
 export const viewport: Viewport = {
