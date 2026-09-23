@@ -78,142 +78,142 @@ providers:
     tag: "Tesla xStock, deepest pool of the cohort (~$2.1M Raydium)"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for TSLAx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="tsla"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="tsla"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}
   - slug: nvda
     name: NVDAx
     tag: "Nvidia xStock, ~$2.7M Raydium pool"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for NVDAx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="nvda"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="nvda"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}
   - slug: aapl
     name: AAPLx
     tag: "Apple xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for AAPLx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="aapl"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="aapl"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}
   - slug: msft
     name: MSFTx
     tag: "Microsoft xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for MSFTx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="msft"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="msft"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}
   - slug: amzn
     name: AMZNx
     tag: "Amazon xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for AMZNx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="amzn"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="amzn"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}
   - slug: googl
     name: GOOGLx
     tag: "Alphabet xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for GOOGLx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="googl"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="googl"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}
   - slug: meta
     name: METAx
     tag: "Meta xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for METAx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="meta"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="meta"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}
   - slug: hood
     name: HOODx
     tag: "Robinhood stock, tokenized by Backed, not by Robinhood"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for HOODx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="hood"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="hood"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}
   - slug: spy
     name: SPYx
     tag: "S&P 500 ETF xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for SPYx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="spy"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="spy"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}
   - slug: qqq
     name: QQQx
     tag: "Nasdaq 100 ETF xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for QQQx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="qqq"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="qqq"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}
   - slug: coin
     name: COINx
     tag: "Coinbase xStock"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for COINx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="coin"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="coin"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}
   - slug: pltr
     name: PLTRx
     tag: "Palantir xStock, thinnest route of the cohort (1.8bp impact)"
     formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for PLTRx on Solana and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
-      success: avg_over_time(tsp_health{asset="pltr"}[24h])
-      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[7d])
+      p50: avg(quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h]))
+      p90: avg(quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h]))
+      p99: avg(quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h]))
+      mean: avg(avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h]))
+      success: avg_over_time(tsp_health{benchmark="xstocks-peg",asset="pltr"}[24h])
+      sample_size: avg(count_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[7d]))
       series: tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}

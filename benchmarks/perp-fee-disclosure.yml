@@ -114,7 +114,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="gains"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="gains"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="gains"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h]))
 
@@ -127,7 +127,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="hyperliquid"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="hyperliquid"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="hyperliquid"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="hyperliquid"}[24h]))
 
@@ -140,7 +140,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="aster"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="aster"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="aster"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="aster"}[24h]))
 
@@ -153,7 +153,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="dydx"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="dydx"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="dydx"}[24h]))
 
@@ -166,7 +166,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="extended"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="extended"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="extended"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="extended"}[24h]))
 
@@ -179,7 +179,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="edgex"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="edgex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="edgex"}[24h]))
 
@@ -192,7 +192,7 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="paradex"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="paradex"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="paradex"}[24h]))
 
@@ -205,6 +205,6 @@ providers:
       p90: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
       p99: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
       mean: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
-      success: avg_over_time(perp_fees_health{venue="lighter"}[24h])
+      success: avg(avg_over_time(perp_fees_health{venue="lighter"}[24h]))
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h])
       series: 10000 * perp_protocol_perp_fees_30d_usd{protocol="lighter"} / on() group_left() (30 * avg_over_time(perp_venue_volume_24h_usd{venue="lighter"}[24h]))
