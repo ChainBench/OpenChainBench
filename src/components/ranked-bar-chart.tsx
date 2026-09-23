@@ -65,7 +65,7 @@ export function RankedBarChart({
     // surface doesn't open with a long stack of empty bars that tie at
     // the bottom (or, when lower-is-better, falsely lead the ranking).
     const scored = benchmark.results.filter(
-      (r) => (r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0) &&
+      (r) => (r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0 || (r.ms.mean ?? 0) > 0) &&
         (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT
     );
     const sorted = scored.sort((a, b) =>

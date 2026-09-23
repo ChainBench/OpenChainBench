@@ -103,6 +103,9 @@ export async function GET(req: NextRequest) {
   );
 
   const transitions: ProviderState[] = [];
+  // Label names carried by each freshness stamp metric, fetched once per
+  // run; null when Prom returned nothing (the selector is then kept whole).
+  const stampLabels = new Map<string, Set<string> | null>();
 
   for (const spec of liveSpecs) {
     // Per-bench freshness window. High-freq scrapers (10-30 s) keep the
@@ -111,6 +114,10 @@ export async function GET(req: NextRequest) {
     // doesn't treat their normal idle stretches as outages.
     const threshold =
       spec.prometheus?.expected_freshness_seconds ?? DEFAULT_FRESH_THRESHOLD_SECONDS;
+    if (spec.prometheus?.freshness_timestamp_metric) {
+      const m = spec.prometheus.freshness_timestamp_metric;
+      if (!stampLabels.has(m)) stampLabels.set(m, await metricLabelNames(prom, m));
+    }
     for (const provider of spec.providers) {
       const q = provider.queries?.p50;
       if (!q) continue;
@@ -147,17 +154,33 @@ export async function GET(req: NextRequest) {
       // We only alert when `now == confirm` (state sustained for the
       // hysteresis window) AND `past` is the opposite (it really did
       // flip). Single-cycle blips show now != confirm and are dropped.
-      const recentQ = `present_over_time(${metricName}${labelSelector}[${threshold}s])`;
-      const confirmQ = `present_over_time(${metricName}${labelSelector}[${threshold}s] offset ${HYSTERESIS_OFFSET_SECONDS}s)`;
-      const pastQ = `present_over_time(${metricName}${labelSelector}[${threshold}s] offset ${LOOKBACK_SECONDS + HYSTERESIS_OFFSET_SECONDS}s)`;
-
+      //
+      // A bench that declares `prometheus.freshness_timestamp_metric`
+      // is probed on that stamp's value instead: its harness writes the
+      // stamp on every successful tick in every session, whereas the
+      // headline metric may be legitimately absent for hours (the stock
+      // benches pin market_state="regular" and delete the child outside
+      // regular hours, which read as 18 providers offline after every
+      // close and back online after every open; review 2026-09-23). The
+      // stamp keeps the labels that identify the provider (asset, venue,
+      // token), so the p50 selector is reduced to the labels the stamp
+      // actually carries.
+      const stamp = spec.prometheus?.freshness_timestamp_metric;
+      const probe = (offset: number): string => {
+        const off = offset > 0 ? ` offset ${offset}s` : "";
+        if (stamp) {
+          const sel = selectorForMetric(labelSelector, stampLabels.get(stamp) ?? null);
+          return `((time() - ${offset}) - max(${stamp}${sel}${off})) < bool ${threshold}`;
+        }
+        return `max(present_over_time(${metricName}${labelSelector}[${threshold}s]${off}))`;
+      };
       const [now, confirm, past] = await Promise.all([
         // For multi-series metrics the spec's p50 query already narrows
         // to a single provider via labels, but if the result is still
         // a vector we want any-series-alive as the live signal.
-        prom.scalar(`max(${recentQ})`).catch(() => null),
-        prom.scalar(`max(${confirmQ})`).catch(() => null),
-        prom.scalar(`max(${pastQ})`).catch(() => null),
+        prom.scalar(probe(0)).catch(() => null),
+        prom.scalar(probe(HYSTERESIS_OFFSET_SECONDS)).catch(() => null),
+        prom.scalar(probe(LOOKBACK_SECONDS + HYSTERESIS_OFFSET_SECONDS)).catch(() => null),
       ]);
 
       const isLive = (now ?? 0) > 0;
@@ -309,4 +332,28 @@ export async function GET(req: NextRequest) {
 function extractLabelSelector(q: string): string {
   const m = /\{[^{}]*\}/.exec(q);
   return m ? m[0] : "";
+}
+
+/** The label names one series of `metric` carries, from an instant query,
+ *  or null when Prom has no series for it right now. */
+async function metricLabelNames(prom: Prometheus, metric: string): Promise<Set<string> | null> {
+  try {
+    const r = await prom.query(`${metric}`);
+    if (r.resultType !== "vector" || r.result.length === 0) return null;
+    return new Set(Object.keys(r.result[0].metric ?? {}));
+  } catch {
+    return null;
+  }
+}
+
+/** `selector` reduced to the matchers whose label the target metric
+ *  carries: `{benchmark="x", asset="nvda", market_state="regular"}`
+ *  becomes `{benchmark="x", asset="nvda"}` for a stamp with no
+ *  market_state label. With no label set known, the selector is returned
+ *  unchanged. */
+function selectorForMetric(selector: string, labels: Set<string> | null): string {
+  if (!selector || !labels) return selector;
+  const matchers = [...selector.matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*(=~|!=|!~|=)\s*"((?:[^"\\]|\\.)*)"/g)];
+  const kept = matchers.filter((m) => labels.has(m[1])).map((m) => `${m[1]}${m[2]}"${m[3]}"`);
+  return kept.length > 0 ? `{${kept.join(", ")}}` : "";
 }

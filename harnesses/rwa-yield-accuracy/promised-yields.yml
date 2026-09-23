@@ -26,12 +26,11 @@ issuers:
     source: "https://yields.llama.fi/pools (apyMean30d) project ondo-yield-assets, Ethereum USDY"
     source_date: 2026-09-23
 
-  # The four entries below remain in the file so the harness reloader
-  # keeps their promised APYs current for the day the corresponding
-  # probes flip active. They are NOT scraped or displayed on the bench
-  # page while status: staging.
     refresh_note: "DefiLlama 30-day mean 3.565% (spot 3.59%). Ondo's USDY page displayed 3.60% APY that day (3.55% on 2026-07-22). Measured as NAV growth on Ondo's oracle, not as a rebase: Ethereum supply shrinks as holders bridge out."
 
+  # buidl and benji stay in the file for the day their probes flip
+  # active (see main.go); the harness has no probe for them today, so
+  # nothing reads these two entries.
   - token: buidl
     promised_apy_bps: 350
     source: "https://securitize.io/primary-market/buidl"

@@ -55,6 +55,7 @@ type weekendTracker struct {
 	client    *http.Client
 	lastState string
 	gapStart  time.Time // last regular tick before the current gap; zero when unknown
+	sawStart  bool      // this process saw the gap open, so maxDev covers all of it
 	maxDev    map[string]float64
 	seen      bool
 }
@@ -68,11 +69,13 @@ func (w *weekendTracker) begin(state string, now time.Time) {
 	defer w.mu.Unlock()
 	if w.seen && w.lastState == "regular" && state != "regular" {
 		w.gapStart = now
+		w.sawStart = true
 		w.maxDev = map[string]float64{}
 	}
 	if w.seen && w.lastState != "regular" && state == "regular" {
 		w.closeGap(now)
 		w.gapStart = time.Time{}
+		w.sawStart = false
 		w.maxDev = map[string]float64{}
 	}
 	w.lastState = state
@@ -113,9 +116,11 @@ func (w *weekendTracker) closeGap(now time.Time) {
 		fmt.Printf("[weekend] gap of %.1f h closed, %d assets published from Prometheus\n", now.Sub(start).Hours(), n)
 		return
 	}
-	// Prometheus unavailable: the in-process maximum covers the part of
-	// the gap this process saw, which is the whole gap unless it restarted.
-	if w.gapStart.IsZero() {
+	// Prometheus unavailable: the in-process maximum is the whole gap only
+	// when this process saw it open (a start found by the backfill scan
+	// leaves the pre-restart part unseen), so anything else publishes
+	// nothing rather than a partial weekend.
+	if !w.sawStart {
 		fmt.Printf("[weekend] gap closed, Prometheus unavailable and the process started inside the gap; nothing published\n")
 		return
 	}
