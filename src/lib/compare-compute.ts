@@ -293,18 +293,37 @@ export function sharedBenchSlugs(
   aAppearances: readonly AppearanceLike[],
   bAppearances: readonly AppearanceLike[],
 ): string[] {
-  const aByBench = new Map(aAppearances.map((x) => [x.benchmark.slug, x] as const));
-  const bByBench = new Map(bAppearances.map((x) => [x.benchmark.slug, x] as const));
-  const sameCohort = (s: string) => {
-    const a = aByBench.get(s);
-    const b = bByBench.get(s);
-    return !!a && !!b && (a.tier ?? null) === (b.tier ?? null);
-  };
+  const sameCohort = (s: string) => sharedCohortPair(aAppearances, bAppearances, s) !== null;
+  const aSlugs = Array.from(new Set(aAppearances.map((x) => x.benchmark.slug)));
   const candidateSlugs = pair.benchmarks
     ? pair.benchmarks.filter(sameCohort)
-    : Array.from(aByBench.keys()).filter(sameCohort);
+    : aSlugs.filter(sameCohort);
   const excluded = new Set(pair.excludeBenchmarks ?? []);
   return candidateSlugs.filter((s) => !excluded.has(s));
+}
+
+/**
+ * The two appearances of a shared bench that sit in the same access
+ * cohort, the public (untiered) one first. A provider can appear twice
+ * on one bench (QuickNode on arc-rpc: public row and keyed row); a map
+ * keyed by bench slug kept whichever came last, so the public-vs-public
+ * comparison was dropped and the two product pages disagreed about the
+ * pair (release review 2026-09-24).
+ */
+export function sharedCohortPair<T extends AppearanceLike>(
+  aAppearances: readonly T[],
+  bAppearances: readonly T[],
+  benchSlug: string,
+): { a: T; b: T } | null {
+  const as = aAppearances.filter((x) => x.benchmark.slug === benchSlug);
+  const bs = bAppearances.filter((x) => x.benchmark.slug === benchSlug);
+  const tiers = [null, ...new Set([...as, ...bs].map((x) => x.tier ?? null).filter((t) => t !== null))];
+  for (const tier of tiers) {
+    const a = as.find((x) => (x.tier ?? null) === tier);
+    const b = bs.find((x) => (x.tier ?? null) === tier);
+    if (a && b) return { a, b };
+  }
+  return null;
 }
 
 /** Resolves the intersection of two providers' bench appearances, then
@@ -317,13 +336,6 @@ export async function buildSharedBenches(
   bAppearances: Awaited<ReturnType<typeof getProvider>>,
 ): Promise<SharedBench[]> {
   if (!aAppearances || !bAppearances) return [];
-
-  const aByBench = new Map(
-    aAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
-  );
-  const bByBench = new Map(
-    bAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
-  );
 
   // Bench selection: the pair's whitelist when set, else the natural
   // intersection of both providers' appearances; minus the exclude
@@ -344,9 +356,9 @@ export async function buildSharedBenches(
 
   const built = await Promise.all(
     sharedSlugs.map(async (benchSlug) => {
-      const aEntry = aByBench.get(benchSlug);
-      const bEntry = bByBench.get(benchSlug);
-      if (!aEntry || !bEntry) return null;
+      const pairEntries = sharedCohortPair(aAppearances.appearances, bAppearances.appearances, benchSlug);
+      if (!pairEntries) return null;
+      const { a: aEntry, b: bEntry } = pairEntries;
       // Both rows sit in the same cohort; a non-headline one (keyed RPC
       // providers) scopes every breakdown load to that tier.
       const tier = aEntry.tier;

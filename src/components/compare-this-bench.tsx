@@ -60,7 +60,13 @@ export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) 
   // the sitemap (RWA audit 2026-09-23).
   if (benchmark.category === "RWA") return null;
 
-  const live = liveResults(benchmark.results);
+  // liveResults keeps live rows at p50 0 since 2026-09-22 (negative values
+  // on bench 263 needed the > 0 guard gone): declared unranked members and
+  // rows promoted for panel data now sit at 0 and would take the top
+  // indices of an ascending sort, pairing two Pre-TGE venues on
+  // perp-pf-ratio (release review 2026-09-24). Ranking helpers skip them;
+  // so does this block.
+  const live = liveResults(benchmark.results).filter((r) => !r.unrankedLabel && r.ms.p50 !== 0);
   const ranked = rankResults(live, benchmark.higherIsBetter).filter(
     (r) => !HEX_SLUG_RE.test(r.slug),
   );

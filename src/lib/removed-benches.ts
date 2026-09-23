@@ -97,6 +97,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
+  // 262 fiat on-ramp cost: two providers (MoonPay, Transak) with keys; the
+  // release condition is more than two keyed providers. Was held off main
+  // by its spec's absence there until release/2026-09-23 brought it.
+  "fiat-onramp-cost",
   // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
   // but the 24h success window has not filled since the last rebuild, so a
   // production board would rank rows on a partial window. Un-gate once the
