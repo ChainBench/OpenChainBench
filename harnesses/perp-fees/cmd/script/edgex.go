@@ -15,15 +15,54 @@ import (
 // read as empty_orderbook on all three assets for weeks. Contract IDs
 // are resolved via GET /api/v2/public/meta/getMetaData; hardcoded here
 // after a lookup on 2026-09-22 (v2 renumbered them to 30000xxx). The
-// taker fee is not exposed by any public endpoint: the documented base
-// rate (3.8 bps, edgex-1.gitbook.io) is used and disclosed in the spec
-// formula. TODO: switch to fee schedule API when edgeX ships one.
+// fee schedule IS exposed, on getMetaData: each contract carries
+// defaultTakerFeeRate and defaultMakerFeeRate. The harness used to pin the
+// taker at the documented 3.8 bps; it now reads both, which makes the rate
+// self-correcting and gives the fee band its floor (2026-09-23).
 
 const edgexBase = "https://edgex-prod-v2.edgex.exchange"
 
-// Documented base taker rate (3.8 bps = 0.00038). Revisit if edgeX ships a
-// public fees endpoint.
-const edgexTakerBps = 3.8
+// Fallback for the tick where getMetaData is unreachable: the documented
+// base rate. A wrong-but-documented taker beats no row at all, and the
+// maker simply stays absent, which is what "we could not read it" should
+// look like.
+const edgexTakerBpsFallback = 3.8
+
+type edgexMetaResp struct {
+	Data struct {
+		ContractList []struct {
+			ContractID          string `json:"contractId"`
+			DefaultTakerFeeRate string `json:"defaultTakerFeeRate"`
+			DefaultMakerFeeRate string `json:"defaultMakerFeeRate"`
+		} `json:"contractList"`
+	} `json:"data"`
+}
+
+// edgexFeeRates reads the published schedule for one contract. Returns
+// ok=false when the call fails or the contract is absent, and the caller
+// then falls back to the documented taker with no maker.
+func edgexFeeRates(client *http.Client, contractID string) (taker, maker float64, ok bool) {
+	var meta edgexMetaResp
+	url := fmt.Sprintf("%s/api/v2/public/meta/getMetaData", edgexBase)
+	if err := edgexGet(client, url, &meta); err != nil {
+		return 0, 0, false
+	}
+	for _, c := range meta.Data.ContractList {
+		if c.ContractID != contractID {
+			continue
+		}
+		t, errT := strconv.ParseFloat(c.DefaultTakerFeeRate, 64)
+		m, errM := strconv.ParseFloat(c.DefaultMakerFeeRate, 64)
+		if errT != nil || t <= 0 {
+			return 0, 0, false
+		}
+		if errM != nil {
+			return t * 10000, 0, false
+		}
+		return t * 10000, m * 10000, true
+	}
+	return 0, 0, false
+}
 
 // Asset → contractId map. Verified via v2 getMetaData on 2026-09-22
 // (BTCUSDC, ETHUSDC, SOLUSDC). If edgeX re-numbers contracts again,
@@ -60,7 +99,12 @@ func fetchEdgex(v VenueConfig) PerpSample {
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	s.TakerFeeBps = edgexTakerBps
+	if taker, maker, ok := edgexFeeRates(client, contractID); ok {
+		s.TakerFeeBps = taker
+		s.MakerFeeBps, s.HasMakerFee = maker, true
+	} else {
+		s.TakerFeeBps = edgexTakerBpsFallback
+	}
 
 	var book edgexDepthResp
 	url := fmt.Sprintf("%s/api/v2/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)

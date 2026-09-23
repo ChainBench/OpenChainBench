@@ -28,19 +28,19 @@ type lighterMarketDetails struct {
 type lighterFundings struct {
 	Fundings []struct {
 		MarketID int     `json:"market_id"`
-		Rate     float64 `json:"rate"`     // per-period, signed
-		Period   int64   `json:"period"`   // seconds
+		Rate     float64 `json:"rate"`   // per-period, signed
+		Period   int64   `json:"period"` // seconds
 	} `json:"fundings"`
 }
 
 type lighterOrders struct {
 	Asks []struct {
-		Price                string `json:"price"`
-		RemainingBaseAmount  string `json:"remaining_base_amount"`
+		Price               string `json:"price"`
+		RemainingBaseAmount string `json:"remaining_base_amount"`
 	} `json:"asks"`
 	Bids []struct {
-		Price                string `json:"price"`
-		RemainingBaseAmount  string `json:"remaining_base_amount"`
+		Price               string `json:"price"`
+		RemainingBaseAmount string `json:"remaining_base_amount"`
 	} `json:"bids"`
 }
 
@@ -62,6 +62,9 @@ func fetchLighter(v VenueConfig) PerpSample {
 			marketID = m.MarketID
 			takerPct, _ := strconv.ParseFloat(m.TakerFee, 64)
 			s.TakerFeeBps = takerPct * 100 // pct → bps
+			if makerPct, err := strconv.ParseFloat(m.MakerFee, 64); err == nil {
+				s.MakerFeeBps, s.HasMakerFee = makerPct*100, true
+			}
 			break
 		}
 	}
