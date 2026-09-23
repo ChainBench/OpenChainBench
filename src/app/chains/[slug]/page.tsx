@@ -5,8 +5,9 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import {
   CHAINS,
   CHAIN_BY_SLUG,
-  getBenchmarksForChain,
+  
 } from "@/lib/chains";
+import { getBenchmarksForChain } from "@/lib/chain-benches";
 import { fmtUnit } from "@/lib/format";
 import {
   fetchChainKpis,
@@ -25,7 +26,7 @@ import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -49,9 +50,8 @@ export async function generateMetadata({
   const benches = await getBenchmarksForChain(slug);
   const url = `${SITE.url}/chains/${slug}`;
   const title = `${chain.label} live benchmarks: finality, fees, RPC`;
-  const description = capDescription(
+  const description = capSnippet(
     `${benches.length} live OpenChainBench measurement${benches.length === 1 ? "" : "s"} covering ${chain.label}. ${chain.description}`,
-    158,
   );
   return {
     title,

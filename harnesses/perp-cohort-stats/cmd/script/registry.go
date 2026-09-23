@@ -27,7 +27,9 @@ var Registry = []Venue{
 	{Slug: "paradex", Name: "Paradex", Type: "perp", Chain: "paradex"},
 	{Slug: "edgex", Name: "edgeX", Type: "perp", Chain: "edgex"},
 	{Slug: "aster", Name: "Aster", Type: "perp", Chain: "bnb"},
-	{Slug: "vertex", Name: "Vertex", Type: "perp", Chain: "arbitrum"},
+	// Vertex wound down on Arbitrum in 2026; the team's venue is Nado on Ink
+	// and source_vertex.go has read Nado's gateway and archive since then.
+	{Slug: "nado", Name: "Nado", Type: "perp", Chain: "ink"},
 	{Slug: "grvt", Name: "GRVT", Type: "perp", Chain: "grvt"},
 	// TODO(sprint4): re-add Drift once the Solana RPC + Anchor IDL
 	// adapter ships. The public REST surface (dlob, mainnet-beta, api,
@@ -48,6 +50,31 @@ var Registry = []Venue{
 	{Slug: "backpack", Name: "Backpack", Type: "perp", Chain: "solana"},
 	// Ondo Perps: SGX off-chain matching, custody on Ethereum and Arbitrum.
 	{Slug: "ondo", Name: "Ondo Perps", Type: "perp", Chain: "ethereum"},
+	// Phase 2 (2026-09-22). Kalshi is a CFTC-regulated US exchange, not a
+	// DEX; it sits in the cohort so the regulated row can be compared.
+	{Slug: "kalshi", Name: "Kalshi", Type: "perp", Chain: "offchain"},
+	{Slug: "vest", Name: "Vest", Type: "perp", Chain: "vest"},
+	{Slug: "standx", Name: "StandX", Type: "perp", Chain: "bnb"},
+	{Slug: "apex", Name: "ApeX Omni", Type: "perp", Chain: "omni"},
+	{Slug: "jupiter", Name: "Jupiter Perps", Type: "perp", Chain: "solana"},
+	// Lighter's Robinhood deployment: separate books and API host.
+	{Slug: "lighter-rh", Name: "Lighter RH", Type: "perp", Chain: "lighter-rh"},
+	// trade.xyz is the operator of Hyperliquid's `xyz` HIP-3 dex.
+	{Slug: "trade-xyz", Name: "trade.xyz", Type: "perp", Chain: "hyperliquid"},
+	// Centralised reference rows (phase 4, 2026-09-23): volume, OI and pair
+	// counts as reported to CoinGecko, funding from the Mobula feed. Type
+	// "cex" so the hub can keep them behind a selector; no bench ranks
+	// them on volume against the measured DEX rows.
+	{Slug: "binance", Name: "Binance", Type: "cex", Chain: "offchain"},
+	{Slug: "okx", Name: "OKX", Type: "cex", Chain: "offchain"},
+	{Slug: "bybit", Name: "Bybit", Type: "cex", Chain: "offchain"},
+	{Slug: "gate", Name: "Gate", Type: "cex", Chain: "offchain"},
+	{Slug: "coinbase", Name: "Coinbase International", Type: "cex", Chain: "offchain"},
+	{Slug: "bitget", Name: "Bitget", Type: "cex", Chain: "offchain"},
+	{Slug: "deribit", Name: "Deribit", Type: "cex", Chain: "offchain"},
+	{Slug: "kraken", Name: "Kraken", Type: "cex", Chain: "offchain"},
+	{Slug: "kucoin", Name: "KuCoin", Type: "cex", Chain: "offchain"},
+	{Slug: "mexc", Name: "MEXC", Type: "cex", Chain: "offchain"},
 }
 
 // VenueBySlug returns the Venue with the given slug, or nil if not found.

@@ -35,7 +35,7 @@ import {
   rpcChainLabel,
 } from "@/lib/citation";
 import { valueInDeclaredUnit, fmtUnit } from "@/lib/format";
-import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -155,7 +155,14 @@ export async function generateMetadata({
   // keeps it out of the sitemap).
   const metaChain = rpcChainLabel(b);
   const metaStale = metaChain != null && isStaleBench(b);
-  const metaExpired = metaChain != null && isExpiredBench(b);
+  // Expiry is NOT an RPC-only concern, and gating it on metaChain meant
+  // only `<chain>-rpc` pages ever went noindex: perp-asset-breadth served
+  // an 2026-08-17 render for five weeks with `index, follow` and a place
+  // in the sitemap, because a collapsed bench keeps its last good render
+  // (by design) and nothing downstream noticed the render had aged out.
+  // The description rewrite below stays chain-specific — it is written in
+  // RPC terms — but the crawler gate applies to every bench.
+  const metaExpired = isExpiredBench(b);
   if (metaStale && metaChain) {
     const lastLeader = leader(b);
     const pausedOn = b.lastRunAt ? new Date(b.lastRunAt).toISOString().slice(0, 10) : "an earlier date";
@@ -168,7 +175,7 @@ export async function generateMetadata({
   // Google truncates meta descriptions at ~155-160 chars in the SERP. Anything
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
-  if (description) description = capDescription(description, 158);
+  if (description) description = capSnippet(description);
   // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
   // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
   const canonical = `${SITE.url}/benchmarks/${b.slug}`;
@@ -184,7 +191,9 @@ export async function generateMetadata({
     ? new Date(b.lastRunAt).toISOString().slice(0, 10)
     : undefined;
   return {
-    title: metaTitle,
+    // Same rule as pageMetadata: past 43 characters the brand suffix would
+    // cut the measured number off the title, so it ships absolute.
+    title: metaTitle.length > 43 ? { absolute: metaTitle } : metaTitle,
     description,
     alternates: { canonical },
     ...((metaIsAwaiting || metaThinRpc || metaExpired)
@@ -301,6 +310,8 @@ export default async function BenchmarkPage({
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
   const venue = venueOptions[0]?.value ?? null;
+  const bucketOptions = aggregate.dimensions?.bucket ?? [];
+  const bucket = bucketOptions[0]?.value ?? null;
 
   // Variants (chain × region × kind) are NOT embedded anymore. The old
   // pre-fetch awaited every variant (rpc-capabilities: 39 full provider
@@ -378,6 +389,7 @@ export default async function BenchmarkPage({
   const variableMeasured = buildBenchVariableMeasured({
     metric: benchmark.metric,
     unit: benchmark.unit,
+    ledgerColumns: benchmark.ledgerColumns,
     leader:
       currentLeader && leaderResult
         ? {
@@ -385,6 +397,7 @@ export default async function BenchmarkPage({
             p50: valueInDeclaredUnit(leaderResult.ms.p50, benchmark.unit),
             p90: valueInDeclaredUnit(leaderResult.ms.p90, benchmark.unit),
             p99: valueInDeclaredUnit(leaderResult.ms.p99, benchmark.unit),
+            mean: valueInDeclaredUnit(leaderResult.ms.mean, benchmark.unit),
           }
         : null,
   });
@@ -916,12 +929,14 @@ export default async function BenchmarkPage({
             regionOptions={regionOptions}
             kindOptions={kindOptions}
             venueOptions={venueOptions}
+            bucketOptions={bucketOptions}
             tierOptions={tierOptions}
             venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
             initialVenue={venue ?? null}
+            initialBucket={bucket ?? null}
             initialTier={headlineTier}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
             // Public endpoint URLs right under the ranked table (the

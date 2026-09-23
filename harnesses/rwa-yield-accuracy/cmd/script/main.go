@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -35,11 +37,30 @@ var probes = []IssuerProbe{
 	// NewBENJIProbe(),  // TODO: waiting Franklin NAV endpoint confirmation
 }
 
+// rpcHost is the RPC URL's host only: a keyed URL must never reach the
+// container log or the /logs ring.
+func rpcHost() string {
+	if u, err := url.Parse(rpcURL()); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return "(unparsed)"
+}
+
+// scrubURL replaces the RPC URL (which go-ethereum's *url.Error text
+// repeats, key included) with its host before a message is logged.
+func scrubURL(msg string) string {
+	full := rpcURL()
+	if full == "" {
+		return msg
+	}
+	return strings.ReplaceAll(msg, full, rpcHost())
+}
+
 func main() {
 	installLogCapture()
 	fmt.Println("=== RWA Yield Accuracy Harness ===")
 	fmt.Println("OpenChainBench № 089 - on-chain delivered yield vs advertised APY.")
-	fmt.Printf("Cohort: %d tokens | RPC: %s\n", len(probes), rpcURL())
+	fmt.Printf("Cohort: %d tokens | RPC host: %s\n", len(probes), rpcHost())
 	for _, p := range probes {
 		fmt.Printf("  - %s/%s on %s\n", p.Issuer(), p.Slug(), p.Chain())
 	}
@@ -59,7 +80,7 @@ func main() {
 	// clients (USDY on Solana, BUIDL on Arbitrum, etc.).
 	rpc, err := ethclient.Dial(rpcURL())
 	if err != nil {
-		fmt.Printf("[fatal] rpc dial: %v\n", err)
+		fmt.Printf("[fatal] rpc dial: %s\n", scrubURL(err.Error()))
 		os.Exit(1)
 	}
 	defer rpc.Close()
@@ -126,23 +147,42 @@ func main() {
 // so a transient RPC hiccup can't flip a healthy row to zero.
 func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, promised *promisedStore) {
 	labels := []string{probe.Issuer(), probe.Slug(), probe.Chain()}
+	var last *Measurement
 
-	tick := func() {
-		probeCtx, cancel := context.WithTimeout(ctx, httpTimeout)
+	// tick returns true when a measurement landed. A failure keeps the
+	// last good measurement published and probe_ok at 1 while that
+	// measurement is under staleAfter old: one failed archive call among
+	// about 76 must not blank the row for an hour (review 2026-09-23).
+	tick := func() bool {
+		probeCtx, cancel := context.WithTimeout(ctx, measureTimeout)
 		defer cancel()
 
 		m, err := probe.Measure(probeCtx, rpc)
 		if err != nil {
 			classifyAndCount(probe, err)
-			probeOK.WithLabelValues(labels...).Set(0)
-			fmt.Printf("[%s] probe error: %v\n", probe.Slug(), err)
-			return
+			if last == nil || time.Since(last.MeasuredAt) > staleAfter {
+				probeOK.WithLabelValues(labels...).Set(0)
+			}
+			fmt.Printf("[%s] probe error: %s\n", probe.Slug(), scrubURL(err.Error()))
+			return false
 		}
 
 		// Delivered yields (always emitted, even if promised is missing).
 		deliveredBps30d.WithLabelValues(labels...).Set(float64(m.DeliveredBps30d))
 		deliveredBps7d.WithLabelValues(labels...).Set(float64(m.DeliveredBps7d))
-		deliveredBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime))
+		if m.SpanDays30d > 0 {
+			windowDays30d.WithLabelValues(labels...).Set(m.SpanDays30d)
+			windowDays7d.WithLabelValues(labels...).Set(m.SpanDays7d)
+		}
+		// The live cohort has no lifetime figure (the adapters return 0); a
+		// published 0 read as "minus the promised APY" in the lifetime
+		// deviation, which no spec reads but the /metrics page showed.
+		if m.DeliveredBpsLifetime != 0 {
+			deliveredBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime))
+		} else {
+			deliveredBpsLifetime.DeleteLabelValues(labels...)
+			deviationBpsLifetime.DeleteLabelValues(labels...)
+		}
 
 		// Supply / AUM context.
 		totalSupply.WithLabelValues(labels...).Set(m.TotalSupplyUnits)
@@ -159,11 +199,14 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 			promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))
 			deviationBps30d.WithLabelValues(labels...).Set(float64(m.DeliveredBps30d - promisedBpsVal))
 			deviationBps7d.WithLabelValues(labels...).Set(float64(m.DeliveredBps7d - promisedBpsVal))
-			deviationBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime - promisedBpsVal))
+			if m.DeliveredBpsLifetime != 0 {
+				deviationBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime - promisedBpsVal))
+			}
 		}
 
 		probeOK.WithLabelValues(labels...).Set(1)
 		lastMeasured.WithLabelValues(labels...).Set(float64(m.MeasuredAt.Unix()))
+		last = m
 
 		fmt.Printf("[%s] delivered_30d=%d bps 7d=%d bps supply=%s AUM=%s\n",
 			probe.Slug(),
@@ -172,18 +215,43 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 			shortNum(m.TotalSupplyUnits),
 			shortNum(m.AUMUSD),
 		)
+		return true
 	}
 
-	// Fire immediately, then tick.
-	tick()
-	t := time.NewTicker(pollInterval)
-	defer t.Stop()
+	// The measurement (two print searches per window, a few dozen archive
+	// calls) runs hourly, as the spec says; the deviation against the
+	// hot-reloaded reference APY is republished every minute from the
+	// last measurement, so a config edit lands within a scrape.
+	// Until a measurement succeeds, retry every pollInterval; then hourly.
+	ok := tick()
+	nextMeasure := time.Now().Add(pollInterval)
+	if ok {
+		nextMeasure = time.Now().Add(windowRecomputeInterval)
+	}
+	republish := time.NewTicker(pollInterval)
+	defer republish.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-t.C:
-			tick()
+		case <-republish.C:
+			if time.Now().After(nextMeasure) {
+				if tick() {
+					nextMeasure = time.Now().Add(windowRecomputeInterval)
+				} else {
+					nextMeasure = time.Now().Add(pollInterval)
+				}
+			}
+			if last != nil {
+				if promisedBpsVal, ok := promised.get(probe.Slug()); ok {
+					promisedBps.WithLabelValues(labels...).Set(float64(promisedBpsVal))
+					deviationBps30d.WithLabelValues(labels...).Set(float64(last.DeliveredBps30d - promisedBpsVal))
+					deviationBps7d.WithLabelValues(labels...).Set(float64(last.DeliveredBps7d - promisedBpsVal))
+					if last.DeliveredBpsLifetime != 0 {
+						deviationBpsLifetime.WithLabelValues(labels...).Set(float64(last.DeliveredBpsLifetime - promisedBpsVal))
+					}
+				}
+			}
 		}
 	}
 }

@@ -4,7 +4,10 @@ import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { perpProductSlug } from "@/lib/perp-product-slug";
+import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { AnswersForBench } from "@/components/answers-for-bench";
+import { perpHeadToHead } from "@/lib/perp-head-to-head";
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -31,7 +34,9 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
   // Same number as the lede and the H2: tracked venues, not the cohort
   // array length (19 vs 18 on 2026-09-21).
   const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
-  const lead = cohort?.venues[0];
+  const lead = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
+    .slice()
+    .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1))[0];
   // 158 characters at most: the SERP truncates beyond that.
   return lead && lead.volume30d != null
     ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
@@ -40,11 +45,16 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
 
 export async function generateMetadata(): Promise<import("next").Metadata> {
   const cohort = await fetchPerpCohort();
-  return pageMetadata({
-    path: "/perps",
-    title: "Perp DEX leaderboard 2026: volume, OI, fees, funding, live",
-    description: describe(cohort),
-  });
+  const title = "Perp DEX leaderboard 2026: volume, OI, fees, funding, live";
+  return {
+    ...pageMetadata({ path: "/perps", title, description: describe(cohort) }),
+    other: buildCitationMeta({
+      title,
+      url: `${SITE.url}/perps`,
+      asOfIso: cohort ? new Date(cohort.asOf * 1000).toISOString() : null,
+      jsonUrl: `${SITE.url}/api/stat/perp-volume-share`,
+    }),
+  };
 }
 
 export const revalidate = 3600;
@@ -54,19 +64,27 @@ export default async function PerpsHubPage() {
   // hydrated on first paint, no second round-trip when the user flips
   // the pill. Both helpers are wrapped in unstable_cache so concurrent
   // requests collapse onto the same Prom roundtrip.
-  const [cohort, byAsset] = await Promise.all([
+  const [cohort, byAsset, headToHead] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpByAssetMatrix(),
+    perpHeadToHead().catch(() => []),
   ]);
 
-  const lead = cohort?.venues[0] ?? null;
+  // Measured rows only: the CEX reference (venue-reported) sits behind the
+  // selector and never leads the hub's own sentences.
+  // Sorted by 30-day volume, like the Markdown view and the table: the
+  // snapshot keeps registry order, which always put Hyperliquid first.
+  const measured = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
+    .slice()
+    .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
+  const lead = measured[0] ?? null;
   const tracked = cohort?.totals.trackedVenues ?? 0;
   const leadSentence =
     lead && lead.volume30d != null
       ? `${lead.name} leads ${tracked} tracked perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}; open interest, fees, all-in cost and funding are ranked below.`
       : "";
   const asOfLabel = cohort ? `${new Date(cohort.asOf * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC` : null;
-  const second = cohort?.venues[1] ?? null;
+  const second = measured[1] ?? null;
   const faq = cohort
     ? [
         {
@@ -104,7 +122,37 @@ export default async function PerpsHubPage() {
   // harness label), but the product page lives at /products/gmx, so
   // map it here. Keeping this list stable means the SERP card does
   // not churn if the harness drops a series momentarily.
-  const top15 = cohort ? cohort.venues.slice(0, 15) : [];
+  // Dataset node for the leaderboard itself: the hub states a dated
+  // measured claim and had no citable record (audit 2026-09-22).
+  const datasetLd = cohort
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "@id": `${SITE.url}/perps#dataset`,
+        name: "Perp DEX leaderboard: 30-day volume, open interest, all-in cost and funding per venue",
+        description: `Cross-venue perpetual DEX measurements by OpenChainBench: 30-day volume, open interest, fees, all-in opening cost and 24h funding for ${cohort.totals.trackedVenues} tracked venues, from public APIs and the perp-fees and perp-funding benchmarks.`,
+        url: `${SITE.url}/perps`,
+        license: DATASET_LICENSE,
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
+        isAccessibleForFree: true,
+        dateModified: new Date(cohort.asOf * 1000).toISOString(),
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: `${SITE.url}/api/stat/perp-volume-share`,
+          },
+        ],
+        variableMeasured: [
+          { "@type": "PropertyValue", name: "Volume 30d", unitText: "USD" },
+          { "@type": "PropertyValue", name: "Open interest", unitText: "USD" },
+          { "@type": "PropertyValue", name: "All-in cost, $1k ETH long", unitText: "bps" },
+          { "@type": "PropertyValue", name: "Funding, 24h ETH hold", unitText: "bps" },
+        ],
+      }
+    : null;
+  const top15 = measured.slice(0, 15);
   const itemListLd = cohort
     ? {
         "@context": "https://schema.org",
@@ -117,10 +165,7 @@ export default async function PerpsHubPage() {
           "@type": "ListItem",
           position: i + 1,
           name: r.name,
-          url:
-            r.slug === "gmx-v2"
-              ? `${SITE.url}/products/gmx`
-              : `${SITE.url}/products/${r.slug}`,
+          url: `${SITE.url}/products/${perpProductSlug(r.slug)}`,
         })),
       }
     : null;
@@ -138,6 +183,13 @@ export default async function PerpsHubPage() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
+      {datasetLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(datasetLd) }}
+        />
+      )}
       {itemListLd && (
         <script
           type="application/ld+json"
@@ -229,6 +281,51 @@ export default async function PerpsHubPage() {
             </span>
             <span className="text-ink">perp-funding-stability</span>
           </Link>
+          {[
+            { href: "/benchmarks/perp-volume-oi-ratio", label: "perp-volume-oi-ratio" },
+            { href: "/benchmarks/perp-funding-cost-30d", label: "perp-funding-cost-30d" },
+          ].map((b) => (
+            <Link
+              key={b.href}
+              href={b.href}
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+            >
+              <span
+                className="label-mono text-ink-faint text-[10px]"
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              >
+                Bench
+              </span>
+              <span className="text-ink">{b.label}</span>
+            </Link>
+          ))}
+          {["eth", "btc", "sol"].map((asset) => (
+            <Link
+              key={asset}
+              href={`/perps/${asset}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 hover:bg-ink/5"
+            >
+              <span
+                className="label-mono text-ink-faint text-[10px]"
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              >
+                By asset
+              </span>
+              <span className="text-ink">{asset.toUpperCase()} perps</span>
+            </Link>
+          ))}
+          <Link
+            href="/fee-compare"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Tool
+            </span>
+            <span className="text-ink">Compare fees for your wallet</span>
+          </Link>
           <Link
             href="/hyperliquid"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
@@ -260,8 +357,8 @@ export default async function PerpsHubPage() {
               label="Tracked venues"
               value={
                 cohort.totals.trackedVenues > 0
-                  ? `${cohort.totals.trackedVenues} of ${cohort.venues.length}`
-                  : `0 of ${cohort.venues.length}`
+                  ? `${cohort.totals.trackedVenues} of ${measured.length}`
+                  : `0 of ${measured.length}`
               }
               accent="#14b8a6"
               tip="Venues with at least a 30 day volume sample in the current cohort run."
@@ -286,12 +383,21 @@ export default async function PerpsHubPage() {
           <PerpHubTabs cohort={cohort} byAsset={byAsset} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
+            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in and slippage columns the perp-fees order-book walk (11 venues), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
+          </p>
+          <p className="mt-4 text-[11px] text-ink-faint italic">
             Sources: live cohort harness perp-cohort-stats (volume, OI,
             fees, active markets, top market). perp-fees bench (007) for
             the all-in cost column. perp-funding bench (036) for the
             funding column. All gauges scraped from the public OCB Prom,
             refresh interval 60s. Click a venue row to open its
-            dedicated product page.
+            dedicated product page. To see what a specific wallet paid
+            on Hyperliquid or Gains and what the same trades would have
+            cost on another venue, use the{" "}
+            <Link href="/fee-compare" className="underline">
+              fee comparison tool
+            </Link>
+            .
           </p>
         </>
       ) : (
@@ -309,6 +415,27 @@ export default async function PerpsHubPage() {
         </p>
       )}
 
+      {headToHead.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">Head to head</h2>
+          <p className="text-sm text-ink-soft mb-3">
+            The venue pairs with the most live benchmarks in common, each on
+            its own comparison page: fees, volume, funding, open interest and
+            slippage side by side.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+            {headToHead.map((h) => (
+              <li key={h.slug}>
+                <Link href={`/compare/${h.slug}`} className="text-ink underline underline-offset-2 hover:text-teal-700">
+                  {h.aName} vs {h.bName}
+                </Link>
+                <span className="text-ink-faint">, {h.count} live {h.count === 1 ? "benchmark" : "benchmarks"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {faq.length > 0 && (
         <section className="mt-12 max-w-3xl">
           <h2 className="display text-xl sm:text-2xl text-ink mb-4">Frequently asked</h2>
@@ -324,7 +451,26 @@ export default async function PerpsHubPage() {
       )}
 
       <AnswersForBench
-        benchSlugs={["perp-fees", "perp-funding", "perp-volume-share", "perp-pe-ratio", "perp-pf-ratio", "perp-daily-volume"]}
+        benchSlugs={[
+          "perp-fees",
+          "perp-execution-quality",
+          "perp-cost-slope",
+          "perp-funding",
+          "perp-funding-stability",
+          "perp-volume-share",
+          "perp-daily-volume",
+          "perp-amm-volume-share",
+          "perp-active-markets",
+          "perp-asset-breadth",
+          "perp-liq-rate",
+          "perp-mark-price-lag",
+          "perp-capital-efficiency",
+          "perp-protocol-longevity",
+          "perp-pe-ratio",
+          "perp-pf-ratio",
+          "perp-volume-oi-ratio",
+          "perp-funding-cost-30d",
+        ]}
         heading="Questions these benchmarks answer"
       />
 

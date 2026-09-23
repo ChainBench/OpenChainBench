@@ -3,14 +3,15 @@
 slug: perp-mark-price-lag
 number: "118"
 title: "Perp DEX mark price fidelity: deviation from CEX spot reference, live"
-seo_title: "Perp mark price accuracy: {{best_name}} at {{best_p50}} off spot"
-seo_description: "{{best_name}} leads mark price fidelity at {{best_p50}} deviation from CEX spot (24h p50). Oracle-priced venues vs orderbook venues on ETH, BTC and SOL. Gains, GMX, Hyperliquid, dYdX, Lighter, Paradex ranked live."
+seo_title: "Perp mark price vs spot: {{best_name}} at {{best_p50}} off"
+seo_description: "{{best_name}} tracks CEX spot closest, {{best_p50}} mark price deviation (24h p50) on ETH, BTC and SOL. Oracle and orderbook venues, {{count}} ranked live."
 subtitle: "Median absolute deviation in basis points between each venue's mark price and a Binance spot reference, measured every 60 seconds on ETH, BTC and SOL. Lower means the venue's mark price stays closer to the CEX spot consensus. Oracle-priced venues use a real-time price feed anchored to CEX spot; orderbook venues derive their mark from their own book."
 category: Trading
 status: live
 metric: Mark price deviation
 unit: bps
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   Every perpetual DEX publishes a mark price: the price used to compute
@@ -93,6 +94,10 @@ faq:
   - q: "Why is Lighter's mark price approximated from the orderbook mid?"
     a: "Lighter does not expose a dedicated mark price endpoint in its public API. The orderbook best-bid-best-ask mid is the closest available approximation and is used consistently across all cycles."
 
+# Headline view: the ETH series (the copy speaks of ETH; the tabs switch).
+# Without the pin the unfiltered query returned one series per chain and
+# the loader kept whichever came first (audit 2026-09-23).
+aggregate_filters: { chain: ETH }
 dimensions:
   chain:
     - { value: ETH, label: ETH }

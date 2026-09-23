@@ -19,6 +19,7 @@
  *   {{mean:<slug>}}            same for mean.
  *   {{success:<slug>}}         provider success rate, "99.8 %".
  *   {{name:<slug>}}            provider display name.
+ *   {{best_names}}          every provider tied with the leader, joined.
  *   {{best_name}}              name of the leading provider (best p50).
  *   {{best_p50}}               p50 of the leader, formatted.
  *   {{worst_name}}             name of the trailing provider.
@@ -58,7 +59,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
-import { citationCandidates } from "@/lib/citation";
+import { citationCandidates, joinNames, leaderNames, rankedCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
@@ -246,8 +247,23 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         const raw = provider.ms[k as "p50" | "p90" | "p99" | "mean"];
         return fmtUnit(raw, benchmark.unit);
       }
-      case "best_name":
+      case "best_name": {
+        // One name, so the 600 authored sentences built around a singular
+        // subject keep their grammar; a display tie is marked instead of
+        // hidden, so a title never reads as crowning one of two venues the
+        // body says are level (perp-cost-slope, audit 2026-09-22).
+        const tied = leaderNames(benchmark);
+        if (tied.length > 1) return `${tied[0]} (tied)`;
+        if (tied.length === 1) return tied[0];
         return best ? best.name : UNRESOLVED;
+      }
+      case "best_names": {
+        // The tied set spelled out ("Gains and GMX v2"), for copy written
+        // for a plural subject.
+        const tied = leaderNames(benchmark);
+        if (tied.length > 0) return joinNames(tied);
+        return best ? best.name : UNRESOLVED;
+      }
       case "best_p50":
         return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
       case "worst_name":
@@ -256,8 +272,15 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : UNRESOLVED;
       case "count":
         // The display cohort (5 % success floor), the same set the Results
-        // table, the endpoints block and the TL;DR count.
+        // table and the endpoints block count.
         return String(displayResults(benchmark.results).length);
+      case "ranked_count":
+        // The ranked cohort the TL;DR, the leader and /api/stat rankings use
+        // (50 % success floor, spec rank gate, sample gate). Copy that names
+        // a cohort size next to a leader claim uses this one, or both
+        // ("13 ranked of 19 measured"), never {{count}} alone (audit
+        // 2026-09-22: five pages stated two sizes).
+        return String(rankedCandidates(benchmark).length);
       default:
         return whole;
     }
@@ -288,11 +311,15 @@ export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
     renderTemplate(m, benchmark),
   );
   benchmark.subtitle = renderTemplate(benchmark.subtitle, benchmark);
+  // A one-clause templated title or description renders to "" when the
+  // bench has no live row (every placeholder unresolved, the clause
+  // pruned); "" is not nullish, so the page's `?? title` fallback did not
+  // fire and <title> shipped empty (review 2 2026-09-23). Store undefined.
   if (benchmark.seoTitle) {
-    benchmark.seoTitle = renderTemplate(benchmark.seoTitle, benchmark);
+    benchmark.seoTitle = renderTemplate(benchmark.seoTitle, benchmark).trim() || undefined;
   }
   if (benchmark.seoDescription) {
-    benchmark.seoDescription = renderTemplate(benchmark.seoDescription, benchmark);
+    benchmark.seoDescription = renderTemplate(benchmark.seoDescription, benchmark).trim() || undefined;
   }
   if (benchmark.seoIntro) {
     benchmark.seoIntro = renderTemplate(benchmark.seoIntro, benchmark);

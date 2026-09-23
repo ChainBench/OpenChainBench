@@ -18,7 +18,7 @@ import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
-import { isExpiredRpcPage } from "@/lib/provider-filters";
+import { isExpiredPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
@@ -184,6 +184,10 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/prediction-markets`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/rpc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/perps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE.url}/perps/eth`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/perps/btc`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/perps/sol`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE.url}/rwa`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
@@ -193,6 +197,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     ...(isDevOnlyRoute("/rpc-map")
       ? []
       : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
+    { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
@@ -303,9 +308,11 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // The worker publishes every dev bench; production must not list a
     // page it does not serve.
     if (isDevOnlyBench(b.slug)) return [];
-    // Expired chain RPC pages render noindex; never list them even if the
-    // blob still carries them.
-    if (isExpiredRpcPage(b)) return [];
+    // Expired pages render noindex; never list them even if the blob still
+    // carries them. Any bench, not just chain RPC ones — a bench below
+    // quorum keeps serving its last good render, and after a week that
+    // render must not be advertised to crawlers.
+    if (isExpiredPage(b)) return [];
     // Editorial change only. lastRunAt is a data timestamp, not a page
     // change; with an empty manifest it stamped 857 of 879 entries with
     // one day on production (2026-09-19). Fall back to the page module's

@@ -151,5 +151,124 @@ func (s *GMXNativeSource) Fetch() (*SourceResult, error) {
 		}
 	}
 	res.SetIfPositive(venue, mVolume24h, total)
+	if n, ok := s.markets(); ok {
+		res.SetIfPositive(venue, mActiveMarkets, float64(n))
+	}
+	if b := s.breadth(); b != nil {
+		res.SetBreadth(venue, b)
+	}
 	return res, nil
+}
+
+type gmxMarkets struct {
+	Markets []struct {
+		IndexToken string `json:"indexToken"`
+		IsListed   bool   `json:"isListed"`
+	} `json:"markets"`
+}
+
+// markets counts the listed perp markets on Arbitrum and Avalanche from
+// GET <chain>-api.gmxinfra.io/markets: a market with the zero index
+// token is a spot-only (swap) pool, not a perp. A perp market is one
+// index token per chain: GMX lists several pools per index (ETH/USDC,
+// ETH single-sided), which are one tradable market, so the count is
+// distinct index tokens (2026-09-23: 132 + 19 rows, 141 listed pools).
+// Both catalogues or nothing: a one-chain count would win over the
+// DefiLlama fallback and read as a delisting.
+func (s *GMXNativeSource) markets() (int, bool) {
+	const zero = "0x0000000000000000000000000000000000000000"
+	var n int
+	for _, chain := range []string{"arbitrum", "avalanche"} {
+		req, _ := http.NewRequest("GET", fmt.Sprintf("https://%s-api.gmxinfra.io/markets", chain), nil)
+		req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com")
+		resp, err := s.client.Do(req)
+		if err != nil {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, classifyError(err.Error())).Inc()
+			return 0, false
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+			return 0, false
+		}
+		var m gmxMarkets
+		if err := json.Unmarshal(body, &m); err != nil {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
+			return 0, false
+		}
+		seen := map[string]bool{}
+		before := n
+		for _, mk := range m.Markets {
+			if mk.IsListed && mk.IndexToken != zero && !seen[mk.IndexToken] {
+				seen[mk.IndexToken] = true
+				n++
+			}
+		}
+		// A 200 with nothing listed (renamed key, empty page) is not an
+		// answer: the DefiLlama fallback keeps the cell rather than a
+		// one-chain count reading as a delisting.
+		if n == before {
+			perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "empty_catalogue").Inc()
+			return 0, false
+		}
+	}
+	return n, true
+}
+
+// gmxTokens is GET arbitrum-api.gmxinfra.io/tokens: every token GMX v2
+// prices, `synthetic` marking the ones that exist only as a perp market
+// (no ERC-20 on Arbitrum). The API carries no asset class; the symbol
+// table covers the commodity and index listings (GOLD, SILVER, WTIOIL,
+// BRENTOIL, NATGAS, SPY, QQQ as of 2026-09-22) and gmxNonCrypto the
+// synthetic equities the table cannot recognise.
+type gmxTokens struct {
+	Tokens []struct {
+		Symbol    string `json:"symbol"`
+		Synthetic bool   `json:"synthetic"`
+	} `json:"tokens"`
+}
+
+// gmxNonCrypto lists GMX synthetic markets whose symbol is a stock or a
+// pre-IPO equity synthetic; everything else not in the tables is a
+// crypto token (MEGA is MegaETH, SPX6900 a memecoin). Reviewed
+// 2026-09-22 against /tokens (102 synthetic entries).
+var gmxNonCrypto = map[string]string{
+	"SPCX": classStocks, // SpaceX pre-IPO synthetic
+}
+
+func (s *GMXNativeSource) breadth() breadthCounter {
+	req, _ := http.NewRequest("GET", "https://arbitrum-api.gmxinfra.io/tokens", nil)
+	req.Header.Set("User-Agent", "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, classifyError(err.Error())).Inc()
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, fmt.Sprintf("http_%d", resp.StatusCode)).Inc()
+		return nil
+	}
+	var t gmxTokens
+	if err := json.Unmarshal(body, &t); err != nil || len(t.Tokens) == 0 {
+		perpCohortFetchErrors.WithLabelValues("gmx-v2", srcGMXNative, "parse").Inc()
+		return nil
+	}
+	b := breadthCounter{}
+	for _, tok := range t.Tokens {
+		if !tok.Synthetic {
+			continue
+		}
+		base := baseSymbol(tok.Symbol)
+		if class, ok := gmxNonCrypto[base]; ok {
+			b.add(class)
+			continue
+		}
+		b.add(symbolClass(base, false, nil))
+		// GMX symbols are unique to GMX (GOLD, WTIOIL) or plain tokens;
+		// neither set learns anything reliable from them.
+	}
+	return b
 }

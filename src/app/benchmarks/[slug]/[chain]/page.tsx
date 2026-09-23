@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { citableAsOf } from "@/lib/citation";
 import { liveResults, MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
-import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -289,9 +289,8 @@ export async function generateMetadata({
   const data = await loadChainPage(slug, chain);
   if (!data) return {};
   const title = pageTitle(data);
-  const description = capDescription(
+  const description = capSnippet(
     stripInlineMarkdown(data.explainer.body),
-    158,
   );
   const canonical = `${SITE.url}/benchmarks/${data.benchmark.slug}/${chain}`;
   const ogImage = `${SITE.url}/api/og/${data.benchmark.slug}`;
@@ -379,7 +378,7 @@ export default async function BenchmarkChainPage({
         "@id": `${pageUrl}#article`,
         name: explainer.h2,
         headline: explainer.h2,
-        description: capDescription(stripInlineMarkdown(explainer.body), 158),
+        description: capSnippet(stripInlineMarkdown(explainer.body)),
         url: pageUrl,
         mainEntityOfPage: pageUrl,
         articleBody: `${keyFacts} ${stripInlineMarkdown(explainer.body)}`,

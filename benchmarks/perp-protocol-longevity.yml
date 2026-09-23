@@ -3,14 +3,15 @@
 slug: perp-protocol-longevity
 number: "119"
 title: "Perp DEX security track record: days without a recorded exploit, live"
-seo_title: "Perp DEX security track record 2026"
-seo_description: "{{best_name}} has the longest perp DEX security track record, {{best_p50}} days without a recorded exploit, across {{count}} venues (Gains, GMX, Hyperliquid, dYdX v4, Lighter, Paradex) ranked from rekt.news and public post-mortems."
+seo_title: "Perp DEX exploit history: {{best_name}} at {{best_p50}} days clean"
+seo_description: "{{best_name}} has the longest clean record, {{best_p50}} days without a recorded exploit, across {{count}} perp DEXs, from rekt.news and public post-mortems."
 subtitle: "Days each perp DEX has operated without a recorded security exploit, counted live from a versioned incident registry sourced from rekt.news and public post-mortems. Higher means a longer clean track record. Oracle-priced venues with immutable smart contracts have a structural advantage: there is no custodial hot wallet and no privileged admin key that can drain the vault."
 category: Trading
 status: live
 metric: Days since last exploit
 unit: count
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 disclaimer: |
   This benchmark counts recorded incidents only. Absence from the registry does not prove a protocol is exploit-free: it means no incident matching the criteria (direct theft or loss of user funds via a security vulnerability) has been documented in the tracked sources as of the registry timestamp shown on each row. The registry is human-curated and updated when a new incident is confirmed. The registry date and source links are embedded in the harness.

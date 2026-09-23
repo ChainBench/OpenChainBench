@@ -3,14 +3,15 @@
 slug: perp-amm-volume-share
 number: "233"
 title: Perp AMM volume share, live 24h notional ranked
-seo_title: "Perp DEX AMM volume 24h ranking 2026"
-seo_description: "Live 24h volume in USD for AMM-style perp DEX venues: GMX V2, Gains, Ostium, Pacifica, SynFutures and KiloEx. Refreshed every 5 minutes. Compares pool-counterparty and synthetic models."
+seo_title: "Oracle and AMM perp volume: {{best_name}} leads at {{best_p50}}"
+seo_description: "{{best_name}} leads AMM-style perp DEX volume at {{best_p50}} in 24h, {{ranked_count}} of {{count}} venues ranked (GMX V2, Gains, Ostium, Pacifica, SynFutures, KiloEx). Pool and synthetic models, live."
 subtitle: 24h rolling notional volume in USD for AMM-style perpetual futures venues. Covers GMX V2, Gains, Ostium, Pacifica, SynFutures and KiloEx. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
 unit: usd
 higher_is_better: true
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark isolates the AMM-style, pool-as-counterparty and synthetic

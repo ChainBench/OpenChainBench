@@ -12,6 +12,9 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { loadProvidersFromBlob } from "@/lib/bench-blob";
+import { isHexAddressSlug } from "@/lib/slug-shape";
+
+export { isHexAddressSlug };
 import { loadSpecsUncached } from "@/lib/materialize/load";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { liveResults } from "@/lib/provider-filters";
@@ -37,11 +40,21 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Arc publishes a keyless QuickNode endpoint under its own domain; the
   // product page is QuickNode's.
   "arc-quicknode": "quicknode",
+  // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
+  // cohort row moved with it on 2026-09-22.
+  vertex: "nado",
   // TON → Gram rebrand (June 2026). Stale inbound references to slug
   // "ton" resolve to canonical "gram" so older links, search hits, and
   // any external citation that still says ton/Toncoin lands on the
   // correct page.
   ton: "gram",
+  // Hyperliquid builder leaderboards publish a short slug while the
+  // registry key carries the domain. Without these, /hyperliquid/tuleep
+  // and /perp/tuleep 308 into a 404 — and "tuleep" is the single largest
+  // query on the property (273 impressions, position 8.31, zero clicks,
+  // 90 days to 2026-09-19).
+  tuleep: "tuleep-trade",
+  "mass-money": "mass-dot-money",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",
@@ -62,6 +75,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // "gmx-v2"; every other perp bench and the product page use "gmx".
   // One brand, one product page, one compare entry.
   "gmx-v2": "gmx",
+  // trade.xyz is the xyz HIP-3 deployer: one product page (xyz) for the
+  // deployers bench and the perp cohort row (trade-xyz).
+  "trade-xyz": "xyz",
   // Bench 268 measured the Binance Wallet swap as "binance-wallet" for a
   // day (2026-09-18); the row and the product page are "binance".
   "binance-wallet": "binance",
@@ -205,6 +221,8 @@ export type ProviderAppearance = {
     | "status"
     | "lastRunAt"
     | "hasDistribution"
+    | "window"
+    | "valueKind"
   > & {
     /** Chain dimension values from the spec, when present. Stored on the
      *  appearance so /products/[slug] can render chain-aware chips without
@@ -415,6 +433,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           status: b.status,
           lastRunAt: b.lastRunAt,
           hasDistribution: b.hasDistribution,
+          window: b.window,
+          valueKind: b.valueKind,
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
@@ -503,6 +523,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
             status: b.status,
             lastRunAt: b.lastRunAt,
             hasDistribution: b.hasDistribution,
+            window: b.window,
+            valueKind: b.valueKind,
             chainDimensions: b.dimensions?.chain,
             bestPerChain: benchBestPerChain,
             regionDimensions: b.dimensions?.region,
@@ -629,20 +651,16 @@ export const DEAD_COMPOSITE_SLUGS = new Set([
 // The HL bench page itself still lists every builder in its leaderboard
 // (that's the bench's job); only the dedicated /products/<hex> route is
 // suppressed.
-const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
 
 /** True when the slug looks like a raw hex builder address (e.g. an
  *  unidentified Hyperliquid frontend that hasn't been added to
  *  builders.json yet). The /products/<hex> route is blacklisted so
  *  these would 404 if linked. Used by ledger-table.tsx to render the
  *  row name as plain text instead of an anchor. */
-export function isHexAddressSlug(slug: string): boolean {
-  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
-}
 
 export function isBlacklistedSlug(slug: string): boolean {
   const lc = slug.toLowerCase();
-  return DEAD_COMPOSITE_SLUGS.has(lc) || HEX_ADDRESS_SLUG.test(lc);
+  return DEAD_COMPOSITE_SLUGS.has(lc) || isHexAddressSlug(lc);
 }
 
 // Cohort venues that should have a /products/<slug> page even when no
@@ -650,7 +668,7 @@ export function isBlacklistedSlug(slug: string): boolean {
 // avoid a build-time cycle with the perp-stats module.
 const PERP_VENUE_SEED = [
   { slug: "drift", name: "Drift" },
-  { slug: "vertex", name: "Vertex" },
+  { slug: "nado", name: "Nado" },
   { slug: "edgex", name: "edgeX" },
   { slug: "extended", name: "Extended" },
   { slug: "aevo", name: "Aevo" },
@@ -658,6 +676,17 @@ const PERP_VENUE_SEED = [
   { slug: "variational", name: "Variational" },
   { slug: "ostium", name: "Ostium" },
   { slug: "grvt", name: "GRVT" },
+  { slug: "kalshi", name: "Kalshi" },
+  { slug: "vest", name: "Vest" },
+  { slug: "standx", name: "StandX" },
+  { slug: "apex", name: "ApeX Omni" },
+  { slug: "lighter-rh", name: "Lighter RH" },
+  // The Coinbase perp row (cohort key "coinbase") is Coinbase
+  // International. The funding benches key it coinbase-international, so
+  // the page normally has appearances and the seed is skipped; it stays
+  // as the safety net so the page exists when those benches are draft or
+  // filtered out of a deploy.
+  { slug: "coinbase-international", name: "Coinbase International" },
 ];
 
 // Meta-providers that live in PROVIDER_REGISTRY but never appear as a
@@ -698,7 +727,15 @@ const buildProvidersCached = unstable_cache(
   // v6: profile names now inherit bench spec casing (dRPC, USDC, dYdX)
   // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
   // names from every title/H1/breadcrumb surface.
-  ["providers-v7"],
+  // v8 (2026-09-22): seven perp venues joined PERP_VENUE_SEED (kalshi,
+  // vest, standx, apex, lighter-rh and the cohort rows) and vertex became
+  // nado. /products/vest, /products/standx and /products/lighter-rh were
+  // 404 on staging while the v7 list outlived the deploy.
+  // v9 (2026-09-23): coinbase-international joined PERP_VENUE_SEED.
+  // v10 (2026-09-23): bench 278 rwa-solana-depth added paxg and buidl, and
+  // appearances gained window and valueKind; /products/paxg was 404 and
+  // every RWA rank read "(24h avg)" while the v9 list outlived the deploy.
+  ["providers-v10"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

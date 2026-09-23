@@ -55,7 +55,7 @@ var (
 	perpVenueMarketsByClass = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_markets_by_class",
-			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: Mobula perp pairs catalog.",
+			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: each venue's native catalog and asset tags (breadth.go); Mobula perp pairs for Gains and Lighter.",
 		},
 		[]string{"venue", "class"},
 	)
@@ -98,6 +98,13 @@ var (
 		prometheus.GaugeOpts{
 			Name: "perp_venue_funding_interval_hours",
 			Help: "Funding interval in hours per venue per asset. Source: Mobula /market/cefi/funding-rate epochDurationMs / 3600000.",
+		},
+		[]string{"venue", "asset"},
+	)
+	perpVenueFundingRefreshUnix = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_venue_funding_refresh_unix",
+			Help: "Unix timestamp of the last tick on which a source produced a funding rate for the (venue, asset). Neither the carry-forward nor the reaper touches it, so a funding bench's success check reads the rate's own freshness on its own asset (a stale stamp stays exported as stale), not the venue's volume feed or another asset's rate.",
 		},
 		[]string{"venue", "asset"},
 	)
@@ -146,7 +153,7 @@ func init() {
 		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
 		perpVenueTvlUsd,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
-		perpVenueLastRefreshUnix,
+		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
 		perpCohortLastTickUnix,
 	)

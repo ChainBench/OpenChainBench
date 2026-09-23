@@ -10,16 +10,17 @@ import (
 )
 
 var (
-	takerFeeGauge       *prometheus.GaugeVec
-	spreadGauge         *prometheus.GaugeVec
-	allInGauge          *prometheus.GaugeVec
-	fundingGauge        *prometheus.GaugeVec
-	fetchLatencyGauge   *prometheus.GaugeVec
-	fetchErrorsCtr      *prometheus.CounterVec
-	healthGauge         *prometheus.GaugeVec
-	lastRefreshGauge    *prometheus.GaugeVec
-	allInTierGauge      *prometheus.GaugeVec
-	tierSkippedCtr      *prometheus.CounterVec
+	takerFeeGauge     *prometheus.GaugeVec
+	makerFeeGauge     *prometheus.GaugeVec
+	spreadGauge       *prometheus.GaugeVec
+	allInGauge        *prometheus.GaugeVec
+	fundingGauge      *prometheus.GaugeVec
+	fetchLatencyGauge *prometheus.GaugeVec
+	fetchErrorsCtr    *prometheus.CounterVec
+	healthGauge       *prometheus.GaugeVec
+	lastRefreshGauge  *prometheus.GaugeVec
+	allInTierGauge    *prometheus.GaugeVec
+	tierSkippedCtr    *prometheus.CounterVec
 )
 
 func init() {
@@ -31,6 +32,24 @@ func init() {
 		[]string{"venue", "chain"},
 	)
 	prometheus.MustRegister(takerFeeGauge)
+
+	// The other side of every fill. Published only where a venue's API
+	// actually gives it: a venue with no order book (Gains, GMX price off
+	// an oracle) has no maker, and one whose API publishes only the taker
+	// rate must not read as "0 bps maker" — which is a real rate that some
+	// venues genuinely charge.
+	//
+	// It exists because volume x taker overstated reconstructed fee revenue
+	// by 3 to 4x on edgeX, Aster and dYdX (2026-09-23): a large share of
+	// volume fills on the maker side and pays something else.
+	makerFeeGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_fees_maker_fee_bps",
+			Help: "Live maker fee in basis points, read from each venue's public API. Absent where the venue has no order book or publishes no maker rate. May be negative: some venues pay the maker.",
+		},
+		[]string{"venue", "chain"},
+	)
+	prometheus.MustRegister(makerFeeGauge)
 
 	spreadGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -132,6 +151,7 @@ func recordSample(s PerpSample) {
 			allInGauge.DeleteLabelValues(s.Venue, s.Asset)
 			spreadGauge.DeleteLabelValues(s.Venue, s.Asset)
 			takerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
+			makerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
 			fundingGauge.DeleteLabelValues(s.Venue, s.Asset)
 			fetchLatencyGauge.DeleteLabelValues(s.Venue, s.Asset)
 			lastRefreshGauge.DeleteLabelValues(s.Venue, s.Asset)
@@ -142,6 +162,13 @@ func recordSample(s PerpSample) {
 		return
 	}
 	takerFeeGauge.WithLabelValues(s.Venue, s.Asset).Set(s.TakerFeeBps)
+	if s.HasMakerFee {
+		makerFeeGauge.WithLabelValues(s.Venue, s.Asset).Set(s.MakerFeeBps)
+	} else {
+		// No maker rate this tick: delete rather than carry a stale one,
+		// because a fee schedule that stops being published is a change.
+		makerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
+	}
 	spreadGauge.WithLabelValues(s.Venue, s.Asset).Set(s.SpreadBps)
 	allInGauge.WithLabelValues(s.Venue, s.Asset).Set(s.AllInBps)
 	fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)

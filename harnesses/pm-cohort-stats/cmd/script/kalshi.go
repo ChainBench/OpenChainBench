@@ -59,14 +59,18 @@ const (
 	kalshiMaxPages = 20
 	kalshiUA       = "OCB-pm-cohort-stats/1.0"
 
-	// Catalog walk via /events?with_nested_markets=true. 25 pages × 200
-	// events ≈ 47 k nested markets / ~14 s end to end, well below the
-	// /markets fan-out (20 k rows in 20 pages, similar wall time) but
-	// hits the populated rows instead of the empty multi-game parlay
-	// catalogue. Hard cap protects against runaway pagination if Kalshi
-	// ever stops returning a terminating cursor.
+	// Catalog walk via /events?with_nested_markets=true, rather than the
+	// /markets fan-out, which is 95%+ auto-generated multi-game parlay
+	// tickers with zero OI.
+	//
+	// The cap was 25 pages, sized in 2026-06 against a 47 k-market
+	// catalog. Measured 2026-09-23 the catalog is 13,402 open events and
+	// 125,777 nested markets, so 25 pages read 37% of it and the missing
+	// 63% was silently absent from every figure below. The cursor
+	// terminates itself in 68 pages / 44 s; this is a runaway guard, not
+	// a budget, so it sits well above the real walk and trips loudly.
 	kalshiEventsPageSize = 200
-	kalshiEventsMaxPages = 25
+	kalshiEventsMaxPages = 200
 
 	// Trade aggregation window. We pull pages of trades until we have
 	// covered at least this much wall-clock time, then scale to 24h.
@@ -167,7 +171,7 @@ func fetchKalshiVenue(v Venue) {
 	// Track A: catalog. No auth needed, gives us active count, OI, and
 	// real-measured vol24h (sum of volume_24h_fp × last_price over every
 	// nested market the /events walk surfaces).
-	active, oi, vol24hCatalog, topVol24Public := kalshiMarketsCatalog(v)
+	active, oi, oiMark, vol24hCatalog, topVol24Public := kalshiMarketsCatalog(v)
 
 	// Track B: aggregate /markets/trades for the per-ticker top-market
 	// volume only. We used to also publish the trades-scaled total as
@@ -185,6 +189,9 @@ func fetchKalshiVenue(v Venue) {
 	// the open-catalog walk only sees active markets. Auth not required.
 	above1m := kalshiSettledMarketsAbove1m(v)
 
+	fmt.Printf("[kalshi][%s] active=%.0f oi_par=%.0f oi_mark=%.0f (par is $1 per open contract, the definition every other row uses)\n",
+		v.Slug, active, oi, oiMark)
+
 	vol24h := vol24hCatalog
 	// 30d gauge: still a projection (vol24h × 30) — Kalshi exposes
 	// volume_24h_fp and cumulative volume_fp per market, but no native
@@ -196,6 +203,11 @@ func fetchKalshiVenue(v Venue) {
 
 	pmVenueActiveMarkets.WithLabelValues(v.Slug).Set(active)
 	pmVenueOpenInterestUsd.WithLabelValues(v.Slug).Set(oi)
+	// Published beside par, not instead of it, so the two definitions are
+	// visible together: par is the cash escrowed against open contracts,
+	// mark is the market value of the YES leg. The board ranks on par
+	// because that is what every other row measures.
+	pmVenueOpenInterestMarkUsd.WithLabelValues(v.Slug).Set(oiMark)
 	// Prefer the trades-grouped top market when authentication is wired and
 	// returns a useful sample: the public /markets feed only exposes
 	// auto-generated derivative tickers whose volume24h is structurally
@@ -207,7 +219,13 @@ func fetchKalshiVenue(v Venue) {
 	case topVol24Public > 0:
 		pmVenueTopMarketVolume24hUsd.WithLabelValues(v.Slug).Set(topVol24Public)
 	}
-	if vol24h > 0 {
+	// Only publish volume from a feed that can see the whole book. Without
+	// a key the trades endpoint returns the public slice, which on
+	// 2026-09-23 was $2.26M against DefiLlama's $424.8M for the same venue
+	// and window: publishing it would have put the busiest prediction
+	// market in the category near the bottom of a turnover screen.
+	// Authenticated, this fetcher is the better source and wins again.
+	if vol24h > 0 && kalshiAuth != nil {
 		pmVenueVolume24hUsd.WithLabelValues(v.Slug).Set(vol24h)
 		pmVenueVolume30dUsd.WithLabelValues(v.Slug).Set(vol30d)
 	}
@@ -238,7 +256,7 @@ func fetchKalshiVenue(v Venue) {
 // = 5 000 events / 47 864 nested markets / total OI ≈ $87.9M, top
 // markets: House 2026 control $3.2M, FIFA World Cup 2026 winner
 // $3-12M per outcome.
-func kalshiMarketsCatalog(v Venue) (active, oi, vol24h, topVol24 float64) {
+func kalshiMarketsCatalog(v Venue) (active, oi, oiMark, vol24h, topVol24 float64) {
 	type market struct {
 		Status           string    `json:"status"`
 		Volume24hFP      flexFloat `json:"volume_24h_fp"`
@@ -278,6 +296,13 @@ func kalshiMarketsCatalog(v Venue) (active, oi, vol24h, topVol24 float64) {
 		}
 		for _, ev := range r.Events {
 			for _, m := range ev.Markets {
+				// An event with status=open still nests markets that have
+				// already resolved: 2,229 of them on 2026-09-23, holding
+				// 48.5M contracts. Their outcome is known and their money
+				// is awaiting payout, not at risk.
+				if m.Status != "active" {
+					continue
+				}
 				price := float64(m.LastPriceDollars)
 				if price < 0 {
 					price = 0
@@ -285,8 +310,17 @@ func kalshiMarketsCatalog(v Venue) (active, oi, vol24h, topVol24 float64) {
 				if price > 1 {
 					price = 1
 				}
+				contracts := float64(m.OpenInterestFP)
 				active++
-				oi += float64(m.OpenInterestFP) * price
+				// Par, not mark. Each Kalshi contract settles at $1 or $0
+				// and is fully collateralized across the two sides, so $1
+				// per open contract is the cash held against the position
+				// - the same quantity DefiLlama reports as TVL for the
+				// on-chain venues ($1 per complete set). Multiplying by
+				// last price gives the market value of the YES leg, which
+				// is a different thing and 13.8% of it.
+				oi += contracts
+				oiMark += contracts * price
 				vol24h += float64(m.Volume24hFP) * price
 				if v24 := float64(m.Volume24hFP); v24 > topVol24 {
 					topVol24 = v24
@@ -297,8 +331,16 @@ func kalshiMarketsCatalog(v Venue) (active, oi, vol24h, topVol24 float64) {
 			break
 		}
 		cursor = r.Cursor
+		if page == kalshiEventsMaxPages-1 {
+			// The guard tripped, which means the catalog outgrew it again
+			// and every figure here is short. Say so rather than publish
+			// a partial sum as a total.
+			fmt.Printf("[kalshi-catalog][%s] WARNING page cap %d hit; catalog is larger and these sums are partial\n",
+				v.Slug, kalshiEventsMaxPages)
+			pmCohortStatsFetchErrors.WithLabelValues(v.Slug, "kalshi-catalog", "page_cap").Inc()
+		}
 	}
-	return active, oi, vol24h, topVol24
+	return active, oi, oiMark, vol24h, topVol24
 }
 
 // kalshiTradesScale24h aggregates recent /markets/trades pages until we

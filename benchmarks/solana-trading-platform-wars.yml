@@ -3,9 +3,9 @@
 slug: solana-trading-platform-wars
 number: "201"
 title: "Trading platform leaderboard: GMGN vs Axiom vs Fomo vs pump.fun, live 24h volume"
-seo_title: "Trading platform volume 24h: GMGN vs Axiom vs Fomo vs Trojan"
-seo_description: "{{best_name}} leads trading platforms at ${{best_p50}} 24h volume. GMGN vs Axiom vs Fomo vs Trojan vs Terminal vs BasedBot ranked live from Dune community datasets."
-subtitle: Live 24-hour trading volume per platform and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed every 4 hours.
+seo_title: "Trading app volume 24h: GMGN vs Axiom vs Fomo vs pump.fun"
+seo_description: "{{best_name}} leads {{count}} trading apps at {{best_p50}} 24h volume. GMGN, Axiom, Fomo, pump.fun, Trojan, Padre, Photon and BasedBot, from Dune datasets refreshed daily."
+subtitle: 24-hour trading volume per app and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed once a day.
 
 category: Trading
 status: live
@@ -14,47 +14,45 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume figures are sourced from Dune community datasets, which aggregate cross-chain trading activity per platform (Solana, BNB Chain, Base, Robinhood node, HyperEVM, Monad, and more). Data is refreshed every 4 hours. pump.fun volume = bonding-curve Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily). Fomo = Solana only (dataset_fomo_sol_daily). All others sum across all blockchains.
+  Volume figures are sourced from Dune community datasets, which aggregate cross-chain trading activity per platform (Solana, BNB Chain, Base, Robinhood node, HyperEVM, Monad, and more). The Dune execution runs once a day, so a figure holds for the day rather than moving intraday. pump.fun volume = bonding-curve Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily). Fomo = Solana only (dataset_fomo_sol_daily). All others sum across all blockchains.
 
 seo_intro: |
   Solana's trading frontend market is a contested race between GMGN, Axiom and
   Fomo, with Trojan and Padre close behind as the dominant Telegram bots. This
-  benchmark tracks the 24-hour trading volume routed through each platform in
-  real time using Mobula's lighthouse aggregator, which attributes on-chain
-  swap events to the originating frontend. GMGN consistently ranks at or near
-  the top, regularly processing over $100 million in daily volume on active
-  days. Axiom competes closely behind and the two regularly trade places as
-  market conditions shift. Fomo has been narrowing the gap and on active days
-  has matched or exceeded Axiom, making the top three increasingly competitive.
-  Trojan serves the Telegram-native trader segment with significant bot-driven
-  flow. Padre is a web trading terminal. Phantom routes wallet-initiated swaps
-  and collects a 0.85% platform fee on those trades. The fee column shows which platforms capture the most
-  protocol revenue per dollar traded; see methodology for Fomo's fee source.
+  benchmark reads the 24-hour trading volume attributed to each app in the Dune
+  community datasets, one per platform, covering every chain that platform
+  operates on. {{best_name}} leads at {{best_p50}} as of the last refresh, and
+  the order of the top three changes from one refresh to the next rather than
+  settling. Trojan serves the Telegram-native trader segment with bot-driven
+  flow, Padre is a web trading terminal, and pump.fun's figure covers its own
+  frontend rather than every bonding-curve trade on the protocol. The fee column
+  shows which apps capture the most protocol revenue per dollar traded; see the
+  methodology for what each dataset counts.
 
 abstract: |
-  The harness polls the Mobula lighthouse endpoint (api.mobula.io/api/2/market/lighthouse)
-  every 15 minutes. Mobula attributes each on-chain swap event to the originating
-  trading platform or bot using referral tags, program IDs and memo fields embedded
-  in transactions. The harness exposes three gauges per platform:
-  solana_platform_volume_24h_usd, solana_platform_fees_24h_usd and
-  solana_platform_health. All platforms returned by the API are tracked
-  automatically. The benchmark YAML selects the highest-volume Solana-native
-  trading platforms as providers.
+  The harness runs one Dune execution a day over the community datasets
+  (dataset_*_daily), one per trading app, and exposes
+  dune_platform_volume_24h_usd, dune_platform_fees_24h_usd and
+  dune_platform_volume_health per platform. Each dataset sums the most recent
+  complete day across every chain that app operates on, so the figure is a daily
+  snapshot rather than a rolling window: it holds for the day and steps once when
+  the next execution lands. Prometheus scrapes the gauges every 60 s, which keeps
+  them current but does not make the underlying number move any faster.
 
 methodology:
   - "Source: Dune community datasets (dataset_*_daily). Each dataset covers one trading platform across all blockchains it operates on."
-  - "Poll cadence: harness queries Dune every 4 hours and updates Prometheus gauges. Prometheus scrapes :2112/metrics every 60 seconds."
+  - "Cadence: one Dune execution a day (DUNE_REFRESH_HOURS, default 24 h; executions are metered per run). Prometheus scrapes :2112/metrics every 60 s, so the gauge is current while the underlying figure changes daily."
   - "Volume: sum of volume_usd across all blockchains for the most recent complete day in each platform's dataset. Higher = more total user activity."
   - "pump.fun: dataset_pumpapp_sol_daily (Solana bonding-curve) + dataset_pumpfun_relay_daily filtered to req_class='swap'. pump.fun cut fees to 0% in Aug 2026; volume is for their own frontend only (pumpapp), not all bonding-curve activity."
   - "fomo: dataset_fomo_sol_daily (Solana only)."
   - "BasedBot: multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM, Avalanche)."
 
 findings:
-  - "{{best_name}} leads Solana trading platforms at ${{best_p50}} 24h volume."
-  - "GMGN and Axiom consistently rank at the top of the leaderboard and regularly trade places. Both serve power traders with web-based terminals; GMGN emphasizes AI copy-trading while Axiom focuses on execution speed."
-  - "Fomo closed the gap on Axiom and briefly overtook it on daily revenue around August 5-8 2026; as of mid-August Axiom leads again, making the top three a contested race with positions that shift by the week."
-  - "Trojan serves the Telegram-native segment and accounts for significant bot-driven Solana swap flow. Padre is a web trading terminal, not a Telegram bot."
-  - "Phantom collects a 0.85% platform fee on in-wallet swaps routed to its own fee wallets; it is a monetised frontend, not a passive aggregator pass-through."
+  - "{{best_name}} leads Solana trading platforms at {{best_p50}} 24h volume."
+  - "{{best_name}} leads at {{best_p50}} as of the last refresh. GMGN and Axiom both serve power traders with web terminals, GMGN through AI copy-trading and Axiom through execution speed, and the two trade places between refreshes."
+  - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, so the distance between a web terminal and the Telegram-native segment is visible in the table rather than asserted."
+  - "Trojan serves the Telegram-native segment and accounts for bot-driven swap flow. Padre is a web trading terminal, not a Telegram bot."
+  - "pump.fun reads {{p50:pump-fun}}, covering its own frontend (pumpapp) plus its cross-chain relay swaps, not every bonding-curve trade on the protocol."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
 
@@ -64,19 +62,19 @@ prometheus:
 
 faq:
   - q: "Which Solana trading platform has the most volume?"
-    a: "GMGN and Axiom consistently trade places at the top, and Fomo has been narrowing the gap. The leaderboard is live and updates every 15 minutes, so the current ranking is always visible at the top of the page. Headlines claiming one platform has overtaken another are often based on a single day or a specific metric; this bench tracks the rolling 24h window continuously."
+    a: "{{best_name}} leads at {{best_p50}} as of the last refresh, and GMGN, Axiom and Fomo trade places between refreshes. The table is rebuilt from one Dune execution a day, so a figure holds for the day and steps once when the next lands: read it as the last complete day, not as an intraday ticker. Headlines claiming one app has overtaken another are usually a single day or a single metric."
   - q: "Does the pump.fun volume here include PumpSwap?"
-    a: "Partially. The pump.fun line comes from Mobula's byLaunchpad bucket, which covers bonding-curve swaps via pump.fun's own frontend. PumpSwap (the AMM for graduated tokens) is a separate program launched in 2025. Direct PumpSwap trades via pump.fun's interface may be partially included depending on Mobula's indexing of the PumpSwap program. Trades on pump.fun tokens routed through GMGN or Axiom to PumpSwap count under those platforms, not under pump.fun."
+    a: "Partially. The pump.fun line sums dataset_pumpapp_sol_daily, the bonding-curve swaps through pump.fun's own frontend, with the swap rows of dataset_pumpfun_relay_daily. PumpSwap, the AMM for graduated tokens, is a separate program and its trades appear only where the dataset attributes them to the pump.fun frontend. A trade on a pump.fun token routed through GMGN or Axiom counts under those apps, not under pump.fun."
   - q: "What is the difference between GMGN and Axiom?"
     a: "Both are web-based Solana trading terminals targeting power traders. GMGN emphasizes AI-powered wallet analysis and copy trading. Axiom is a terminal-style platform focused on chart speed and order execution. Both route through Jupiter and direct DEX pools."
   - q: "Why does Fomo's fee column use a different source?"
-    a: "Fomo collects fees in SOL and USDC to a dedicated fee wallet (R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX), plus an off-chain relay fee component stored in a private Dune table (dune.tryfomo.fomo_relay_fees) that only DeFiLlama can read via a data partnership. Mobula's referral-tag attribution captures only the on-chain component, understating Fomo's total revenue. The fee column for Fomo uses DeFiLlama, which adds both components. All other platforms use Mobula."
+    a: "Fomo collects fees in SOL and USDC to a dedicated fee wallet (R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX), plus an off-chain relay component stored in a private Dune table (dune.tryfomo.fomo_relay_fees). Its dataset covers Solana only (dataset_fomo_sol_daily), so a Fomo figure here is its Solana activity rather than its whole business. Every app in this table is read from its own Dune dataset, fees included."
   - q: "Are Trojan and Padre Telegram bots?"
-    a: "Trojan is a Telegram-native trading bot. Padre is a web trading terminal with an AI assistant, not a Telegram bot. Both embed referral tags in transactions which Mobula uses to attribute volume."
+    a: "Trojan is a Telegram-native trading bot. Padre is a web trading terminal with an AI assistant, not a Telegram bot. Each has its own Dune dataset, built from the tags their transactions carry."
   - q: "How is trading platform volume different from launchpad volume?"
-    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like pump.fun or Flap. Platform volume here counts swaps attributed to a trading frontend regardless of which underlying DEX or launchpad was used. Attribution is mutually exclusive per Mobula's referral tag system: a trade on pump.fun tokens routed through GMGN counts under GMGN, not under pump.fun."
+    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like pump.fun or Flap. Volume here counts swaps attributed to a trading app whatever DEX or launchpad sat underneath. The attribution is mutually exclusive: a trade on pump.fun tokens routed through GMGN counts under GMGN, not under pump.fun."
   - q: "Why does BullX show zero or low volume?"
-    a: "BullX has limited Solana attribution in Mobula's lighthouse data. BullX primarily targets EVM chains and its Solana swap volume may not be tagged with referral data that Mobula can attribute. DEX volume for BullX across chains is tracked in bench 205."
+    a: "BullX has no community dataset of its own in the set this bench reads, so there is nothing to attribute it from here rather than a measurement showing zero. Its cross-chain DEX volume is tracked in bench 205."
 
 providers:
   - slug: gmgn

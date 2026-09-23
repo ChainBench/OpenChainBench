@@ -34,6 +34,24 @@ type SourceResult struct {
 	Values map[string]map[string]float64
 	// Funding is keyed [venue][asset] -> (bps_24h, intervalHours).
 	Funding map[string]map[string]fundingPoint
+	// Breadth is keyed [venue][class] -> active market count; see
+	// breadth.go. Only set by a source that saw the venue's full list.
+	Breadth map[string]map[string]int
+	// CryptoSymbols are the base symbols a venue lists as crypto markets
+	// (its own metadata says so, or its whole catalog is crypto). The
+	// router unions them across sources into the known-crypto set used
+	// to classify the venues that publish no asset class.
+	CryptoSymbols map[string]bool
+	// RWASymbols are the base symbols a venue lists as a non-crypto
+	// market (its metadata says stock, ETF, index, forex or commodity).
+	// A symbol that is a token on one venue and a stock on another (BB is
+	// BounceBit and BlackBerry, STX is Stacks and Seagate, QNT is Quant
+	// and Quantinuum) resolves as the RWA on a HIP-3 dex.
+	RWASymbols map[string]bool
+	// Unclassified is keyed [venue] -> base symbols the source could not
+	// classify on its own (Hyperliquid HIP-3 dexes); the router does it
+	// once every source has reported, see classifyUnclassified.
+	Unclassified map[string][]string
 }
 
 type fundingPoint struct {
@@ -96,7 +114,7 @@ const (
 	srcParadexNative     = "paradex_native"
 	srcEdgexNative       = "edgex_native"
 	srcAsterNative       = "aster_native"
-	srcVertexNative      = "vertex_native"
+	srcVertexNative      = "nado_native" // the Vertex team's venue is Nado since 2026 (source_vertex.go)
 	srcGrvtNative        = "grvt_native"
 	srcExtendedNative    = "extended_native"
 	srcAevoNative        = "aevo_native"
@@ -111,6 +129,14 @@ const (
 	srcOrderlyNative     = "orderly_native"
 	srcBackpackNative    = "backpack_native"
 	srcOndoNative        = "ondo_native"
+	srcKalshiNative      = "kalshi_native"
+	srcVestNative        = "vest_native"
+	srcStandXNative      = "standx_native"
+	srcApexNative        = "apex_native"
+	srcJupiterNative     = "jupiter_native"
+	srcLighterRHNative   = "lighter_rh_native"
+	srcHLXyzNative       = "hl_xyz_native"
+	srcCexCoinGecko      = "cex_coingecko"
 	srcDefillama         = "defillama"
 	srcMobulaPairs       = "mobula_pairs"
 	srcMobulaFund        = "mobula_funding"
@@ -141,7 +167,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative, srcDefillama}
 		case "aster":
 			return []string{srcAsterNative, srcDefillama}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative, srcDefillama}
 		case "grvt":
 			return []string{srcGrvtNative, srcDefillama}
@@ -169,6 +195,22 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcOrderlyNative}
 		case "backpack":
 			return []string{srcBackpackNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
 		}
 	case mVolume30d:
 		switch venue {
@@ -178,7 +220,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterNative, srcDefillama}
 		case "gmx-v2", "gains":
 			return []string{srcDefillama}
-		case "vertex":
+		case "nado":
 			// DefiLlama vertex-perps returns null for vol30d, so the
 			// native archive (31 daily granules diffed) is primary.
 			return []string{srcVertexNative, srcDefillama}
@@ -210,7 +252,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative, srcDefillama}
 		case "aster":
 			return []string{srcAsterNative, srcDefillama}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative, srcDefillama}
 		case "grvt":
 			return []string{srcGrvtNative, srcDefillama}
@@ -229,10 +271,27 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcDefillama}
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
+		case "vest":
+			// The Vest API publishes no open interest.
+			return nil
 		}
 	case mFees30d:
 		switch venue {
-		case "vertex":
+		case "nado":
 			// DefiLlama vertex-perps returns null for fees, so the
 			// native archive (cumulative_taker_fees + cumulative_maker_fees
 			// diffed across 31 daily granules) is primary.
@@ -255,7 +314,7 @@ func priorityMap(venue, metric string) []string {
 		case "gains":
 			return []string{srcMobulaPairs}
 		case "gmx-v2":
-			return []string{srcDefillama}
+			return []string{srcGMXNative, srcDefillama}
 		case "dydx":
 			return []string{srcDydxNative}
 		case "paradex":
@@ -264,7 +323,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative}
 		case "aster":
 			return []string{srcAsterNative}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative}
 		case "grvt":
 			return []string{srcGrvtNative}
@@ -283,6 +342,22 @@ func priorityMap(venue, metric string) []string {
 			return nil
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
+		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
+			return []string{srcCexCoinGecko}
 		}
 	case mTopVol24h:
 		switch venue {
@@ -300,7 +375,7 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcEdgexNative}
 		case "aster":
 			return []string{srcAsterNative}
-		case "vertex":
+		case "nado":
 			return []string{srcVertexNative}
 		case "grvt":
 			return []string{srcGrvtNative}
@@ -316,6 +391,20 @@ func priorityMap(venue, metric string) []string {
 			return nil
 		case "polymarket":
 			return []string{srcPolymarketNative}
+		case "kalshi":
+			return []string{srcKalshiNative}
+		case "vest":
+			return []string{srcVestNative}
+		case "standx":
+			return []string{srcStandXNative}
+		case "apex":
+			return []string{srcApexNative}
+		case "jupiter":
+			return []string{srcJupiterNative}
+		case "lighter-rh":
+			return []string{srcLighterRHNative}
+		case "trade-xyz":
+			return []string{srcHLXyzNative}
 		}
 	case mTVL:
 		// TVL comes from DefiLlama /protocol/{slug} for venues where the
@@ -324,7 +413,7 @@ func priorityMap(venue, metric string) []string {
 		// reliable TVL signal and are omitted from the capital-efficiency bench.
 		switch venue {
 		case "hyperliquid", "gains", "gmx-v2", "dydx", "ostium",
-			"lighter", "paradex", "edgex", "aster", "vertex",
+			"lighter", "paradex", "edgex", "aster", "nado",
 			"grvt", "extended", "aevo", "pacifica":
 			return []string{srcDefillama}
 		}
@@ -333,7 +422,67 @@ func priorityMap(venue, metric string) []string {
 }
 
 // Router orchestrates one sweep across all registered sources.
+// classifyUnclassified turns every SourceResult.Unclassified list into a
+// Breadth entry. Two sets accumulate across ticks (a source that failed
+// this tick still contributes its last list): the symbols some venue
+// lists as a non-crypto market and the symbols some venue lists as a
+// crypto market. On a HIP-3 dex the RWA reading wins, then the crypto
+// one (xyz:BOT is a token also listed on Lighter), then the fixed
+// tables, and a symbol nobody knows counts as a stock. The Hyperliquid
+// core universe arrives through the crypto map.
+func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
+	r.cryptoMu.Lock()
+	defer r.cryptoMu.Unlock()
+	if r.knownCrypto == nil {
+		r.knownCrypto = map[string]bool{}
+		r.knownRWA = map[string]bool{}
+	}
+	for _, res := range byName {
+		for sym := range res.CryptoSymbols {
+			r.knownCrypto[sym] = true
+		}
+		for sym := range res.RWASymbols {
+			r.knownRWA[sym] = true
+		}
+	}
+	for _, res := range byName {
+		for venue, syms := range res.Unclassified {
+			b := breadthCounter{}
+			if existing, ok := res.Breadth[venue]; ok {
+				for k, v := range existing {
+					b[k] = v
+				}
+			}
+			var asCrypto []string
+			for _, sym := range syms {
+				var class string
+				if r.knownRWA[sym] {
+					// A venue with metadata lists this symbol as a stock,
+					// ETF, index, forex pair or commodity: on an RWA dex
+					// that reading wins over a same-named token elsewhere.
+					class = rwaClass(sym)
+				} else {
+					class = symbolClass(sym, true, r.knownCrypto)
+				}
+				b.add(class)
+				if class == classCrypto {
+					asCrypto = append(asCrypto, sym)
+				}
+			}
+			res.SetBreadth(venue, b)
+			// The crypto verdicts are the ones a reader would question on
+			// an RWA dex; log them so a wrong collision is visible.
+			sort.Strings(asCrypto)
+			fmt.Printf("[perp-cohort][%s][breadth] %d unclassified -> %s; crypto: %v\n", venue, len(syms), b, asCrypto)
+		}
+	}
+}
+
 type Router struct {
+	cryptoMu    sync.Mutex
+	knownCrypto map[string]bool
+	knownRWA    map[string]bool
+
 	cfg     *Config
 	sources []Source
 	// carry holds the last successfully published value per (venue,
@@ -381,6 +530,14 @@ func NewRouter(cfg *Config) *Router {
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
 		NewOndoNativeSource(),
+		NewKalshiNativeSource(),
+		NewVestNativeSource(),
+		NewStandXNativeSource(),
+		NewApexNativeSource(),
+		NewJupiterNativeSource(),
+		NewLighterDeploymentSource("lighter-rh", "https://api.rh.lighter.xyz/api/v1", srcLighterRHNative),
+		NewHLBuilderSource("trade-xyz", "xyz", srcHLXyzNative),
+		NewCexCoinGeckoSource(),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {
@@ -568,6 +725,27 @@ func (r *Router) Sweep() {
 		}
 	}
 
+	// Asset-class breadth: the first registered source that reports a
+	// venue wins (the venue's native source is registered before Mobula
+	// and DefiLlama). A venue nobody reported this tick keeps its gauges.
+	// Symbols a source left unclassified (HIP-3 dexes) are resolved here
+	// against every crypto symbol the cohort listed this tick and before.
+	r.classifyUnclassified(byName)
+	seenBreadth := map[string]bool{}
+	for _, s := range r.sources {
+		res := byName[s.Name()]
+		if res == nil {
+			continue
+		}
+		for venue, counts := range res.Breadth {
+			if seenBreadth[venue] {
+				continue
+			}
+			seenBreadth[venue] = true
+			publishBreadth(venue, counts)
+		}
+	}
+
 	// Funding is a separate publish path because it is keyed by (venue,
 	// asset), not just venue. The Mobula source is currently the only
 	// funding source; carry-forward applies per (venue, asset).
@@ -597,6 +775,7 @@ func (r *Router) Sweep() {
 				perpVenueFunding24hBps.WithLabelValues(venueSlug, asset).Set(p.Bps24h)
 				perpVenueFundingIntervalHours.WithLabelValues(venueSlug, asset).Set(p.IntervalHours)
 				perpVenueLastRefreshUnix.WithLabelValues(venueSlug, name).Set(float64(tickTS))
+				perpVenueFundingRefreshUnix.WithLabelValues(venueSlug, asset).Set(float64(tickTS))
 				r.fundingCarrySet(venueSlug, asset, p, tickTS)
 			}
 		}
@@ -618,11 +797,13 @@ func (r *Router) Sweep() {
 	// Reap stale carry entries so renamed/removed venues do not leak
 	// memory and never republish ghost values forever. Cohort metrics
 	// are pruned against the canonical Registry (rename = remove from
-	// registry + re-add under new slug = old slug evicted). Funding
-	// entries are pruned against a 24h max-age window so CEFI venues
-	// Mobula stopped covering also drop out.
+	// registry + re-add under new slug = old slug evicted). Funding is a
+	// rate, not a total: a (venue, asset) no source has refreshed for five
+	// minutes leaves the carry AND the gauge, so a frozen rate never sits
+	// in a 24h or 30d average as if it were measured (review 2026-09-23;
+	// the window used to be 24h and the gauge child was never deleted).
 	r.reapCohortCarry()
-	r.reapFundingCarry(tickTS, 24*60*60)
+	r.reapFundingCarry(tickTS, fundingCarryMaxAgeSec)
 }
 
 // reapCohortCarry drops any venue from the cohort carry map that is
@@ -647,6 +828,11 @@ func (r *Router) reapCohortCarry() {
 // panels), so we cannot prune against Registry. Age is the next best
 // signal: if Mobula stopped publishing a venue for 24h it should fall
 // off the gauge.
+// fundingCarryMaxAgeSec is how long a funding rate outlives its last
+// refresh: five ticks at the 60 s sweep. A rate is not a total, and
+// five minutes of the last value is the most a 24h average may carry.
+const fundingCarryMaxAgeSec int64 = 5 * 60
+
 func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 	r.fundCarryM.Lock()
 	defer r.fundCarryM.Unlock()
@@ -654,8 +840,13 @@ func (r *Router) reapFundingCarry(nowTS int64, maxAgeSec int64) {
 		for asset, e := range perAsset {
 			if nowTS-e.RefreshTS > maxAgeSec {
 				delete(perAsset, asset)
+				perpVenueFunding24hBps.DeleteLabelValues(venue, asset)
+				perpVenueFundingIntervalHours.DeleteLabelValues(venue, asset)
 			}
 		}
+		// The refresh stamp stays: a stale timestamp is exactly what the
+		// funding benches' success check needs to read (a deleted series
+		// would come back as "no data", which the loader treats as 100 %).
 		if len(perAsset) == 0 {
 			delete(r.fundCarry, venue)
 		}

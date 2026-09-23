@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PerpAssetRow } from "@/lib/perp-stats";
 
@@ -133,8 +134,7 @@ export function PerpByAssetTable({ rows }: { rows: PerpAssetRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              const productHref =
-                r.slug === "gmx-v2" ? "/products/gmx" : `/products/${r.slug}`;
+              const productHref = `/products/${perpProductSlug(r.slug)}`;
               return (
                 <tr
                   key={r.slug}

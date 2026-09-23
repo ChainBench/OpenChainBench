@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -266,20 +266,17 @@ function DualChart({
   const gridTicks = [0, 0.25, 0.5, 0.75, 1];
   const xLabelEvery = n <= 30 ? 7 : n <= 90 ? 14 : 30;
 
-  const svgAbsRef = useRef<SVGSVGElement>(null);
-  const svgPctRef = useRef<SVGSVGElement>(null);
-
-  const handlePointerMove = (svgRef: React.RefObject<SVGSVGElement | null>) =>
-    (e: React.PointerEvent<SVGSVGElement>) => {
-      const svg = svgRef.current;
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
-      const xRatio = (e.clientX - rect.left) / rect.width;
-      const px = xRatio * W;
-      if (px < PAD_L || px > W - PAD_R) { onHover(null); return; }
-      const i = Math.min(n - 1, Math.max(0, Math.floor(((px - PAD_L) / plotW) * n)));
-      onHover(i);
-    };
+  // The event's own target IS the svg being pointed at, so neither chart
+  // needs a ref here: passing one into a handler factory reads it during
+  // render (react-hooks/refs), and this reads the same box in the handler.
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const px = xRatio * W;
+    if (px < PAD_L || px > W - PAD_R) { onHover(null); return; }
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((px - PAD_L) / plotW) * n)));
+    onHover(i);
+  };
 
   const renderBars = (mode: "abs" | "pct", plotH: number) =>
     stacks.map((bar, i) => {
@@ -348,12 +345,11 @@ function DualChart({
       {/* Absolute chart */}
       <div className="relative w-full overflow-hidden">
         <svg
-          ref={svgAbsRef}
           viewBox={`0 0 ${W} ${H_ABS}`}
           className="w-full block"
           style={{ height: "clamp(140px, 22vw, 220px)" }}
           preserveAspectRatio="none"
-          onPointerMove={handlePointerMove(svgAbsRef)}
+          onPointerMove={handlePointerMove}
           onPointerLeave={() => onHover(null)}
         >
           {renderGrid("abs")}
@@ -392,12 +388,11 @@ function DualChart({
       {/* Percentage chart */}
       <div className="relative w-full overflow-hidden">
         <svg
-          ref={svgPctRef}
           viewBox={`0 0 ${W} ${H_PCT}`}
           className="w-full block"
           style={{ height: "clamp(120px, 18vw, 200px)" }}
           preserveAspectRatio="none"
-          onPointerMove={handlePointerMove(svgPctRef)}
+          onPointerMove={handlePointerMove}
           onPointerLeave={() => onHover(null)}
         >
           {renderGrid("pct")}

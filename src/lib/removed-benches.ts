@@ -69,6 +69,14 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   // References pm-data-freshness (bench 113, retired 2026-07). Bench
   // removed; answer returns 404 without this guard.
   "which-prediction-market-data-api-is-the-freshest",
+  // References pm-fee-comparison (dropped 2026-07). The YAML also
+  // hand-types "2% fee" and "vig roughly 4-10%", so it must not be
+  // revived as written. 410 instead of 404 (SEO audit 2026-09-22).
+  "polymarket-fees-explained",
+  // Same class, found by the next audit: references pm-fee-comparison too,
+  // and hand-types "flat 2%", "roughly $0.07" and a "$0.20 / $0.80"
+  // crossover. 410 instead of 404 (SEO audit 2026-09-23).
+  "polymarket-vs-kalshi-fees",
 ]);
 
 /**
@@ -94,6 +102,22 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 268 terminal fill quality: method still moving (13 audits, last change
   // 2026-09-21)
   "terminal-fill-quality",
+  // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
+  // but the 24h success window has not filled since the last rebuild, so a
+  // production board would rank rows on a partial window. Un-gate once the
+  // window is full and a re-audit is clean (2 rounds so far, last change
+  // 2026-09-23).
+  "chain-bridged-tvl",
+  // 274 protocol P/F: first deploy of the protocol-valuation harness, no
+  // 24h window yet and no audit round. Un-gate after both.
+  "protocol-pf-ratio",
+  // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
+  // window yet and no audit round. Un-gate after both.
+  "chain-stablecoin-flow",
+  // 276 perp fee disclosure: the maker gauge is one deploy old and three
+  // of the eight rows have no maker rate at all. Un-gate after a 24h
+  // window and an audit round.
+  "perp-fee-disclosure",
 ]);
 
 /**

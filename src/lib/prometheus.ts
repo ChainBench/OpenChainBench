@@ -113,6 +113,27 @@ export class Prometheus {
         return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
       if (res.resultType === "vector" && res.result.length > 0) {
+        // More than one series means the query did not identify a single
+        // thing, and taking result[0] publishes an arbitrary one of them
+        // as though it were the answer. Prometheus contracts no ordering
+        // for instant vectors, so which one is not even stable.
+        //
+        // Refuse rather than guess. The nine specs that tripped this are
+        // fixed (pnpm check:scalars sweeps all 9,011 scalar queries and
+        // reports zero), so nothing reaches this path today; a future
+        // one means a harness grew a label, and a null renders as "no
+        // data" while an arbitrary series renders as a confident wrong
+        // number. The second is the worse failure for a benchmark.
+        if (res.result.length > 1) {
+          const varying = labelsThatVary(res.result);
+          console.warn(
+            `prom.scalar got ${res.result.length} series where one was expected` +
+              (varying.length ? ` (varying: ${varying.join(", ")})` : "") +
+              `; returning null. Aggregate in the spec query or pin the ` +
+              `dimension via aggregate_filters. Query: ${promql.slice(0, 200)}`,
+          );
+          return null;
+        }
         const v = Number(res.result[0].value[1]);
         return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
@@ -493,4 +514,25 @@ function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
   a.addEventListener("abort", onAbort, { once: true });
   b.addEventListener("abort", onAbort, { once: true });
   return c.signal;
+}
+
+/** Which labels differ across a multi-series result. Turns "got 347
+ *  series" into "varying: validator" so the spec author knows what to
+ *  aggregate away. Capped so a high-cardinality result cannot produce a
+ *  log line longer than the query it is about. */
+function labelsThatVary(
+  result: { metric: Record<string, string> }[],
+): string[] {
+  const keys = new Set<string>();
+  for (const r of result) for (const k of Object.keys(r.metric)) keys.add(k);
+  const out: string[] = [];
+  for (const k of keys) {
+    const seen = new Set<string>();
+    for (const r of result) {
+      seen.add(r.metric[k] ?? "");
+      if (seen.size > 1) break;
+    }
+    if (seen.size > 1) out.push(k);
+  }
+  return out.sort().slice(0, 6);
 }

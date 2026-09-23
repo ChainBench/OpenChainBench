@@ -6,7 +6,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { pageMetadata } from "@/lib/page-metadata";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, capSnippet } from "@/lib/seo-text";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/lib/categories";
 
 /**
@@ -40,7 +40,7 @@ export async function generateMetadata({
   const { cat } = await params;
   const entry = CATEGORY_BY_SLUG.get(cat);
   if (!entry) return {};
-  const description = capDescription(entry.description, 158);
+  const description = capSnippet(entry.description);
   return pageMetadata({
     path: `/benchmarks/category/${entry.slug}`,
     title: `${entry.heading}`,

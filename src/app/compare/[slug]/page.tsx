@@ -13,10 +13,11 @@ import {
 import { getProviderRegistry } from "@/data/provider-registry";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capSnippet } from "@/lib/seo-text";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { buildCitationMeta } from "@/lib/dataset-jsonld";
 import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { CompareBenchCard } from "@/components/compare-bench-card";
 import { PerpVolumeHeadToHead } from "@/components/perp-volume-head-to-head-section";
@@ -239,7 +240,22 @@ export async function generateMetadata({
   // dydx-vs-hyperliquid in prod). The gate only applies to
   // combinatorial ad hoc pairs.
   const isCurated = getComparePair(pair.slug) !== undefined;
-  const thin = !isCurated && liveSharedCount < 2;
+  // Two situations, two answers. A pair that SHARES fewer than two benches
+  // has nothing to compare and never will on this data: it 404s, because a
+  // 200 with noindex is recrawled forever while a 404 leaves the index in
+  // weeks (232 such URLs were live, crawled and deindexed on 2026-09-22
+  // against 151 in the sitemap). A pair that shares enough but whose live
+  // count dipped is a render-window accident, so it noindexes and recovers:
+  // /compare/fomo-vs-invo sits at exactly two live shared benches and earns
+  // 36 of the site's 289 clicks, and a 404 there would be self-inflicted.
+  if (!isCurated && sharedSlugsForMeta.length < 2) notFound();
+  // A pair whose shared benches are all RWA compares assets (AAPL vs
+  // NVDA), not providers; it stays reachable and noindexed, and the link
+  // graph no longer points at it (isPairLinkable, RWA audit 2026-09-23).
+  const allRwa =
+    sharedSlugsForMeta.length > 0 &&
+    sharedSlugsForMeta.every((s) => a.appearances.find((x) => x.benchmark.slug === s)?.benchmark.category === "RWA");
+  const dataThin = !isCurated && (liveSharedCount < 2 || allRwa);
 
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
@@ -253,18 +269,51 @@ export async function generateMetadata({
     .filter((t) => Number.isFinite(t))
     .sort((x, y) => y - x)[0];
   const isoDate = new Date(newestRun ?? Date.now()).toISOString().split("T")[0];
-  const description = capDescription(
-    `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
-    158,
+  // The verdict the body lede opens with ("Hyperliquid leads on 5 of 13
+  // shared benchmarks, Lighter on 8"), not a count and a date alone: the
+  // compare template converts best on the site and its snippet said
+  // nothing measurable (audit 2026-09-22).
+  const verdictRows = await buildSharedBenches(pair, a, b);
+  let aWins = 0;
+  let bWins = 0;
+  let scored = 0;
+  for (const s of verdictRows) {
+    if (s.aResult.p50 <= 0 || s.bResult.p50 <= 0) continue;
+    scored += 1;
+    if (s.aggregateWinner === "a") aWins += 1;
+    else if (s.aggregateWinner === "b") bWins += 1;
+  }
+  // The counts alone (a split-decision lede lists four bench labels with
+  // values and runs past the budget); the tail carries the date.
+  const verdict =
+    scored === 0
+      ? ""
+      : aWins === bWins
+        ? `${a.name} and ${b.name} split ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"} evenly.`
+        : `${aWins >= bWins ? a.name : b.name} leads on ${Math.max(aWins, bWins)} of ${scored} shared ${scored === 1 ? "benchmark" : "benchmarks"}, ${aWins >= bWins ? b.name : a.name} on ${Math.min(aWins, bWins)}.`;
+  // Name what this pair actually shares. Every one of the 383 compare pages
+  // promised "Fees, volume, funding and latency" whatever it measured:
+  // /compare/1rpc-vs-drpc shares three latency benches and said it measured
+  // fees, volume and funding too (SEO audit 2026-09-22).
+  const metrics = [...new Set(verdictRows.map((s) => s.metric.toLowerCase()))].slice(0, 3);
+  const measuredClause = metrics.length
+    ? `${metrics.join(", ")} measured live.`
+    : "Shared benchmarks measured live.";
+  const description = capSnippet(
+    verdict
+      ? `${verdict} ${measuredClause} As of ${isoDate}.`
+      : `${a.name} vs ${b.name} on ${metaCount} shared OpenChainBench ${benchWord} with live data. Reproducible methodology. As of ${isoDate}.`,
   );
 
   return {
-    title,
+    // Past 43 characters the brand suffix cuts the count off the title.
+    title: title.length > 43 ? { absolute: title } : title,
     description,
     // follow stays on so PageRank keeps flowing through the body links
     // (both provider pages, parent benches) even while deindexed.
-    ...(thin ? { robots: { index: false, follow: true } } : {}),
+    ...(dataThin ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
+    other: buildCitationMeta({ title, url, asOfIso: isoDate, jsonUrl: `${SITE.url}/api/citable` }),
     openGraph: {
       title,
       description,
@@ -784,6 +833,13 @@ export default async function ComparePage({
 
   const shared = await buildSharedBenches(pair, a, b);
   if (shared.length === 0) return notFound();
+  // Mirrors generateMetadata: a pair sharing fewer than two benches has
+  // nothing to compare and 404s. A live-count dip is answered there with
+  // noindex, not here with a 404, so a flapping bench cannot delete a page
+  // that earns clicks. Curated pairs are exempt.
+  if (getComparePair(pair.slug) === undefined && shared.length < 2) {
+    return notFound();
+  }
 
   const regA = getProviderRegistry(a.slug);
   const regB = getProviderRegistry(b.slug);
@@ -944,7 +1000,22 @@ export default async function ComparePage({
     })),
   };
 
-  const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+  // Dated like the meta description: the newest measurement across the
+  // shared benches, so the page body carries the as-of the snippet states.
+  const proseRun = [...a.appearances, ...b.appearances]
+    .filter((x) => shared.some((s) => s.slug === x.benchmark.slug))
+    .map((x) => Date.parse(x.benchmark.lastRunAt ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => y - x)[0];
+  const proseAsOf = proseRun ? ` Data as of ${new Date(proseRun).toISOString().split("T")[0]} UTC.` : "";
+  const baseProse = buildComparisonProse(shared, a.name, b.name);
+  const comparisonProse = baseProse ? baseProse + proseAsOf : "";
+  // The title and the lede count the benches with a decided winner; the
+  // header badge counted every shared bench, so a reader saw 13 and 14
+  // on one screen (audit 2026-09-22).
+  // Same predicate as the lede's denominator and the meta description
+  // (`scored`): both sides measured, ties included.
+  const decidedCount = shared.filter((s) => s.aResult.p50 > 0 && s.bResult.p50 > 0).length;
   const perpPair =
     pair.hero === "perp-volume" ||
     (PERP_VOLUME_COHORT.has(a.slug) && PERP_VOLUME_COHORT.has(b.slug));
@@ -1015,6 +1086,7 @@ export default async function ComparePage({
           <span>
             {shared.length} shared{" "}
             {shared.length === 1 ? "benchmark" : "benchmarks"}
+            {decidedCount < shared.length ? `, ${decidedCount} measured on both sides` : ""}
           </span>
         </div>
       </header>

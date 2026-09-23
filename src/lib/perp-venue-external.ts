@@ -224,7 +224,7 @@ async function fetchLighterStats(): Promise<PerpVenueExternalStats> {
   const extraKpis: { label: string; value: string }[] = [];
   if (stats?.daily_usd_volume) {
     extraKpis.push({
-      label: "Volume 24h",
+      label: "Volume 24h, venue snapshot",
       value: fmtUsdShort(parseFloat(stats.daily_usd_volume)),
     });
   }
@@ -297,8 +297,8 @@ async function fetchHyperliquidStats(): Promise<PerpVenueExternalStats> {
     const [meta, ctxs] = data;
     const vol24h = ctxs.reduce((s, c) => s + (parseFloat(c.dayNtlVlm ?? "0") || 0), 0);
     const totalOI = ctxs.reduce((s, c) => s + (parseFloat(c.openInterest ?? "0") || 0), 0);
-    if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-    if (totalOI > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(totalOI) });
+    if (vol24h > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(vol24h) });
+    if (totalOI > 0) extraKpis.push({ label: "OI, all markets incl. HIP-3, venue snapshot", value: fmtUsdShort(totalOI) });
     extraKpis.push({ label: "Listed assets", value: String(meta.universe?.length ?? ctxs.length) });
   }
 
@@ -353,8 +353,8 @@ async function fetchDydxStats(): Promise<PerpVenueExternalStats> {
     }));
 
   const extraKpis: { label: string; value: string }[] = [];
-  if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
+  if (vol24h > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(vol24h) });
+  if (oi > 0) extraKpis.push({ label: "OI, all markets, venue snapshot", value: fmtUsdShort(oi) });
   if (trades24h > 0)
     extraKpis.push({ label: "Trades 24h", value: fmtCount(trades24h) });
   if (markets)
@@ -367,12 +367,12 @@ async function fetchDydxStats(): Promise<PerpVenueExternalStats> {
 }
 
 // ---------------------------------------------------------------------------
-// Vertex — DeFiLlama
+// Nado (ex Vertex) — DeFiLlama
 // ---------------------------------------------------------------------------
 
 async function fetchVertexStats(): Promise<PerpVenueExternalStats> {
   const fees = await jf<LlamaChartResp>(
-    "https://api.llama.fi/summary/fees/vertex-perps",
+    "https://api.llama.fi/summary/fees/nado",
   );
   if (!fees) return {};
 
@@ -410,7 +410,7 @@ async function fetchAevoStats(): Promise<PerpVenueExternalStats> {
   const extraKpis: { label: string; value: string }[] = [];
   if (stats?.daily_volume) {
     const dv = parseFloat(stats.daily_volume);
-    if (dv > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(dv) });
+    if (dv > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(dv) });
   }
 
   return { totalVolumeUsd, totalTradeCount, extraKpis };
@@ -480,8 +480,8 @@ async function fetchExtendedStats(): Promise<PerpVenueExternalStats> {
   const perp = markets.filter((m) => m.name.includes("-USD"));
 
   const extraKpis: { label: string; value: string }[] = [];
-  if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
+  if (vol24h > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(vol24h) });
+  if (oi > 0) extraKpis.push({ label: "OI, all markets, venue snapshot", value: fmtUsdShort(oi) });
   if (perp.length > 0)
     extraKpis.push({ label: "Perp markets", value: String(perp.length) });
 
@@ -555,8 +555,8 @@ async function fetchPolymarketStats(): Promise<PerpVenueExternalStats> {
   );
 
   const extraKpis: { label: string; value: string }[] = [];
-  if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
-  if (oi > 0) extraKpis.push({ label: "OI (all markets)", value: fmtUsdShort(oi) });
+  if (vol24h > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(vol24h) });
+  if (oi > 0) extraKpis.push({ label: "OI, all markets, venue snapshot", value: fmtUsdShort(oi) });
   if (events.length > 0)
     extraKpis.push({ label: "Active markets", value: String(events.length) });
 
@@ -602,7 +602,7 @@ async function fetchOrderlyStats(): Promise<PerpVenueExternalStats> {
   const stats = await jf<OrderlyVolumeResp>("https://api-evm.orderly.org/v1/public/volume/stats");
   const extraKpis: { label: string; value: string }[] = [];
   if (stats?.success && stats.data.perp_volume_last_1_day) {
-    extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(stats.data.perp_volume_last_1_day) });
+    extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(stats.data.perp_volume_last_1_day) });
   }
   return { extraKpis };
 }
@@ -620,7 +620,7 @@ async function fetchBackpackStats(): Promise<PerpVenueExternalStats> {
     const vol24h = tickers
       .filter((t) => t.symbol.endsWith("_PERP"))
       .reduce((s, t) => s + (parseFloat(t.quoteVolume) || 0), 0);
-    if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
+    if (vol24h > 0) extraKpis.push({ label: "Volume 24h, venue snapshot", value: fmtUsdShort(vol24h) });
     const perpCount = tickers.filter((t) => t.symbol.endsWith("_PERP")).length;
     if (perpCount > 0) extraKpis.push({ label: "Perp markets", value: String(perpCount) });
   }
@@ -744,7 +744,7 @@ async function fetchVenueRaw(
         return await fetchHyperliquidStats();
       case "dydx":
         return await fetchDydxStats();
-      case "vertex":
+      case "nado":
         return await fetchVertexStats();
       case "aevo":
         return await fetchAevoStats();

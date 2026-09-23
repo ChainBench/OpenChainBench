@@ -21,7 +21,7 @@ const COMPARABLE_VENUES = [
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos" },
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet" },
-  { slug: "edgex",       name: "EdgeX",       chain: "zkSync" },
+  { slug: "edgex",       name: "EdgeX",       chain: "StarkEx" },
 ] as const;
 
 type VenueSlug = (typeof COMPARABLE_VENUES)[number]["slug"];

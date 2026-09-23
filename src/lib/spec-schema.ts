@@ -140,7 +140,25 @@ const provider = z.object({
   /** Display name. */
   name: z.string().min(1),
   /** Optional one-liner shown under the name. */
-  tag: z.string().optional(),
+  /**
+   * What this row IS: its architecture, its venue, its scope. Not what it
+   * currently reads — the board carries that, and a tag restating it goes
+   * stale silently. Bench 275 shipped twenty tags like "$93.9B stablecoin
+   * float, dollars arriving", which matched the live signs only because
+   * they were written the same day, with Avalanche one small mint from
+   * contradicting its own tag (SEO audit 2026-09-23).
+   *
+   * An order of magnitude as context is fine, qualified: "~$290k pool
+   * depth" describes a venue, "$93.9B float" restates a measurement. The
+   * rule asks for the tilde.
+   */
+  tag: z
+    .string()
+    .refine(
+      (t) => !/(?<![~≈])\s*\$\s?\d/.test(t),
+      'tag: an exact amount goes stale next to the live column; qualify it ("~$2.8B") or drop it',
+    )
+    .optional(),
   /** Single-line explanation of how THIS provider's headline value is
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
@@ -232,13 +250,23 @@ const noAiDashesMsg =
 const MARKETING = /\b(blisteringly|blazing(ly)?|best-in-class|world-class|revolutionary|lightning-fast|ultra-fast|cutting-edge|game-changing)\b/i;
 const noMarketing = (s: string) => !MARKETING.test(s);
 const noMarketingMsg = "marketing adjective (blisteringly, blazing, best-in-class, world-class, ...): state the number instead";
+// A value placeholder renders its own unit: on a usd bench {{best_p50}}
+// becomes "$112.66M", so a literal $ or % in front of it doubles the
+// symbol. solana-trading-platform-wars shipped "$$112.66M" in the meta
+// description of the site's highest-impression page (1,688 impressions,
+// position 6.15) until the 2026-09-22 SEO audit found it.
+const DOUBLED_UNIT = /[$€£%]\s*\{\{\s*(best_p50|best_p90|best_p99|p50:|p90:|p99:)/;
+const noDoubledUnit = (s: string) => !DOUBLED_UNIT.test(s);
+const noDoubledUnitMsg =
+  "unit before a value placeholder: {{best_p50}} and {{p50:...}} already render their own unit";
 const seoText = (min: number, max: number) =>
   z
     .string()
     .min(min)
     .max(max)
     .refine(noAiDashes, noAiDashesMsg)
-    .refine(noMarketing, noMarketingMsg);
+    .refine(noMarketing, noMarketingMsg)
+    .refine(noDoubledUnit, noDoubledUnitMsg);
 
 export const SpecSchema = z
   .object({
@@ -324,6 +352,26 @@ export const SpecSchema = z
     /** True when bigger numbers are better (coverage, count). Default false:
      * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
+
+    /**
+     * What one row IS, for the sentences that name the cohort. Defaults to
+     * provider / providers, which is right for an RPC or data-API bench and
+     * wrong for a bench whose rows are chains, venues or apps.
+     *
+     * It matters more than it looks: the noun lands in the quotable TL;DR
+     * (`data-llm-canonical`), the StatisticalReport JSON-LD, /api/stat,
+     * /api/citable, llms.txt, the Results heading, the table caption and
+     * the infobox. Bench 273 shipped "across 41 ranked providers" about a
+     * board of chains, which is the one sentence the page marks for an
+     * answer engine to quote (SEO audit 2026-09-23).
+     */
+    row_noun: z
+      .object({
+        one: z.string().min(1).max(24),
+        many: z.string().min(1).max(24),
+      })
+      .strict()
+      .optional(),
 
     /* Editorial copy */
     // Schema accepts up to schema.org's Dataset description ceiling (5000) so
@@ -443,6 +491,17 @@ export const SpecSchema = z
           )
           .optional(),
         venue: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .optional(),
+        /* Trade-size bucket (terminal-fill-quality: all / under25 /
+         * 25to250 / over250). Same mechanics as `venue`: a plain label
+         * injected into the selector, `all` meaning the pooled row. */
+        bucket: z
           .array(
             z.object({
               value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),

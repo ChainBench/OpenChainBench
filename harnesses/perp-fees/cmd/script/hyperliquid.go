@@ -26,7 +26,7 @@ type hlL2Book struct {
 }
 
 type hlAssetCtx struct {
-	Funding      string `json:"funding"`     // per-hour, signed
+	Funding      string `json:"funding"` // per-hour, signed
 	OpenInterest string `json:"openInterest"`
 	MidPx        string `json:"midPx"`
 	MarkPx       string `json:"markPx"`
@@ -125,6 +125,9 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 	}
 	cross, _ := strconv.ParseFloat(fees.FeeSchedule.Cross, 64)
 	s.TakerFeeBps = cross * 10000
+	if add, err := strconv.ParseFloat(fees.FeeSchedule.Add, 64); err == nil {
+		s.MakerFeeBps, s.HasMakerFee = add*10000, true
+	}
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	// Notional tiers: rewalk the already-fetched book at $1k/$10k/$100k.

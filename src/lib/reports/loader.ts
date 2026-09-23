@@ -18,6 +18,9 @@ export type ReportMeta = {
   ogImage?: string;
   canonical: string;
   draft?: boolean;
+  /** True for a report rendered by its own route segment (live data,
+   *  no MDX body) instead of the [category]/[slug] MDX page. */
+  live?: boolean;
 };
 
 export type Report = ReportMeta & {
@@ -49,6 +52,17 @@ export const REPORT_CATEGORY_META: Record<
       "Crypto data APIs benchmarked for price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.",
   },
 };
+
+/**
+ * Reports that live as route segments under src/app/reports/<category>/
+ * <slug>/page.tsx because every figure on them is read live from the
+ * benches. Listed here so the index, the category page, the RSS feed
+ * and the sitemap see them like the MDX reports.
+ */
+export const LIVE_REPORTS: ReportMeta[] = [
+  // The State of perp DEXes Q3 2026 report was withdrawn on 2026-09-23
+  // pending a rewrite; the mechanism stays for the next live report.
+];
 
 function parseReport(filePath: string): Report {
   const raw = fs.readFileSync(filePath, "utf8");
@@ -88,6 +102,7 @@ export function getAllReports(): Report[] {
       }
     }
   }
+  for (const meta of LIVE_REPORTS) reports.push({ ...meta, content: "" });
   return reports
     .filter((r) => !r.draft)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
@@ -107,8 +122,8 @@ export function getReport(
 }
 
 export function getAllReportCategories(): string[] {
-  if (!fs.existsSync(REPORTS_DIR)) return [];
-  return fs
-    .readdirSync(REPORTS_DIR)
-    .filter((f) => fs.statSync(path.join(REPORTS_DIR, f)).isDirectory());
+  const fromDisk = fs.existsSync(REPORTS_DIR)
+    ? fs.readdirSync(REPORTS_DIR).filter((f) => fs.statSync(path.join(REPORTS_DIR, f)).isDirectory())
+    : [];
+  return [...new Set([...fromDisk, ...LIVE_REPORTS.map((r) => r.categorySlug)])];
 }

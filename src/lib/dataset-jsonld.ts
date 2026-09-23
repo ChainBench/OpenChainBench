@@ -79,6 +79,28 @@ export const CREATOR_PUBLISHER = {
  *  Google Dataset "encodingFormat" / "contentUrl" requirements. */
 export const CITABLE_JSON_URL = `${SITE.url}/api/citable`;
 
+/** Highwire citation_* meta for a page that states a dated measured
+ *  claim (hubs, per-asset pages, compare pages). The bench page emits the
+ *  same set with its DOI and creation date. `jsonUrl` is the machine
+ *  record the citation points at. */
+export function buildCitationMeta(input: {
+  title: string;
+  url: string;
+  asOfIso?: string | null;
+  jsonUrl?: string | null;
+}): Record<string, string> {
+  return {
+    citation_title: input.title,
+    citation_author: "OpenChainBench",
+    citation_publisher: "OpenChainBench",
+    ...(input.asOfIso ? { citation_online_date: input.asOfIso.slice(0, 10) } : {}),
+    ...(input.jsonUrl ? { citation_pdf_url: input.jsonUrl } : {}),
+    citation_public_url: input.url,
+    citation_language: "en",
+    citation_journal_title: "OpenChainBench",
+  };
+}
+
 /**
  * Site-wide Dataset entry. Emitted on the home page so Google Dataset
  * Search and Perplexity have a single canonical record pointing at both
@@ -179,8 +201,30 @@ export type BenchDatasetInput = {
 export function buildBenchVariableMeasured(input: {
   metric: string;
   unit: string;
-  leader: { name: string; p50: number; p90: number; p99: number } | null;
+  leader: { name: string; p50: number; p90: number; p99: number; mean?: number } | null;
+  /** A bench that repurposes the p50/p90/p99/mean slots declares
+   *  ledger_columns; the PropertyValues then carry those labels and
+   *  units instead of calling a signed 30-day deviation "p99". */
+  ledgerColumns?: { label: string; slot?: "p50" | "p90" | "p99" | "mean"; unit?: string }[];
 }): Array<string | VariableMeasuredValue> {
+  const slotCols = (input.ledgerColumns ?? []).filter((c) => c.slot);
+  if (slotCols.length > 0 && input.leader) {
+    const l = input.leader;
+    const out: Array<string | VariableMeasuredValue> = [input.metric];
+    for (const c of slotCols) {
+      const value = c.slot === "mean" ? l.mean : c.slot ? l[c.slot] : undefined;
+      if (value == null || !Number.isFinite(value)) continue;
+      out.push({
+        "@type": "PropertyValue",
+        propertyID: `${input.metric.toLowerCase().replace(/\s+/g, "_")}_${c.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`,
+        name: `${input.metric}, ${c.label}`,
+        value,
+        unitText: c.unit ?? input.unit,
+      });
+    }
+    out.push("sample_size");
+    return out;
+  }
   if (!input.leader || input.leader.p50 <= 0) {
     return [
       input.metric,

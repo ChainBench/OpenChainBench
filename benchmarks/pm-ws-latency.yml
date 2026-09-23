@@ -12,6 +12,7 @@ status: live
 metric: WS connect to snapshot
 unit: ms
 higher_is_better: false
+row_noun: { one: venue, many: venues }
 
 seo_intro: |
   REST polling tells you how fast a venue answers one request. WebSocket

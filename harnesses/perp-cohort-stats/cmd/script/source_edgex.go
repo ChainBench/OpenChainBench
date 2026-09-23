@@ -1,21 +1,29 @@
 package main
 
 import (
-	"net/url"
-	"os"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 // EdgexNativeSource hits two endpoints:
 //
-//	GET https://pro.edgex.exchange/api/v1/public/meta/getMetaData
-//	GET https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=<id>
+//	GET https://edgex-prod-v2.edgex.exchange/api/v2/public/meta/getMetaData
+//	GET https://edgex-prod-v2.edgex.exchange/api/v2/public/quote/getTicker?contractId=<id>
+//
+// v2 since 2026-09-22: the v1 host (pro.edgex.exchange/api/v1, contract
+// ids 10000xxx) still answers 200 but every quote endpoint returns an
+// empty data array from every network we tried, so the harness had
+// published no edgeX volume or OI for weeks. v2 uses new contract ids
+// (30000xxx) and the same field names; getTicker without contractId
+// returns nothing, so the per-contract loop stays.
 //
 // edgeX does not expose a single ticker batch endpoint, so we walk
 // the ~290 contracts one at a time with a 10 req/s throttle. A full
@@ -30,17 +38,21 @@ import (
 //	openInterest  (BASE units, string)
 //	markPrice     (USD, string)
 type EdgexNativeSource struct {
-	client       *http.Client
-	mu           sync.Mutex
-	cache        map[string]edgexTickerRow
-	cacheTS      time.Time
-	refreshing   bool
+	client     *http.Client
+	mu         sync.Mutex
+	cache      map[string]edgexTickerRow
+	cacheTS    time.Time
+	refreshing bool
 }
 
 type edgexTickerRow struct {
-	value    float64
-	oi       float64
-	mark     float64
+	name       string
+	value      float64
+	oi         float64
+	mark       float64
+	funding    float64 // rate per funding interval
+	intervalH  float64 // hours between fundingTime and nextFundingTime
+	hasFunding bool    // fundingRate parsed on the last refresh
 }
 
 // edgexHTTPClient routes through COHORT_PROXY_URL when set. edgeX
@@ -67,24 +79,33 @@ func NewEdgexNativeSource() *EdgexNativeSource {
 
 func (s *EdgexNativeSource) Name() string { return srcEdgexNative }
 
+// edgexContract is one row of the v2 contract list. The v1 catalog kept
+// 292 rows including retired ones; v2 flags what is tradable and shown.
+type edgexContract struct {
+	ContractID    string `json:"contractId"`
+	ContractName  string `json:"contractName"`
+	EnableTrade   bool   `json:"enableTrade"`
+	EnableDisplay bool   `json:"enableDisplay"`
+}
+
 type edgexMetaResponse struct {
 	Code string `json:"code"`
 	Data struct {
-		ContractList []struct {
-			ContractID   string `json:"contractId"`
-			ContractName string `json:"contractName"`
-		} `json:"contractList"`
+		ContractList []edgexContract `json:"contractList"`
 	} `json:"data"`
 }
 
 type edgexTickerResponse struct {
 	Code string `json:"code"`
 	Data []struct {
-		ContractID   string `json:"contractId"`
-		ContractName string `json:"contractName"`
-		Value        string `json:"value"`
-		OpenInterest string `json:"openInterest"`
-		MarkPrice    string `json:"markPrice"`
+		ContractID      string `json:"contractId"`
+		ContractName    string `json:"contractName"`
+		Value           string `json:"value"`
+		OpenInterest    string `json:"openInterest"`
+		MarkPrice       string `json:"markPrice"`
+		FundingRate     string `json:"fundingRate"`
+		FundingTime     string `json:"fundingTime"`
+		NextFundingTime string `json:"nextFundingTime"`
 	} `json:"data"`
 }
 
@@ -95,7 +116,7 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 	venue := "edgex"
 
 	// Fetch contract list every sweep (small, fast, one request).
-	body, err := s.get("https://pro.edgex.exchange/api/v1/public/meta/getMetaData")
+	body, err := s.get("https://edgex-prod-v2.edgex.exchange/api/v2/public/meta/getMetaData")
 	if err != nil {
 		perpCohortFetchErrors.WithLabelValues(venue, srcEdgexNative, classifyError(err.Error())).Inc()
 		fmt.Printf("[perp-cohort][%s][%s] err meta: %v\n", venue, srcEdgexNative, err)
@@ -108,6 +129,21 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
+	// Live contracts only: v2 lists a few rows that trade without being
+	// shown (test or retired listings); the visible set is the venue's
+	// catalog as its own UI presents it.
+	live := make([]edgexContract, 0, len(meta.Data.ContractList))
+	for _, c := range meta.Data.ContractList {
+		if c.EnableTrade && c.EnableDisplay {
+			live = append(live, c)
+		}
+	}
+	if len(live) == 0 {
+		perpCohortFetchErrors.WithLabelValues(venue, srcEdgexNative, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err: v2 meta returned no live contract (%d rows)\n", venue, srcEdgexNative, len(meta.Data.ContractList))
+		return res, nil
+	}
+
 	// Schedule a per-contract refresh in the background if the cache
 	// is stale; aggregate from whatever snapshot is currently cached.
 	// The per-contract endpoint sits behind a stricter Cloudflare WAF
@@ -115,11 +151,17 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 	// so we treat the cohort cache as best-effort: when the cache is
 	// empty we publish only active_markets (count of mainnet contracts)
 	// and rely on the DefiLlama fallback for vol/oi.
-	s.maybeRefresh(meta.Data.ContractList)
+	s.maybeRefresh(live)
 
 	s.mu.Lock()
 	var volSum, oiSum, topVol float64
 	var active int
+	// Funding is a rate, not a total: a snapshot kept through a degraded
+	// refresh (WAF) must not republish a frozen rate as fresh. Two TTLs is
+	// one missed refresh; beyond that the funding surface goes quiet, the
+	// router's five-minute reap deletes the gauge and the funding benches'
+	// success check (perp_venue_funding_refresh_unix) turns red.
+	fundingFresh := time.Since(s.cacheTS) < 2*edgexCacheTTL
 	for _, row := range s.cache {
 		if row.mark <= 0 {
 			continue
@@ -130,6 +172,9 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 			topVol = row.value
 		}
 		oiSum += row.oi * row.mark
+		if asset := strings.TrimSuffix(row.name, "USDC"); fundingFresh && row.hasFunding && fundingAssets[asset] && row.intervalH > 0 {
+			res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(row.funding, row.intervalH), IntervalHours: row.intervalH})
+		}
 	}
 	cached := len(s.cache)
 	s.mu.Unlock()
@@ -137,19 +182,16 @@ func (s *EdgexNativeSource) Fetch() (*SourceResult, error) {
 	// active_markets always comes from the meta call (it succeeds even
 	// when the per-contract WAF is hot). The other gauges are gated on
 	// the cache having content.
-	res.SetIfPositive(venue, mActiveMarkets, float64(len(meta.Data.ContractList)))
+	res.SetIfPositive(venue, mActiveMarkets, float64(len(live)))
 	res.SetIfPositive(venue, mVolume24h, volSum)
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mTopVol24h, topVol)
 	fmt.Printf("[perp-cohort][%s][%s] ok: contracts=%d cached=%d active=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcEdgexNative, len(meta.Data.ContractList), cached, active, volSum, oiSum, topVol)
+		venue, srcEdgexNative, len(live), cached, active, volSum, oiSum, topVol)
 	return res, nil
 }
 
-func (s *EdgexNativeSource) maybeRefresh(contracts []struct {
-	ContractID   string `json:"contractId"`
-	ContractName string `json:"contractName"`
-}) {
+func (s *EdgexNativeSource) maybeRefresh(contracts []edgexContract) {
 	s.mu.Lock()
 	if s.refreshing {
 		s.mu.Unlock()
@@ -165,10 +207,7 @@ func (s *EdgexNativeSource) maybeRefresh(contracts []struct {
 	go s.runRefresh(contracts)
 }
 
-func (s *EdgexNativeSource) runRefresh(contracts []struct {
-	ContractID   string `json:"contractId"`
-	ContractName string `json:"contractName"`
-}) {
+func (s *EdgexNativeSource) runRefresh(contracts []edgexContract) {
 	defer func() {
 		s.mu.Lock()
 		s.refreshing = false
@@ -186,7 +225,7 @@ func (s *EdgexNativeSource) runRefresh(contracts []struct {
 	for _, c := range contracts {
 		<-tick.C
 		tBody, err := s.get(fmt.Sprintf(
-			"https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=%s",
+			"https://edgex-prod-v2.edgex.exchange/api/v2/public/quote/getTicker?contractId=%s",
 			c.ContractID,
 		))
 		if err != nil {
@@ -205,7 +244,14 @@ func (s *EdgexNativeSource) runRefresh(contracts []struct {
 		mark, _ := strconv.ParseFloat(row.MarkPrice, 64)
 		val, _ := strconv.ParseFloat(row.Value, 64)
 		oi, _ := strconv.ParseFloat(row.OpenInterest, 64)
-		fresh[c.ContractID] = edgexTickerRow{value: val, oi: oi, mark: mark}
+		fr, frErr := strconv.ParseFloat(row.FundingRate, 64)
+		t0, _ := strconv.ParseFloat(row.FundingTime, 64)
+		t1, _ := strconv.ParseFloat(row.NextFundingTime, 64)
+		intervalH := (t1 - t0) / 3600000
+		if intervalH <= 0 || intervalH > 24 {
+			intervalH = 4 // edgeX settles every 4 hours (verified 2026-09-23)
+		}
+		fresh[c.ContractID] = edgexTickerRow{name: row.ContractName, value: val, oi: oi, mark: mark, funding: fr, intervalH: intervalH, hasFunding: frErr == nil && row.FundingRate != ""}
 	}
 
 	// Only swap the cache in if we got a meaningful refresh; partial

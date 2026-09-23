@@ -35,6 +35,7 @@ status: live
 metric: Token deployment cost USD
 unit: usd
 higher_is_better: false
+row_noun: { one: chain, many: chains }
 
 abstract: |
   Every 5 minutes the harness asks each of 7 non-EVM L1 chains what it

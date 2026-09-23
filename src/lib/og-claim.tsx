@@ -22,9 +22,10 @@ export function OgClaimSentence({
   fallback: string;
 }) {
   const { claim, rest } = headlineParts(benchmark);
-  // The title is already the card's headline; keep only the window
-  // qualifier ("(p50, 24h)") under the claim instead of repeating it.
-  const qualifier = rest.replace(` on ${benchmark.title}.`, "");
+  // The card's headline already names the bench; keep only the window
+  // qualifier ("(p50, 24h)") under the claim and drop the cohort-size
+  // clause headlineParts appends for the quoting surfaces.
+  const qualifier = rest.replace(/ across \d+ ranked providers?\./, "").replace(/\.$/, "");
   if (!claim) {
     return (
       <div

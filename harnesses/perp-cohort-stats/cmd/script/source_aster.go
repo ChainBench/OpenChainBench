@@ -38,6 +38,68 @@ type AsterNativeSource struct {
 	oiCache      map[string]float64
 	oiTS         time.Time
 	oiRefreshing bool
+
+	// symbol -> breadth class from /fapi/v1/exchangeInfo (one call,
+	// ~600 rows), refreshed every asterClassCacheTTL.
+	classMu    sync.Mutex
+	classCache map[string]string
+	classTS    time.Time
+}
+
+const asterClassCacheTTL = 10 * time.Minute
+
+// asterExchangeInfo is the slice of /fapi/v1/exchangeInfo the breadth
+// classification needs. underlyingType is COIN on every row (stock
+// perps included); underlyingSubType carries the venue's own bucket:
+// STOCK, ETF, Commodities, USD1-RWA for the non-crypto listings.
+type asterExchangeInfo struct {
+	Symbols []struct {
+		Symbol            string   `json:"symbol"`
+		Status            string   `json:"status"`
+		UnderlyingSubType []string `json:"underlyingSubType"`
+	} `json:"symbols"`
+}
+
+func asterClass(symbol string, subTypes []string) string {
+	for _, t := range subTypes {
+		switch t {
+		case "STOCK":
+			return classStocks
+		case "ETF", "USD1-RWA":
+			return rwaClass(baseSymbol(symbol))
+		case "Commodities":
+			return classCommodities
+		}
+	}
+	return classCrypto
+}
+
+// classes returns the symbol -> class map, refreshed at most every
+// asterClassCacheTTL; nil when no catalog was ever fetched.
+func (s *AsterNativeSource) classes() map[string]string {
+	s.classMu.Lock()
+	defer s.classMu.Unlock()
+	if s.classCache != nil && time.Since(s.classTS) < asterClassCacheTTL {
+		return s.classCache
+	}
+	body, err := s.get("https://fapi.asterdex.com/fapi/v1/exchangeInfo")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("aster", srcAsterNative, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][aster][%s] exchangeInfo err: %v\n", srcAsterNative, err)
+		return s.classCache
+	}
+	var info asterExchangeInfo
+	if err := json.Unmarshal(body, &info); err != nil || len(info.Symbols) == 0 {
+		perpCohortFetchErrors.WithLabelValues("aster", srcAsterNative, "parse").Inc()
+		return s.classCache
+	}
+	m := make(map[string]string, len(info.Symbols))
+	for _, sym := range info.Symbols {
+		m[sym.Symbol] = asterClass(sym.Symbol, sym.UnderlyingSubType)
+	}
+	s.classCache = m
+	s.classTS = time.Now()
+	return m
 }
 
 func NewAsterNativeSource() *AsterNativeSource {
@@ -50,11 +112,11 @@ func NewAsterNativeSource() *AsterNativeSource {
 func (s *AsterNativeSource) Name() string { return srcAsterNative }
 
 type asterTicker struct {
-	Symbol               string `json:"symbol"`
-	LastPrice            string `json:"lastPrice"`
-	PriceChangePercent   string `json:"priceChangePercent"`
-	Volume               string `json:"volume"`
-	QuoteVolume          string `json:"quoteVolume"`
+	Symbol             string `json:"symbol"`
+	LastPrice          string `json:"lastPrice"`
+	PriceChangePercent string `json:"priceChangePercent"`
+	Volume             string `json:"volume"`
+	QuoteVolume        string `json:"quoteVolume"`
 }
 
 type asterOIResponse struct {
@@ -89,12 +151,26 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 		return res, nil
 	}
 
+	classes := s.classes()
+	breadth := breadthCounter{}
 	keep := make([]asterRow, 0, len(tickers))
 	var volSum, topVol float64
 	for _, t := range tickers {
 		// Linear perp pairs only.
 		if !strings.HasSuffix(t.Symbol, "USDT") && !strings.HasSuffix(t.Symbol, "USDC") {
 			continue
+		}
+		if classes != nil {
+			class, ok := classes[t.Symbol]
+			if !ok {
+				class = classCrypto
+			}
+			breadth.add(class)
+			if class == classCrypto {
+				res.AddCryptoSymbol(baseSymbol(t.Symbol))
+			} else {
+				res.AddRWASymbol(baseSymbol(t.Symbol))
+			}
 		}
 		qv, _ := strconv.ParseFloat(t.QuoteVolume, 64)
 		last, _ := strconv.ParseFloat(t.LastPrice, 64)
@@ -125,12 +201,15 @@ func (s *AsterNativeSource) Fetch() (*SourceResult, error) {
 	cached := len(s.oiCache)
 	s.oiMu.Unlock()
 
+	s.funding(res, venue)
+
 	res.SetIfPositive(venue, mVolume24h, volSum)
 	res.SetIfPositive(venue, mOI, oiSum)
 	res.SetIfPositive(venue, mActiveMarkets, float64(len(keep)))
 	res.SetIfPositive(venue, mTopVol24h, topVol)
-	fmt.Printf("[perp-cohort][%s][%s] ok: markets=%d oi_cached=%d vol24h=%.0f oi=%.0f top24h=%.0f\n",
-		venue, srcAsterNative, len(keep), cached, volSum, oiSum, topVol)
+	res.SetBreadth(venue, breadth)
+	fmt.Printf("[perp-cohort][%s][%s] ok: markets=%d oi_cached=%d vol24h=%.0f oi=%.0f top24h=%.0f breadth: %s\n",
+		venue, srcAsterNative, len(keep), cached, volSum, oiSum, topVol, breadth)
 	return res, nil
 }
 
@@ -208,4 +287,59 @@ func (s *AsterNativeSource) get(url string) ([]byte, error) {
 		return nil, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
 	}
 	return body, nil
+}
+
+type asterPremium struct {
+	Symbol          string `json:"symbol"`
+	LastFundingRate string `json:"lastFundingRate"`
+}
+
+type asterFundingInfo struct {
+	Symbol               string  `json:"symbol"`
+	FundingIntervalHours float64 `json:"fundingIntervalHours"`
+}
+
+// funding publishes BTC, ETH and SOL funding from /fapi/v1/premiumIndex
+// (the rate of the current interval) over the interval /fapi/v1/fundingInfo
+// declares per symbol (8 h on the majors, 4 h or 1 h on some alts).
+func (s *AsterNativeSource) funding(res *SourceResult, venue string) {
+	body, err := s.get("https://fapi.asterdex.com/fapi/v1/premiumIndex")
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, classifyError(err.Error())).Inc()
+		return
+	}
+	var premiums []asterPremium
+	if err := json.Unmarshal(body, &premiums); err != nil {
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, "parse").Inc()
+		return
+	}
+	intervals := map[string]float64{}
+	if body, err := s.get("https://fapi.asterdex.com/fapi/v1/fundingInfo"); err != nil {
+		// The majors settle every 8 h (the default below); the miss is
+		// counted so a change of interval does not go unnoticed.
+		perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, classifyError(err.Error())).Inc()
+	} else {
+		var infos []asterFundingInfo
+		if err := json.Unmarshal(body, &infos); err != nil {
+			perpCohortFetchErrors.WithLabelValues(venue, srcAsterNative, "parse").Inc()
+		}
+		for _, i := range infos {
+			intervals[i.Symbol] = i.FundingIntervalHours
+		}
+	}
+	for _, p := range premiums {
+		asset := strings.TrimSuffix(p.Symbol, "USDT")
+		if !fundingAssets[asset] || asset == p.Symbol {
+			continue
+		}
+		fr, err := strconv.ParseFloat(p.LastFundingRate, 64)
+		if err != nil {
+			continue
+		}
+		interval := intervals[p.Symbol]
+		if interval <= 0 {
+			interval = 8
+		}
+		res.SetFunding(venue, asset, fundingPoint{Bps24h: fundingBps24h(fr, interval), IntervalHours: interval})
+	}
 }
