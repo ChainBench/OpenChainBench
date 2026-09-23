@@ -74,6 +74,13 @@ type windowYield struct {
 // up to a day stale. A source that changes every block (an ERC-4626
 // share price accruing per block) resolves to the sampled blocks
 // themselves, so the same helper serves every adapter.
+//
+// Both anchors are the print in force, so the figure only moves when a
+// window edge crosses a print. On a business-day feed that is a jump of
+// up to about 25 bps once a week (USTB 360 to 385 bps as the start edge
+// crossed the Monday print, 2026-09-23); snapping the start to the next
+// print instead was tried and only moves the jump, so the spec documents
+// the band rather than the code hiding it.
 func printAnchoredYield(ctx context.Context, rpc *ethclient.Client, latest uint64, read navReader, window time.Duration) (*windowYield, error) {
 	endBlock := new(big.Int).SetUint64(latest)
 	navEnd, err := read(ctx, endBlock)
@@ -81,29 +88,18 @@ func printAnchoredYield(ctx context.Context, rpc *ethclient.Client, latest uint6
 		return nil, fmt.Errorf("nav now: %w", err)
 	}
 	startBlock := blockOffsetBySeconds(latest, int64(window.Seconds()))
-	navAtStart, err := read(ctx, startBlock)
+	navStart, err := read(ctx, startBlock)
 	if err != nil {
 		return nil, fmt.Errorf("nav %s: %w", window, err)
 	}
-	if navAtStart <= 0 || navEnd <= 0 {
-		return nil, fmt.Errorf("nav out of range: start %.6f end %.6f", navAtStart, navEnd)
+	if navStart <= 0 || navEnd <= 0 {
+		return nil, fmt.Errorf("nav out of range: start %.6f end %.6f", navStart, navEnd)
 	}
 	tEnd, err := printTime(ctx, rpc, read, endBlock, navEnd)
 	if err != nil {
 		return nil, fmt.Errorf("print time now: %w", err)
 	}
-	// The window starts on the first print at or after (now - window),
-	// not on the print in force then: with the latter, every hourly run
-	// between two prints moved the start by an hour, and on business-day
-	// feeds the value swung 25 bps within one afternoon as the window
-	// edge crossed a Monday print that books three days of accrual
-	// (2026-09-23). Snapped to a print, consecutive runs agree until a new
-	// print lands at either end.
-	startPrintBlock, navStart, err := nextPrint(ctx, rpc, read, startBlock, navAtStart)
-	if err != nil {
-		return nil, fmt.Errorf("start print %s: %w", window, err)
-	}
-	tStart, err := printTime(ctx, rpc, read, startPrintBlock, navStart)
+	tStart, err := printTime(ctx, rpc, read, startBlock, navStart)
 	if err != nil {
 		return nil, fmt.Errorf("print time %s: %w", window, err)
 	}
@@ -154,49 +150,4 @@ func printTime(ctx context.Context, rpc *ethclient.Client, read navReader, at *b
 		return time.Time{}, fmt.Errorf("header %s: %w", hi, err)
 	}
 	return time.Unix(int64(hdr.Time), 0).UTC(), nil
-}
-
-// nextPrint returns the first block at or after `from` whose value differs
-// from `value` (the next print), with that value; when no print lands
-// within printLookback the value in force at `from` is kept and `from`
-// is returned. Binary search on the same monotone predicate as printTime.
-func nextPrint(ctx context.Context, rpc *ethclient.Client, read navReader, from *big.Int, value float64) (*big.Int, float64, error) {
-	lo := new(big.Int).Set(from)
-	hi := new(big.Int).Add(from, big.NewInt(int64(printLookback.Seconds())/avgEthereumBlockTimeSec))
-	latest, err := rpc.BlockNumber(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	if hi.Uint64() > latest {
-		hi.SetUint64(latest)
-	}
-	same := func(b *big.Int) (bool, error) {
-		v, err := read(ctx, b)
-		if err != nil {
-			return false, err
-		}
-		return math.Abs(v-value) <= math.Abs(value)*1e-12, nil
-	}
-	if ok, err := same(hi); err != nil {
-		return nil, 0, err
-	} else if ok {
-		return from, value, nil // no print within the lookback: keep the print in force
-	}
-	for new(big.Int).Sub(hi, lo).Cmp(big.NewInt(1)) > 0 {
-		mid := new(big.Int).Rsh(new(big.Int).Add(lo, hi), 1)
-		ok, err := same(mid)
-		if err != nil {
-			return nil, 0, err
-		}
-		if ok {
-			lo = mid
-		} else {
-			hi = mid
-		}
-	}
-	v, err := read(ctx, hi)
-	if err != nil {
-		return nil, 0, err
-	}
-	return hi, v, nil
 }
