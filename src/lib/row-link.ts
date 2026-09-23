@@ -1,6 +1,6 @@
 import { CHAIN_BY_SLUG, canonicalChainSlug } from "@/lib/chains";
 import { isRegion } from "@/lib/brand";
-import { isHexAddressSlug } from "@/lib/providers";
+import { isHexAddressSlug } from "@/lib/slug-shape";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 /**
