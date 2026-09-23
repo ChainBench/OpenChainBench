@@ -52,17 +52,17 @@ abstract: |
 
 methodology:
   - "Cohort: USDY (Ondo), USTB (Superstate), OUSG (Ondo), SyrupUSDC (Maple). BUIDL (BlackRock) and BENJI (Franklin Templeton) measurement is currently paused: BUIDL's distributor mints conflate new subscriptions with yield distribution, making the dividend-event model inaccurate; BENJI's Ethereum wrapper exposes no on-chain NAV function and Franklin has not yet published a machine-readable NAV endpoint."
-  - "Delivered yield: NAV appreciation over the window, annualized, read on-chain. USDY and OUSG from Ondo's price oracle (USDY's Ethereum totalSupply shrinks as holders bridge to Solana, so a rebase read would show a negative yield), USTB from Superstate's Chainlink NAV feed (no dividend transfers, the yield is entirely NAV growth), SyrupUSDC from convertToAssets() on the ERC-4626 vault."
-  - "Promised yield: the APY the issuer publishes, read by hand and logged in the harness config with URL and date. Last pass 2026-09-23: USDY 3.60% and OUSG 3.48% from Ondo's pages; USTB 3.52% and SyrupUSDC 4.99% as the 30-day mean on the DefiLlama yields feed (like for like with a 30-day delivered yield; those issuer pages render client-side). Previous pass 2026-07-22. A stale promised value is the curation's deviation, not the issuer's."
-  - "Windows: headline is the absolute 30-day rolling deviation (closest tracker first); the signed 30-day figure and the 7-day absolute deviation are the next columns. The harness also exposes a lifetime-since-inception series, but it is only computed for the dormant BUIDL adapter and reads zero for the live cohort, so it is not shown."
-  - "Sign: delivered minus promised, in basis points, in the Signed 30d column. Negative means the token paid less than advertised over the window, positive means more. The ranking uses the absolute value: overdelivering by 20 bps is as far from the promise as underdelivering by 20 bps."
+  - "Delivered yield: NAV growth between the print in force now and the print in force 30 days ago, annualized compounded over the real time between the two prints (30 to 32 days; the span is published as rwa_yield_window_days_30d). Sources: Ondo's price oracle for USDY and OUSG (USDY's Ethereum totalSupply shrinks as holders bridge out, so a rebase read would show a negative yield), Superstate's Chainlink NAV feed for USTB, convertToAssets() on the ERC-4626 vault for SyrupUSDC."
+  - "Promised yield, per row: USDY and OUSG the APY on Ondo's own pages, read by hand and dated (3.60% and 3.48% on 2026-09-23). USTB and SyrupUSDC have no machine-readable issuer figure (superstate.com and Maple's app render client-side), so their row carries a reference: the 30-day mean APY on the DefiLlama yields feed (3.52% and 4.99%), the same window as the delivered figure, never a one-day spot. The Promised column and each row's formula name the source."
+  - "Windows: headline is the absolute 30-day deviation (closest tracker first); the signed 30-day figure and the 7-day absolute deviation are the next columns, both anchored on NAV prints so the figure no longer swings with the hour of sampling (USTB read 328 to 389 bps over twenty flat days before 2026-09-23). The lifetime series the harness also exposes is computed only for the dormant BUIDL adapter and is not shown."
+  - "Sign and convention: delivered minus promised, in basis points, in the Signed 30d column; negative means the token paid less than advertised over the window. Both sides are compounded annual rates (an APY of A grows a balance by (1+A)^(days/365)); truncating a simple annualization used to cost every row 6 to 12 bps. The ranking uses the absolute value."
   - "Fees: promised APY is stated net of management fees. Delivered yield is measured on the same net basis. Any residual structural deviation typically reflects distribution timing (dividend-style tokens accrue daily but pay monthly), weekend accrual conventions (T-bills yield on business days only), or measurement methodology, not accounting."
   - "Cadence: on-chain reads every 60 seconds. Delivered-yield 30d rolling window is recomputed hourly (calculation is heavy, values move slowly). Promised-yield config file is reloaded every 60 seconds so a weekly update lands within a scrape cycle."
   - "Multi-chain tokens: USDY exists on Ethereum plus Solana, Aptos, Sui. V1 measures the Ethereum instance; V2 will surface per-chain deviations weighted by supply."
   - "Reproducibility: harness source at github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-yield-accuracy. Every delivered-yield number derives from a public RPC read (contract address, event signature, block range documented). Every promised-yield number cites its source URL and date."
 
 findings:
-  - "{{best_name}} tracks its advertised yield most tightly, {{best_p50}} from its promise over the last 30 days across {{count}} measured providers; the Signed 30d column says which way."
+  - "{{best_name}} tracks its advertised (or, for USTB and SyrupUSDC, reference) yield most tightly, {{best_p50}} from it over the last 30 days across {{count}} measured providers; the Signed 30d column says which way."
   - "USDY looks like a rebase token but is not measured as one: its Ethereum totalSupply shrinks as holders bridge to Solana, Aptos and Sui, so supply growth would read as a negative yield. The harness reads Ondo's on-chain price oracle instead, the same one OUSG uses, so both Ondo tokens are on one method."
   - "All four live tokens are NAV-appreciation instruments read daily (oracle, Chainlink feed or vault share price), so a 30-day window sees a smooth accrual; the gaps that remain are the advertised figure's own window and rounding, and the days the reference rate moved before the issuer's page did. The 7d column is the live signal."
   - "A measurable gap on a NAV-model token (an oracle, a Chainlink feed, an ERC-4626 share price) more often reflects the reference than the fund: a missed NAV update, weekend interpolation, or the advertised APY's own convention (a 7-day SEC yield against a 30-day realized one)."
@@ -97,7 +97,7 @@ metric_panels:
     unit: bps
     higher_is_better: true
     tab: false
-    description: "The APY the issuer advertises, as read by hand on the date logged in the harness config."
+    description: "USDY, OUSG: the APY on the issuer's page, read by hand and dated. USTB, SyrupUSDC: a reference, the 30-day mean APY on the DefiLlama yields feed, because the issuer pages are not machine-readable."
   - id: delivered
     label: Delivered 30d
     metric: rwa_yield_delivered_bps_30d
@@ -142,7 +142,7 @@ providers:
   - slug: ustb
     name: USTB
     tag: "Superstate, Ethereum, NAV from the Chainlink feed"
-    formula: "Growth of the USTB NAV published on Superstate's Chainlink feed, now vs 30 days ago, annualized; there are no dividend transfers, the yield is NAV growth. Compared to the 30-day mean APY on the DefiLlama yields feed."
+    formula: "Growth of the USTB NAV on Superstate's Chainlink feed between two daily prints, compounded over their span; no dividend transfers. Compared to a reference APY (DefiLlama 30-day mean), superstate.com is not machine-readable."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="ustb"})
       p90: abs(rwa_yield_deviation_bps_7d{token="ustb"})
@@ -168,7 +168,7 @@ providers:
   - slug: syrup-usdc
     name: SyrupUSDC
     tag: "Maple, Ethereum, ERC-4626 NAV"
-    formula: "ERC-4626 convertToAssets(1 share) delta over 30d, annualized. SyrupUSDC is Maple's yield-bearing USDC vault backed by institutional loans, not T-bills. Compared to the pool's base APY on DefiLlama (excludes SYRUP token incentives)."
+    formula: "ERC-4626 convertToAssets(1 share) growth over 30 days, compounded. Maple's yield-bearing USDC vault, backed by institutional loans, not T-bills. Compared to a reference APY, the pool's 30-day mean base APY on DefiLlama."
     queries:
       p50: abs(rwa_yield_deviation_bps_30d{token="syrup-usdc"})
       p90: abs(rwa_yield_deviation_bps_7d{token="syrup-usdc"})

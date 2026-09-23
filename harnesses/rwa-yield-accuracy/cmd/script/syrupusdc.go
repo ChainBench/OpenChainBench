@@ -73,26 +73,18 @@ func (p *syrupUSDCProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*M
 	if err != nil {
 		return nil, fmt.Errorf("latest block: %w", err)
 	}
-	block30dAgo := blockOffsetBySeconds(latest, int64(Window30d.Seconds()))
-	block7dAgo := blockOffsetBySeconds(latest, int64(Window7d.Seconds()))
 
-	// USDC-per-share at each snapshot. 6-decimal in, 6-decimal out; the
-	// returned float64 is already scaled to USD.
-	navNow, err := p.readSharePriceUSD(ctx, rpc, nil)
+	read := func(ctx context.Context, b *big.Int) (float64, error) { return p.readSharePriceUSD(ctx, rpc, b) }
+	w30, err := printAnchoredYield(ctx, rpc, latest, read, Window30d)
 	if err != nil {
-		return nil, fmt.Errorf("nav now: %w", err)
+		return nil, fmt.Errorf("30d: %w", err)
 	}
-	nav30d, err := p.readSharePriceUSD(ctx, rpc, block30dAgo)
+	w7, err := printAnchoredYield(ctx, rpc, latest, read, Window7d)
 	if err != nil {
-		return nil, fmt.Errorf("nav 30d: %w", err)
+		return nil, fmt.Errorf("7d: %w", err)
 	}
-	nav7d, err := p.readSharePriceUSD(ctx, rpc, block7dAgo)
-	if err != nil {
-		return nil, fmt.Errorf("nav 7d: %w", err)
-	}
-
-	yield30dBps := annualizedYieldBpsFromNAV(navNow, nav30d, 30.0)
-	yield7dBps := annualizedYieldBpsFromNAV(navNow, nav7d, 7.0)
+	navNow := w30.NavEnd
+	yield30dBps, yield7dBps := w30.Bps, w7.Bps
 
 	supply, err := readERC20TotalSupply(ctx, rpc, p.contract, nil)
 	if err != nil {
@@ -106,6 +98,8 @@ func (p *syrupUSDCProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*M
 		Chain:                p.Chain(),
 		DeliveredBps30d:      yield30dBps,
 		DeliveredBps7d:       yield7dBps,
+		SpanDays30d:          w30.SpanDays,
+		SpanDays7d:           w7.SpanDays,
 		DeliveredBpsLifetime: 0,
 		TotalSupplyUnits:     supplyUnits,
 		AUMUSD:               supplyUnits * navNow,

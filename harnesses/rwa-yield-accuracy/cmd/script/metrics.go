@@ -28,6 +28,16 @@ var (
 		Help: "Delivered yield over a rolling 7-day window, annualized. Same computation as 30d, shorter window for volatility context.",
 	}, []string{"issuer", "token", "chain"})
 
+	windowDays30d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rwa_yield_window_days_30d",
+		Help: "Days between the two NAV prints the 30d delivered yield spans (about 30; the yield is compounded over this span).",
+	}, []string{"issuer", "token", "chain"})
+
+	windowDays7d = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rwa_yield_window_days_7d",
+		Help: "Days between the two NAV prints the 7d delivered yield spans.",
+	}, []string{"issuer", "token", "chain"})
+
 	deliveredBpsLifetime = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rwa_yield_delivered_bps_lifetime",
 		Help: "Delivered yield since token inception, annualized. The honest cross-issuer comparison, unaffected by short-window distribution cycles that undersample monthly dividend tokens.",

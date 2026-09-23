@@ -10,10 +10,10 @@ import (
 // 30d/7d windows are recomputed at windowRecomputeInterval (heavier
 // query, values move slowly enough that once an hour is plenty).
 const (
-	pollInterval             = 60 * time.Second
-	windowRecomputeInterval  = time.Hour
-	promisedReloadInterval   = 60 * time.Second
-	httpTimeout              = 30 * time.Second
+	pollInterval            = 60 * time.Second
+	windowRecomputeInterval = time.Hour
+	promisedReloadInterval  = 60 * time.Second
+	httpTimeout             = 30 * time.Second
 )
 
 // Rolling window sizes for delivered-yield computation.

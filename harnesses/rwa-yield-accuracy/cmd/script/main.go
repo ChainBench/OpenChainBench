@@ -142,6 +142,10 @@ func runProbe(ctx context.Context, probe IssuerProbe, rpc *ethclient.Client, pro
 		// Delivered yields (always emitted, even if promised is missing).
 		deliveredBps30d.WithLabelValues(labels...).Set(float64(m.DeliveredBps30d))
 		deliveredBps7d.WithLabelValues(labels...).Set(float64(m.DeliveredBps7d))
+		if m.SpanDays30d > 0 {
+			windowDays30d.WithLabelValues(labels...).Set(m.SpanDays30d)
+			windowDays7d.WithLabelValues(labels...).Set(m.SpanDays7d)
+		}
 		deliveredBpsLifetime.WithLabelValues(labels...).Set(float64(m.DeliveredBpsLifetime))
 
 		// Supply / AUM context.

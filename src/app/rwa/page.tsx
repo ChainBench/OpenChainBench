@@ -205,7 +205,7 @@ export default async function RwaHubPage() {
     {
       q: "Which tokenized treasury pays what it promises?",
       a: yieldLead
-        ? `${yieldLead.name} tracked its advertised APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth from the issuer's oracle or Chainlink feed, or the ERC-4626 share price) with the APY the issuer advertises, read by hand and dated.`
+        ? `${yieldLead.name} tracked its advertised APY most tightly over the last 30 days, ${fmtUnit(yieldLead.value, "bps")} off. The bench compares the yield each token accrued on-chain (NAV growth between two daily prints from the issuer's oracle or Chainlink feed, or the ERC-4626 share price, compounded over the real span) with the APY the issuer advertises, read by hand and dated; for USTB and SyrupUSDC, whose pages are not machine-readable, the reference is the 30-day mean on the DefiLlama yields feed.`
         : "The rwa-yield-accuracy bench compares delivered on-chain yield with the advertised APY for USDY, USTB, OUSG and SyrupUSDC.",
     },
     {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -51,24 +52,20 @@ func (p *ustbProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measur
 	if err != nil {
 		return nil, fmt.Errorf("latest block: %w", err)
 	}
-	block30dAgo := blockOffsetBySeconds(latest, int64(Window30d.Seconds()))
-	block7dAgo := blockOffsetBySeconds(latest, int64(Window7d.Seconds()))
 
-	navNow, err := readChainlinkNAV(ctx, rpc, p.navFeed, nil)
-	if err != nil {
-		return nil, fmt.Errorf("nav now: %w", err)
+	read := func(ctx context.Context, b *big.Int) (float64, error) {
+		return readChainlinkNAV(ctx, rpc, p.navFeed, b)
 	}
-	nav30d, err := readChainlinkNAV(ctx, rpc, p.navFeed, block30dAgo)
+	w30, err := printAnchoredYield(ctx, rpc, latest, read, Window30d)
 	if err != nil {
-		return nil, fmt.Errorf("nav 30d: %w", err)
+		return nil, fmt.Errorf("30d: %w", err)
 	}
-	nav7d, err := readChainlinkNAV(ctx, rpc, p.navFeed, block7dAgo)
+	w7, err := printAnchoredYield(ctx, rpc, latest, read, Window7d)
 	if err != nil {
-		return nil, fmt.Errorf("nav 7d: %w", err)
+		return nil, fmt.Errorf("7d: %w", err)
 	}
-
-	yield30dBps := annualizedYieldBpsFromNAV(navNow, nav30d, 30.0)
-	yield7dBps := annualizedYieldBpsFromNAV(navNow, nav7d, 7.0)
+	navNow := w30.NavEnd
+	yield30dBps, yield7dBps := w30.Bps, w7.Bps
 
 	// USTB uses 6 decimals per Superstate spec.
 	supply, err := readERC20TotalSupply(ctx, rpc, p.contract, nil)
@@ -83,6 +80,8 @@ func (p *ustbProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measur
 		Chain:                p.Chain(),
 		DeliveredBps30d:      yield30dBps,
 		DeliveredBps7d:       yield7dBps,
+		SpanDays30d:          w30.SpanDays,
+		SpanDays7d:           w7.SpanDays,
 		DeliveredBpsLifetime: 0,
 		TotalSupplyUnits:     supplyUnits,
 		AUMUSD:               supplyUnits * navNow,
