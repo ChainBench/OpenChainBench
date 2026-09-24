@@ -4,6 +4,10 @@ import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { cohortViews, groundingTraceLine } from "@/lib/citation";
 import { isDevOnlyRoute } from "@/lib/removed-benches";
+import { loadAllAnswers } from "@/lib/answers";
+import { renderTemplate } from "@/lib/bench-template";
+import { cleanLeftoverTokens } from "@/lib/answers-template";
+import { loadBenchmark } from "@/lib/spec";
 
 export const runtime = "nodejs";
 export const revalidate = 3600;
@@ -84,6 +88,31 @@ export async function GET() {
     lines.push(`- [${b.title}](${SITE.url}/benchmarks/${b.slug}): ${groundingTraceLine(b, SITE.url)}`);
     for (const c of cohortViews(b).filter((v) => !v.headline)) {
       lines.push(`  - ${c.label}: ${groundingTraceLine(c.bench, SITE.url)}`);
+    }
+  }
+
+  // The answer pages, which this file ignored while listing every bench: a model asked
+  // "which RPC lands the most transactions" is answered by /answers, and llms.txt is the
+  // one file written for it to read. Same loader as the hub and the sitemap, so a draft,
+  // a prod-held slug or an answer whose bench is not in this deployment never appears.
+  const answers = await loadAllAnswers();
+  if (answers.length > 0) {
+    lines.push("");
+    lines.push(`## Answers (${answers.length} questions)`);
+    lines.push("");
+    lines.push(
+      "One question per page: a direct claim, the live benchmark behind it, the methodology and the limits of the number.",
+    );
+    lines.push("");
+    for (const a of answers) {
+      // The short answer is authored against its bench and carries {{tokens}}; resolve them
+      // against the same bench the page uses, and drop any the bench cannot fill rather than
+      // publishing a raw placeholder into a file models quote verbatim.
+      const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
+      const short = cleanLeftoverTokens(bench ? renderTemplate(a.short_answer, bench) : a.short_answer)
+        .replace(/\s+/g, " ")
+        .trim();
+      lines.push(`- [${a.question}](${SITE.url}/answers/${a.slug}): ${short}`);
     }
   }
 

@@ -11,7 +11,7 @@ import {
 } from "@/lib/answers-template";
 import { leader } from "@/lib/citation";
 import { SITE } from "@/data/site";
-import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -73,6 +73,17 @@ export default async function AnswersHubPage() {
     })),
   };
 
+  // The hub lists 38 questions whose answers are already on the page, one line each, and
+  // said so to a reader only. ItemList names them; FAQPage is what a question-and-answer
+  // surface reads, and it is the schema the detail pages already ship. Built from the
+  // rendered short answers, so a token the bench could not fill never reaches it.
+  const faq = buildFaqPageJsonLd(
+    rendered.map((a) => ({ q: a.question, a: a.shortAnswer })),
+    `${SITE.url}/answers`,
+    null,
+    "OpenChainBench answers",
+  );
+
   const breadcrumb = {
     "@context": "https://schema.org",
     ...buildBreadcrumbJsonLd([
@@ -93,6 +104,13 @@ export default async function AnswersHubPage() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }}
       />
+      {faq ? (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faq) }}
+        />
+      ) : null}
       <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
         Answers, backed by live benchmarks.
       </h1>
