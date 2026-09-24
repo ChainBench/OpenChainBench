@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: publicSwaps(recent(st, recentMinPerTerminal, recentTotal, flowOf(stats))), Discovery: disc,
+			Terminals: stats, Recent: publicSwaps(recent(st, recentMinPerTerminal, recentTotal, flowOf(stats)), flowOf(stats)), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2175,11 +2175,34 @@ type PublicSwap struct {
 	OtherBps    *float64 `json:"other_bps,omitempty"`
 
 	Sandwich *Sandwich `json:"sandwich,omitempty"`
+
+	// What this row stands for, in attempts. A terminal's rows carry its
+	// flow divided between them, so summing the weights of the rows shown
+	// for a terminal gives back its flow.
+	//
+	// The board's pooled median weights each chain by flow; the table
+	// used to take a plain median of the rows it happened to have, and
+	// the two disagreed by 25% on pump.fun. They cannot be reconciled by
+	// sampling: Solana is 95% of that product's flow and we have priced
+	// 124 of its 664,575 attempts, all of which are already shown. So the
+	// weight travels with the row and the table computes the same
+	// statistic the headline does.
+	W float64 `json:"w,omitempty"`
 }
 
-func publicSwaps(in []Swap) []PublicSwap {
+func publicSwaps(in []Swap, flow map[string]float64) []PublicSwap {
+	// Rows shown per terminal, so each row can carry its share of that
+	// terminal's flow rather than counting as one observation.
+	shown := map[string]int{}
+	for _, s := range in {
+		shown[s.Terminal]++
+	}
 	out := make([]PublicSwap, 0, len(in))
 	for _, s := range in {
+		w := 1.0
+		if f := flow[s.Terminal]; f > 0 && shown[s.Terminal] > 0 {
+			w = f / float64(shown[s.Terminal])
+		}
 		out = append(out, PublicSwap{
 			Sig: s.Sig, Terminal: s.Terminal, Product: s.Product, Time: s.Time,
 			Side: s.Side, Quote: s.Quote, Venue: s.Venue, Chain: s.Chain,
@@ -2190,7 +2213,7 @@ func publicSwaps(in []Swap) []PublicSwap {
 			LossBps: s.LossBps, PoolBps: s.PoolBps,
 			TerminalBps: s.TerminalBps, NetworkBps: s.NetworkBps,
 			RelayBps: s.RelayBps, OtherBps: s.OtherBps,
-			Sandwich: s.Sandwich,
+			Sandwich: s.Sandwich, W: w,
 		})
 	}
 	return out

@@ -78,15 +78,32 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const stats = useMemo(() => {
     const losses = rows
       .filter((s) => s.priced && s.lossBps !== undefined)
-      .map((s) => s.lossBps as number)
-      .sort((a, b) => a - b);
+      .map((s) => ({ v: s.lossBps as number, w: s.w && s.w > 0 ? s.w : 1 }))
+      .sort((a, b) => a.v - b.v);
+    // Weighted, because the published figure is. A pooled row's median
+    // weights each chain by its flow, and the rows here cannot carry
+    // those proportions: pump.fun's Solana leg is 95% of the flow and we
+    // have priced 124 of its 664,575 attempts, all of them already
+    // shown. Counting each row once gave 320 against a published 250.
+    // Under a single-chain filter every weight is equal and this is a
+    // plain median again.
+    const totalW = losses.reduce((t, l) => t + l.w, 0);
+    let acc = 0;
+    let median: number | undefined;
+    for (const l of losses) {
+      acc += l.w;
+      if (acc >= totalW / 2) {
+        median = l.v;
+        break;
+      }
+    }
     return {
       n: rows.length,
       priced: losses.length,
       flagged: rows.filter((s) => s.flag).length,
       sandwiched: rows.filter((s) => s.sandwich).length,
       scanned: rows.filter((s) => s.scanned).length,
-      median: losses.length ? losses[Math.floor(losses.length / 2)] : undefined,
+      median,
     };
   }, [rows]);
 
