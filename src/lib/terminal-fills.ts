@@ -90,6 +90,11 @@ export type FillSample = {
    *  binance-wallet-base / -ethereum, so without this the row's own audit
    *  table matched none of its transactions. */
   product?: string;
+  /** What this row stands for, in attempts. A terminal's rows split its
+   *  flow between them, so the summary can weight them the way the
+   *  published median does instead of counting each row once. Without
+   *  it the two medians on this page disagreed by 25% on pump.fun. */
+  w?: number;
   time: number;
   side: "buy" | "sell";
   quote: string;
@@ -234,6 +239,7 @@ function parse(raw: unknown): TerminalFills | null {
         sig: s.sig,
         terminal: s.terminal,
         ...(typeof s.product === "string" && s.product ? { product: s.product } : {}),
+        ...(num(s.w) !== undefined ? { w: num(s.w) } : {}),
         time: num(s.time) ?? 0,
         side: s.side === "sell" ? "sell" : "buy",
         quote: typeof s.quote === "string" ? s.quote : "SOL",

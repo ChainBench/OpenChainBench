@@ -333,7 +333,7 @@ func TestPublicSwapCarriesEveryFieldTheSiteReads(t *testing.T) {
 		"chain", "hops", "x_mint", "in_tx", "rent_q", "quote_usd",
 		"trade_usd", "priced", "scanned", "flag", "ref_src", "ref_age_s",
 		"loss_bps", "pool_bps", "terminal_bps", "network_bps",
-		"relay_bps", "other_bps", "sandwich",
+		"relay_bps", "other_bps", "sandwich", "w",
 	}
 
 	age := int64(3)
@@ -346,7 +346,7 @@ func TestPublicSwapCarriesEveryFieldTheSiteReads(t *testing.T) {
 		LossBps: &loss, PoolBps: &pool, TerminalBps: 1, NetworkBps: 1,
 		RelayBps: 1, OtherBps: &other,
 		Sandwich: &Sandwich{},
-	}})
+	}}, map[string]float64{"gmgn": 1000})
 
 	raw, err := json.Marshal(full[0])
 	if err != nil {
