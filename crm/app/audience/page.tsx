@@ -1,3 +1,4 @@
+import { FrequencyPanel, RetentionGrid } from "@/components/retention";
 import { Shell } from "@/components/shell";
 import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi, Lines } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
@@ -235,6 +236,14 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
             Family is a coarse user-agent bucket (gptbot, claudebot, perplexitybot, googlebot, curl, python, browser). Distinct agents are counted per user agent per day, never per IP.
           </p>
         </div>
+      </section>
+
+      <section className="mt-6 grid gap-3">
+        <RetentionGrid rows={t.retention ?? []} firstDay={t.daily?.[0]?.day ?? null} />
+      </section>
+
+      <section className="mt-3 grid gap-3 md:grid-cols-2">
+        <FrequencyPanel rows={t.frequency ?? []} />
       </section>
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
