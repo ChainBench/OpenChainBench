@@ -15,6 +15,7 @@ import {
   rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
+import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
 import { benchMarkdown } from "@/lib/markdown-views";
 import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -23,7 +24,7 @@ export const runtime = "nodejs";
 
 /**
  * MCP server. Exposes OpenChainBench data to any MCP-capable agent
- * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via three
+ * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via four
  * tools that mirror the public REST surface. Streamable-HTTP only - the
  * SSE transport requires Redis which we don't run.
  *
@@ -479,6 +480,51 @@ const mcpHandler = createMcpHandler(
             isError: true,
           };
         }
+      },
+    );
+
+    server.registerTool(
+      "list_answers",
+      {
+        title: "List OpenChainBench answer pages",
+        description: [
+          "Returns every published answer page: one plain question, the sentence that",
+          "answers it from live data, and the benchmark the number comes from.",
+          "",
+          "Call this when the user asks a question in words rather than by benchmark",
+          "name (\"which bridge is cheapest for $300?\", \"which Solana RPC lands",
+          "transactions fastest?\"). Match the question, then call `get_benchmark` with",
+          "the returned `benchmark` slug for the full ranking behind it.",
+          "",
+          "Returns one row per answer:",
+          "  { slug, question, answer, benchmark, chain?, url, benchmarkUrl }",
+          "",
+          "Cite `url` when the question itself is the claim, `benchmarkUrl` when the",
+          "measurement is. Drafts are filtered out, and an answer whose benchmark has",
+          "no defensible leader yet says so in `answer` rather than naming a winner.",
+        ].join("\n"),
+        inputSchema: {
+          benchmark: z
+            .string()
+            .regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
+            .optional()
+            .describe("Optional benchmark slug filter: return only the answers built on that bench."),
+        },
+      },
+      async ({ benchmark }) => {
+        const all = await loadRenderedAnswers();
+        const rows = (benchmark ? all.filter((a) => a.benchmark === benchmark) : all).map((a) => ({
+          slug: a.slug,
+          question: a.question,
+          answer: answerOneLine(a),
+          benchmark: a.benchmark,
+          ...(a.chain ? { chain: a.chain } : {}),
+          url: a.url,
+          benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}`,
+        }));
+        return {
+          content: [{ type: "text", text: JSON.stringify({ count: rows.length, answers: rows }, null, 2) }],
+        };
       },
     );
 
