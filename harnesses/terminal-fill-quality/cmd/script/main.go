@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, recentPerTerminal, recentTotal), Discovery: disc,
+			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentMaxPerTerminal, recentTotal), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2090,40 +2090,76 @@ func sizeBucket(usd float64) string {
 // own transactions. `total` is a ceiling for the payload, spent on the
 // rows with the least evidence first so a busy terminal cannot squeeze
 // out a quiet one.
-func recent(st *State, perTerminal, total int) []Swap {
+func recent(st *State, minPerTerminal, maxPerTerminal, total int) []Swap {
+	// Every swap each row has in the window, newest first. The caps are
+	// applied after the shares are known, not while collecting, because
+	// a row's share depends on how much flow it has relative to the rest.
 	byTerm := map[string][]Swap{}
 	for i := len(st.Swaps) - 1; i >= 0; i-- {
 		s := st.Swaps[i]
-		if len(byTerm[s.Terminal]) < perTerminal {
-			byTerm[s.Terminal] = append(byTerm[s.Terminal], s)
-		}
+		byTerm[s.Terminal] = append(byTerm[s.Terminal], s)
 	}
 	slugs := make([]string, 0, len(byTerm))
-	for k := range byTerm {
+	grand := 0
+	for k, v := range byTerm {
 		slugs = append(slugs, k)
+		grand += len(v)
 	}
-	// Fewest-first, so the ceiling bites the terminals that already have
-	// plenty rather than the ones that barely appear.
-	sort.Slice(slugs, func(i, j int) bool {
-		if len(byTerm[slugs[i]]) != len(byTerm[slugs[j]]) {
-			return len(byTerm[slugs[i]]) < len(byTerm[slugs[j]])
+	sort.Strings(slugs)
+	if grand == 0 {
+		return nil
+	}
+
+	// Proportional to flow, between a floor and a cap.
+	//
+	// Equal shares per row was the bug: a pooled product row shows the
+	// union of its members, its median weights those members by flow, and
+	// with 15 apiece the union looked nothing like the median — Solana
+	// carried 55% of pump.fun's flow and 12% of its table.
+	//
+	// The floor keeps a quiet row auditable, which is the whole reason
+	// per-row sampling replaced the global tail; the cap stops one busy
+	// row eating the budget. Between them the share is proportional, so a
+	// pooled row's sample resembles its own statistic.
+	quota := make(map[string]int, len(slugs))
+	assigned := 0
+	for _, slug := range slugs {
+		n := len(byTerm[slug])
+		q := total * n / grand
+		if q < minPerTerminal {
+			q = minPerTerminal
 		}
-		return slugs[i] < slugs[j]
-	})
-	out := make([]Swap, 0, total)
-	for i, slug := range slugs {
-		room := total - len(out)
-		if room <= 0 {
-			break
+		if q > maxPerTerminal {
+			q = maxPerTerminal
 		}
-		// Even share of what is left among the terminals not yet served.
-		share := room / (len(slugs) - i)
-		if share < 1 {
-			share = 1
+		if q > n {
+			q = n
 		}
+		quota[slug] = q
+		assigned += q
+	}
+	// Floors can push the total past the ceiling. Give the overflow back
+	// from the largest quotas, never below the floor, so the rows that
+	// lose rows are the ones that still have plenty.
+	for assigned > total {
+		widest, widestN := "", 0
+		for _, slug := range slugs {
+			if quota[slug] > widestN && quota[slug] > minPerTerminal {
+				widest, widestN = slug, quota[slug]
+			}
+		}
+		if widest == "" {
+			break // everyone is at the floor; the floor wins over the ceiling
+		}
+		quota[widest]--
+		assigned--
+	}
+
+	out := make([]Swap, 0, assigned)
+	for _, slug := range slugs {
 		rows := byTerm[slug]
-		if len(rows) > share {
-			rows = rows[:share]
+		if len(rows) > quota[slug] {
+			rows = rows[:quota[slug]]
 		}
 		for _, s := range rows {
 			p, _ := productOf(s.Terminal)

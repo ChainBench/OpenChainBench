@@ -19,8 +19,19 @@ const methodVersion = 3
 // and left 89% of rows with fewer than 20 transactions to show). The
 // total is a ceiling for the payload, not a target.
 const (
-	recentPerTerminal = 15
-	recentTotal       = 900
+	// Each row's share of the evidence follows its share of the swaps,
+	// between these two bounds. Equal shares per row read fine on a
+	// single-chain row and wrong on a pooled one, whose median weights
+	// its members by flow: pump.fun's Solana leg carried 55% of the flow
+	// and 12% of the table, so the table sat above the figure it was
+	// meant to support.
+	//
+	// The floor is what keeps coverage and proportion from fighting — a
+	// row with a handful of swaps still shows them all. The cap stops one
+	// busy row spending the whole budget.
+	recentMinPerTerminal = 6
+	recentMaxPerTerminal = 60
+	recentTotal          = 1100
 )
 
 // Terminal is one cohort member: the trading app or Telegram bot whose

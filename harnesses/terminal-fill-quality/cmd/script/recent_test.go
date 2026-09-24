@@ -27,7 +27,7 @@ func TestRecentCoversEveryTerminal(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-b", 1, 6000)...)
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-c", 40, 7000)...)
 
-	got := recent(st, 15, 900)
+	got := recent(st, 6, 60, 900)
 
 	seen := map[string]int{}
 	for _, s := range got {
@@ -44,8 +44,8 @@ func TestRecentCoversEveryTerminal(t *testing.T) {
 	if seen["quiet-b"] != 1 {
 		t.Fatalf("quiet-b has 1 swap in the window, sample kept %d", seen["quiet-b"])
 	}
-	if seen["busy"] > 15 {
-		t.Fatalf("per-terminal cap is 15, busy kept %d", seen["busy"])
+	if seen["busy"] > 60 {
+		t.Fatalf("per-terminal cap is 60, busy kept %d", seen["busy"])
 	}
 }
 
@@ -57,7 +57,7 @@ func TestRecentTotalCeilingLeavesNobodyOut(t *testing.T) {
 		st.Swaps = append(st.Swaps, mkSwaps(slug, 50, 0)...)
 	}
 	const total = 20
-	got := recent(st, 15, total)
+	got := recent(st, 1, 60, total)
 	if len(got) > total {
 		t.Fatalf("sample of %d exceeds the ceiling of %d", len(got), total)
 	}
@@ -75,7 +75,7 @@ func TestRecentIsTimeOrdered(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("a", 5, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("b", 5, 0)...)
-	got := recent(st, 15, 900)
+	got := recent(st, 6, 60, 900)
 	for i := 1; i < len(got); i++ {
 		if got[i].Time < got[i-1].Time {
 			t.Fatalf("not time-ordered at %d: %d before %d", i, got[i-1].Time, got[i].Time)
@@ -92,7 +92,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("binance-wallet-ethereum", 4, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn", 4, 200)...)
 
-	for _, s := range recent(st, 15, 900) {
+	for _, s := range recent(st, 6, 60, 900) {
 		switch s.Terminal {
 		case "binance-wallet-base", "binance-wallet-ethereum":
 			if s.Product != "binance" {
@@ -113,7 +113,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 func TestRecentStampsTheProductForAChainRow(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn-ethereum", 3, 0)...)
-	got := recent(st, 15, 900)
+	got := recent(st, 6, 60, 900)
 	if len(got) != 3 {
 		t.Fatalf("want 3 swaps, got %d", len(got))
 	}
@@ -121,5 +121,58 @@ func TestRecentStampsTheProductForAChainRow(t *testing.T) {
 		if s.Terminal != "gmgn-ethereum" || s.Product != "gmgn" {
 			t.Fatalf("want terminal gmgn-ethereum product gmgn, got %q / %q", s.Terminal, s.Product)
 		}
+	}
+}
+
+// The bug the coverage tests above could not see: a sample can cover
+// every row and still be weighted wrongly.
+//
+// A pooled product row shows the union of its members and its median
+// weights those members by flow. Sampling members equally made the union
+// look nothing like the median — pump.fun's Solana leg carried 55% of
+// the flow and 12% of the table, so the table sat above the figure it
+// was supposed to support.
+func TestRecentSamplesInProportionToFlow(t *testing.T) {
+	st := &State{}
+	// One member with the flow, three without: 70% / 10% / 10% / 10%.
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun", 700, 0)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-bnb", 100, 1000)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-base", 100, 2000)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-arc", 100, 3000)...)
+
+	got := recent(st, 6, 60, 200)
+	seen := map[string]int{}
+	for _, s := range got {
+		seen[s.Terminal]++
+	}
+	dominant := float64(seen["pump-fun"]) / float64(len(got))
+	if dominant < 0.35 {
+		t.Fatalf("the row holding 70%% of the flow got %.0f%% of the sample (%v); "+
+			"equal shares are what made a pooled row disagree with its own median",
+			dominant*100, seen)
+	}
+	// ...but not at the price of the quiet rows disappearing again.
+	for _, slug := range []string{"pump-fun-bnb", "pump-fun-base", "pump-fun-arc"} {
+		if seen[slug] < 6 {
+			t.Fatalf("%s fell under the floor of 6 (%d); coverage is the reason "+
+				"per-row sampling replaced the global tail", slug, seen[slug])
+		}
+	}
+}
+
+// A row with fewer swaps than the floor shows all of them rather than
+// being padded or dropped.
+func TestRecentKeepsEverythingBelowTheFloor(t *testing.T) {
+	st := &State{}
+	st.Swaps = append(st.Swaps, mkSwaps("busy", 5000, 0)...)
+	st.Swaps = append(st.Swaps, mkSwaps("tiny", 2, 9000)...)
+	seen := 0
+	for _, s := range recent(st, 6, 60, 300) {
+		if s.Terminal == "tiny" {
+			seen++
+		}
+	}
+	if seen != 2 {
+		t.Fatalf("tiny has 2 swaps in the window, sample kept %d", seen)
 	}
 }
