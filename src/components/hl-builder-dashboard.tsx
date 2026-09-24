@@ -17,7 +17,7 @@ import { HlTopUsersTable } from "@/components/hl-top-users-table";
  *  5. Top-traders leaderboard (paginated, 30d window)
  *
  * Server-rendered against the Sprint-1+2 Prom gauges exposed by the
- * on-node harness. Charts that depend on the harness JSON endpoints
+ * feed harness. Charts that depend on the harness JSON endpoints
  * (`daily-series`, `top-users`) are client components and degrade
  * silently when the upstream is unreachable.
  */
@@ -136,8 +136,8 @@ export function HlBuilderDashboard({
       <HlTopUsersTable slug={stats.slug} />
 
       <p className="mt-4 text-[11px] text-ink-faint italic">
-        Source: local hl node tailing every fill on Hyperliquid mainnet for{" "}
-        {name}&apos;s builder address. Refresh every 30s. Methodology:{" "}
+        Source: Hyperliquid&apos;s public per-builder daily fills feed for{" "}
+        {name}&apos;s builder address, last complete UTC day. Methodology:{" "}
         <Link href="/benchmarks/hyperliquid-frontends" className="underline">
           hyperliquid-frontends bench page
         </Link>

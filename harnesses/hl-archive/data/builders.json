@@ -39,7 +39,7 @@
     "name": "MetaMask",
     "address": "0xe95a5e31904e005066614247d309e00d8ad753aa",
     "valid_from": "2026-05-31",
-    "notes": "MetaMask HL integration (primary address). MetaMask is documented to operate a secondary address 0xea2c82b5aba243ab631c0ce151763d5e38df75b3 — aggregate manually if needed."
+    "notes": "MetaMask HL integration (primary address). MetaMask is documented to operate a secondary address 0xea2c82b5aba243ab631c0ce151763d5e38df75b3 \u2014 aggregate manually if needed."
   },
   {
     "slug": "dexari",
@@ -425,108 +425,66 @@
   },
   {
     "slug": "0x7cc0fd2b",
-    "name": "0x7cc0…e781",
+    "name": "0x7cc0\u2026e781",
     "address": "0x7cc0fd2b76835ab96aa4a3501a9f65e75677e781",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$5703/24h fees, 2514 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
-    "slug": "0x557edb25",
-    "name": "0x557e…3c81",
-    "address": "0x557edb253b1d7ed5f15b248a5a3fd919fa5d3c81",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$4157/24h fees, 2771 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
     "slug": "0x446fbc72",
-    "name": "0x446f…d6c6",
+    "name": "0x446f\u2026d6c6",
     "address": "0x446fbc72549fdcf656a5165f97b354e5a0e7d6c6",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1836/24h fees, 22 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "0xf85a6185",
-    "name": "0xf85a…5688",
+    "name": "0xf85a\u20265688",
     "address": "0xf85a61857c0682b9b59d562310df106b4f785688",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1805/24h fees, 24 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "0xb290f2f3",
-    "name": "0xb290…c34a",
+    "name": "0xb290\u2026c34a",
     "address": "0xb290f2f3fad4e540d0550985951cdad2711ac34a",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1641/24h fees, 57 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
-    "slug": "0xa1fcd6e2",
-    "name": "0xa1fc…bf4d",
-    "address": "0xa1fcd6e2356c445d38ec1e25eae634e1104abf4d",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1181/24h fees, 28 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
     "slug": "0x53a19541",
-    "name": "0x53a1…fcd1",
+    "name": "0x53a1\u2026fcd1",
     "address": "0x53a1954188fc9bf2edb45b94450100507b92fcd1",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1132/24h fees, 56 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "0xdbc27ea7",
-    "name": "0xdbc2…97a6",
+    "name": "0xdbc2\u202697a6",
     "address": "0xdbc27ea7aa99274026404b2fa21114815d9997a6",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$938/24h fees, 123 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
-    "slug": "0xea2c82b5",
-    "name": "0xea2c…75b3",
-    "address": "0xea2c82b5aba243ab631c0ce151763d5e38df75b3",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$880/24h fees, 121 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
-    "slug": "0x49791d46",
-    "name": "0x4979…37b8",
-    "address": "0x49791d4667e310abe173bc4989aed4f0bed837b8",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$851/24h fees, 4 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
     "slug": "0x9f83fe01",
-    "name": "0x9f83…31d9",
+    "name": "0x9f83\u202631d9",
     "address": "0x9f83fe01f4a62d44e8ca471e2eeb42b5c05531d9",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$733/24h fees, 135 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "0x42f32260",
-    "name": "0x42f3…f992",
+    "name": "0x42f3\u2026f992",
     "address": "0x42f3226007290b02c5a0b15bccbb1ba6df04f992",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$690/24h fees, 99 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "0xc95d92dc",
-    "name": "0xc95d…1aca",
+    "name": "0xc95d\u20261aca",
     "address": "0xc95d92dc8ca672abcc8aaec49a94559bbf481aca",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$543/24h fees, 17 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
-    "slug": "0xdf39721d",
-    "name": "0xdf39…4750",
-    "address": "0xdf39721d2c4fc0fedc92c68e3879ba594bb64750",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$525/24h fees, 84 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
-  },
-  {
-    "slug": "0x40e9d9fe",
-    "name": "0x40e9…5260",
-    "address": "0x40e9d9feba3df27e1fb9a924264bf775230d5260",
-    "valid_from": "2026-06-11",
-    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$513/24h fees, 13 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
   },
   {
     "slug": "dextrabot",

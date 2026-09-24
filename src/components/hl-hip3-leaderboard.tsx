@@ -14,16 +14,15 @@ import type { HlHip3Row } from "@/lib/hl-builder-stats";
  */
 
 type SortKey =
-  | "fees24h"
-  | "fees7d"
-  | "fees30d"
   | "volume24h"
-  | "users24h"
-  | "markets24h"
-  | "effectiveFeeBps";
+  | "volume7d"
+  | "volume30d"
+  | "openInterestUsd"
+  | "marketsTraded24h"
+  | "marketsListed";
 
 export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>("fees24h");
+  const [sortKey, setSortKey] = useState<SortKey>("volume24h");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
 
@@ -73,27 +72,6 @@ export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
               <Th>#</Th>
               <Th>Dex</Th>
               <ThSort
-                active={sortKey === "fees24h"}
-                dir={sortDir}
-                onClick={() => setSort("fees24h")}
-              >
-                Fees 24h
-              </ThSort>
-              <ThSort
-                active={sortKey === "fees7d"}
-                dir={sortDir}
-                onClick={() => setSort("fees7d")}
-              >
-                Fees 7d
-              </ThSort>
-              <ThSort
-                active={sortKey === "fees30d"}
-                dir={sortDir}
-                onClick={() => setSort("fees30d")}
-              >
-                Fees 30d
-              </ThSort>
-              <ThSort
                 active={sortKey === "volume24h"}
                 dir={sortDir}
                 onClick={() => setSort("volume24h")}
@@ -101,25 +79,39 @@ export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
                 Volume 24h
               </ThSort>
               <ThSort
-                active={sortKey === "users24h"}
+                active={sortKey === "volume7d"}
                 dir={sortDir}
-                onClick={() => setSort("users24h")}
+                onClick={() => setSort("volume7d")}
               >
-                Users 24h
+                Volume 7d
               </ThSort>
               <ThSort
-                active={sortKey === "markets24h"}
+                active={sortKey === "volume30d"}
                 dir={sortDir}
-                onClick={() => setSort("markets24h")}
+                onClick={() => setSort("volume30d")}
               >
-                Markets
+                Volume 30d
               </ThSort>
               <ThSort
-                active={sortKey === "effectiveFeeBps"}
+                active={sortKey === "openInterestUsd"}
                 dir={sortDir}
-                onClick={() => setSort("effectiveFeeBps")}
+                onClick={() => setSort("openInterestUsd")}
               >
-                Eff. fee bps
+                Open interest
+              </ThSort>
+              <ThSort
+                active={sortKey === "marketsTraded24h"}
+                dir={sortDir}
+                onClick={() => setSort("marketsTraded24h")}
+              >
+                Markets traded
+              </ThSort>
+              <ThSort
+                active={sortKey === "marketsListed"}
+                dir={sortDir}
+                onClick={() => setSort("marketsListed")}
+              >
+                Listed
               </ThSort>
             </tr>
           </thead>
@@ -146,19 +138,18 @@ export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
                     </span>
                   </span>
                 </Td>
-                <Td mono>{fmtUSD(r.fees24h)}</Td>
-                <Td mono>{fmtUSD(r.fees7d)}</Td>
-                <Td mono>{fmtUSD(r.fees30d)}</Td>
                 <Td mono>{fmtUSD(r.volume24h)}</Td>
-                <Td mono>{fmtCount(r.users24h)}</Td>
-                <Td mono>{fmtCount(r.markets24h)}</Td>
-                <Td mono>{fmtBps(r.effectiveFeeBps)}</Td>
+                <Td mono>{fmtWindow(r.volume7d, r.daysSampled, 7)}</Td>
+                <Td mono>{fmtWindow(r.volume30d, r.daysSampled, 30)}</Td>
+                <Td mono>{fmtUSD(r.openInterestUsd)}</Td>
+                <Td mono>{fmtCount(r.marketsTraded24h)}</Td>
+                <Td mono>{fmtCount(r.marketsListed)}</Td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={8}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No dex matches &ldquo;{q}&rdquo;.
@@ -248,7 +239,10 @@ function fmtCount(v: number): string {
   return Math.round(v).toLocaleString("en-US");
 }
 
-function fmtBps(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "0 bps";
-  return `${v.toFixed(2)} bps`;
+/** 7d/30d volumes are sums of one daily sample; while fewer samples than
+ *  the window exist the cell says how many days it covers. */
+function fmtWindow(v: number, sampled: number, days: number): string {
+  if (!Number.isFinite(sampled) || sampled >= days) return fmtUSD(v);
+  if (sampled <= 0) return "—";
+  return `${fmtUSD(v)} (${sampled}d)`;
 }

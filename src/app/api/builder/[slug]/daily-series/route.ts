@@ -1,6 +1,6 @@
 /**
  * Per-builder Performance chart data source. Server-side proxy to the
- * on-node harness `/daily-series/<slug>` endpoint, fronted by Caddy
+ * feed harness `/daily-series/<slug>` endpoint, fronted by Caddy
  * basic_auth (same credential as the Prom-gateway scrape job).
  *
  * Browser path: GET /api/builder/<slug>/daily-series

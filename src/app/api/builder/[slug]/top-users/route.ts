@@ -1,6 +1,6 @@
 /**
  * Top-users data source for the per-builder dashboard. Server-side
- * proxy to the on-node harness `/top-users/<slug>` endpoint, same
+ * proxy to the feed harness `/top-users/<slug>` endpoint, same
  * Caddy basic_auth as the daily-series proxy.
  *
  * Browser path: GET /api/builder/<slug>/top-users

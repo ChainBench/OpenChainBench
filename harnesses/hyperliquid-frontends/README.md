@@ -1,82 +1,123 @@
-# hyperliquid-frontends-local
+# hyperliquid-frontends
 
-Local harness that reads the hl-node L1 output directly from
-`/mnt/hyperliquid/data/node_fills_by_block/hourly/` instead of fetching the
-public daily CSV bucket. Produces the same per-builder metrics as the
-`hyperliquid-frontends` harness but at sub-minute freshness instead of 24-48h
-lag.
+One Go process feeds three OpenChainBench benches without a node, a key or a
+cloud account:
 
-Deployed as a systemd unit (`hl-frontends-local.service`) on the OVH server
-where the hl-node runs. Exposes Prometheus metrics on `127.0.0.1:2113/metrics`,
-fronted by Caddy with basic auth on `:8088` for OCB Prom scraping.
+- № 030 `hyperliquid-frontends`: builder-code revenue, volume and wallets per
+  Hyperliquid frontend, from the public per-builder daily fills feed.
+- № 035 `hyperliquid-hip3-deployers`: volume, markets and open interest per
+  HIP-3 dex, from the Hyperliquid info API.
+- № 036 `perp-funding`: normalized funding rates across venues (`funding.go`).
 
-One binary feeds three benches: № 030 hyperliquid-frontends (builder
-revenue), the HIP-3 deployers bench, and № 036 perp-funding (the funding
-poller shares the process).
+It replaces the harness that tailed a self-hosted `hl-node` (retired
+2026-09-24). Metric names and labels are unchanged so the site, the recorded
+history and the /hyperliquid hub kept working; only the semantics of "24h"
+moved from a rolling window to the last complete UTC day.
+
+## Data sources
+
+**Builder fills feed.** Hyperliquid publishes one lz4-compressed CSV per
+builder address and UTC day:
+
+```
+https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/<address>/<YYYYMMDD>.csv.lz4
+```
+
+Columns (2026-09): `time,user,coin,side,px,sz,crossed,special_trade_type,tif,
+is_trigger,counterparty,closed_pnl,twap_id,builder_fee`. Day D is published
+early on D+1 (observed 02:45 to 03:30 UTC). A file that does not exist answers
+403, which is also what a builder with no fills that day gets. HIP-3 fills
+routed through a builder are present (`coin` like `xyz:AAPL`) but the deployer
+fee is not.
+
+**Info API.** `POST https://api.hyperliquid.xyz/info` with `{"type":"perpDexs"}`
+lists HIP-3 dexes (namespace, full name, deployer);
+`{"type":"metaAndAssetCtxs","dex":"<name>"}` returns per market the rolling 24h
+notional (`dayNtlVlm`), open interest and mark price.
+
+## How the feed side works
+
+1. **Mirror.** Every fetched CSV is stored under `<data>/builder_fills/<address>/`.
+   A 403 writes a `<day>.absent` marker with the check time. Days younger than
+   `-grace-days` (3) are re-checked hourly until the batch lands; older 403s
+   are final. Files older than the window are pruned.
+2. **Feed day.** After each sync the harness picks the newest day within the
+   grace span that has at least `-min-published` (5) files whose newest
+   download is older than `-settle` (45 min). The choice only moves forward,
+   so a half-uploaded batch is never read. `hl_frontend_data_day_unix_v2` and
+   `_end_unix_v2` say which day the gauges describe.
+3. **Publish.** For the feed day D: fees, notional, fills, taker share, distinct
+   wallets (FNV-64 hashed), coin shares. 7d/30d = the files of the 7/30 UTC
+   days ending on D; wallet counts are unions. 30d wallet totals feed the
+   volume-by-percentile buckets and the profitable-user share (`closed_pnl`).
+4. **Ledger.** Per builder per day totals are persisted in `<data>/state.json`.
+   A one-off backfill walks from `-ledger-from` (2026-06-01, the first day the
+   retired node observed) to the window and then deletes the files. Once every
+   day is complete (`hl_frontend_ledger_complete` = 1) the biggest day and the
+   10k/100k/1m revenue milestones publish. Revenue deltas need the prior
+   window in the ledger and are absent until then.
+
+Restarts publish from the mirror before touching the feed. Roughly 3,500
+requests on a cold start (104 builders × 33 days), then ~100 to 300 per
+30-minute pass.
 
 ## Metrics
 
-Per-builder gauges, labeled by registry `slug` (windows: `24h`, `7d`, `30d`):
+Builder gauges, label `builder` = registry slug, suffix `_v2`:
 
-- `hl_frontend_fees_usd_{24h,7d,30d}_v2` — USD builder fees (headline)
-- `hl_frontend_volume_usd_{24h,7d,30d}_v2` — notional routed
-- `hl_frontend_users_{24h,7d,30d}_v2` — unique wallets with ≥1 attributed fill
-- `hl_frontend_fills_total_24h_v2`, `hl_frontend_fills_per_min_v2`
-- `hl_frontend_effective_fee_bps_v2` — volume-weighted fees/notional
-- `hl_frontend_fees_per_user_usd_v2`
-- `hl_frontend_taker_pct_v2`, `hl_frontend_price_deviation_bps_v2`
-- `hl_frontend_last_fill_age_seconds_v2` — outage detector
-- `hl_frontend_asset_volume_top_usd_v2{asset,rank}` — top coins per builder
-- `hl_frontend_local_last_tick_unix_v2` — harness heartbeat
+- `hl_frontend_fees_usd_{24h,7d,30d}_v2`, `hl_frontend_volume_usd_{24h,7d,30d}_v2`
+- `hl_frontend_users_{24h,7d,30d}_v2`, `hl_frontend_fills_total_24h_v2`
+- `hl_frontend_effective_fee_bps_v2`, `hl_frontend_fees_per_user_usd_v2`, `hl_frontend_taker_pct_v2`
+- `hl_frontend_global_volume_share_24h_v2` (denominator = tracked cohort)
+- `hl_frontend_revenue_delta_pct_v2{window}`, `hl_frontend_biggest_day_{revenue_usd,unix}_v2`
+- `hl_frontend_milestone_revenue_days_v2{threshold}`, `hl_frontend_profitable_user_pct_30d_v2`
+- `hl_frontend_volume_by_percentile_30d_v2{bucket}`, `hl_frontend_coin_volume_share_24h_v2{coin}`
+- `hl_frontend_data_day_unix_v2`, `hl_frontend_data_day_end_unix_v2`, `hl_frontend_local_last_tick_unix_v2`
+- `hl_frontend_feed_fetch_total{result}`, `hl_frontend_feed_files_present`, `hl_frontend_ledger_complete`
 
-HIP-3 deployer gauges (labeled by deployer dex namespace):
-`hl_hip3_deployer_{fees,volume}_usd_{24h,7d,30d}`,
-`hl_hip3_deployer_{users_{24h,7d,30d},fills_24h,markets_24h,effective_fee_bps,last_fill_age_seconds}`.
+HIP-3 gauges, label `dex` = namespace:
+`hl_hip3_deployer_volume_usd_{24h,7d,30d}`, `hl_hip3_deployer_markets_24h`,
+`hl_hip3_deployer_markets_listed`, `hl_hip3_deployer_open_interest_usd`,
+`hl_hip3_deployer_days_sampled`, `hl_hip3_deployer_info{full_name,deployer}`,
+`hl_hip3_last_tick_unix`. The 7d/30d sums use one 24h sample per UTC day,
+recorded by the first poll after midnight.
 
-Perp-funding gauges (bench № 036, labeled by venue/market):
-`perp_funding_{rate_hourly_bps,hold_24h_bps,annualized_pct,interval_hours,venue_ok_unix,last_tick_unix}`.
-The poller hits HL/Binance/Bybit/OKX/dYdX/Paradex/Aster public endpoints every
-60s. It only starts after the fills warmup replay, so funding series are
-absent for a few minutes after every restart.
+Funding gauges (`perp_funding_*`) are documented in `funding.go`.
+
+Dropped with the node: `last_fill_age_seconds`, `fills_per_min`,
+`price_deviation_bps`, `asset_volume_top_usd` and every `hl_hip3_deployer_fees_*`,
+`_users_*`, `_fills_24h`, `_effective_fee_bps`, `_last_fill_age_seconds` series.
 
 ## Builder registry (`builders.json`)
 
-Hand-curated array of `{slug, name, address, valid_from, notes}` — currently
-~104 entries. Conventions:
+Hand-curated array of `{slug, name, address, addresses?, valid_from, notes}`.
+`address` is canonical; `addresses` lists extra builder addresses for frontends
+that route through several (all merged into one row). Slugs and addresses must
+be unique across entries; the loader refuses a registry that maps one address
+to two slugs. Entries whose slug is a bare `0x…` prefix are unlabeled
+addresses kept for coverage; they are fetched and exported but not listed in
+the spec. `scripts/sync-hypertracker.py` diffs the registry against
+HyperTracker's public builder list.
 
-- `address` is the canonical builder address; an optional `addresses` array
-  tracks frontends that route through multiple builder addresses (e.g. Okto).
-  All are matched lowercased.
-- `valid_from` is documentation (when the builder joined / when we verified
-  it), not a filter — the harness counts whatever is in the on-disk window.
-- The registry is loaded once at startup: editing it requires a service
-  restart, which replays the warmup window from disk before serving.
-- Beware name collisions: two unrelated products can share a brand name with
-  different builder addresses (this happened with FOMO — the DefiLlama
-  `fomo-perps` address is not the FOMO social app). Verify against node fills
-  before trusting an external mapping.
-
-### Keeping coverage honest
-
-`scripts/sync-hypertracker.py` diffs the registry against HyperTracker's
-public builder list (static JSON on their CDN, ~1200 builders, ~335 labeled):
+## Run
 
 ```
-python3 scripts/sync-hypertracker.py [--all-time-min 10000] [--h24-min 100]
-```
-
-It reports labeled builders missing from the registry above the revenue
-thresholds, plus name/address collisions. Read-only — additions ship via PR.
-Builder addresses outside the registry stay visible in the raw node stream
-but off the leaderboard until added.
-
-## Run flags
-
-```
-hl-frontends-local \
-  -data /mnt/hyperliquid/data/node_fills_by_block/hourly \
+go run ./cmd/script \
   -builders builders.json \
-  -addr 127.0.0.1:2113 \
-  -window-hours 24 \
-  -tick 30s
+  -data ./data \
+  -addr :2112 \
+  -window-days 30 -grace-days 3 -min-published 5 -settle 45m \
+  -poll 30m -workers 6 \
+  -ledger-from 2026-06-01 \
+  -hip3-every 10m -funding-every 60s
+```
+
+`/metrics`, `/logs` (ring buffer of stdout) and `/health` are served on
+`-addr`. The Dockerfile builds a static binary that runs as `nonroot` and
+expects a writable volume on `/data`.
+
+```
+docker build -t ocb-hyperliquid-frontends .
+docker run -d --name ocb-hyperliquid-frontends --restart unless-stopped \
+  --network ocb -v /opt/ocb/data/hl-frontends:/data ocb-hyperliquid-frontends
 ```

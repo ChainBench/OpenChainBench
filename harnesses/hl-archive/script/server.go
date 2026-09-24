@@ -1,9 +1,10 @@
 // server.go — HTTP API + internal cron loop.
 //
 // Three public endpoints:
-//   GET /health                — open, JSON snapshot of store stats
-//   GET /metrics               — open, Prometheus text format
-//   GET /v1/aggregates?window= — auth required (X-API-Key), JSON
+//
+//	GET /health                — open, JSON snapshot of store stats
+//	GET /metrics               — open, Prometheus text format
+//	GET /v1/aggregates?window= — auth required (X-API-Key), JSON
 //
 // Auth: any non-open route requires X-API-Key matching the env
 // HL_ARCHIVE_API_KEY. Empty env aborts serve mode at startup.
@@ -16,6 +17,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -102,13 +104,13 @@ func handleHealth(store *Store) http.HandlerFunc {
 			status = "degraded"
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"status":              status,
-			"last_processed_day":  s.LastProcessedDay,
-			"lag_hours":           round2(s.LagHours),
-			"db_size_bytes":       s.DBSizeBytes,
-			"builders_count":      s.BuildersCount,
-			"days_count":          s.DaysCount,
-			"version":             serviceVersion,
+			"status":             status,
+			"last_processed_day": s.LastProcessedDay,
+			"lag_hours":          round2(s.LagHours),
+			"db_size_bytes":      s.DBSizeBytes,
+			"builders_count":     s.BuildersCount,
+			"days_count":         s.DaysCount,
+			"version":            serviceVersion,
 		})
 	}
 }
@@ -281,11 +283,37 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 			return
 		}
 		res, err := ProcessDay(ctx, store, builders, d, "catchup", 16)
+		if errors.Is(err, ErrDayNotPublished) {
+			Log.Info("cron catchup day not published yet", "day", d.Format("2006-01-02"))
+			break
+		}
 		if err != nil {
 			Log.Error("cron catchup failed", "day", d.Format("2006-01-02"), "err", err)
 			continue
 		}
 		Log.Info("cron catchup", "day", d.Format("2006-01-02"), "rows", res.Rows)
+	}
+	// Refill days that were committed empty because the cron ran before the
+	// CDN batch landed. Bounded to the recent past so a boot never re-walks
+	// the whole history.
+	if zero, err := store.ZeroRowDays(ctx, time.Now().UTC().AddDate(0, 0, -zeroRefillDays)); err != nil {
+		Log.Error("cron catchup zero-row scan failed", "err", err)
+	} else {
+		for _, d := range zero {
+			if err := ctx.Err(); err != nil {
+				return
+			}
+			res, err := ProcessDay(ctx, store, builders, d, "refill", 16)
+			if errors.Is(err, ErrDayNotPublished) {
+				Log.Info("cron refill still not published", "day", d.Format("2006-01-02"))
+				continue
+			}
+			if err != nil {
+				Log.Error("cron refill failed", "day", d.Format("2006-01-02"), "err", err)
+				continue
+			}
+			Log.Info("cron refill", "day", d.Format("2006-01-02"), "rows", res.Rows)
+		}
 	}
 	refreshDBGauges(ctx, store)
 	// Push the rebuilt snapshot to Upstash after catchup so OCB sees the
@@ -303,6 +331,9 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 		Log.Error("post-catchup upstash push failed", "err", err)
 	}
 }
+
+// zeroRefillDays bounds the zero-row refill pass at boot.
+const zeroRefillDays = 120
 
 // cronLoop fires DailyJob once a day at HL_ARCHIVE_CRON_HOUR UTC.
 func cronLoop(ctx context.Context, store *Store, builders []Builder) {
@@ -332,6 +363,14 @@ func nextCronAt(now time.Time, hourUTC int) time.Time {
 	return candidate
 }
 
+// cronRetryEvery and cronRetryMax bound how long one cron tick keeps
+// re-checking the CDN for yesterday's batch: 12 tries 30 minutes apart
+// covers a batch that lands up to six hours after the cron hour.
+const (
+	cronRetryEvery = 30 * time.Minute
+	cronRetryMax   = 12
+)
+
 func runCron(ctx context.Context, store *Store, builders []Builder) {
 	day := time.Now().UTC().AddDate(0, 0, -1)
 	dayStr := day.Format("2006-01-02")
@@ -341,7 +380,21 @@ func runCron(ctx context.Context, store *Store, builders []Builder) {
 		Log.Info("cron skip already processed", "day", dayStr)
 		return
 	}
-	res, err := ProcessDay(ctx, store, builders, day, "cron", 16)
+	var res DayResult
+	var err error
+	for attempt := 1; attempt <= cronRetryMax; attempt++ {
+		res, err = ProcessDay(ctx, store, builders, day, "cron", 16)
+		if !errors.Is(err, ErrDayNotPublished) {
+			break
+		}
+		Log.Info("cron day not published yet", "day", dayStr, "attempt", attempt, "retry_in", cronRetryEvery.String())
+		MetricCronRuns.WithLabelValues("not_published").Inc()
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(cronRetryEvery):
+		}
+	}
 	if err != nil {
 		Log.Error("cron run failed", "err", err)
 		MetricCronRuns.WithLabelValues("err").Inc()
@@ -374,4 +427,3 @@ func refreshDBGauges(ctx context.Context, store *Store) {
 	MetricDaysCount.Set(float64(s.DaysCount))
 	MetricLagHours.Set(s.LagHours)
 }
-

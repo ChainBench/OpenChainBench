@@ -10,7 +10,7 @@ import { safeJsonLd } from "@/lib/jsonld";
 
 /**
  * Hub landing page for the Hyperliquid revenue cohorts. SSR'd straight
- * against the on-node harness' Prom gauges so the first paint is the
+ * against the feed harness' Prom gauges so the first paint is the
  * populated leaderboard (great for SEO and TTFB), with a client-side
  * tab swap between the two cohorts (no second network round-trip).
  *
@@ -18,8 +18,8 @@ import { safeJsonLd } from "@/lib/jsonld";
  * revenue streams on the same chain:
  *   1. Frontends: builder-code routers (Phantom, Axiom, ...) collecting
  *      a builder fee on every routed perp fill (~104 tracked)
- *   2. HIP-3 dexes: builder-deployed perp markets (trade.xyz, Dreamcash,
- *      ...) collecting a deployer fee on every fill on their namespaced
+ *   2. HIP-3 dexes: builder-deployed perp markets (trade.xyz, Paragon,
+ *      ...) ranked by the chain's 24h notional on their namespaced
  *      markets
  *
  * Per-frontend detail lives on `/products/<slug>#hl` (12-month
@@ -33,7 +33,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   path: "/hyperliquid",
   title: "Hyperliquid Frontends + HIP-3 Dexes Leaderboard",
   description:
-    "Live revenue, volume and users for every Hyperliquid frontend and HIP-3 deployer. Server-side data straight from a local hl node tailing every fill on mainnet.",
+    "Revenue, volume and users for every Hyperliquid frontend, plus volume, markets and open interest for every HIP-3 dex. Built from Hyperliquid's public builder fills feed and info API.",
 });
 
 export const revalidate = 3600;
@@ -116,10 +116,11 @@ export default async function HyperliquidHubPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Two complementary cohorts: builder-code frontends routing perp
-          fills (Phantom, Axiom, ...) and HIP-3 deployer dexes running
-          their own namespaced markets (trade.xyz, Dreamcash, ...). Data
-          flows from a local hl node tailing every fill on mainnet,
-          refreshed every 30 seconds.
+          fills (Phantom, Axiom, ...) and HIP-3 dexes running their own
+          namespaced markets (trade.xyz, Paragon, ...). Frontend figures
+          come from Hyperliquid&apos;s public per-builder daily fills feed and
+          describe the last complete UTC day; HIP-3 figures come from the
+          public info API, refreshed every 10 minutes.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
@@ -164,13 +165,13 @@ export default async function HyperliquidHubPage() {
           />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
-            Source: a local hl node tailing every fill on Hyperliquid
-            mainnet. Frontends cohort attributes fills via the on-chain
-            builder address; HIP-3 cohort attributes fills via the dex
-            namespace prefix on the coin field (xyz:AAPL → xyz). Both
-            cohorts publish to the same Prom; the bench pages document
-            the per-row formulas. The `12m trend` column mirrors the
-            same rolling-30d fees gauge, one point per UTC day.
+            Source: Hyperliquid&apos;s public per-builder daily fills feed
+            (stats-data.hyperliquid.xyz) for the frontends cohort, one
+            CSV per builder address and UTC day, and the public info API
+            (perpDexs, metaAndAssetCtxs) for the HIP-3 cohort. Both
+            publish to the same Prom; the bench pages document the
+            per-row formulas. The `12m trend` column mirrors the same
+            30d fees gauge, one point per UTC day.
           </p>
         </>
       ) : (

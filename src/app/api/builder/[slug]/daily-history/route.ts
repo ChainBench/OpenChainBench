@@ -1,7 +1,7 @@
 /**
  * Per-builder long-window Performance chart data source. Companion to
  * `/daily-series` which serves only the last 30 days from the live
- * hl-node harness in-memory ring: this route reaches into the
+ * feed harness 30-day window: this route reaches into the
  * hl-archive Go service (DuckDB-backed, ≈11 months of daily
  * aggregates) and returns the same wire shape as `/daily-series` so
  * the chart client can swap sources based on the user's range picker

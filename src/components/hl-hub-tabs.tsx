@@ -160,21 +160,22 @@ function Hip3View({ data }: { data: HlHip3Summary }) {
     <>
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <SummaryCard
-          label="Live deployers"
+          label="Live dexes"
           value={data.rows.length.toLocaleString("en-US")}
           accent="#ff8a3d"
         />
         <SummaryCard
-          label="Cohort fees 24h"
-          value={fmtUSD(data.totalFees24h)}
-        />
-        <SummaryCard
-          label="Cohort fees 30d"
-          value={fmtUSD(data.totalFees30d)}
-        />
-        <SummaryCard
           label="Cohort volume 24h"
           value={fmtUSD(data.totalVolume24h)}
+          tip="Sum of the chain's rolling 24h notional across every live HIP-3 dex."
+        />
+        <SummaryCard
+          label="Cohort open interest"
+          value={fmtUSD(data.totalOpenInterestUsd)}
+        />
+        <SummaryCard
+          label="Markets traded 24h"
+          value={data.totalMarketsTraded24h.toLocaleString("en-US")}
         />
       </section>
       <HlHip3Leaderboard rows={data.rows} />

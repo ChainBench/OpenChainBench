@@ -147,6 +147,28 @@ func (s *Store) OldestProcessedDay(ctx context.Context) (string, error) {
 	return oldest.Time.UTC().Format("2006-01-02"), nil
 }
 
+// ZeroRowDays lists processed days on or after `since` that were committed
+// with no aggregate rows, oldest first. Those are days the cron fetched
+// before the CDN batch landed.
+func (s *Store) ZeroRowDays(ctx context.Context, since time.Time) ([]time.Time, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT day FROM processed_days WHERE row_count = 0 AND day >= ? ORDER BY day`,
+		since.UTC().Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []time.Time
+	for rows.Next() {
+		var d time.Time
+		if err := rows.Scan(&d); err != nil {
+			return nil, err
+		}
+		out = append(out, d.UTC())
+	}
+	return out, rows.Err()
+}
+
 // IsDayProcessed returns true if processed_days has a row for `day`.
 func (s *Store) IsDayProcessed(ctx context.Context, day time.Time) (bool, error) {
 	var n int
