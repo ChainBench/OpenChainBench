@@ -179,3 +179,26 @@ func TestRecentKeepsEverythingBelowTheFloor(t *testing.T) {
 		t.Fatalf("tiny has 2 swaps in the window, sample kept %d", seen)
 	}
 }
+
+// A funding leg is a bridge, not a fill: compute() leaves it out of the
+// product's pooled figure, so it must not be stamped into the pooled
+// row's evidence either. pump.fun's members summed to 483 against a
+// pooled 448, and the 35 in between were this.
+func TestRecentDoesNotStampFundingLegsOntoTheProduct(t *testing.T) {
+	st := &State{}
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-funding", 20, 0)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-base", 20, 500)...)
+
+	for _, s := range recent(st, 6, 900) {
+		switch s.Terminal {
+		case "pump-fun-funding":
+			if s.Product != "" {
+				t.Fatalf("funding leg stamped onto %q; the pooled figure excludes it", s.Product)
+			}
+		case "pump-fun-base":
+			if s.Product != "pump-fun" {
+				t.Fatalf("chain row should roll up to pump-fun, got %q", s.Product)
+			}
+		}
+	}
+}
