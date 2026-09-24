@@ -3,6 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { getProvider } from "@/lib/providers";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { captureServer } from "@/lib/analytics-server";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from "@/lib/markdown-views";
 
 /**
@@ -13,11 +14,14 @@ import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from
  * `curl -H 'Accept: text/markdown' https://openchainbench.com/perps`
  * answers with the table an agent can read without a DOM.
  */
-// Dynamic since 2026-09-24: the route captures a server-side analytics
-// event per read (this is the answer-engine surface), which a cached
-// handler would only do on a revalidation. The bench data it renders is
-// itself read through the data cache, so the per-request cost is the
-// Markdown rendering only.
+// Per read since 2026-09-24: this is the answer-engine surface, and the
+// server-side analytics event exists to tell which agent reads what. A
+// cached document (origin ISR, or the CDN behind s-maxage) would emit one
+// event per cache fill and credit whichever family missed the cache, so
+// the response is not cached anywhere and every read runs the handler,
+// behind the same per-client limiter as /api/stat. The bench data it
+// renders is itself read through the data cache; the per-request cost is
+// the Markdown rendering and one PostHog POST after the response.
 export const dynamic = "force-dynamic";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
@@ -35,7 +39,7 @@ function markdown(text: string, canonical: string): NextResponse {
     status: 200,
     headers: {
       "content-type": "text/markdown; charset=utf-8",
-      "cache-control": "public, s-maxage=300, stale-while-revalidate=600",
+      "cache-control": "no-store",
       link: `<${canonical}>; rel="canonical"`,
       vary: "Accept",
     },
@@ -43,10 +47,22 @@ function markdown(text: string, canonical: string): NextResponse {
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  const r = rateLimit(clientKey(req, "md"), 60, 60, req);
+  if (!r.ok) return tooManyRequests(r.retryAfterSec);
   const { path } = await ctx.params;
-  const [head, slug, extra] = path ?? [];
+  const res = await handle(path ?? []);
+  // Only a served document counts as a read: a 404 on a junk path emits
+  // nothing (review 2026-09-24).
+  if (res.status === 200) {
+    const [head, slug] = path ?? [];
+    captureServer(req, "markdown_read", { path: `/${(path ?? []).join("/")}`, head, slug: slug ?? null });
+  }
+  return res;
+}
+
+async function handle(path: string[]): Promise<NextResponse> {
+  const [head, slug, extra] = path;
   if (extra !== undefined) return notFoundMd("No Markdown view at this path.");
-  captureServer(req, "markdown_read", { path: `/${(path ?? []).join("/")}`, head, slug: slug ?? null });
 
   if (head === "perps" && slug === undefined) {
     const cohort = await fetchPerpCohort();

@@ -11,6 +11,15 @@ import { createHash } from "node:crypto";
  * event is posted once the handler is done, and any failure is swallowed.
  * No IP is stored: the distinct id is a daily hash of the user agent, and
  * the event asks PostHog not to create a person profile.
+ *
+ * What an event counts depends on the route's caching: the Markdown route
+ * is uncached and emits one event per read; /api/stat (60 s edge TTL) and
+ * /api/citable (one hour) emit one per cache fill, so those two are
+ * samples, not totals. Staging builds carry the production key; `$host`
+ * is set so the CRM's host filter (crm/lib/traffic.ts) separates them,
+ * as it does for the client events. The nightly HF publisher reads
+ * /api/stat for every bench with a fixed user agent (scripts/hf_publisher),
+ * filter it on `$useragent` in a dashboard.
  */
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -58,6 +67,7 @@ export function captureServer(req: Request, event: string, props: Record<string,
   const ua = req.headers.get("user-agent") ?? "";
   const accept = req.headers.get("accept") ?? "";
   const referer = req.headers.get("referer") ?? "";
+  const url = new URL(req.url);
   const day = new Date().toISOString().slice(0, 10);
   const distinctId = "srv:" + createHash("sha256").update(`${ua}|${day}`).digest("hex").slice(0, 16);
   const body = {
@@ -69,6 +79,9 @@ export function captureServer(req: Request, event: string, props: Record<string,
       ...props,
       $lib: "ocb-server",
       $process_person_profile: false,
+      $host: url.host,
+      $current_url: `${url.origin}${url.pathname}`,
+      env: process.env.VERCEL_ENV ?? "local",
       ua_family: uaFamily(ua),
       $useragent: ua.slice(0, 200),
       accept: accept.slice(0, 120),

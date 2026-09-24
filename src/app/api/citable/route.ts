@@ -37,11 +37,15 @@ function unavailable(): NextResponse {
  * cite without needing to read the footer of every page.
  */
 export async function GET(req: Request) {
-  captureServer(req, "citable_read", { path: "/api/citable", query: new URL(req.url).search.slice(0, 120) });
   const canonical = stripQueryRedirect(req);
   if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "citable"), 60, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  // After the canonical redirect and the limiter: a 308 is not a read, and
+  // a query-rotating client must meet the limiter before it can queue
+  // events. The document sits behind a one-hour edge cache, so this counts
+  // cache fills, not every read (review 2026-09-24).
+  captureServer(req, "citable_read", { path: "/api/citable" });
 
   let benches;
   try {
