@@ -137,6 +137,29 @@ func main() {
 		go newHip3Poller(state).run(ctx, *hip3Every)
 	}
 
+	// Liveness heartbeat. The specs' success query wants the tick within a
+	// short window; the publish loop only runs every -poll, so refresh the
+	// tick each minute while the last feed pass was clean and a day is
+	// published. A pass with transport failures stops the heartbeat until
+	// the next clean one, which is what the success column should show.
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				agg.mu.Lock()
+				ok := agg.lastSyncOK && !agg.dataDay.IsZero() && agg.initialSyncDone
+				agg.mu.Unlock()
+				if ok {
+					hlLastTickUnix.Set(float64(time.Now().Unix()))
+				}
+			}
+		}
+	}()
+
 	go func() {
 		// Publish from the on-disk mirror straight away so a restart does
 		// not blank the gauges while the first sync runs.
