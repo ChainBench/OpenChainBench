@@ -22,12 +22,13 @@ import type { FillSample } from "@/lib/terminal-fills";
  * Audit table of the sampled swaps behind bench 268: every row is one
  * real transaction with its Solscan link, side and route, size, loss
  * with its cost split drawn as a stacked bar, reference source and
- * sandwich screen. Filters by terminal, side, venue and reference; sort
+ * sandwich screen. Filters by terminal, chain, side, venue and reference; sort
  * by any numeric column; a summary strip of the filtered set. Client
  * component over the JSON the page already loads (last 400 samples).
  */
 export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string }) {
   const [terminal, setTerminal] = useState(focus ?? "");
+  const [chain, setChain] = useState("");
   const [side, setSide] = useState("");
   const [venue, setVenue] = useState("");
   const [ref, setRef] = useState("");
@@ -35,9 +36,20 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const [limit, setLimit] = useState(50);
 
   const venues = useMemo(() => [...new Set(swaps.map((s) => s.venue))].sort(), [swaps]);
+  // A row with no chain field is a Solana row; the harness only stamps
+  // the field on the EVM legs.
+  const chains = useMemo(
+    () => [...new Set(swaps.map((s) => s.chain ?? "solana"))].sort((a, b) => (CHAIN_NAMES[a] ?? a).localeCompare(CHAIN_NAMES[b] ?? b)),
+    [swaps],
+  );
   const rows = useMemo(() => {
     const f = swaps.filter(
-      (s) => (!terminal || s.terminal === terminal || s.product === terminal) && (!side || s.side === side) && (!venue || s.venue === venue) && (!ref || (s.refSrc ?? "none") === ref),
+      (s) =>
+        (!terminal || s.terminal === terminal || s.product === terminal) &&
+        (!chain || (s.chain ?? "solana") === chain) &&
+        (!side || s.side === side) &&
+        (!venue || s.venue === venue) &&
+        (!ref || (s.refSrc ?? "none") === ref),
     );
     const v = (s: FillSample): number => {
       switch (sort.key) {
@@ -56,7 +68,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
       }
     };
     return f.sort((a, b) => (v(a) - v(b)) * sort.dir);
-  }, [swaps, terminal, side, venue, ref, sort]);
+  }, [swaps, terminal, chain, side, venue, ref, sort]);
   const nameOf = (slug: string) => terminals.find((t) => t.slug === slug)?.name ?? PRODUCT_NAMES[productOf(slug)] ?? productOf(slug);
   // The row's product for the logo and the link, and what the slug's suffix means for the reader.
   const productOf = (slug: string) => slug.replace(ROW_SUFFIX, "");
@@ -68,9 +80,10 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
     if (slug.startsWith("fomo-") || slug.startsWith("pump-fun-") || slug.startsWith("phantom-")) return { text: `on ${chain} via Relay`, title: `A trade delivered on ${chain} by a Relay solver: the user paid from the app's wallet on Solana` };
     return { text: chain, title: `A swap of this product on ${chain}, read from its router there` };
   };
-  const filtered = terminal !== (focus ?? "") || side || venue || ref;
+  const filtered = terminal !== (focus ?? "") || chain || side || venue || ref;
   const reset = () => {
     setTerminal(focus ?? "");
+    setChain("");
     setSide("");
     setVenue("");
     setRef("");
@@ -97,9 +110,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
         break;
       }
     }
+    // The flat median of the same rows, so the strip can show what a
+    // reader gets by medianing the column and why it differs.
+    const plain = losses.length ? losses[Math.floor((losses.length - 1) / 2)].v : undefined;
     return {
       n: rows.length,
       priced: losses.length,
+      plain,
       flagged: rows.filter((s) => s.flag).length,
       sandwiched: rows.filter((s) => s.sandwich).length,
       scanned: rows.filter((s) => s.scanned).length,
@@ -134,6 +151,16 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             {terminals.map((t) => (
               <option key={t.slug} value={t.slug}>
                 {t.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Chain">
+          <select id="tfs-chain" value={chain} onChange={(e) => setChain(e.target.value)} className={selectCls} title="The published figure for a multi-chain product weights each chain by its flow, and this list cannot: pump.fun trades 95% on Solana but only 56% of the rows here are Solana. Pick one chain and the median of the rows is the published median for that chain.">
+            <option value="">All chains</option>
+            {chains.map((c) => (
+              <option key={c} value={c}>
+                {CHAIN_NAMES[c] ?? c}
               </option>
             ))}
           </select>
@@ -179,7 +206,12 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
         <div className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-faint tabular-nums self-center">
           <Stat value={stats.n} label="swaps" />
           <Stat value={stats.priced} label="priced" />
-          <Stat value={stats.median !== undefined ? `${Math.round(stats.median)} bps` : "—"} label="median loss" />
+          <Stat value={stats.median !== undefined ? `${Math.round(stats.median)} bps` : "—"} label={stats.plain !== undefined && stats.median !== undefined && Math.round(stats.plain) !== Math.round(stats.median) ? "median loss, flow-weighted" : "median loss"} />
+          {stats.plain !== undefined && stats.median !== undefined && Math.round(stats.plain) !== Math.round(stats.median) ? (
+            <span title="Each row counted once, ignoring how much of the product's flow its chain carries. The published figure weights by flow, which is the number to the left; pick a single chain above and the two agree.">
+              <span className="text-ink font-medium">{Math.round(stats.plain)} bps</span> counting each row once
+            </span>
+          ) : null}
           <Stat value={`${stats.sandwiched} / ${stats.scanned}`} label="sandwiched / screened" />
           {stats.flagged > 0 ? <Stat value={stats.flagged} label="flagged" /> : null}
         </div>
