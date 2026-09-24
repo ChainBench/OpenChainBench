@@ -31,8 +31,13 @@ const (
 	// toward everyone else. The floor is the coverage guarantee and the
 	// total is the payload guard; a row that is most of the flow is
 	// supposed to be most of the sample.
-	recentMinPerTerminal = 6
-	recentTotal          = 1400
+	// 6 could not represent a median of 38, let alone one of 112: a row
+	// cut to its floor read 1719 against a published 646 on nine rows.
+	// The total comes down to pay for it — fills.json sits at 1.53 MB
+	// against a 2 MB cache ceiling, so the floor is funded out of the
+	// budget rather than added on top of it.
+	recentMinPerTerminal = 12
+	recentTotal          = 1250
 )
 
 // Terminal is one cohort member: the trading app or Telegram bot whose

@@ -264,3 +264,55 @@ func TestRecentFallsBackToSwapCountsWithoutFlow(t *testing.T) {
 		t.Fatalf("b fell under the floor (%d)", seen["b"])
 	}
 }
+
+// The rows shown have to cover the window the figure covers.
+//
+// byTerm is newest-first and the quota used to take the head of it, so a
+// row cut to its floor showed the last few swaps — a slice of the past
+// hour standing in for a 24h median. pump-fun-ethereum read 1719 against
+// a published 646 that way, with one row of nine below the median, which
+// is word for word the complaint that started all this.
+func TestRecentSpreadsAcrossTheWindowNotJustTheNewest(t *testing.T) {
+	st := &State{}
+	// 240 swaps an hour apart: index 0 is the oldest, 239 the newest.
+	st.Swaps = append(st.Swaps, mkSwaps("solo", 240, 0)...)
+
+	got := recent(st, 12, 40, nil)
+	if len(got) < 12 {
+		t.Fatalf("expected at least the floor, got %d", len(got))
+	}
+	first, last := got[0].Time, got[len(got)-1].Time
+	span := last - first
+	// The head-of-list sampler would return a run at one end; an even
+	// spread covers most of the 239-hour range.
+	if span < 200 {
+		t.Fatalf("sample spans %d of 239 time units — it is a slice, not a spread", span)
+	}
+
+	// And it should not bunch: the largest gap between consecutive rows
+	// stays close to the even spacing rather than one jump covering most
+	// of the window.
+	widest := int64(0)
+	for i := 1; i < len(got); i++ {
+		if g := got[i].Time - got[i-1].Time; g > widest {
+			widest = g
+		}
+	}
+	if widest > int64(3*240/len(got)) {
+		t.Fatalf("largest gap %d is far above the even spacing %d", widest, 240/len(got))
+	}
+}
+
+// A row with fewer swaps than its quota keeps all of them, in order.
+func TestSpreadKeepsEverythingWhenItFits(t *testing.T) {
+	rows := mkSwaps("x", 5, 0)
+	got := spread(rows, 12)
+	if len(got) != 5 {
+		t.Fatalf("want all 5 rows, got %d", len(got))
+	}
+	for i := 1; i < len(got); i++ {
+		if got[i].Time <= got[i-1].Time {
+			t.Fatalf("order not preserved at %d", i)
+		}
+	}
+}
