@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentTotal), Discovery: disc,
+			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentTotal, flowOf(stats)), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2090,7 +2090,23 @@ func sizeBucket(usd float64) string {
 // own transactions. `total` is a ceiling for the payload, spent on the
 // rows with the least evidence first so a busy terminal cannot squeeze
 // out a quiet one.
-func recent(st *State, minPerTerminal, total int) []Swap {
+// flowOf: attempts per row, from the stats just computed. This is the
+// weight the pooled median uses, so it is the weight the evidence under
+// it has to use too.
+func flowOf(stats []TerminalStats) map[string]float64 {
+	out := make(map[string]float64, len(stats))
+	for _, t := range stats {
+		if t.Chain == "all" {
+			continue // the pooled entry is the sum of the rows below it
+		}
+		if t.Attempts > 0 {
+			out[t.Slug] = float64(t.Attempts)
+		}
+	}
+	return out
+}
+
+func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swap {
 	// Every swap each row has in the window, newest first. The caps are
 	// applied after the shares are known, not while collecting, because
 	// a row's share depends on how much flow it has relative to the rest.
@@ -2153,34 +2169,52 @@ func recent(st *State, minPerTerminal, total int) []Swap {
 	// payload guard.
 	room := total - base
 	if room > 0 {
+		// Share of the remainder follows each row's FLOW, not how many of
+		// its swaps we managed to price. Those differ by a factor of sixty
+		// between chains — 0.02% of Solana attempts get priced against
+		// 1.2% of BNB's — and the pooled median weights by the first, so
+		// a sample drawn on the second cannot reproduce it however evenly
+		// it is spread. A row with no flow figure falls back to its swap
+		// count, which is the best proxy available.
+		weight := make(map[string]float64, len(slugs))
 		spare := make(map[string]int, len(slugs))
-		spareTotal := 0
+		spareTotal := 0.0
 		for _, slug := range slugs {
-			s := len(byTerm[slug]) - quota[slug]
-			if s < 0 {
-				s = 0
+			headroom := len(byTerm[slug]) - quota[slug]
+			if headroom < 0 {
+				headroom = 0
 			}
-			spare[slug] = s
-			spareTotal += s
+			spare[slug] = headroom
+			if headroom == 0 {
+				continue // nothing left to give this row
+			}
+			w := flow[slug]
+			if w <= 0 {
+				w = float64(len(byTerm[slug]))
+			}
+			weight[slug] = w
+			spareTotal += w
 		}
 		if spareTotal > 0 {
-			if room > spareTotal {
-				room = spareTotal
-			}
 			// Integer division loses seats; largest remainder hands them
-			// back, so the budget is spent instead of left over.
+			// back, so the budget is spent instead of left over. A quota
+			// bigger than the swaps a row actually has is clipped here,
+			// and what that frees is handed out in the same pass.
 			type rem struct {
 				slug string
-				frac int
+				frac float64
 			}
 			rems := make([]rem, 0, len(slugs))
 			given := 0
 			for _, slug := range slugs {
-				num := room * spare[slug]
-				q := num / spareTotal
+				exact := float64(room) * weight[slug] / spareTotal
+				q := int(exact)
+				if q > spare[slug] {
+					q = spare[slug]
+				}
 				quota[slug] += q
 				given += q
-				rems = append(rems, rem{slug, num % spareTotal})
+				rems = append(rems, rem{slug, exact - float64(q)})
 			}
 			sort.Slice(rems, func(i, j int) bool {
 				if rems[i].frac != rems[j].frac {
@@ -2188,10 +2222,20 @@ func recent(st *State, minPerTerminal, total int) []Swap {
 				}
 				return rems[i].slug < rems[j].slug
 			})
-			for i := 0; given < room && i < len(rems); i++ {
-				if quota[rems[i].slug] < len(byTerm[rems[i].slug]) {
-					quota[rems[i].slug]++
-					given++
+			// Several passes, because clipping a row to what it has frees
+			// seats that the rows still short of their share should get.
+			for pass := 0; pass < 3 && given < room; pass++ {
+				moved := false
+				for i := 0; given < room && i < len(rems); i++ {
+					slug := rems[i].slug
+					if quota[slug] < len(byTerm[slug]) {
+						quota[slug]++
+						given++
+						moved = true
+					}
+				}
+				if !moved {
+					break
 				}
 			}
 		}
