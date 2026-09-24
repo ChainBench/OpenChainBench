@@ -103,6 +103,15 @@ var (
 	}, []string{"terminal", "chain", "bucket"})
 	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	// Per-chain health of the EVM log feed. This existed only inside the
+	// feed struct, so BNB's read nothing for days behind a green
+	// tfq_feed_up, which covers the Solana WebSocket alone.
+	gNativeUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_feed_up", Help: "1 when the chain's eth_getLogs feed answered its last poll"}, []string{"chain"})
+	// How far behind the head each chain's cursor sits. A counter of
+	// skipped blocks cannot show a stuck feed (it re-counts the same gap
+	// every poll: BNB logged 250,834,117 skipped blocks in 24 h on a chain
+	// that makes about 115,000). A lag that stays flat at 630,000 can.
+	gNativeLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_lag_blocks", Help: "Blocks between the chain's head and the log feed's cursor after the last poll"}, []string{"chain"})
 	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
 	}, []string{"terminal", "chain"})
@@ -114,7 +123,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -190,6 +199,11 @@ type State struct {
 	Rejects     map[string]map[string]int   `json:"rejects"`                // terminal -> reason -> count (window not enforced; informative)
 	Cursors     map[string]*walletCursor    `json:"cursors"`                // wallet -> cursor (polling fallback)
 	EvmCursor   map[string]int64            `json:"evm_cursor,omitempty"`   // chain -> last block scanned for the native EVM terminals
+	// chain -> unix time its log feed last failed, absent while it reads.
+	// Without it a chain the harness cannot read is indistinguishable from
+	// a chain nobody trades on, and its rows vanish from the board rather
+	// than saying they have no data.
+	FeedDown    map[string]int64            `json:"feed_down,omitempty"`
 	Learned     map[string]*Learned         `json:"learned,omitempty"`      // terminal -> fee wallets / routers learned from the chain (discover.go)
 	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
@@ -409,7 +423,10 @@ func main() {
 	if st.EvmCursor == nil {
 		st.EvmCursor = map[string]int64{}
 	}
-	nf := newNativeFeed(httpc, st.EvmCursor)
+	if st.FeedDown == nil {
+		st.FeedDown = map[string]int64{}
+	}
+	nf := newNativeFeed(httpc, st.EvmCursor, st.FeedDown)
 	xf := newXfeed(httpc, st.RelayNewest)
 	go xf.run(context.Background(), tick)
 	var mu sync.RWMutex
@@ -1364,7 +1381,13 @@ func implausibleSplit(sw *Swap) {
 		sw.Flag, sw.Priced = "split_implausible", false
 		return
 	}
-	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
+	// -200, not -1000: pool is the residual of the split, so below zero
+	// the named costs add up to more than the trade lost. Measured on the
+	// live sample, 141 of the 189 negative rows sit between -1 and 0 and
+	// are rounding; 29 are worse than -50 and 19 of those are trades under
+	// $10, where a fixed fee is a thousand basis points and the arithmetic
+	// cannot stay consistent. -1000 let a -765 through.
+	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -200 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
 		// A pool component under −100 bps on a route through several pools
 		// is a quote leg the matching missed, not a fill better than the
 		// mid (Binance's 7-pool route read terminal 1134 bps, pool −762).
@@ -1962,6 +1985,17 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
 		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
+			// Nobody used it, or we could not read the chain. Those are not
+			// the same thing, and dropping both is how six products
+			// published All chains rows with no BNB in them for days, under
+			// tags that name BNB, while the log feed sat 630,000 blocks
+			// behind. A row on a dead chain stays, unhealthy and saying so.
+			if since, dead := st.FeedDown[ts.Chain]; dead {
+				ts.Healthy, ts.Ranked = false, false
+				mins := (time.Now().Unix() - since) / 60
+				ts.Note = "no data: this chain's log feed has not read for " + strconv.FormatInt(mins, 10) + " minutes, so the row is empty because we could not look, not because nobody traded"
+				return ts, true
+			}
 			return ts, false // a cross-chain row nobody used in the window
 		}
 		return ts, true
