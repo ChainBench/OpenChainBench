@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
+import { headerNavItems, navGroups } from "@/components/site-nav-items";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function XIcon({ size = 15 }: { size?: number }) {
@@ -24,39 +25,6 @@ function GithubIcon({ size = 15 }: { size?: number }) {
   );
 }
 
-type NavItem = { href: string; label: string; match: (p: string) => boolean
-  /** Hidden between md and lg so the header row fits a 768 px viewport. */
-  mdHidden?: boolean;
-};
-
-// Active-state predicates. Bench/product detail pages share the same
-// tab as the index, so `/benchmarks/aggregator-head-lag` highlights
-// the "Benchmarks" tab. `/` matches exact only — without that, every
-// route would inherit a "Home" highlight.
-const NAV: NavItem[] = [
-  {
-    href: "/benchmarks",
-    label: "Benchmarks",
-    match: (p) => p === "/benchmarks" || p.startsWith("/benchmarks/"),
-  },
-  {
-    href: "/products",
-    label: "Products",
-    match: (p) => p === "/products" || p.startsWith("/products/"),
-  },
-  {
-    href: "/methodology",
-    label: "Methodology",
-    match: (p) => p === "/methodology",
-  },
-  {
-    href: "/reports",
-    label: "Reports",
-    match: (p) => p === "/reports" || p.startsWith("/reports/"),
-  },
-  { href: "/about", label: "About", match: (p) => p === "/about", mdHidden: true },
-  { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute", mdHidden: true },
-];
 
 
 export function SiteHeader() {
@@ -88,7 +56,8 @@ export function SiteHeader() {
     >
       <header className="border-b border-rule px-4 sm:px-6 shrink-0 text-sm relative">
         <div className="max-w-[1400px] mx-auto flex items-center gap-4 lg:gap-6 h-14 md:h-16">
-          <div className="flex items-center gap-2 shrink-0">
+          {/* The rail carries the wordmark at lg and up. */}
+          <div className="flex lg:hidden items-center gap-2 shrink-0">
             <SiteLogoSwitcher size={22} />
             <Link
               href="/"
@@ -107,8 +76,10 @@ export function SiteHeader() {
           {/* md (768-1023): tighter gaps and 13 px labels, the last two links wait
               for lg. Six full-size links plus logo and utilities are 875 px,
               wider than the 768 px viewport, and the row cannot shrink. */}
-          <nav className="hidden md:flex items-center h-full gap-3 lg:gap-7 text-[13px] lg:text-[15px] font-medium shrink-0">
-            {NAV.map((item) => {
+          {/* md to lg only: below md the burger menu owns navigation, at
+              lg and up the left rail does, and this row would repeat it. */}
+          <nav className="hidden md:flex lg:hidden items-center h-full gap-3 text-[13px] font-medium shrink-0">
+            {headerNavItems().map((item) => {
               const active = item.match(pathname);
               return (
                 <Link
@@ -182,25 +153,45 @@ export function SiteHeader() {
             id="mobile-nav"
             className="md:hidden absolute left-0 right-0 top-full border-b border-rule bg-surface shadow-lg"
           >
-            <ul className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2 flex flex-col">
-              {NAV.map((item) => {
-                const active = item.match(pathname);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      className={[
-                        "flex items-center min-h-[44px] py-2 transition-colors",
-                        active ? "text-ink font-semibold" : "text-ink-muted hover:text-ink",
-                      ].join(" ")}
-                      onClick={() => setOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
+            {/* Every section, the same list the rail shows. This menu
+                used to carry the header's six links, so a phone could
+                not reach /perps, /rwa or /bridge from anywhere but the
+                footer — the gap this whole change is about, and phones
+                are where it bit hardest. Capped in height so a long list
+                scrolls inside the sheet instead of running off-screen. */}
+            <ul className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2 flex flex-col max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+              {navGroups().flatMap((group, gi) => [
+                ...(group.label
+                  ? [
+                      <li
+                        key={`h-${group.label}`}
+                        className={`label-mono text-[10px] uppercase tracking-wide text-ink-faint pt-3 pb-1 ${gi === 0 ? "" : "border-t border-rule mt-1"}`}
+                      >
+                        {group.label}
+                      </li>,
+                    ]
+                  : []),
+                ...group.items.map((item) => {
+                  const active = item.match(pathname);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={[
+                          "flex items-center gap-2.5 min-h-[44px] py-2 transition-colors",
+                          active ? "text-ink font-semibold" : "text-ink-muted hover:text-ink",
+                        ].join(" ")}
+                        onClick={() => setOpen(false)}
+                      >
+                        <Icon size={16} className={active ? "text-accent shrink-0" : "text-ink-faint shrink-0"} aria-hidden />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                }),
+              ])}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
                 <a
                   href="https://github.com/ChainBench/OpenChainBench"

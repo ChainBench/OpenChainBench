@@ -48,6 +48,9 @@
 }
 
 :root {
+  /* Width of the fixed left rail (lg and up). The rail and the content
+     offset both read this, so they cannot drift apart. */
+  --sidebar-w: 240px;
   color-scheme: light;
 }
 

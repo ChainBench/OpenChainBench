@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteFooter } from "@/components/site-footer";
 import { SearchProvider } from "@/components/search/search-provider";
 import { SITE } from "@/data/site";
@@ -274,12 +275,20 @@ export default async function RootLayout({
           text width inside intrinsic sizing), so every page was 1,207 px wide on a
           1,024 px viewport and scrolled sideways. minmax(0,1fr) lets rows be
           narrower than their min-content. */}
-      <body className="min-h-full grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)]">
+      <body className="min-h-full grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)] lg:pl-[var(--sidebar-w)]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
         <PHProvider>
           <SearchProvider>
+            {/* Fixed, so it sits outside the grid rows entirely and
+                leaves the sticky-header and column-sizing behaviour
+                above untouched. The offset that makes room for it is a
+                padding on <body>, not a wrapper: a wrapper would collapse
+                the three grid rows into one item at lg and the 1fr that
+                stretches <main> would stop applying, dropping the footer
+                up the page on short routes. */}
+            <SiteSidebar />
             <SiteHeader />
             <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
             <SiteFooter />
