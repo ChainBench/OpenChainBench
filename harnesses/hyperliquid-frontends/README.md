@@ -50,7 +50,7 @@ notional (`dayNtlVlm`), open interest and mark price.
    every address answered 403. `hl_frontend_data_day_unix_v2` and
    `_end_unix_v2` say which day the gauges describe.
 3. **Publish.** For the feed day D: fees, notional, fills, taker share, distinct
-   wallets (FNV-64 hashed), coin shares. 7d/30d = the files of the 7/30 UTC
+   wallets, coin shares. 7d/30d = the files of the 7/30 UTC
    days ending on D; wallet counts are unions. 30d wallet totals feed the
    volume-by-percentile buckets and the profitable-user share (`closed_pnl`).
 4. **Ledger.** Per builder per day totals are persisted in `<data>/state.json`.
@@ -122,5 +122,6 @@ expects a writable volume on `/data`.
 ```
 docker build -t ocb-hyperliquid-frontends .
 docker run -d --name ocb-hyperliquid-frontends --restart unless-stopped \
-  --network ocb -v /opt/ocb/data/hl-frontends:/data ocb-hyperliquid-frontends
+  --network ocb_web --network-alias hyperliquid-frontends \
+  -v /data/state/hyperliquid-frontends:/data --memory 1536m ocb-hyperliquid-frontends
 ```
