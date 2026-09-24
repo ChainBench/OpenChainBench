@@ -151,7 +151,7 @@ func (p *hip3Poller) pollOnce(ctx context.Context) (int, error) {
 		}
 		daily := p.state.hip3DailyFor(d.Name)
 		var v7, v30 float64
-		sampled := 0
+		sampled, sampled7 := 0, 0
 		for i := 0; i < 30; i++ {
 			k := dayKey(now.AddDate(0, 0, -1-i))
 			v, ok := daily[k]
@@ -162,11 +162,13 @@ func (p *hip3Poller) pollOnce(ctx context.Context) (int, error) {
 			v30 += v
 			if i < 7 {
 				v7 += v
+				sampled7++
 			}
 		}
 		hip3Volume7d.WithLabelValues(d.Name).Set(v7)
 		hip3Volume30d.WithLabelValues(d.Name).Set(v30)
 		hip3DaysSampled.WithLabelValues(d.Name).Set(float64(sampled))
+		hip3DaysSampled7.WithLabelValues(d.Name).Set(float64(sampled7))
 		updated++
 	}
 	if updated > 0 {

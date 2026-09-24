@@ -38,7 +38,7 @@ import type { ProviderAppearance } from "@/lib/providers";
  */
 export const MIN_LIVE_SHARED_FOR_LINK = 2;
 
-function isLiveAppearance(a: ProviderAppearance): boolean {
+export function isLiveAppearance(a: ProviderAppearance): boolean {
   if (a.result.availability === "unavailable") return false;
   // A daily-cut metric (Hyperliquid builder fees) reads 0 on a quiet day;
   // the 7d mean says whether the row is alive (audit 2026-09-24).

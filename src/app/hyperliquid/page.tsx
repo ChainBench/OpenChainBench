@@ -47,7 +47,8 @@ function hubLede(
   frontends: Awaited<ReturnType<typeof fetchHlCohort>>,
   hip3: Awaited<ReturnType<typeof fetchHlHip3Cohort>>,
 ): { sentence: string; asOf: string } | null {
-  const top = frontends?.rows[0];
+  const named = frontends?.rows.filter((r) => !/^0x[a-f0-9]+$/i.test(r.slug)) ?? [];
+  const top = named[0];
   const hipTop = hip3?.rows[0];
   if (!top && !hipTop) return null;
   const asOf = new Date((frontends?.asOf ?? hip3?.asOf ?? Date.now() / 1000) * 1000)
@@ -56,7 +57,7 @@ function hubLede(
   const parts: string[] = [];
   if (top && frontends) {
     parts.push(
-      `${top.name} leads ${frontends.rows.length} Hyperliquid frontends on 30-day builder fees at ${fmtUsdShort(top.revenue30d)}`,
+      `${top.name} leads ${named.length} Hyperliquid frontends on 30-day builder fees at ${fmtUsdShort(top.revenue30d)}`,
     );
   }
   if (hipTop && hip3) {

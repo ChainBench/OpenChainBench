@@ -29,6 +29,7 @@ import {
   writePairCache,
 } from "@/lib/compare-cache";
 import { sharedBenchSlugs } from "@/lib/compare-compute";
+import { isLiveAppearance } from "@/lib/related-providers";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -194,8 +195,8 @@ export async function generateMetadata({
   // fact on the page (11 vs 9 on gains-vs-gmx, audit 2026-09-21).
   const sharedCount = sharedSlugsForMeta.length;
   const liveForMeta = sharedSlugsForMeta.filter((s) => {
-    const okA = a.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
-    const okB = b.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
+    const okA = a.appearances.some((x) => x.benchmark.slug === s && isLiveAppearance(x));
+    const okB = b.appearances.some((x) => x.benchmark.slug === s && isLiveAppearance(x));
     return okA && okB;
   }).length;
   const metaCount = liveForMeta > 0 ? liveForMeta : sharedCount;
@@ -212,24 +213,13 @@ export async function generateMetadata({
   // must not 404) but are marked noindex so direct hits stop counting
   // against the domain. Mirrors the >= 2 live-shared emission floor in
   // src/lib/compare/adhoc-pairs.ts so the sitemap never advertises a
-  // noindexed URL. Live rule matches isLiveAppearance() in
-  // related-providers.ts (not "unavailable" and p50 > 0), so the link gate
-  // and this page agree; liveResults() itself keeps zero and negative rows
-  // since bench 263.
-  const aLive = new Set(
-    a.appearances
-      .filter(
-        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
-      )
-      .map((x) => x.benchmark.slug),
-  );
-  const bLive = new Set(
-    b.appearances
-      .filter(
-        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
-      )
-      .map((x) => x.benchmark.slug),
-  );
+  // noindexed URL. The live rule IS isLiveAppearance() from
+  // related-providers.ts (not "unavailable", and p50 or 7d mean above
+  // zero), so the link gate and this page agree on every daily-cut bench
+  // (review 2026-09-24); liveResults() itself keeps zero and negative
+  // rows since bench 263.
+  const aLive = new Set(a.appearances.filter(isLiveAppearance).map((x) => x.benchmark.slug));
+  const bLive = new Set(b.appearances.filter(isLiveAppearance).map((x) => x.benchmark.slug));
   const liveSharedCount = sharedSlugsForMeta.filter(
     (s) => aLive.has(s) && bLive.has(s),
   ).length;

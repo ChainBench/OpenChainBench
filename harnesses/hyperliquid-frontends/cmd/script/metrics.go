@@ -63,15 +63,16 @@ var (
 	}, []string{"result"})
 
 	// HIP-3 dexes, from the chain's own info API (perpDexs + metaAndAssetCtxs).
-	hip3Volume24h   = gauge("hl_hip3_deployer_volume_usd_24h", "Rolling 24h notional volume in USD across the dex's markets, as reported by the Hyperliquid info API (dayNtlVlm summed).", "dex")
-	hip3Volume7d    = gauge("hl_hip3_deployer_volume_usd_7d", "Sum of the dex's daily 24h-volume samples over the last 7 UTC days (one sample per day, taken right after midnight UTC).", "dex")
-	hip3Volume30d   = gauge("hl_hip3_deployer_volume_usd_30d", "Sum of the dex's daily 24h-volume samples over the last 30 UTC days (grows toward the full window while samples accumulate).", "dex")
-	hip3Markets24h  = gauge("hl_hip3_deployer_markets_24h", "Markets on the dex with non-zero notional volume over the rolling 24h.", "dex")
-	hip3Listed      = gauge("hl_hip3_deployer_markets_listed", "Markets currently listed on the dex (delisted excluded).", "dex")
-	hip3OpenInt     = gauge("hl_hip3_deployer_open_interest_usd", "Open interest in USD across the dex's markets (open interest in base units times mark price).", "dex")
-	hip3DaysSampled = gauge("hl_hip3_deployer_days_sampled", "Number of daily volume samples behind the 7d/30d sums.", "dex")
-	hip3Info        = gauge("hl_hip3_deployer_info", "Always 1. Carries the dex's on-chain full name and deployer address from perpDexs.", "dex", "full_name", "deployer")
-	hip3LastTick    = promauto.NewGauge(prometheus.GaugeOpts{
+	hip3Volume24h    = gauge("hl_hip3_deployer_volume_usd_24h", "Rolling 24h notional volume in USD across the dex's markets, as reported by the Hyperliquid info API (dayNtlVlm summed).", "dex")
+	hip3Volume7d     = gauge("hl_hip3_deployer_volume_usd_7d", "Sum of the dex's daily 24h-volume samples over the last 7 UTC days (one sample per day, taken right after midnight UTC).", "dex")
+	hip3Volume30d    = gauge("hl_hip3_deployer_volume_usd_30d", "Sum of the dex's daily 24h-volume samples over the last 30 UTC days (grows toward the full window while samples accumulate).", "dex")
+	hip3Markets24h   = gauge("hl_hip3_deployer_markets_24h", "Markets on the dex with non-zero notional volume over the rolling 24h.", "dex")
+	hip3Listed       = gauge("hl_hip3_deployer_markets_listed", "Markets currently listed on the dex (delisted excluded).", "dex")
+	hip3OpenInt      = gauge("hl_hip3_deployer_open_interest_usd", "Open interest in USD across the dex's markets (open interest in base units times mark price).", "dex")
+	hip3DaysSampled  = gauge("hl_hip3_deployer_days_sampled", "Number of daily volume samples behind the 30d sum (at most 30).", "dex")
+	hip3DaysSampled7 = gauge("hl_hip3_deployer_days_sampled_7d", "Number of daily volume samples behind the 7d sum (at most 7).", "dex")
+	hip3Info         = gauge("hl_hip3_deployer_info", "Always 1. Carries the dex's on-chain full name and deployer address from perpDexs.", "dex", "full_name", "deployer")
+	hip3LastTick     = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_hip3_last_tick_unix",
 		Help: "Unix time of the last successful HIP-3 info API poll.",
 	})

@@ -139,7 +139,7 @@ export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
                   </span>
                 </Td>
                 <Td mono>{fmtUSD(r.volume24h)}</Td>
-                <Td mono>{fmtWindow(r.volume7d, Math.min(r.daysSampled, 7), 7)}</Td>
+                <Td mono>{fmtWindow(r.volume7d, r.daysSampled7, 7)}</Td>
                 <Td mono>{fmtWindow(r.volume30d, r.daysSampled, 30)}</Td>
                 <Td mono>{fmtUSD(r.openInterestUsd)}</Td>
                 <Td mono>{fmtCount(r.marketsTraded24h)}</Td>
