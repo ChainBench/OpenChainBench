@@ -296,10 +296,27 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 	// Refill days that were committed empty because the cron ran before the
 	// CDN batch landed. Bounded to the recent past so a boot never re-walks
 	// the whole history.
-	if zero, err := store.ZeroRowDays(ctx, time.Now().UTC().AddDate(0, 0, -zeroRefillDays)); err != nil {
+	since := time.Now().UTC().AddDate(0, 0, -zeroRefillDays)
+	zero, err := store.ZeroRowDays(ctx, since)
+	if err != nil {
 		Log.Error("cron catchup zero-row scan failed", "err", err)
-	} else {
-		for _, d := range zero {
+	}
+	sparse, err := store.SparseDays(ctx, since, sparseDayRatio)
+	if err != nil {
+		Log.Error("cron catchup sparse-day scan failed", "err", err)
+	}
+	seenDay := map[string]bool{}
+	var refill []time.Time
+	for _, d := range append(zero, sparse...) {
+		k := d.Format("2006-01-02")
+		if !seenDay[k] {
+			seenDay[k] = true
+			refill = append(refill, d)
+		}
+	}
+	if len(refill) > 0 {
+		Log.Info("cron refill pass", "zero_row_days", len(zero), "sparse_days", len(sparse))
+		for _, d := range refill {
 			if err := ctx.Err(); err != nil {
 				return
 			}
@@ -332,8 +349,12 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 	}
 }
 
-// zeroRefillDays bounds the zero-row refill pass at boot.
-const zeroRefillDays = 120
+// zeroRefillDays bounds the refill pass at boot; sparseDayRatio flags a
+// day whose builder count is under that share of the recent median.
+const (
+	zeroRefillDays = 120
+	sparseDayRatio = 0.5
+)
 
 // cronLoop fires DailyJob once a day at HL_ARCHIVE_CRON_HOUR UTC.
 func cronLoop(ctx context.Context, store *Store, builders []Builder) {

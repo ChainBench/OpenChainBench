@@ -169,6 +169,34 @@ func (s *Store) ZeroRowDays(ctx context.Context, since time.Time) ([]time.Time, 
 	return out, rows.Err()
 }
 
+// SparseDays lists days on or after `since` whose count of builders with
+// rows is under `ratio` of the median over the same span, oldest first.
+// Those are days the cron caught mid-upload: the CDN batch lands builder by
+// builder, so a fetch during the window commits a handful of builders and
+// the processed_days skip rule never revisits the rest.
+func (s *Store) SparseDays(ctx context.Context, since time.Time, ratio float64) ([]time.Time, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		WITH per_day AS (
+			SELECT day, COUNT(DISTINCT builder) AS n
+			FROM builder_daily_aggregates WHERE day >= ? GROUP BY day
+		), med AS (SELECT quantile_cont(n, 0.5) AS m FROM per_day)
+		SELECT p.day FROM per_day p, med WHERE p.n < med.m * ? ORDER BY p.day`,
+		since.UTC().Format("2006-01-02"), ratio)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []time.Time
+	for rows.Next() {
+		var d time.Time
+		if err := rows.Scan(&d); err != nil {
+			return nil, err
+		}
+		out = append(out, d.UTC())
+	}
+	return out, rows.Err()
+}
+
 // IsDayProcessed returns true if processed_days has a row for `day`.
 func (s *Store) IsDayProcessed(ctx context.Context, day time.Time) (bool, error) {
 	var n int
