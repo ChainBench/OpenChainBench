@@ -191,13 +191,13 @@ func (a *Aggregator) syncWindow(ctx context.Context) {
 }
 
 // chooseDataDay picks the newest day in the grace span that has at least
-// minPublished files whose newest download is older than `settle`, so a
-// batch still being uploaded on the CDN is not read half-way. The choice
-// only ever moves forward.
+// minPublished files whose newest CDN upload (file mtime = Last-Modified)
+// is older than `settle`, so a batch still being uploaded is not read
+// half-way. The choice only ever moves forward.
 func (a *Aggregator) chooseDataDay(now time.Time) {
 	_, to := a.fetchRange(now)
-	// Files land during the sync that precedes this call, so the settle
-	// check has to compare against the clock now, not the sync start.
+	// Compare against the clock now, not the sync start that preceded this
+	// call.
 	now = time.Now().UTC()
 	for d := to; d.After(to.AddDate(0, 0, -a.graceDays-1)); d = d.AddDate(0, 0, -1) {
 		count := 0

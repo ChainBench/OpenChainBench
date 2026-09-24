@@ -176,6 +176,13 @@ func (m *Mirror) fetch(ctx context.Context, addr string, day time.Time) error {
 		if err := os.Rename(tmp, p); err != nil {
 			return err
 		}
+		// Stamp the file with the CDN's Last-Modified (the batch upload
+		// time) so the settle check in chooseDataDay measures how long the
+		// batch has been on the CDN, not how long ago we downloaded it. A
+		// cold start over old days is then eligible at once.
+		if lm, err := http.ParseTime(resp.Header.Get("Last-Modified")); err == nil && !lm.IsZero() {
+			_ = os.Chtimes(p, lm, lm)
+		}
 		_ = os.Remove(m.absentPath(addr, day))
 		feedFetchTotal.WithLabelValues("ok").Inc()
 		return nil
