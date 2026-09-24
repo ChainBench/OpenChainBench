@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, 400), Discovery: disc,
+			Terminals: stats, Recent: recent(st, recentPerTerminal, recentTotal), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2076,11 +2076,68 @@ func sizeBucket(usd float64) string {
 	return "over250"
 }
 
-func recent(st *State, n int) []Swap {
-	if len(st.Swaps) <= n {
-		return append([]Swap(nil), st.Swaps...)
+// recent returns the evidence behind the board: the last `perTerminal`
+// swaps of EACH row, not the last N swaps overall.
+//
+// The global tail it replaces spanned 114 minutes against a 24h window,
+// so 89% of ranked rows had fewer than 20 transactions to show and six
+// had none, while the table invited the reader to check the board
+// against it. Sampling per row costs about twice the payload and makes
+// every published figure auditable.
+//
+// Each swap also carries the product it rolls up to, so a pooled row
+// (Binance, whose swaps are stored under binance-wallet-*) can match its
+// own transactions. `total` is a ceiling for the payload, spent on the
+// rows with the least evidence first so a busy terminal cannot squeeze
+// out a quiet one.
+func recent(st *State, perTerminal, total int) []Swap {
+	byTerm := map[string][]Swap{}
+	for i := len(st.Swaps) - 1; i >= 0; i-- {
+		s := st.Swaps[i]
+		if len(byTerm[s.Terminal]) < perTerminal {
+			byTerm[s.Terminal] = append(byTerm[s.Terminal], s)
+		}
 	}
-	return append([]Swap(nil), st.Swaps[len(st.Swaps)-n:]...)
+	slugs := make([]string, 0, len(byTerm))
+	for k := range byTerm {
+		slugs = append(slugs, k)
+	}
+	// Fewest-first, so the ceiling bites the terminals that already have
+	// plenty rather than the ones that barely appear.
+	sort.Slice(slugs, func(i, j int) bool {
+		if len(byTerm[slugs[i]]) != len(byTerm[slugs[j]]) {
+			return len(byTerm[slugs[i]]) < len(byTerm[slugs[j]])
+		}
+		return slugs[i] < slugs[j]
+	})
+	out := make([]Swap, 0, total)
+	for i, slug := range slugs {
+		room := total - len(out)
+		if room <= 0 {
+			break
+		}
+		// Even share of what is left among the terminals not yet served.
+		share := room / (len(slugs) - i)
+		if share < 1 {
+			share = 1
+		}
+		rows := byTerm[slug]
+		if len(rows) > share {
+			rows = rows[:share]
+		}
+		for _, s := range rows {
+			p, _ := productOf(s.Terminal)
+			if a, ok := productAlias[p]; ok {
+				p = a
+			}
+			if p != s.Terminal {
+				s.Product = p
+			}
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Time < out[j].Time })
+	return out
 }
 
 // quantiles: median and p90; with ci, the 95 % bootstrap interval of the

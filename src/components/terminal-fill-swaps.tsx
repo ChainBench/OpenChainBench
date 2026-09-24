@@ -37,7 +37,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const venues = useMemo(() => [...new Set(swaps.map((s) => s.venue))].sort(), [swaps]);
   const rows = useMemo(() => {
     const f = swaps.filter(
-      (s) => (!terminal || s.terminal === terminal) && (!side || s.side === side) && (!venue || s.venue === venue) && (!ref || (s.refSrc ?? "none") === ref),
+      (s) => (!terminal || s.terminal === terminal || s.product === terminal) && (!side || s.side === side) && (!venue || s.venue === venue) && (!ref || (s.refSrc ?? "none") === ref),
     );
     const v = (s: FillSample): number => {
       switch (sort.key) {

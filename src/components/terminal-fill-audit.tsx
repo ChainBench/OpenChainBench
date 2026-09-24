@@ -21,11 +21,13 @@ export async function TerminalFillAudit() {
         <div>
           <p className="label-mono text-ink-faint">Sampled swaps · audit table</p>
           <p className="mt-1 text-sm text-ink-faint max-w-3xl">
-            The {f.recent.length} most recent transactions the harness read ({priced} priced), one per row. Click a hash to open it on
-            Solscan and check every figure against the transaction&apos;s balances: Loss = 1 − value received / value given; Fee + Net +
-            Protocol + Pool (+ Relay on the cross-chain rows) = Loss. Ref says what the tokens were valued at (reserves: the pool&apos;s exact mid before the swap; pool: the
-            previous trade on the same pool, age in seconds). A <span className="font-mono">!</span> marks a row outside the plausible
-            bounds, kept out of the statistics.
+            The most recent transactions of <em>each</em> row ({f.recent.length} in all, {priced} priced), so every published figure has
+            its own evidence here. These are a sample, not the statistic: the medians above are computed over the full rolling window,
+            which is far more swaps than a row shows here, so a row&apos;s handful of transactions will not reproduce its median. Click a
+            hash to open it on Solscan and check every figure against the transaction&apos;s balances: Loss = 1 − value received / value
+            given; Fee + Net + Protocol + Pool (+ Relay on the cross-chain rows) = Loss. Ref says what the tokens were valued at
+            (reserves: the pool&apos;s exact mid before the swap; pool: the previous trade on the same pool, age in seconds). A{" "}
+            <span className="font-mono">!</span> marks a row outside the plausible bounds, kept out of the statistics.
           </p>
         </div>
         <p className="text-xs text-ink-faint whitespace-nowrap">
