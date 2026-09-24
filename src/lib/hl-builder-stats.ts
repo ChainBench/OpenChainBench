@@ -296,9 +296,9 @@ export type HlHip3Summary = {
  *  /api/cron/snapshot-hl-cohort. Bump the suffix here if either summary
  *  shape changes so a stale-shape blob can never deserialize into a
  *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
-const HL_FRONTENDS_KEY = "hl-frontends";
-const HL_HIP3_KEY = "hl-hip3-v2";
-const HL_HISTORY_KEY = "hl-history";
+export const HL_FRONTENDS_KEY = "hl-frontends";
+export const HL_HIP3_KEY = "hl-hip3-v2";
+export const HL_HISTORY_KEY = "hl-history";
 
 /** One evenly-spaced point on a rolling-window history series. `v = null`
  *  means the underlying gauge had no sample at that timestamp (harness

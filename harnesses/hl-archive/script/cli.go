@@ -297,9 +297,14 @@ func signalCtx() (context.Context, context.CancelFunc) {
 }
 
 // DayResult summarises one ProcessDay call.
-// ErrDayNotPublished means the CDN had no file for any builder on that day:
-// the daily batch has not landed yet. Nothing is committed.
+// ErrDayNotPublished means the CDN had files for fewer than
+// minPublishedBuilders builders on that day: the daily batch has not landed
+// (or has only started landing). Nothing is committed.
 var ErrDayNotPublished = errors.New("feed: day not published yet")
+
+// minPublishedBuilders is the quorum of builders with a file before a day
+// counts as published; the same floor the feed harness uses.
+const minPublishedBuilders = 5
 
 type DayResult struct {
 	Rows     int64
@@ -403,7 +408,7 @@ func ProcessDay(ctx context.Context, store *Store, builders []Builder, day time.
 			withFile++
 		}
 	}
-	if withFile == 0 && len(rowsByAddr) > 0 {
+	if withFile < minPublishedBuilders && len(rowsByAddr) > 0 {
 		return DayResult{}, ErrDayNotPublished
 	}
 

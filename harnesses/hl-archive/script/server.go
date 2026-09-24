@@ -157,13 +157,16 @@ func buildPayload(ctx context.Context, store *Store, builders []Builder, days in
 		Builders:  map[string]UpstashBuilder{},
 	}
 	nameByAddr := map[string]string{}
+	slugByAddr := map[string]string{}
 	for _, b := range builders {
 		for _, a := range b.AllAddresses() {
 			nameByAddr[strings.ToLower(a)] = b.Name
+			slugByAddr[strings.ToLower(a)] = b.Slug
 		}
 	}
 	for addr, wins := range wm {
 		out.Builders[addr] = UpstashBuilder{
+			Slug:            slugByAddr[strings.ToLower(addr)],
 			Name:            nameByAddr[strings.ToLower(addr)],
 			Windows:         wins,
 			TimeseriesDaily: ts[addr],
@@ -420,6 +423,15 @@ func runCron(ctx context.Context, store *Store, builders []Builder) {
 		Log.Error("cron run failed", "err", err)
 		MetricCronRuns.WithLabelValues("err").Inc()
 		return
+	}
+	// The CDN batch lands builder by builder, so the day just committed may
+	// still be missing late builders. CommitDay is idempotent: re-run the
+	// previous day on every tick so a partial commit heals within 24 h.
+	prev := day.AddDate(0, 0, -1)
+	if res2, err := ProcessDay(ctx, store, builders, prev, "recheck", 16); err != nil {
+		Log.Error("cron recheck failed", "day", prev.Format("2006-01-02"), "err", err)
+	} else {
+		Log.Info("cron recheck ok", "day", prev.Format("2006-01-02"), "rows", res2.Rows, "builders", res2.Builders)
 	}
 	MetricCronRuns.WithLabelValues("ok").Inc()
 	MetricLastRun.Set(float64(time.Now().Unix()))

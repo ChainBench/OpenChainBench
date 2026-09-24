@@ -143,6 +143,7 @@ func main() {
 		agg.mu.Lock()
 		hasDay := !agg.dataDay.IsZero()
 		agg.initialSyncDone = hasDay
+		agg.lastSyncOK = hasDay
 		agg.mu.Unlock()
 		if hasDay {
 			agg.publish()

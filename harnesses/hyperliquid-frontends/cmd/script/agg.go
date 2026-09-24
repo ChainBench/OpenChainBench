@@ -31,6 +31,7 @@ type Aggregator struct {
 	cache           map[string]map[string]*daySummary // addr -> day -> parsed CSV
 	dataDay         time.Time                         // zero until a feed day is eligible
 	initialSyncDone bool
+	lastSyncOK      bool // the last feed pass had no transport failures
 	ledgerDone      bool
 	prevCoins       map[string][]string
 	prevDataDay     string
@@ -183,6 +184,7 @@ func (a *Aggregator) syncWindow(ctx context.Context) {
 
 	a.mu.Lock()
 	a.initialSyncDone = true
+	a.lastSyncOK = failures == 0
 	a.mu.Unlock()
 	a.chooseDataDay(now)
 	a.mirror.prune(a.windowDays + a.graceDays + 2)
@@ -339,6 +341,7 @@ func (a *Aggregator) publish() {
 	a.mu.Lock()
 	D := a.dataDay
 	synced := a.initialSyncDone
+	syncOK := a.lastSyncOK
 	ledgerDone := a.ledgerDone
 	a.mu.Unlock()
 	if D.IsZero() || !synced {
@@ -347,7 +350,20 @@ func (a *Aggregator) publish() {
 	start := time.Now()
 	now := time.Now().UTC()
 	dKey := D.Format(dayFormat)
+	// Every day from the fetch-range start is on disk, so the ledger rows
+	// for [mirrorFrom, D] are rewritten from the mirror on each publish and
+	// count as complete; older days need the one-off backfill.
+	mirrorFrom, _ := a.fetchRange(now)
 	windowStart := D.AddDate(0, 0, -(a.windowDays - 1))
+	for _, b := range a.builders {
+		for d := mirrorFrom; d.Before(windowStart); d = d.AddDate(0, 0, 1) {
+			if s := a.merged(b, d); s != nil {
+				a.state.setLedger(b.Slug, dayKey(d), dayTotals{Fees: s.fees, Vol: s.vol, Fills: s.fills, Users: len(s.users)})
+			} else {
+				a.state.setLedger(b.Slug, dayKey(d), dayTotals{})
+			}
+		}
+	}
 
 	rows := make(map[string]builderWindow, len(a.builders))
 	var cohortVol float64
@@ -432,7 +448,7 @@ func (a *Aggregator) publish() {
 		a.publishPercentiles(b.Slug, w.users30m, w.vol30)
 
 		ledger := a.state.ledgerFor(b.Slug)
-		a.publishDeltas(b.Slug, ledger, D, windowStart)
+		a.publishDeltas(b.Slug, ledger, D, mirrorFrom)
 		if ledgerDone {
 			a.publishLedgerStats(b.Slug, ledger)
 		}
@@ -441,7 +457,12 @@ func (a *Aggregator) publish() {
 
 	hlDataDay.Set(float64(D.Unix()))
 	hlDataDayEnd.Set(float64(D.Unix() + daySec))
-	hlLastTickUnix.Set(float64(now.Unix()))
+	// Liveness means "the feed was reachable and the gauges were rebuilt",
+	// not just that the process is up: a pass with transport failures
+	// leaves the tick alone so the success query goes false after 2 h.
+	if syncOK {
+		hlLastTickUnix.Set(float64(now.Unix()))
+	}
 	if ledgerDone {
 		hlLedgerComplete.Set(1)
 	} else {
@@ -556,8 +577,9 @@ func (a *Aggregator) publishPercentiles(slug string, users map[string]userAgg, v
 }
 
 // rangeSum adds the ledger fees over [from, to] and reports whether every
-// day in the range is known (inside the mirror window or backfilled).
-func (a *Aggregator) rangeSum(ledger map[string]dayTotals, from, to, windowStart time.Time) (float64, bool) {
+// day in the range is known: on or after mirrorFrom (rewritten from the
+// mirror on every publish) or marked complete by the ledger backfill.
+func (a *Aggregator) rangeSum(ledger map[string]dayTotals, from, to, mirrorFrom time.Time) (float64, bool) {
 	var sum float64
 	complete := true
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
@@ -565,17 +587,17 @@ func (a *Aggregator) rangeSum(ledger map[string]dayTotals, from, to, windowStart
 		if t, ok := ledger[k]; ok {
 			sum += t.Fees
 		}
-		if d.Before(windowStart) && !a.state.isComplete(k) {
+		if d.Before(mirrorFrom) && !a.state.isComplete(k) {
 			complete = false
 		}
 	}
 	return sum, complete
 }
 
-func (a *Aggregator) publishDeltas(slug string, ledger map[string]dayTotals, D, windowStart time.Time) {
+func (a *Aggregator) publishDeltas(slug string, ledger map[string]dayTotals, D, mirrorFrom time.Time) {
 	set := func(window string, curFrom, curTo, prevFrom, prevTo time.Time) {
-		cur, _ := a.rangeSum(ledger, curFrom, curTo, windowStart)
-		prev, ok := a.rangeSum(ledger, prevFrom, prevTo, windowStart)
+		cur, _ := a.rangeSum(ledger, curFrom, curTo, mirrorFrom)
+		prev, ok := a.rangeSum(ledger, prevFrom, prevTo, mirrorFrom)
 		if !ok {
 			hlRevenueDelta.DeleteLabelValues(slug, window)
 			return

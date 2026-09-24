@@ -35,8 +35,9 @@ type State struct {
 	// DataDay is the last complete feed day the gauges were published for.
 	DataDay string `json:"data_day"`
 
-	mu   sync.Mutex
-	path string
+	mu     sync.Mutex
+	saveMu sync.Mutex // one writer of the file at a time (poller, aggregator, shutdown)
+	path   string
 }
 
 func loadState(path string) (*State, error) {
@@ -70,6 +71,8 @@ func (s *State) init() {
 }
 
 func (s *State) save() error {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
 	s.mu.Lock()
 	raw, err := json.Marshal(s)
 	s.mu.Unlock()
@@ -79,11 +82,20 @@ func (s *State) save() error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return err
 	}
-	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+	tmp, err := os.CreateTemp(filepath.Dir(s.path), "state-*.json.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	if _, err := tmp.Write(raw); err != nil {
+		tmp.Close()
+		_ = os.Remove(tmp.Name())
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmp.Name())
+		return err
+	}
+	return os.Rename(tmp.Name(), s.path)
 }
 
 func (s *State) setLedger(slug, day string, t dayTotals) {
