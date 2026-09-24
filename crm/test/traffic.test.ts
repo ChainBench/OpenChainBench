@@ -18,7 +18,9 @@ describe("queries", () => {
     const q = QUERIES.surfaces();
     for (const e of ["$pageview", "markdown_read", "stat_read", "citable_read"]) expect(q).toContain(`countIf(event = '${e}')`);
     expect(q).toContain("INTERVAL 89 DAY");
-    expect(QUERIES.audience()).toContain("countIf(days >= 2) AS repeat_visitors");
+    expect(QUERIES.audience()).toContain("countIf(toDate(first_seen) < toDate(last_seen)) AS returning_visitors");
+    expect(QUERIES.audienceDaily()).toContain("uniqIf(distinct_id, first_day < day) AS returning_visitors");
+    expect(QUERIES.bounceDaily()).toContain("countIf(n = 1) AS bounced");
   });
   test("the weekly series and the totals embed the AI domain list", () => {
     expect(QUERIES.weekly()).toContain("'chatgpt.com'");
