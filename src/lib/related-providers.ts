@@ -39,7 +39,10 @@ import type { ProviderAppearance } from "@/lib/providers";
 export const MIN_LIVE_SHARED_FOR_LINK = 2;
 
 function isLiveAppearance(a: ProviderAppearance): boolean {
-  return a.result.availability !== "unavailable" && a.result.ms.p50 > 0;
+  if (a.result.availability === "unavailable") return false;
+  // A daily-cut metric (Hyperliquid builder fees) reads 0 on a quiet day;
+  // the 7d mean says whether the row is alive (audit 2026-09-24).
+  return a.result.ms.p50 > 0 || (a.result.ms.mean ?? 0) > 0;
 }
 
 /** Two appearances on the same bench are comparable only in the same

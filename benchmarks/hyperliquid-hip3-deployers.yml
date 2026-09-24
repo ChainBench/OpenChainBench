@@ -4,7 +4,7 @@ slug: hyperliquid-hip3-deployers
 number: "035"
 title: Hyperliquid HIP-3 dex volume leaderboard
 seo_title: "Hyperliquid HIP-3 dexes: {{count}} deployers ranked by volume"
-seo_description: "{{count}} HIP-3 builder-deployed dexes on Hyperliquid ranked by 24h notional volume: {{best_name}} cleared {{best_p50}}. Markets and open interest from the chain's own info API."
+seo_description: "{{count}} HIP-3 dexes on Hyperliquid ranked by 24h notional volume: {{best_name}} cleared {{best_p50}}. Markets and open interest per dex, from the public info API."
 subtitle: How much notional each HIP-3 builder-deployed dex traded over the rolling 24 hours, with its live market count and open interest, from the Hyperliquid info API that every node serves.
 category: Trading
 status: live
@@ -23,9 +23,8 @@ seo_intro: |
   HyperCore under a dedicated namespace (xyz:AAPL, para:10Y, mkts:US500),
   set the fee policy for those markets, and collect a deployer cut on
   every fill. The mechanism powers the tokenized stock, index and
-  commodity perps wave on Hyperliquid: trade.xyz alone routinely clears
-  several billion dollars of daily notional across more than 100 equity
-  and commodity markets. The bench ranks every namespace registered on
+  commodity perps on Hyperliquid; {{best_name}} leads the field today at
+  {{best_p50}} of 24h notional. The bench ranks every namespace registered on
   mainnet by the 24h notional the chain reports for its markets, next to
   the number of markets that traded, the number listed, open interest in
   USD and 7 day and 30 day volume built from one sample per UTC day. Data
@@ -67,7 +66,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads the leaderboard at {{best_p50}} in notional traded over the last 24 hours."
-  - "{{name:xyz}} clears {{p50:xyz}} on the 24h view. Tokenized equities and commodities under the xyz namespace dominate HIP-3 flow, with more than 100 live markets."
+  - "{{name:xyz}} clears {{p50:xyz}} on the 24h view. Tokenized equities and commodities trade under the xyz namespace; the Markets columns show how many are live."
   - "{{name:io}} returns {{p50:io}} on the 24h view. Thematic and pre IPO markets are a smaller but structurally distinct niche, traders price sectors and private valuations rather than listed stock."
   - "HIP-3 volume concentrates hard. The top namespace typically trades more than the rest of the field combined, mirroring the builder code market where consumer wallets dominate."
   - "Volume moves with catalog depth and listing events. The Markets columns separate a broad equity catalog from a single-market dex, and open interest shows where positions actually sit."
@@ -85,7 +84,7 @@ faq:
   - q: "How are dexes identified?"
     a: "By their on-chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, para:10Y, mkts:US500) that is unique to its deployer. The perpDexs registry lists each namespace with its deployer address and full name; the page lists each new namespace after a short spec review."
   - q: "What puts a dex at the top of this table?"
-    a: "Catalog depth and open interest. trade.xyz, for example, operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 100 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Through Q3 2026 it led on breadth, notional and open interest."
+    a: "Catalog depth and open interest. The Markets and Open interest columns show which dex lists the most markets and holds the most positions; the leader is recomputed from the live figures on every render, so the table, not this paragraph, says who is ahead today."
   - q: "Why do 7 day and 30 day figures look low for some dexes?"
     a: "They are sums of one 24h sample per UTC day, recorded since the feed edition of the harness went live. Until 7 and 30 samples exist, those figures cover the available days and grow toward the full window. The 24h view is always complete."
   - q: "How often does the page refresh?"

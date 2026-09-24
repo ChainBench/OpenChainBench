@@ -33,7 +33,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { fetchHlCohort, isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { HlFrontendSection } from "@/components/hl-frontend-section";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 import { getPmVenueContext } from "@/lib/pm-venue-context";
@@ -185,9 +185,10 @@ export async function generateMetadata({
   // ranks highest on, so the blue line answers "what is this" before it
   // answers "how does it rank". Brand queries carried 690 impressions and
   // zero clicks against the old generic title (SEO audit 2026-09-22).
-  const topCategory = [...appearances].sort((a, b) => a.rank - b.rank)[0]?.benchmark.category;
+  const topCategory = [...appearances]
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))[0]?.benchmark.category;
   const categoryNoun = topCategory ? (CATEGORY_NOUN[topCategory] ?? topCategory.toLowerCase()) : "";
-  const title = categoryNoun
+  let title = categoryNoun
     ? `${p.name}: ${categoryNoun} benchmark ${new Date().getUTCFullYear()}, live rank`
     : `${p.name} benchmark: live rank and measured numbers`;
 
@@ -285,13 +286,31 @@ export async function generateMetadata({
       : metaRanked.length > 0
         ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]}.`
         : fallbackDescription;
-  const description = capSnippet(
+  let description = capSnippet(
     !registryLine
       ? measuredLead
       : prefix
         ? `${prefix} ${measuredLead}`.trim()
         : `${measuredLead} ${registryClause}${registryClause ? "." : ""}`.trim(),
   );
+
+  // Hyperliquid frontends: brand queries (tuleep, invo, apexliquid,
+  // dextrabot: 600+ impressions, 0 clicks in the 2026-06/09 window) landed
+  // on "#32 of 104 at $70 (24h)", a rank on a daily-cut figure. The 30-day
+  // cohort row says what the product is and how big it is; lead with it.
+  const topBench = [...appearances]
+    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked)[0]?.benchmark.slug;
+  if (topBench === "hyperliquid-frontends" && (await isHlBuilderSlug(p.slug))) {
+    const row = (await fetchHlCohort())?.rows.find((r) => r.slug === p.slug);
+    if (row && row.volume30d > 0) {
+      const long = `${p.name}: Hyperliquid frontend fees, volume and users, 30d`;
+      title = long.length <= 60 ? long : `${p.name}: Hyperliquid frontend fees, volume and users`;
+      const bps = row.volume30d > 0 ? ((row.revenue30d / row.volume30d) * 10_000).toFixed(1) : "0";
+      description = capSnippet(
+        `${p.name}: ${fmtUnit(row.volume30d, "usd")} Hyperliquid volume, ${row.users30d.toLocaleString("en-US")} traders and ${fmtUnit(row.revenue30d, "usd")} in builder fees over 30 days, effective fee ${bps} bps, from the public builder fills feed.`,
+      );
+    }
+  }
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point

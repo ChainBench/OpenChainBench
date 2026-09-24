@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider, canonicalize } from "@/lib/providers";
@@ -250,6 +250,10 @@ export async function generateMetadata({
   // count dipped is a render-window accident, so it noindexes and recovers:
   // /compare/fomo-vs-invo sits at exactly two live shared benches and earns
   // 36 of the site's 289 clicks, and a 404 there would be self-inflicted.
+  // Ten such pairs among Hyperliquid frontends held 637 brand-query
+  // impressions while 404ing (audit 2026-09-24); the one bench both
+  // products sit on is the page that lists them side by side.
+  if (!isCurated && sharedSlugsForMeta.length === 1) permanentRedirect(`/benchmarks/${sharedSlugsForMeta[0]}`);
   if (!isCurated && sharedSlugsForMeta.length < 2) notFound();
   // A pair whose shared benches are all RWA compares assets (AAPL vs
   // NVDA), not providers; it stays reachable and noindexed, and the link
@@ -840,6 +844,8 @@ export default async function ComparePage({
   // noindex, not here with a 404, so a flapping bench cannot delete a page
   // that earns clicks. Curated pairs are exempt.
   if (getComparePair(pair.slug) === undefined && shared.length < 2) {
+    const only = sharedBenchSlugs(pair, a.appearances, b.appearances);
+    if (only.length === 1) permanentRedirect(`/benchmarks/${only[0]}`);
     return notFound();
   }
 

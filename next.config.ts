@@ -295,8 +295,15 @@ const nextConfig: NextConfig = {
       // The /hyperliquid and /perps hubs (no slug) are untouched.
       // The hub's own image routes (/hyperliquid/opengraph-image) must
       // not match: a bare :slug would 308 them to a 404.
+      // Unlabeled builder addresses have no product page (hex slugs 404
+      // by design); their old detail URLs land on the bench that lists them.
       {
-        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon).*)",
+        source: "/hyperliquid/:slug(0x[0-9a-fA-F]+)",
+        destination: "/benchmarks/hyperliquid-frontends",
+        permanent: true,
+      },
+      {
+        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|0x).*)",
         destination: "/products/:slug#hl",
         permanent: true,
       },

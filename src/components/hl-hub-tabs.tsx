@@ -76,10 +76,24 @@ export function HlHubTabs({
         </TabButton>
       </div>
 
-      {tab === "frontends" && frontends && (
-        <FrontendsView data={frontends} historyBySlug={historyBySlug} />
+      {/* Both cohorts render into the HTML (the title promises both);
+          the inactive one is hidden, not unmounted. */}
+      {frontends && (
+        <section hidden={tab !== "frontends"} aria-hidden={tab !== "frontends"}>
+          <h2 className="label-mono text-ink-muted mb-3">
+            Frontends ranked by 30-day builder fees
+          </h2>
+          <FrontendsView data={frontends} historyBySlug={historyBySlug} />
+        </section>
       )}
-      {tab === "hip3" && hip3 && <Hip3View data={hip3} />}
+      {hip3 && (
+        <section hidden={tab !== "hip3"} aria-hidden={tab !== "hip3"}>
+          <h2 className="label-mono text-ink-muted mb-3">
+            HIP-3 dexes ranked by 24h notional volume
+          </h2>
+          <Hip3View data={hip3} />
+        </section>
+      )}
     </>
   );
 }

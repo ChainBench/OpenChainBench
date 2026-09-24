@@ -1,7 +1,7 @@
 slug: which-hyperliquid-frontend-generates-the-most-hip3-revenue
 question: "Which Hyperliquid HIP-3 deployer generates the most revenue in 2026?"
 short_answer: |
-  {{best_name}} runs by far the largest HIP-3 dex on Hyperliquid, at {{best_p50}} of notional traded over the last 24 hours across {{count}} live deployers (trade.xyz, Paragon, Markets by Kinetiq, EntropyIO). Deployer fee revenue itself is not published by the chain's public endpoints, so the ranking is by volume, the base every deployer's fee cut is taken from.
+  {{best_name}} leads {{count}} live HIP-3 dexes on Hyperliquid at {{best_p50}} of notional traded over the last 24 hours. Deployer fee revenue itself is not published by the chain's public endpoints, so the ranking is by volume, the base every deployer's fee cut is taken from.
 
 benchmark: hyperliquid-hip3-deployers
 
@@ -26,7 +26,7 @@ faq:
   - q: "What is HIP-3 and how does deployer revenue work?"
     a: "Hyperliquid Improvement Proposal 3 lets any team that stakes 500,000 HYPE deploy its own perpetual markets on HyperCore under a dedicated namespace, set the fee policy for those markets, and collect a deployer cut on every fill. Deployers can configure an additional fee share between 0 and 300 percent (0 to 100 percent in growth mode) on top of the base fee. It powers the tokenized stock, index and commodity perps on Hyperliquid, which represent a large share of platform volume."
   - q: "What puts a deployer at the top of this table?"
-    a: "Catalog depth and open interest. trade.xyz operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 100 live markets including the large cap US names, and captures the bulk of HIP-3 open interest. Through Q3 2026 it led on breadth, notional and open interest by a wide margin. The other live deployers occupy narrower niches: Paragon on rates and macro, Markets by Kinetiq on index and volatility markets, EntropyIO on thematic and pre IPO markets."
+    a: "Catalog depth and open interest. The Markets and Open interest columns on the bench page show which dex lists the most markets and holds the most positions, and the leader is recomputed from the live figures on every render. The live deployers occupy different niches: tokenized equities and commodities, rates and macro, index and volatility markets, thematic and pre IPO markets."
   - q: "How does HIP-3 compare to Hyperliquid builder code rebates?"
     a: "Different layers of the same product stack. Builder codes are a per fill rebate paid to whoever brought the user, covered by the hyperliquid-frontends bench. HIP-3 deployer fees are paid by every fill on a namespaced market to the team that deployed the market. A frontend collects builder rebates on every fill it routes regardless of which dex the fill hits; a deployer earns only on its own markets but on every fill on them, whichever frontend routed it."
   - q: "How does OpenChainBench measure HIP-3 dexes?"
