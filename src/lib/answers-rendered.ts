@@ -36,7 +36,13 @@ export type RenderedAnswer = Answer & {
 
 export const loadRenderedAnswers = cache(async (): Promise<RenderedAnswer[]> => {
   const answers = await loadAllAnswers();
-  return Promise.all(answers.map((a) => renderAnswer(a)));
+  const rendered = await Promise.all(answers.map((a) => renderAnswer(a)));
+  // Same rule as `loadAnswer`, which the detail page runs: an answer whose bench this
+  // deployment cannot load renders a 404 there, so it must not be listed here either. The
+  // case is a spec the worker's aggregate has not swept yet; without this filter the four
+  // machine-readable surfaces published a dead URL next to the half-filled sentence the
+  // pending guard exists to prevent (review 2026-09-24).
+  return rendered.filter((a): a is RenderedAnswer & { bench: Benchmark } => a.bench !== undefined);
 });
 
 async function renderAnswer(a: Answer): Promise<RenderedAnswer> {
