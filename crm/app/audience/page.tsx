@@ -20,24 +20,62 @@ const SURFACE_SERIES = [
 
 const EVENT_LABEL: Record<string, string> = { markdown_read: "Markdown", stat_read: "/api/stat", citable_read: "/api/citable" };
 
-export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string; range?: string }> }) {
+type Kpi = "visitors" | "new" | "returning" | "sessions" | "bounce" | "pageviews";
+type Grain = "day" | "week" | "month";
+
+const KPI_META: Record<Kpi, { label: string; definition: string; additive: boolean; pct?: boolean }> = {
+  visitors: { label: "Active visitors", definition: "Distinct device cookies with at least one pageview in the bucket. Uniques do not add up across days: a week or a month is the sum of its days' uniques, an upper bound.", additive: false },
+  new: { label: "New visitors", definition: "Visitors whose first pageview ever (on this PostHog history, since 2026-09-20) falls in the bucket. Additive.", additive: true },
+  returning: { label: "Returning visitors", definition: "GA4 definition: visitors active in the bucket who had a pageview on an earlier day. A visitor first seen on Monday and back on Thursday counts as new for the week and as returning on Thursday. Per bucket, not additive across days.", additive: false },
+  sessions: { label: "Sessions", definition: "Distinct PostHog session ids with a pageview in the bucket. Additive.", additive: true },
+  pageviews: { label: "Pageviews", definition: "HTML pageviews from the browser SDK. Additive.", additive: true },
+  bounce: { label: "Bounce rate", definition: "Share of the bucket's sessions with a single pageview (sessions dated by their first pageview).", additive: false, pct: true },
+};
+
+function bucketOf(day: string, grain: Grain): string {
+  if (grain === "day") return day;
+  if (grain === "month") return day.slice(0, 7);
+  const d = new Date(`${day}T00:00:00Z`);
+  const dow = (d.getUTCDay() + 6) % 7; // Monday = 0
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Series for one KPI at one grain, from the daily sections. */
+function kpiSeries(t: { audienceDaily?: { day: string; visitors: number; newVisitors: number; returningVisitors: number; sessions: number; pageviews: number }[]; bounceDaily?: { day: string; sessions: number; bounced: number }[] }, kpi: Kpi, grain: Grain): { bucket: string; value: number }[] {
+  const acc = new Map<string, { num: number; den: number }>();
+  if (kpi === "bounce") {
+    for (const d of t.bounceDaily ?? []) {
+      const b = bucketOf(d.day, grain);
+      const cur = acc.get(b) ?? { num: 0, den: 0 };
+      cur.num += d.bounced;
+      cur.den += d.sessions;
+      acc.set(b, cur);
+    }
+    return [...acc.entries()].map(([bucket, v]) => ({ bucket, value: v.den > 0 ? v.num / v.den : 0 }));
+  }
+  for (const d of t.audienceDaily ?? []) {
+    const b = bucketOf(d.day, grain);
+    const cur = acc.get(b) ?? { num: 0, den: 0 };
+    cur.num += kpi === "visitors" ? d.visitors : kpi === "new" ? d.newVisitors : kpi === "returning" ? d.returningVisitors : kpi === "sessions" ? d.sessions : d.pageviews;
+    acc.set(b, cur);
+  }
+  return [...acc.entries()].map(([bucket, v]) => ({ bucket, value: v.num }));
+}
+
+export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string; range?: string; kpi?: string; g?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
   const t = snap.traffic;
   const a = t.audience;
-  const total = a ? a.newVisitors + a.returningVisitors : 0;
-  // "Returning" means first seen before the 7-day window. PostHog only has
-  // events since the first day of `daily` (2026-09-20), so until that day is
-  // a week old nobody can be returning and the card says why instead of
-  // printing a zero that reads as a finding. Repeat visitors (active on two
-  // or more days inside the window) is the figure that means something now.
+  const active = a?.activeVisitors ?? 0;
   const firstDay = t.daily?.[0]?.day ?? null;
-  const windowStart = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
-  const historyTooShort = Boolean(firstDay && firstDay > windowStart);
-  const returningSub = historyTooShort
-    ? `not measurable yet: history starts ${firstDay}`
-    : a && total > 0
-      ? `${fmtPct(a.returningVisitors / total)} of active, first seen before the window`
-      : "first seen before the window";
+  const kpi: Kpi | null = (["visitors", "new", "returning", "sessions", "bounce", "pageviews"] as const).find((k) => k === sp.kpi) ?? null;
+  const grain: Grain = sp.g === "week" || sp.g === "month" ? sp.g : "day";
+  const detail = kpi ? kpiSeries(t, kpi, grain) : [];
+  const detailShown = grain === "day" ? detail.slice(-28) : detail;
+  const fmtVal = (v: number) => (kpi === "bounce" ? fmtPct(v) : fmtInt(v));
+  const kpiHref = (k: Kpi) => `/audience?kpi=${k}&g=${grain}${sp.range ? `&range=${sp.range}` : ""}`;
+  const grainHref = (g: Grain) => `/audience?kpi=${kpi}&g=${g}${sp.range ? `&range=${sp.range}` : ""}`;
   const range = sp.range === "all" ? "all" : "28";
   const surfacesAll = t.surfaces ?? [];
   const surfaces = range === "all" ? surfacesAll : surfacesAll.slice(-28);
@@ -54,12 +92,66 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
   return (
     <Shell current="/audience" snapshot={snap} refreshFlag={sp.refresh}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Kpi label="New visitors, 7 d" value={fmtInt(a?.newVisitors)} sub={a && total > 0 ? `${fmtPct(a.newVisitors / total)} of active` : undefined} />
-        <Kpi label="Returning visitors, 7 d" value={historyTooShort ? "n/a" : fmtInt(a?.returningVisitors)} sub={returningSub} />
-        <Kpi label="Repeat visitors, 7 d" value={fmtInt(a?.repeatVisitors)} sub={a && a.newVisitors + a.returningVisitors > 0 ? `${fmtPct(a.repeatVisitors / (a.newVisitors + a.returningVisitors))} of active, seen on 2+ days` : "seen on 2+ days in the window"} />
-        <Kpi label="Sessions, 7 d" value={fmtInt(t.engagement?.sessions)} />
-        <Kpi label="Bounce rate" value={fmtPct(t.engagement?.bounceRate)} sub="single-pageview sessions" />
+        {(
+          [
+            ["visitors", "Active visitors, 7 d", fmtInt(active), "click for the daily series"],
+            ["new", "New visitors, 7 d", fmtInt(a?.newVisitors), active > 0 && a ? `${fmtPct(a.newVisitors / active)} of active, first pageview in the window` : undefined],
+            ["returning", "Returning visitors, 7 d", fmtInt(a?.returningVisitors), active > 0 && a ? `${fmtPct(a.returningVisitors / active)} of active, seen on an earlier day` : "seen on an earlier day"],
+            ["sessions", "Sessions, 7 d", fmtInt(t.engagement?.sessions), undefined],
+            ["bounce", "Bounce rate, 7 d", fmtPct(t.engagement?.bounceRate), "single-pageview sessions"],
+          ] as const
+        ).map(([k, label, value, sub]) => (
+          <a key={k} href={kpi === k ? `/audience${sp.range ? `?range=${sp.range}` : ""}` : kpiHref(k)} className="block" style={kpi === k ? { outline: "1px solid var(--accent)", borderRadius: 8 } : undefined}>
+            <Kpi label={label} value={value} sub={sub} />
+          </a>
+        ))}
       </section>
+
+      {kpi && (
+        <section className="mt-3 panel p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="label">
+              {KPI_META[kpi].label}, {grain === "day" ? `daily, last ${detailShown.length} d` : grain === "week" ? `weekly (Monday to Sunday), ${detailShown.length} w` : `monthly, ${detailShown.length} m`}
+              {firstDay ? `, history since ${firstDay}` : ""}
+            </p>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              {(["day", "week", "month"] as const).map((g, i) => (
+                <span key={g}>
+                  {i > 0 ? " · " : ""}
+                  <a href={grainHref(g)} style={{ color: grain === g ? "var(--ink)" : undefined }}>{g === "day" ? "daily" : g === "week" ? "weekly" : "monthly"}</a>
+                </span>
+              ))}
+              {" · "}
+              <a href={kpi === "pageviews" ? kpiHref("visitors") : kpiHref("pageviews")}>{kpi === "pageviews" ? "visitors" : "pageviews"}</a>
+            </p>
+          </div>
+          {detailShown.length > 1 ? (
+            <>
+              <div className="mt-2">
+                <Lines series={[{ name: KPI_META[kpi].label, color: "var(--accent)", values: detailShown.map((d) => (kpi === "bounce" ? Math.round(d.value * 1000) / 10 : d.value)) }]} />
+              </div>
+              <div className="mt-1 flex justify-between text-[11px]" style={{ color: "var(--faint)" }}>
+                <span>{detailShown[0].bucket}</span>
+                <span>peak {fmtVal(Math.max(...detailShown.map((d) => d.value)))}</span>
+                <span>{detailShown[detailShown.length - 1].bucket}</span>
+              </div>
+              <table className="data mt-3">
+                <tbody>
+                  {[...detailShown].reverse().slice(0, grain === "day" ? 14 : 12).map((d) => (
+                    <tr key={d.bucket}>
+                      <td className="mono">{d.bucket}</td>
+                      <td className="num mono">{fmtVal(d.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <Empty text={detailShown.length === 1 ? `One bucket so far: ${detailShown[0].bucket}, ${fmtVal(detailShown[0].value)}.` : "No daily series yet; the next refresh fills it."} />
+          )}
+          <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>{KPI_META[kpi].definition}{kpi === "visitors" && grain !== "day" ? " Weekly uniques from PostHog are on the Overview page." : ""}</p>
+        </section>
+      )}
 
       <section className="mt-6 panel p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
