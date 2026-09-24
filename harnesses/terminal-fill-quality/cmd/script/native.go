@@ -177,6 +177,10 @@ type nativeFeed struct {
 	// advances on success, and it sat 623,045 blocks behind head for days
 	// while six products published All chains rows without BNB.
 	span   map[string]int64
+	// Shared with State by reference, like the cursor: chain -> when its
+	// feed last failed, so compute() can tell a chain it cannot read from
+	// a chain nobody trades on.
+	down   map[string]int64
 	polled map[string][2]int64
 	box    map[string]*xinboxTx
 	up     map[string]bool
@@ -366,11 +370,14 @@ func rangeRefusal(err error) bool {
 	return false
 }
 
-func newNativeFeed(httpc *http.Client, cursor map[string]int64) *nativeFeed {
+func newNativeFeed(httpc *http.Client, cursor, down map[string]int64) *nativeFeed {
 	if cursor == nil {
 		cursor = map[string]int64{}
 	}
-	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
+	if down == nil {
+		down = map[string]int64{}
+	}
+	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, down: down, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
 }
 
 // poll reads every router log since the cursor (at most 2,000 blocks a
@@ -396,21 +403,13 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		var headHex string
 		if err := evmCall(ctx, f.http, c.rpc, "eth_blockNumber", []any{}, &headHex); err != nil {
 			f.up[c.slug] = false
+			if _, seen := f.down[c.slug]; !seen {
+				f.down[c.slug] = time.Now().Unix()
+			}
+			gNativeUp.WithLabelValues(c.slug).Set(0)
 			continue
 		}
 		head := hexInt(headHex)
-		from := f.cursor[c.slug] + 1
-		if from == 1 || head-from > 2000 {
-			if from != 1 {
-				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-200 (the gap is not read nor sampled)", c.slug, from-1, head-from, head)
-				cSkipped.WithLabelValues(c.slug).Add(float64(head - 200 - from))
-			}
-			from = head - 200 // first run, or too far behind: start from the recent past
-		}
-		if from > head {
-			f.up[c.slug] = true
-			continue
-		}
 		// Ranges of at most 400 blocks (50 on Ethereum, where the public
 		// nodes cap eth_getLogs at 50 blocks; ten minutes of chain), a few
 		// per tick: a public RPC may refuse or redirect a heavier query.
@@ -421,15 +420,37 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				span = 50
 			}
 		}
-		// Enough chunks to cover a tick's worth of blocks at whatever span
-		// the endpoint allows, bounded so a tiny cap cannot turn one tick
-		// into hundreds of calls.
-		chunks := int(400/span) + 1
-		if chunks < 5 {
-			chunks = 5
+		// What one tick can actually read. The resume window used to be a
+		// constant 200 blocks, which is far less than this and far less
+		// than a fast chain produces between polls: Robinhood ran about
+		// 3,000 blocks ahead every tick, so the "too far behind" branch
+		// fired every time, jumped back to head-200, and about 93 % of the
+		// chain was never read. cSkipped had been counting it all along.
+		const maxChunks = 40
+		budget := span * maxChunks
+		from := f.cursor[c.slug] + 1
+		skipped := int64(0)
+		if from == 1 || head-from > budget {
+			if from != 1 {
+				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-%d (the gap is not read nor sampled)", c.slug, from-1, head-from, head, budget)
+				// Counted only if this poll then succeeds. A stuck cursor
+				// would otherwise re-count the same gap on every tick and
+				// bury the signal under an impossible number.
+				skipped = head - budget - from
+			}
+			from = head - budget + 1 // first run, or too far behind: read as much as a tick can
 		}
-		if chunks > 40 {
-			chunks = 40
+		if from > head {
+			f.up[c.slug] = true
+			continue
+		}
+		// Only as many calls as the gap in front of us needs.
+		chunks := int((head-from)/span) + 1
+		if chunks < 1 {
+			chunks = 1
+		}
+		if chunks > maxChunks {
+			chunks = maxChunks
 		}
 		start := from
 		var logs []evmLog
@@ -440,7 +461,19 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				to = head
 			}
 			var part []evmLog
-			if err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
+			err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part)
+			if err != nil && strings.Contains(err.Error(), "empty result") {
+				// No logs in that range is the right answer, not a failure:
+				// the routers did not trade in those blocks. evmCall reports
+				// a null RPC result as an error, and treating it as one
+				// stalled the cursor, so a chain fell behind for being quiet
+				// and the wider gap made the next window likelier to be
+				// quiet too. Two other call sites already skip this.
+				f.cursor[c.slug] = to
+				from = to + 1
+				continue
+			}
+			if err != nil {
 				// A refusal about the range is the endpoint telling us its
 				// cap. Shrink and let the next tick use it, rather than
 				// repeat the same rejected call forever.
@@ -465,6 +498,18 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			from = to + 1
 		}
 		f.up[c.slug] = !failed
+		if failed {
+			if _, seen := f.down[c.slug]; !seen {
+				f.down[c.slug] = time.Now().Unix() // first failure of this outage
+			}
+		} else {
+			delete(f.down, c.slug)
+		}
+		gNativeUp.WithLabelValues(c.slug).Set(map[bool]float64{true: 1}[!failed])
+		gNativeLag.WithLabelValues(c.slug).Set(float64(head - f.cursor[c.slug]))
+		if !failed && skipped > 0 {
+			cSkipped.WithLabelValues(c.slug).Add(float64(skipped))
+		}
 		if f.cursor[c.slug] >= start {
 			f.polled[c.slug] = [2]int64{start, f.cursor[c.slug]}
 		} else {
