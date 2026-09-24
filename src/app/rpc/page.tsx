@@ -5,6 +5,7 @@ import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
 import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
+import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
@@ -254,6 +255,16 @@ export default async function RpcHubPage() {
           </ul>
         </section>
       )}
+
+      {/* The answer pages built on these benches. The bench pages have linked their answers
+          since the 2026-09-19 audit; this hub, which ranks for the head term the answers
+          expand on, still did not link any of them. Slugs are the chains this hub actually
+          lists, plus the RPC benches that are not a chain page (MEV protection), whose
+          answers belong to the same cluster. */}
+      <AnswersForBench
+        benchSlugs={[...linkableSlugs, ...NON_CHAIN_RPC_SLUGS, "rpc-capabilities", "rpc-keyed-latency"]}
+        heading="Questions these benchmarks answer"
+      />
 
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <h2 className="label-mono text-ink-faint mb-2">Methodology</h2>

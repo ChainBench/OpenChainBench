@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { loadAllAnswers } from "@/lib/answers";
-import { loadBenchmark } from "@/lib/spec";
-import { renderTemplate } from "@/lib/bench-template";
-import {
-  benchDataPendingFallback,
-  cleanLeftoverTokens,
-  hasLiveDataTokens,
-} from "@/lib/answers-template";
-import { leader } from "@/lib/citation";
+import { loadRenderedAnswers } from "@/lib/answers-rendered";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -24,48 +16,19 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function AnswersHubPage() {
-  const answers = await loadAllAnswers();
-
-  // Resolve template placeholders ({{best_name}}, {{best_p50}}, ...) on
-  // the hub itself, otherwise raw tokens leak into the visible
-  // short_answer preview. Each YAML's `short_answer` is authored against
-  // its referenced bench, so we load that bench and run renderTemplate
-  // before the JSX touches the string.
-  //
-  // Tokens that renderTemplate can't resolve get a neutral fallback so
-  // a draft / awaiting-data bench (every provider's p50 still at 0)
-  // never surfaces raw `{{best_name}}` to the SERP. Same pattern as
-  // resolveLeftoverPlaceholders on the per-chain bench page.
-  const rendered = await Promise.all(
-    answers.map(async (a) => {
-      const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
-      // Match the pending-data guard on the answer detail page: if the
-      // referenced bench has no defensible leader AND the source string
-      // depends on live tokens, swap the whole short_answer with the
-      // canned bench-scoped fallback so the hub never surfaces the
-      // grammatically broken "The current leader currently leads at
-      // measured live (p50, 24h)" sentence.
-      if (bench && !leader(bench) && hasLiveDataTokens(a.short_answer)) {
-        const fallback = benchDataPendingFallback(
-          bench.title,
-          `${SITE.url}/benchmarks/${bench.slug}`,
-        );
-        return { ...a, shortAnswer: fallback.short_answer };
-      }
-      const partial = bench
-        ? renderTemplate(a.short_answer, bench)
-        : a.short_answer;
-      const shortAnswer = cleanLeftoverTokens(partial);
-      return { ...a, shortAnswer };
-    }),
-  );
+  // Template placeholders ({{best_name}}, {{best_p50}}, ...) are resolved in
+  // `answers-rendered`, which also swaps the whole sentence for the canned bench-scoped
+  // fallback when the referenced bench has no defensible leader. The machine-readable
+  // surfaces (llms.txt, llms-full.txt, /api/citable, MCP) read the same rendering, so the
+  // hub and a model quoting us never disagree on what an answer says.
+  const rendered = await loadRenderedAnswers();
 
   const itemList = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "OpenChainBench answers",
-    numberOfItems: answers.length,
-    itemListElement: answers.map((a, i) => ({
+    numberOfItems: rendered.length,
+    itemListElement: rendered.map((a, i) => ({
       "@type": "ListItem",
       position: i + 1,
       name: a.question,
@@ -121,7 +84,7 @@ export default async function AnswersHubPage() {
         verdict, no marketing.
       </p>
 
-      {answers.length === 0 ? (
+      {rendered.length === 0 ? (
         <p className="mt-10 text-sm text-ink-muted">
           No answers published yet. Check back soon.
         </p>
@@ -131,7 +94,7 @@ export default async function AnswersHubPage() {
             All answers
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
-            {answers.length} questions answered with live OpenChainBench
+            {rendered.length} questions answered with live OpenChainBench
             data, each with its own methodology and limitations.
           </p>
           <ul className="mt-6 divide-y divide-rule border-y border-rule">

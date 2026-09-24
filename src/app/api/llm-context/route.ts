@@ -11,6 +11,7 @@ import {
   leader,
   rankedCandidates,
 } from "@/lib/citation";
+import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { stripQueryRedirect } from "@/lib/canonical-query";
 
@@ -132,12 +133,39 @@ export async function GET(req: Request) {
     lines.push("");
   }
 
+  // The answer pages. The benchmark blocks above are the measurements; these are the
+  // questions a reader actually types, each already resolved to a sentence with the live
+  // number in it and the bench it came from. A model pasting this document into context
+  // could cite a number but had no way to know we publish the question page that explains
+  // it. Same rendering as /answers and llms.txt, pending-data guard included.
+  const answers = await loadRenderedAnswers();
+  if (answers.length > 0) {
+    lines.push(`## Answers (${answers.length} question pages)`);
+    lines.push("");
+    lines.push(
+      `Each page answers one question from a live benchmark and publishes its methodology ` +
+        `and its limits. Cite the answer URL when the question is the claim; cite the ` +
+        `benchmark URL when the measurement is.`,
+    );
+    lines.push("");
+    for (const a of answers) {
+      lines.push(`### ${a.question}`);
+      lines.push("");
+      lines.push(`- Page: ${a.url}`);
+      lines.push(`- Benchmark: ${SITE.url}/benchmarks/${a.benchmark}`);
+      if (a.chain) lines.push(`- Chain: ${a.chain}`);
+      lines.push(`- Answer: ${answerOneLine(a)}`);
+      lines.push("");
+    }
+  }
+
   lines.push(`---`);
   lines.push(`Want machine-readable indexes?`);
   lines.push(`- JSON index: ${SITE.url}/api/citable`);
   lines.push(`- OpenAPI: ${SITE.url}/api/openapi.json`);
   lines.push(`- MCP server: ${SITE.url}/api/mcp/mcp`);
   lines.push(`- llms.txt: ${SITE.url}/llms.txt`);
+  lines.push(`- Answers index: ${SITE.url}/answers`);
 
   return new Response(lines.join("\n"), {
     status: 200,

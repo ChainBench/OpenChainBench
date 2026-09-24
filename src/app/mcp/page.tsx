@@ -179,7 +179,7 @@ export default async function McpPage() {
         </p>
         <CodeBlock value={CLAUDE_DESKTOP_CONFIG} name="claude_desktop" />
         <p className="mt-3 text-xs text-ink-muted leading-relaxed">
-          Once connected, the three tools appear under the 🔌 icon in the
+          Once connected, the four tools appear under the 🔌 icon in the
           chat input. Ask Claude{" "}
           <em>“which crypto aggregator is fastest on Base today?”</em>{" "}
           and it will call <code className="font-mono text-[0.92em]">get_benchmark</code>{" "}
@@ -250,6 +250,11 @@ export default async function McpPage() {
             tag="Tool"
             title="get_benchmark(slug, chain?, region?)"
             desc="Full detail for one bench: rankings, sparkline, headline, paste-ready citation quote, methodology. Filter by chain or region when the spec declares them."
+          />
+          <Tile
+            tag="Tool"
+            title="list_answers(benchmark?)"
+            desc="Every published answer page: the plain question, the sentence that answers it from live data, and the bench behind it. The call to make when the user asks in words rather than by benchmark name."
           />
           <Tile
             tag="Tool"
