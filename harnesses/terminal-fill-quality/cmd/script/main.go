@@ -2106,6 +2106,35 @@ func flowOf(stats []TerminalStats) map[string]float64 {
 	return out
 }
 
+// spread picks n rows evenly across the whole list rather than taking
+// the head of it.
+//
+// byTerm is newest-first, so taking the head gave a row the last n swaps
+// — a slice of the past hour standing in for a 24h median. On a row with
+// fifteen rows that is survivable; on one cut to its floor it is not, and
+// pump-fun-ethereum read 1719 against a published 646 with one row of
+// nine below the median. Even spacing makes the rows shown cover the
+// window the figure covers.
+func spread(rows []Swap, n int) []Swap {
+	if n >= len(rows) {
+		return rows
+	}
+	if n <= 0 {
+		return nil
+	}
+	out := make([]Swap, 0, n)
+	// Sample at the midpoint of each of n equal buckets, so the first and
+	// last rows are not systematically favoured.
+	for i := 0; i < n; i++ {
+		idx := (2*i + 1) * len(rows) / (2 * n)
+		if idx >= len(rows) {
+			idx = len(rows) - 1
+		}
+		out = append(out, rows[idx])
+	}
+	return out
+}
+
 func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swap {
 	// Every swap each row has in the window, newest first. The caps are
 	// applied after the shares are known, not while collecting, because
@@ -2243,10 +2272,7 @@ func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swa
 
 	out := make([]Swap, 0, total)
 	for _, slug := range slugs {
-		rows := byTerm[slug]
-		if len(rows) > quota[slug] {
-			rows = rows[:quota[slug]]
-		}
+		rows := spread(byTerm[slug], quota[slug])
 		for _, s := range rows {
 			p, chain := productOf(s.Terminal)
 			if a, ok := productAlias[p]; ok {
