@@ -2,9 +2,10 @@
  * Shared wire types for the Hyperliquid long-window archive layer.
  *
  * The archive is written by an out-of-process Go service (hl-archive) that
- * tails the local hl-node fill stream, aggregates per-builder windows the
- * Prom snapshot can't hold (90d, 180d, 1y, all-time), and parks the result
- * in Upstash for the OpenChainBench Next.js app to read on demand.
+ * ingests Hyperliquid's public per-builder daily fills feed, aggregates
+ * per-builder windows the Prom snapshot can't hold (90d, 180d, 1y,
+ * all-time), and parks the result in Upstash for the OpenChainBench
+ * Next.js app to read on demand.
  *
  * Wire shape is documented here so the Go side and the Next.js readers
  * never drift: any field addition is a v2 of the Upstash key.

@@ -157,12 +157,12 @@ export async function HlFrontendSection({
       )}
 
       <p className="mt-8 text-[11px] text-ink-faint italic">
-        Source: local hl node tailing every Hyperliquid mainnet fill. Same
-        rolling-30d gauges as the{" "}
+        Source: Hyperliquid&apos;s public per-builder daily fills feed, last
+        complete UTC day. Same 30d gauges as the{" "}
         <Link href="/hyperliquid" className="underline hover:no-underline">
           /hyperliquid
         </Link>{" "}
-        hub; refreshes hourly.
+        hub; moves once a day when the feed publishes.
       </p>
     </section>
   );

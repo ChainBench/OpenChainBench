@@ -65,8 +65,9 @@ function writePin(v: boolean) {
 }
 /** How long the pointer has to be away before the rail narrows. Long
  *  enough to cross the rail on the way somewhere else without it
- *  collapsing under the cursor, short enough to feel deliberate. */
-const COLLAPSE_DELAY_MS = 1600;
+ *  collapsing under the cursor, short enough that it is out of the way
+ *  by the time the eye lands on the page (1.6 s read as lingering). */
+const COLLAPSE_DELAY_MS = 450;
 /** The rail starts wide so a first-time visitor sees the sections, then
  *  narrows once — which is also how they learn it does that. */
 const FIRST_COLLAPSE_MS = 2600;

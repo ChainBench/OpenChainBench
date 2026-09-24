@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 /**
  * Per-builder top-traders table. Mirrors HyperTracker's
  * "Trader leaderboard" — paginated, sortable, 30d window. Data comes
- * from the on-node harness via /api/builder/<slug>/top-users.
+ * from the feed harness via /api/builder/<slug>/top-users.
  *
  * The harness publishes the top-500 wallets by 30d volume; we render
  * 25 at a time client-side and let the user sort by any column. No

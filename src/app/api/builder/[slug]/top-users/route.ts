@@ -1,10 +1,10 @@
 /**
  * Top-users data source for the per-builder dashboard. Server-side
- * proxy to the on-node harness `/top-users/<slug>` endpoint, same
+ * proxy to the feed harness `/top-users/<slug>` endpoint, same
  * Caddy basic_auth as the daily-series proxy.
  *
  * Browser path: GET /api/builder/<slug>/top-users
- *  → reads HL_NODE_URL + HL_NODE_AUTH env vars
+ *  → reads HL_FEED_URL (optional) + HL_NODE_AUTH env vars
  *  → forwards to <node>/top-users/<slug>
  *  → echoes the harness JSON to the client with a CDN-friendly cache
  *    header so the table-render fan-out collapses on the edge.
@@ -16,6 +16,8 @@ import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const HL_FEED_DEFAULT_URL = "https://hl-archive.openchainbench.com";
 
 type Params = { slug: string };
 
@@ -31,11 +33,14 @@ export async function GET(
     return NextResponse.json({ error: "not_a_builder" }, { status: 404 });
   }
 
-  const nodeUrl = process.env.HL_NODE_URL?.trim();
+  // The feed harness sits behind the VPS Caddy (hl-archive host, basic
+  // auth). HL_FEED_URL overrides the host; HL_NODE_AUTH is the existing
+  // base64 user:password the same Caddy users accept.
+  const nodeUrl = process.env.HL_FEED_URL?.trim() || HL_FEED_DEFAULT_URL;
   const auth = process.env.HL_NODE_AUTH?.trim();
-  if (!nodeUrl || !auth) {
+  if (!auth) {
     return NextResponse.json(
-      { error: "hl_node_not_configured" },
+      { error: "hl_feed_not_configured" },
       { status: 503 },
     );
   }

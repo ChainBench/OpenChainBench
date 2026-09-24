@@ -24,7 +24,11 @@ const PL = `event = '$pageleave' AND ${HOST_FILTER}`;
 const SERVER_READS = `event IN ('markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
 const SURFACES = `event IN ('$pageview', 'markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
 
-export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number };
+export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number; ai: number; search: number };
+/** One cohort week, and how many of it came back n weeks later. */
+export type RetentionRow = { cohort: string; week: number; visitors: number };
+/** How many visitors were active on exactly `days` distinct days. */
+export type FrequencyRow = { days: number; visitors: number };
 export type WeeklyPoint = { week: string; visitors: number; ai: number; search: number; pageviews: number };
 export type PageRow = { path: string; section: Section; visitors: number; prevVisitors: number; pageviews: number };
 export type ReferrerRow = { domain: string; channel: Channel; visitors: number; prevVisitors: number; pageviews: number };
@@ -92,11 +96,15 @@ export type Traffic = {
   engagedPages: EngagedPageRow[];
   notFound: NotFoundRow[];
   noResults: NoResultRow[];
+  retention: RetentionRow[];
+  frequency: FrequencyRow[];
 };
 
 export const QUERIES = {
   daily: () => `
-    SELECT toDate(timestamp) AS day, count() AS pageviews, uniq(distinct_id) AS visitors, uniq(properties.$session_id) AS sessions
+    SELECT toDate(timestamp) AS day, count() AS pageviews, uniq(distinct_id) AS visitors, uniq(properties.$session_id) AS sessions,
+           uniqIf(distinct_id, ${referrerPredicate("ai")}) AS ai,
+           uniqIf(distinct_id, ${referrerPredicate("search")}) AS search
     FROM events
     WHERE ${PV} AND timestamp >= toStartOfDay(now() - INTERVAL 27 DAY)
     GROUP BY day ORDER BY day`,
@@ -245,6 +253,31 @@ export const QUERIES = {
     SELECT lower(properties.query) AS q, count() AS n
     FROM events WHERE event = 'search_no_result' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
     GROUP BY q ORDER BY n DESC LIMIT 40`,
+  // Weekly cohorts. The inner query is deliberately unbounded in time so
+  // a visitor's cohort is the week they were first seen ever, not the
+  // first week of the window: bound it and everyone already active looks
+  // like a new arrival and week 0 is inflated. groupUniqArray collapses
+  // each visitor to the distinct weeks they appeared in before the
+  // arrayJoin fans them back out, so this stays one pass grouped by
+  // visitor rather than a self-join over events.
+  retention: () => `
+    SELECT cohort, dateDiff('week', cohort, wk) AS n, uniq(distinct_id) AS visitors
+    FROM (
+      SELECT distinct_id,
+             toStartOfWeek(min(timestamp), 1) AS cohort,
+             arrayJoin(groupUniqArray(toStartOfWeek(timestamp, 1))) AS wk
+      FROM events WHERE ${PV} GROUP BY distinct_id
+    )
+    WHERE cohort >= toStartOfWeek(now() - INTERVAL 76 DAY, 1) AND wk >= cohort
+    GROUP BY cohort, n ORDER BY cohort, n`,
+  // Retention says whether they came back; this says how often. Distinct
+  // active days per visitor over 28 days, as a distribution.
+  frequency: () => `
+    SELECT days, count() AS visitors FROM (
+      SELECT distinct_id, uniq(toDate(timestamp)) AS days
+      FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 28 DAY
+      GROUP BY distinct_id
+    ) GROUP BY days ORDER BY days LIMIT 40`,
 } as const;
 
 export type TrafficSection = keyof typeof QUERIES;
@@ -255,7 +288,16 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
   const rows = await queryHogQL(section, QUERIES[section]());
   switch (section) {
     case "daily":
-      return { daily: rows.map((r) => ({ day: str(r[0]).slice(0, 10), pageviews: num(r[1]), visitors: num(r[2]), sessions: num(r[3]) })) };
+      return {
+        daily: rows.map((r) => ({
+          day: str(r[0]).slice(0, 10),
+          pageviews: num(r[1]),
+          visitors: num(r[2]),
+          sessions: num(r[3]),
+          ai: num(r[4]),
+          search: num(r[5]),
+        })),
+      };
     case "weekly":
       return { weekly: rows.map((r) => ({ week: str(r[0]).slice(0, 10), visitors: num(r[1]), ai: num(r[2]), search: num(r[3]), pageviews: num(r[4]) })) };
     case "pages":
@@ -289,6 +331,10 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
           prevSearchVisitors: num(rows[0]?.[9]),
         },
       };
+    case "retention":
+      return { retention: rows.map((r) => ({ cohort: str(r[0]).slice(0, 10), week: num(r[1]), visitors: num(r[2]) })) };
+    case "frequency":
+      return { frequency: rows.map((r) => ({ days: num(r[0]), visitors: num(r[1]) })) };
     case "audience":
       return { audience: { activeVisitors: num(rows[0]?.[0]), newVisitors: num(rows[0]?.[1]), returningVisitors: num(rows[0]?.[2]) } };
     case "audienceDaily":

@@ -64,7 +64,7 @@ describe("aggregations", () => {
     expect(rows[1].section).toBe("compare");
   });
   test("sumWindow takes the last N days, with an offset", () => {
-    const daily = [1, 2, 3, 4].map((i) => ({ day: `2026-09-0${i}`, pageviews: i, visitors: i, sessions: i }));
+    const daily = [1, 2, 3, 4].map((i) => ({ day: `2026-09-0${i}`, pageviews: i, visitors: i, sessions: i, ai: 0, search: 0 }));
     expect(sumWindow(daily, 2).pageviews).toBe(7);
     expect(sumWindow(daily, 2, 2).pageviews).toBe(3);
   });

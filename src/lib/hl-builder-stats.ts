@@ -1,7 +1,7 @@
 /**
  * Server-side helper that fetches the HyperTracker-parity KPI strip for
  * one Hyperliquid frontend. Reads the `hl_frontend_*_v2` Prometheus
- * gauges that the on-node harness exposes (Sprint 1+2). Lives next to
+ * gauges that the feed harness exposes. Lives next to
  * the materialize/Prom plumbing rather than under `data/` because it's
  * Prom-coupled and only matters for the /products page that consumes it.
  */
@@ -268,26 +268,28 @@ export type HlCohortSummary = {
 export type HlHip3Row = {
   slug: string;
   name: string;
-  fees24h: number;
-  fees7d: number;
-  fees30d: number;
+  /** Rolling 24h notional across the dex's live markets, from the chain's
+   *  own dayNtlVlm (info API). */
   volume24h: number;
+  /** Sums of one 24h sample per UTC day; grow toward the window while the
+   *  harness accumulates samples (see daysSampled). */
   volume7d: number;
   volume30d: number;
-  users24h: number;
-  users7d: number;
-  users30d: number;
-  fills24h: number;
-  markets24h: number;
-  effectiveFeeBps: number;
+  /** Open interest in USD at poll time (base units times mark price). */
+  openInterestUsd: number;
+  /** Markets with non-zero 24h notional / markets currently listed. */
+  marketsTraded24h: number;
+  marketsListed: number;
+  daysSampled: number;
+  daysSampled7: number;
 };
 
 export type HlHip3Summary = {
   rows: HlHip3Row[];
-  totalFees24h: number;
-  totalFees30d: number;
   totalVolume24h: number;
-  totalUsers24h: number;
+  totalVolume30d: number;
+  totalOpenInterestUsd: number;
+  totalMarketsTraded24h: number;
   asOf: number;
 };
 
@@ -295,9 +297,9 @@ export type HlHip3Summary = {
  *  /api/cron/snapshot-hl-cohort. Bump the suffix here if either summary
  *  shape changes so a stale-shape blob can never deserialize into a
  *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
-const HL_FRONTENDS_KEY = "hl-frontends";
-const HL_HIP3_KEY = "hl-hip3";
-const HL_HISTORY_KEY = "hl-history";
+export const HL_FRONTENDS_KEY = "hl-frontends";
+export const HL_HIP3_KEY = "hl-hip3-v2";
+export const HL_HISTORY_KEY = "hl-history";
 
 /** One evenly-spaced point on a rolling-window history series. `v = null`
  *  means the underlying gauge had no sample at that timestamp (harness
@@ -438,15 +440,15 @@ export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
 }
 
 /**
- * Same shape as fetchHlCohort but for the HIP-3 deployer cohort
- * (markets-deployment-permissionless side of Hyperliquid). Powers the
+ * Same shape as fetchHlCohort but for the HIP-3 dex cohort. Powers the
  * "HIP-3 dexes" tab on `/hyperliquid`. Vector queries on the
- * `hl_hip3_deployer_*` gauges that the on-node harness exposes —
- * cardinality is naturally low (one label value per staked deployer,
- * currently 7) so a single fetch covers the whole cohort.
+ * `hl_hip3_deployer_*` gauges the feed-edition harness exposes from the
+ * chain's info API (perpDexs + metaAndAssetCtxs). Cardinality is one
+ * label value per deployed namespace, so a single fetch covers the cohort.
  *
  * Dex names come from the hyperliquid-hip3-deployers spec's providers
- * list; an unknown dex slug surfaces under its raw namespace.
+ * list; an unknown dex slug surfaces under its raw namespace. Dexes whose
+ * markets are all delisted (no listed market, no volume) are dropped.
  *
  * Exported so the cron route can call the uncached Prom path directly
  * before parking the result in Upstash; the public reader
@@ -469,35 +471,18 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
     (hip3Spec?.providers ?? []).map((p) => [p.slug, p.name]),
   );
 
-  const [
-    fees24h,
-    fees7d,
-    fees30d,
-    vol24h,
-    vol7d,
-    vol30d,
-    users24h,
-    users7d,
-    users30d,
-    fills24h,
-    markets24h,
-    effFeeBps,
-  ] = await Promise.all([
-    queryVector(prom, `hl_hip3_deployer_fees_usd_24h`),
-    queryVector(prom, `hl_hip3_deployer_fees_usd_7d`),
-    queryVector(prom, `hl_hip3_deployer_fees_usd_30d`),
+  const [vol24h, vol7d, vol30d, oi, traded, listed, sampled, sampled7] = await Promise.all([
     queryVector(prom, `hl_hip3_deployer_volume_usd_24h`),
     queryVector(prom, `hl_hip3_deployer_volume_usd_7d`),
     queryVector(prom, `hl_hip3_deployer_volume_usd_30d`),
-    queryVector(prom, `hl_hip3_deployer_users_24h`),
-    queryVector(prom, `hl_hip3_deployer_users_7d`),
-    queryVector(prom, `hl_hip3_deployer_users_30d`),
-    queryVector(prom, `hl_hip3_deployer_fills_24h`),
+    queryVector(prom, `hl_hip3_deployer_open_interest_usd`),
     queryVector(prom, `hl_hip3_deployer_markets_24h`),
-    queryVector(prom, `hl_hip3_deployer_effective_fee_bps`),
+    queryVector(prom, `hl_hip3_deployer_markets_listed`),
+    queryVector(prom, `hl_hip3_deployer_days_sampled`),
+    queryVector(prom, `hl_hip3_deployer_days_sampled_7d`),
   ]);
 
-  if (fees24h === null && vol24h === null) return null;
+  if (vol24h === null && listed === null) return null;
 
   const byDex = new Map<string, HlHip3Row>();
   const ensure = (dex: string): HlHip3Row => {
@@ -506,18 +491,14 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
       r = {
         slug: dex,
         name: nameBySlug.get(dex) ?? dex,
-        fees24h: 0,
-        fees7d: 0,
-        fees30d: 0,
         volume24h: 0,
         volume7d: 0,
         volume30d: 0,
-        users24h: 0,
-        users7d: 0,
-        users30d: 0,
-        fills24h: 0,
-        markets24h: 0,
-        effectiveFeeBps: 0,
+        openInterestUsd: 0,
+        marketsTraded24h: 0,
+        marketsListed: 0,
+        daysSampled: 0,
+        daysSampled7: 0,
       };
       byDex.set(dex, r);
     }
@@ -532,40 +513,36 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
       if (d) ensure(d)[key] = s.value;
     }
   };
-  apply(fees24h, "fees24h");
-  apply(fees7d, "fees7d");
-  apply(fees30d, "fees30d");
   apply(vol24h, "volume24h");
   apply(vol7d, "volume7d");
   apply(vol30d, "volume30d");
-  apply(users24h, "users24h");
-  apply(users7d, "users7d");
-  apply(users30d, "users30d");
-  apply(fills24h, "fills24h");
-  apply(markets24h, "markets24h");
-  apply(effFeeBps, "effectiveFeeBps");
+  apply(oi, "openInterestUsd");
+  apply(traded, "marketsTraded24h");
+  apply(listed, "marketsListed");
+  apply(sampled, "daysSampled");
+  apply(sampled7, "daysSampled7");
 
   const rows = [...byDex.values()]
-    .filter((r) => r.fees24h > 0 || r.volume24h > 0 || r.users24h > 0)
-    .sort((a, b) => b.fees24h - a.fees24h);
+    .filter((r) => r.volume24h > 0 || r.marketsListed > 0)
+    .sort((a, b) => b.volume24h - a.volume24h);
 
-  let totalFees24h = 0;
-  let totalFees30d = 0;
   let totalVolume24h = 0;
-  let totalUsers24h = 0;
+  let totalVolume30d = 0;
+  let totalOpenInterestUsd = 0;
+  let totalMarketsTraded24h = 0;
   for (const r of rows) {
-    totalFees24h += r.fees24h;
-    totalFees30d += r.fees30d;
     totalVolume24h += r.volume24h;
-    totalUsers24h += r.users24h;
+    totalVolume30d += r.volume30d;
+    totalOpenInterestUsd += r.openInterestUsd;
+    totalMarketsTraded24h += r.marketsTraded24h;
   }
 
   return {
     rows,
-    totalFees24h,
-    totalFees30d,
     totalVolume24h,
-    totalUsers24h,
+    totalVolume30d,
+    totalOpenInterestUsd,
+    totalMarketsTraded24h,
     asOf: Math.floor(Date.now() / 1000),
   };
 }
@@ -628,7 +605,7 @@ async function fetchHlHip3CohortRaw(): Promise<HlHip3Summary | null> {
 
 const fetchHlHip3CohortCached = unstable_cache(
   fetchHlHip3CohortRaw,
-  ["hl-hip3-cohort-v1"],
+  ["hl-hip3-cohort-v2"],
   { revalidate: 300, tags: ["hl-cohort"] },
 );
 
