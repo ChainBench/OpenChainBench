@@ -2204,11 +2204,17 @@ func recent(st *State, minPerTerminal, total int) []Swap {
 			rows = rows[:quota[slug]]
 		}
 		for _, s := range rows {
-			p, _ := productOf(s.Terminal)
+			p, chain := productOf(s.Terminal)
 			if a, ok := productAlias[p]; ok {
 				p = a
 			}
-			if p != s.Terminal {
+			// A funding leg is a bridge, not a fill, and compute() leaves
+			// it out of the product's pooled entry. Stamping it would put
+			// rows in the pooled table that the pooled figure excludes:
+			// pump.fun's members summed to 483 against a pooled 448, and
+			// the 35 in between were exactly this. It keeps its own row in
+			// the dropdown, where its figure is published.
+			if p != s.Terminal && chain != "funding" {
 				s.Product = p
 			}
 			out = append(out, s)
