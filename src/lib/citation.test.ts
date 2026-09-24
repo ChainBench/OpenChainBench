@@ -221,3 +221,17 @@ describe("headline ties", () => {
     expect(headlineSentence(b)).not.toContain(b.title);
   });
 });
+
+describe("all-zero leaderboard", () => {
+  test("a board where every ranked value is 0 has no leader", () => {
+    // Hyperliquid builder fees, 2026-09-24 14:46 UTC: the feed went to 0 for
+    // all 104 frontends and the headline crowned "Phantom (tied) at $0".
+    const b = { ...bench([r("phantom", "Phantom", 0), r("axiom", "Axiom", 0), r("fomo", "FOMO", 0)]), higherIsBetter: true, unit: "usd" as const };
+    expect(leader(b)).toBeNull();
+  });
+
+  test("a single zero row among live rows still ranks", () => {
+    const b = bench([r("a", "A", 0), r("b", "B", 2), r("c", "C", 5)]);
+    expect(leader(b)?.slug).toBe("a");
+  });
+});
