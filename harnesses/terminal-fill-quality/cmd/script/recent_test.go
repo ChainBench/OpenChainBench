@@ -374,3 +374,45 @@ func TestPublicSwapCarriesEveryFieldTheSiteReads(t *testing.T) {
 		}
 	}
 }
+
+// The budget is a ceiling the sample is meant to reach, not just stay
+// under. The remainder pass used to be capped at three rounds, and a
+// round hands out at most one seat per row: when the dominant row was
+// clipped to the swaps it actually holds, the seats that freed were far
+// more than three rounds could return. Live, that shipped 1621 rows
+// against a configured 2400 and left 39 of 68 legs on the floor.
+func TestRecentSpendsTheWholeBudget(t *testing.T) {
+	st := &State{}
+	flow := map[string]float64{}
+	// Seventy quiet legs with room to spare, plus one leg that carries
+	// almost all the flow but holds very few swaps — the shape that makes
+	// the proportional pass over-ask and then clip.
+	for i := 0; i < 70; i++ {
+		slug := "leg-" + string(rune('a'+i%26)) + string(rune('a'+i/26))
+		st.Swaps = append(st.Swaps, mkSwaps(slug, 100, int64(i)*1000)...)
+		flow[slug] = 1
+	}
+	st.Swaps = append(st.Swaps, mkSwaps("dominant", 40, 900000)...)
+	flow["dominant"] = 2000
+
+	const total = 2000
+	got := recent(st, 12, total, flow)
+
+	if len(got) != total {
+		t.Fatalf("sample of %d against a budget of %d: the remainder pass left %d seats unspent", len(got), total, total-len(got))
+	}
+	// The dominant row cannot exceed what it holds, and the clipping must
+	// not come out of anyone's floor.
+	seen := map[string]int{}
+	for _, s := range got {
+		seen[s.Terminal]++
+	}
+	if seen["dominant"] > 40 {
+		t.Fatalf("dominant row has 40 swaps, sample kept %d", seen["dominant"])
+	}
+	for slug, n := range seen {
+		if n < 12 && n < 100 {
+			t.Fatalf("%s fell below the floor of 12 with %d rows", slug, n)
+		}
+	}
+}

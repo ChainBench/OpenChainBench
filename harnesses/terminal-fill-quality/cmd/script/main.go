@@ -53,6 +53,9 @@ var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi; bucket=all|under25|25to250|over250 (trade size in USD)",
 	}, []string{"terminal", "chain", "stat", "bucket"})
+	gLossExFee = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_loss_ex_fee_bps", Help: "Value lost per swap with the app's own fee removed, basis points of the trade: execution quality alone, network, pool and protocol costs still inside. Subtracted per swap, then the median — median(loss) - median(fee) differs by up to 33 bps. stat=median|p90|p99|ci_lo|ci_hi",
+	}, []string{"terminal", "chain", "stat", "bucket"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow; bucket=all, or a trade-size bucket as a plain median over its swaps",
 	}, []string{"terminal", "chain", "component", "bucket"})
@@ -111,7 +114,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -247,6 +250,10 @@ type TerminalStats struct {
 	Flagged         int        `json:"flagged"` // priced but out of bounds, excluded
 	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
 	Loss        *Quantiles         `json:"loss_bps,omitempty"`
+	/** The same, with the terminal's own fee removed per swap: execution
+	  * quality alone. Network, pool and protocol costs stay inside — how a
+	  * swap is routed is the app's doing, what it charges for it is not. */
+	LossExFee   *Quantiles         `json:"loss_ex_fee_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
 	TradeUSD    *Quantiles         `json:"trade_usd,omitempty"`
 	BuySharePct float64            `json:"buy_share_pct"`
@@ -1636,6 +1643,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.FailCostUSD = quantiles(failFees, false)
 		}
 		var loss, pool, term, net, relay, other, trade, sandProfit []float64
+		// Loss with the app's own fee taken out, subtracted on each swap
+		// before any median is taken: median(loss) - median(fee) is a
+		// different number, off by 33 bps on the row the subtraction
+		// moves most.
+		var exFee, exFeeW []float64
 		var lossW, poolW, termW, netW, relayW, otherW, tradeW []float64 // the rows' weights, same order
 		bySize := map[string][]float64{}
 		// The same swaps again, grouped by trade size, so a reader can ask
@@ -1747,6 +1759,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				refSrc[s.RefSrc]++
 				loss = append(loss, *s.LossBps)
 				lossW = append(lossW, w)
+				// Negative is a real outcome here (a rebate, or a reference
+				// that drifted the user's way) and stays: clipping at zero
+				// would push the median up.
+				exFee = append(exFee, *s.LossBps-s.TerminalBps)
+				exFeeW = append(exFeeW, w)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
 				if s.Chain != "" {
 					byChain[s.Chain] = append(byChain[s.Chain], *s.LossBps)
@@ -1807,6 +1824,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		}
 		if ts.Priced > 0 {
 			ts.Loss = wquantiles(loss, lossW, true, pooled)
+			ts.LossExFee = wquantiles(exFee, exFeeW, true, pooled)
 			if pooled {
 				// Kish's effective sample size: (Σw)² / Σw². Ten swaps
 				// weighted two thirds of a pool read as a sample of 22.
@@ -1988,6 +2006,20 @@ func publishGauges(stats []TerminalStats) {
 			}
 		} else {
 			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
+		}
+		// Execution quality: published under exactly the same conditions as
+		// the headline, so the two benches never disagree about who is
+		// present. A row that is not healthy here is not healthy there.
+		if ts.LossExFee != nil && ts.Healthy {
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "median", "all").Set(ts.LossExFee.Median)
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "p90", "all").Set(ts.LossExFee.P90)
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "p99", "all").Set(ts.LossExFee.P99)
+			if ts.LossExFee.CILo != nil && ts.LossExFee.CIHi != nil {
+				gLossExFee.WithLabelValues(ts.Product, ts.Chain, "ci_lo", "all").Set(*ts.LossExFee.CILo)
+				gLossExFee.WithLabelValues(ts.Product, ts.Chain, "ci_hi", "all").Set(*ts.LossExFee.CIHi)
+			}
+		} else {
+			gLossExFee.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
 		gComponent.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain}) // a component that dropped out stays out
 		for c, v := range ts.Components {
@@ -2337,7 +2369,16 @@ func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swa
 			})
 			// Several passes, because clipping a row to what it has frees
 			// seats that the rows still short of their share should get.
-			for pass := 0; pass < 3 && given < room; pass++ {
+			//
+			// No pass limit: each pass hands out at most one seat per row,
+			// so a fixed count silently caps how much can be redistributed.
+			// Three passes over 68 legs could return 204 seats where the
+			// clipping had freed 779, and the budget went unspent — 1621
+			// rows shipped against a configured 2400, with 39 of 68 legs
+			// left sitting on the floor. `moved` is the real termination
+			// condition: it goes false the moment no row can take another
+			// seat, which is also the only way this loop can end.
+			for given < room {
 				moved := false
 				for i := 0; given < room && i < len(rems); i++ {
 					slug := rems[i].slug

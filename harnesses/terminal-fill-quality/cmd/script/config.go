@@ -42,8 +42,17 @@ const (
 	// budget, and the budget is what stops the floor and the flow
 	// weighting competing: every row the floor gives a quiet chain used
 	// to come off the chain carrying 95% of the flow.
+	// 3000, not 2400: the remainder loop was capped at three passes and
+	// returned only ~204 of the seats its clipping freed, so the old
+	// total was never reached anyway (1621 rows shipped). With the loop
+	// fixed the budget binds again, and the ceiling is what sets it.
+	// Measured on the live payload: 511 B a row and 0.25 MB of non-row
+	// JSON, so 3000 rows is ~1.78 MB against the 2 MB cache ceiling, with
+	// room for the window to grow. Full coverage of the 4309 swaps priced
+	// in a 24 h window would be ~2.45 MB and does not fit; it would need
+	// the row to shrink again, and shortening every key buys only 17%.
 	recentMinPerTerminal = 12
-	recentTotal          = 2400
+	recentTotal          = 3000
 )
 
 // Terminal is one cohort member: the trading app or Telegram bot whose
