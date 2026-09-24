@@ -677,11 +677,21 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 	// assets is read from the same transfers or the native value.
 	bought, sold := map[string]*big.Int{}, map[string]*big.Int{}
 	quoteIn, quoteOut := 0.0, 0.0
+	// Transfers of a quote asset anywhere in the transaction, not only the
+	// user's. A v4 swap that settles its quote natively or as an ERC-6909
+	// claim emits none, and the pool leg is then not measurable from
+	// transfers: see quoteMoves below.
+	quoteMoves := 0
 	for _, l := range rc.Logs {
 		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
 			continue
 		}
 		erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+		if m := erc20(ctx, httpc, *c, erc); m.ok {
+			if _, isQuote := quoteUSD(m.symbol, *c, gas); isQuote {
+				quoteMoves++
+			}
+		}
 		if from != user && to != user {
 			continue
 		}
@@ -862,6 +872,15 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		ref := s.MidUSD
 		sw.finalize(&ref, 0, s.RefSrc)
+		// The pool leg is read from transfers. On a v4 pool whose quote
+		// settles natively or as an ERC-6909 claim there are none, so the
+		// residual app fee carries the pool's take: BasedBot's Base rows
+		// read 198.7 bps against a router that kept 100. Keep the row
+		// visible and out of every figure rather than publish a split we
+		// cannot measure.
+		if sw.Priced && quoteMoves == 0 && strings.HasSuffix(sw.Venue, "-v4") {
+			sw.Flag, sw.Priced = "unmeasured_quote_leg", false
+		}
 		implausibleSplit(sw)
 		return sw
 	}
@@ -913,6 +932,15 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		ref := s.MidUSD
 		sw.finalize(&ref, 0, s.RefSrc)
+		// The pool leg is read from transfers. On a v4 pool whose quote
+		// settles natively or as an ERC-6909 claim there are none, so the
+		// residual app fee carries the pool's take: BasedBot's Base rows
+		// read 198.7 bps against a router that kept 100. Keep the row
+		// visible and out of every figure rather than publish a split we
+		// cannot measure.
+		if sw.Priced && quoteMoves == 0 && strings.HasSuffix(sw.Venue, "-v4") {
+			sw.Flag, sw.Priced = "unmeasured_quote_leg", false
+		}
 		implausibleSplit(sw)
 		return sw
 	}
