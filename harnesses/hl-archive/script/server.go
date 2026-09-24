@@ -304,7 +304,10 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 	if err != nil {
 		Log.Error("cron catchup zero-row scan failed", "err", err)
 	}
-	sparse, err := store.SparseDays(ctx, since, sparseDayRatio)
+	// Sparse detection only over the recent past: the registry was a
+	// fraction of its size before mid-2026, so older days are sparse by
+	// construction and would be re-fetched on every boot.
+	sparse, err := store.SparseDays(ctx, time.Now().UTC().AddDate(0, 0, -sparseRefillDays), sparseDayRatio)
 	if err != nil {
 		Log.Error("cron catchup sparse-day scan failed", "err", err)
 	}
@@ -355,8 +358,9 @@ func runCatchup(ctx context.Context, store *Store, builders []Builder) {
 // zeroRefillDays bounds the refill pass at boot; sparseDayRatio flags a
 // day whose builder count is under that share of the recent median.
 const (
-	zeroRefillDays = 120
-	sparseDayRatio = 0.5
+	zeroRefillDays   = 120
+	sparseRefillDays = 60
+	sparseDayRatio   = 0.5
 )
 
 // cronLoop fires DailyJob once a day at HL_ARCHIVE_CRON_HOUR UTC.
