@@ -275,7 +275,7 @@ export default async function RootLayout({
           text width inside intrinsic sizing), so every page was 1,207 px wide on a
           1,024 px viewport and scrolled sideways. minmax(0,1fr) lets rows be
           narrower than their min-content. */}
-      <body className="min-h-full grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)] lg:pl-[var(--sidebar-w)]">
+      <body className="min-h-full grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

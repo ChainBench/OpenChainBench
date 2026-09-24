@@ -48,9 +48,13 @@
 }
 
 :root {
-  /* Width of the fixed left rail (lg and up). The rail and the content
-     offset both read this, so they cannot drift apart. */
+  /* The fixed left rail (lg and up). --sidebar-w is its open width;
+     --sidebar-rail-w is the icon strip it settles into and, crucially,
+     the width the page is actually offset by. The open rail overlays the
+     content instead of pushing it, so drifting the cursor leftwards
+     never reflows the page. */
   --sidebar-w: 240px;
+  --sidebar-rail-w: 62px;
   color-scheme: light;
 }
 
@@ -465,5 +469,147 @@ html {
   html.ios-webview .site-header-root {
     position: relative;
     top: auto;
+  }
+}
+
+
+/* ── Left rail (lg and up) ───────────────────────────────────────────
+ * Collapsed, this is not a panel: the surface, the border and the shadow
+ * all go to nothing and what is left is a column of quiet icons sitting
+ * on the page. Opening paints the panel back in.
+ *
+ * The icons are what tell you navigation lives there, so the strip is
+ * never empty, and they stay clickable the whole time.
+ *
+ * Easing is ease-out-expo — it holds speed far longer and settles late,
+ * which is the difference between "animated" and "smooth". Width leads,
+ * the panel fades just behind it, labels arrive last, so nothing appears
+ * mid-stretch. Only width, opacity, colour and shadow animate; the page
+ * offset tracks the pin and never the hover, so hovering cannot reflow
+ * the page. */
+.site-rail {
+  width: var(--sidebar-rail-w);
+  background: transparent;
+  border-right: 1px solid transparent;
+  transition:
+    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 260ms cubic-bezier(0.16, 1, 0.3, 1) 40ms,
+    border-color 260ms ease 40ms,
+    box-shadow 300ms ease;
+}
+.site-rail[data-open="true"] {
+  width: var(--sidebar-w);
+  background: var(--color-surface);
+  border-right-color: var(--color-rule);
+}
+
+/* Resting icons sit back; the whole column lifts together on approach,
+   which reads as one object waking up rather than sixteen links. */
+.site-rail nav a {
+  opacity: 0.62;
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-rail[data-open="true"] nav a {
+  opacity: 1;
+}
+
+/* The brand block does not narrow with the rail. Fixed at the open
+   width so the wordmark never reflows, overflowing the strip rather than
+   being clipped by it, and transparent to the pointer except on the mark
+   itself — collapsed, most of its width is page, not rail. */
+.site-rail-brand {
+  width: var(--sidebar-w);
+  pointer-events: none;
+}
+
+/* Group headings disappear rather than hide: `visibility: hidden` keeps
+   the box, and four reserved lines plus their margins left the collapsed
+   strip full of gaps with the icons scattered down it. */
+.site-rail-group {
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.site-rail[data-open="true"] .site-rail-group {
+  height: auto;
+  padding-bottom: 0.25rem;
+  opacity: 1;
+  transition: opacity 220ms ease 90ms;
+}
+.site-rail-gap {
+  margin-top: 0.25rem;
+  transition: margin-top 340ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-rail[data-open="true"] .site-rail-gap {
+  margin-top: 1rem;
+}
+
+/* Everything that only makes sense at full width. Fades in behind the
+   width so labels arrive settled, and leaves the layout when narrow so
+   it cannot be clicked or tabbed into from the strip. */
+.site-rail-label {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 0s linear 140ms;
+}
+.site-rail[data-open="true"] .site-rail-label {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 220ms ease 90ms,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1) 90ms,
+    visibility 0s;
+}
+
+/* The search pill cannot shrink below its own padding without looking
+   broken, so the strip shows a plain icon in its place. */
+.site-rail-search {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease, visibility 0s linear 140ms;
+}
+.site-rail[data-open="true"] .site-rail-search {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms ease 90ms, visibility 0s;
+}
+.site-rail:not([data-open="true"]) .site-rail-search {
+  height: 0;
+  overflow: hidden;
+}
+.site-rail:not([data-open="true"]) .site-rail-icon-only {
+  display: flex;
+  opacity: 0.62;
+}
+
+/* The page makes room for the rail at whatever width it currently is,
+   so the rail never covers content. Same duration and curve as the rail
+   itself, so the rail's edge and the content's edge travel together
+   instead of sliding against each other. */
+@media (min-width: 64rem) {
+  body {
+    padding-left: var(--sidebar-rail-w);
+    transition: padding-left 340ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  :root[data-sidebar="open"] body {
+    padding-left: var(--sidebar-w);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-rail,
+  .site-rail nav a,
+  .site-rail-label,
+  .site-rail-search,
+  body {
+    transition: none;
   }
 }
