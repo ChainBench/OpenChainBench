@@ -81,8 +81,8 @@ export async function TerminalFillSection({
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
               <Th right title="Median sampled swap size, dollars">Median swap</Th>
-              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %), with the 95 % interval of the median under it. Two rows whose intervals overlap are not separated by this measurement: only 3 of the 12 adjacent pairs on this board are.">Value lost</Th>
-              <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
+              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %), with the 95 % interval of the median under it. Two rows whose intervals overlap are not separated by this measurement: only 3 of the 12 adjacent pairs on this board are.">Value lost, median</Th>
+              <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap, median</Th>
               <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; referral or cashback legs count as terminal fee where the terminal's list holds them, else they sit in Protocol">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay) plus the deposit of the token accounts the swap creates, and on cross-chain rows the destination gas Relay charged, basis points (median per chain; flow-weighted on All chains)">Network</Th>
               <Th right title="The final pool's LP fee and price impact, basis points (median per chain; on All chains each chain's median weighted by its flow); on cross-chain products the bridge's take is shown next to it as relay; on the EVM rows the stable-to-gas-coin hop's own cost is included (the native leg is valued at that hop's pre-trade mid)">Pool</Th>
@@ -164,7 +164,7 @@ export async function TerminalFillSection({
         </table>
       </div>
       <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-        <span className="text-ink-faint">Split columns are medians of each cost in basis points of the trade (100 bps = 1 %), each chain&apos;s median weighted by its flow on a multi-chain product; they do not sum to the median loss, the per-swap sums do (audit table).</span>
+        <span className="text-ink-faint">Every figure here is a median, not an average: losses have a long right tail, so averaging the sampled rows returns a larger number (pump.fun, 250 bps median against a 360 bps mean). Split columns are medians of each cost in basis points of the trade (100 bps = 1 %), each chain&apos;s median weighted by its flow on a multi-chain product; they do not sum to the median loss, the per-swap sums do (audit table).</span>
         {PARTS.map((c) => (
           <span key={c} className="inline-flex items-center gap-1.5">
             <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COLORS[c] }} />
@@ -176,7 +176,7 @@ export async function TerminalFillSection({
       {me && Object.keys(me.bySize).length > 0 && (
         <div className="mb-6">
           <p className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-2" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-            Cost per swap by trade size · {me.name}
+            Cost per swap by trade size, median · {me.name}
           </p>
           <div className="grid grid-cols-3 gap-3 max-w-xl">
             {(["under25", "25to250", "over250"] as const).map((b) => {
