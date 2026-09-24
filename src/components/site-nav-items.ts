@@ -119,7 +119,6 @@ export function navGroups(): NavGroup[] {
       items: [
         { href: "/compare", label: "Compare", icon: GitCompare, match: section("/compare") },
         { href: "/alternatives", label: "Alternatives", icon: Scale, match: section("/alternatives") },
-        { href: "/answers", label: "Answers", icon: CircleHelp, match: section("/answers") },
         {
           href: "/reports",
           label: "Reports",
@@ -127,6 +126,7 @@ export function navGroups(): NavGroup[] {
           match: section("/reports"),
           inHeader: true,
         },
+        { href: "/answers", label: "Answers", icon: CircleHelp, match: section("/answers") },
       ],
     },
     {

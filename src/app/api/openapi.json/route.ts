@@ -18,7 +18,7 @@ export async function GET() {
     info: {
       title: "OpenChainBench API",
       version: "1.1.0",
-      description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
+      description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark, list_answers and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
       license: { name: "CC-BY-4.0", url: "https://creativecommons.org/licenses/by/4.0/" },
     },
     servers: [{ url: SITE.url }],
