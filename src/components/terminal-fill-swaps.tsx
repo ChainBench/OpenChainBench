@@ -69,9 +69,18 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
     };
     return f.sort((a, b) => (v(a) - v(b)) * sort.dir);
   }, [swaps, terminal, chain, side, venue, ref, sort]);
-  const nameOf = (slug: string) => terminals.find((t) => t.slug === slug)?.name ?? PRODUCT_NAMES[productOf(slug)] ?? productOf(slug);
-  // The row's product for the logo and the link, and what the slug's suffix means for the reader.
-  const productOf = (slug: string) => slug.replace(ROW_SUFFIX, "");
+  const nameOf = (slug: string, product?: string) =>
+    terminals.find((t) => t.slug === slug)?.name ??
+    PRODUCT_NAMES[productOf(slug, product)] ??
+    terminals.find((t) => t.slug === productOf(slug, product))?.name ??
+    productOf(slug, product);
+  // The row's product for the logo and the link, and what the slug's suffix
+  // means for the reader. The payload states the product, so prefer it:
+  // stripping the chain off `binance-wallet-ethereum` leaves
+  // `binance-wallet`, which is not the product (`binance`) and matches
+  // neither the terminals list nor PRODUCT_NAMES, so 97 rows rendered a raw
+  // slug with no logo.
+  const productOf = (slug: string, product?: string) => product ?? slug.replace(ROW_SUFFIX, "");
   const legOf = (slug: string): { text: string; title: string } | null => {
     const m = slug.match(ROW_SUFFIX);
     if (!m) return null;
@@ -245,8 +254,8 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 whitespace-nowrap text-ink-soft">{fmtTime(s.time)}</td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <span className="inline-flex items-center gap-2 font-medium text-ink">
-                    <ProviderLogo slug={productOf(s.terminal)} name={nameOf(s.terminal)} size={16} />
-                    {nameOf(s.terminal)}
+                    <ProviderLogo slug={productOf(s.terminal, s.product)} name={nameOf(s.terminal, s.product)} size={16} />
+                    {nameOf(s.terminal, s.product)}
                     {legOf(s.terminal) ? (
                       <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help font-normal" title={legOf(s.terminal)!.title}>
                         {legOf(s.terminal)!.text}
@@ -255,16 +264,24 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                   </span>
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
-                  <a
-                    href={`${txExplorer(s)}${s.sig}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
-                    title={s.sig}
-                  >
-                    {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
-                    <ExternalLink className="h-3 w-3 opacity-60" />
-                  </a>
+                  {txExplorer(s) ? (
+                    <a
+                      href={`${txExplorer(s)}${s.sig}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
+                      title={hashTitle(s)}
+                    >
+                      {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  ) : (
+                    // No explorer we can name for this hash: show it rather
+                    // than link somewhere it does not exist.
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-faint" title={s.sig}>
+                      {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
@@ -283,13 +300,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                     ) : null}
                     {s.chain && s.inTx ? (
                       <a
-                        href={`${(s.terminal.endsWith("-" + s.chain) ? EXPLORERS.solana : EXPLORERS[s.chain]) ?? EXPLORERS.solana}${s.inTx}`}
+                        href={`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
-                        title={s.terminal.endsWith("-" + s.chain) ? `paid in USDC or SOL on Solana, settled on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the deposit` : `paid on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the origin deposit`}
+                        title={depositTitle(s)}
                       >
-                        {s.terminal.endsWith("-" + s.chain) ? `on ${CHAIN_NAMES[s.chain] ?? s.chain}` : `from ${CHAIN_NAMES[s.chain] ?? s.chain}`}
+                        {`from ${CHAIN_NAMES[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? "Solana"}`}
                       </a>
                     ) : s.chain ? (
                       <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
@@ -354,14 +371,51 @@ const ROW_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
 const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app", phantom: "Phantom", maestro: "Maestro", bloom: "Bloom" };
 const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
 const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://robinhoodchain.blockscout.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
-/** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
-function txExplorer(s: FillSample): string {
-  if (s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain)) {
-    // A Relay sale settles on Solana (sig is the Solana signature); everything else on that chain is native or a Relay buy
-    if (s.side === "sell" && (s.terminal.startsWith("fomo-") || s.terminal.startsWith("pump-fun-") || s.terminal.startsWith("phantom-") || s.terminal.startsWith("basedbot-"))) return "https://solscan.io/tx/";
-    return EXPLORERS[s.chain];
+/** Which chain a hash belongs to, read from the hash rather than guessed
+ *  from the row's slug.
+ *
+ *  A Relay trade touches two chains and either leg can be the one we
+ *  sampled, so a slug rule ("a sell on fomo-/basedbot- settles on Solana")
+ *  mislabels whole families at once: BasedBot's EVM sells and every
+ *  *-funding row were sending an 0x hash to Solscan, 109 of 3,000 links,
+ *  all dead. An 0x-prefixed hash is EVM and belongs to the row's own
+ *  chain; anything else is a base58 Solana signature. */
+function chainOfHash(hash: string, chain?: string): string | undefined {
+  if (hash.startsWith("0x")) return chain && chain !== "solana" ? chain : undefined;
+  return "solana";
+}
+
+function txExplorer(s: FillSample): string | undefined {
+  const c = chainOfHash(s.sig, s.chain);
+  return c ? EXPLORERS[c] : undefined;
+}
+
+/** A cross-chain row carries two hashes on two chains, and the one in this
+ *  cell is not always the chain in the label: a Relay sell is executed on the
+ *  EVM chain and settles on Solana. Saying so on hover is the difference
+ *  between a correct row and one a reader reports as mislabelled. */
+function hashTitle(s: FillSample): string {
+  const c = chainOfHash(s.sig, s.chain);
+  const name = c ? (CHAIN_NAMES[c] ?? c) : "an unknown chain";
+  if (s.chain && c && c !== s.chain) {
+    return `${s.sig}\n\nThis is the ${name} leg: the trade executed on ${CHAIN_NAMES[s.chain] ?? s.chain} and settled on ${name}.`;
   }
-  return "https://solscan.io/tx/";
+  return `${s.sig}\n\nOn ${name}.`;
+}
+
+/** Where the money came in, read from the deposit hash.
+ *
+ *  A Relay buy is paid from the app's Solana wallet and delivered on the
+ *  EVM chain; a Relay sell is the reverse. The label used to be a slug
+ *  rule with no notion of side, so it described the buy and reversed the
+ *  289 sell rows: it called an EVM deposit a Solana one. */
+function depositTitle(s: FillSample): string {
+  const from = chainOfHash(s.inTx ?? "", s.chain) ?? "solana";
+  const to = chainOfHash(s.sig, s.chain) ?? "solana";
+  const fromName = CHAIN_NAMES[from] ?? from;
+  const toName = CHAIN_NAMES[to] ?? to;
+  if (from === to) return `paid on ${fromName}: open the origin transaction`;
+  return `paid on ${fromName}, settled on ${toName}: open the ${fromName} side`;
 }
 
 const selectCls = "h-7 rounded-md border border-rule bg-paper px-2 text-[11px] text-ink hover:border-ink/40 focus:outline-none focus:border-ink/60";
