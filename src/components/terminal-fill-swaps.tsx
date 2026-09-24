@@ -232,14 +232,14 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             <tr>
               {th("time", "When", "UTC block time", "left")}
               {th(undefined, "Terminal", undefined, "left")}
-              {th(undefined, "Transaction", "click to open on Solscan", "left")}
+              {th(undefined, "Transaction", "Opens on the explorer of the chain this hash belongs to. A cross-chain trade has two: the one here is where the trade settled, and the chain shown next to the route links the side it was paid from.", "left")}
               {th(undefined, "Side · route", "final pool's venue; hops = pool instructions of the route before it; via X = final pool quoted in a third asset", "left")}
               {th("trade", "Trade", "buy: quote spent, tx fee included; sell: tokens × reference")}
               {th(undefined, "In $", "USD value the user gave: buy = quote spent (tx fee inside); sell = tokens at the pool's pre-trade reference, plus the gas paid apart on an EVM chain")}
               {th(undefined, "Out $", "USD value the user received: buy = tokens at the pool's pre-trade reference; sell = quote received")}
-              {th("loss", "Loss", "1 − value received / value given, basis points of the trade; ! = out of bounds, excluded from the statistics")}
+              {th("loss", "Loss", "1 − value received / value given, basis points of the trade. ! marks a row outside the plausible bounds: it stays visible so the sample can be audited, but it is excluded from every figure on this page, so averaging the column by eye gives a number the page never publishes.")}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
-              {th("terminal", "Fee", "terminal fee, bps")}
+              {th("terminal", "Fee", "What the app itself took, basis points of the trade. On Solana this is measured: the money that reached its fee wallets in this transaction. On the EVM rows it is a residual, what is left of the user's money after the pool took its share and gas was paid, so a routing or accounting error anywhere in the row lands in this column and single rows can read far above the app's real rate. Compare the median, not the average: one row can carry ten times the rest.")}
               {th("network", "Net", "tx fee + inclusion tips + the deposit of new token accounts, bps; on Relay rows the destination gas Relay charged is included")}
               {th(undefined, "Protocol", "launchpad / curve / creator fees (pump.fun, the EVM launchpads), referral payouts, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}

@@ -246,6 +246,22 @@ const (
 	arcPseudo = "0xfffffffffffffffffffffffffffffffffffffffe"
 )
 
+// nativeMirrors: contracts that log a chain's NATIVE value as an ERC20
+// Transfer. Their logs describe money tx.value already accounts for, so
+// anything summing both counts it twice. Arc's gas coin is USDC, so every
+// native send there appears three times: the value, the 6-decimal token
+// and the 18-decimal pseudo-token.
+var nativeMirrors = map[string]map[string]bool{
+	"arc": set(arcUSDC, arcPseudo),
+}
+
+// isNativeMirror reports whether a log's emitter is that chain's mirror of
+// the native coin.
+func isNativeMirror(chain, erc string) bool {
+	m, ok := nativeMirrors[chain]
+	return ok && m[strings.ToLower(erc)]
+}
+
 // nativeV4Quote: a v4 pool holds the gas coin itself, so a swap against
 // ETH logs no ERC20 transfer for the quote leg. When no ERC20 flow of the
 // manager matches the quote (to 0.5 %), the quote is the gas coin at the
