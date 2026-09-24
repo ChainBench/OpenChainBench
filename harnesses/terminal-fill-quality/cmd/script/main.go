@@ -2337,7 +2337,16 @@ func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swa
 			})
 			// Several passes, because clipping a row to what it has frees
 			// seats that the rows still short of their share should get.
-			for pass := 0; pass < 3 && given < room; pass++ {
+			//
+			// No pass limit: each pass hands out at most one seat per row,
+			// so a fixed count silently caps how much can be redistributed.
+			// Three passes over 68 legs could return 204 seats where the
+			// clipping had freed 779, and the budget went unspent — 1621
+			// rows shipped against a configured 2400, with 39 of 68 legs
+			// left sitting on the floor. `moved` is the real termination
+			// condition: it goes false the moment no row can take another
+			// seat, which is also the only way this loop can end.
+			for given < room {
 				moved := false
 				for i := 0; given < room && i < len(rems); i++ {
 					slug := rems[i].slug
