@@ -1,5 +1,5 @@
 import { Shell } from "@/components/shell";
-import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi } from "@/components/ui";
+import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi, Lines } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
 import { readSnapshot } from "@/lib/snapshot";
 
@@ -11,20 +11,138 @@ export const dynamic = "force-dynamic";
 
 const CHANNEL_LABEL = { ai: "AI", search: "Search", social: "Social", direct: "Direct", referral: "Referral", internal: "Internal" } as const;
 
-export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
+const SURFACE_SERIES = [
+  { key: "pageviews", name: "HTML pageviews", color: "var(--accent)" },
+  { key: "markdown", name: "Markdown reads (Accept: text/markdown)", color: "var(--good)" },
+  { key: "stat", name: "/api/stat reads (edge-cache fills)", color: "var(--warn)" },
+  { key: "citable", name: "/api/citable reads (edge-cache fills)", color: "var(--bad)" },
+] as const;
+
+const EVENT_LABEL: Record<string, string> = { markdown_read: "Markdown", stat_read: "/api/stat", citable_read: "/api/citable" };
+
+export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string; range?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
   const t = snap.traffic;
   const a = t.audience;
   const total = a ? a.newVisitors + a.returningVisitors : 0;
+  // "Returning" means first seen before the 7-day window. PostHog only has
+  // events since the first day of `daily` (2026-09-20), so until that day is
+  // a week old nobody can be returning and the card says why instead of
+  // printing a zero that reads as a finding. Repeat visitors (active on two
+  // or more days inside the window) is the figure that means something now.
+  const firstDay = t.daily?.[0]?.day ?? null;
+  const windowStart = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const historyTooShort = Boolean(firstDay && firstDay > windowStart);
+  const returningSub = historyTooShort
+    ? `not measurable yet: history starts ${firstDay}`
+    : a && total > 0
+      ? `${fmtPct(a.returningVisitors / total)} of active, first seen before the window`
+      : "first seen before the window";
+  const range = sp.range === "all" ? "all" : "28";
+  const surfacesAll = t.surfaces ?? [];
+  const surfaces = range === "all" ? surfacesAll : surfacesAll.slice(-28);
+  const maxPv = Math.max(0, ...surfaces.map((d) => d.pageviews));
+  const maxReads = Math.max(0, ...surfaces.map((d) => Math.max(d.markdown, d.stat, d.citable)));
+  const logScale = maxReads > 0 && maxPv > 20 * maxReads;
+  const families = (() => {
+    const by = new Map<string, number>();
+    for (const f of t.families ?? []) by.set(f.family, (by.get(f.family) ?? 0) + f.reads);
+    return [...by.entries()].map(([label, value]) => ({ label, value })).sort((x, y) => y.value - x.value).slice(0, 15);
+  })();
   const referrers = (t.referrers ?? []).filter((r) => r.channel !== "direct" && r.channel !== "internal" && (r.visitors > 0 || r.prevVisitors > 0)).slice(0, 40);
 
   return (
     <Shell current="/audience" snapshot={snap} refreshFlag={sp.refresh}>
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="New visitors, 7 d" value={fmtInt(a?.newVisitors)} sub={a && total > 0 ? `${fmtPct(a.newVisitors / total)} of active` : undefined} />
-        <Kpi label="Returning visitors, 7 d" value={fmtInt(a?.returningVisitors)} sub={a && total > 0 ? `${fmtPct(a.returningVisitors / total)} of active` : "first seen before the window"} />
+        <Kpi label="Returning visitors, 7 d" value={historyTooShort ? "n/a" : fmtInt(a?.returningVisitors)} sub={returningSub} />
+        <Kpi label="Repeat visitors, 7 d" value={fmtInt(a?.repeatVisitors)} sub={a && a.newVisitors + a.returningVisitors > 0 ? `${fmtPct(a.repeatVisitors / (a.newVisitors + a.returningVisitors))} of active, seen on 2+ days` : "seen on 2+ days in the window"} />
         <Kpi label="Sessions, 7 d" value={fmtInt(t.engagement?.sessions)} />
         <Kpi label="Bounce rate" value={fmtPct(t.engagement?.bounceRate)} sub="single-pageview sessions" />
+      </section>
+
+      <section className="mt-6 panel p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="label">
+            Reads per surface, daily{firstDay ? `, since ${firstDay}` : ""} ({surfaces.length} d{logScale ? ", log scale" : ""})
+          </p>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            <a href="/audience?range=28" style={{ color: range === "28" ? "var(--ink)" : undefined }}>28 d</a>
+            {" · "}
+            <a href="/audience?range=all" style={{ color: range === "all" ? "var(--ink)" : undefined }}>all ({surfacesAll.length} d, up to 90)</a>
+          </p>
+        </div>
+        {surfaces.length > 1 ? (
+          <>
+            <div className="mt-2">
+              <Lines
+                logScale={logScale}
+                series={SURFACE_SERIES.map((s) => ({ name: s.name, color: s.color, values: surfaces.map((d) => d[s.key]) }))}
+              />
+            </div>
+            <div className="mt-1 flex justify-between text-[11px]" style={{ color: "var(--faint)" }}>
+              <span>{surfaces[0].day}</span>
+              <span>{surfaces[surfaces.length - 1].day}</span>
+            </div>
+          </>
+        ) : (
+          <Empty text="No daily series yet." />
+        )}
+        <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
+          HTML pageviews come from the browser SDK. The three server surfaces are captured on the server since 2026-09-24 (release after that date on production):
+          Markdown is one event per read; /api/stat (60 s) and /api/citable (1 h) sit behind an edge cache and count cache fills, so they undercount.
+          The nightly HF publisher reads /api/stat for every bench and shows up as family &quot;other&quot;.
+        </p>
+      </section>
+
+      <section className="mt-6 grid gap-3 md:grid-cols-[3fr_2fr]">
+        <div className="panel p-4">
+          <p className="label">Endpoints read by agents, 7 d</p>
+          {t.endpoints && t.endpoints.some((e) => e.reads > 0) ? (
+            <table className="data mt-2">
+              <thead>
+                <tr>
+                  <th>Surface</th>
+                  <th>Path</th>
+                  <th className="num">Reads</th>
+                  <th className="num">vs prev 7 d</th>
+                  <th className="num">Agents</th>
+                  <th>Top families</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.endpoints
+                  .filter((e) => e.reads > 0)
+                  .slice(0, 40)
+                  .map((e) => (
+                    <tr key={`${e.event}:${e.path}`}>
+                      <td>{EVENT_LABEL[e.event] ?? e.event}</td>
+                      <td className="mono truncate" style={{ maxWidth: 320 }} title={e.path}>
+                        {e.path}
+                      </td>
+                      <td className="num mono">{fmtInt(e.reads)}</td>
+                      <td className="num">
+                        <Delta now={e.reads} prev={e.prevReads} />
+                      </td>
+                      <td className="num mono">{fmtInt(e.agents)}</td>
+                      <td className="mono" style={{ color: "var(--muted)" }}>
+                        {e.families.join(", ")}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <Empty text="No server-side read yet on production (ships with the next release)." />
+          )}
+        </div>
+        <div className="panel p-4">
+          <p className="label">Agent families, 7 d (server reads)</p>
+          {families.length > 0 ? <Bars rows={families} /> : <Empty text="No server-side read yet on production." />}
+          <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
+            Family is a coarse user-agent bucket (gptbot, claudebot, perplexitybot, googlebot, curl, python, browser). Distinct agents are counted per user agent per day, never per IP.
+          </p>
+        </div>
       </section>
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">

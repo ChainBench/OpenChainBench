@@ -17,6 +17,12 @@ const PV = `event = '$pageview' AND ${HOST_FILTER}`;
 // The site's custom events (src/lib/analytics.ts): outbound_click, copy, search.
 const CUSTOM = `event IN ('outbound_click', 'copy', 'search') AND ${HOST_FILTER}`;
 const PL = `event = '$pageleave' AND ${HOST_FILTER}`;
+// Server-side reads the browser never renders (src/lib/analytics-server.ts,
+// 2026-09-24): the Markdown views, /api/stat and /api/citable. Markdown is
+// one event per read; stat and citable sit behind an edge cache and count
+// cache fills, which the dashboard says next to the figures.
+const SERVER_READS = `event IN ('markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
+const SURFACES = `event IN ('$pageview', 'markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
 
 export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number };
 export type WeeklyPoint = { week: string; visitors: number; ai: number; search: number; pageviews: number };
@@ -33,6 +39,10 @@ export type EngagedRow = { section: Section; leaves: number; medianSec: number; 
 export type EngagedPageRow = { path: string; section: Section; leaves: number; medianSec: number };
 export type NotFoundRow = { path: string; hits: number; visitors: number; topReferrer: string };
 export type NoResultRow = { query: string; count: number };
+/** One day of reads per surface: HTML pageviews and the three server-side read events. */
+export type SurfacePoint = { day: string; pageviews: number; markdown: number; stat: number; citable: number };
+export type EndpointRow = { event: string; path: string; reads: number; prevReads: number; agents: number; families: string[] };
+export type FamilyRow = { event: string; family: string; reads: number };
 
 export type Traffic = {
   daily: DailyPoint[];
@@ -43,7 +53,13 @@ export type Traffic = {
   countries: NamedCount[];
   devices: NamedCount[];
   utm: { source: string; medium: string; visitors: number }[];
-  audience: { newVisitors: number; returningVisitors: number };
+  /** repeatVisitors: active on two or more distinct days inside the window, a
+   *  definition that means something before the history is a week old. */
+  audience: { newVisitors: number; returningVisitors: number; repeatVisitors: number };
+  /** Daily reads per surface over the trailing 90 days (or since the first event). */
+  surfaces: SurfacePoint[];
+  endpoints: EndpointRow[];
+  families: FamilyRow[];
   totals: {
     visitors: number;
     prevVisitors: number;
@@ -131,11 +147,34 @@ export const QUERIES = {
     FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY`,
   audience: () => `
     SELECT countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
-           countIf(first_seen < now() - INTERVAL 7 DAY) AS returning_visitors
+           countIf(first_seen < now() - INTERVAL 7 DAY) AS returning_visitors,
+           countIf(days >= 2) AS repeat_visitors
     FROM (
-      SELECT distinct_id, min(timestamp) AS first_seen, max(timestamp) AS last_seen
+      SELECT distinct_id, min(timestamp) AS first_seen, max(timestamp) AS last_seen,
+             uniqIf(toDate(timestamp), timestamp >= now() - INTERVAL 7 DAY) AS days
       FROM events WHERE ${PV} GROUP BY distinct_id
     ) WHERE last_seen >= now() - INTERVAL 7 DAY`,
+  surfaces: () => `
+    SELECT toDate(timestamp) AS day,
+           countIf(event = '$pageview') AS pageviews,
+           countIf(event = 'markdown_read') AS markdown,
+           countIf(event = 'stat_read') AS stat,
+           countIf(event = 'citable_read') AS citable
+    FROM events
+    WHERE ${SURFACES} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
+    GROUP BY day ORDER BY day`,
+  endpoints: () => `
+    SELECT event, properties.path AS path,
+           countIf(timestamp >= now() - INTERVAL 7 DAY) AS reads,
+           countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_reads,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS agents,
+           topK(3)(properties.ua_family) AS families
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 14 DAY
+    GROUP BY event, path ORDER BY greatest(reads, prev_reads) DESC LIMIT 80`,
+  families: () => `
+    SELECT event, properties.ua_family AS family, count() AS reads
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY event, family ORDER BY reads DESC LIMIT 60`,
   engagement: () => `
     SELECT avg(n) AS pages_per_session, countIf(n = 1) / count() AS bounce_rate, count() AS sessions FROM (
       SELECT properties.$session_id AS s, count() AS n
@@ -227,7 +266,22 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
         },
       };
     case "audience":
-      return { audience: { newVisitors: num(rows[0]?.[0]), returningVisitors: num(rows[0]?.[1]) } };
+      return { audience: { newVisitors: num(rows[0]?.[0]), returningVisitors: num(rows[0]?.[1]), repeatVisitors: num(rows[0]?.[2]) } };
+    case "surfaces":
+      return { surfaces: rows.map((r) => ({ day: str(r[0]).slice(0, 10), pageviews: num(r[1]), markdown: num(r[2]), stat: num(r[3]), citable: num(r[4]) })) };
+    case "endpoints":
+      return {
+        endpoints: rows.map((r) => ({
+          event: str(r[0]),
+          path: str(r[1]) || "/",
+          reads: num(r[2]),
+          prevReads: num(r[3]),
+          agents: num(r[4]),
+          families: (Array.isArray(r[5]) ? r[5] : [r[5]]).map((f) => str(f)).filter(Boolean),
+        })),
+      };
+    case "families":
+      return { families: rows.map((r) => ({ event: str(r[0]), family: str(r[1]) || "unknown", reads: num(r[2]) })) };
     case "actions":
       return { actions: rows.map((r) => ({ name: str(r[0]), count: num(r[1]), prevCount: num(r[2]), visitors: num(r[3]) })) };
     case "outbound":
