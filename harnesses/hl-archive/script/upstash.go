@@ -25,9 +25,13 @@ type UpstashPayload struct {
 }
 
 type UpstashBuilder struct {
-	Name            string                  `json:"name"`
-	Windows         map[string]WindowAgg    `json:"windows"`
-	TimeseriesDaily []TimePoint             `json:"timeseries_daily"`
+	// Slug is the registry slug the site addresses builders by
+	// (/api/builder/<slug>/daily-history matches on it); the map key stays
+	// the address so a rename never orphans history.
+	Slug            string               `json:"slug"`
+	Name            string               `json:"name"`
+	Windows         map[string]WindowAgg `json:"windows"`
+	TimeseriesDaily []TimePoint          `json:"timeseries_daily"`
 }
 
 // upstashTimeseriesDaysCap is the hard cap on per-builder daily points
