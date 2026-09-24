@@ -27,7 +27,7 @@ func TestRecentCoversEveryTerminal(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-b", 1, 6000)...)
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-c", 40, 7000)...)
 
-	got := recent(st, 6, 900)
+	got := recent(st, 6, 900, nil)
 
 	seen := map[string]int{}
 	for _, s := range got {
@@ -60,7 +60,7 @@ func TestRecentTotalCeilingLeavesNobodyOut(t *testing.T) {
 		st.Swaps = append(st.Swaps, mkSwaps(slug, 50, 0)...)
 	}
 	const total = 20
-	got := recent(st, 1, total)
+	got := recent(st, 1, total, nil)
 	if len(got) > total {
 		t.Fatalf("sample of %d exceeds the ceiling of %d", len(got), total)
 	}
@@ -78,7 +78,7 @@ func TestRecentIsTimeOrdered(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("a", 5, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("b", 5, 0)...)
-	got := recent(st, 6, 900)
+	got := recent(st, 6, 900, nil)
 	for i := 1; i < len(got); i++ {
 		if got[i].Time < got[i-1].Time {
 			t.Fatalf("not time-ordered at %d: %d before %d", i, got[i-1].Time, got[i].Time)
@@ -95,7 +95,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("binance-wallet-ethereum", 4, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn", 4, 200)...)
 
-	for _, s := range recent(st, 6, 900) {
+	for _, s := range recent(st, 6, 900, nil) {
 		switch s.Terminal {
 		case "binance-wallet-base", "binance-wallet-ethereum":
 			if s.Product != "binance" {
@@ -116,7 +116,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 func TestRecentStampsTheProductForAChainRow(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn-ethereum", 3, 0)...)
-	got := recent(st, 6, 900)
+	got := recent(st, 6, 900, nil)
 	if len(got) != 3 {
 		t.Fatalf("want 3 swaps, got %d", len(got))
 	}
@@ -143,7 +143,7 @@ func TestRecentSamplesInProportionToFlow(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-base", 100, 2000)...)
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-arc", 100, 3000)...)
 
-	got := recent(st, 6, 200)
+	got := recent(st, 6, 200, nil)
 	seen := map[string]int{}
 	for _, s := range got {
 		seen[s.Terminal]++
@@ -170,7 +170,7 @@ func TestRecentKeepsEverythingBelowTheFloor(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("busy", 5000, 0)...)
 	st.Swaps = append(st.Swaps, mkSwaps("tiny", 2, 9000)...)
 	seen := 0
-	for _, s := range recent(st, 6, 300) {
+	for _, s := range recent(st, 6, 300, nil) {
 		if s.Terminal == "tiny" {
 			seen++
 		}
@@ -189,7 +189,7 @@ func TestRecentDoesNotStampFundingLegsOntoTheProduct(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-funding", 20, 0)...)
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-base", 20, 500)...)
 
-	for _, s := range recent(st, 6, 900) {
+	for _, s := range recent(st, 6, 900, nil) {
 		switch s.Terminal {
 		case "pump-fun-funding":
 			if s.Product != "" {
@@ -200,5 +200,67 @@ func TestRecentDoesNotStampFundingLegsOntoTheProduct(t *testing.T) {
 				t.Fatalf("chain row should roll up to pump-fun, got %q", s.Product)
 			}
 		}
+	}
+}
+
+// The sample has to follow the same weight the statistic follows.
+//
+// compute() builds a pooled median with weightOf[slug] = attempts /
+// sampled rows, under a comment that names the trap outright: "a median
+// over the plain concatenation would describe the sampler, not the
+// users". The audit table WAS that plain concatenation.
+//
+// Real pump.fun shape on 2026-09-24: Solana is 655,117 attempts and 123
+// priced swaps (0.02%), Robinhood 18,780 and 84 (0.45%), BNB 6,783 and
+// 82 (1.2%). Solana is 95% of the flow and 27% of the rows, so a sample
+// drawn on rows cannot reproduce a median weighted on attempts.
+func TestRecentFollowsFlowNotCollectedSwaps(t *testing.T) {
+	st := &State{}
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun", 123, 0)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-robinhood", 84, 2000)...)
+	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-bnb", 82, 4000)...)
+	flow := map[string]float64{
+		"pump-fun":           655117,
+		"pump-fun-robinhood": 18780,
+		"pump-fun-bnb":       6783,
+	}
+
+	seen := map[string]int{}
+	got := recent(st, 6, 200, flow)
+	for _, s := range got {
+		seen[s.Terminal]++
+	}
+	// Solana holds 96% of the flow. It cannot take all of the sample,
+	// because only 123 of its swaps exist, but it has to dominate.
+	share := float64(seen["pump-fun"]) / float64(len(got))
+	if share < 0.6 {
+		t.Fatalf("the row carrying 96%% of the flow took %.0f%% of the sample (%v); "+
+			"weighting by collected swaps instead of flow is what made the pooled "+
+			"table read 375 against a published 254", share*100, seen)
+	}
+	// The thin chains keep their floor: a row nobody can price much of
+	// is still a row a reader may want to check.
+	for _, slug := range []string{"pump-fun-robinhood", "pump-fun-bnb"} {
+		if seen[slug] < 6 {
+			t.Fatalf("%s fell under the floor of 6 (%d)", slug, seen[slug])
+		}
+	}
+}
+
+// Without a flow map the sampler falls back to swap counts, so a caller
+// with no stats to hand still gets a spread rather than nothing.
+func TestRecentFallsBackToSwapCountsWithoutFlow(t *testing.T) {
+	st := &State{}
+	st.Swaps = append(st.Swaps, mkSwaps("a", 300, 0)...)
+	st.Swaps = append(st.Swaps, mkSwaps("b", 30, 1000)...)
+	seen := map[string]int{}
+	for _, s := range recent(st, 6, 200, nil) {
+		seen[s.Terminal]++
+	}
+	if seen["a"] <= seen["b"] {
+		t.Fatalf("fallback should still favour the busier row, got %v", seen)
+	}
+	if seen["b"] < 6 {
+		t.Fatalf("b fell under the floor (%d)", seen["b"])
 	}
 }
