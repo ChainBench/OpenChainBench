@@ -21,7 +21,7 @@ type Aggregator struct {
 	mirror       *Mirror
 	state        *State
 	windowDays   int       // days behind the feed day the 30d gauges cover
-	graceDays    int       // a 403 younger than this many days is retried hourly
+	graceDays    int       // a 403 on a day this recent is re-requested every pass
 	minPublished int       // files needed on a day before it counts as published
 	workers      int       // concurrent feed downloads
 	ledgerFrom   time.Time // oldest day the ledger backfill walks to
@@ -196,6 +196,16 @@ func (a *Aggregator) syncWindow(ctx context.Context) {
 // half-way. The choice only ever moves forward.
 func (a *Aggregator) chooseDataDay(now time.Time) {
 	_, to := a.fetchRange(now)
+	hlMirrorFiles.Set(float64(a.countMirror(now)))
+	// A pass with a transport failure may have left a published file
+	// unfetched; the settle rule only holds when every request answered,
+	// so the day never advances on such a pass.
+	a.mu.Lock()
+	clean := a.lastSyncOK
+	a.mu.Unlock()
+	if !clean {
+		return
+	}
 	// Compare against the clock now, not the sync start that preceded this
 	// call.
 	now = time.Now().UTC()
@@ -223,7 +233,6 @@ func (a *Aggregator) chooseDataDay(now time.Time) {
 		a.mu.Unlock()
 		break
 	}
-	hlMirrorFiles.Set(float64(a.countMirror(now)))
 }
 
 func (a *Aggregator) countMirror(now time.Time) int {
@@ -258,8 +267,9 @@ func (a *Aggregator) summary(addr string, day time.Time) *daySummary {
 	if err != nil {
 		// A truncated or corrupt download must not be published or cached
 		// as a partial day: drop the file so the next sync fetches it again.
-		log.Printf("parse %s %s: %v (file removed, will refetch)", addr, key, err)
+		log.Printf("parse %s %s: %v (file removed, will refetch while the day is recent)", addr, key, err)
 		_ = os.Remove(a.mirror.filePath(addr, day))
+		_ = a.mirror.markAbsent(addr, day)
 		return nil
 	}
 	a.mu.Lock()
@@ -327,6 +337,7 @@ func (a *Aggregator) merged(b Builder, day time.Time) *daySummary {
 
 type builderWindow struct {
 	day      *daySummary
+	dayKnown bool // D has a file, or every address answered 403
 	fees7    float64
 	fees30   float64
 	vol7     float64
@@ -357,11 +368,7 @@ func (a *Aggregator) publish() {
 	windowStart := D.AddDate(0, 0, -(a.windowDays - 1))
 	for _, b := range a.builders {
 		for d := mirrorFrom; d.Before(windowStart); d = d.AddDate(0, 0, 1) {
-			if s := a.merged(b, d); s != nil {
-				a.state.setLedger(b.Slug, dayKey(d), dayTotals{Fees: s.fees, Vol: s.vol, Fills: s.fills, Users: len(s.users)})
-			} else {
-				a.state.setLedger(b.Slug, dayKey(d), dayTotals{})
-			}
+			a.writeLedgerDay(b, d)
 		}
 	}
 
@@ -372,15 +379,28 @@ func (a *Aggregator) publish() {
 		u7 := make(map[string]struct{})
 		for i := 0; i < a.windowDays; i++ {
 			d := D.AddDate(0, 0, -i)
+			if d.Before(mirrorFrom) {
+				// Files for this day are gone (the feed day lags the fetch
+				// range); the ledger row written while it was mirrored is
+				// the source. Wallet sets are not recoverable from it.
+				t := a.state.ledgerFor(b.Slug)[dayKey(d)]
+				w.fees30 += t.Fees
+				w.vol30 += t.Vol
+				if i < 7 {
+					w.fees7 += t.Fees
+					w.vol7 += t.Vol
+				}
+				continue
+			}
 			s := a.merged(b, d)
 			if i == 0 {
 				w.day = s
+				w.dayKnown = s != nil || a.allAbsent(b, d)
 			}
+			a.writeLedgerDay(b, d)
 			if s == nil {
-				a.state.setLedger(b.Slug, dayKey(d), dayTotals{})
 				continue
 			}
-			a.state.setLedger(b.Slug, dayKey(d), dayTotals{Fees: s.fees, Vol: s.vol, Fills: s.fills, Users: len(s.users)})
 			w.fees30 += s.fees
 			w.vol30 += s.vol
 			if i < 7 {
@@ -409,6 +429,12 @@ func (a *Aggregator) publish() {
 
 	for _, b := range a.builders {
 		w := rows[b.Slug]
+		if !w.dayKnown {
+			// Day D has no file and not every address answered 403: a
+			// download failed. Keep the previous gauge values rather than
+			// publish $0 for a builder that traded.
+			continue
+		}
 		var fees, vol float64
 		var fills, taker, users int
 		if w.day != nil {
@@ -775,4 +801,31 @@ func (a *Aggregator) snapshot(slug string) *builderSnapshot {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.snapshots[slug]
+}
+
+// allAbsent reports whether every address of the builder has a 403 marker
+// for the day: the only case where "no file" means "no fills".
+func (a *Aggregator) allAbsent(b Builder, day time.Time) bool {
+	for _, addr := range b.allAddresses() {
+		if a.mirror.present(addr, day) {
+			return false
+		}
+		if a.mirror.absentSince(addr, day).IsZero() {
+			return false
+		}
+	}
+	return true
+}
+
+// writeLedgerDay stores the builder's totals for a mirrored day. A day with
+// no file is written as zero only when every address answered 403;
+// otherwise the existing row (or none) stands until the file arrives.
+func (a *Aggregator) writeLedgerDay(b Builder, d time.Time) {
+	if s := a.merged(b, d); s != nil {
+		a.state.setLedger(b.Slug, dayKey(d), dayTotals{Fees: s.fees, Vol: s.vol, Fills: s.fills, Users: len(s.users)})
+		return
+	}
+	if a.allAbsent(b, d) {
+		a.state.setLedger(b.Slug, dayKey(d), dayTotals{})
+	}
 }

@@ -39,12 +39,15 @@ notional (`dayNtlVlm`), open interest and mark price.
 
 1. **Mirror.** Every fetched CSV is stored under `<data>/builder_fills/<address>/`.
    A 403 writes a `<day>.absent` marker with the check time. Days younger than
-   `-grace-days` (3) are re-checked hourly until the batch lands; older 403s
-   are final. Files older than the window are pruned.
-2. **Feed day.** After each sync the harness picks the newest day within the
-   grace span that has at least `-min-published` (5) files whose newest
-   download is older than `-settle` (45 min). The choice only moves forward,
-   so a half-uploaded batch is never read. `hl_frontend_data_day_unix_v2` and
+   `-grace-days` (3) are re-requested on every pass until the batch lands;
+   older 403s are final. Files older than the window are pruned.
+2. **Feed day.** After each pass without transport failures the harness
+   picks the newest day within the grace span that has at least
+   `-min-published` (5) files whose newest CDN upload (Last-Modified, kept as
+   the file mtime) is older than `-settle` (45 min). The choice only moves
+   forward, so a half-uploaded batch is never read. A builder whose file
+   failed to download keeps its previous gauges; $0 is published only when
+   every address answered 403. `hl_frontend_data_day_unix_v2` and
    `_end_unix_v2` say which day the gauges describe.
 3. **Publish.** For the feed day D: fees, notional, fills, taker share, distinct
    wallets (FNV-64 hashed), coin shares. 7d/30d = the files of the 7/30 UTC

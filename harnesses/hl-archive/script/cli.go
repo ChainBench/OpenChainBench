@@ -408,7 +408,12 @@ func ProcessDay(ctx context.Context, store *Store, builders []Builder, day time.
 			withFile++
 		}
 	}
-	if withFile < minPublishedBuilders && len(rowsByAddr) > 0 {
+	if len(rowsByAddr) == 0 {
+		// Every fetch failed at transport level: nothing is known about the
+		// day, so committing would record an empty day nobody revisits.
+		return DayResult{}, fmt.Errorf("feed: every fetch failed for %s", dayStr)
+	}
+	if withFile < minPublishedBuilders {
 		return DayResult{}, ErrDayNotPublished
 	}
 

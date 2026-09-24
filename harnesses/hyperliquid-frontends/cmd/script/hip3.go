@@ -93,6 +93,7 @@ func (p *hip3Poller) pollOnce(ctx context.Context) (int, error) {
 		if d == nil || d.Name == "" {
 			continue // index 0 is the core dex
 		}
+		d.Deployer = strings.ToLower(d.Deployer)
 		var payload []json.RawMessage
 		if err := infoPost(ctx, map[string]string{"type": "metaAndAssetCtxs", "dex": d.Name}, &payload); err != nil {
 			log.Printf("hip3 %s: %v", d.Name, err)
@@ -141,7 +142,7 @@ func (p *hip3Poller) pollOnce(ctx context.Context) (int, error) {
 		}
 		p.known[d.Name] = *d
 		p.mu.Unlock()
-		hip3Info.WithLabelValues(d.Name, d.FullName, strings.ToLower(d.Deployer)).Set(1)
+		hip3Info.WithLabelValues(d.Name, d.FullName, d.Deployer).Set(1)
 
 		// One sample per UTC day, taken by the first poll after midnight:
 		// dayNtlVlm at ~00:00 covers the day that just closed.

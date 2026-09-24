@@ -41,7 +41,7 @@ func main() {
 		dataDir      = flag.String("data", "/data", "mirror and state root")
 		stateF       = flag.String("state", "", "state file (default <data>/state.json)")
 		windowDays   = flag.Int("window-days", 30, "complete UTC days behind the feed day the 30d gauges cover")
-		graceDays    = flag.Int("grace-days", 3, "days a missing file is re-checked hourly before a 403 is final")
+		graceDays    = flag.Int("grace-days", 3, "days a missing file is re-requested every pass before a 403 is final")
 		minPublished = flag.Int("min-published", 5, "files needed on a day before it counts as published")
 		settle       = flag.Duration("settle", 45*time.Minute, "newest file of a day must be older than this before the day is used")
 		poll         = flag.Duration("poll", 30*time.Minute, "feed sync interval")
