@@ -97,22 +97,6 @@ func (s *State) setLedger(slug, day string, t dayTotals) {
 	m[day] = t
 }
 
-func (s *State) addLedger(slug, day string, t dayTotals) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	m, ok := s.Ledger[slug]
-	if !ok {
-		m = make(map[string]dayTotals)
-		s.Ledger[slug] = m
-	}
-	cur := m[day]
-	cur.Fees += t.Fees
-	cur.Vol += t.Vol
-	cur.Fills += t.Fills
-	cur.Users += t.Users
-	m[day] = cur
-}
-
 func (s *State) ledgerFor(slug string) map[string]dayTotals {
 	s.mu.Lock()
 	defer s.mu.Unlock()

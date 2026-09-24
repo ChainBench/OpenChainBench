@@ -167,14 +167,12 @@ func (a *Aggregator) syncWindow(ctx context.Context) {
 			if a.mirror.present(addr, d) {
 				continue
 			}
-			absentAt := a.mirror.absentSince(addr, d)
-			if !absentAt.IsZero() {
-				if !recent {
-					continue // old day, a 403 is final: no fills
-				}
-				if now.Sub(absentAt) < time.Hour {
-					continue // recent day, re-check hourly until the batch lands
-				}
+			// A 403 on an old day is final (no fills). On a recent day every
+			// missing file is re-requested on every pass, so by the time the
+			// settle check passes (newest CDN upload older than `settle`) no
+			// file that exists on the CDN can still be missing from the mirror.
+			if !recent && !a.mirror.absentSince(addr, d).IsZero() {
+				continue
 			}
 			jobs = append(jobs, fetchJob{addr: addr, day: d})
 		}
@@ -256,10 +254,11 @@ func (a *Aggregator) summary(addr string, day time.Time) *daySummary {
 	}
 	s, err := a.mirror.parseFile(addr, day)
 	if err != nil {
-		log.Printf("parse %s %s: %v", addr, key, err)
-		if s == nil {
-			return nil
-		}
+		// A truncated or corrupt download must not be published or cached
+		// as a partial day: drop the file so the next sync fetches it again.
+		log.Printf("parse %s %s: %v (file removed, will refetch)", addr, key, err)
+		_ = os.Remove(a.mirror.filePath(addr, day))
+		return nil
 	}
 	a.mu.Lock()
 	m, ok := a.cache[addr]
