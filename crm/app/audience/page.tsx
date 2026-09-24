@@ -1,3 +1,4 @@
+import { FrequencyPanel, RetentionGrid } from "@/components/retention";
 import { Shell } from "@/components/shell";
 import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
@@ -25,6 +26,14 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
         <Kpi label="Returning visitors, 7 d" value={fmtInt(a?.returningVisitors)} sub={a && total > 0 ? `${fmtPct(a.returningVisitors / total)} of active` : "first seen before the window"} />
         <Kpi label="Sessions, 7 d" value={fmtInt(t.engagement?.sessions)} />
         <Kpi label="Bounce rate" value={fmtPct(t.engagement?.bounceRate)} sub="single-pageview sessions" />
+      </section>
+
+      <section className="mt-6 grid gap-3">
+        <RetentionGrid rows={t.retention ?? []} firstDay={t.daily?.[0]?.day ?? null} />
+      </section>
+
+      <section className="mt-3 grid gap-3 md:grid-cols-2">
+        <FrequencyPanel rows={t.frequency ?? []} />
       </section>
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
