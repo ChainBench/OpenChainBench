@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { getProvider } from "@/lib/providers";
 import { fetchPerpCohort } from "@/lib/perp-stats";
+import { captureServer } from "@/lib/analytics-server";
 import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from "@/lib/markdown-views";
 
 /**
@@ -12,7 +13,12 @@ import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from
  * `curl -H 'Accept: text/markdown' https://openchainbench.com/perps`
  * answers with the table an agent can read without a DOM.
  */
-export const revalidate = 300;
+// Dynamic since 2026-09-24: the route captures a server-side analytics
+// event per read (this is the answer-engine surface), which a cached
+// handler would only do on a revalidation. The bench data it renders is
+// itself read through the data cache, so the per-request cost is the
+// Markdown rendering only.
+export const dynamic = "force-dynamic";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
@@ -36,10 +42,11 @@ function markdown(text: string, canonical: string): NextResponse {
   });
 }
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const [head, slug, extra] = path ?? [];
   if (extra !== undefined) return notFoundMd("No Markdown view at this path.");
+  captureServer(req, "markdown_read", { path: `/${(path ?? []).join("/")}`, head, slug: slug ?? null });
 
   if (head === "perps" && slug === undefined) {
     const cohort = await fetchPerpCohort();

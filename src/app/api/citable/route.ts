@@ -1,3 +1,4 @@
+import { captureServer } from "@/lib/analytics-server";
 import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
@@ -36,6 +37,7 @@ function unavailable(): NextResponse {
  * cite without needing to read the footer of every page.
  */
 export async function GET(req: Request) {
+  captureServer(req, "citable_read", { path: "/api/citable", query: new URL(req.url).search.slice(0, 120) });
   const canonical = stripQueryRedirect(req);
   if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "citable"), 60, 60, req);

@@ -1,3 +1,4 @@
+import { captureServer } from "@/lib/analytics-server";
 import { NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
@@ -39,6 +40,7 @@ export async function GET(
   if (!SLUG_RE.test(slug)) {
     return NextResponse.json({ error: "bad_slug" }, { status: 400 });
   }
+  captureServer(req, "stat_read", { path: `/api/stat/${slug}`, slug });
   // Dimension query params (?chain=, ?region=, ?kind=, ?venue=) mirror
   // the same client-side selector on the bench page, so a citer asking
   // "fastest ethereum us-east RPC" gets the per cell leader instead of
