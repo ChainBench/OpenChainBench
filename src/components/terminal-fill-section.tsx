@@ -81,7 +81,7 @@ export async function TerminalFillSection({
             <tr className="border-b border-rule text-left">
               <Th>Terminal</Th>
               <Th right title="Median sampled swap size, dollars">Median swap</Th>
-              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %); hover for the percent and the 95 % interval of the median">Value lost</Th>
+              <Th right title="Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade (100 bps = 1 %), with the 95 % interval of the median under it. Two rows whose intervals overlap are not separated by this measurement: only 3 of the 12 adjacent pairs on this board are.">Value lost</Th>
               <Th right title="Median loss applied to the median trade: what the typical swap on this terminal loses, in dollars">Lost / swap</Th>
               <Th right title="What the terminal took, basis points of the trade (median): its fee wallets and fee legs on Solana, the router's residual after the pool and the gas on the EVM rows (referral transfers included), the app fee on Relay legs; referral or cashback legs count as terminal fee where the terminal's list holds them, else they sit in Protocol">Terminal</Th>
               <Th right title="Transaction fee paid by the user plus inclusion tips (Jito and the terminal's own relay) plus the deposit of the token accounts the swap creates, and on cross-chain rows the destination gas Relay charged, basis points (median per chain; flow-weighted on All chains)">Network</Th>
@@ -127,8 +127,25 @@ export async function TerminalFillSection({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
+                  {/* The interval sits in the row, not in a tooltip. Only 3 of
+                      12 adjacent pairs on this board are separable at 95%: two
+                      rows whose intervals overlap are a coin flip, and a reader
+                      who cannot see that reads a fourteen-place ranking into
+                      what is really four groups. It was measured and formatted
+                      all along, just hidden on hover. */}
                   <td className="py-2.5 px-3 text-right tabular-nums font-medium" title={pub ? `${fmtPct(t.loss!.median)} · ${ciText(t)}` : undefined}>
-                    {pub ? <>{fmtBps(t.loss!.median)} <span className="text-[10px] font-normal text-ink-faint">{fmtPct(t.loss!.median)}</span></> : <span className="text-ink-faint" title={t.priced > 0 ? whyUnpublished(t, f.minPriced) : "no priced swap yet"}>—</span>}
+                    {pub ? (
+                      <>
+                        {fmtBps(t.loss!.median)} <span className="text-[10px] font-normal text-ink-faint">{fmtPct(t.loss!.median)}</span>
+                        {t.loss!.ciLo !== undefined && t.loss!.ciHi !== undefined ? (
+                          <span className="block text-[10px] font-normal text-ink-faint tabular-nums">
+                            {Math.round(t.loss!.ciLo)}–{Math.round(t.loss!.ciHi)}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="text-ink-faint" title={t.priced > 0 ? whyUnpublished(t, f.minPriced) : "no priced swap yet"}>—</span>
+                    )}
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{pub && t.tradeUsd && t.loss ? fmtUsd((t.tradeUsd.median * t.loss.median) / 1e4) : "—"}</td>
                   <SplitCell t={t} part="terminal" pub={pub} />
