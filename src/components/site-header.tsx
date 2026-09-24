@@ -52,12 +52,11 @@ export function SiteHeader() {
       // not visible there in practice. Override lives in globals.css
       // (`html.ios-webview .site-header-root` rule) so the WebView-only
       // selector stays out of the Tailwind class soup here.
-      className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80"
+      className="site-header-root lg:hidden sticky top-0 z-50 flex flex-col font-sans bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80"
     >
       <header className="border-b border-rule px-4 sm:px-6 shrink-0 text-sm relative">
         <div className="max-w-[1400px] mx-auto flex items-center gap-4 lg:gap-6 h-14 md:h-16">
-          {/* The rail carries the wordmark at lg and up. */}
-          <div className="flex lg:hidden items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <SiteLogoSwitcher size={22} />
             <Link
               href="/"
@@ -76,9 +75,9 @@ export function SiteHeader() {
           {/* md (768-1023): tighter gaps and 13 px labels, the last two links wait
               for lg. Six full-size links plus logo and utilities are 875 px,
               wider than the 768 px viewport, and the row cannot shrink. */}
-          {/* md to lg only: below md the burger menu owns navigation, at
-              lg and up the left rail does, and this row would repeat it. */}
-          <nav className="hidden md:flex lg:hidden items-center h-full gap-3 text-[13px] font-medium shrink-0">
+          {/* md and up only; below md the burger menu owns navigation.
+              The whole header is gone at lg, where the rail takes over. */}
+          <nav className="hidden md:flex items-center h-full gap-3 text-[13px] font-medium shrink-0">
             {headerNavItems().map((item) => {
               const active = item.match(pathname);
               return (
@@ -88,7 +87,9 @@ export function SiteHeader() {
                   aria-current={active ? "page" : undefined}
                   className={[
                     "relative items-center h-full transition-colors whitespace-nowrap",
-                    item.mdHidden ? "hidden lg:flex" : "flex",
+                    // The header is gone at lg, so an item deferred
+                    // past md is simply not in this row; the rail has it.
+                    item.mdHidden ? "hidden" : "flex",
                     active
                       ? "text-ink"
                       : "text-ink-muted hover:text-ink",
@@ -108,7 +109,7 @@ export function SiteHeader() {
 
           {/* Search takes the remaining horizontal space (flex-1) so it
               reads as a real input and discoverable without keyboard. */}
-          <div className="hidden md:flex grow shrink basis-0 min-w-0 justify-end lg:justify-center">
+          <div className="hidden md:flex grow shrink basis-0 min-w-0 justify-end">
             <SearchTrigger variant="desktop" />
           </div>
 
