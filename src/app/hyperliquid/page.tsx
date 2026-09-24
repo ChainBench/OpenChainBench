@@ -29,12 +29,56 @@ import { safeJsonLd } from "@/lib/jsonld";
  * two hubs stop competing for the same rank signal.
  */
 
-export const metadata: import("next").Metadata = pageMetadata({
-  path: "/hyperliquid",
-  title: "Hyperliquid Frontends + HIP-3 Dexes Leaderboard",
-  description:
-    "Revenue, volume and users for every Hyperliquid frontend, plus volume, markets and open interest for every HIP-3 dex. Built from Hyperliquid's public builder fills feed and info API.",
-});
+const HUB_DESCRIPTION =
+  "Revenue, volume and users for every Hyperliquid frontend, plus volume, markets and open interest for every HIP-3 dex. Built from Hyperliquid's public builder fills feed and info API.";
+
+function fmtUsdShort(v: number): string {
+  if (!Number.isFinite(v) || v <= 0) return "$0";
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+/** One dated sentence both the lede and the meta description use, built
+ *  from the live cohort blobs so the snippet names today's leaders
+ *  (audit 2026-09-24: the static description carried no number). */
+function hubLede(
+  frontends: Awaited<ReturnType<typeof fetchHlCohort>>,
+  hip3: Awaited<ReturnType<typeof fetchHlHip3Cohort>>,
+): { sentence: string; asOf: string } | null {
+  const named = frontends?.rows.filter((r) => !/^0x[a-f0-9]+$/i.test(r.slug)) ?? [];
+  const top = named[0];
+  const hipTop = hip3?.rows[0];
+  if (!top && !hipTop) return null;
+  const asOf = new Date((frontends?.asOf ?? hip3?.asOf ?? Date.now() / 1000) * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const parts: string[] = [];
+  if (top && frontends) {
+    parts.push(
+      `${top.name} leads ${named.length} Hyperliquid frontends on 30-day builder fees at ${fmtUsdShort(top.revenue30d)}`,
+    );
+  }
+  if (hipTop && hip3) {
+    parts.push(
+      `${hipTop.name} leads ${hip3.rows.length} HIP-3 dexes on 24h notional at ${fmtUsdShort(hipTop.volume24h)}`,
+    );
+  }
+  return { sentence: `${parts.join("; ")}.`, asOf };
+}
+
+export async function generateMetadata(): Promise<import("next").Metadata> {
+  const [frontends, hip3] = await Promise.all([fetchHlCohort(), fetchHlHip3Cohort()]);
+  const lede = hubLede(frontends, hip3);
+  return pageMetadata({
+    path: "/hyperliquid",
+    title: "Hyperliquid Frontends + HIP-3 Dexes Leaderboard",
+    description: lede
+      ? `${lede.sentence} Daily, keyless public data.`
+      : HUB_DESCRIPTION,
+  });
+}
 
 export const revalidate = 3600;
 
@@ -44,6 +88,7 @@ export default async function HyperliquidHubPage() {
     fetchHlHip3Cohort(),
     fetchHlHistory(),
   ]);
+  const lede = hubLede(frontends, hip3);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -88,7 +133,7 @@ export default async function HyperliquidHubPage() {
         itemListElement: linkableFrontends.slice(0, 100).map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `https://openchainbench.com/hyperliquid/${r.slug}`,
+          url: `https://openchainbench.com/products/${r.slug}`,
           name: r.name,
         })),
       }
@@ -122,6 +167,11 @@ export default async function HyperliquidHubPage() {
           describe the last complete UTC day; HIP-3 figures come from the
           public info API, refreshed every 10 minutes.
         </p>
+        {lede && (
+          <p className="mt-3 max-w-2xl text-sm text-ink-soft">
+            As of {lede.asOf}, {lede.sentence}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
             href="/benchmarks/hyperliquid-frontends"
@@ -164,8 +214,9 @@ export default async function HyperliquidHubPage() {
             history={history}
           />
 
-          <p className="mt-4 text-[11px] text-ink-faint italic">
-            Source: Hyperliquid&apos;s public per-builder daily fills feed
+          <h2 className="label-mono text-ink-muted mt-8">Sources</h2>
+          <p className="mt-2 text-[11px] text-ink-faint italic">
+            Hyperliquid&apos;s public per-builder daily fills feed
             (stats-data.hyperliquid.xyz) for the frontends cohort, one
             CSV per builder address and UTC day, and the public info API
             (perpDexs, metaAndAssetCtxs) for the HIP-3 cohort. Both

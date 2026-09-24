@@ -281,6 +281,7 @@ export type HlHip3Row = {
   marketsTraded24h: number;
   marketsListed: number;
   daysSampled: number;
+  daysSampled7: number;
 };
 
 export type HlHip3Summary = {
@@ -470,7 +471,7 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
     (hip3Spec?.providers ?? []).map((p) => [p.slug, p.name]),
   );
 
-  const [vol24h, vol7d, vol30d, oi, traded, listed, sampled] = await Promise.all([
+  const [vol24h, vol7d, vol30d, oi, traded, listed, sampled, sampled7] = await Promise.all([
     queryVector(prom, `hl_hip3_deployer_volume_usd_24h`),
     queryVector(prom, `hl_hip3_deployer_volume_usd_7d`),
     queryVector(prom, `hl_hip3_deployer_volume_usd_30d`),
@@ -478,6 +479,7 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
     queryVector(prom, `hl_hip3_deployer_markets_24h`),
     queryVector(prom, `hl_hip3_deployer_markets_listed`),
     queryVector(prom, `hl_hip3_deployer_days_sampled`),
+    queryVector(prom, `hl_hip3_deployer_days_sampled_7d`),
   ]);
 
   if (vol24h === null && listed === null) return null;
@@ -496,6 +498,7 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
         marketsTraded24h: 0,
         marketsListed: 0,
         daysSampled: 0,
+        daysSampled7: 0,
       };
       byDex.set(dex, r);
     }
@@ -517,6 +520,7 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
   apply(traded, "marketsTraded24h");
   apply(listed, "marketsListed");
   apply(sampled, "daysSampled");
+  apply(sampled7, "daysSampled7");
 
   const rows = [...byDex.values()]
     .filter((r) => r.volume24h > 0 || r.marketsListed > 0)
