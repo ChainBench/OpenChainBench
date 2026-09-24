@@ -854,6 +854,8 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				sw.UserQ = (x.UsdIn + gasUSD) / q // what the user sent on the origin chain, plus its gas
 				sw.TerminalQ = x.AppFeeUsd / q
 				sw.RelayQ = (x.RelayFeeUsd + relayDeclaredFees(x)) / q
+				// Neither field present: unknown, not zero.
+				sw.RelayUnknown = x.RelayFeeUsd == 0 && relayDeclaredFees(x) == 0
 				sw.NetworkQ = (gasUSD + x.DestGasUsd) / q
 				sw.Others, sw.OtherQ = nil, nil
 				if sw.PoolQ > 0 && sw.Pools == 1 {
@@ -1348,8 +1350,20 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 
 // implausibleSplit keeps a row out of the statistics when its split
 // cannot be right (a hop or quote matched to the wrong leg): a pool
-// component below −10 % or a Relay component above 30 % of the trade.
+// component below −10 %, a Relay component above 30 %, or a terminal fee
+// above 10 % of the trade.
+//
+// The terminal bound is the one this cohort needed. On the EVM rows the
+// terminal component is a residual, so every error on the quote side
+// lands in it: Arc's native USDC, logged once as value and again as a
+// mirror Transfer, produced a 5,047 bps "app fee" that no desk would
+// believe and that dragged two pooled rows to 240. No app here charges
+// more than a few percent.
 func implausibleSplit(sw *Swap) {
+	if sw.Priced && sw.TerminalBps > 1000 {
+		sw.Flag, sw.Priced = "split_implausible", false
+		return
+	}
 	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
 		// A pool component under −100 bps on a route through several pools
 		// is a quote leg the matching missed, not a fill better than the
@@ -1721,23 +1735,40 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				if s.Priced && s.LossBps != nil {
 					a.loss = append(a.loss, *s.LossBps)
 					a.lossW = append(a.lossW, w)
-					if s.PoolBps != nil {
+					if s.PoolBps != nil && !s.RelayUnknown {
+						// Pool is the residual, so an unknown relay cut sits
+						// inside it. Leaving the row in would charge the pool
+						// for the bridge.
 						a.pool = append(a.pool, *s.PoolBps)
 						a.poolW = append(a.poolW, w)
 					}
 				}
 			}
-			term = append(term, s.TerminalBps)
-			termW = append(termW, w)
-			net = append(net, s.NetworkBps)
-			netW = append(netW, w)
-			if s.RelayID != "" {
-				relay = append(relay, s.RelayBps)
-				relayW = append(relayW, w)
-			}
-			if s.OtherBps != nil {
-				other = append(other, *s.OtherBps)
-				otherW = append(otherW, w)
+			// The component medians take the same rows as the loss. They
+			// used to run over every parsed swap, so a row the bounds threw
+			// out still voted on the fee column: 51 of gmgn-arc's 85 swaps
+			// were flagged, and the fee they held (5,047 bps) stood beside a
+			// loss computed without them.
+			//
+			// This guards the appends and not the iteration: the counters
+			// below (buy share, venue and quote mix, flagged, and ts.Priced
+			// itself) must still see every parsed swap.
+			if s.Priced && s.LossBps != nil {
+				term = append(term, s.TerminalBps)
+				termW = append(termW, w)
+				net = append(net, s.NetworkBps)
+				netW = append(netW, w)
+				// A Relay row whose cut came back empty from the API is an
+				// unknown, not a zero: averaging it in would pull the
+				// column toward a number nobody was charged.
+				if s.RelayID != "" && !s.RelayUnknown {
+					relay = append(relay, s.RelayBps)
+					relayW = append(relayW, w)
+				}
+				if s.OtherBps != nil {
+					other = append(other, *s.OtherBps)
+					otherW = append(otherW, w)
+				}
 			}
 			if s.TradeUSD > 0 {
 				trade = append(trade, s.TradeUSD)
@@ -2204,6 +2235,9 @@ type PublicSwap struct {
 	TerminalBps float64  `json:"terminal_bps"`
 	NetworkBps  float64  `json:"network_bps"`
 	RelayBps    float64  `json:"relay_bps,omitempty"`
+	// True when the Relay request carried no fee at all: the cut is
+	// unknown rather than nil, and pool_bps on this row absorbs it.
+	RelayUnknown bool     `json:"relay_unknown,omitempty"`
 	OtherBps    *float64 `json:"other_bps,omitempty"`
 
 	Sandwich *Sandwich `json:"sandwich,omitempty"`
@@ -2244,7 +2278,7 @@ func publicSwaps(in []Swap, flow map[string]float64) []PublicSwap {
 			RefSrc: s.RefSrc, RefAgeS: s.RefAgeS,
 			LossBps: s.LossBps, PoolBps: s.PoolBps,
 			TerminalBps: s.TerminalBps, NetworkBps: s.NetworkBps,
-			RelayBps: s.RelayBps, OtherBps: s.OtherBps,
+			RelayBps: s.RelayBps, RelayUnknown: s.RelayUnknown, OtherBps: s.OtherBps,
 			Sandwich: s.Sandwich, W: w,
 		})
 	}

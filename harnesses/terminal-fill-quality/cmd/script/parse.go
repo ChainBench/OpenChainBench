@@ -89,6 +89,10 @@ type Swap struct {
 	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
 	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
 	RelayID  string  `json:"relay_id,omitempty"`
+	// The Relay request carried no fee of any kind. RelayQ is then 0
+	// because we were not told, not because the solver took nothing, and a
+	// residual pool component would silently absorb the bridge's take.
+	RelayUnknown bool `json:"relay_unknown,omitempty"`
 	InTx     string  `json:"in_tx,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor

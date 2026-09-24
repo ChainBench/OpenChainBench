@@ -171,6 +171,12 @@ const nativeNote = "Swaps routed through the terminal's own contracts on this ch
 type nativeFeed struct {
 	http   *http.Client
 	cursor map[string]int64 // chain -> last block scanned
+	// The eth_getLogs range this chain's endpoint actually accepts. A
+	// constant span cannot survive a provider that caps it: BNB's refused
+	// every 400-block call ("up to a 10 block range"), the cursor only
+	// advances on success, and it sat 623,045 blocks behind head for days
+	// while six products published All chains rows without BNB.
+	span   map[string]int64
 	polled map[string][2]int64
 	box    map[string]*xinboxTx
 	up     map[string]bool
@@ -344,11 +350,27 @@ func (b *xinboxTx) add(hash string) bool {
 	return true
 }
 
+// rangeRefusal: the endpoint refused the block range rather than failing
+// for another reason. Providers word this differently, so match the words
+// they share rather than one vendor's sentence.
+func rangeRefusal(err error) bool {
+	s := strings.ToLower(err.Error())
+	if !strings.Contains(s, "block") && !strings.Contains(s, "range") {
+		return false
+	}
+	for _, w := range []string{"range", "limit", "exceed", "too large", "up to", "max results", "free tier"} {
+		if strings.Contains(s, w) {
+			return true
+		}
+	}
+	return false
+}
+
 func newNativeFeed(httpc *http.Client, cursor map[string]int64) *nativeFeed {
 	if cursor == nil {
 		cursor = map[string]int64{}
 	}
-	return &nativeFeed{http: httpc, cursor: cursor, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
+	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
 }
 
 // poll reads every router log since the cursor (at most 2,000 blocks a
@@ -392,21 +414,49 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		// Ranges of at most 400 blocks (50 on Ethereum, where the public
 		// nodes cap eth_getLogs at 50 blocks; ten minutes of chain), a few
 		// per tick: a public RPC may refuse or redirect a heavier query.
-		span := int64(400)
-		if c.slug == "ethereum" {
-			span = 50
+		span := f.span[c.slug]
+		if span <= 0 {
+			span = 400
+			if c.slug == "ethereum" {
+				span = 50
+			}
+		}
+		// Enough chunks to cover a tick's worth of blocks at whatever span
+		// the endpoint allows, bounded so a tiny cap cannot turn one tick
+		// into hundreds of calls.
+		chunks := int(400/span) + 1
+		if chunks < 5 {
+			chunks = 5
+		}
+		if chunks > 40 {
+			chunks = 40
 		}
 		start := from
 		var logs []evmLog
 		failed := false
-		for chunk := 0; chunk < 5 && from <= head; chunk++ {
+		for chunk := 0; chunk < chunks && from <= head; chunk++ {
 			to := from + span - 1
 			if to > head {
 				to = head
 			}
 			var part []evmLog
 			if err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
-				log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
+				// A refusal about the range is the endpoint telling us its
+				// cap. Shrink and let the next tick use it, rather than
+				// repeat the same rejected call forever.
+				// Straight to the floor, not by halves. Each refusal costs a
+				// whole tick for that chain and the cursor restarts from
+				// head-200, so quartering 400 down to 6 would burn four
+				// ticks losing blocks the whole way. 10 is the cap the free
+				// tiers publish; an endpoint that allows more only loses a
+				// little throughput, an endpoint that allows less never
+				// stalls us again.
+				if span > 10 && rangeRefusal(err) {
+					f.span[c.slug] = 10
+					log.Printf("[native] %s getLogs %d-%d refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err)
+				} else {
+					log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
+				}
 				failed = true
 				break
 			}
@@ -671,6 +721,13 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 				m := erc20(ctx, httpc, *c, erc)
 				q, ok := quoteUSD(m.symbol, *c, gas)
 				if !ok || !m.ok {
+					continue
+				}
+				// A mirror log of the native value is the same money as
+				// tx.value, which the buy path adds separately. Counting
+				// both doubled `given` on every Arc buy and pushed the
+				// terminal fee, a residual, to about 5,047 bps.
+				if hexBig(tx.Value).Sign() > 0 && isNativeMirror(c.slug, erc) {
 					continue
 				}
 				if from == user {
