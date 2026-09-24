@@ -27,7 +27,7 @@ func TestRecentCoversEveryTerminal(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-b", 1, 6000)...)
 	st.Swaps = append(st.Swaps, mkSwaps("quiet-c", 40, 7000)...)
 
-	got := recent(st, 6, 60, 900)
+	got := recent(st, 6, 900)
 
 	seen := map[string]int{}
 	for _, s := range got {
@@ -44,8 +44,11 @@ func TestRecentCoversEveryTerminal(t *testing.T) {
 	if seen["quiet-b"] != 1 {
 		t.Fatalf("quiet-b has 1 swap in the window, sample kept %d", seen["quiet-b"])
 	}
-	if seen["busy"] > 60 {
-		t.Fatalf("per-terminal cap is 60, busy kept %d", seen["busy"])
+	// No per-row ceiling by design: a row that carries most of the flow
+	// is supposed to carry most of the sample. What must hold is that it
+	// does not do so by starving anyone, which the floor checks above.
+	if len(got) > 900 {
+		t.Fatalf("sample of %d exceeds the total budget of 900", len(got))
 	}
 }
 
@@ -57,7 +60,7 @@ func TestRecentTotalCeilingLeavesNobodyOut(t *testing.T) {
 		st.Swaps = append(st.Swaps, mkSwaps(slug, 50, 0)...)
 	}
 	const total = 20
-	got := recent(st, 1, 60, total)
+	got := recent(st, 1, total)
 	if len(got) > total {
 		t.Fatalf("sample of %d exceeds the ceiling of %d", len(got), total)
 	}
@@ -75,7 +78,7 @@ func TestRecentIsTimeOrdered(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("a", 5, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("b", 5, 0)...)
-	got := recent(st, 6, 60, 900)
+	got := recent(st, 6, 900)
 	for i := 1; i < len(got); i++ {
 		if got[i].Time < got[i-1].Time {
 			t.Fatalf("not time-ordered at %d: %d before %d", i, got[i-1].Time, got[i].Time)
@@ -92,7 +95,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("binance-wallet-ethereum", 4, 100)...)
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn", 4, 200)...)
 
-	for _, s := range recent(st, 6, 60, 900) {
+	for _, s := range recent(st, 6, 900) {
 		switch s.Terminal {
 		case "binance-wallet-base", "binance-wallet-ethereum":
 			if s.Product != "binance" {
@@ -113,7 +116,7 @@ func TestRecentStampsTheProductForAPooledRow(t *testing.T) {
 func TestRecentStampsTheProductForAChainRow(t *testing.T) {
 	st := &State{}
 	st.Swaps = append(st.Swaps, mkSwaps("gmgn-ethereum", 3, 0)...)
-	got := recent(st, 6, 60, 900)
+	got := recent(st, 6, 900)
 	if len(got) != 3 {
 		t.Fatalf("want 3 swaps, got %d", len(got))
 	}
@@ -140,7 +143,7 @@ func TestRecentSamplesInProportionToFlow(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-base", 100, 2000)...)
 	st.Swaps = append(st.Swaps, mkSwaps("pump-fun-arc", 100, 3000)...)
 
-	got := recent(st, 6, 60, 200)
+	got := recent(st, 6, 200)
 	seen := map[string]int{}
 	for _, s := range got {
 		seen[s.Terminal]++
@@ -167,7 +170,7 @@ func TestRecentKeepsEverythingBelowTheFloor(t *testing.T) {
 	st.Swaps = append(st.Swaps, mkSwaps("busy", 5000, 0)...)
 	st.Swaps = append(st.Swaps, mkSwaps("tiny", 2, 9000)...)
 	seen := 0
-	for _, s := range recent(st, 6, 60, 300) {
+	for _, s := range recent(st, 6, 300) {
 		if s.Terminal == "tiny" {
 			seen++
 		}

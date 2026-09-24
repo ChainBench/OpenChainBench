@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentMaxPerTerminal, recentTotal), Discovery: disc,
+			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentTotal), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2090,7 +2090,7 @@ func sizeBucket(usd float64) string {
 // own transactions. `total` is a ceiling for the payload, spent on the
 // rows with the least evidence first so a busy terminal cannot squeeze
 // out a quiet one.
-func recent(st *State, minPerTerminal, maxPerTerminal, total int) []Swap {
+func recent(st *State, minPerTerminal, total int) []Swap {
 	// Every swap each row has in the window, newest first. The caps are
 	// applied after the shares are known, not while collecting, because
 	// a row's share depends on how much flow it has relative to the rest.
@@ -2121,41 +2121,83 @@ func recent(st *State, minPerTerminal, maxPerTerminal, total int) []Swap {
 	// per-row sampling replaced the global tail; the cap stops one busy
 	// row eating the budget. Between them the share is proportional, so a
 	// pooled row's sample resembles its own statistic.
+	// Two parts, because the floor and the proportion answer different
+	// questions and must not be traded against each other.
+	//
+	// First the floor: every row keeps enough rows to be auditable, or
+	// everything it has if that is less. This is the coverage guarantee
+	// and it is not negotiable — it is why per-row sampling replaced the
+	// global tail.
 	quota := make(map[string]int, len(slugs))
-	assigned := 0
+	base := 0
 	for _, slug := range slugs {
-		n := len(byTerm[slug])
-		q := total * n / grand
-		if q < minPerTerminal {
-			q = minPerTerminal
-		}
-		if q > maxPerTerminal {
-			q = maxPerTerminal
-		}
-		if q > n {
+		q := minPerTerminal
+		if n := len(byTerm[slug]); q > n {
 			q = n
 		}
 		quota[slug] = q
-		assigned += q
-	}
-	// Floors can push the total past the ceiling. Give the overflow back
-	// from the largest quotas, never below the floor, so the rows that
-	// lose rows are the ones that still have plenty.
-	for assigned > total {
-		widest, widestN := "", 0
-		for _, slug := range slugs {
-			if quota[slug] > widestN && quota[slug] > minPerTerminal {
-				widest, widestN = slug, quota[slug]
-			}
-		}
-		if widest == "" {
-			break // everyone is at the floor; the floor wins over the ceiling
-		}
-		quota[widest]--
-		assigned--
+		base += q
 	}
 
-	out := make([]Swap, 0, assigned)
+	// Then the remainder, split in proportion to the flow each row has
+	// above its floor.
+	//
+	// There is deliberately no per-row ceiling. One existed, to stop a
+	// busy row spending the whole budget, and it quietly undid the
+	// proportion: whenever it bound on the dominant row, that row's share
+	// collapsed toward everyone else's and the pooled sample was
+	// equal-weighted again, which is the bug this function exists to fix.
+	// A dominant row taking a large share is the correct answer — it
+	// really is most of the flow, and the pooled median really does
+	// follow it. Coverage is the floor's job, and the total is the
+	// payload guard.
+	room := total - base
+	if room > 0 {
+		spare := make(map[string]int, len(slugs))
+		spareTotal := 0
+		for _, slug := range slugs {
+			s := len(byTerm[slug]) - quota[slug]
+			if s < 0 {
+				s = 0
+			}
+			spare[slug] = s
+			spareTotal += s
+		}
+		if spareTotal > 0 {
+			if room > spareTotal {
+				room = spareTotal
+			}
+			// Integer division loses seats; largest remainder hands them
+			// back, so the budget is spent instead of left over.
+			type rem struct {
+				slug string
+				frac int
+			}
+			rems := make([]rem, 0, len(slugs))
+			given := 0
+			for _, slug := range slugs {
+				num := room * spare[slug]
+				q := num / spareTotal
+				quota[slug] += q
+				given += q
+				rems = append(rems, rem{slug, num % spareTotal})
+			}
+			sort.Slice(rems, func(i, j int) bool {
+				if rems[i].frac != rems[j].frac {
+					return rems[i].frac > rems[j].frac
+				}
+				return rems[i].slug < rems[j].slug
+			})
+			for i := 0; given < room && i < len(rems); i++ {
+				if quota[rems[i].slug] < len(byTerm[rems[i].slug]) {
+					quota[rems[i].slug]++
+					given++
+				}
+			}
+		}
+	}
+
+	out := make([]Swap, 0, total)
 	for _, slug := range slugs {
 		rows := byTerm[slug]
 		if len(rows) > quota[slug] {
