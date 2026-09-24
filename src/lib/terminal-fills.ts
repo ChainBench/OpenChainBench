@@ -85,6 +85,11 @@ function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOut
 export type FillSample = {
   sig: string;
   terminal: string;
+  /** The pooled row this swap rolls up to, when that is not the terminal
+   *  itself. Binance's row is the product; its swaps carry
+   *  binance-wallet-base / -ethereum, so without this the row's own audit
+   *  table matched none of its transactions. */
+  product?: string;
   time: number;
   side: "buy" | "sell";
   quote: string;
@@ -228,6 +233,7 @@ function parse(raw: unknown): TerminalFills | null {
       recent.push({
         sig: s.sig,
         terminal: s.terminal,
+        ...(typeof s.product === "string" && s.product ? { product: s.product } : {}),
         time: num(s.time) ?? 0,
         side: s.side === "sell" ? "sell" : "buy",
         quote: typeof s.quote === "string" ? s.quote : "SOL",

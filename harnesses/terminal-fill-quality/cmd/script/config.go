@@ -12,6 +12,17 @@ import "strings"
 //	   WSOL / program-account rent, loss bounds, 60 s reference cap.
 const methodVersion = 3
 
+// Evidence published behind the board, per row rather than overall.
+//
+// 15 per row covers the 56 ranked rows with room to spare and keeps the
+// payload near 1.1 MB (the global 400-swap tail it replaces was 0.66 MB
+// and left 89% of rows with fewer than 20 transactions to show). The
+// total is a ceiling for the payload, not a target.
+const (
+	recentPerTerminal = 15
+	recentTotal       = 900
+)
+
 // Terminal is one cohort member: the trading app or Telegram bot whose
 // swaps we sample. Wallets are the Solana accounts that receive the
 // terminal's fee on every routed swap (DeFiLlama's adapter lists and
