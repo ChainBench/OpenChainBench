@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -313,6 +314,63 @@ func TestSpreadKeepsEverythingWhenItFits(t *testing.T) {
 	for i := 1; i < len(got); i++ {
 		if got[i].Time <= got[i-1].Time {
 			t.Fatalf("order not preserved at %d", i)
+		}
+	}
+}
+
+// PublicSwap is the contract with the site: src/lib/terminal-fills.ts
+// reads these keys and renders nothing else. Trimming the payload is
+// what let the sample grow enough for the per-chain floor and the
+// flow weighting to stop competing, so the temptation to trim further
+// will come back — this is the line it must not cross.
+//
+// If the table starts reading a new key, add it here and to PublicSwap
+// together. If one disappears from here, the table silently renders a
+// blank column instead of failing, which is why this is a test.
+func TestPublicSwapCarriesEveryFieldTheSiteReads(t *testing.T) {
+	want := []string{
+		"sig", "terminal", "product", "time", "side", "quote", "venue",
+		"chain", "hops", "x_mint", "in_tx", "rent_q", "quote_usd",
+		"trade_usd", "priced", "scanned", "flag", "ref_src", "ref_age_s",
+		"loss_bps", "pool_bps", "terminal_bps", "network_bps",
+		"relay_bps", "other_bps", "sandwich",
+	}
+
+	age := int64(3)
+	loss, pool, other := 120.0, 40.0, 7.0
+	full := publicSwaps([]Swap{{
+		Sig: "s", Terminal: "gmgn", Product: "gmgn", Time: 1, Side: "buy",
+		Quote: "SOL", Venue: "raydium", Chain: "base", Hops: 1, XMint: "x",
+		InTx: "t", RentQ: 1, QuoteUSD: 1, TradeUSD: 1, Priced: true,
+		Scanned: true, Flag: "f", RefSrc: "reserves", RefAgeS: &age,
+		LossBps: &loss, PoolBps: &pool, TerminalBps: 1, NetworkBps: 1,
+		RelayBps: 1, OtherBps: &other,
+		Sandwich: &Sandwich{},
+	}})
+
+	raw, err := json.Marshal(full[0])
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for _, k := range want {
+		if _, ok := got[k]; !ok {
+			t.Fatalf("PublicSwap no longer publishes %q; the audit table reads it", k)
+		}
+	}
+	// And the other direction: anything published that nothing reads is
+	// budget spent on a column that does not exist.
+	allowed := map[string]bool{}
+	for _, k := range want {
+		allowed[k] = true
+	}
+	for k := range got {
+		if !allowed[k] {
+			t.Fatalf("PublicSwap publishes %q, which the site does not read; "+
+				"the row budget is what the sample size depends on", k)
 		}
 	}
 }

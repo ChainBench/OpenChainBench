@@ -36,8 +36,14 @@ const (
 	// The total comes down to pay for it — fills.json sits at 1.53 MB
 	// against a 2 MB cache ceiling, so the floor is funded out of the
 	// budget rather than added on top of it.
+	// PublicSwap dropped the fields nothing renders — pool identity, the
+	// payer, the mint, the per-leg quote amounts, the reference price —
+	// which roughly halves the bytes a row costs. That is what buys this
+	// budget, and the budget is what stops the floor and the flow
+	// weighting competing: every row the floor gives a quiet chain used
+	// to come off the chain carrying 95% of the flow.
 	recentMinPerTerminal = 12
-	recentTotal          = 1250
+	recentTotal          = 2400
 )
 
 // Terminal is one cohort member: the trading app or Telegram bot whose

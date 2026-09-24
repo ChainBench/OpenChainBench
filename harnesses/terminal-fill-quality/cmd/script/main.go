@@ -305,7 +305,7 @@ type Public struct {
 	SolUSD        float64         `json:"sol_usd"`
 	Method        string          `json:"method"`
 	Terminals     []TerminalStats `json:"terminals"`
-	Recent        []Swap          `json:"recent"`
+	Recent        []PublicSwap    `json:"recent"`
 	/** Cohort discovery: fee wallets and routers learned from the chain, evidence per platform, unattributed fee-like recipients. */
 	Discovery *Discovery `json:"discovery,omitempty"`
 }
@@ -483,7 +483,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, recentMinPerTerminal, recentTotal, flowOf(stats)), Discovery: disc,
+			Terminals: stats, Recent: publicSwaps(recent(st, recentMinPerTerminal, recentTotal, flowOf(stats))), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -2131,6 +2131,67 @@ func spread(rows []Swap, n int) []Swap {
 			idx = len(rows) - 1
 		}
 		out = append(out, rows[idx])
+	}
+	return out
+}
+
+// PublicSwap is the audit table's row: what src/lib/terminal-fills.ts
+// actually reads, and nothing else.
+//
+// Swap carries about forty fields because the state file needs them to
+// recompute. Publishing all forty cost 1,150 bytes a row against a 2 MB
+// ceiling, which capped the sample at 1,250 rows — and that cap is what
+// made the floor for small chains and the flow weighting for pooled rows
+// compete: every row given to a quiet chain came off the chain carrying
+// 95% of the flow. Half those bytes were fields nothing renders.
+//
+// Add a field here when the table starts reading it, not before.
+type PublicSwap struct {
+	Sig      string  `json:"sig"`
+	Terminal string  `json:"terminal"`
+	Product  string  `json:"product,omitempty"`
+	Time     int64   `json:"time"`
+	Side     string  `json:"side"`
+	Quote    string  `json:"quote"`
+	Venue    string  `json:"venue"`
+	Chain    string  `json:"chain,omitempty"`
+	Hops     int     `json:"hops,omitempty"`
+	XMint    string  `json:"x_mint,omitempty"`
+	InTx     string  `json:"in_tx,omitempty"`
+	RentQ    float64 `json:"rent_q,omitempty"`
+	QuoteUSD float64 `json:"quote_usd"`
+	TradeUSD float64 `json:"trade_usd"`
+	Priced   bool    `json:"priced"`
+	Scanned  bool    `json:"scanned"`
+	Flag     string  `json:"flag,omitempty"`
+	RefSrc   string  `json:"ref_src,omitempty"`
+	RefAgeS  *int64  `json:"ref_age_s,omitempty"`
+
+	LossBps     *float64 `json:"loss_bps,omitempty"`
+	PoolBps     *float64 `json:"pool_bps,omitempty"`
+	TerminalBps float64  `json:"terminal_bps"`
+	NetworkBps  float64  `json:"network_bps"`
+	RelayBps    float64  `json:"relay_bps,omitempty"`
+	OtherBps    *float64 `json:"other_bps,omitempty"`
+
+	Sandwich *Sandwich `json:"sandwich,omitempty"`
+}
+
+func publicSwaps(in []Swap) []PublicSwap {
+	out := make([]PublicSwap, 0, len(in))
+	for _, s := range in {
+		out = append(out, PublicSwap{
+			Sig: s.Sig, Terminal: s.Terminal, Product: s.Product, Time: s.Time,
+			Side: s.Side, Quote: s.Quote, Venue: s.Venue, Chain: s.Chain,
+			Hops: s.Hops, XMint: s.XMint, InTx: s.InTx, RentQ: s.RentQ,
+			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD,
+			Priced: s.Priced, Scanned: s.Scanned, Flag: s.Flag,
+			RefSrc: s.RefSrc, RefAgeS: s.RefAgeS,
+			LossBps: s.LossBps, PoolBps: s.PoolBps,
+			TerminalBps: s.TerminalBps, NetworkBps: s.NetworkBps,
+			RelayBps: s.RelayBps, OtherBps: s.OtherBps,
+			Sandwich: s.Sandwich,
+		})
 	}
 	return out
 }
