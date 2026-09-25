@@ -63,14 +63,13 @@ function writePin(v: boolean) {
   }
   for (const cb of pinListeners) cb();
 }
-/** How long the pointer has to be away before the rail narrows. Long
- *  enough to cross the rail on the way somewhere else without it
- *  collapsing under the cursor, short enough that it is out of the way
- *  by the time the eye lands on the page (1.6 s read as lingering). */
-const COLLAPSE_DELAY_MS = 450;
-/** The rail starts wide so a first-time visitor sees the sections, then
- *  narrows once — which is also how they learn it does that. */
-const FIRST_COLLAPSE_MS = 2600;
+/** The rail follows the pointer: it narrows as the cursor leaves it, not
+ *  on a timer. What is left is a jitter guard, short enough to read as
+ *  the same moment and long enough that a cursor grazing the edge, or
+ *  crossing the sub-pixel seam between the rail and the page, does not
+ *  make it flicker. Earlier values of 1.6 s and 450 ms both read as the
+ *  rail lagging behind the hand. */
+const COLLAPSE_DELAY_MS = 80;
 
 /**
  * Left navigation rail, lg and up. The header offered six links while the
@@ -104,7 +103,12 @@ export function SiteSidebar() {
   const groups = navGroups();
 
   const pinned = useSyncExternalStore(subscribePin, readPin, () => false);
-  const [near, setNear] = useState(true);
+  // Starts narrow, on the server and on the client alike. The first
+  // version opened wide for one beat so a first-time visitor saw the
+  // sections, but on every load it read as a panel appearing and then
+  // leaving on its own, which is what a reader notices rather than the
+  // sections it was meant to show.
+  const [near, setNear] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const open = pinned || near;
@@ -132,11 +136,9 @@ export function SiteSidebar() {
     timer.current = setTimeout(() => setNear(false), delay);
   }, []);
 
-  // One wide beat on first paint, then settle.
-  useEffect(() => {
-    release(FIRST_COLLAPSE_MS);
-    return clear;
-  }, [release]);
+  // Nothing to schedule on mount; just make sure a pending collapse does
+  // not fire after the rail is gone.
+  useEffect(() => clear, []);
 
 
   const togglePin = () => {

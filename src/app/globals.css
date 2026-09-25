@@ -486,21 +486,32 @@ html {
  * the panel fades just behind it, labels arrive last, so nothing appears
  * mid-stretch. Only width, opacity, colour and shadow animate; the page
  * offset tracks the pin and never the hover, so hovering cannot reflow
- * the page. */
+ * the page.
+ *
+ * The two directions are not the same length. Arriving can take its time,
+ * because the reader is looking at the rail while it happens. Leaving
+ * should be finished by the time the cursor has crossed into the page, so
+ * the closing transition lives on the base rule and runs at half the
+ * duration. */
 .site-rail {
   width: var(--sidebar-rail-w);
   background: transparent;
   border-right: 1px solid transparent;
   transition:
-    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
-    background-color 260ms cubic-bezier(0.16, 1, 0.3, 1) 40ms,
-    border-color 260ms ease 40ms,
-    box-shadow 300ms ease;
+    width 170ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 130ms ease,
+    border-color 130ms ease,
+    box-shadow 150ms ease;
 }
 .site-rail[data-open="true"] {
   width: var(--sidebar-w);
   background: var(--color-surface);
   border-right-color: var(--color-rule);
+  transition:
+    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 260ms cubic-bezier(0.16, 1, 0.3, 1) 40ms,
+    border-color 260ms ease 40ms,
+    box-shadow 300ms ease;
 }
 
 /* Resting icons sit back; the whole column lifts together on approach,
@@ -541,10 +552,11 @@ html {
 }
 .site-rail-gap {
   margin-top: 0.25rem;
-  transition: margin-top 340ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: margin-top 170ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .site-rail[data-open="true"] .site-rail-gap {
   margin-top: 1rem;
+  transition: margin-top 340ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Everything that only makes sense at full width. Fades in behind the
@@ -597,10 +609,11 @@ html {
 @media (min-width: 64rem) {
   body {
     padding-left: var(--sidebar-rail-w);
-    transition: padding-left 340ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: padding-left 170ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   :root[data-sidebar="open"] body {
     padding-left: var(--sidebar-w);
+    transition: padding-left 340ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
