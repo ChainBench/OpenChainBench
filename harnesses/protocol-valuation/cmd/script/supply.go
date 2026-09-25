@@ -42,6 +42,15 @@ const (
 	// A 429 without a Retry-After header backs off this long before the
 	// next attempt.
 	cgBackoff = 65 * time.Second
+	// How long one tick keeps fetching supply series before leaving the
+	// rest to the next tick. The address is shared with other harnesses
+	// and throttled on some days, so a pass that ran to completion could
+	// outlast the hourly tick; bounded, it fills the cohort over a few
+	// ticks and republishes as it goes.
+	supplyPassBudget = 40 * time.Minute
+	// Rows republished this often during a pass, so the first dilution
+	// columns appear minutes after a restart rather than at the end.
+	supplyPublishEvery = 10
 )
 
 // supplyPoint is one day of circulating supply, derived as mcap / price.
@@ -229,35 +238,29 @@ func supplyChangePct(series []supplyPoint, now time.Time, window time.Duration) 
 	return 100 * (latest.Circ/then.Circ - 1), true
 }
 
-func isRateLimited(err error) bool {
-	return err != nil && err.Error() == fmt.Sprintf("status_%d", http.StatusTooManyRequests)
-}
-
 // attachSupplyChange fills the dilution fields of every row, fetching the
-// series the cache does not hold for today. Returns how many fetches it
-// made, so the caller knows whether the rows changed.
-func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time) int {
+// series the cache does not hold for today, for at most supplyPassBudget.
+// onProgress is called every supplyPublishEvery fetches so the caller can
+// republish the rows filled so far. Returns how many fetches it made.
+func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgress func()) int {
 	day := now.UTC().Format("2006-01-02")
-	fetched := 0
-	// After one token exhausts its retries the tick stops fetching: the
-	// limit is per address, so the next token would meet the same 429,
-	// and the rows still fill from whatever the cache holds. The misses
-	// are retried on the next hourly tick.
-	fetching := true
+	start := time.Now()
+	fetched, misses := 0, 0
 	for i := range rows {
 		id := rows[i].GeckoID
 		series, ok := cache.get(id, day)
 		if !ok {
-			if !fetching {
+			if time.Since(start) > supplyPassBudget {
+				// Left to the next hourly tick; the rows still fill from
+				// whatever the cache holds.
+				misses++
 				continue
 			}
 			s, err := fetchSupplySeries(id)
 			if err != nil {
 				pvFetchErrors.WithLabelValues("coingecko_chart").Inc()
 				fmt.Printf("[supply] %s: %v (retried next tick)\n", id, err)
-				if isRateLimited(err) {
-					fetching = false
-				}
+				misses++
 				continue
 			}
 			fetched++
@@ -266,6 +269,12 @@ func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time) int {
 		}
 		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, now, 30*24*time.Hour)
 		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, now, 90*24*time.Hour)
+		if fetched > 0 && fetched%supplyPublishEvery == 0 && onProgress != nil {
+			onProgress()
+		}
+	}
+	if misses > 0 {
+		fmt.Printf("[supply] %d rows without a series this tick, next tick continues\n", misses)
 	}
 	return fetched
 }

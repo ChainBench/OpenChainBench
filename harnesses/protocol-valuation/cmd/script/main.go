@@ -136,13 +136,17 @@ func poll(cfg *Config, supply *supplyCache) {
 		len(rows), st.Incomplete, len(medians), diverging, withPS, withTVL, time.Since(start).Round(time.Millisecond))
 
 	// The supply series is the slow read: on the first tick of a UTC day it
-	// is one paced CoinGecko call per row, some minutes for the cohort.
-	// The board above is already published, so a restart does not hold
-	// every gauge behind it; the rows are republished once it is attached.
+	// is one paced CoinGecko call per row, from a few minutes to over an
+	// hour for the cohort depending on how throttled the shared address
+	// is. The board above is already published, so a restart does not hold
+	// every gauge behind it; the rows are republished as series arrive.
 	now := time.Now()
-	fetched := attachSupplyChange(rows, supply, now)
-	pvSupplyCacheSize.Set(float64(supply.size()))
-	publish(rows, medians, sizes, st, float64(time.Now().Unix()))
+	republish := func() {
+		pvSupplyCacheSize.Set(float64(supply.size()))
+		publish(rows, medians, sizes, st, float64(time.Now().Unix()))
+	}
+	fetched := attachSupplyChange(rows, supply, now, republish)
+	republish()
 	withSupply30, withSupply90 := 0, 0
 	for _, r := range rows {
 		if r.HasSupply30d {
