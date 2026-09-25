@@ -54,7 +54,7 @@ var (
 		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi; bucket=all|under25|25to250|over250 (trade size in USD)",
 	}, []string{"terminal", "chain", "stat", "bucket"})
 	gLossExFee = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tfq_loss_ex_fee_bps", Help: "Value lost per swap with the app's own fee removed, basis points of the trade: execution quality alone, network, pool and protocol costs still inside. Subtracted per swap, then the median — median(loss) - median(fee) differs by up to 33 bps. stat=median|p90|p99|ci_lo|ci_hi",
+		Name: "tfq_loss_ex_fee_bps", Help: "Value lost per swap with the app's own fee removed, basis points of the trade: execution quality alone, network, pool and protocol costs still inside. Subtracted per swap, then the median, because median(loss) - median(fee) is a different statistic wherever an app's fee varies across its own swaps. stat=median|p90|p99|ci_lo|ci_hi",
 	}, []string{"terminal", "chain", "stat", "bucket"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow; bucket=all, or a trade-size bucket as a plain median over its swaps",

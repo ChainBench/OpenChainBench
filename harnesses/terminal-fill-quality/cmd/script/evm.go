@@ -51,6 +51,10 @@ const (
 	// id indexed, amount): how a v4 hook takes its cut without moving
 	// an ERC20. Four topics, two words of data.
 	topicV4Claim  = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
+	// A hook that logs its own fee rather than minting a claim. Read off
+	// chain on an Axiom sale where it took exactly 1.000 % of the swap:
+	// two topics, three data words, the amount in word 1 (word 0 is 0).
+	topicV4HookFee = "0xc532c43b3423e14ef72748f1c8291238829ca0af8ba9b67975ad1483485a4b4d"
 )
 
 type evmLog struct {
@@ -152,6 +156,18 @@ func hookClaimUSD(ctx context.Context, httpc *http.Client, c originChain, logs [
 			continue // a claim in the traded token, not in the quote
 		}
 		total += f(word(l.Data, 1)) * math.Pow10(-m.dec) * u
+	}
+	// The same hook, logging its fee instead of minting a claim. The
+	// amount is in the pool's own currency, the gas coin on the rows this
+	// was found on, so it values like any native leg.
+	if p, ok := gas[c.gas]; ok && p > 0 {
+		for i := range logs {
+			l := &logs[i]
+			if len(l.Topics) == 0 || l.Topics[0] != topicV4HookFee || len(l.Data) < 2+3*64 {
+				continue
+			}
+			total += f(word(l.Data, 1)) / 1e18 * p
+		}
 	}
 	return total
 }

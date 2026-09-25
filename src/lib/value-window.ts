@@ -98,7 +98,14 @@ export function specValueKind(spec: {
     // at the average daily rate, which the qualifier must not call an
     // average of the month.
     if (!/^avg_over_time\(.+\)\s*\*\s*\d+$/.test(q)) allTotal = false;
-    if (!/^quantile_over_time\(0\.50?,/.test(q)) allMedian = false;
+    // A median is a median whether PromQL computes it at read time or the
+    // harness precomputed it and labelled the series. Both terminal
+    // benches publish `..._bps{stat="median"}`, so testing only for
+    // quantile_over_time left valueKind undefined, the bp unit fell
+    // through to the average rule, and the headline read "24h avg" in
+    // seven places including the JSON-LD and llms.txt. On the bench whose
+    // whole argument is that a median is not an average.
+    if (!/^quantile_over_time\(0\.50?,/.test(q) && !/\bstat\s*=\s*"median"/.test(q)) allMedian = false;
   }
   if (!sawQueries) return undefined;
   if (allLatest) return "latest";
