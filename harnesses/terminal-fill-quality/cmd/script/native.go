@@ -177,6 +177,13 @@ type nativeFeed struct {
 	// advances on success, and it sat 623,045 blocks behind head for days
 	// while six products published All chains rows without BNB.
 	span map[string]int64
+	// How far behind head this chain's node still answers eth_getLogs.
+	// publicnode calls anything older "an archive request" and refuses it,
+	// so a resume point deeper than that can never be read: the poll
+	// failed, the cursor held, the next poll jumped to the same depth and
+	// failed the same way — BNB sat at feed_up 0 with an 18,000-block lag
+	// after a two-hour gap. Learned down on each refusal, from the budget.
+	depth map[string]int64
 	// Shared with State by reference, like the cursor: chain -> when its
 	// feed last failed, so compute() can tell a chain it cannot read from
 	// a chain nobody trades on.
@@ -422,7 +429,7 @@ func newNativeFeed(httpc *http.Client, cursor, down map[string]int64) *nativeFee
 	if down == nil {
 		down = map[string]int64{}
 	}
-	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, down: down, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
+	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, depth: map[string]int64{}, down: down, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
 }
 
 // poll reads every router log since the cursor (at most 2,000 blocks a
@@ -472,15 +479,19 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		budget := span * maxChunks
 		from := f.cursor[c.slug] + 1
 		skipped := int64(0)
-		if from == 1 || head-from > budget {
+		depth := budget
+		if d, ok := f.depth[c.slug]; ok && d > 0 && d < depth {
+			depth = d
+		}
+		if from == 1 || head-from > depth {
 			if from != 1 {
-				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-%d (the gap is not read nor sampled)", c.slug, from-1, head-from, head, budget)
+				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-%d (the gap is not read nor sampled)", c.slug, from-1, head-from, head, depth)
 				// Counted only if this poll then succeeds. A stuck cursor
 				// would otherwise re-count the same gap on every tick and
 				// bury the signal under an impossible number.
-				skipped = head - budget - from
+				skipped = head - depth - from
 			}
-			from = head - budget + 1 // first run, or too far behind: read as much as a tick can
+			from = head - depth + 1 // first run, or too far behind: read as much as the node lets a tick read
 		}
 		if from > head {
 			f.up[c.slug] = true
@@ -525,6 +536,11 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				// tiers publish; an endpoint that allows more only loses a
 				// little throughput, an endpoint that allows less never
 				// stalls us again.
+				if archiveRefusal(err) {
+					f.learnDepth(c.slug, head-from, span)
+					failed = true
+					break
+				}
 				if span > 10 && rangeRefusal(err) {
 					// Ask once more before believing it. evmCall hands back
 					// the LAST endpoint's error, so a blip on the node that
@@ -555,6 +571,8 @@ func (f *nativeFeed) poll(ctx context.Context) {
 					case rangeRefusal(err2):
 						f.span[c.slug] = 10
 						log.Printf("[native] %s getLogs %d-%d: the serving node itself refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
+					case archiveRefusal(err2):
+						f.learnDepth(c.slug, head-from, span)
 					default:
 						log.Printf("[native] %s getLogs %d-%d: serving node failed, span kept at %d: %v", c.slug, from, to, span, err2)
 					}
@@ -1041,4 +1059,25 @@ func unpricedFlag(reason string) string {
 		return "launch_first_trade"
 	}
 	return "unpriced_" + reason
+}
+
+// archiveRefusal: the node will not serve blocks that old.
+func archiveRefusal(err error) bool {
+	m := strings.ToLower(err.Error())
+	return strings.Contains(m, "archive") || strings.Contains(m, "personal token")
+}
+
+// learnDepth: a read `behind` blocks behind head was refused as history,
+// so the next poll resumes from half that distance, never under one span.
+// The blocks between are counted as skipped by that poll's jump.
+func (f *nativeFeed) learnDepth(chain string, behind, span int64) {
+	d := behind / 2
+	if d < span {
+		d = span
+	}
+	if cur, ok := f.depth[chain]; ok && cur > 0 && cur < d {
+		d = cur
+	}
+	f.depth[chain] = d
+	log.Printf("[native] %s: %d blocks behind head is past the node's history; resuming from head-%d next poll", chain, behind, d)
 }
