@@ -506,16 +506,32 @@ func (f *nativeFeed) poll(ctx context.Context) {
 					// cap as a range refusal, so any blip read as one. The
 					// serving node answered 20 of 20 when reasked at once; a
 					// refusal that survives the retry is the cap itself.
+					//
+					// And ask the serving node alone. A retry across the whole
+					// list answers with the last fallback's error again — on
+					// BNB, drpc's "ranges over 10000 blocks" for a 400-block
+					// request, a rate limit wearing a range refusal's words —
+					// so only the first log endpoint's own answer decides the
+					// span. Anything else it says is an outage of this poll,
+					// not a cap: the cursor holds and the next poll retries.
+					serving := c.logsRPC()
+					if len(serving) > 1 {
+						serving = serving[:1]
+					}
 					var again []evmLog
-					err2 := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &again)
-					if err2 == nil || strings.Contains(err2.Error(), "empty result") {
+					err2 := evmCall(ctx, f.http, serving, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &again)
+					switch {
+					case err2 == nil || strings.Contains(err2.Error(), "empty result"):
 						logs = append(logs, again...)
 						f.cursor[c.slug] = to
 						from = to + 1
 						continue
+					case rangeRefusal(err2):
+						f.span[c.slug] = 10
+						log.Printf("[native] %s getLogs %d-%d: the serving node itself refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
+					default:
+						log.Printf("[native] %s getLogs %d-%d: serving node failed, span kept at %d: %v", c.slug, from, to, span, err2)
 					}
-					f.span[c.slug] = 10
-					log.Printf("[native] %s getLogs %d-%d refused the %d-block range twice, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
 				} else {
 					log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
 				}
