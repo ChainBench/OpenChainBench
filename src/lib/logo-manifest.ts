@@ -134,6 +134,7 @@ const RAW: Record<string, string> = {
   megaeth: "/logos/megaeth.png",
   robinhood: "/logos/robinhood.png",
   arc: "/logos/arc.svg",
+  plasma: "/logos/plasma.webp",
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.svg",

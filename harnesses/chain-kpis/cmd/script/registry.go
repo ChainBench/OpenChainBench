@@ -133,39 +133,70 @@ var Registry = []Chain{
 	// Web3 gaming, operated by Immutable. DefiLlama slug "Immutable zkEVM"
 	// verified — the space is intentional and matches /v2/chains casing.
 	{Slug: "immutable", DefiLlama: "Immutable zkEVM", Mobula: "", NativeSymbol: "IMX", L2Beat: "immutablezkevm"},
+	// Settled L1s with a large stablecoin float that the site already
+	// rendered (Aptos, XRP Ledger, Arc) or gained with this batch (Plasma)
+	// but the harness never polled, so bench 275 ranked without them
+	// while each held more float than half its cohort. DefiLlama names
+	// verified live on 2026-09-25 against /v2/chains, /stablecoinchains,
+	// /overview/fees allChains and the three per-chain endpoints. Slugs
+	// follow the site: the XRP Ledger row is "xrp" there, not "xrpl".
+	// Mobula names read from /api/1/blockchains with the harness key on
+	// 2026-09-25: Plasma and Arc are indexed, XRPL and Aptos are not.
+	{Slug: "plasma", DefiLlama: "Plasma", Mobula: "Plasma", NativeSymbol: "XPL"},
+	{Slug: "xrp", DefiLlama: "XRPL", Mobula: "", NativeSymbol: "XRP"},
+	{Slug: "aptos", DefiLlama: "Aptos", Mobula: "", NativeSymbol: "APT"},
+	// Arc (Circle, chain 5042) pays gas in USDC and has no token of its
+	// own: DefiLlama maps it to no gecko_id, so no P/F. The native symbol
+	// stays empty on purpose, because publishing USDC's price and market
+	// cap as Arc's "native token" would read as a $75B chain token.
+	{Slug: "arc", DefiLlama: "Arc", Mobula: "Arc", NativeSymbol: ""},
 	// Chains the site renders that L2Beat tracks but the registry did not
 	// carry. Three of them (Starknet, World Chain, Ink) clear the $200M
 	// median floor, so they were voting on the yardstick every other row
-	// is judged against while having no row of their own. DefiLlama and
-	// Mobula names are left empty deliberately: those loops skip an empty
-	// name, so these rows publish L2Beat gauges only until someone
-	// verifies the other two sources for each chain. Ids read live from
-	// /api/scaling/summary on 2026-09-23; several differ from the site
-	// slug (worldchain, mantapacific, galxegravity, nova, polygonzkevm,
-	// bobanetwork).
-	{Slug: "starknet", DefiLlama: "", Mobula: "", NativeSymbol: "STRK", L2Beat: "starknet"},
-	{Slug: "world-chain", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "worldchain"},
-	{Slug: "ink", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "ink"},
-	{Slug: "morph", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "morph"},
-	{Slug: "xlayer", DefiLlama: "", Mobula: "", NativeSymbol: "OKB", L2Beat: "xlayer"},
-	{Slug: "manta", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "mantapacific"},
-	{Slug: "bob", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "bob"},
-	{Slug: "abstract", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "abstract"},
+	// is judged against while having no row of their own. Ids read live
+	// from /api/scaling/summary on 2026-09-23; several differ from the
+	// site slug (worldchain, mantapacific, galxegravity, nova,
+	// polygonzkevm, bobanetwork). DefiLlama names were added on
+	// 2026-09-25, each verified by exact match on /v2/chains and by a 200
+	// on the per-chain TVL endpoint; until then these rows published
+	// L2Beat gauges only and read n/a on the /capital chains table.
+	// Mobula names read from /api/1/blockchains with the harness key the
+	// same day; an empty one means Mobula does not index the chain
+	// (World Chain, Morph, Lisk, Zircuit, Reya, Cyber, Hemi, Plume).
+	{Slug: "starknet", DefiLlama: "Starknet", Mobula: "Starknet", NativeSymbol: "STRK", L2Beat: "starknet"},
+	{Slug: "world-chain", DefiLlama: "World Chain", Mobula: "", NativeSymbol: "ETH", L2Beat: "worldchain"},
+	{Slug: "ink", DefiLlama: "Ink", Mobula: "Ink", NativeSymbol: "ETH", L2Beat: "ink"},
+	{Slug: "morph", DefiLlama: "Morph", Mobula: "", NativeSymbol: "ETH", L2Beat: "morph"},
+	{Slug: "xlayer", DefiLlama: "X Layer", Mobula: "X Layer", NativeSymbol: "OKB", L2Beat: "xlayer"},
+	{Slug: "manta", DefiLlama: "Manta", Mobula: "Manta", NativeSymbol: "ETH", L2Beat: "mantapacific"},
+	{Slug: "bob", DefiLlama: "BOB", Mobula: "BOB", NativeSymbol: "ETH", L2Beat: "bob"},
+	{Slug: "abstract", DefiLlama: "Abstract", Mobula: "Abstract", NativeSymbol: "ETH", L2Beat: "abstract"},
+	// Gravity is "Gravity by Galxe" on DefiLlama, but every figure under
+	// that name is zero (TVL series, stablecoin float, DEX volume), so a
+	// mapping would publish a $0 float that looks measured. Left empty.
 	{Slug: "gravity", DefiLlama: "", Mobula: "", NativeSymbol: "G", L2Beat: "galxegravity"},
-	{Slug: "lisk", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "lisk"},
-	{Slug: "metis", DefiLlama: "", Mobula: "", NativeSymbol: "METIS", L2Beat: "metis"},
-	{Slug: "apechain", DefiLlama: "", Mobula: "", NativeSymbol: "APE", L2Beat: "apechain"},
-	{Slug: "zircuit", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "zircuit"},
-	{Slug: "arbitrum-nova", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "nova"},
-	{Slug: "polygon-zkevm", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "polygonzkevm"},
-	{Slug: "boba", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "bobanetwork"},
-	{Slug: "zora", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "zora"},
-	{Slug: "reya", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "reya"},
-	{Slug: "cyber", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "cyber"},
-	{Slug: "hemi", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "hemi"},
+	{Slug: "lisk", DefiLlama: "Lisk", Mobula: "", NativeSymbol: "ETH", L2Beat: "lisk"},
+	{Slug: "metis", DefiLlama: "Metis", Mobula: "Metis", NativeSymbol: "METIS", L2Beat: "metis"},
+	{Slug: "apechain", DefiLlama: "ApeChain", Mobula: "ApeChain", NativeSymbol: "APE", L2Beat: "apechain"},
+	{Slug: "zircuit", DefiLlama: "Zircuit", Mobula: "", NativeSymbol: "ETH", L2Beat: "zircuit"},
+	{Slug: "arbitrum-nova", DefiLlama: "Arbitrum Nova", Mobula: "Arbitrum Nova", NativeSymbol: "ETH", L2Beat: "nova"},
+	{Slug: "polygon-zkevm", DefiLlama: "Polygon zkEVM", Mobula: "Polygon zkEVM", NativeSymbol: "ETH", L2Beat: "polygonzkevm"},
+	{Slug: "boba", DefiLlama: "Boba", Mobula: "Boba", NativeSymbol: "ETH", L2Beat: "bobanetwork"},
+	{Slug: "zora", DefiLlama: "Zora", Mobula: "Zora", NativeSymbol: "ETH", L2Beat: "zora"},
+	// Reya is "ReyaChain" on DefiLlama: TVL and a fees adapter answer,
+	// the stablecoin endpoint 404s (logged and skipped, the other cards
+	// still publish).
+	{Slug: "reya", DefiLlama: "ReyaChain", Mobula: "", NativeSymbol: "ETH", L2Beat: "reya"},
+	// Cyber: DefiLlama tracks TVL only. The stablecoin endpoint 404s and
+	// the fees and DEX endpoints answer 500, so those loops log an error
+	// for it each tick and the row keeps its TVL and L2Beat gauges.
+	{Slug: "cyber", DefiLlama: "Cyber", Mobula: "", NativeSymbol: "ETH", L2Beat: "cyber"},
+	{Slug: "hemi", DefiLlama: "Hemi", Mobula: "", NativeSymbol: "ETH", L2Beat: "hemi"},
 	// Plume: L2Beat tracks it as "plumenetwork" (Plume Network, about $89M
 	// TVS on 2026-09-25); the bench 273 audit found the site row with no
-	// bridged TVL because the id was never mapped. DefiLlama and Mobula
-	// names left empty until verified, same as the batch above.
-	{Slug: "plume", DefiLlama: "", Mobula: "", NativeSymbol: "PLUME", L2Beat: "plumenetwork"},
+	// bridged TVL because the id was never mapped. DefiLlama lists the
+	// chain twice: "Plume" is the first mainnet (chain 98865) and reads
+	// zero since the move to chain 98866, "Plume Mainnet" is the live one
+	// and the name the harness reads.
+	{Slug: "plume", DefiLlama: "Plume Mainnet", Mobula: "", NativeSymbol: "PLUME", L2Beat: "plumenetwork"},
 }
