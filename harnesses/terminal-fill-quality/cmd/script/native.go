@@ -541,6 +541,11 @@ func (f *nativeFeed) poll(ctx context.Context) {
 					failed = true
 					break
 				}
+				if truncated(err) {
+					f.narrowSpan(c.slug, from, to, span)
+					failed = true
+					break
+				}
 				if span > 10 && rangeRefusal(err) {
 					// Ask once more before believing it. evmCall hands back
 					// the LAST endpoint's error, so a blip on the node that
@@ -573,6 +578,8 @@ func (f *nativeFeed) poll(ctx context.Context) {
 						log.Printf("[native] %s getLogs %d-%d: the serving node itself refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
 					case archiveRefusal(err2):
 						f.learnDepth(c.slug, head-from, span)
+					case truncated(err2):
+						f.narrowSpan(c.slug, from, to, span)
 					default:
 						log.Printf("[native] %s getLogs %d-%d: serving node failed, span kept at %d: %v", c.slug, from, to, span, err2)
 					}
@@ -1080,4 +1087,19 @@ func (f *nativeFeed) learnDepth(chain string, behind, span int64) {
 	}
 	f.depth[chain] = d
 	log.Printf("[native] %s: %d blocks behind head is past the node's history; resuming from head-%d next poll", chain, behind, d)
+}
+
+// truncated: the response ran past the read cap; the range is too dense
+// for one call, not the node's fault.
+func truncated(err error) bool { return strings.Contains(err.Error(), "response truncated") }
+
+// narrowSpan: a quarter of the span for the next poll, never under ten;
+// the recovery after a clean poll climbs it back.
+func (f *nativeFeed) narrowSpan(chain string, from, to, span int64) {
+	next := span / 4
+	if next < 10 {
+		next = 10
+	}
+	f.span[chain] = next
+	log.Printf("[native] %s getLogs %d-%d: response over the read cap, span %d -> %d for the next poll", chain, from, to, span, next)
 }

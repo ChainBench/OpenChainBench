@@ -83,6 +83,11 @@ type evmTx struct {
 
 // evmCall runs one JSON-RPC call against the chain's public endpoints in
 // order; the first one that answers with a result wins.
+// evmReadCap bounds one JSON-RPC response. 8 MiB was not enough for a
+// dense 400-block log window on BNB; 32 MiB is, with room, and a body
+// that still reaches it is reported as such rather than as bad JSON.
+const evmReadCap = 32 << 20
+
 func evmCall(ctx context.Context, httpc *http.Client, urls []string, method string, params []any, out any) error {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
 	var last error = errors.New("no endpoint")
@@ -98,8 +103,18 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 			last = errors.New(redactURL(err.Error(), url))
 			continue
 		}
-		data, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, evmReadCap))
 		resp.Body.Close()
+		if len(data) >= evmReadCap {
+			// A body cut at the cap is not a JSON error, it is a range too
+			// dense for one call: a 400-block window over fifteen routers
+			// near BNB's head ran past 8 MiB, read as "unparseable body",
+			// and the feed took that for a node outage and held its cursor
+			// on the same window poll after poll. Named, so the caller can
+			// narrow the range instead.
+			last = fmt.Errorf("response truncated at %d bytes: narrow the range", evmReadCap)
+			continue
+		}
 		var env struct {
 			Result json.RawMessage `json:"result"`
 			Error  *rpcError       `json:"error"`
