@@ -809,6 +809,19 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 			actual = 0
 		}
 		x.DestGasUsd = actual
+		// And never more than Relay quoted the user for it. The actual
+		// execution figure is the solver's own gas, and on a subsidised
+		// request the solver can spend far more than the user was quoted:
+		// a $5.68 pump.fun buy on HyperEVM had actual execution $0.424
+		// against a quote of $0.075 to the user, whose whole shortfall in
+		// and out was $0.23 — so the row charged 737 bps of gas the user
+		// never paid and the pool went to -196. The user's cost is bounded
+		// by the quote they accepted; the overrun is Relay's.
+		if c, ok := comps["execution"]; ok {
+			if quoted := f64(c.UserPays.AmountUsd); quoted > 0 && x.DestGasUsd > quoted {
+				x.DestGasUsd = quoted
+			}
+		}
 	}
 	for _, k := range []string{"fixed", "price"} {
 		if v, ok := r.Data.FeesUsd[k]; ok {
