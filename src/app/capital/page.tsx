@@ -33,8 +33,18 @@ function describe(hub: CapitalHub | null): string {
   const p = hub.leaders.lowestPfProtocol;
   if (p && p.pf != null) parts.push(`${p.name} has the lowest price to fees at ${fmtX(p.pf)} of ${hub.protocols.length} tokens`);
   if (parts.length === 0) return FALLBACK_DESCRIPTION;
-  const out = `${parts.join("; ")}. TVL, bridged value, open interest and P/F per token.`;
-  return out.length <= 158 ? out : `${parts[0]}. TVL, bridged value, stablecoin flows and price to fees per token.`.slice(0, 158);
+  // Longest candidate that fits the 120 to 158 character SERP budget: both
+  // leaders with the long tail, then shorter tails, then one leader.
+  const tails = [
+    "TVL, bridged value, stablecoin flows, open interest and price to fees per token, from public data.",
+    "TVL, bridged value, stablecoin flows, open interest and price to fees per token.",
+    "TVL, bridged value, open interest, price to fees.",
+  ];
+  const candidates = [
+    ...tails.map((t) => `${parts.join("; ")}. ${t}`),
+    ...tails.map((t) => `${parts[0]}. ${t}`),
+  ];
+  return candidates.find((c) => c.length >= 120 && c.length <= 158) ?? candidates.find((c) => c.length <= 158) ?? FALLBACK_DESCRIPTION;
 }
 
 export async function generateMetadata(): Promise<import("next").Metadata> {

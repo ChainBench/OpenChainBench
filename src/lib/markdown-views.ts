@@ -261,7 +261,9 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
   md.push("");
   md.push(`- Page: ${SITE.url}/capital`);
   md.push(`- Daily history: https://kv.openchainbench.com/aggregate/valuation/history.json · https://kv.openchainbench.com/aggregate/chains/history.json`);
-  md.push(`- JSON per bench: ${hub.benches.map((b) => `${SITE.url}/api/stat/${b.slug}`).join(" · ")}`);
+  // Only benches this deployment serves: a link to a 404 is worse than none.
+  const served = hub.benches.filter((b) => b.live);
+  if (served.length > 0) md.push(`- JSON per bench: ${served.map((b) => `${SITE.url}/api/stat/${b.slug}`).join(" · ")}`);
   md.push(`- License: CC-BY-4.0`);
   if (hub.asOf) md.push(`- Data as of: ${hub.asOf}`);
   md.push("");
