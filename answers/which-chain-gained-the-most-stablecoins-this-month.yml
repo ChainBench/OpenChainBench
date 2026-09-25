@@ -47,7 +47,7 @@ faq:
     a: "Yes. The bench's /api/stat endpoint returns the ranked table as JSON, the /api/series endpoint returns 7, 30, 90 day and 1 year ranges, and kv.openchainbench.com/aggregate/chains/history.json keeps one point per UTC day per chain (float, net flow, TVL, DEX volume). Everything is CC BY 4.0."
 
 related:
-  - which-defi-token-is-cheapest-per-dollar-of-fees
+  - which-defi-token-has-the-lowest-price-to-fees
   - which-perp-dex-token-has-the-lowest-price-to-fees
   - which-l1-has-the-fastest-finality
 

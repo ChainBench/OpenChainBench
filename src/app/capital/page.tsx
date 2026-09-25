@@ -64,6 +64,7 @@ export const revalidate = 3600;
 
 export default async function CapitalHubPage() {
   const hub = await getCapitalHub();
+  const hasChainFees = hub.chains.some((c) => c.fees30d != null);
   const asOfLabel = hub.asOf ? `${hub.asOf.slice(0, 16).replace("T", " ")} UTC` : null;
 
   const lede = ledeSentence(hub);
@@ -201,8 +202,10 @@ export default async function CapitalHubPage() {
         <div className="mt-3 space-y-3 text-sm text-ink-soft leading-relaxed">
           <p>
             <strong className="text-ink">DeFiLlama</strong> for protocol fees and revenue (dailyFees, dailyRevenue per adapter), chain TVL, DEX volume
-            and stablecoin circulating per chain, and per-chain fees (gas plus every protocol tracked on the chain) with the revenue the chain
-            and its protocols kept, through bench 280. Windows are 30 closed UTC days, annualized as 30-day sum times 365/30.
+            and stablecoin circulating per chain{hasChainFees
+              ? ", and per-chain fees (gas plus every protocol tracked on the chain) with the revenue the chain and its protocols kept, through bench 280."
+              : "."}{" "}
+            Windows are 30 closed UTC days, annualized as 30-day sum times 365/30.
           </p>
           <p>
             <strong className="text-ink">L2Beat</strong> for value secured per scaling chain, split into native, canonical and external, and its

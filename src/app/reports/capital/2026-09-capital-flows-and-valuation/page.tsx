@@ -64,7 +64,7 @@ function mirrors(hub: CapitalHub): ProtocolRow[] {
 function describe(hub: CapitalHub | null): string {
   const parts: string[] = [];
   const s = hub ? byStables(hub)[0] : null;
-  if (s?.stablesNet30d != null) parts.push(`${s.name} added ${fmtUsdShort(s.stablesNet30d)} of stablecoins in 30 days`);
+  if (s?.stablesNet30d != null && s.stablesNet30d > 0) parts.push(`${s.name} added ${fmtUsdShort(s.stablesNet30d)} of stablecoins in 30 days`);
   const p = hub?.leaders.lowestPfProtocol;
   if (p?.pf != null) parts.push(`${p.name} trades at ${fmtX(p.pf)} price to fees`);
   const n = hub ? divergences(hub).length : 0;
@@ -143,6 +143,10 @@ export default async function CapitalReportPage() {
   const excess = hub ? byExcess(hub) : [];
   const excessLead = excess[0] ?? null;
   const excessPositive = excess.filter((c) => (c.excess7dPct ?? 0) > 0).length;
+  // Share of the cohort's bridged value, not the chain's own bridged share (bridged over its TVS).
+  const bridgedTotal = (hub?.chains ?? []).reduce((sum, c) => sum + (c.bridgedTvl ?? 0), 0);
+  const bridgedLead = hub?.leaders.bridgedTvl ?? null;
+  const bridgedLeadShare = bridgedLead?.bridgedTvl != null && bridgedTotal > 0 ? (bridgedLead.bridgedTvl / bridgedTotal) * 100 : null;
   const protocols = hub?.protocols ?? [];
   const perps = hub?.perps ?? [];
   const pLead = hub?.leaders.lowestPfProtocol ?? null;
@@ -266,7 +270,7 @@ export default async function CapitalReportPage() {
               Bridged value, from L2Beat, is what a scaling chain&apos;s bridges secure. It moves with the price of ETH for every L2 at once, so the reading that separates chains is each one&apos;s 7-day move minus the cohort&apos;s: positive means capital moved toward that chain faster than toward its peers, negative the reverse.
               {excessLead ? ` ${excessLead.name} gained the most against the cohort this week, ${signed(excessLead.excess7dPct)} of excess move (${signed(excessLead.change7dPct)} on its own, ${fmtUsdShort(excessLead.bridgedTvl)} secured).` : ""}
               {` ${excessPositive} of the ${excess.length} L2s above $100M of bridged value beat the cohort over the week.`}
-              {hub.leaders.bridgedTvl ? ` By level, ${hub.leaders.bridgedTvl.name} secures the most, ${fmtUsdShort(hub.leaders.bridgedTvl.bridgedTvl)}${hub.leaders.bridgedTvl.bridgedSharePct != null ? `, ${hub.leaders.bridgedTvl.bridgedSharePct.toFixed(1)} percent of the cohort` : ""}.` : ""}
+              {bridgedLead ? ` By level, ${bridgedLead.name} secures the most, ${fmtUsdShort(bridgedLead.bridgedTvl)}${bridgedLeadShare != null ? `, ${bridgedLeadShare.toFixed(1)} percent of the ${hub.chains.filter((c) => c.bridgedTvl != null).length} L2s' bridged value combined` : ""}.` : ""}
             </p>
             <ol className="mt-3 text-sm grid gap-1 sm:grid-cols-2">
               {excess.slice(0, 8).map((c, i) => (

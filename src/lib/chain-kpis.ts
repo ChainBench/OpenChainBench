@@ -17,6 +17,7 @@
 
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import {
   readCohortSnapshot,
   writeCohortSnapshot,
@@ -172,7 +173,19 @@ const fetchChainKpisCached = unstable_cache(
 );
 
 export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
-  return fetchChainKpisCached(slug);
+  const k = await fetchChainKpisCached(slug);
+  return k ? withServedBenches(k) : null;
+}
+
+/**
+ * Bench 280 (chain fees, revenue, token price to fees) is dev-only until
+ * its audit round. The snapshot is written by the dev worker and carries
+ * those fields everywhere, so the reader drops them on a deployment that
+ * does not serve the bench; the strip then hides the three cards.
+ */
+function withServedBenches(k: ChainKpis): ChainKpis {
+  if (!isDevOnlyBench("chain-fees-revenue")) return k;
+  return { ...k, fees30d: null, revenue30d: null, tokenPf: null };
 }
 
 /**
