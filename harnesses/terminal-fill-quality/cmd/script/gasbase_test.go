@@ -122,3 +122,31 @@ func TestFinalizeReplayLeavesAnUnpricedRowUnpriced(t *testing.T) {
 		t.Errorf("trade size moved on replay: %.6f -> %.6f", trade, sw.TradeUSD)
 	}
 }
+
+// finalize clears Flag and sets Priced again on its first lines, so any
+// path that replays it un-drops a row the split guard had dropped. That is
+// how the window came to hold seven rows below -200 bps and three terminal
+// fees above 1000 with not one of them carrying the flag.
+func TestReplayKeepsAnImplausibleSplitDropped(t *testing.T) {
+	ref := 1.0
+	// The named costs come to far more than the trade lost, so the pool
+	// residual is deeply negative: the split cannot be right.
+	sw := Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1,
+		Tokens: 2.99, UserQ: 3.00, TerminalQ: 1.90, NetworkQ: 0.05}
+	sw.finalize(&ref, 0, "reserves")
+	implausibleSplit(&sw)
+	if sw.Priced || sw.Flag != "split_implausible" {
+		t.Fatalf("the guard did not drop the row: priced=%v flag=%q", sw.Priced, sw.Flag)
+	}
+	// Replayed the way loadState replays it.
+	sw.finalize(sw.RefPrice, *sw.RefAgeS, sw.RefSrc)
+	if sw.Flag != "" || !sw.Priced {
+		t.Fatalf("finalize no longer clears the flag, so this test guards the "+
+			"wrong thing now: flag=%q priced=%v", sw.Flag, sw.Priced)
+	}
+	implausibleSplit(&sw)
+	if sw.Priced || sw.Flag != "split_implausible" {
+		t.Errorf("the row came back priced after a replay: flag=%q priced=%v pool=%.0f",
+			sw.Flag, sw.Priced, *sw.PoolBps)
+	}
+}

@@ -679,6 +679,13 @@ func (st *State) reject(slug string, r parseReject) {
 // Meteora DLMM), else the previous trade on the pool (at most 60 s
 // earlier); the pool neighbourhood is read anyway for the screen.
 func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pools *poolCache, solUSD float64, now int64) {
+	// The split guard, on every exit: this function returns from four
+	// places and prices in three, and it had never applied it at all —
+	// implausibleSplit was wired into the EVM paths only, so a Solana row
+	// whose named costs exceeded what the trade lost was published like
+	// any other. Deferred rather than repeated, so a new exit cannot skip
+	// it again.
+	defer implausibleSplit(sw)
 	// The venue's own event first, where the vaults do not describe the
 	// curve: pump.fun's virtual reserves are not constants, so the cached
 	// account constants can be stale, and a Raydium CP-Swap vault holds
@@ -2762,6 +2769,10 @@ func loadState(path string) *State {
 				age = *s.RefAgeS
 			}
 			s.finalize(s.RefPrice, age, s.RefSrc) // nil reference: the row stays unpriced, as it was
+			// finalize clears Flag and sets Priced again on its first
+			// lines, so a replay silently un-drops a row the guard had
+			// dropped. Re-apply it.
+			implausibleSplit(s)
 			s.Method = methodVersion
 			refinal++
 		}
