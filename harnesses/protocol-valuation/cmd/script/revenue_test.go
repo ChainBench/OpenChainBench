@@ -144,6 +144,35 @@ func TestPartialRevenueCoverageIsIncomplete(t *testing.T) {
 	}
 }
 
+// A token whose revenue rows all report zero has a known zero, published
+// as 0 with no P/S; a token with no revenue row anywhere is unknown and
+// publishes nothing. The two must stay apart.
+func TestAKnownZeroRevenueIsNotUnknown(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "Zero", DefillamaID: "1", Category: "Dexs", Total30d: 5e6},
+		{Name: "Unknown", DefillamaID: "2", Category: "Dexs", Total30d: 5e6},
+	}
+	revenue := []feeAdapter{{Name: "Zero", DefillamaID: "1", Total30d: 0}}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "Zero", GeckoID: "zero"},
+		{ID: float64(2), Name: "Unknown", GeckoID: "unknown"},
+	}
+	cohort, _, err := joinCohort(fees, revenue, protocols, nil, 1e5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := map[string]Protocol{}
+	for _, p := range cohort {
+		by[p.GeckoID] = p
+	}
+	if z := by["zero"]; !z.RevKnown || z.Rev30d != 0 || z.RevIncomplete {
+		t.Errorf("zero: want known, 0, complete; got %+v", z)
+	}
+	if u := by["unknown"]; u.RevKnown {
+		t.Errorf("unknown: no revenue row anywhere must not be known, got %+v", u)
+	}
+}
+
 // P/S needs revenue. Zero or missing revenue is "unknown", and a ratio
 // against unknown must be absent rather than infinite or zero.
 func TestPSIsAbsentWithoutRevenue(t *testing.T) {

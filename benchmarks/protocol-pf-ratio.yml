@@ -72,7 +72,7 @@ methodology:
   - "A protocol whose fee history is shorter than the windows shows its ratio and no trend: with no prior 30 days there is no month-over-month figure, and the divergence screen cannot fire without one."
   - "A token with a fee adapter reporting nothing over 30 days after real fees over the year has a published total short of its revenue, and is excluded from the board, from its category median and from the screen. DeFiLlama's Drift Trade adapter is in that state: it reports $0 after $11.1M over the year, so only Drift's $1.2M staking product reaches the token. protocol_fees_incomplete and protocol_silent_adapter_fees_1y_usd publish the flag and the size of the gap."
   - "protocol_diverging is 1 when three things hold at once: fees grew month over month, the token fell over 30 days, and the P/F sits below the category median. The third clause is what stops it naming every protocol having a bad month."
-  - "Revenue 30d (protocol_revenue_30d_usd): the share of fees the protocol keeps, per each adapter's own definition on DeFiLlama (/overview/fees with dataType=dailyRevenue), summed over the adapters the fees come from. Absent when no adapter behind the token publishes a revenue series: that is unknown, not zero."
+  - "Revenue 30d (protocol_revenue_30d_usd): the share of fees the protocol keeps, per each adapter's own definition on DeFiLlama (/overview/fees with dataType=dailyRevenue), summed over the adapters the fees come from. Absent when no adapter behind the token publishes a revenue series: that is unknown, not zero. Published as 0 when the adapters have one and report none."
   - "protocol_revenue_incomplete is 1 when the revenue total is knowably short: the fee total itself is short, a revenue adapter reports nothing over 30 days after real revenue over the year, or a product earning fees this month has no revenue series while its siblings do (protocol_revenue_missing_adapters counts them). Revenue is published with the flag; the P/S built on it is not, because a multiple on a fraction of the revenue reads higher than it is."
   - "P/S (protocol_ps_ratio) = circulating market cap / annualized revenue, revenue being the trailing 30 day sum x 365/30. The same multiple as P/F on what the token's protocol keeps rather than on what its users paid. Absent when revenue is missing, zero or knowably short, so no row reads as infinitely priced, as free, or as pricier than it is."
   - "TVL (protocol_tvl_usd): DeFiLlama /protocols tvl summed over every row that resolves to the token by the same rule as the fee adapters, its own CoinGecko id first, else its parent's, so Aave V2, V3 and Horizon count once each under AAVE. Absent when no row carries a TVL: a launchpad or a perp DEX settling on its own chain has nothing locked, and that is not a zero."
@@ -145,7 +145,7 @@ metric_panels:
     metric: protocol_revenue_30d_usd{}
     unit: usd
     higher_is_better: true
-    description: "Trailing 30 day revenue in USD: the share of fees the protocol keeps, per each adapter's DeFiLlama definition, over the same adapters as the fees. Absent when no adapter publishes a revenue series."
+    description: "Trailing 30 day revenue in USD: the share of fees the protocol keeps, per each adapter's DeFiLlama definition, over the same adapters as the fees. Absent when no adapter publishes a revenue series; 0 when they do and report none."
   - id: ps
     label: P/S
     label_key: protocol

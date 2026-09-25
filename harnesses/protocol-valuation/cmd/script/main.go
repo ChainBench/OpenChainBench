@@ -117,7 +117,11 @@ func poll(cfg *Config, supply *supplyCache) {
 			sizes[r.Category]++
 		}
 	}
-	publish(rows, medians, sizes, st, float64(time.Now().Unix()))
+	// Rows are rebuilt every tick; the dilution columns they carried a
+	// minute ago come back from the cache before anything is published.
+	now := time.Now()
+	fillSupplyFromCache(rows, supply, now)
+	publish(rows, medians, sizes, st, float64(now.Unix()))
 
 	diverging, withPS, withTVL := 0, 0, 0
 	for _, r := range rows {
@@ -140,7 +144,6 @@ func poll(cfg *Config, supply *supplyCache) {
 	// hour for the cohort depending on how throttled the shared address
 	// is. The board above is already published, so a restart does not hold
 	// every gauge behind it; the rows are republished as series arrive.
-	now := time.Now()
 	day := now.UTC().Format("2006-01-02")
 	republish := func() {
 		pvSupplyCacheSize.Set(float64(supply.size(day)))

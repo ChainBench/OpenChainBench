@@ -40,7 +40,7 @@ var (
 	// other screens; each is absent, never zero, when the source has no
 	// figure for the token.
 	pvRev30d = gaugeVec("protocol_revenue_30d_usd",
-		"Trailing 30d revenue in USD, the share of fees the protocol keeps per each adapter's DeFiLlama definition, summed over the same adapters as protocol_fees_30d_usd. Absent when none of them publishes a revenue series.",
+		"Trailing 30d revenue in USD, the share of fees the protocol keeps per each adapter's DeFiLlama definition, summed over the same adapters as protocol_fees_30d_usd. Absent when none of them publishes a revenue series; 0 when they do and report none.",
 		"protocol", "category")
 	pvAnnualRev = gaugeVec("protocol_annual_revenue_usd",
 		"Annualized revenue in USD (trailing 30d x 365/30).", "protocol")
@@ -200,7 +200,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		if r.HasFDV {
 			pvPFfdv.WithLabelValues(r.Slug).Set(r.PFfdv)
 		}
-		if r.Rev30d > 0 {
+		if r.RevKnown {
 			pvRev30d.WithLabelValues(r.Slug, r.Category).Set(r.Rev30d)
 			pvAnnualRev.WithLabelValues(r.Slug).Set(r.AnnualRev)
 			pvRevIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.RevIncomplete))

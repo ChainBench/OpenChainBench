@@ -176,13 +176,20 @@ func TestCoinGeckoRetryHonoursAndClampsRetryAfter(t *testing.T) {
 }
 
 // A row whose series could not be fetched this tick keeps yesterday's
-// figure; a row with no series at all has none.
+// figure; a row with no series at all has none. The cache fill that runs
+// before the first publish gives the same answer without a fetch.
 func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
 	prices, mcaps := linearSeries(92)
 	series := supplySeries(prices, mcaps)
 	c := newSupplyCache()
 	c.put("old", "2026-09-24", series)
 	rows := []Row{{Protocol: Protocol{GeckoID: "old"}}, {Protocol: Protocol{GeckoID: "never"}}}
+
+	fillSupplyFromCache(rows, c, day(91).Add(13*time.Hour))
+	if !rows[0].HasSupply30d || rows[1].HasSupply30d {
+		t.Fatalf("cache fill: old=%v never=%v, want true/false", rows[0].HasSupply30d, rows[1].HasSupply30d)
+	}
+	rows = []Row{{Protocol: Protocol{GeckoID: "old"}}, {Protocol: Protocol{GeckoID: "never"}}}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

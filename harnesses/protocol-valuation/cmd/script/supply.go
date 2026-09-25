@@ -268,6 +268,22 @@ func supplyChangePct(series []supplyPoint, now time.Time, window time.Duration) 
 	return 100 * (latest.Circ/then.Circ - 1), true
 }
 
+// fillSupplyFromCache stamps every row with whatever series the cache
+// holds, today's or an earlier day's, without fetching. Called before the
+// first publish of a tick so a row that was on the board a minute ago
+// does not lose its dilution columns while this tick's fetches run.
+func fillSupplyFromCache(rows []Row, cache *supplyCache, now time.Time) {
+	day := now.UTC().Format("2006-01-02")
+	for i := range rows {
+		series, _ := cache.get(rows[i].GeckoID, day)
+		if series == nil {
+			continue
+		}
+		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, now, 30*24*time.Hour)
+		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, now, 90*24*time.Hour)
+	}
+}
+
 // attachSupplyChange fills the dilution fields of every row from the
 // cache, fetching the series it does not hold for today, for at most
 // supplyPassBudget and until supplyMaxConsecutiveErrors failures in a

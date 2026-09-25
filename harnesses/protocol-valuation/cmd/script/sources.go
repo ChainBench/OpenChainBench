@@ -91,11 +91,13 @@ type Protocol struct {
 
 	// Revenue is the share of fees the protocol keeps, per each adapter's
 	// own definition on DeFiLlama, summed over the same adapters as the
-	// fees. Zero means DeFiLlama publishes no revenue series for any of
-	// them, which is "unknown", not "keeps nothing": the P/S built on it
-	// stays absent.
-	Rev30d float64
-	Rev1y  float64
+	// fees. RevKnown is false when no adapter behind the token has a
+	// revenue row at all: that is "unknown", not "keeps nothing", and
+	// nothing is published. A known zero (rows that report 0) is
+	// published as 0; the P/S built on either stays absent.
+	Rev30d   float64
+	Rev1y    float64
+	RevKnown bool
 	// True when the revenue total is knowably short of the token's
 	// protocols: the fee total itself is short (Incomplete), a revenue
 	// adapter reports nothing over 30 days after real revenue over the
@@ -309,6 +311,7 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 		// DeFiLlama defines no revenue for it, so the token's total is
 		// knowably short and the P/S on it would be inflated.
 		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
+			e.RevKnown = true
 			e.Rev30d += rv.Total30d
 			e.Rev1y += rv.Total1y
 			if rv.Total30d == 0 && rv.Total1y > silentAdapterYearUSD {
@@ -336,7 +339,7 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 		// A gap only means something once some product does report
 		// revenue; a token with no revenue row anywhere is unknown, not
 		// partial, and stays unflagged with no P/S.
-		if e.Incomplete || (e.Rev30d > 0 && e.RevMissingAdapters > 0) {
+		if e.Incomplete || (e.RevKnown && e.RevMissingAdapters > 0) {
 			e.RevIncomplete = true
 		}
 		if tvl, ok := tvlByToken[gecko]; ok {

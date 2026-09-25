@@ -31,7 +31,7 @@ vs category = P/F / median P/F of the category (5 tokens or more)
 diverging   = fees MoM > 0 and price 30d < 0 and P/F < category median
 ```
 
-Absent, never zero: a ratio whose denominator is missing or zero is not published. No revenue series means "unknown", not "keeps nothing", so P/S stays absent; so does a revenue total that is knowably short (`protocol_revenue_incomplete`), since a multiple on a fraction of the revenue reads higher than it is. No `/protocols` row with a TVL means nothing locked, so TVL stays absent. A supply series shorter than the window (a token listed six weeks ago) has no 90-day figure.
+Absent, never zero: a ratio whose denominator is missing or zero is not published. No revenue series means "unknown", not "keeps nothing", so nothing is published and P/S stays absent (a revenue series that reports 0 is published as 0, still with no P/S); so does a revenue total that is knowably short (`protocol_revenue_incomplete`), since a multiple on a fraction of the revenue reads higher than it is. No `/protocols` row with a TVL means nothing locked, so TVL stays absent. A supply series shorter than the window (a token listed six weeks ago) has no 90-day figure.
 
 Supply change is realized dilution, what reached the float over the window, not an unlock schedule. A cliff next month is invisible until it lands.
 
