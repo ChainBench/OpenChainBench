@@ -358,6 +358,7 @@ async function buildHub(): Promise<CapitalHub> {
         fees30d: panel(protocolsB, "fees_30d", r.slug),
         tvl: panelByGauge(protocolsB, "protocol_tvl_usd", r.slug) ?? field(vpt, "tvl"),
         revenue30d: panelByGauge(protocolsB, "protocol_revenue_30d_usd", r.slug) ?? field(vpt, "rev_30d"),
+        revenueIncomplete: (panelByGauge(protocolsB, "protocol_revenue_incomplete", r.slug) ?? field(vpt, "revenue_incomplete") ?? 0) >= 1,
         ps: panelByGauge(protocolsB, "protocol_ps_ratio", r.slug) ?? field(vpt, "ps"),
         supplyChange30dPct: panelByGauge(protocolsB, "protocol_supply_change_30d_pct", r.slug) ?? field(vpt, "supply_change_30d_pct"),
       };

@@ -516,7 +516,17 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
                   {r.signal === "fees-down-token-up" && <Badge tone="down">fees down, token up</Badge>}
                 </Td>
                 {hasTvl && <Td mono>{fmtUsdShort(r.tvl)}</Td>}
-                {hasRevenue && <Td mono>{fmtUsdShort(r.revenue30d)}</Td>}
+                {hasRevenue && (
+                  <Td mono muted={r.revenueIncomplete}>
+                    {r.revenue30d != null && r.revenueIncomplete ? (
+                      <span title="Revenue total knowably short: a revenue adapter reports nothing this month, so the figure covers part of the protocol and no P/S is built on it">
+                        {fmtUsdShort(r.revenue30d)}*
+                      </span>
+                    ) : (
+                      fmtUsdShort(r.revenue30d)
+                    )}
+                  </Td>
+                )}
               </tr>
             ))}
             {shown.length === 0 && (

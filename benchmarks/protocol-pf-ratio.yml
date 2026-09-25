@@ -83,8 +83,8 @@ methodology:
 
 findings:
   - "{{best_name}} has the lowest price to fees of the {{ranked_count}} ranked protocols, {{best_p50}} of annualized fees."
-  - "A ratio only means something inside its category: the medians published alongside the board span more than an order of magnitude, so the same multiple reads as expensive in one column of the market and cheap in another."
-  - "{{worst_name}} is the most expensive on the board at {{worst_p50}} on today's fee run rate."
+  - "A ratio only means something inside its category: the medians published alongside the board span more than an order of magnitude, so the same multiple sits above the median in one column of the market and below it in another."
+  - "{{worst_name}} carries the highest multiple on the board, {{worst_p50}}, on today's fee run rate."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/protocol-valuation
 

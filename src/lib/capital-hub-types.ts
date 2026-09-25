@@ -81,6 +81,8 @@ export type ProtocolRow = {
   tvl: number | null;
   /** Revenue kept by the protocol over 30 days (protocol_revenue_30d_usd, blob `rev_30d`). */
   revenue30d: number | null;
+  /** 1 when the revenue total is knowably short (protocol_revenue_incomplete, blob `revenue_incomplete`): shown muted, never a P/S. */
+  revenueIncomplete: boolean;
   /** Market cap over annualized revenue (protocol_ps_ratio, blob `ps`). */
   ps: number | null;
   /** Realized dilution: circulating supply change over 30 days (protocol_supply_change_30d_pct, blob `supply_change_30d_pct`). */

@@ -398,13 +398,17 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
         ...(hasPs ? [capX(p.ps)] : []),
         ...(hasSupply ? [capPct(p.supplyChange30dPct)] : []),
         ...(hasTvl ? [capUsd(p.tvl)] : []),
-        ...(hasRevenue ? [capUsd(p.revenue30d)] : []),
+        ...(hasRevenue ? [p.revenue30d != null && p.revenueIncomplete ? `${capUsd(p.revenue30d)}*` : capUsd(p.revenue30d)] : []),
       ];
       md.push(
         `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} |${tail.map((t) => ` ${t} |`).join("")}`,
       );
     });
     md.push("");
+    if (hasRevenue && hub.protocols.some((p) => p.revenue30d != null && p.revenueIncomplete)) {
+      md.push(`Legend: "*" after a revenue figure: the total is knowably short (a revenue adapter reports nothing this month), so it covers part of the protocol and no P/S is built on it.`);
+      md.push("");
+    }
     reading(CAPITAL_READING.tokens);
   }
   if (hub.perps.length > 0) {
