@@ -796,8 +796,9 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 	// claim emits none, and the pool leg is then not measurable from
 	// transfers: see quoteMoves below.
 	quoteMoves := 0
-	for _, l := range rc.Logs {
-		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+	twins := arcTwins(c.slug, rc.Logs)
+	for i, l := range rc.Logs {
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || twins[i] {
 			continue
 		}
 		erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
@@ -892,8 +893,8 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if len(bought)+len(sold) > 0 {
 			// Quote legs for that trader.
 			quoteIn, quoteOut = 0, 0
-			for _, l := range rc.Logs {
-				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			for i, l := range rc.Logs {
+				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || twins[i] {
 					continue
 				}
 				erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)

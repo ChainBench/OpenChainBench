@@ -393,6 +393,47 @@ func isNativeMirror(chain, erc string) bool {
 	return ok && m[strings.ToLower(erc)]
 }
 
+// arcTwins: the pseudo-token Transfers of a receipt that repeat a
+// 6-decimal USDC Transfer (same sender, same receiver, amount × 10^12),
+// by log index. Arc logs a router paying its user in USDC both ways when
+// the router holds the token and once, as the pseudo-token alone, when
+// it pays native: GMGN's second router did the former, and the user's
+// take on a sale read twice (26.31 received on a pool that paid 13.29,
+// −8,989 bps, out of bounds). tx.value says nothing about that leg, so
+// the twin is found in the receipt itself.
+func arcTwins(chain string, logs []evmLog) map[int]bool {
+	if chain != "arc" {
+		return nil
+	}
+	seen := map[string]bool{}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != arcUSDC {
+			continue
+		}
+		seen[topicAddr(l.Topics[1])+"|"+topicAddr(l.Topics[2])+"|"+word(l.Data, 0).String()] = true
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(12), nil)
+	twins := map[int]bool{}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != arcPseudo {
+			continue
+		}
+		amt := word(l.Data, 0)
+		if new(big.Int).Mod(amt, scale).Sign() != 0 {
+			continue
+		}
+		if seen[topicAddr(l.Topics[1])+"|"+topicAddr(l.Topics[2])+"|"+new(big.Int).Div(amt, scale).String()] {
+			twins[i] = true
+		}
+	}
+	return twins
+}
+
 // nativeV4Quote: a v4 pool holds the gas coin itself, so a swap against
 // ETH logs no ERC20 transfer for the quote leg. When no ERC20 flow of the
 // manager matches the quote (to 0.5 %), the quote is the gas coin at the

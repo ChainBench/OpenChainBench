@@ -2,6 +2,8 @@ package main
 
 import (
 	"math"
+	"math/big"
+	"strings"
 	"testing"
 )
 
@@ -213,5 +215,28 @@ func TestPooledSplitIgnoresRowsTheBoundsThrewOut(t *testing.T) {
 	cm := chainMeanOfMedians(st, member, []string{"gmgn", "gmgn-arc"}, att, c2field, nil)
 	if v := cm["terminal"]; v < 96 || v > 100 {
 		t.Errorf("pooled terminal follows rows the bounds threw out: %.1f bps", v)
+	}
+}
+
+func TestArcTwinLogsAreCountedOnce(t *testing.T) {
+	const transfer = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+	pad := func(a string) string { return "0x000000000000000000000000" + strings.TrimPrefix(a, "0x") }
+	router, user := "0x40fe100d34b6a552d49ad8cc252795ccead48277", "0x3de52da320b4bdf27423bb5d03d51af4b8fb8c65"
+	hex := func(v string) string {
+		n, _ := new(big.Int).SetString(v, 10)
+		return "0x" + strings.Repeat("0", 64-len(n.Text(16))) + n.Text(16)
+	}
+	logs := []evmLog{
+		{Address: arcPseudo, Topics: []string{transfer, pad(router), pad(user)}, Data: hex("13156612000000000000")},
+		{Address: arcUSDC, Topics: []string{transfer, pad(router), pad(user)}, Data: hex("13156612")},
+		// A native payment: the pseudo-token alone, no twin, must stay.
+		{Address: arcPseudo, Topics: []string{transfer, pad(router), pad("0x9d3a55e414617d62b66819b391245755ebcfb467")}, Data: hex("141168579750000000000")},
+	}
+	twins := arcTwins("arc", logs)
+	if !twins[0] || twins[1] || twins[2] {
+		t.Errorf("twins: %v (want the first pseudo-token log alone)", twins)
+	}
+	if arcTwins("base", logs) != nil {
+		t.Errorf("a chain other than Arc has no twins")
 	}
 }
