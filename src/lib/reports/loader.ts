@@ -76,7 +76,8 @@ export const LIVE_REPORTS: ReportMeta[] = [
     period: "September 2026",
     summary:
       "Where stablecoins went this month, which L2s gained bridged value against their peers, which tokens trade lowest per dollar of fees and where fees and token prices moved apart. Every figure read live from the capital benches.",
-    heroFinding: "Read live from benches 273, 274, 275, 265 and 277; the headline is recomputed on every render.",
+    heroFinding:
+      "Stablecoin float is the one flow every chain reports the same way. Where it went this month, which L2s gained bridged value against their peers, and what the market pays for a dollar of protocol fees, read live from the benches.",
     author: "OpenChainBench Research",
     readingTime: 8,
     canonical: "https://openchainbench.com/reports/capital/2026-09-capital-flows-and-valuation",
