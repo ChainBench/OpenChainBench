@@ -14,7 +14,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume is what each app's DeFiLlama adapter attributes to the app (fee wallet, referral tag or router contract) per UTC day, over every chain the adapter covers: FOMO is Solana only on DeFiLlama, GMGN spans ten chains. Each row ends on the app's latest closed day: most adapters are Dune queries that publish a day 10 to 20 hours after it closes, so before mid-day UTC some rows are dated one day behind, and GMGN's adapter skips some days. DeFiLlama can restate the last day for about a day; the series is re-read hourly.
+  Volume is what each app's DeFiLlama adapter attributes to the app per UTC day, over every chain the adapter covers: FOMO is Solana only on DeFiLlama, GMGN spans ten chains. Each row ends on the app's latest closed day: most adapters are Dune queries that publish a day 10 to 20 hours after it closes, so before mid-day UTC some rows are dated one day behind, and GMGN's adapter skips some days. DeFiLlama can restate the last day for about a day; the series is re-read hourly.
 
 seo_intro: |
   A trading app is a router: it does not settle trades, it sends them to pump.fun,
