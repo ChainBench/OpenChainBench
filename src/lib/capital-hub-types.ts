@@ -19,6 +19,10 @@ export type ChainRow = {
   slug: string;
   name: string;
   tvl: number | null;
+  /** Ranked by bench 273 (L2Beat cohort); false for L1s, where bridged columns do not apply. */
+  inBridgedCohort: boolean;
+  /** Ranked by bench 275 (stablecoin cohort above $100M of float). */
+  inStablesCohort: boolean;
   bridgedTvl: number | null;
   bridgedSharePct: number | null;
   change7dPct: number | null;
@@ -35,8 +39,6 @@ export type ChainRow = {
   nativeMcap: number | null;
   fees30d: number | null;
   revenue30d: number | null;
-  /** Neutral one-liner built from the row's own numbers. */
-  note: string;
   hasChainPage: boolean;
 };
 
@@ -53,7 +55,6 @@ export type ProtocolRow = {
   categoryMedianPf: number | null;
   fees30d: number | null;
   signal: "fees-up-token-down" | "fees-down-token-up" | null;
-  note: string;
   hasProductPage: boolean;
 };
 
@@ -69,7 +70,6 @@ export type PerpRow = {
   oi: number | null;
   fees30d: number | null;
   rev30d: number | null;
-  note: string;
   hasProductPage: boolean;
 };
 

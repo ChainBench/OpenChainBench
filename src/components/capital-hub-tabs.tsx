@@ -177,12 +177,11 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
               {hasDex && col("dexVolume24h", "DEX volume 24h", "DEX volume on the chain over the trailing 24 hours (DeFiLlama)")}
               {hasFees && col("fees30d", "Fees 30d", "Fees users paid on the chain over 30 closed days: gas plus every protocol DeFiLlama tracks on it (bench 280)")}
               {hasFees && col("revenue30d", "Revenue 30d", "Revenue the chain and its protocols kept out of those fees, per each DeFiLlama adapter")}
-              <Th>Reading</Th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors align-top">
+              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors">
                 <Td muted mono>
                   {i + 1}
                 </Td>
@@ -200,19 +199,32 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                   )}
                 </Td>
                 {hasTvl && <Td mono>{fmtUsdShort(r.tvl)}</Td>}
-                <Td mono>
-                  {fmtUsdShort(r.bridgedTvl)}
-                  {r.bridgedSharePct != null && <Sub>{r.bridgedSharePct.toFixed(0)}% bridged</Sub>}
-                </Td>
-                <Td mono>
-                  <Signed v={r.excess7dPct} fmt={(v) => fmtPct(v)} />
-                  {r.change7dPct != null && <Sub>own move {fmtPct(r.change7dPct)}</Sub>}
-                </Td>
+                {/* L1s are outside the L2Beat cohort: a dash, so n/a keeps meaning missing data. */}
+                {r.inBridgedCohort ? (
+                  <Td mono>
+                    {fmtUsdShort(r.bridgedTvl)}
+                    {r.bridgedSharePct != null && <Sub>{r.bridgedSharePct.toFixed(0)}% bridged</Sub>}
+                  </Td>
+                ) : (
+                  <Dash />
+                )}
+                {r.inBridgedCohort ? (
+                  <Td mono>
+                    <Signed v={r.excess7dPct} fmt={(v) => fmtPct(v)} />
+                    {r.change7dPct != null && <Sub>own move {fmtPct(r.change7dPct)}</Sub>}
+                  </Td>
+                ) : (
+                  <Dash />
+                )}
                 <Td mono>{fmtUsdShort(r.stablesFloat)}</Td>
-                <Td mono>
-                  <Signed v={r.stablesNet30d} fmt={(v) => fmtUsdShort(v)} />
-                  {r.stablesChange30dPct != null && <Sub>{fmtPct(r.stablesChange30dPct)}</Sub>}
-                </Td>
+                {r.inStablesCohort ? (
+                  <Td mono>
+                    <Signed v={r.stablesNet30d} fmt={(v) => fmtUsdShort(v)} />
+                    {r.stablesChange30dPct != null && <Sub>{fmtPct(r.stablesChange30dPct)}</Sub>}
+                  </Td>
+                ) : (
+                  <Dash />
+                )}
                 {hasCctp && (
                   <Td mono>
                     <Signed v={r.cctpNet7d} fmt={(v) => fmtUsdShort(v)} />
@@ -226,7 +238,6 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                 {hasDex && <Td mono>{fmtUsdShort(r.dexVolume24h)}</Td>}
                 {hasFees && <Td mono>{fmtUsdShort(r.fees30d)}</Td>}
                 {hasFees && <Td mono>{fmtUsdShort(r.revenue30d)}</Td>}
-                <td className="px-3 py-2 text-[11.5px] text-ink-soft min-w-[240px] max-w-[360px]">{r.note}</td>
               </tr>
             ))}
           </tbody>
@@ -345,12 +356,11 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
               {col("feeGrowth30dPct", "Fees MoM", "30-day fees against the prior 30 days")}
               {col("priceChange30dPct", "Token 30d", "Token price change over 30 days")}
               {col("pfVsCategory", "vs category", "P/F over the fee-weighted category median; below 1 is under the median", "asc")}
-              <Th>Reading</Th>
             </tr>
           </thead>
           <tbody>
             {shown.map((r, i) => (
-              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors align-top">
+              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors">
                 <Td muted mono>
                   {i + 1}
                 </Td>
@@ -374,12 +384,11 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
                   {r.signal === "fees-up-token-down" && <Badge tone="up">fees up, token down</Badge>}
                   {r.signal === "fees-down-token-up" && <Badge tone="down">fees down, token up</Badge>}
                 </Td>
-                <td className="px-3 py-2 text-[11.5px] text-ink-soft min-w-[240px] max-w-[360px]">{r.note}</td>
               </tr>
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-3 py-8 text-center text-[12px] text-ink-faint">
+                <td colSpan={9} className="px-3 py-8 text-center text-[12px] text-ink-faint">
                   No row matches.
                 </td>
               </tr>
@@ -415,12 +424,11 @@ function PerpsTable({ rows }: { rows: PerpRow[] }) {
               {col("oi", "Open interest")}
               {col("fees30d", "Fees 30d")}
               {col("rev30d", "Revenue 30d")}
-              <Th>Reading</Th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((r, i) => (
-              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors align-top">
+              <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors">
                 <Td muted mono>
                   {i + 1}
                 </Td>
@@ -436,7 +444,6 @@ function PerpsTable({ rows }: { rows: PerpRow[] }) {
                 <Td mono>{fmtUsdShort(r.oi)}</Td>
                 <Td mono>{fmtUsdShort(r.fees30d)}</Td>
                 <Td mono>{fmtUsdShort(r.rev30d)}</Td>
-                <td className="px-3 py-2 text-[11.5px] text-ink-soft min-w-[240px] max-w-[360px]">{r.note}</td>
               </tr>
             ))}
           </tbody>
@@ -481,6 +488,15 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: "up" | "do
     >
       {children}
     </span>
+  );
+}
+
+/** Not applicable to this row (outside the bench's cohort), as opposed to n/a for missing data. */
+function Dash() {
+  return (
+    <td className="px-3 py-2 text-ink-faint/60 text-center" aria-label="not applicable">
+      -
+    </td>
   );
 }
 

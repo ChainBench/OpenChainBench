@@ -273,14 +273,14 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     // Same rule as the table: history-fed columns appear once they carry values.
     const cols: { h: string; v: (c: CapitalHub["chains"][number]) => string }[] = [
       ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: CapitalHub["chains"][number]) => capUsd(c.tvl) }] : []),
-      { h: "Bridged value", v: (c) => capUsd(c.bridgedTvl) },
-      { h: "7d vs L2 peers", v: (c) => capPct(c.excess7dPct) },
+      // "-" means the bench does not cover the row (an L1 on the L2Beat cohort); n/a means missing data.
+      { h: "Bridged value", v: (c) => (c.inBridgedCohort ? capUsd(c.bridgedTvl) : "-") },
+      { h: "7d vs L2 peers", v: (c) => (c.inBridgedCohort ? capPct(c.excess7dPct) : "-") },
       { h: "Stablecoin float", v: (c) => capUsd(c.stablesFloat) },
-      { h: "Net stables 30d", v: (c) => capUsd(c.stablesNet30d) },
+      { h: "Net stables 30d", v: (c) => (c.inStablesCohort ? capUsd(c.stablesNet30d) : "-") },
       ...(hub.chains.some((c) => c.cctpNet7d != null) ? [{ h: "USDC over CCTP 7d", v: (c: CapitalHub["chains"][number]) => capUsd(c.cctpNet7d) }] : []),
       ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: CapitalHub["chains"][number]) => capUsd(c.dexVolume24h) }] : []),
       ...(hub.chains.some((c) => c.fees30d != null) ? [{ h: "Fees 30d", v: (c: CapitalHub["chains"][number]) => capUsd(c.fees30d) }] : []),
-      { h: "Reading", v: (c) => c.note },
     ];
     md.push(`| # | Chain | ${cols.map((c) => c.h).join(" | ")} |`);
     md.push(`|---|---|${cols.map(() => "---").join("|")}|`);
@@ -299,12 +299,12 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
   if (hub.protocols.length > 0) {
     md.push(`## Tokens by price to fees (market cap over annualized 30-day fees)`);
     md.push("");
-    md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median | Reading |`);
-    md.push(`|---|---|---|---|---|---|---|---|---|---|`);
+    md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median |`);
+    md.push(`|---|---|---|---|---|---|---|---|---|`);
     hub.protocols.forEach((p, i) => {
       const flag = p.signal === "fees-up-token-down" ? " (fees up, token down)" : p.signal === "fees-down-token-up" ? " (fees down, token up)" : "";
       md.push(
-        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} | ${p.note} |`,
+        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} |`,
       );
     });
     md.push("");
