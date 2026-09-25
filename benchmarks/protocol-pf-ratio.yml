@@ -200,7 +200,7 @@ faq:
   - q: "Why compare to a category median instead of the whole market?"
     a: "Because the multiple a category trades at is itself a fact about the category, and it varies by more than an order of magnitude across the board. A single market-wide median would rank the categories and call it a ranking of protocols."
   - q: "Why is there a market cap floor?"
-    a: "Because a multiple is a price divided by something, and a token worth a few hundred thousand dollars is not a price the market agreed on. Its ratio reads near zero and leads an ascending board, where it looks like the cheapest protocol in DeFi rather than an abandoned token. The floor is 5 million USD of circulating market cap; the harness still meters every row that clears the fee floor."
+    a: "Because a multiple is a price divided by something, and a token worth a few hundred thousand dollars is not a price the market agreed on. Its ratio reads near zero and leads an ascending board, where it looks like the cheapest protocol in DeFi rather than an abandoned token. The floor is 5 million USD of circulating market cap, and a row under it publishes no series at all, the same as the float floor."
   - q: "Why are tokens with a small float excluded?"
     a: "Because their market cap is a fraction of what the token will be once supply vests, so the ratio reads near zero and takes the top of an ascending board. The FDV column is the honest view for those tokens, and the float floor is 10 percent of total supply."
   - q: "Are Uniswap V2, V3 and V4 three rows?"
