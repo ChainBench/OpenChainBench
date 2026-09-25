@@ -1058,6 +1058,13 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 		} else {
 			acc, err := rpc.account(ctx, sw.PoolOwner)
 			if err != nil || acc == nil {
+				// The Solana twin of the v4 log swallow: a read that failed
+				// fell through to the previous trade with no trace, and a
+				// PumpSwap row whose pool account holds the exact offset at
+				// byte 245 was priced off a print one second old instead.
+				if err != nil {
+					log.Printf("[ref] %s %s: pool account unreadable, previous trade used instead: %v", sw.Terminal, sw.Venue, err)
+				}
 				return 0, false
 			}
 			d := acc.Data
@@ -2819,6 +2826,23 @@ func loadState(path string) *State {
 		}
 	}
 	st.Swaps = kept
+	// The split guard, over every stored row. It runs at parse time and
+	// inside the method replay above, and every row in the window was
+	// already method 5 when it shipped, so the rows it was written for
+	// never met it: six sat on the board below -200 bps of pool or above
+	// 1,000 of app fee, the worst a 6,368 bps pool against a 6,616 bps app
+	// fee. Idempotent and cheap, so it simply runs on load.
+	guarded := 0
+	for i := range st.Swaps {
+		if !st.Swaps[i].Priced {
+			continue
+		}
+		implausibleSplit(&st.Swaps[i])
+		if !st.Swaps[i].Priced {
+			guarded++
+		}
+	}
+	log.Printf("[state] split guard on load: %d stored rows dropped from the statistics", guarded)
 	log.Printf("[state] loaded %d swaps from %s (%d recomputed into method v%d, %d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, refinal, methodVersion, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
 	return st
 }

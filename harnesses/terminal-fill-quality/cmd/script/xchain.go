@@ -744,20 +744,36 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		return relayRequest{}, false // the app's trades are read on the chain itself, not from the bridge
 	}
 	in := r.Data.Metadata.CurrencyIn.Currency
-	switch strings.ToUpper(in.Symbol) {
-	case "ETH", "BNB", "WETH", "WBNB", "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "SOL":
+	inAddr := strings.ToLower(in.Address)
+	sym := strings.ToUpper(in.Symbol)
+	switch {
+	case in.Address == "0x0000000000000000000000000000000000000000" || in.Address == "11111111111111111111111111111111":
 		x.InIsToken = false
-	default:
-		x.InIsToken = in.Address != "0x0000000000000000000000000000000000000000" && in.Address != "11111111111111111111111111111111"
-		if x.InIsToken {
-			x.TokenIn = strings.ToLower(in.Address)
+	case sym == "ETH" || sym == "BNB" || sym == "WETH" || sym == "WBNB" || sym == "SOL":
+		x.InIsToken = false
+	case sym == "USDC" || sym == "USDT" || sym == "USDG" || sym == "USD1" || sym == "DAI" || sym == "USDS" || sym == "USDE" || sym == "PYUSD" || sym == "USDC.E" || sym == "USDBC":
+		// A ticker is a string anyone can mint. On a chain whose stables
+		// are listed the address decides: "UpSideDownCat", symbol USDC,
+		// eighteen decimals, on Arc was taken for dollars, and a token
+		// sale went on the board as a $96.61 funding deposit that lost
+		// 337 bps against a swap that had actually delivered $99.31.
+		if list, known := stableAddrs[x.Chain]; known {
+			x.InIsToken = !list[inAddr]
+		} else {
+			x.InIsToken = false
 		}
+	default:
+		x.InIsToken = true
+	}
+	if x.InIsToken {
+		x.TokenIn = inAddr
 	}
 	// What the user actually paid after Relay's sponsorship: the app's
 	// fee and Relay's own components (execution on the destination, the
 	// swap, the relay service, rent). When the quote carries no
 	// sponsorship breakdown, the app fee is the quoted one.
 	comps := r.Data.FeeSponsorship.Quoted.Components
+	destSponsored := false
 	if len(comps) > 0 {
 		if app, ok := comps["app"]; ok {
 			x.AppFeeUsd = f64(app.UserPays.AmountUsd)
@@ -771,6 +787,11 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		}
 		if v, ok := comps["execution"]; ok {
 			x.DestGasUsd = f64(v.UserPays.AmountUsd) // the quoted gas the user paid; replaced by the actual below when reported
+			// Relay says the user pays nothing and the app pays it all:
+			// then zero is the answer, and the fallbacks below must not
+			// put the gas back. Every fully sponsored pump.fun funding
+			// row in the window read negative by exactly that gas.
+			destSponsored = f64(v.UserPays.AmountUsd) == 0 && f64(v.Sponsored.AmountUsd) > 0
 		}
 	} else {
 		x.AppFeeUsd = appFee
@@ -795,7 +816,7 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		}
 	}
 	// Relay's breakdown: the destination gas is network cost, not the bridge's take.
-	if x.DestGasUsd == 0 {
+	if x.DestGasUsd == 0 && !destSponsored {
 		if v, ok := r.Data.ExpandedPriceImpact.Actual["execution"]; ok {
 			x.DestGasUsd = math.Abs(f64(v.Usd))
 		} else if g, ok := r.Data.FeesUsd["gas"]; ok {

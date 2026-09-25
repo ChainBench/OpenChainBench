@@ -136,6 +136,12 @@ const (
 	lossMaxBps = 5000
 )
 
+// pump.fun's program, and the discriminator of close_user_volume_accumulator
+// (sha256("global:close_user_volume_accumulator")[:8]).
+const pumpProgramID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+
+var discPumpCloseVolume = [8]byte{0xf9, 0x45, 0xa4, 0xda, 0x96, 0x67, 0x54, 0x8a}
+
 // parseReject explains why a transaction touching a fee wallet is not a
 // swap we can measure; counted per terminal for the coverage figures.
 type parseReject string
@@ -225,15 +231,29 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		venue string
 		accts map[string]bool
 	}
-	var vixs []venueIx               // known venue programs: pool identity
-	var hixs []venueIx               // every program instruction with an account list: hop detection (venue "" when unknown)
-	rentAccts := map[string]string{} // created account -> funder ("" when unknown)
+	var vixs []venueIx                   // known venue programs: pool identity
+	var hixs []venueIx                   // every program instruction with an account list: hop detection (venue "" when unknown)
+	rentAccts := map[string]string{}     // created account -> funder ("" when unknown)
+	closedByProgram := map[string]bool{} // accounts a program closed back to the user this tx
 	type tokTransfer struct {
 		authority, dest string
 		amount          float64 // raw units
 	}
 	var transfers []tokTransfer
 	for _, ix := range ixs {
+		// pump.fun's close_user_volume_accumulator hands a program-owned
+		// account's lamports back to the user. It is neither a token
+		// account nor one this transaction created, so neither rent loop
+		// below sees it, and the refund read as sale proceeds on a sell
+		// (277.7 bps of a $5.69 trade) and as a smaller spend on a buy
+		// (432 bps of $3.25). Two of 309 pump-curve rows in a day.
+		if ix.ProgramID == pumpProgramID {
+			if raw, ok := base58Decode(ix.Data); ok && len(raw) >= 8 && [8]byte(raw[:8]) == discPumpCloseVolume {
+				for _, k := range ix.Accounts {
+					closedByProgram[k] = true
+				}
+			}
+		}
 		if v, ok := venuePrograms[ix.ProgramID]; ok && v.name != "jupiter" {
 			a := make(map[string]bool, len(ix.Accounts))
 			for _, k := range ix.Accounts {
@@ -428,6 +448,18 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		// own accounts credit one back.
 		if e.owner == user && e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
 			rent -= float64(tx.Meta.PreBalances[i])/1e9 - wsolPre
+		}
+	}
+	for k := range closedByProgram {
+		i, ok := index[k]
+		if !ok || k == user {
+			continue
+		}
+		if _, isTok := tok[i]; isTok {
+			continue
+		}
+		if tx.Meta.PreBalances[i] > 0 && tx.Meta.PostBalances[i] == 0 {
+			rent -= float64(tx.Meta.PreBalances[i]) / 1e9 // a refund, handled like a closed token account's
 		}
 	}
 	for k, src := range rentAccts {
