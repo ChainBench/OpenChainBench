@@ -15,6 +15,7 @@ Two binaries live here:
 
 - **`cmd/monitor/`** (the Dockerfile default) is the continuous quote loop + execution scheduler. It scrapes every bridge for quotes, executes the paid leg on its schedule, and exposes every Prometheus metric the two benches above consume.
 - **`cmd/rebalance/`** is a one-shot utility that keeps the execution wallets topped up across chains so the paid leg never runs out of inventory mid-cycle. Build separately with `go build ./cmd/rebalance`.
+- **`cmd/sendgas/`** is a one-shot operator utility that moves a small amount of native ETH (0.01 ETH cap per call) from the execution wallet to another address on Base or Arbitrum, for example to give a tester gas. It reads the same `WALLET_EVM_PRIVATE_KEY`, `BASE_RPC` and `ARB_RPC` as the monitor, so the simplest way to run it is inside the monitor container: build with `CGO_ENABLED=0 GOOS=linux go build ./cmd/sendgas`, `docker cp` the binary in, then `docker exec ocb-bridge-monitor /app/sendgas --chain base --to 0x... --amount 0.001` (dry run) and add `--yes` to broadcast. The gas limit is estimated on chain (Arbitrum folds the L1 data cost into the intrinsic gas, 21000 is refused there) and the wallet must keep `--keep` ETH (default 0.003) after value plus gas.
 
 The numbers on openchainbench.com come from an instance of `cmd/monitor/` running on the OpenChainBench VPS (`ocb-par-main`, docker-compose in `/opt/ocb/`, container `ocb-bridge-monitor`). Anyone with the wallet capital documented below can clone this directory, fill `.env`, and reproduce them end-to-end.
 
