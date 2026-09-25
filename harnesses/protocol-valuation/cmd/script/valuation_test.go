@@ -357,3 +357,39 @@ func TestMarketCapFloorDropsTheRow(t *testing.T) {
 		t.Fatalf("a zero floor keeps both rows, got %d", len(got))
 	}
 }
+
+// DeFiLlama merged a Convex adapter change on 2026-08-18 that started
+// booking the LP leg in dailyFees without backfilling, so a 30-day window
+// straddling it printed +92% on a business that grew 15%. The month over
+// month trend is withheld when the revenue share moves that far, because
+// the two windows are then two different measurements (audit 2026-09-26).
+func TestFeeBasisShiftWithholdsTheTrend(t *testing.T) {
+	shifted := []Protocol{{
+		GeckoID: "convex", Name: "Convex", Category: "Yield",
+		Fees30d: 2_332_159, Prev30d: 1_252_104, Fees1y: 30_000_000,
+		Rev30d: 929_108, RevPrev30d: 861_944, RevKnown: true,
+	}}
+	steady := []Protocol{{
+		GeckoID: "steady", Name: "Steady", Category: "Yield",
+		Fees30d: 2_000_000, Prev30d: 1_000_000, Fees1y: 30_000_000,
+		Rev30d: 1_000_000, RevPrev30d: 500_000, RevKnown: true,
+	}}
+	markets := map[string]cgMarket{
+		"convex": {ID: "convex", Mcap: 193e6, FDV: 205e6, Circ: 93, Total: 100},
+		"steady": {ID: "steady", Mcap: 193e6, FDV: 205e6, Circ: 93, Total: 100},
+	}
+	markFeeBasisShift(&shifted[0])
+	markFeeBasisShift(&steady[0])
+	if !shifted[0].FeeBasisShift {
+		t.Fatal("a revenue share moving from 69% to 40% is a measurement change")
+	}
+	if steady[0].FeeBasisShift {
+		t.Fatal("a steady 50% share is the same measurement in both windows")
+	}
+	if r := buildRows(shifted, markets, 10, 0); len(r) != 1 || r[0].HasFeeGrowth {
+		t.Fatalf("no trend across a basis shift, got %+v", r)
+	}
+	if r := buildRows(steady, markets, 10, 0); len(r) != 1 || !r[0].HasFeeGrowth {
+		t.Fatalf("a real doubling keeps its trend, got %+v", r)
+	}
+}

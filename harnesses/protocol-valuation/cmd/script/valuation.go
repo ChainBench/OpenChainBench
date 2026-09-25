@@ -100,7 +100,7 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct, minM
 		// ratio of a month to ten days prints as +200 percent growth and
 		// feeds the divergence screen. The year total is the only signal
 		// that the history reaches past both windows (review of PR 2691).
-		if p.Prev30d > 0 && p.Fees1y > p.Fees30d+p.Prev30d {
+		if p.Prev30d > 0 && p.Fees1y > p.Fees30d+p.Prev30d && !p.FeeBasisShift {
 			r.FeeGrowthPct, r.HasFeeGrowth = 100*(p.Fees30d/p.Prev30d-1), true
 		}
 		if m.PriceChg30d != nil {

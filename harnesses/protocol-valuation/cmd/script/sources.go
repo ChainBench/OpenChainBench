@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -39,6 +40,12 @@ const (
 	userAgent      = "OCB-protocol-valuation/1.0 (+https://openchainbench.com)"
 )
 
+// feeBasisShiftPoints: how far the revenue share can move in one month
+// before the two windows are treated as two different measurements. A
+// protocol's take rate is set in its contracts; 30 points of movement is
+// an adapter rewrite, not a fee switch.
+const feeBasisShiftPoints = 0.25
+
 var httpClient = &http.Client{Timeout: 120 * time.Second}
 
 var cgKey = os.Getenv("COINGECKO_API_KEY")
@@ -58,9 +65,10 @@ type feeAdapter struct {
 // totals are pointers: a null is "no figure", and must not become the
 // known zero that the fees/revenue distinction rests on.
 type revenueAdapter struct {
-	DefillamaID string   `json:"defillamaId"`
-	Total30d    *float64 `json:"total30d"`
-	Total1y     *float64 `json:"total1y"`
+	DefillamaID   string   `json:"defillamaId"`
+	Total30d      *float64 `json:"total30d"`
+	Total60dto30d *float64 `json:"total60dto30d"`
+	Total1y       *float64 `json:"total1y"`
 }
 
 type llamaProtocol struct {
@@ -107,9 +115,14 @@ type Protocol struct {
 	// revenue row at all: that is "unknown", not "keeps nothing", and
 	// nothing is published. A known zero (rows that report 0) is
 	// published as 0; the P/S built on either stays absent.
-	Rev30d   float64
-	Rev1y    float64
-	RevKnown bool
+	Rev30d     float64
+	RevPrev30d float64
+	Rev1y      float64
+	RevKnown   bool
+	// True when the share of fees kept as revenue moved so far in one
+	// month that the measurement, not the business, changed. The fee
+	// trend across that seam is not published.
+	FeeBasisShift bool
 	// True when the revenue total is knowably short of the token's
 	// protocols: the fee total itself is short (Incomplete), a revenue
 	// adapter reports nothing over 30 days after real revenue over the
@@ -209,6 +222,23 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 		revResp.Protocols = nil
 	}
 	return joinCohort(feesResp.Protocols, revResp.Protocols, protocols, cfg.ParentProtocols, minFees30d)
+}
+
+// markFeeBasisShift sets the flag when the share of fees kept as revenue
+// moved further in one month than a protocol's own take rate can move.
+// What changed then is the adapter, not the business: DeFiLlama merged a
+// Convex change on 2026-08-18 that started booking the LP leg in
+// dailyFees and did not backfill it, which printed a 92 percent fee jump
+// on a business that grew 15. A month over month trend across that seam
+// compares two different measurements, so it is withheld.
+func markFeeBasisShift(e *Protocol) {
+	if !e.RevKnown || e.Fees30d <= 0 || e.Prev30d <= 0 {
+		return
+	}
+	now, prev := e.Rev30d/e.Fees30d, e.RevPrev30d/e.Prev30d
+	if math.Abs(now-prev) > feeBasisShiftPoints {
+		e.FeeBasisShift = true
+	}
 }
 
 type cohortStats struct {
@@ -327,6 +357,7 @@ func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaPr
 		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
 			e.RevKnown = true
 			e.Rev30d += *rv.Total30d
+			e.RevPrev30d += deref(rv.Total60dto30d)
 			e.Rev1y += deref(rv.Total1y)
 			if *rv.Total30d == 0 && deref(rv.Total1y) > silentAdapterYearUSD {
 				e.RevIncomplete = true
@@ -348,6 +379,7 @@ func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaPr
 			e.Incomplete = true
 			e.WindowShort = true
 		}
+		markFeeBasisShift(e)
 		// The token's category is the one its fees mostly come from, not
 		// the one /overview/fees happened to list first. Taking the first
 		// filed Drift under Liquid Staking and Sanctum under Dexs, which
