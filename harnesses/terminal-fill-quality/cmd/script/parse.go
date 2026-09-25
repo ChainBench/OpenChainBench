@@ -845,9 +845,27 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 	}
 
-	if sponsoredFee > 0 {
-		// The sponsor's gas comes out of the fee the user paid the terminal.
-		terminalQ = math.Max(0, terminalQ-toQuote("SOL", sponsoredFee))
+	// A relayer's gas comes out of the fee the user paid the terminal —
+	// all of it, the inclusion tip and the rent included, and not the
+	// transaction fee alone. The tips are added to the network cost above
+	// whoever paid them; on a sponsored swap that is the terminal, out of
+	// money the user had already handed over in the quote. Subtracting
+	// only the transaction fee left the tip charged twice: once inside
+	// the fee, once again as network. On FOMO's small trades the tip runs
+	// about 0.17 of the quote against a 0.25 flat fee, which is most of
+	// what the user paid, and the residual went negative to absorb it.
+	//
+	// Written so that terminal + network comes to exactly what the user
+	// parted with: the fee they paid the terminal, plus whatever gas came
+	// out of their own balance.
+	// The signal is the fee payer, not the user's lamports: when the quote
+	// is SOL their lamport movement is the trade itself and says nothing
+	// about gas. On every sponsored row read against the chain the user
+	// spent no SOL at all, so the terminal funded the whole of it.
+	if internal[pubkeyAt(0)] && networkQ > 0 {
+		sponsored := math.Min(networkQ, terminalQ) // it cannot pass on more than it took
+		terminalQ -= sponsored
+		networkQ = sponsored
 	}
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
