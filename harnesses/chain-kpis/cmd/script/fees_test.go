@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"math"
 	"testing"
 
@@ -109,6 +110,29 @@ func TestRevenueTransportErrorKeepsLastRevenue(t *testing.T) {
 		}
 	}
 	publishChainFees(slug, chainFeesOut{}, true)
+}
+
+// A failed CoinGecko or /v2/chains call reuses last tick's answer instead
+// of deleting every ratio; before any success it yields an empty map, and
+// a later success replaces the kept one.
+func TestSecondaryInputFailureKeepsLastAnswer(t *testing.T) {
+	var last map[string]tokenMcap
+	boom := errors.New("http_500")
+	if got := keepLast[string, tokenMcap](nil, boom, &last); len(got) != 0 {
+		t.Fatalf("nothing to fall back on should be empty, got %v", got)
+	}
+	first := map[string]tokenMcap{"ethereum": {Mcap: 3e11}}
+	if got := keepLast(first, nil, &last); got["ethereum"].Mcap != 3e11 {
+		t.Fatalf("fresh answer not returned: %v", got)
+	}
+	if got := keepLast[string, tokenMcap](nil, boom, &last); got["ethereum"].Mcap != 3e11 {
+		t.Fatalf("failure should reuse the kept answer, got %v", got)
+	}
+	second := map[string]tokenMcap{"ethereum": {Mcap: 3.1e11}}
+	keepLast(second, nil, &last)
+	if got := keepLast[string, tokenMcap](nil, boom, &last); got["ethereum"].Mcap != 3.1e11 {
+		t.Fatalf("a later success should replace the kept answer, got %v", got)
+	}
 }
 
 // gaugeValue reads a series that is known to exist (WithLabelValues would

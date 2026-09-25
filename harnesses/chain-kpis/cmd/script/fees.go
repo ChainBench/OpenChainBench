@@ -146,29 +146,52 @@ func defillamaFees(chainName, dataType string) (feeWindows, error) {
 	return w, nil
 }
 
+// The last good gecko map and market caps, kept across ticks so that one
+// failed keyless CoinGecko call (or one failed /v2/chains call) does not
+// delete P/F, P/S and the market cap for every chain at once for an hour.
+// Only the fees loop goroutine touches them.
+var (
+	lastGeckoByChain map[string]string
+	lastMcaps        map[string]tokenMcap
+)
+
+// keepLast returns the fresh result when the call worked and the previous
+// one otherwise, so a transport error on a secondary input carries the
+// last values forward, the same rule the fee gauges follow. The first
+// failure with nothing to fall back on yields an empty map.
+func keepLast[K comparable, V any](fresh map[K]V, err error, last *map[K]V) map[K]V {
+	if err == nil {
+		*last = fresh
+		return fresh
+	}
+	if *last == nil {
+		return map[K]V{}
+	}
+	return *last
+}
+
 func fetchAllChainFees() {
 	// Market caps first, one DefiLlama call and one CoinGecko call for the
-	// whole cohort. A failure here only costs the ratios this tick; the
-	// fee gauges still publish.
-	mcaps := map[string]tokenMcap{}
-	geckoByChain, err := chainGeckoIDs()
+	// whole cohort. A failure here reuses last tick's maps (see keepLast);
+	// the fee gauges publish either way.
+	fresh, err := chainGeckoIDs()
 	if err != nil {
 		chainKpisFetchErrors.WithLabelValues("all", feesSource, classifyError(err.Error())).Inc()
-		fmt.Printf("[fees] gecko ids error: %v\n", err)
-		geckoByChain = map[string]string{}
+		fmt.Printf("[fees] gecko ids error: %v (reusing %d ids)\n", err, len(lastGeckoByChain))
 	}
+	geckoByChain := keepLast(fresh, err, &lastGeckoByChain)
 	var ids []string
 	for _, c := range Registry {
 		if id, ok := geckoByChain[c.DefiLlama]; ok && c.DefiLlama != "" {
 			ids = append(ids, id)
 		}
 	}
-	if m, err := coingeckoMcaps(ids); err != nil {
+	m, err := coingeckoMcaps(ids)
+	if err != nil {
 		chainKpisFetchErrors.WithLabelValues("all", feesSource, classifyError(err.Error())).Inc()
-		fmt.Printf("[fees] coingecko error: %v\n", err)
-	} else {
-		mcaps = m
+		fmt.Printf("[fees] coingecko error: %v (reusing %d market caps)\n", err, len(lastMcaps))
 	}
+	mcaps := keepLast(m, err, &lastMcaps)
 	for _, c := range Registry {
 		c := c
 		if c.DefiLlama == "" {
