@@ -187,6 +187,34 @@ type nativeFeed struct {
 	funded map[string]map[string]int64 // State.Funded, set by sampleNative each tick (app -> wallet -> time)
 }
 
+// logsAddrBatch: the most addresses one eth_getLogs filter may name.
+// publicnode answers "Request blocked" to a filter of ten or more, at any
+// block span — ten blocks or four hundred — and it is the one public node
+// that serves BNB's logs at all. The BNB router list is longer than that,
+// so every poll's first chunk was refused, the fallbacks then described
+// the failure in their own words, and the span learned the wrong lesson.
+const logsAddrBatch = 9
+
+// getLogsBatched: one block range, the routers in filters of at most
+// logsAddrBatch, results concatenated. A batch the node answers with a
+// null result is a quiet batch; any other error is the chunk's error.
+func getLogsBatched(ctx context.Context, httpc *http.Client, urls []string, from, to int64, routers []string) ([]evmLog, error) {
+	var out []evmLog
+	for i := 0; i < len(routers); i += logsAddrBatch {
+		j := i + logsAddrBatch
+		if j > len(routers) {
+			j = len(routers)
+		}
+		var part []evmLog
+		err := evmCall(ctx, httpc, urls, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers[i:j]}}, &part)
+		if err != nil && !strings.Contains(err.Error(), "empty result") {
+			return nil, err
+		}
+		out = append(out, part...)
+	}
+	return out, nil
+}
+
 // spanDefault: the eth_getLogs range a chain starts from, and the ceiling
 // a recovered span climbs back to. Ethereum's public nodes cap the call at
 // 50 blocks; everywhere else 400 is about ten minutes of chain.
@@ -474,8 +502,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			if to > head {
 				to = head
 			}
-			var part []evmLog
-			err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part)
+			part, err := getLogsBatched(ctx, f.http, c.logsRPC(), from, to, routers)
 			if err != nil && strings.Contains(err.Error(), "empty result") {
 				// No logs in that range is the right answer, not a failure:
 				// the routers did not trade in those blocks. evmCall reports
@@ -518,8 +545,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 					if len(serving) > 1 {
 						serving = serving[:1]
 					}
-					var again []evmLog
-					err2 := evmCall(ctx, f.http, serving, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &again)
+					again, err2 := getLogsBatched(ctx, f.http, serving, from, to, routers)
 					switch {
 					case err2 == nil || strings.Contains(err2.Error(), "empty result"):
 						logs = append(logs, again...)
