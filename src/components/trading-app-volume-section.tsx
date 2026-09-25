@@ -73,7 +73,11 @@ export async function TradingAppVolumeSection({
     <div>
       {me ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
-          <Kpi label="Volume, last UTC day" value={fmtUsd(me.d1)} sub={meRank ? `Rank ${meRank} of ${stats.length}` : undefined} />
+          <Kpi
+            label="Volume, latest closed day"
+            value={fmtUsd(me.d1)}
+            sub={[me.lastDay ? fmtDay(me.lastDay) : null, meRank ? `rank ${meRank} of ${stats.length}` : null].filter(Boolean).join(" · ") || undefined}
+          />
           <Kpi label="Volume 7d" value={fmtUsd(me.d7)} sub={me.d7days < 7 ? `${me.d7days} of 7 days on DeFiLlama` : trendLabel(me.trend7dPct)} tone={me.d7days < 7 ? undefined : trendTone(me.trend7dPct)} />
           <Kpi label="Volume 30d" value={fmtUsd(me.d30)} sub={me.d30days < 30 ? `${me.d30days} of 30 days on DeFiLlama` : me.share30d != null ? `${me.share30d.toFixed(1)}% of cohort` : undefined} />
           <Kpi label="Chains, last day" value={String(me.chainSplit.length)} sub={me.chainSplit.slice(0, 3).map((c) => c.chain).join(", ") || undefined} />
@@ -81,7 +85,7 @@ export async function TradingAppVolumeSection({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          <Kpi label="Cohort volume, last UTC day" value={fmtUsd(totals.d1)} sub={h.lastClosedDay} />
+          <Kpi label="Cohort volume, latest closed day" value={fmtUsd(totals.d1)} sub={`each app's latest day, up to ${h.lastClosedDay}`} />
           <Kpi label="Cohort volume 7d" value={fmtUsd(totals.d7)} />
           <Kpi label="Cohort volume 30d" value={fmtUsd(totals.d30)} />
           <Kpi
@@ -111,8 +115,8 @@ export async function TradingAppVolumeSection({
           <thead>
             <tr className="border-b border-rule text-left">
               <Th>App</Th>
-              <Th title="Share of the app's last-day volume per chain">Chains, last day</Th>
-              <Th right>Last day</Th>
+              <Th title="Share of the app's latest-day volume per chain">Chains, last day</Th>
+              <Th right title="The app's latest closed UTC day on DeFiLlama. Dated when it trails the cohort's newest day: most adapters are Dune queries that publish a day 10 to 20 hours after it closes.">Last day</Th>
               <Th right>7d</Th>
               <Th right title="7-day volume against the 7 days before">7d Δ</Th>
               <Th right>30d</Th>
@@ -146,7 +150,14 @@ export async function TradingAppVolumeSection({
                   <td className="py-2.5 pr-4">
                     <ChainBar split={s.chainSplit} label={s.app.chainLabel} />
                   </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">{fmtUsd(s.d1)}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
+                    {fmtUsd(s.d1)}
+                    {s.stale && s.lastDay && (
+                      <span className="ml-1 text-[9px] text-ink-faint" title={`Latest closed day DeFiLlama has for ${s.app.name}; the adapter has not published ${h.lastClosedDay} yet`}>
+                        {fmtDayShort(s.lastDay)}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">
                     {fmtUsd(s.d7)}
                     {s.d7 != null && s.d7days < 7 && <Cov days={s.d7days} of={7} />}
@@ -177,7 +188,7 @@ export async function TradingAppVolumeSection({
             className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-2"
             style={{ fontFamily: "var(--font-mono, monospace)" }}
           >
-            Where the cohort traded on {h.lastClosedDay}
+            Where the cohort traded, each app on its latest closed day
           </p>
           <div className="flex h-3 w-full overflow-hidden rounded-sm bg-paper-soft">
             {chainSplit.map((c, i) => (
@@ -197,7 +208,9 @@ export async function TradingAppVolumeSection({
           Source: DeFiLlama dexs adapters (Trading App and Telegram Bot categories), per closed UTC day, every chain
           the adapter covers.{" "}
           {me?.app.note ? <span className="text-ink-soft">{me.app.note} </span> : null}
-          Re-read hourly; DeFiLlama restates the last day for about 24 h. Bench{" "}
+          Each row ends on the app&apos;s latest closed day: most adapters are Dune queries that publish a
+          day 10 to 20 hours after it closes, so before mid-day UTC some rows carry the day before (dated in
+          the Last day column). Re-read hourly; DeFiLlama restates the last day for about 24 h. Bench{" "}
           <Link href="/benchmarks/trading-app-daily-volume" className="underline hover:no-underline">
             267
           </Link>
@@ -255,6 +268,12 @@ function coverageCaption(stats: TradingAppStats[]): string {
     );
   }
   return `Series start where DeFiLlama's data starts: ${parts.join("; ")}. Earlier years are not published for these apps.`;
+}
+
+function fmtDayShort(iso: string): string {
+  const [, m, d] = iso.split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
 }
 
 function fmtDay(iso: string): string {
