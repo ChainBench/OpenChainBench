@@ -101,18 +101,8 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // release condition is more than two keyed providers. Was held off main
   // by its spec's absence there until release/2026-09-23 brought it.
   "fiat-onramp-cost",
-  // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
-  // but the 24h success window has not filled since the last rebuild, so a
-  // production board would rank rows on a partial window. Un-gate once the
-  // window is full and a re-audit is clean (2 rounds so far, last change
-  // 2026-09-23).
-  "chain-bridged-tvl",
-  // 274 protocol P/F: first deploy of the protocol-valuation harness, no
-  // 24h window yet and no audit round. Un-gate after both.
-  "protocol-pf-ratio",
-  // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
-  // window yet and no audit round. Un-gate after both.
-  "chain-stablecoin-flow",
+  // 273 chain-bridged-tvl, 274 protocol-pf-ratio and 275 chain-stablecoin-flow
+  // left this list on 2026-09-25 (windows full, audit round clean).
   // 276 perp fee disclosure: the maker gauge is one deploy old and three
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.

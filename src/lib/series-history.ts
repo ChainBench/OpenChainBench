@@ -13,6 +13,7 @@
  */
 
 import { getPerpVolumeHistory } from "@/lib/perp-volume-history";
+import { getChainsHistory, getValuationHistory, seriesOn, type CapitalEntity } from "@/lib/capital-history";
 
 export type SeriesRange = "7d" | "30d" | "90d" | "1y";
 
@@ -49,8 +50,51 @@ const perpDailyVolume: HistoryProvider = async (range, providerSlugs) => {
   return Object.keys(out).length > 0 ? out : null;
 };
 
+/**
+ * Long-window providers backed by the daily capital blobs
+ * (worker/publish-history.ts). Each maps a bench's p50 measure onto the
+ * entity field the blob stores under the same name, so a 90d or 1y range on
+ * these benches reads a year of daily points instead of Prometheus range
+ * queries bounded by the bench's first scrape.
+ */
+function capitalProvider(
+  load: () => Promise<{ entities: CapitalEntity[] } | null>,
+  field: string,
+): HistoryProvider {
+  return async (range, providerSlugs) => {
+    const history = await load();
+    if (!history) return null;
+    const grid = dayGrid(RANGE_DAYS[range]);
+    const out: Record<string, (number | null)[]> = {};
+    for (const slug of providerSlugs) {
+      const series = seriesOn(history.entities.find((e) => e.slug === slug), field, grid);
+      if (series) out[slug] = series;
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  };
+}
+
+const valuationProtocols = async () => {
+  const h = await getValuationHistory();
+  return h ? { entities: h.protocols } : null;
+};
+const valuationPerps = async () => {
+  const h = await getValuationHistory();
+  return h ? { entities: h.perps } : null;
+};
+const chains = async () => {
+  const h = await getChainsHistory();
+  return h ? { entities: h.chains } : null;
+};
+
 const PROVIDERS: Record<string, HistoryProvider> = {
   "perp-daily-volume": perpDailyVolume,
+  // p50 = protocol_pf_ratio{protocol} / perp_protocol_pf_ratio{protocol}
+  "protocol-pf-ratio": capitalProvider(valuationProtocols, "pf"),
+  "perp-pf-ratio": capitalProvider(valuationPerps, "pf"),
+  // p50 = chain_bridged_tvl_usd{chain} / chain_stables_net_30d_usd{chain}
+  "chain-bridged-tvl": capitalProvider(chains, "bridged_tvl"),
+  "chain-stablecoin-flow": capitalProvider(chains, "stables_net_30d"),
 };
 
 export function hasSeriesHistory(slug: string): boolean {

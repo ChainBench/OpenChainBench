@@ -457,7 +457,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
   // v82: add bench 277 pm-open-interest. Bench SET changed.
   // v83: add bench 278 rwa-solana-depth. Bench SET changed.
-  ["bench-unfiltered-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v84 (2026-09-25): benches 273 chain-bridged-tvl, 274 protocol-pf-ratio
+  // and 275 chain-stablecoin-flow leave the dev-only list. Bench SET changed.
+  ["bench-unfiltered-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 

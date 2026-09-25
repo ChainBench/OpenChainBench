@@ -66,6 +66,7 @@ import type { Spec } from "@/lib/spec-schema";
 import { variantCombos } from "./variant-combos";
 export { variantCombos };
 import { publishAggregate, publishVariants, publishSitemapSlim } from "./publish-aggregate";
+import { publishCapitalHistory } from "./publish-history";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -357,6 +358,10 @@ async function sweep(iteration: number): Promise<void> {
       );
     }
   }
+
+  // Daily capital and valuation history blobs (valuation/history.json,
+  // chains/history.json). Throttled inside; see worker/publish-history.ts.
+  await publishCapitalHistory();
 
   // Cohort snapshots used by the hub pages and the search dialog. Each
   // builder hits Prom directly (via the in-network http://ocb-prom:9090

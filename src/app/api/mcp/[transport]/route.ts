@@ -103,10 +103,14 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "rpc_health",
   "rpc_archive_depth_supported",
   // Bridge revenue (Relay-style implied margin)
-  "relay_",
-  "per_swap_margin_usd",
   // Hyperliquid frontends quality bench (bench № 030)
   "hl_frontend_",
+  // Capital and valuation (benches 265, 273, 274, 275, chain-kpis): P/F,
+  // P/S, mcap, FDV, float, fees, revenue, TVL, bridged TVL, stablecoin
+  // flows, chain fees. Opened 2026-09-25 for third-party analysis.
+  "perp_protocol_",
+  "protocol_",
+  "chain_",
 ];
 
 // PromQL identifiers that are NOT metric names - built-in functions,
@@ -415,7 +419,8 @@ const mcpHandler = createMcpHandler(
           "  peg_* (stablecoin peg, both variants)",
           "  solana_landing_* (TX landing observational + active)",
           "  rpc_latency_*, rpc_call_total, rpc_health, rpc_archive_depth_supported",
-          "  relay_*, per_swap_margin_usd (bridge revenue)",
+          "  perp_protocol_*, protocol_* (P/F, P/S, mcap, FDV, float, fees, revenue; benches 265, 274)",
+          "  chain_* (TVL, bridged TVL, value secured, stablecoin flows, native mcap, chain fees; benches 273, 275)",
           "Queries referencing other metrics (operational/internal ones like `up`,",
           "`scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any label-",
           "enumeration shape) are refused with `{error, reason}`.",
@@ -444,9 +449,9 @@ const mcpHandler = createMcpHandler(
             .number()
             .int()
             .positive()
-            .max(604_800)
+            .max(7_776_000)
             .optional()
-            .describe("If set, run a range query over the last N seconds (max 7 days = 604800). Omit for an instant query."),
+            .describe("If set, run a range query over the last N seconds (max 90 days = 7776000). Omit for an instant query."),
           steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2 to 360). Default 60. Step duration = windowSec / steps."),
         },
       },
