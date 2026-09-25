@@ -2967,13 +2967,22 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 		if !venues[s.Venue] || s.Chain != "" || s.RelayID != "" {
 			continue
 		}
-		tx, err := rpc.transaction(ctx, s.Sig)
-		if err != nil || tx == nil {
-			// Six hundred reads in a burst trip the endpoint's per-minute
-			// limit: 361 of 675 came back unreadable on one pass and kept
-			// their old figures. One pause and one more try recovers most.
-			time.Sleep(400 * time.Millisecond)
+		// A repricing pass is a one-off read of every row in the venue, and
+		// the client's own pacing (RPC_RPS, 8 a second) is the ceiling the
+		// endpoints allow for a steady trickle, not for a burst of six
+		// hundred: 361 then 446 of ~650 came back unreadable on two passes
+		// and kept their old figures. So the pass walks at three reads a
+		// second and, on a failure, waits and asks twice more with a
+		// growing pause. Six hundred rows take about four minutes, which
+		// is nothing against the day they cover.
+		var tx *parsedTx
+		var err error
+		for attempt := 0; attempt < 3; attempt++ {
+			time.Sleep(time.Duration(300+700*attempt) * time.Millisecond)
 			tx, err = rpc.transaction(ctx, s.Sig)
+			if err == nil && tx != nil {
+				break
+			}
 		}
 		if err != nil || tx == nil {
 			failed++
