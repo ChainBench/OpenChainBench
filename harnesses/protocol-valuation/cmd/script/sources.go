@@ -39,6 +39,31 @@ const (
 	userAgent      = "OCB-protocol-valuation/1.0 (+https://openchainbench.com)"
 )
 
+// feeBasisDivergence: how far the fee line and the revenue line may move
+// apart over the same month before the two windows are read as two
+// different measurements. Fees and revenue are two views of one business,
+// so they grow together; when one moves half again as much as the other,
+// what changed is what is being counted.
+//
+// Measured as a ratio rather than in percentage points of the take rate,
+// because an absolute test can never fire on a protocol that keeps little
+// of its fees: a rewrite that doubles the fee line of a token keeping 10
+// percent moves its share by 5 points and would pass unseen (review of PR
+// 2695).
+const feeBasisDivergence = 1.5
+
+// feeBasisMinRevenue: below this, a revenue line is small enough that its
+// own rounding drives the ratio, so the test is not applied.
+const feeBasisMinRevenue = 10_000.0
+
+// feeBasisMemory: how long a detected shift keeps withholding the trend.
+// The seam does not leave with the tick that found it: it sits in the
+// prior window and inflates the comparison for up to another month, and
+// the detection itself fades as the prior window fills back up. Without
+// the memory the flag clears within days and the inflated trend returns
+// (review of PR 2695).
+const feeBasisMemory = 31 * 24 * time.Hour
+
 var httpClient = &http.Client{Timeout: 120 * time.Second}
 
 var cgKey = os.Getenv("COINGECKO_API_KEY")
@@ -58,9 +83,10 @@ type feeAdapter struct {
 // totals are pointers: a null is "no figure", and must not become the
 // known zero that the fees/revenue distinction rests on.
 type revenueAdapter struct {
-	DefillamaID string   `json:"defillamaId"`
-	Total30d    *float64 `json:"total30d"`
-	Total1y     *float64 `json:"total1y"`
+	DefillamaID   string   `json:"defillamaId"`
+	Total30d      *float64 `json:"total30d"`
+	Total60dto30d *float64 `json:"total60dto30d"`
+	Total1y       *float64 `json:"total1y"`
 }
 
 type llamaProtocol struct {
@@ -107,9 +133,14 @@ type Protocol struct {
 	// revenue row at all: that is "unknown", not "keeps nothing", and
 	// nothing is published. A known zero (rows that report 0) is
 	// published as 0; the P/S built on either stays absent.
-	Rev30d   float64
-	Rev1y    float64
-	RevKnown bool
+	Rev30d     float64
+	RevPrev30d float64
+	Rev1y      float64
+	RevKnown   bool
+	// True when the share of fees kept as revenue moved so far in one
+	// month that the measurement, not the business, changed. The fee
+	// trend across that seam is not published.
+	FeeBasisShift bool
 	// True when the revenue total is knowably short of the token's
 	// protocols: the fee total itself is short (Incomplete), a revenue
 	// adapter reports nothing over 30 days after real revenue over the
@@ -209,6 +240,27 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 		revResp.Protocols = nil
 	}
 	return joinCohort(feesResp.Protocols, revResp.Protocols, protocols, cfg.ParentProtocols, minFees30d)
+}
+
+// markFeeBasisShift sets the flag when the fee line and the revenue line
+// moved apart over the same month. Both describe one business, so they
+// grow together; when they do not, what changed is the measurement.
+// DeFiLlama merged a Convex change on 2026-08-18 that started booking the
+// LP leg in dailyFees and did not backfill it, which printed a 92 percent
+// fee jump on a business that grew 15. A month over month trend across
+// that seam compares two different measurements, so it is withheld.
+func markFeeBasisShift(e *Protocol) {
+	if !e.RevKnown || e.Fees30d <= 0 || e.Prev30d <= 0 {
+		return
+	}
+	if e.Rev30d < feeBasisMinRevenue || e.RevPrev30d < feeBasisMinRevenue {
+		return
+	}
+	feeFactor, revFactor := e.Fees30d/e.Prev30d, e.Rev30d/e.RevPrev30d
+	ratio := feeFactor / revFactor
+	if ratio > feeBasisDivergence || ratio < 1/feeBasisDivergence {
+		e.FeeBasisShift = true
+	}
 }
 
 type cohortStats struct {
@@ -327,6 +379,7 @@ func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaPr
 		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
 			e.RevKnown = true
 			e.Rev30d += *rv.Total30d
+			e.RevPrev30d += deref(rv.Total60dto30d)
 			e.Rev1y += deref(rv.Total1y)
 			if *rv.Total30d == 0 && deref(rv.Total1y) > silentAdapterYearUSD {
 				e.RevIncomplete = true
@@ -348,6 +401,7 @@ func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaPr
 			e.Incomplete = true
 			e.WindowShort = true
 		}
+		markFeeBasisShift(e)
 		// The token's category is the one its fees mostly come from, not
 		// the one /overview/fees happened to list first. Taking the first
 		// filed Drift under Liquid Staking and Sanctum under Dexs, which

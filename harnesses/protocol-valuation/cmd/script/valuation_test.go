@@ -2,7 +2,11 @@ package main
 
 import (
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 // The whole harness exists because of this join. GMX's fee adapters are
@@ -355,5 +359,99 @@ func TestMarketCapFloorDropsTheRow(t *testing.T) {
 	}
 	if got := buildRows(cohort, markets, 10, 0); len(got) != 2 {
 		t.Fatalf("a zero floor keeps both rows, got %d", len(got))
+	}
+}
+
+// DeFiLlama merged a Convex adapter change on 2026-08-18 that started
+// booking the LP leg in dailyFees without backfilling, so a 30-day window
+// straddling it printed +92% on a business that grew 15%. The trend is
+// withheld when the fee line and the revenue line move apart, whatever
+// share of its fees the protocol keeps (audit 2026-09-26).
+func TestFeeBasisShiftWithholdsTheTrend(t *testing.T) {
+	// Convex: fees x1.86, revenue x1.08.
+	shifted := []Protocol{{
+		GeckoID: "convex", Name: "Convex", Category: "Yield",
+		Fees30d: 2_332_159, Prev30d: 1_252_104, Fees1y: 30_000_000,
+		Rev30d: 929_108, RevPrev30d: 861_944, RevKnown: true,
+	}}
+	// A token keeping a tenth of its fees, fee line doubled by a rewrite
+	// while revenue is flat: five points of share, which an absolute test
+	// on the take rate would miss entirely.
+	thin := []Protocol{{
+		GeckoID: "thin", Name: "Thin", Category: "Yield",
+		Fees30d: 4_000_000, Prev30d: 2_000_000, Fees1y: 40_000_000,
+		Rev30d: 200_000, RevPrev30d: 200_000, RevKnown: true,
+	}}
+	// Both lines doubling together is a business that grew.
+	steady := []Protocol{{
+		GeckoID: "steady", Name: "Steady", Category: "Yield",
+		Fees30d: 2_000_000, Prev30d: 1_000_000, Fees1y: 30_000_000,
+		Rev30d: 1_000_000, RevPrev30d: 500_000, RevKnown: true,
+	}}
+	markets := map[string]cgMarket{
+		"convex": {ID: "convex", Mcap: 193e6, FDV: 205e6, Circ: 93, Total: 100},
+		"thin":   {ID: "thin", Mcap: 193e6, FDV: 205e6, Circ: 93, Total: 100},
+		"steady": {ID: "steady", Mcap: 193e6, FDV: 205e6, Circ: 93, Total: 100},
+	}
+	for _, c := range []struct {
+		name string
+		in   []Protocol
+		want bool
+	}{{"convex", shifted, true}, {"thin", thin, true}, {"steady", steady, false}} {
+		markFeeBasisShift(&c.in[0])
+		if c.in[0].FeeBasisShift != c.want {
+			t.Fatalf("%s: flag %v, want %v", c.name, c.in[0].FeeBasisShift, c.want)
+		}
+		rows := buildRows(c.in, markets, 10, 0)
+		if len(rows) != 1 {
+			t.Fatalf("%s: want one row, got %d", c.name, len(rows))
+		}
+		if rows[0].HasFeeGrowth == c.want {
+			t.Fatalf("%s: trend published %v with the flag at %v", c.name, rows[0].HasFeeGrowth, c.want)
+		}
+	}
+}
+
+// The seam outlives the tick that finds it: it sits in the prior window
+// for another month, inflating the comparison, while the detection itself
+// fades as that window fills with the new basis. The memory is what keeps
+// the trend withheld through that (review of PR 2695).
+func TestFeeBasisMemoryOutlivesTheDetection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fee-basis.json")
+	day0 := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+
+	detected := []Protocol{{GeckoID: "convex", FeeBasisShift: true}}
+	if n := newFeeBasisMemory(path).apply(detected, day0); n != 1 {
+		t.Fatalf("the tick that detects it flags it, got %d", n)
+	}
+
+	// Ten days later the ratio has settled back inside the bound, so this
+	// tick detects nothing. A fresh store reads the file and still holds.
+	settled := []Protocol{{GeckoID: "convex"}}
+	if n := newFeeBasisMemory(path).apply(settled, day0.Add(10*24*time.Hour)); n != 1 {
+		t.Fatalf("a remembered shift keeps the trend withheld, got %d", n)
+	}
+	if !settled[0].FeeBasisShift {
+		t.Fatal("the row should carry the remembered flag")
+	}
+
+	// Past the window it is forgotten, and the file no longer names it.
+	late := []Protocol{{GeckoID: "convex"}}
+	if n := newFeeBasisMemory(path).apply(late, day0.Add(40*24*time.Hour)); n != 0 {
+		t.Fatalf("the memory expires, got %d", n)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if strings.Contains(string(b), "convex") {
+		t.Fatalf("an expired entry is pruned, file is %s", b)
+	}
+
+	// No path: the harness still runs, it just forgets on restart.
+	mem := newFeeBasisMemory("")
+	if n := mem.apply([]Protocol{{GeckoID: "x", FeeBasisShift: true}}, day0); n != 1 {
+		t.Fatalf("an in-process memory still flags, got %d", n)
 	}
 }
