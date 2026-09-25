@@ -14,6 +14,9 @@
 //	chain_bridged_tvl_usd{chain}               — L2Beat canonical + external
 //	chain_tvs_change_7d_pct{chain}             — L2Beat 7d change
 //	chain_tvs_change_7d_excess_pct{chain}      — 7d change minus cohort median
+//	chain_fees_{24h,7d,30d}_usd{chain}         — DefiLlama chain fees
+//	chain_revenue_{24h,7d,30d}_usd{chain}      — DefiLlama chain revenue
+//	chain_token_pf_ratio / chain_token_ps_ratio — chain token mcap (CoinGecko) over annualized fees / revenue
 //
 // Each gauge is publish-then-leave: if a fetch fails for one chain on
 // one source, the previous value carries forward via Prom retention,
@@ -75,6 +78,12 @@ func main() {
 		runL2BeatLoop(cfg, stop)
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runChainFeesLoop(cfg, stop)
+	}()
+
 	<-sigChan
 	fmt.Println("\nShutting down...")
 	close(stop)
@@ -107,6 +116,21 @@ func runL2BeatLoop(cfg *Config, stop <-chan struct{}) {
 			return
 		case <-tick.C:
 			fetchAllL2Beat(cfg)
+		}
+	}
+}
+
+func runChainFeesLoop(cfg *Config, stop <-chan struct{}) {
+	tick := time.NewTicker(cfg.ChainFeesRefreshInterval)
+	defer tick.Stop()
+
+	fetchAllChainFees()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-tick.C:
+			fetchAllChainFees()
 		}
 	}
 }
