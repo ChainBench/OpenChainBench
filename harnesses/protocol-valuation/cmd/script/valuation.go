@@ -53,7 +53,7 @@ const MinPeerGroup = 5
 
 // buildRows joins the cohort to the market data and computes every ratio.
 // Pure, so the whole valuation is testable without a network.
-func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float64) []Row {
+func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct, minMcapUSD float64) []Row {
 	rows := make([]Row, 0, len(cohort))
 	for _, p := range cohort {
 		m, ok := markets[p.GeckoID]
@@ -61,6 +61,15 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 			// No listing, or a token CoinGecko has no market cap for.
 			// Publishing fees alone would put a row on a valuation board
 			// with no valuation.
+			continue
+		}
+		// A market cap floor, for the same reason as the float floor: a
+		// token worth a few hundred thousand dollars against millions of
+		// annual fees prints a ratio near zero and takes the top of an
+		// ascending board, where a reader reads it as the cheapest token
+		// in DeFi. It is an abandoned or unlisted token, and the ratio
+		// says nothing about value.
+		if m.Mcap < minMcapUSD {
 			continue
 		}
 		r := Row{Protocol: p, Mcap: m.Mcap, FDV: m.FDV, AnnualFees: annualize(p.Fees30d)}

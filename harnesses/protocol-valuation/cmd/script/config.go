@@ -25,6 +25,13 @@ type Config struct {
 	// before this floor (2026-09-23).
 	MinFloatPct float64
 
+	// Floor on circulating market cap. A ratio built on a market cap of a
+	// few hundred thousand dollars is not a valuation: the token is dead,
+	// unlisted or has no claim on the fees, and the ascending board put
+	// fifteen such rows in its top twenty (2026-09-25). Publishing them as
+	// the cheapest tokens on the board is the wrong reading.
+	MinMcapUSD float64
+
 	// Where /metrics listens. Overridable so a second copy can run next
 	// to a deployed one for a live check.
 	MetricsAddr string
@@ -35,6 +42,7 @@ func loadConfig() *Config {
 		RefreshInterval: 60 * time.Minute,
 		MinFees30dUSD:   100_000,
 		MinFloatPct:     10,
+		MinMcapUSD:      5_000_000,
 		MetricsAddr:     ":2112",
 	}
 	if v := os.Getenv("METRICS_ADDR"); v != "" {
@@ -55,7 +63,12 @@ func loadConfig() *Config {
 			c.MinFloatPct = n
 		}
 	}
-	fmt.Printf("config: every=%v, min_fees_30d=$%.0fk, min_float=%.0f%%, min_peer_group=%d, coingecko_key=%v\n",
-		c.RefreshInterval, c.MinFees30dUSD/1000, c.MinFloatPct, MinPeerGroup, cgKey != "")
+	if v := os.Getenv("MIN_MCAP_USD"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil && n >= 0 {
+			c.MinMcapUSD = n
+		}
+	}
+	fmt.Printf("config: every=%v, min_fees_30d=$%.0fk, min_float=%.0f%%, min_mcap=$%.1fM, min_peer_group=%d, coingecko_key=%v\n",
+		c.RefreshInterval, c.MinFees30dUSD/1000, c.MinFloatPct, c.MinMcapUSD/1e6, MinPeerGroup, cgKey != "")
 	return c
 }

@@ -66,6 +66,7 @@ methodology:
   - "The token is resolved through DeFiLlama's own links, not by name matching: the adapter's defillamaId joins to /protocols, and when that row carries no CoinGecko id the parent protocol from /config does."
   - "Category: the one carrying most of the token's fees, not the one its first-listed adapter sits in. Drift files a small spot product under Dexs and earns most of its fees on perps, so taking the first would compare it to liquid staking protocols and drag their median with it."
   - "Peer comparison: each row carries the median P/F of its category, and protocol_pf_vs_category_ratio is the row divided by that median. A category needs at least 5 tokens before a median is published; a row in a smaller category shows its ratio with no comparison rather than a comparison against one or two protocols."
+  - "Market cap floor: 5 million USD of circulating market cap. Below it the ratio is not a valuation: a token worth a few hundred thousand dollars against millions of annual fees prints a multiple near zero and would lead an ascending board as the cheapest token in DeFi, when it is an abandoned or unlisted one. Fifteen of the top twenty rows sat under 10 million before this floor (2026-09-25)."
   - "Float floor: a token with less than 10 percent of supply circulating is not ranked. Its market cap is a fraction of what the token will be, so the ratio reads near zero and would lead an ascending board."
   - "Fee floor: 100,000 USD of trailing 30 day fees, applied to the token after its adapters are summed rather than to each adapter. A token whose products only clear the floor together belongs on the board, and a multi-product token must not lose its smaller products out of its own denominator."
   - "The board shows the largest fee earners; a row whose category has fewer than 5 tokens carries its ratio with no peer comparison. The harness publishes every row that clears the floors, so the cut is editorial and the full set is queryable."
@@ -198,6 +199,8 @@ faq:
     a: "That the market values the token at two years of its current fee run rate. It is the same idea as a price to sales multiple, with annualized protocol fees in place of revenue. Low means the market pays little per dollar of fees; it does not mean the token is underpriced."
   - q: "Why compare to a category median instead of the whole market?"
     a: "Because the multiple a category trades at is itself a fact about the category, and it varies by more than an order of magnitude across the board. A single market-wide median would rank the categories and call it a ranking of protocols."
+  - q: "Why is there a market cap floor?"
+    a: "Because a multiple is a price divided by something, and a token worth a few hundred thousand dollars is not a price the market agreed on. Its ratio reads near zero and leads an ascending board, where it looks like the cheapest protocol in DeFi rather than an abandoned token. The floor is 5 million USD of circulating market cap; the harness still meters every row that clears the fee floor."
   - q: "Why are tokens with a small float excluded?"
     a: "Because their market cap is a fraction of what the token will be once supply vests, so the ratio reads near zero and takes the top of an ascending board. The FDV column is the honest view for those tokens, and the float floor is 10 percent of total supply."
   - q: "Are Uniswap V2, V3 and V4 three rows?"
@@ -571,19 +574,6 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="o1-exchange"}[24h])
       series: protocol_pf_ratio{protocol="o1-exchange"}
 
-  - slug: ramsesx
-    name: RamsesX
-    tag: Dexs
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"ramsesx\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="ramsesx"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="ramsesx"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="ramsesx"}[24h])
-      series: protocol_pf_ratio{protocol="ramsesx"}
-
   - slug: fluid
     name: Fluid
     tag: Lending
@@ -779,19 +769,6 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="venus"}[24h])
       series: protocol_pf_ratio{protocol="venus"}
 
-  - slug: meth-protocol
-    name: mETH Protocol
-    tag: Liquid Staking
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"meth-protocol\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="meth-protocol"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="meth-protocol"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="meth-protocol"}[24h])
-      series: protocol_pf_ratio{protocol="meth-protocol"}
-
   - slug: euler
     name: Euler
     tag: Lending
@@ -882,32 +859,6 @@ providers:
       success: avg_over_time(protocol_valuation_health{protocol="kyberswap"}[24h])
       sample_size: count_over_time(protocol_pf_ratio{protocol="kyberswap"}[24h])
       series: protocol_pf_ratio{protocol="kyberswap"}
-
-  - slug: stakewise
-    name: StakeWise
-    tag: Liquid Staking
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"stakewise\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="stakewise"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="stakewise"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="stakewise"}[24h])
-      series: protocol_pf_ratio{protocol="stakewise"}
-
-  - slug: hyperswap
-    name: HyperSwap
-    tag: Dexs
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"hyperswap\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="hyperswap"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="hyperswap"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="hyperswap"}[24h])
-      series: protocol_pf_ratio{protocol="hyperswap"}
 
   - slug: definitive
     name: Definitive
@@ -1000,19 +951,6 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="frax-finance"}[24h])
       series: protocol_pf_ratio{protocol="frax-finance"}
 
-  - slug: pair
-    name: PAIR
-    tag: Launchpad
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"pair\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="pair"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="pair"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="pair"}[24h])
-      series: protocol_pf_ratio{protocol="pair"}
-
   - slug: stake-link
     name: stake.link
     tag: Liquid Staking
@@ -1026,19 +964,6 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="stake-link"}[24h])
       series: protocol_pf_ratio{protocol="stake-link"}
 
-  - slug: nest
-    name: nest
-    tag: Dexs
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"nest\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="nest"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="nest"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="nest"}[24h])
-      series: protocol_pf_ratio{protocol="nest"}
-
   - slug: rhea-finance
     name: Rhea Finance
     tag: Dexs
@@ -1051,32 +976,6 @@ providers:
       success: avg_over_time(protocol_valuation_health{protocol="rhea-finance"}[24h])
       sample_size: count_over_time(protocol_pf_ratio{protocol="rhea-finance"}[24h])
       series: protocol_pf_ratio{protocol="rhea-finance"}
-
-  - slug: the-vault
-    name: The Vault
-    tag: Liquid Staking
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"the-vault\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="the-vault"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="the-vault"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="the-vault"}[24h])
-      series: protocol_pf_ratio{protocol="the-vault"}
-
-  - slug: saphyre
-    name: Saphyre
-    tag: Dexs
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"saphyre\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="saphyre"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="saphyre"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="saphyre"}[24h])
-      series: protocol_pf_ratio{protocol="saphyre"}
 
   - slug: navi-protocol
     name: NAVI Protocol
@@ -1130,32 +1029,6 @@ providers:
       sample_size: count_over_time(protocol_pf_ratio{protocol="ansem-io"}[24h])
       series: protocol_pf_ratio{protocol="ansem-io"}
 
-  - slug: velora
-    name: Velora
-    tag: DEX Aggregator
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"velora\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="velora"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="velora"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="velora"}[24h])
-      series: protocol_pf_ratio{protocol="velora"}
-
-  - slug: blend
-    name: Blend
-    tag: Lending
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"blend\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="blend"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="blend"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="blend"}[24h])
-      series: protocol_pf_ratio{protocol="blend"}
-
   - slug: stader
     name: Stader
     tag: Liquid Staking
@@ -1181,19 +1054,6 @@ providers:
       success: avg_over_time(protocol_valuation_health{protocol="velodrome"}[24h])
       sample_size: count_over_time(protocol_pf_ratio{protocol="velodrome"}[24h])
       series: protocol_pf_ratio{protocol="velodrome"}
-
-  - slug: suilend-protocol
-    name: Suilend Protocol
-    tag: Lending
-    formula: "last_over_time(protocol_pf_ratio{protocol=\"suilend-protocol\"}[2h])"
-    queries:
-      p50: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
-      p90: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
-      p99: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
-      mean: last_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[2h])
-      success: avg_over_time(protocol_valuation_health{protocol="suilend-protocol"}[24h])
-      sample_size: count_over_time(protocol_pf_ratio{protocol="suilend-protocol"}[24h])
-      series: protocol_pf_ratio{protocol="suilend-protocol"}
 
   - slug: alphafi
     name: AlphaFi

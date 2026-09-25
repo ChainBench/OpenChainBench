@@ -109,7 +109,7 @@ func poll(cfg *Config, supply *supplyCache) {
 		}
 	}
 
-	rows := buildRows(cohort, markets, cfg.MinFloatPct)
+	rows := buildRows(cohort, markets, cfg.MinFloatPct, cfg.MinMcapUSD)
 	medians := CategoryMedians(rows)
 	sizes := map[string]int{}
 	for _, r := range rows {
