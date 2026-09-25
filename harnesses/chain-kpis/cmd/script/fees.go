@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -121,6 +122,12 @@ type feeWindows struct {
 	Total30d *float64 `json:"total30d"`
 }
 
+// errNotTracked is DefiLlama's definitive "no adapter reports this":
+// a 200 with null totals. It is the one error that clears a chain's
+// series; transport and parse errors carry the last values forward like
+// every other source in this harness.
+var errNotTracked = errors.New("not_tracked")
+
 func defillamaFees(chainName, dataType string) (feeWindows, error) {
 	url := fmt.Sprintf("%s/overview/fees/%s?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true&dataType=%s", defillamaBase, encodePath(chainName), dataType)
 	body, err := getJSON(httpClientDefillama, url)
@@ -134,7 +141,7 @@ func defillamaFees(chainName, dataType string) (feeWindows, error) {
 	if w.Total30d == nil {
 		// Moonbeam and Polkadot answer 200 with nulls: the chain is known
 		// but no adapter reports fees for it.
-		return feeWindows{}, fmt.Errorf("not_tracked")
+		return feeWindows{}, errNotTracked
 	}
 	return w, nil
 }
@@ -186,26 +193,50 @@ func fetchChainFees(c Chain, mc tokenMcap) {
 		chainKpisFetchErrors.WithLabelValues(c.Slug, feesSource, classifyError(err.Error())).Inc()
 		chainKpisHealth.WithLabelValues(c.Slug, feesSource).Set(0)
 		fmt.Printf("[fees][%s] fees error: %v\n", c.Slug, err)
+		if errors.Is(err, errNotTracked) {
+			// Definitive answer: the chain has no fees adapter (any more).
+			// Clear everything so a chain that lost its adapter stops
+			// ranking on the last figure it ever had.
+			publishChainFees(c.Slug, chainFeesOut{}, true)
+			chainTokenMcapUsd.DeleteLabelValues(c.Slug)
+		}
 		return
 	}
 	rev, revErr := defillamaFees(c.DefiLlama, "dailyRevenue")
+	// revKnown is false on a transport or parse error on the revenue
+	// request alone: the fee side still publishes and the revenue side is
+	// left as it was for this hour rather than deleted, so the Revenue,
+	// Kept and P/S columns do not blink on one timeout. A not_tracked
+	// revenue answer is definitive and clears that side.
+	revKnown := true
 	if revErr != nil {
 		chainKpisFetchErrors.WithLabelValues(c.Slug, feesSource, classifyError(revErr.Error())).Inc()
 		fmt.Printf("[fees][%s] revenue error: %v\n", c.Slug, revErr)
+		revKnown = errors.Is(revErr, errNotTracked)
 	}
 
 	out := computeChainFees(fees, rev, revErr == nil, mc.Mcap, mc.Mcap > 0)
+	chainKpisLastRefresh.WithLabelValues(c.Slug, feesSource).Set(float64(time.Now().Unix()))
+	chainKpisLastTickUnix.Set(float64(time.Now().Unix()))
+	if out.fees30d == nil {
+		// No fees over the month (Taiko, Mode on 2026-09-25): the fetch
+		// worked but returned no data, so the chain publishes nothing,
+		// not even its token's market cap, and does not count as a
+		// success.
+		publishChainFees(c.Slug, out, true)
+		chainTokenMcapUsd.DeleteLabelValues(c.Slug)
+		chainKpisHealth.WithLabelValues(c.Slug, feesSource).Set(0)
+		return
+	}
 	if mc.Mcap > 0 {
 		chainTokenMcapUsd.WithLabelValues(c.Slug).Set(mc.Mcap)
 	} else {
 		chainTokenMcapUsd.DeleteLabelValues(c.Slug)
 	}
-	publishChainFees(c.Slug, out)
+	publishChainFees(c.Slug, out, revKnown)
 
-	chainKpisLastRefresh.WithLabelValues(c.Slug, feesSource).Set(float64(time.Now().Unix()))
 	chainKpisHealth.WithLabelValues(c.Slug, feesSource).Set(1)
 	chainFeesLastSuccessUnix.Set(float64(time.Now().Unix()))
-	chainKpisLastTickUnix.Set(float64(time.Now().Unix()))
 }
 
 // chainFeesOut is what one poll publishes for a chain. A nil pointer
@@ -260,14 +291,21 @@ func set(g *prometheus.GaugeVec, slug string, v *float64) {
 	g.WithLabelValues(slug).Set(*v)
 }
 
-func publishChainFees(slug string, o chainFeesOut) {
+// publishChainFees writes the fee side, and the revenue side (revenue
+// windows, share and P/S) only when revKnown: a transient failure on the
+// revenue request keeps last hour's revenue gauges rather than deleting
+// them.
+func publishChainFees(slug string, o chainFeesOut, revKnown bool) {
 	set(chainFees24hUsd, slug, o.fees24h)
 	set(chainFees7dUsd, slug, o.fees7d)
 	set(chainFees30dUsd, slug, o.fees30d)
+	set(chainTokenPfRatio, slug, o.pf)
+	if !revKnown {
+		return
+	}
 	set(chainRevenue24hUsd, slug, o.rev24h)
 	set(chainRevenue7dUsd, slug, o.rev7d)
 	set(chainRevenue30dUsd, slug, o.rev30d)
 	set(chainRevenueSharePct, slug, o.revShare)
-	set(chainTokenPfRatio, slug, o.pf)
 	set(chainTokenPsRatio, slug, o.ps)
 }

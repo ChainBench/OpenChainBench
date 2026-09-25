@@ -122,6 +122,12 @@ harness ignores it.
   counter is incremented with `error_type="not_tracked"` or
   `error_type="not_found"` so dashboards can distinguish genuine outages
   from expected gaps.
+- Fees loop: a DefiLlama `not_tracked` answer (200 with null totals) or a
+  month with no fees clears every fee, revenue and ratio series for the
+  chain and sets `chain_kpis_health{source="fees"}` to 0; a transport error
+  on the fees request carries the last values forward, and one on the
+  revenue request alone keeps last hour's revenue side while the fee side
+  updates.
 - Mobula 429 / 401 → all chains for that fetcher are skipped this tick;
   DefiLlama keeps publishing.
 - One chain failure does not affect any other chain (each fetch is its

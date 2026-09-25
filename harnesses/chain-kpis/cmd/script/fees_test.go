@@ -3,6 +3,9 @@ package main
 import (
 	"math"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 func fw(d24, d7, d30 float64) feeWindows {
@@ -67,6 +70,66 @@ func TestMissingRevenueKeepsFeesOnly(t *testing.T) {
 	if o.revShare == nil || *o.revShare != 0 {
 		t.Fatalf("zero revenue over positive fees is a 0%% share: %+v", o)
 	}
+}
+
+// A timeout on the revenue request alone must not blank the Revenue,
+// Kept and P/S columns for an hour: the fee side updates and the revenue
+// side keeps last hour's values. A definitive empty answer clears it.
+func TestRevenueTransportErrorKeepsLastRevenue(t *testing.T) {
+	const slug = "test-rev-carry"
+	full := computeChainFees(fw(1e6, 7e6, 30e6), fw(0.5e6, 3.5e6, 15e6), true, 3.65e9, true)
+	publishChainFees(slug, full, true)
+	if v := gaugeValue(chainRevenue30dUsd, slug); v != 15e6 {
+		t.Fatalf("revenue30d = %v, want 15e6", v)
+	}
+
+	feesOnly := computeChainFees(fw(2e6, 8e6, 31e6), feeWindows{}, false, 3.65e9, true)
+	publishChainFees(slug, feesOnly, false)
+	if v := gaugeValue(chainFees30dUsd, slug); v != 31e6 {
+		t.Fatalf("fees30d = %v, want the fresh 31e6", v)
+	}
+	if v := gaugeValue(chainRevenue30dUsd, slug); v != 15e6 {
+		t.Fatalf("revenue30d = %v, want last hour's 15e6 kept", v)
+	}
+	if v := gaugeValue(chainTokenPsRatio, slug); !near(v, 20) {
+		t.Fatalf("ps = %v, want last hour's 20 kept", v)
+	}
+
+	publishChainFees(slug, feesOnly, true)
+	for _, g := range []struct {
+		name string
+		n    int
+	}{
+		{"revenue30d", seriesCount(chainRevenue30dUsd)},
+		{"share", seriesCount(chainRevenueSharePct)},
+		{"ps", seriesCount(chainTokenPsRatio)},
+	} {
+		if g.n != 0 {
+			t.Fatalf("%s: %d series left after a definitive empty revenue answer", g.name, g.n)
+		}
+	}
+	publishChainFees(slug, chainFeesOut{}, true)
+}
+
+// gaugeValue reads a series that is known to exist (WithLabelValues would
+// otherwise create it).
+func gaugeValue(g *prometheus.GaugeVec, slug string) float64 {
+	var m dto.Metric
+	if err := g.WithLabelValues(slug).Write(&m); err != nil {
+		panic(err)
+	}
+	return m.GetGauge().GetValue()
+}
+
+func seriesCount(g *prometheus.GaugeVec) int {
+	ch := make(chan prometheus.Metric, 256)
+	g.Collect(ch)
+	close(ch)
+	n := 0
+	for range ch {
+		n++
+	}
+	return n
 }
 
 func deref(p *float64) float64 {
