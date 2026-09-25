@@ -700,15 +700,23 @@ func q64(b []byte) float64 {
 // Orca and Raydium log theirs, Meteora emits through the CPI.
 func concSqrts(tx *parsedTx, venue string) []concSqrt {
 	var out []concSqrt
+	// A route through several pools loses the final pool's venue to the
+	// "multi" label, so every decoder is tried there; picking between
+	// their events is what the band and the uniqueness rule below are
+	// for.
+	any := venue == "multi"
 	add := func(prog string, d [8]byte, b []byte) {
 		switch {
-		case venue == "orca" && d == discOrcaTraded && len(b) == 113:
+		case (any || venue == "orca") && d == discOrcaTraded && len(b) == 113:
 			out = append(out, concSqrt{pre: q64(b[33:]), post: q64(b[49:])})
-		case venue == "raydium-clmm" && d == discCpmmSwap && len(b) == 197:
+		// Raydium's CLMM shares its discriminator with its CP-Swap, whose
+		// event is shorter, and has grown from 197 bytes to 213 with two
+		// words after the tick. The square-root price stayed at 161.
+		case (any || venue == "raydium-clmm") && d == discCpmmSwap && len(b) >= 197:
 			out = append(out, concSqrt{post: q64(b[161:])})
-		case venue == "meteora-damm2" && prog == damm2Program && d == discEvtSwap2 && len(b) >= 100:
+		case (any || venue == "meteora-damm2") && prog == damm2Program && d == discEvtSwap2 && len(b) >= 100:
 			out = append(out, concSqrt{post: q64(b[84:])})
-		case venue == "meteora-dbc" && prog == dbcProgram && d == discEvtSwap && len(b) >= 114:
+		case (any || venue == "meteora-dbc") && prog == dbcProgram && d == discEvtSwap && len(b) >= 114:
 			out = append(out, concSqrt{post: q64(b[98:])})
 		}
 	}
