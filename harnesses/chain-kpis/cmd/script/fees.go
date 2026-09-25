@@ -30,10 +30,12 @@ import (
 // over annualized fees, mcap over annualized revenue, annualized = 30-day
 // sum x 365/30. Which token is "the chain's" is DefiLlama's own chain to
 // gecko_id mapping on /v2/chains (Ethereum ETH, Arbitrum ARB, Hyperliquid
-// HYPE; Base, Robinhood Chain and Unichain map to none), and the market cap
-// is CoinGecko's circulating figure for that id: one request per tick for
-// the whole cohort. Mobula's per-symbol market cap is not used here; it
-// resolves HYPE and SEI to the wrong supply (HYPE at $67M on 2026-09-25).
+// HYPE; Base, Robinhood Chain and Unichain map to none). The market cap is
+// Mobula's circulating figure for the chains in mobulaAssetBySlug, read by
+// hand-verified asset id, and CoinGecko's for the rest and for any mapped
+// chain Mobula does not answer for on a tick. Mobula is resolved by id and
+// never by symbol: its symbol search picks the wrong asset for several
+// majors (SUI, DOT, HYPE, SEI).
 // The ratios publish only when both sides exist and the denominator is
 // positive; otherwise the series is deleted rather than written as 0 or
 // +Inf.
@@ -317,15 +319,13 @@ func fetchAllChainFees(mobulaKey string) {
 	}
 	geckoByChain := keepLast(fresh, err, &lastGeckoByChain)
 
-	var mobulaIDs, geckoIDs []string
+	var mobulaIDs []string
 	for _, c := range Registry {
 		if c.DefiLlama == "" {
 			continue
 		}
 		if id, ok := mobulaAssetBySlug[c.Slug]; ok {
 			mobulaIDs = append(mobulaIDs, id)
-		} else if id, ok := geckoByChain[c.DefiLlama]; ok {
-			geckoIDs = append(geckoIDs, id)
 		}
 	}
 	mm, err := mobulaMcaps(mobulaIDs, mobulaKey)
@@ -334,13 +334,36 @@ func fetchAllChainFees(mobulaKey string) {
 		fmt.Printf("[fees] mobula error: %v (reusing %d market caps)\n", err, len(lastMobulaMcaps))
 	}
 	mobula := keepLast(mm, err, &lastMobulaMcaps)
+
+	// CoinGecko covers the chains with no Mobula id AND the mapped chains
+	// Mobula did not answer for this tick (empty key, partial response,
+	// cold start). Without this a Mobula outage deleted P/F, P/S and the
+	// market cap for 40 chains that CoinGecko could still serve (review of
+	// PR 2691).
+	var geckoIDs []string
+	fellBack := 0
+	for _, c := range Registry {
+		if c.DefiLlama == "" {
+			continue
+		}
+		if id, ok := mobulaAssetBySlug[c.Slug]; ok {
+			if _, have := mobula[id]; have {
+				continue
+			}
+			fellBack++
+		}
+		if id, ok := geckoByChain[c.DefiLlama]; ok {
+			geckoIDs = append(geckoIDs, id)
+		}
+	}
 	m, err := coingeckoMcaps(geckoIDs)
 	if err != nil {
 		chainKpisFetchErrors.WithLabelValues("all", feesSource, classifyError(err.Error())).Inc()
 		fmt.Printf("[fees] coingecko error: %v (reusing %d market caps)\n", err, len(lastMcaps))
 	}
 	mcaps := keepLast(m, err, &lastMcaps)
-	fmt.Printf("[fees] market caps: %d from mobula (%d ids), %d from coingecko (%d ids)\n", len(mobula), len(mobulaIDs), len(mcaps), len(geckoIDs))
+	fmt.Printf("[fees] market caps: %d from mobula (%d ids), %d from coingecko (%d ids, %d of them mapped chains falling back)\n",
+		len(mobula), len(mobulaIDs), len(mcaps), len(geckoIDs), fellBack)
 
 	for _, c := range Registry {
 		c := c
@@ -350,8 +373,11 @@ func fetchAllChainFees(mobulaKey string) {
 		var mc tokenMcap
 		if id, ok := mobulaAssetBySlug[c.Slug]; ok {
 			mc = mobula[id]
-		} else if id, ok := geckoByChain[c.DefiLlama]; ok {
-			mc = mcaps[id]
+		}
+		if mc.Mcap <= 0 {
+			if id, ok := geckoByChain[c.DefiLlama]; ok {
+				mc = mcaps[id]
+			}
 		}
 		go fetchChainFees(c, mc)
 	}
