@@ -24,6 +24,10 @@ type Config struct {
 	// board. The measured cohort had six such rows in the top twelve
 	// before this floor (2026-09-23).
 	MinFloatPct float64
+
+	// Where /metrics listens. Overridable so a second copy can run next
+	// to a deployed one for a live check.
+	MetricsAddr string
 }
 
 func loadConfig() *Config {
@@ -31,6 +35,10 @@ func loadConfig() *Config {
 		RefreshInterval: 60 * time.Minute,
 		MinFees30dUSD:   100_000,
 		MinFloatPct:     10,
+		MetricsAddr:     ":2112",
+	}
+	if v := os.Getenv("METRICS_ADDR"); v != "" {
+		c.MetricsAddr = v
 	}
 	if v := os.Getenv("REFRESH_MINUTES"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -47,7 +55,7 @@ func loadConfig() *Config {
 			c.MinFloatPct = n
 		}
 	}
-	fmt.Printf("config: every=%v, min_fees_30d=$%.0fk, min_float=%.0f%%, min_peer_group=%d\n",
-		c.RefreshInterval, c.MinFees30dUSD/1000, c.MinFloatPct, MinPeerGroup)
+	fmt.Printf("config: every=%v, min_fees_30d=$%.0fk, min_float=%.0f%%, min_peer_group=%d, coingecko_key=%v\n",
+		c.RefreshInterval, c.MinFees30dUSD/1000, c.MinFloatPct, MinPeerGroup, cgKey != "")
 	return c
 }

@@ -48,10 +48,16 @@ abstract: |
   divided by the fees of one product would price the token several times
   over. CoinGecko /coins/markets supplies market cap, fully diluted
   valuation, circulating and total supply, and the 30-day price change.
-  Gauges are protocol_pf_ratio, protocol_pf_fdv_ratio, protocol_float_pct,
-  protocol_fees_30d_usd, protocol_fee_growth_30d_pct,
-  protocol_price_change_30d_pct, protocol_category_pf_median,
-  protocol_pf_vs_category_ratio and protocol_diverging.
+  The same /overview/fees read with dataType=dailyRevenue gives revenue
+  per adapter, /protocols gives TVL per row, and CoinGecko /market_chart
+  gives 91 days of daily market cap and price per token, whose ratio is
+  the circulating supply each day. Gauges are protocol_pf_ratio,
+  protocol_pf_fdv_ratio, protocol_float_pct, protocol_fees_30d_usd,
+  protocol_fee_growth_30d_pct, protocol_price_change_30d_pct,
+  protocol_category_pf_median, protocol_pf_vs_category_ratio,
+  protocol_diverging, protocol_revenue_30d_usd, protocol_ps_ratio,
+  protocol_tvl_usd, protocol_supply_change_30d_pct and
+  protocol_supply_change_90d_pct.
 
 methodology:
   - "Board membership. A token whose fee adapter is knowably incomplete (protocol_fees_incomplete = 1: the adapter reports $0 over 30 days after a year of fees, so the ratio would be built on a fraction of the protocol) is metered but not listed; on 2026-09-25 that is Drift, Bluefin and DoubleZero. The peer median of each category is a live gauge (protocol_category_pf_median), read on the vs-category tab, never a number typed here."
@@ -66,6 +72,12 @@ methodology:
   - "A protocol whose fee history is shorter than the windows shows its ratio and no trend: with no prior 30 days there is no month-over-month figure, and the divergence screen cannot fire without one."
   - "A token with a fee adapter reporting nothing over 30 days after real fees over the year has a published total short of its revenue, and is excluded from the board, from its category median and from the screen. DeFiLlama's Drift Trade adapter is in that state: it reports $0 after $11.1M over the year, so only Drift's $1.2M staking product reaches the token. protocol_fees_incomplete and protocol_silent_adapter_fees_1y_usd publish the flag and the size of the gap."
   - "protocol_diverging is 1 when three things hold at once: fees grew month over month, the token fell over 30 days, and the P/F sits below the category median. The third clause is what stops it naming every protocol having a bad month."
+  - "Revenue 30d (protocol_revenue_30d_usd): the share of fees the protocol keeps, per each adapter's own definition on DeFiLlama (/overview/fees with dataType=dailyRevenue), summed over the adapters the fees come from. Absent when no adapter behind the token publishes a revenue series: that is unknown, not zero. Published as 0 when the adapters have one and report none."
+  - "protocol_revenue_incomplete is 1 when the revenue total is knowably short: the fee total itself is short, a revenue adapter reports nothing over 30 days after real revenue over the year, or a product earning fees this month has no revenue series while its siblings do (protocol_revenue_missing_adapters counts them). Revenue is published with the flag; the P/S built on it is not, because a multiple on a fraction of the revenue reads higher than it is."
+  - "P/S (protocol_ps_ratio) = circulating market cap / annualized revenue, revenue being the trailing 30 day sum x 365/30. The same multiple as P/F on what the token's protocol keeps rather than on what its users paid. Absent when revenue is missing, zero or knowably short, so no row reads as infinitely priced, as free, or as pricier than it is."
+  - "TVL (protocol_tvl_usd): DeFiLlama /protocols tvl summed over every row that resolves to the token by the same rule as the fee adapters, its own CoinGecko id first, else its parent's, so Aave V2, V3 and Horizon count once each under AAVE. Absent when no row carries a TVL: a launchpad or a perp DEX settling on its own chain has nothing locked, and that is not a zero."
+  - "Supply 30d and 90d (protocol_supply_change_30d_pct, protocol_supply_change_90d_pct): circulating supply now against 30 and 90 days ago, in percent. Source: CoinGecko /market_chart, 91 days of daily market cap and price per token; their ratio is the circulating supply CoinGecko held that day. Absent while the series is shorter than the window. One CoinGecko call per token per UTC day, cached in memory."
+  - "Supply change is realized dilution, not an unlock schedule. A positive figure is supply that reached the float over the window (unlocks, emissions), a negative one a burn. A cliff next month is invisible here until it lands, and a token that unlocked last week shows it in the 30 day column before the 90 day one catches up."
   - "Cadence: hourly. DeFiLlama's fee series is daily and CoinGecko's free tier is rate limited, so a faster poll would spend requests re-reading numbers that have not moved. p50, p90, p99 and the mean read the same gauge and are equal by construction."
   - "The cohort is rebuilt from upstream every poll and the per-protocol series are reset with it, so a token that is delisted or drops below a floor loses its row rather than carrying a stale valuation forward."
 
@@ -127,6 +139,49 @@ metric_panels:
     unit: usd
     higher_is_better: true
     description: "Trailing 30 day fees in USD, total across every adapter of the protocols behind this token, including the share paid to liquidity providers and stakers."
+  - id: revenue_30d
+    label: Revenue 30d
+    label_key: protocol
+    metric: protocol_revenue_30d_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Trailing 30 day revenue in USD: the share of fees the protocol keeps, per each adapter's DeFiLlama definition, over the same adapters as the fees. Absent when no adapter publishes a revenue series; 0 when they do and report none."
+  - id: ps
+    label: P/S
+    label_key: protocol
+    metric: protocol_ps_ratio{}
+    unit: x
+    higher_is_better: false
+    description: "Circulating market cap divided by annualized revenue. The P/F multiple on what the protocol keeps rather than on what its users paid. Absent when revenue is missing, zero or knowably partial."
+  - id: tvl
+    label: TVL
+    label_key: protocol
+    metric: protocol_tvl_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Value locked in USD across every DeFiLlama row that resolves to this token, own row or parent. Absent for protocols with nothing locked, which is not a zero."
+  - id: supply_30d
+    label: Supply 30d
+    label_key: protocol
+    metric: protocol_supply_change_30d_pct{}
+    unit: pct
+    higher_is_better: false
+    description: "Change in circulating supply over 30 days, from CoinGecko daily market cap / price. Realized dilution, not an unlock schedule. Absent while the series is shorter than 30 days."
+  - id: supply_90d
+    label: Supply 90d
+    label_key: protocol
+    metric: protocol_supply_change_90d_pct{}
+    unit: pct
+    higher_is_better: false
+    description: "Change in circulating supply over 90 days, same source. Absent while the series is shorter than 90 days."
+
+ledger_columns:
+  - { label: "P/F", slot: p50 }
+  - { label: "vs category", panel: pf_vs_category }
+  - { label: "P/S", panel: ps }
+  - { label: "Revenue 30d", panel: revenue_30d }
+  - { label: "TVL", panel: tvl }
+  - { label: "Supply 30d", panel: supply_30d }
 
 faq:
   - q: "What does a P/F of 2 mean?"

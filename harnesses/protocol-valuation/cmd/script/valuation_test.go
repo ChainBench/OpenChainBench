@@ -20,7 +20,7 @@ func TestTheTokenComesFromTheParentWhenTheAdapterHasNone(t *testing.T) {
 	}
 	parents := []llamaParent{{ID: "parent#gmx", Name: "GMX", GeckoID: "gmx"}}
 
-	cohort, st, err := joinCohort(fees, protocols, parents, 1e5)
+	cohort, st, err := joinCohort(fees, nil, protocols, parents, 1e5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestWithoutTheParentTableTheJoinFindsNothing(t *testing.T) {
 	fees := []feeAdapter{{Name: "GMX V2 Perps", DefillamaID: "3365", ParentProtocol: "parent#gmx", Total30d: 3e6}}
 	protocols := []llamaProtocol{{ID: float64(3365), Name: "GMX V2 Perps", ParentProtocol: "parent#gmx"}}
 
-	cohort, st, _ := joinCohort(fees, protocols, nil, 1e5)
+	cohort, st, _ := joinCohort(fees, nil, protocols, nil, 1e5)
 	if len(cohort) != 0 || st.Unmapped != 1 {
 		t.Fatalf("got %d rows, unmapped=%d; want 0 / 1", len(cohort), st.Unmapped)
 	}
@@ -59,7 +59,7 @@ func TestWithoutTheParentTableTheJoinFindsNothing(t *testing.T) {
 func TestTheIDJoinSurvivesTheNumberVsStringMismatch(t *testing.T) {
 	fees := []feeAdapter{{Name: "Aave V3", DefillamaID: "111", Category: "Lending", Total30d: 9e6}}
 	protocols := []llamaProtocol{{ID: float64(111), Name: "Aave V3", GeckoID: "aave"}}
-	cohort, _, _ := joinCohort(fees, protocols, nil, 1e5)
+	cohort, _, _ := joinCohort(fees, nil, protocols, nil, 1e5)
 	if len(cohort) != 1 || cohort[0].GeckoID != "aave" {
 		t.Fatalf("id normalisation failed: %+v", cohort)
 	}
@@ -198,7 +198,7 @@ func TestTheCategoryComesFromWhereTheFeesActuallyAre(t *testing.T) {
 	}
 	parents := []llamaParent{{ID: "parent#drift", Name: "Drift", GeckoID: "drift-protocol"}}
 
-	cohort, _, _ := joinCohort(fees, protocols, parents, 100_000)
+	cohort, _, _ := joinCohort(fees, nil, protocols, parents, 100_000)
 	if len(cohort) != 1 {
 		t.Fatalf("got %d rows, want 1", len(cohort))
 	}
@@ -222,7 +222,7 @@ func TestTheFeeFloorAppliesToTheTokenNotTheAdapter(t *testing.T) {
 		{ID: float64(2), Name: "Thing B", GeckoID: "thing"},
 		{ID: float64(3), Name: "Thing C", GeckoID: "thing"},
 	}
-	cohort, st, _ := joinCohort(fees, protocols, nil, 100_000)
+	cohort, st, _ := joinCohort(fees, nil, protocols, nil, 100_000)
 	if len(cohort) != 1 {
 		t.Fatalf("three $60k adapters on one token sum to $180k and must publish; got %d rows", len(cohort))
 	}
@@ -237,7 +237,7 @@ func TestTheFeeFloorAppliesToTheTokenNotTheAdapter(t *testing.T) {
 	// and counted so the cohort's shape stays visible.
 	small := []feeAdapter{{Name: "Dust", DefillamaID: "9", Category: "Dexs", Total30d: 10_000}}
 	smallProt := []llamaProtocol{{ID: float64(9), Name: "Dust", GeckoID: "dust"}}
-	out, st2, _ := joinCohort(small, smallProt, nil, 100_000)
+	out, st2, _ := joinCohort(small, nil, smallProt, nil, 100_000)
 	if len(out) != 0 || st2.BelowFloor != 1 {
 		t.Fatalf("got %d rows, BelowFloor=%d; want 0 / 1", len(out), st2.BelowFloor)
 	}
@@ -255,10 +255,10 @@ func TestAnEvenSplitPicksAStableCategory(t *testing.T) {
 		{ID: float64(1), Name: "X A", GeckoID: "x"},
 		{ID: float64(2), Name: "X B", GeckoID: "x"},
 	}
-	first, _, _ := joinCohort(fees, protocols, nil, 1)
+	first, _, _ := joinCohort(fees, nil, protocols, nil, 1)
 	// Same input, adapters in the other order.
 	rev := []feeAdapter{fees[1], fees[0]}
-	second, _, _ := joinCohort(rev, protocols, nil, 1)
+	second, _, _ := joinCohort(rev, nil, protocols, nil, 1)
 	if first[0].Category != second[0].Category {
 		t.Fatalf("category flipped with input order: %q vs %q", first[0].Category, second[0].Category)
 	}
@@ -280,7 +280,7 @@ func TestASilentAdapterMarksTheTokenIncomplete(t *testing.T) {
 	}
 	parents := []llamaParent{{ID: "parent#drift", Name: "Drift", GeckoID: "drift-protocol"}}
 
-	cohort, st, _ := joinCohort(fees, protocols, parents, 100_000)
+	cohort, st, _ := joinCohort(fees, nil, protocols, parents, 100_000)
 	if len(cohort) != 1 || !cohort[0].Incomplete {
 		t.Fatalf("expected one incomplete row, got %+v", cohort)
 	}

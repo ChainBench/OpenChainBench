@@ -27,7 +27,9 @@ export type CapitalEntity = {
 
 export type ValuationHistory = {
   generatedAt: string;
-  /** Bench 274 cohort: mcap, fdv, float_pct, fees_30d, pf, pf_fdv, price_change_30d_pct, fee_growth_30d_pct. */
+  /** Bench 274 cohort: mcap, fdv, float_pct, fees_30d, rev_30d, tvl, pf, pf_fdv, ps,
+   *  price_change_30d_pct, fee_growth_30d_pct, supply_change_30d_pct, supply_change_90d_pct,
+   *  fees_incomplete, revenue_incomplete (0/1). */
   protocols: CapitalEntity[];
   /** Bench 265 cohort: mcap, fdv, float_pct, fees_30d, rev_30d, pf, pf_fdv, ps, oi. */
   perps: CapitalEntity[];

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,13 +31,17 @@ import (
 // same market cap three times.
 const (
 	llamaFees      = "https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true"
+	llamaRevenue   = llamaFees + "&dataType=dailyRevenue"
 	llamaProtocols = "https://api.llama.fi/protocols"
 	llamaConfig    = "https://api.llama.fi/config"
-	cgMarkets      = "https://api.coingecko.com/api/v3/coins/markets"
+	cgAPI          = "https://api.coingecko.com/api/v3"
+	cgMarkets      = cgAPI + "/coins/markets"
 	userAgent      = "OCB-protocol-valuation/1.0 (+https://openchainbench.com)"
 )
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
+
+var cgKey = os.Getenv("COINGECKO_API_KEY")
 
 type feeAdapter struct {
 	Name           string  `json:"name"`
@@ -48,12 +54,22 @@ type feeAdapter struct {
 	Total1y        float64 `json:"total1y"`
 }
 
+// revenueAdapter is the same row read with dataType=dailyRevenue. The
+// totals are pointers: a null is "no figure", and must not become the
+// known zero that the fees/revenue distinction rests on.
+type revenueAdapter struct {
+	DefillamaID string   `json:"defillamaId"`
+	Total30d    *float64 `json:"total30d"`
+	Total1y     *float64 `json:"total1y"`
+}
+
 type llamaProtocol struct {
-	ID             any    `json:"id"`
-	Name           string `json:"name"`
-	Slug           string `json:"slug"`
-	GeckoID        string `json:"gecko_id"`
-	ParentProtocol string `json:"parentProtocol"`
+	ID             any     `json:"id"`
+	Name           string  `json:"name"`
+	Slug           string  `json:"slug"`
+	GeckoID        string  `json:"gecko_id"`
+	ParentProtocol string  `json:"parentProtocol"`
+	TVL            float64 `json:"tvl"`
 }
 
 type llamaParent struct {
@@ -81,6 +97,34 @@ type Protocol struct {
 	// What the silent adapters earned over the past year, so the size of
 	// the gap is visible rather than asserted.
 	SilentFees1y float64
+
+	// Revenue is the share of fees the protocol keeps, per each adapter's
+	// own definition on DeFiLlama, summed over the same adapters as the
+	// fees. RevKnown is false when no adapter behind the token has a
+	// revenue row at all: that is "unknown", not "keeps nothing", and
+	// nothing is published. A known zero (rows that report 0) is
+	// published as 0; the P/S built on either stays absent.
+	Rev30d   float64
+	Rev1y    float64
+	RevKnown bool
+	// True when the revenue total is knowably short of the token's
+	// protocols: the fee total itself is short (Incomplete), a revenue
+	// adapter reports nothing over 30 days after real revenue over the
+	// year, or a product earning fees this month has no revenue series at
+	// all while its siblings do. Revenue is published with the flag; the
+	// P/S built on it is not.
+	RevIncomplete bool
+	// Adapters with fees this month and no revenue row, so the size of
+	// the coverage gap is visible.
+	RevMissingAdapters int
+
+	// TVL summed over every /protocols row that resolves to this token,
+	// own row or parent, so a lending protocol's V2, V3 and side markets
+	// count once each. HasTVL is false when no row carries one: a perp
+	// DEX on its own chain or a launchpad has nothing locked, and that is
+	// not a zero.
+	TVL    float64
+	HasTVL bool
 }
 
 // A silent adapter is one reporting nothing this month after this much
@@ -89,25 +133,47 @@ type Protocol struct {
 const silentAdapterYearUSD = 1_000_000
 
 func getJSON(rawURL string, out any) error {
+	_, err := getJSONStatus(rawURL, out)
+	return err
+}
+
+// httpResult is what a caller needs to tell a rate limit from a broken
+// read: the status, and the Retry-After CoinGecko sends with a 429.
+type httpResult struct {
+	status     int
+	retryAfter time.Duration
+}
+
+func getJSONStatus(rawURL string, out any) (httpResult, error) {
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
-		return err
+		return httpResult{}, err
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
+	// A CoinGecko demo key (free, 30 calls a minute, 10k a month) lifts
+	// the address-shared public limit. Optional: the harness runs without
+	// one, only slower on the supply pass.
+	if cgKey != "" && strings.HasPrefix(rawURL, cgAPI) {
+		req.Header.Set("x-cg-demo-api-key", cgKey)
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return httpResult{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	res := httpResult{status: resp.StatusCode}
+	if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs > 0 {
+		res.retryAfter = time.Duration(secs) * time.Second
+	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("status_%d", resp.StatusCode)
+		return res, fmt.Errorf("status_%d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return res, err
 	}
-	return json.Unmarshal(body, out)
+	return res, json.Unmarshal(body, out)
 }
 
 // buildCohort joins the three DefiLlama reads into one row per token.
@@ -128,7 +194,18 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 	if err := getJSON(llamaConfig, &cfg); err != nil {
 		return nil, cohortStats{}, fmt.Errorf("config: %w", err)
 	}
-	return joinCohort(feesResp.Protocols, protocols, cfg.ParentProtocols, minFees30d)
+	// Revenue is the one read the board can do without: a failure here
+	// leaves revenue and P/S absent for the tick rather than taking the
+	// fees board down with it.
+	var revResp struct {
+		Protocols []revenueAdapter `json:"protocols"`
+	}
+	if err := getJSON(llamaRevenue, &revResp); err != nil {
+		pvFetchErrors.WithLabelValues("defillama_revenue").Inc()
+		fmt.Printf("[cohort] revenue: %v (revenue and P/S absent this tick)\n", err)
+		revResp.Protocols = nil
+	}
+	return joinCohort(feesResp.Protocols, revResp.Protocols, protocols, cfg.ParentProtocols, minFees30d)
 }
 
 type cohortStats struct {
@@ -144,8 +221,10 @@ type cohortStats struct {
 }
 
 // joinCohort is the pure part, so the mapping is testable without the
-// three network reads it normally needs.
-func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaParent,
+// four network reads it normally needs. revenue is the same overview read
+// with dataType=dailyRevenue, one row per adapter keyed by defillamaId,
+// and may be nil.
+func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaProtocol, parents []llamaParent,
 	minFees30d float64) ([]Protocol, cohortStats, error) {
 
 	byID := map[string]llamaProtocol{}
@@ -155,6 +234,30 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 	byParent := map[string]llamaParent{}
 	for _, p := range parents {
 		byParent[p.ID] = p
+	}
+	revByID := map[string]revenueAdapter{}
+	for _, r := range revenue {
+		// A row with no 30d figure is no revenue row: it must neither
+		// make the token's revenue known nor count as coverage.
+		if id := idString(r.DefillamaID); id != "" && r.Total30d != nil {
+			revByID[id] = r
+		}
+	}
+	// Whether any revenue rows arrived at all: with none, revenue is
+	// unknown for every token and no row is flagged as partial.
+	haveRevenue := len(revByID) > 0
+	// TVL by token, over every /protocols row, resolved by the same rule
+	// the fee adapters use: the row's own gecko_id first, else its
+	// parent's. Rows without either belong to no token.
+	tvlByToken := map[string]float64{}
+	for _, p := range protocols {
+		gecko := p.GeckoID
+		if gecko == "" {
+			gecko = byParent[p.ParentProtocol].GeckoID
+		}
+		if gecko != "" && p.TVL > 0 {
+			tvlByToken[gecko] += p.TVL
+		}
 	}
 
 	var st cohortStats
@@ -213,6 +316,21 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 			e.Incomplete = true
 			e.SilentFees1y += f.Total1y
 		}
+		// Revenue rides on the fee adapter: same product, same token, so
+		// the sum spans the adapters the fees do. A product earning fees
+		// this month with no revenue row is a coverage gap, not a zero:
+		// DeFiLlama defines no revenue for it, so the token's total is
+		// knowably short and the P/S on it would be inflated.
+		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
+			e.RevKnown = true
+			e.Rev30d += *rv.Total30d
+			e.Rev1y += deref(rv.Total1y)
+			if *rv.Total30d == 0 && deref(rv.Total1y) > silentAdapterYearUSD {
+				e.RevIncomplete = true
+			}
+		} else if haveRevenue && f.Total30d > 0 {
+			e.RevMissingAdapters++
+		}
 	}
 
 	out := make([]Protocol, 0, len(acc))
@@ -229,6 +347,15 @@ func joinCohort(fees []feeAdapter, protocols []llamaProtocol, parents []llamaPar
 		}
 		sort.Strings(e.Adapters)
 		e.Slug = slugify(e.Name)
+		// A gap only means something once some product does report
+		// revenue; a token with no revenue row anywhere is unknown, not
+		// partial, and stays unflagged with no P/S.
+		if e.Incomplete || (e.RevKnown && e.RevMissingAdapters > 0) {
+			e.RevIncomplete = true
+		}
+		if tvl, ok := tvlByToken[gecko]; ok {
+			e.TVL, e.HasTVL = tvl, true
+		}
 		if e.Fees30d <= minFees30d {
 			st.BelowFloor++
 			continue
@@ -285,7 +412,7 @@ func fetchMarkets(ids []string) (map[string]cgMarket, error) {
 			TotalSupply *float64 `json:"total_supply"`
 			Chg30d      *float64 `json:"price_change_percentage_30d_in_currency"`
 		}
-		if err := getJSON(cgMarkets+"?"+q.Encode(), &page); err != nil {
+		if err := getCoinGecko(cgMarkets+"?"+q.Encode(), &page); err != nil {
 			return out, fmt.Errorf("coingecko page %d: %w", i/250, err)
 		}
 		for _, c := range page {
