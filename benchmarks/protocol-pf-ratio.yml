@@ -3,7 +3,7 @@ slug: protocol-pf-ratio
 number: "274"
 title: "Price to fees across DeFi: what the market pays per dollar of protocol fees"
 seo_title: "DeFi P/F ratio: {{best_name}} cheapest at {{best_p50}}"
-seo_description: "{{best_name}} is the cheapest at {{best_p50}} annualized fees of {{ranked_count}} tokens ranked. P/F against each protocol's own category median, with float and the monthly fee trend."
+seo_description: "{{best_name}} has the lowest P/F at {{best_p50}} annualized fees of {{ranked_count}} tokens ranked. P/F against each protocol's own category median, with float and the monthly fee trend."
 subtitle: "Circulating market cap divided by annualized fees, for every protocol that earns real fees and has a listed token. The number to read is not the ratio but the column beside it: a P/F of 1.05 is ordinary for a launchpad and cheap for a yield protocol, so each row is compared to the median of its own category rather than to the market."
 category: Trading
 status: live

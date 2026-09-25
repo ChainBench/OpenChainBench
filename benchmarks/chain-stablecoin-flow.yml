@@ -3,7 +3,7 @@ slug: chain-stablecoin-flow
 number: "275"
 title: "Stablecoin flow by chain: where dollars actually moved over 30 days"
 seo_title: "Stablecoin flow by chain: {{best_name}} gained {{best_p50}}"
-seo_description: "{{best_name}} took in {{best_p50}} of stablecoins over 30 days, {{worst_name}} sits at the bottom with {{worst_p50}}. Net flow, the 7 and 30 day move and the float behind it for {{ranked_count}} chains."
+seo_description: "{{best_name}} took in {{best_p50}} of stablecoins over 30 days, the most of {{ranked_count}} chains; {{worst_name}} sits at the bottom with {{worst_p50}}. Net flow, 7 and 30 day moves, float."
 subtitle: "The dollar change in each chain's stablecoin float over the trailing 30 days. Unlike a TVL ranking this is a flow, not a level: it only moves when somebody mints or bridges dollars onto a chain, or takes them off. Chains below $100M of float when the cohort was set (2026-09-23) are not ranked, because one mint moves them by a third."
 category: Blockchains
 status: live
