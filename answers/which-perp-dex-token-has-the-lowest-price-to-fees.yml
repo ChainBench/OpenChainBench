@@ -1,0 +1,57 @@
+slug: which-perp-dex-token-has-the-lowest-price-to-fees
+question: "Which perp DEX token has the lowest price to fees?"
+benchmark: perp-pf-ratio
+status: live
+
+short_answer: |
+  {{best_name}} trades at the lowest price to fees among {{count}} perp DEX tokens, at {{best_p50}}: its market cap is that many times the fees its venue earned over the last 30 days, annualized. The table below reads every token on the same ratio next to price to sales, fully diluted valuation, float and open interest, so a low multiple can be checked against how much of the supply is still to come.
+
+intro: |
+  A perpetuals venue earns trading fees every day, and most of them have a token whose market cap
+  the market sets every second. Dividing one by the other gives price to fees, the closest thing
+  crypto has to a price to earnings ratio that does not depend on a treasury report: how many years
+  of current fee income the market is paying for. OpenChainBench computes it for every perp DEX with
+  a listed token from the same two public sources, DeFiLlama for fees and revenue and CoinGecko for
+  market data, on the same window, 30 closed UTC days annualized.
+
+  The number is only useful next to its companions. Price to sales uses the venue's own share of the
+  fees (what reaches the protocol or its token holders rather than makers and referrers), so a venue
+  that passes most fees through to traders reads far higher on P/S than on P/F. Fully diluted
+  valuation over fees says what the ratio becomes once every token circulates, and the float column
+  says how far away that is. Open interest and 30-day fees put the venue's size next to its price.
+
+methodology: |
+  Fees and revenue come from DeFiLlama's per-venue adapters (dailyFees and dailyRevenue), summed over
+  the last 30 closed UTC days and annualized as the sum times 365 divided by 30. Market cap, fully
+  diluted valuation, circulating and total supply come from CoinGecko's markets endpoint. P/F is
+  market cap over annualized fees, P/S is market cap over annualized revenue, FDV/F is fully diluted
+  valuation over annualized fees, float is circulating over total supply. A venue with no token, or
+  with fewer than 30 days of fees on DeFiLlama, publishes no ratio rather than a partial one. The
+  harness refreshes hourly; the bench page carries the exact query behind every cell.
+
+limitations:
+  - "A low ratio is a description, not a verdict. The market can price a token low because it expects the fees to fall, because most of the supply is still locked, or because the token carries no claim on the fees at all; the float and P/S columns cover the second and third cases, nothing on this page covers the first."
+  - "Fees are what DeFiLlama's adapter attributes to the venue. Adapters differ in what they count (taker fees only, or maker rebates and referral payouts too), so two venues with the same economics can show different fee totals."
+  - "Thirty days is one month of a seasonal business. A venue that ran a fee promotion, or a month with one volatility spike, moves the ratio for the whole window; the 7 day and previous 30 day fee windows on the bench page show whether the month was typical."
+  - "Venues without a listed token (and pre-TGE venues) are not on this board; they appear on the volume and fee benches instead."
+  - "OpenChainBench measures; it does not advise. Nothing here is a recommendation to buy or sell any token."
+
+faq:
+  - q: "Which perp DEX token has the lowest price to fees right now?"
+    a: "{{best_name}} at {{best_p50}}, of {{count}} tokens ranked. The bench page refreshes hourly and shows the 30-day fee total and the market cap behind the ratio, so the reader can see whether the multiple is low because fees are high or because the market cap is small."
+  - q: "What is the difference between price to fees and price to sales here?"
+    a: "Price to fees divides the market cap by every fee the venue collected. Price to sales divides it by the revenue, the part of those fees the protocol or its token keeps after paying makers, referrers and other participants. A venue that distributes most fees to traders shows a low P/F and a high P/S; the gap between the two is the venue's take rate."
+  - q: "Why does the same token have a much higher FDV/F than P/F?"
+    a: "Because most of its supply does not circulate yet. FDV/F values every token that will ever exist at today's price; the float column shows what share circulates now. A P/F of 3x with a float of 20% is a 15x FDV/F: the ratio the token will carry once the supply is out, at today's fees and price."
+  - q: "Where do the fees come from and can I check them?"
+    a: "From DeFiLlama's public per-venue adapters, the same series defillama.com shows. Every cell on the bench page names its Prometheus query, the /api/stat endpoint returns the ranked table as JSON, and the daily history at kv.openchainbench.com/aggregate/valuation/history.json keeps one point per UTC day per token."
+  - q: "Does a low ratio mean the token is mispriced?"
+    a: "No. It is the same ratio applied to every venue on the same window, so tokens can be compared, and it comes with the columns that explain a low multiple (float, revenue share, size). Reading a low ratio as a signal to act ignores the case where the market expects the fees to fall, which this page cannot see."
+
+related:
+  - which-defi-token-is-cheapest-per-dollar-of-fees
+  - which-chain-gained-the-most-stablecoins-this-month
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Which perp DEX token has the lowest price to fees?"
+seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{count}} perp DEX tokens. Market cap over annualized 30-day fees, with P/S, FDV and float."

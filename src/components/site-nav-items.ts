@@ -14,6 +14,7 @@ import {
   Info,
   Landmark,
   Layers,
+  PiggyBank,
   Scale,
   Server,
   Smartphone,
@@ -95,6 +96,7 @@ export function navGroups(): NavGroup[] {
           match: section("/trading-apps"),
         },
         { href: "/hyperliquid", label: "Hyperliquid", icon: Zap, match: section("/hyperliquid") },
+        { href: "/capital", label: "Capital", icon: PiggyBank, match: section("/capital") },
       ],
     },
     {

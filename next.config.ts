@@ -204,6 +204,7 @@ const nextConfig: NextConfig = {
       { source: "/products/:slug", has: markdownOnly, destination: "/api/md/products/:slug" },
       { source: "/perps", has: markdownOnly, destination: "/api/md/perps" },
       { source: "/rwa", has: markdownOnly, destination: "/api/md/rwa" },
+      { source: "/capital", has: markdownOnly, destination: "/api/md/capital" },
     ];
     const afterFiles = [
       // PostHog reverse proxy — routes /ingest/* through the Next.js server

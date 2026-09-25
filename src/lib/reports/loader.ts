@@ -51,6 +51,11 @@ export const REPORT_CATEGORY_META: Record<
     description:
       "Crypto data APIs benchmarked for price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.",
   },
+  capital: {
+    label: "Capital",
+    description:
+      "Where capital sits and moves between chains (TVL, bridged value, stablecoin flows, open interest) and what the market pays for a dollar of protocol fees, from public sources on the same windows.",
+  },
 };
 
 /**
@@ -62,6 +67,21 @@ export const REPORT_CATEGORY_META: Record<
 export const LIVE_REPORTS: ReportMeta[] = [
   // The State of perp DEXes Q3 2026 report was withdrawn on 2026-09-23
   // pending a rewrite; the mechanism stays for the next live report.
+  {
+    title: "Capital flows and token valuation, September 2026",
+    category: "Capital",
+    categorySlug: "capital",
+    slug: "2026-09-capital-flows-and-valuation",
+    publishedAt: "2026-09-25",
+    period: "September 2026",
+    summary:
+      "Where stablecoins went this month, which L2s gained bridged value against their peers, which tokens trade lowest per dollar of fees and where fees and token prices moved apart. Every figure read live from the capital benches.",
+    heroFinding: "Read live from benches 273, 274, 275, 265 and 277; the headline is recomputed on every render.",
+    author: "OpenChainBench Research",
+    readingTime: 8,
+    canonical: "https://openchainbench.com/reports/capital/2026-09-capital-flows-and-valuation",
+    live: true,
+  },
 ];
 
 function parseReport(filePath: string): Report {

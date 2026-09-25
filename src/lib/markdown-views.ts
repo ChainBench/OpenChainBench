@@ -22,6 +22,7 @@ import type { Benchmark } from "@/types/benchmark";
 import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
+import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
 
 export function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
   // A bench that repurposes the p50/p90/p99/mean slots declares
@@ -248,5 +249,75 @@ export function rwaHubMarkdown(benches: Benchmark[]): string {
   }
   md.push(`---`);
   md.push(`Every figure is reproducible from public sources; each bench page exposes /api/stat/<slug> with the same values and timestamp.`);
+  return md.join("\n");
+}
+
+
+
+/** Markdown view of /capital: both cohorts, the same rows as the HTML tables. */
+export function capitalHubMarkdown(hub: CapitalHub): string {
+  const md: string[] = [];
+  md.push(`# Capital flows and token valuation leaderboards`);
+  md.push("");
+  md.push(`- Page: ${SITE.url}/capital`);
+  md.push(`- Daily history: https://kv.openchainbench.com/aggregate/valuation/history.json · https://kv.openchainbench.com/aggregate/chains/history.json`);
+  md.push(`- JSON per bench: ${hub.benches.map((b) => `${SITE.url}/api/stat/${b.slug}`).join(" · ")}`);
+  md.push(`- License: CC-BY-4.0`);
+  if (hub.asOf) md.push(`- Data as of: ${hub.asOf}`);
+  md.push("");
+  if (hub.chains.length > 0) {
+    md.push(`## Chains: TVL, bridged value, stablecoin flows`);
+    md.push("");
+    // Same rule as the table: history-fed columns appear once they carry values.
+    const cols: { h: string; v: (c: CapitalHub["chains"][number]) => string }[] = [
+      ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: CapitalHub["chains"][number]) => capUsd(c.tvl) }] : []),
+      { h: "Bridged value", v: (c) => capUsd(c.bridgedTvl) },
+      { h: "7d vs L2 peers", v: (c) => capPct(c.excess7dPct) },
+      { h: "Stablecoin float", v: (c) => capUsd(c.stablesFloat) },
+      { h: "Net stables 30d", v: (c) => capUsd(c.stablesNet30d) },
+      ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: CapitalHub["chains"][number]) => capUsd(c.dexVolume24h) }] : []),
+      ...(hub.chains.some((c) => c.fees30d != null) ? [{ h: "Fees 30d", v: (c: CapitalHub["chains"][number]) => capUsd(c.fees30d) }] : []),
+      { h: "Reading", v: (c) => c.note },
+    ];
+    md.push(`| # | Chain | ${cols.map((c) => c.h).join(" | ")} |`);
+    md.push(`|---|---|${cols.map(() => "---").join("|")}|`);
+    hub.chains.forEach((c, i) => {
+      md.push(`| ${i + 1} | ${c.name} | ${cols.map((k) => k.v(c)).join(" | ")} |`);
+    });
+    md.push("");
+  }
+  if (hub.pmOi.length > 0 || hub.perpOi.length > 0) {
+    md.push(`## Open interest`);
+    md.push("");
+    if (hub.perpOi.length > 0) md.push(`Perp DEXes: ${hub.perpOi.slice(0, 8).map((r) => `${r.name} ${capUsd(r.oi)}`).join(", ")}.`);
+    if (hub.pmOi.length > 0) md.push(`Prediction markets: ${hub.pmOi.slice(0, 8).map((r) => `${r.name} ${capUsd(r.oi)}`).join(", ")}.`);
+    md.push("");
+  }
+  if (hub.protocols.length > 0) {
+    md.push(`## Tokens by price to fees (market cap over annualized 30-day fees)`);
+    md.push("");
+    md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median | Reading |`);
+    md.push(`|---|---|---|---|---|---|---|---|---|---|`);
+    hub.protocols.forEach((p, i) => {
+      const flag = p.signal === "fees-up-token-down" ? " (fees up, token down)" : p.signal === "fees-down-token-up" ? " (fees down, token up)" : "";
+      md.push(
+        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} | ${p.note} |`,
+      );
+    });
+    md.push("");
+  }
+  if (hub.perps.length > 0) {
+    md.push(`## Perp DEX tokens: P/F, P/S, FDV, float, open interest`);
+    md.push("");
+    md.push(`| # | Venue | P/F | P/S | FDV/F | Market cap | FDV | Float | Open interest | Fees 30d | Revenue 30d |`);
+    md.push(`|---|---|---|---|---|---|---|---|---|---|---|`);
+    hub.perps.forEach((p, i) => {
+      md.push(
+        `| ${i + 1} | ${p.name} | ${capX(p.pf)} | ${capX(p.ps)} | ${capX(p.pfFdv)} | ${capUsd(p.mcap)} | ${capUsd(p.fdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capUsd(p.oi)} | ${capUsd(p.fees30d)} | ${capUsd(p.rev30d)} |`,
+      );
+    });
+    md.push("");
+  }
+  md.push(`Sources: DeFiLlama (fees, revenue, TVL, DEX volume, stablecoins), L2Beat (value secured), CoinGecko (market data), Polymarket and Kalshi (open interest). Not measured: token unlock schedules, bridge volumes beyond what OpenChainBench reads itself.`);
   return md.join("\n");
 }

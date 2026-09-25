@@ -191,6 +191,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/rwa`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE.url}/capital`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     ...(isDevOnlyRoute("/speedtest-rpc")
       ? []
