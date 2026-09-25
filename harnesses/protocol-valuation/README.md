@@ -81,4 +81,4 @@ go run ./cmd/script                    # /metrics on :2112, first poll immediate
 curl -s localhost:2112/metrics | grep -E 'protocol_(ps_ratio|tvl_usd|supply_change)'
 ```
 
-Environment: `REFRESH_MINUTES` (60), `MIN_FEES_30D_USD` (100000), `MIN_FLOAT_PCT` (10), `METRICS_ADDR` (:2112). `COINGECKO_API_KEY` is optional: a free demo key (30 calls a minute, 10k a month) is sent as `x-cg-demo-api-key` and lifts the address-shared public limit; without it the harness runs the same, only slower on the supply pass.
+Environment: `REFRESH_MINUTES` (60), `MIN_FEES_30D_USD` (100000), `MIN_FLOAT_PCT` (10), `MIN_MCAP_USD` (5000000), `METRICS_ADDR` (:2112). `COINGECKO_API_KEY` is optional: a free demo key (30 calls a minute, 10k a month) is sent as `x-cg-demo-api-key` and lifts the address-shared public limit; without it the harness runs the same, only slower on the supply pass.

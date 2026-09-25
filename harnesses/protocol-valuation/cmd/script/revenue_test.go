@@ -138,7 +138,7 @@ func TestPartialRevenueCoverageIsIncomplete(t *testing.T) {
 	rows := buildRows(cohort, map[string]cgMarket{
 		"gmx":      {ID: "gmx", Mcap: 1e9, FDV: 1e9, Circ: 1, Total: 1},
 		"pump-fun": {ID: "pump-fun", Mcap: 1e9, FDV: 1e9, Circ: 1, Total: 1},
-	}, 10)
+	}, 10, 0)
 	for _, r := range rows {
 		if r.HasPS {
 			t.Errorf("%s: no P/S on a short or unknown revenue total", r.GeckoID)
@@ -186,7 +186,7 @@ func TestPSIsAbsentWithoutRevenue(t *testing.T) {
 		"a": {ID: "a", Mcap: 730e6, FDV: 1e9, Circ: 73, Total: 100},
 		"b": {ID: "b", Mcap: 730e6, FDV: 1e9, Circ: 73, Total: 100},
 	}
-	rows := buildRows(cohort, markets, 10)
+	rows := buildRows(cohort, markets, 10, 0)
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))
 	}

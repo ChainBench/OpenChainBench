@@ -745,7 +745,9 @@ const buildProvidersCached = unstable_cache(
   // every RWA rank read "(24h avg)" while the v9 list outlived the deploy.
   // v11 (2026-09-25): 273, 274 and 275 join prod; ~80 protocol tokens and
   // 41 L2s become product appearances the v10 list does not carry.
-  ["providers-v11"],
+  // v12 (2026-09-25): bench 274 market cap floor; 11 micro cap tokens stop
+  // being product appearances.
+  ["providers-v12"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

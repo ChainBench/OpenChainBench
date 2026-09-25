@@ -77,11 +77,11 @@ func TestALowFloatTokenIsNotACheapProtocol(t *testing.T) {
 		"tiny": {Mcap: 1e6, Circ: 4, Total: 100},  // 4 % float
 		"real": {Mcap: 5e7, Circ: 80, Total: 100}, // 80 %
 	}
-	rows := buildRows(cohort, markets, 10)
+	rows := buildRows(cohort, markets, 10, 0)
 	if len(rows) != 1 || rows[0].Slug != "real" {
 		t.Fatalf("got %d rows (%v); the 4 %% float row must be dropped", len(rows), rows)
 	}
-	withoutFloor := buildRows(cohort, markets, 0)
+	withoutFloor := buildRows(cohort, markets, 0, 0)
 	if len(withoutFloor) != 2 {
 		t.Fatalf("with no floor both rows should publish, got %d", len(withoutFloor))
 	}
@@ -112,7 +112,7 @@ func TestASmallCategoryPublishesNoMedian(t *testing.T) {
 	cohort = append(cohort, Protocol{Slug: "lonely", GeckoID: "lonely", Category: "Oracle", Fees30d: 1e6})
 	markets["lonely"] = cgMarket{Mcap: 1e7, Circ: 90, Total: 100}
 
-	rows := buildRows(cohort, markets, 10)
+	rows := buildRows(cohort, markets, 10, 0)
 	medians := CategoryMedians(rows)
 	if _, ok := medians["Dexs"]; !ok {
 		t.Fatalf("a 5-token category should have a median: %v", medians)
@@ -312,7 +312,7 @@ func TestAnIncompleteRowLeavesTheMedianAndTheScreen(t *testing.T) {
 	}
 	markets["broken"] = cgMarket{Mcap: 1e6, Circ: 90, Total: 100}
 
-	rows := buildRows(cohort, markets, 10)
+	rows := buildRows(cohort, markets, 10, 0)
 	medians := CategoryMedians(rows)
 	withBroken := median([]float64{})
 	_ = withBroken
@@ -334,5 +334,26 @@ func TestAnIncompleteRowLeavesTheMedianAndTheScreen(t *testing.T) {
 	}
 	if got, want := medians["Dexs"], median(vals); got != want {
 		t.Errorf("median %v includes the incomplete row (want %v over the other five)", got, want)
+	}
+}
+
+// A token worth a few hundred thousand dollars against millions of annual
+// fees prints a ratio near zero and leads an ascending board. The floor is
+// what keeps the top of the board readable (audit 2026-09-25).
+func TestMarketCapFloorDropsTheRow(t *testing.T) {
+	cohort := []Protocol{
+		{GeckoID: "dust", Name: "Dust", Category: "Dexs", Fees30d: 5_000_000},
+		{GeckoID: "real", Name: "Real", Category: "Dexs", Fees30d: 5_000_000},
+	}
+	markets := map[string]cgMarket{
+		"dust": {ID: "dust", Mcap: 400_000, FDV: 400_000, Circ: 1, Total: 1},
+		"real": {ID: "real", Mcap: 200_000_000, FDV: 200_000_000, Circ: 1, Total: 1},
+	}
+	rows := buildRows(cohort, markets, 10, 5_000_000)
+	if len(rows) != 1 || rows[0].GeckoID != "real" {
+		t.Fatalf("want only the real market cap, got %+v", rows)
+	}
+	if got := buildRows(cohort, markets, 10, 0); len(got) != 2 {
+		t.Fatalf("a zero floor keeps both rows, got %d", len(got))
 	}
 }
