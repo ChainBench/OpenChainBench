@@ -737,6 +737,13 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 		if sw.RefSrc != "" {
 			break // reference known; only the immediate neighbour is needed for the screen
 		}
+		// A concentrated pool's price only moves on swaps, so the price the
+		// previous swap left behind is the price ours found: exact, where
+		// that trade's own average is not.
+		if p, ok := concMid(sw, tx, vaultOf(tx, sw.PoolVault), ptx, solUSD); ok {
+			sw.finalize(&p, 0, "reserves")
+			break
+		}
 		if p := poolTradePrice(ptx, sw, solUSD); p > 0 {
 			age := int64(0)
 			if ps.BlockTime != nil {

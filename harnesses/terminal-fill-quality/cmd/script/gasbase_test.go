@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"math"
 	"math/big"
 	"strings"
@@ -238,5 +239,43 @@ func TestArcTwinLogsAreCountedOnce(t *testing.T) {
 	}
 	if arcTwins("base", logs) != nil {
 		t.Errorf("a chain other than Arc has no twins")
+	}
+}
+
+func TestConcentratedPriceIsOrientedByTheTradeItself(t *testing.T) {
+	// A memecoin pool: 1.2e-7 raw quote per raw token. The event's price and
+	// its inverse are 1e14 apart, so the trade's own execution names which
+	// way round the pool's tokens are.
+	ev := []concSqrt{{post: 1.2e-7}}
+	pre, post, ok := pickConc(ev, 1.25e-7)
+	if !ok || post != 1.2e-7 || pre != 0 {
+		t.Errorf("straight orientation: pre=%g post=%g ok=%v", pre, post, ok)
+	}
+	if _, post, ok := pickConc([]concSqrt{{post: 1 / 1.2e-7}}, 1.25e-7); !ok || math.Abs(post-1.2e-7)/1.2e-7 > 1e-9 {
+		t.Errorf("inverted orientation: post=%g ok=%v", post, ok)
+	}
+	// Two pools of the same venue in one route: no reference rather than a guess.
+	if _, _, ok := pickConc([]concSqrt{{post: 1.2e-7}, {post: 1.3e-7}}, 1.25e-7); ok {
+		t.Errorf("an ambiguous route still produced a reference")
+	}
+	// A price near one is its own near-inverse: also an ambiguity.
+	if _, _, ok := pickConc([]concSqrt{{post: 1.1}}, 1.05); ok {
+		t.Errorf("a price beside its own inverse still produced a reference")
+	}
+	// Out of band: not this pool's event.
+	if _, _, ok := pickConc([]concSqrt{{post: 1.2e-7}}, 9e-7); ok {
+		t.Errorf("an event from another pool was accepted")
+	}
+}
+
+func TestQ64ReadsASquareRootPrice(t *testing.T) {
+	// sqrt(4) in Q64.64 is 2 << 64, so the price reads 4.
+	b := make([]byte, 16)
+	binary.LittleEndian.PutUint64(b[8:], 2)
+	if v := q64(b); math.Abs(v-4) > 1e-9 {
+		t.Errorf("q64 = %g, want 4", v)
+	}
+	if v := q64(b[:8]); v != 0 {
+		t.Errorf("q64 of a short slice = %g, want 0", v)
 	}
 }

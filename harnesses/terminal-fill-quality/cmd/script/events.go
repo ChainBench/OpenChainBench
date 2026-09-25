@@ -140,6 +140,10 @@ func eventMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, solUS
 		return cpmmMid(sw, tx, base, solUSD)
 	case "pumpswap":
 		return pumpSwapMid(ctx, rpc, sw, tx, base, solUSD)
+	case "orca":
+		// A whirlpool publishes the price before its own swap, so no
+		// neighbour is needed.
+		return concMid(sw, tx, base, nil, solUSD)
 	}
 	return 0, false
 }
@@ -643,4 +647,163 @@ func pumpSwapMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, ba
 		}
 	}
 	return 0, false
+}
+
+// Concentrated pools: Orca whirlpools, Raydium CLMM, Meteora DAMM v2 and
+// Meteora's dynamic bonding curve. Each publishes the square-root price
+// its swap left behind, and Orca's event also carries the one it found.
+//
+// A concentrated pool's price moves on swaps and on nothing else: adding
+// or removing liquidity changes the depth at a price, never the price
+// itself. So the price a swap left behind IS the price the next swap
+// finds, however long the wait — the previous swap's own event is an
+// exact pre-trade reference, not the lagged one the VWAP of that trade
+// gives. These five venues were the last on that fallback: 55 of 902
+// Solana rows, and every negative pool left on the board.
+const (
+	orcaProgram  = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+	clmmProgram  = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+	damm2Program = "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"
+	dbcProgram   = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+)
+
+var (
+	discOrcaTraded = anchorEventDisc("Traded")
+	discEvtSwap    = anchorEventDisc("EvtSwap")
+	discEvtSwap2   = anchorEventDisc("EvtSwap2")
+)
+
+// concSqrt: the prices one concentrated swap event reports, raw token B
+// per raw token A. pre is zero on the venues whose event carries only
+// what the swap left behind.
+type concSqrt struct{ pre, post float64 }
+
+// q64: a Q64.64 square-root price as a price.
+func q64(b []byte) float64 {
+	if len(b) < 16 {
+		return 0
+	}
+	v := float64(binary.LittleEndian.Uint64(b[8:]))*math.Pow(2, 64) + float64(binary.LittleEndian.Uint64(b))
+	r := v / math.Pow(2, 64)
+	return r * r
+}
+
+// concSqrts: every swap event of the venue in a transaction.
+//
+//	Orca Traded:      whirlpool(32) a_to_b(1) pre(u128) post(u128) in out …
+//	Raydium CLMM:     pool(32) sender(32) ta0(32) ta1(32) a0 tf0 a1 tf1
+//	                  zero_for_one(1) sqrt_price(u128) liquidity(u128) tick
+//	Meteora DAMM v2:  pool(32) … next_sqrt_price(u128) at 84
+//	Meteora DBC:      pool(32) config(32) … next_sqrt_price(u128) at 98
+//
+// Read from the CPI event instructions and from the emit! log lines both;
+// Orca and Raydium log theirs, Meteora emits through the CPI.
+func concSqrts(tx *parsedTx, venue string) []concSqrt {
+	var out []concSqrt
+	add := func(prog string, d [8]byte, b []byte) {
+		switch {
+		case venue == "orca" && d == discOrcaTraded && len(b) == 113:
+			out = append(out, concSqrt{pre: q64(b[33:]), post: q64(b[49:])})
+		case venue == "raydium-clmm" && d == discCpmmSwap && len(b) == 197:
+			out = append(out, concSqrt{post: q64(b[161:])})
+		case venue == "meteora-damm2" && prog == damm2Program && d == discEvtSwap2 && len(b) >= 100:
+			out = append(out, concSqrt{post: q64(b[84:])})
+		case venue == "meteora-dbc" && prog == dbcProgram && d == discEvtSwap && len(b) >= 114:
+			out = append(out, concSqrt{post: q64(b[98:])})
+		}
+	}
+	for _, in := range tx.Meta.InnerInstructions {
+		for _, ix := range in.Instructions {
+			if ix.Data == "" {
+				continue
+			}
+			raw, ok := base58Decode(ix.Data)
+			if !ok || len(raw) < 16 || [8]byte(raw[:8]) != anchorEventCPI {
+				continue
+			}
+			add(ix.ProgramID, [8]byte(raw[8:16]), raw[16:])
+		}
+	}
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8 {
+			continue
+		}
+		add("", [8]byte(raw[:8]), raw[8:])
+	}
+	return out
+}
+
+// pickConc: the one event whose price, in one of its two orientations,
+// sits beside the price our own trade executed at. Two candidates within
+// the band are an ambiguity, not a reference: the row keeps the previous
+// trade rather than take a guess (a route through two pools of the same
+// venue, or a pool whose raw price is near one, where a price and its
+// inverse are both plausible).
+func pickConc(evs []concSqrt, exec float64) (pre, post float64, ok bool) {
+	n := 0
+	for _, e := range evs {
+		for _, inv := range []bool{false, true} {
+			p, q := e.pre, e.post
+			if inv {
+				if p > 0 {
+					p = 1 / p
+				}
+				if q > 0 {
+					q = 1 / q
+				}
+			}
+			if q <= 0 || q/exec < 0.5 || q/exec > 2 {
+				continue
+			}
+			pre, post, n = p, q, n+1
+		}
+	}
+	return pre, post, n == 1
+}
+
+// concMid: the pool's exact price before the trade, in the swap's quote
+// unit per token. prev is the transaction before ours on the pool, needed
+// on the venues whose event reports only the price it left behind; nil
+// where the event carries its own (Orca).
+//
+// The trade's own execution comes from the vaults, not the event, so only
+// the square-root price has to be located in the layout. It also decides
+// the orientation and checks the result: a buy never fills under the
+// price the pool showed before it, a sale never over it, and the trade
+// moves the pool its own way.
+func concMid(sw *Swap, tx *parsedTx, base vaultInfo, prev *parsedTx, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) == 0 || base.delta == 0 {
+		return 0, false
+	}
+	q := vaultOf(tx, sw.PoolQuoteVaults[0])
+	if !q.found || q.delta == 0 || (base.delta > 0) == (q.delta > 0) {
+		return 0, false
+	}
+	exec := math.Abs(q.delta) / math.Abs(base.delta) // raw quote per raw token
+	pre, post, ok := pickConc(concSqrts(tx, sw.Venue), exec)
+	if !ok {
+		return 0, false
+	}
+	if pre == 0 {
+		if prev == nil {
+			return 0, false
+		}
+		_, prevPost, ok := pickConc(concSqrts(prev, sw.Venue), exec)
+		if !ok || prevPost == 0 {
+			return 0, false
+		}
+		pre = prevPost
+	}
+	if buy := base.delta < 0; buy {
+		if exec < pre || post < pre {
+			return 0, false
+		}
+	} else if exec > pre || post > pre {
+		return 0, false
+	}
+	return toSwapQuote(sw, q.mint, pre*math.Pow10(base.dec-q.dec), solUSD)
 }
