@@ -34,6 +34,15 @@ export type ChainKpis = {
   nativePrice: number | null;
   /** Mobula native token circulating market cap in USD. */
   nativeMcap: number | null;
+  /** Fees users paid on the chain over DefiLlama's trailing 30 complete
+   *  UTC days (gas + tracked protocol fees), and the revenue the chain and
+   *  its protocols kept. Bench 279. Absent in snapshots written before
+   *  the fees loop shipped (2026-09-25), hence optional. */
+  fees30d?: number | null;
+  revenue30d?: number | null;
+  /** Chain token market cap (CoinGecko) over annualized 30-day fees; only
+   *  for chains DefiLlama maps to a token (Ethereum yes, Base no). */
+  tokenPf?: number | null;
   /** Robinhood Chain gas subsidy: days remaining until 2026-09-29 (null on every other chain). */
   subsidyDaysRemaining: number | null;
   /** Robinhood Chain gas subsidy: cumulative USD Robinhood has paid the sequencer since launch. */
@@ -91,6 +100,9 @@ export async function fetchChainKpisFresh(
     stablesMcap,
     nativePrice,
     nativeMcap,
+    fees30d,
+    revenue30d,
+    tokenPf,
     subsidyDaysRemaining,
     subsidyCostToDate,
     subsidyProjectedTotal,
@@ -100,6 +112,9 @@ export async function fetchChainKpisFresh(
     prom.scalar(`chain_stables_mcap_usd${sel}`),
     prom.scalar(`chain_native_price_usd${sel}`),
     prom.scalar(`chain_native_mcap_usd${sel}`),
+    prom.scalar(`chain_fees_30d_usd${sel}`),
+    prom.scalar(`chain_revenue_30d_usd${sel}`),
+    prom.scalar(`chain_token_pf_ratio${sel}`),
     // Robinhood-only. On every other chain these queries return null,
     // and the strip skips the cards silently.
     isRobinhood ? prom.scalar(`robinhood_subsidy_days_remaining`) : Promise.resolve(null),
@@ -114,6 +129,9 @@ export async function fetchChainKpisFresh(
     stablesMcap,
     nativePrice,
     nativeMcap,
+    fees30d,
+    revenue30d,
+    tokenPf,
     subsidyDaysRemaining,
     subsidyCostToDate,
     subsidyProjectedTotal,
@@ -170,6 +188,8 @@ export function hasAnyKpi(k: ChainKpis | null): boolean {
     k.stablesMcap != null ||
     k.nativePrice != null ||
     k.nativeMcap != null ||
+    k.fees30d != null ||
+    k.revenue30d != null ||
     k.subsidyDaysRemaining != null ||
     k.subsidyCostToDate != null ||
     k.subsidyProjectedTotal != null

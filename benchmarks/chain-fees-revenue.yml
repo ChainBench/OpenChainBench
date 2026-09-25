@@ -1,0 +1,486 @@
+# OpenChainBench. Bench 279
+slug: chain-fees-revenue
+number: "279"
+title: "Chain fees and revenue: what users paid on each chain over 30 days"
+seo_title: "Chain fees by blockchain: {{best_name}} collected {{best_p50}} in 30 days"
+seo_description: "{{best_name}} users paid {{best_p50}} in fees over 30 days, the most of {{ranked_count}} chains. Fees, revenue kept, revenue share and the chain token's price to fees, from DefiLlama's per-chain adapters."
+subtitle: "Fees paid by users on each chain over the trailing 30 complete UTC days: gas plus the fees of every protocol DefiLlama tracks on it. Beside it, the revenue the chain and its protocols kept, the share that represents, and for chains with a token of their own, that token's market cap over annualized fees and revenue."
+category: Blockchains
+status: live
+metric: Fees paid (30d)
+row_noun: { one: chain, many: chains }
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  Fees here are DefiLlama's per-chain aggregate: gas plus the fees of every
+  protocol DefiLlama has an adapter for on that chain, so a chain with more
+  tracked protocols shows more fees for the same activity. Revenue is the
+  part the chain or its protocols kept rather than paid to LPs, stakers or
+  users, as each adapter defines it. The ratios use the chain token's
+  circulating market cap and a 30-day run rate, so a promo month or a quiet
+  one moves them a lot.
+
+seo_intro: |
+  TVL says where capital sits and stablecoin flow says where it is moving;
+  neither says whether a chain is being used. Fees do. This board ranks
+  chains by what their users paid over the last 30 complete UTC days,
+  gas and protocol fees combined, from the same DefiLlama fees adapters
+  defillama.com shows per chain. Next to the fees sits the revenue the
+  chain and its protocols kept, the share of fees that represents, and,
+  for chains with a token of their own (Ethereum ETH, Solana SOL, Arbitrum
+  ARB, Hyperliquid HYPE; Base, Robinhood Chain and Unichain have none), the
+  token's circulating market cap over annualized fees and over annualized
+  revenue: the P/F and P/S multiples the protocol valuation benches
+  publish, applied to chains. A chain whose fees grow while its multiple falls is cheaper per
+  dollar of usage than a month ago; the two columns are on the same row so
+  that comparison takes one look.
+
+abstract: |
+  The chain-kpis harness adds a fees loop to its DefiLlama reads: once an
+  hour, for every registry chain DefiLlama maps, it fetches
+  /overview/fees/<chain> twice, once with dataType=dailyFees and once
+  with dataType=dailyRevenue, without the chart, and publishes the 24h,
+  7d and 30d totals as chain_fees_*_usd and chain_revenue_*_usd. Revenue
+  over fees on the 30-day window is chain_revenue_share_pct. The chain's
+  token is DefiLlama's own chain to gecko_id mapping on /v2/chains and its
+  circulating market cap comes from CoinGecko (chain_token_mcap_usd, one
+  request per hour for the whole cohort); chain_token_pf_ratio is that
+  market cap over 30-day fees times 365/30 and chain_token_ps_ratio the
+  same over revenue; both are deleted rather than zeroed when a side is
+  missing. A chain with no
+  fees over the month publishes nothing. The windows end on DefiLlama's
+  last complete UTC day, so the figures move once a day.
+
+methodology:
+  - "Source: DefiLlama /overview/fees/<chain>, dataType dailyFees and dailyRevenue, the per-chain sum of every fees adapter DefiLlama runs for protocols on that chain plus the chain's own gas. Free endpoint, two requests per chain per hour, chart excluded."
+  - "Windows: total24h, total7d and total30d as DefiLlama reports them, ending on its last complete UTC day. The headline is the 30-day figure because daily chain fees swing with one launch or one airdrop; 24h and 7d are companion columns."
+  - "Revenue: the adapter-defined share the chain or its protocols keep, per DefiLlama's definition per protocol (sequencer margin for a rollup, burned base fee for Ethereum, protocol take for a DEX). Revenue share is revenue over fees on the 30-day window, in percent."
+  - "Price to fees and price to revenue: the chain token's circulating market cap over the 30-day fees or revenue annualized (x 365/30). The token is DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB, Hyperliquid HYPE) and the market cap CoinGecko's, published as chain_token_mcap_usd. Base, Robinhood Chain and Unichain map to no token and get no ratio."
+  - "A ratio publishes only when the market cap and the denominator are both positive. A chain with no fees over the month publishes no row rather than a $0 one; a quiet day inside an active month publishes its real zero on the 24h column."
+  - "Coverage: the registry chains DefiLlama maps and reports fees for, with at least $100,000 of fees over the 30 days when the cohort was chosen (2026-09-25). Chains DefiLlama knows but has no fee adapter for (Moonbeam, Polkadot) are absent rather than shown at zero."
+  - "Cadence: hourly reads; the source moves once a day. p50, p90, p99 and the mean read the same value and are equal by construction. Freshness is the chain-kpis health gauge for the fees source."
+  - "Not measured by OpenChainBench: this board relays DefiLlama's adapters and CoinGecko's market caps. OCB adds the per-chain join, the ratios, the history and the same-row comparison; it does not verify each adapter's attribution."
+
+findings:
+  - "{{best_name}} users paid the most fees of the {{ranked_count}} ranked chains, {{best_p50}} over the last 30 complete UTC days."
+  - "Fees and revenue rank differently by construction: a chain whose protocols pass most fees to LPs and stakers keeps little of a large number, and the revenue share column says how much."
+  - "The price to fees multiple is only shown for chains with a token of their own, so Base, Robinhood Chain and Unichain appear in the fee columns and not in the valuation ones."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-kpis
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 7200
+  freshness_metric: chain_kpis_health
+
+panel_main_description: "Fees paid by users on the chain over the trailing 30 complete UTC days, gas plus protocol fees, from DefiLlama's per-chain adapters."
+
+metric_panels:
+  - id: fees_24h
+    label: Fees 24h
+    label_key: chain
+    metric: chain_fees_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Fees paid on DefiLlama's last complete UTC day."
+  - id: fees_7d
+    label: Fees 7d
+    label_key: chain
+    metric: chain_fees_7d_usd{}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Fees paid over the trailing 7 complete UTC days."
+  - id: revenue_30d
+    label: Revenue 30d
+    label_key: chain
+    metric: chain_revenue_30d_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Revenue the chain and its protocols kept over the trailing 30 complete UTC days, per each DefiLlama adapter's definition."
+  - id: revenue_24h
+    label: Revenue 24h
+    label_key: chain
+    metric: chain_revenue_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Revenue kept on DefiLlama's last complete UTC day."
+  - id: revenue_share
+    label: Revenue share
+    label_key: chain
+    metric: chain_revenue_share_pct{}
+    unit: pct
+    higher_is_better: true
+    description: "30-day revenue over 30-day fees, in percent: how much of what users paid was kept rather than passed on."
+  - id: token_pf
+    label: Price to fees
+    label_key: chain
+    metric: chain_token_pf_ratio{}
+    unit: x
+    higher_is_better: false
+    description: "Chain token circulating market cap (CoinGecko) over annualized 30-day fees. Only for chains with a token of their own. Lower means the market pays less per dollar of fees."
+  - id: token_ps
+    label: Price to revenue
+    label_key: chain
+    metric: chain_token_ps_ratio{}
+    unit: x
+    higher_is_better: false
+    description: "Chain token circulating market cap (CoinGecko) over annualized 30-day revenue. Only for chains with a token of their own that keep some revenue."
+
+# Honest column labels: the p50/p90/p99 slots hold the same 30-day figure.
+ledger_columns:
+  - { label: "Fees 30d", slot: p50 }
+  - { label: "Fees 24h", panel: fees_24h }
+  - { label: "Revenue 30d", panel: revenue_30d }
+  - { label: "Kept", panel: revenue_share, unit: pct }
+  - { label: "P/F", panel: token_pf }
+  - { label: "P/S", panel: token_ps }
+
+# The gauges move once a day: the chart opens on 30 days.
+chart:
+  min_range: 7d
+  default_range: 30d
+  window_label: last complete UTC day
+
+faq:
+  - q: "What counts as a chain's fees?"
+    a: "DefiLlama's per-chain aggregate: the gas users paid on the chain plus the fees charged by every protocol DefiLlama runs a fees adapter for on that chain. It is what users paid, not what the chain earned; that is the revenue column."
+  - q: "How is revenue different from fees?"
+    a: "Revenue is the part kept by the chain or its protocols rather than passed to LPs, stakers or users, as each DefiLlama adapter defines it: the sequencer margin for a rollup, the burned base fee for Ethereum, the protocol take for a DEX. The revenue share column is revenue over fees on the same 30 days."
+  - q: "Why does Base show fees but no price to fees?"
+    a: "Base has no token of its own: DefiLlama maps it to no CoinGecko id, and dividing Ethereum's market cap by Base's fees would not be Base's multiple. Arbitrum and Optimism do have one (ARB, OP) and are rated on it, as DefiLlama's own P/F page does."
+  - q: "How do these multiples compare with the protocol P/F benches?"
+    a: "Same construction and the same CoinGecko market caps: circulating market cap over the 30-day figure annualized (x 365/30), price to fees on fees and price to revenue on revenue. The difference is the denominator's scope: a chain's fees sum every protocol on it, a protocol's fees are its own."
+  - q: "Why is the headline 30 days and not 24 hours?"
+    a: "Because a chain's daily fees move with one launch, one airdrop or one liquidation wave. The 30-day figure is what a reader can compare across chains; the 24h and 7d columns show whether the month is accelerating or fading."
+  - q: "Why are some chains missing?"
+    a: "DefiLlama has no fee adapter for them (Moonbeam, Polkadot answer with no figure) or they had under $100,000 of fees over 30 days when the cohort was chosen. A chain with no fees over the month publishes nothing rather than a $0 row."
+  - q: "How current is it?"
+    a: "The harness reads DefiLlama and CoinGecko every hour, but the fee windows end on DefiLlama's last complete UTC day, so the fee columns change once a day; the multiples also move hourly with the token's market cap."
+
+providers:
+  - slug: solana
+    name: Solana
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"solana\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="solana"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="solana"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="solana"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="solana"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="solana",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="solana"}[24h])
+      series: chain_fees_30d_usd{chain="solana"}
+
+  - slug: robinhood
+    name: Robinhood Chain
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"robinhood\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="robinhood"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="robinhood"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="robinhood"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="robinhood"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="robinhood",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="robinhood"}[24h])
+      series: chain_fees_30d_usd{chain="robinhood"}
+
+  - slug: ethereum
+    name: Ethereum
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"ethereum\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="ethereum"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="ethereum"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="ethereum"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="ethereum"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="ethereum",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="ethereum"}[24h])
+      series: chain_fees_30d_usd{chain="ethereum"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"hyperliquid\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="hyperliquid"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="hyperliquid"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="hyperliquid"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="hyperliquid"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="hyperliquid",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="hyperliquid"}[24h])
+      series: chain_fees_30d_usd{chain="hyperliquid"}
+
+  - slug: bnb
+    name: BNB Chain
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"bnb\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="bnb"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="bnb"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="bnb"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="bnb"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="bnb",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="bnb"}[24h])
+      series: chain_fees_30d_usd{chain="bnb"}
+
+  - slug: base
+    name: Base
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"base\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="base"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="base"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="base"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="base"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="base",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="base"}[24h])
+      series: chain_fees_30d_usd{chain="base"}
+
+  - slug: polygon
+    name: Polygon PoS
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"polygon\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="polygon"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="polygon"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="polygon"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="polygon"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="polygon",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="polygon"}[24h])
+      series: chain_fees_30d_usd{chain="polygon"}
+
+  - slug: gram
+    name: Gram
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"gram\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="gram"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="gram"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="gram"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="gram"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="gram",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="gram"}[24h])
+      series: chain_fees_30d_usd{chain="gram"}
+
+  - slug: arbitrum
+    name: Arbitrum One
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"arbitrum\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="arbitrum"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="arbitrum"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="arbitrum"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="arbitrum"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="arbitrum",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="arbitrum"}[24h])
+      series: chain_fees_30d_usd{chain="arbitrum"}
+
+  - slug: avalanche
+    name: Avalanche
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"avalanche\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="avalanche"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="avalanche"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="avalanche"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="avalanche"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="avalanche",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="avalanche"}[24h])
+      series: chain_fees_30d_usd{chain="avalanche"}
+
+  - slug: tron
+    name: TRON
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"tron\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="tron"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="tron"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="tron"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="tron"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="tron",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="tron"}[24h])
+      series: chain_fees_30d_usd{chain="tron"}
+
+  - slug: monad
+    name: Monad
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"monad\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="monad"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="monad"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="monad"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="monad"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="monad",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="monad"}[24h])
+      series: chain_fees_30d_usd{chain="monad"}
+
+  - slug: optimism
+    name: Optimism
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"optimism\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="optimism"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="optimism"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="optimism"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="optimism"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="optimism",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="optimism"}[24h])
+      series: chain_fees_30d_usd{chain="optimism"}
+
+  - slug: stellar
+    name: Stellar
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"stellar\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="stellar"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="stellar"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="stellar"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="stellar"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="stellar",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="stellar"}[24h])
+      series: chain_fees_30d_usd{chain="stellar"}
+
+  - slug: sui
+    name: Sui
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"sui\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="sui"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="sui"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="sui"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="sui"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sui",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="sui"}[24h])
+      series: chain_fees_30d_usd{chain="sui"}
+
+  - slug: zksync
+    name: zkSync Era
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"zksync\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="zksync"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="zksync"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="zksync"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="zksync"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="zksync",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="zksync"}[24h])
+      series: chain_fees_30d_usd{chain="zksync"}
+
+  - slug: sei
+    name: Sei
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"sei\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="sei"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="sei"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="sei"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="sei"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sei",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="sei"}[24h])
+      series: chain_fees_30d_usd{chain="sei"}
+
+  - slug: mantle
+    name: Mantle
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"mantle\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="mantle"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="mantle"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="mantle"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="mantle"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="mantle",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="mantle"}[24h])
+      series: chain_fees_30d_usd{chain="mantle"}
+
+  - slug: unichain
+    name: Unichain
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"unichain\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="unichain"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="unichain"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="unichain"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="unichain"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="unichain",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="unichain"}[24h])
+      series: chain_fees_30d_usd{chain="unichain"}
+
+  - slug: gnosis
+    name: Gnosis
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"gnosis\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="gnosis"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="gnosis"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="gnosis"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="gnosis"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="gnosis",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="gnosis"}[24h])
+      series: chain_fees_30d_usd{chain="gnosis"}
+
+  - slug: cronos
+    name: Cronos
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"cronos\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="cronos"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="cronos"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="cronos"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="cronos"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="cronos",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="cronos"}[24h])
+      series: chain_fees_30d_usd{chain="cronos"}
+
+  - slug: cardano
+    name: Cardano
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"cardano\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="cardano"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="cardano"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="cardano"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="cardano"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="cardano",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="cardano"}[24h])
+      series: chain_fees_30d_usd{chain="cardano"}
+
+  - slug: megaeth
+    name: MegaETH
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"megaeth\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="megaeth"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="megaeth"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="megaeth"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="megaeth"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="megaeth",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="megaeth"}[24h])
+      series: chain_fees_30d_usd{chain="megaeth"}
+
+  - slug: immutable
+    name: Immutable zkEVM
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"immutable\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="immutable"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="immutable"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="immutable"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="immutable"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="immutable",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="immutable"}[24h])
+      series: chain_fees_30d_usd{chain="immutable"}
+
+  - slug: sonic
+    name: Sonic
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"sonic\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="sonic"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="sonic"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="sonic"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="sonic"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="sonic",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="sonic"}[24h])
+      series: chain_fees_30d_usd{chain="sonic"}
+
+  - slug: ronin
+    name: Ronin
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"ronin\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="ronin"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="ronin"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="ronin"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="ronin"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="ronin",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="ronin"}[24h])
+      series: chain_fees_30d_usd{chain="ronin"}
+
+  - slug: berachain
+    name: Berachain
+    formula: "last_over_time(chain_fees_30d_usd{chain=\"berachain\"}[2h])"
+    queries:
+      p50: last_over_time(chain_fees_30d_usd{chain="berachain"}[2h])
+      p90: last_over_time(chain_fees_30d_usd{chain="berachain"}[2h])
+      p99: last_over_time(chain_fees_30d_usd{chain="berachain"}[2h])
+      mean: last_over_time(chain_fees_30d_usd{chain="berachain"}[2h])
+      success: avg_over_time(chain_kpis_health{chain="berachain",source="fees"}[24h])
+      sample_size: count_over_time(chain_fees_30d_usd{chain="berachain"}[24h])
+      series: chain_fees_30d_usd{chain="berachain"}
