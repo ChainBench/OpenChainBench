@@ -536,17 +536,16 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				// tiers publish; an endpoint that allows more only loses a
 				// little throughput, an endpoint that allows less never
 				// stalls us again.
-				if archiveRefusal(err) {
-					f.learnDepth(c.slug, head-from, span)
-					failed = true
-					break
-				}
 				if truncated(err) {
 					f.narrowSpan(c.slug, from, to, span)
 					failed = true
 					break
 				}
-				if span > 10 && rangeRefusal(err) {
+				// An archive refusal goes through the same re-ask as a range
+				// refusal below: evmCall returns the LAST endpoint's error,
+				// and a depth learned from a fallback's word halves for good
+				// on a blip of the serving node.
+				if (span > 10 && rangeRefusal(err)) || archiveRefusal(err) {
 					// Ask once more before believing it. evmCall hands back
 					// the LAST endpoint's error, so a blip on the node that
 					// serves the range lets whichever fallback answered last
@@ -577,7 +576,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 						f.span[c.slug] = 10
 						log.Printf("[native] %s getLogs %d-%d: the serving node itself refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
 					case archiveRefusal(err2):
-						f.learnDepth(c.slug, head-from, span)
+						f.learnDepth(c.slug, head-from)
 					case truncated(err2):
 						f.narrowSpan(c.slug, from, to, span)
 					default:
@@ -621,6 +620,9 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		if !failed && span < f.spanDefault(c.slug) {
 			f.span[c.slug] = min64(span*4, f.spanDefault(c.slug))
 			log.Printf("[native] %s read %d-%d at a span of %d, trying %d again", c.slug, start, f.cursor[c.slug], span, f.span[c.slug])
+		}
+		if !failed {
+			f.growDepth(c.slug, budget)
 		}
 		if f.cursor[c.slug] >= start {
 			f.polled[c.slug] = [2]int64{start, f.cursor[c.slug]}
@@ -1075,12 +1077,17 @@ func archiveRefusal(err error) bool {
 }
 
 // learnDepth: a read `behind` blocks behind head was refused as history,
-// so the next poll resumes from half that distance, never under one span.
-// The blocks between are counted as skipped by that poll's jump.
-func (f *nativeFeed) learnDepth(chain string, behind, span int64) {
+// so the next poll resumes from half that distance, never under the
+// chain's default span. The blocks between are counted as skipped by
+// that poll's jump.
+func (f *nativeFeed) learnDepth(chain string, behind int64) {
 	d := behind / 2
-	if d < span {
-		d = span
+	// Never under the default span: a depth floored at a collapsed span
+	// (10) is under what BNB produces in one tick, and every poll would
+	// then jump to head-10 and skip the rest — feed_up 1, lag 0, blocks
+	// lost — the symptom this file exists to remove.
+	if floor := f.spanDefault(chain); d < floor {
+		d = floor
 	}
 	if cur, ok := f.depth[chain]; ok && cur > 0 && cur < d {
 		d = cur
@@ -1102,4 +1109,20 @@ func (f *nativeFeed) narrowSpan(chain string, from, to, span int64) {
 	}
 	f.span[chain] = next
 	log.Printf("[native] %s getLogs %d-%d: response over the read cap, span %d -> %d for the next poll", chain, from, to, span, next)
+}
+
+// growDepth: a clean poll doubles a learned depth back toward the poll
+// budget, and forgets it once there. The depth only matters when the
+// cursor has fallen further behind than it, so the retest costs nothing
+// while the feed keeps up and one tick when it does not.
+func (f *nativeFeed) growDepth(chain string, budget int64) {
+	d, ok := f.depth[chain]
+	if !ok || d <= 0 {
+		return
+	}
+	if d*2 >= budget {
+		delete(f.depth, chain)
+		return
+	}
+	f.depth[chain] = d * 2
 }

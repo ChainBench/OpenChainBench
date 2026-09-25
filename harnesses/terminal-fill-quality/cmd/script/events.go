@@ -528,7 +528,7 @@ func pumpCurveTokenQuotedMid(sw *Swap, tx *parsedTx, raw []byte, isBuy bool, tok
 	// the word before it as the virtual quote reserve after the trade.
 	post := uint64(qv.post)
 	at := -1
-	for i := len(raw) - 8; i >= 8+32+16; i -= 8 {
+	for i := len(raw) - 8; i >= 8+32+16; i-- { // by the byte: a u8 or string appended to the event would shift the tail off an 8-byte grid
 		if binary.LittleEndian.Uint64(raw[i:]) == post {
 			at = i
 			break

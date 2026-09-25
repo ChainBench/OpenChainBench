@@ -2796,16 +2796,7 @@ func loadState(path string) *State {
 			if s.Method != 3 && s.Method != 4 {
 				continue
 			}
-			age := int64(0)
-			if s.RefAgeS != nil {
-				age = *s.RefAgeS
-			}
-			s.finalize(s.RefPrice, age, s.RefSrc) // nil reference: the row stays unpriced, as it was
-			// finalize clears Flag and sets Priced again on its first
-			// lines, so a replay silently un-drops a row the guard had
-			// dropped. Re-apply it.
-			implausibleSplit(s)
-			s.Method = methodVersion
+			replayFinalize(s)
 			refinal++
 		}
 	}
@@ -3135,4 +3126,30 @@ func publishSizeGauges(ts TerminalStats) {
 		gHealth.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Healthy))
 		gRanked.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Ranked))
 	}
+}
+
+// replayFinalize recomputes a stored row's split under the current
+// method from the inputs already on it. finalize clears Flag and sets
+// Priced again on its first lines, so a bare replay un-drops a row the
+// guard had dropped and, worse, counts a row that was never meant to be
+// counted: a Relay row paid in a token on the origin chain is stored
+// "origin_token", priced by Relay's valuation, shown, not counted — and
+// nothing on the row but that flag says so. The flags finalize itself
+// sets are re-derived; every other flag is restored, and origin_token
+// keeps the row out of the statistics as it was.
+func replayFinalize(s *Swap) {
+	flag := s.Flag
+	age := int64(0)
+	if s.RefAgeS != nil {
+		age = *s.RefAgeS
+	}
+	s.finalize(s.RefPrice, age, s.RefSrc) // nil reference: the row stays unpriced, as it was
+	implausibleSplit(s)
+	if s.Flag == "" && flag != "out_of_bounds" && flag != "split_implausible" {
+		s.Flag = flag
+	}
+	if flag == "origin_token" {
+		s.Flag, s.Priced = "origin_token", false
+	}
+	s.Method = methodVersion
 }

@@ -112,8 +112,12 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 			// and the feed took that for a node outage and held its cursor
 			// on the same window poll after poll. Named, so the caller can
 			// narrow the range instead.
-			last = fmt.Errorf("response truncated at %d bytes: narrow the range", evmReadCap)
-			continue
+			// Returned at once: every endpoint would send the same body,
+			// and the loop would otherwise hand back whatever the last
+			// fallback said about the same range — a 429 or a "Request
+			// blocked" that reads as an outage, cursor held on the same
+			// window every poll.
+			return fmt.Errorf("response truncated at %d bytes: narrow the range", evmReadCap)
 		}
 		var env struct {
 			Result json.RawMessage `json:"result"`

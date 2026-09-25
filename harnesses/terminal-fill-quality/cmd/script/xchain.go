@@ -757,10 +757,14 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		// eighteen decimals, on Arc was taken for dollars, and a token
 		// sale went on the board as a $96.61 funding deposit that lost
 		// 337 bps against a swap that had actually delivered $99.31.
-		if list, known := stableAddrs[x.Chain]; known {
+		if x.Chain == "solana" {
+			x.InIsToken = !stableMints[in.Address]
+		} else if list, known := stableAddrs[x.Chain]; known {
 			x.InIsToken = !list[inAddr]
 		} else {
-			x.InIsToken = false
+			// No list for this chain (HyperEVM): a ticker alone does not
+			// make a dollar. Kept, shown, not counted, like any token.
+			x.InIsToken = true
 		}
 	default:
 		x.InIsToken = true

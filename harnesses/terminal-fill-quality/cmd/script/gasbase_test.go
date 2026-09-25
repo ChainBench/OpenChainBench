@@ -150,3 +150,47 @@ func TestReplayKeepsAnImplausibleSplitDropped(t *testing.T) {
 			sw.Flag, sw.Priced, *sw.PoolBps)
 	}
 }
+
+func TestReplayKeepsAnOriginTokenRowOutOfTheCount(t *testing.T) {
+	ref := 1.0
+	sw := Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1, Method: 4,
+		Tokens: 2.99, UserQ: 3.00, TerminalQ: 0.03, NetworkQ: 0.01}
+	sw.finalize(&ref, 0, "reserves")
+	sw.Flag, sw.Priced = "origin_token", false // as the Relay path stores it
+	replayFinalize(&sw)
+	if sw.Priced || sw.Flag != "origin_token" || sw.Method != methodVersion {
+		t.Errorf("a replay counted a row paid in a token on the origin chain: flag=%q priced=%v method=%d", sw.Flag, sw.Priced, sw.Method)
+	}
+	// A flag finalize itself sets is re-derived, not restored: a row the
+	// guard dropped under the old arithmetic may be sound under the new.
+	ok := Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1, Method: 4,
+		Tokens: 2.99, UserQ: 3.00, TerminalQ: 0.03, NetworkQ: 0.01, Flag: "split_implausible"}
+	ok.RefPrice = &ref
+	replayFinalize(&ok)
+	if !ok.Priced || ok.Flag != "" {
+		t.Errorf("a sound row stayed dropped through a replay: flag=%q priced=%v", ok.Flag, ok.Priced)
+	}
+}
+
+func TestLearnedDepthNeverGoesUnderTheDefaultSpanAndGrowsBack(t *testing.T) {
+	f := &nativeFeed{depth: map[string]int64{}, span: map[string]int64{}}
+	f.learnDepth("bnb", 15999) // learned while the span sat collapsed at 10
+	if d := f.depth["bnb"]; d != 7999 {
+		t.Fatalf("depth after one refusal: %d", d)
+	}
+	f.learnDepth("bnb", 30) // a refusal 30 blocks behind cannot floor the depth under a default span
+	if d := f.depth["bnb"]; d != f.spanDefault("bnb") {
+		t.Errorf("depth floored at the collapsed span, not the default: %d", d)
+	}
+	f.growDepth("bnb", 16000)
+	f.growDepth("bnb", 16000)
+	if d := f.depth["bnb"]; d != f.spanDefault("bnb")*4 {
+		t.Errorf("depth did not double per clean poll: %d", d)
+	}
+	for i := 0; i < 8; i++ {
+		f.growDepth("bnb", 16000)
+	}
+	if _, ok := f.depth["bnb"]; ok {
+		t.Errorf("a depth back at the budget is still remembered: %d", f.depth["bnb"])
+	}
+}
