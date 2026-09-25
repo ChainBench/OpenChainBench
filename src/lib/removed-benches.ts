@@ -113,7 +113,7 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
   // window yet and no audit round. Un-gate after both.
   "chain-stablecoin-flow",
-  // 279 USDC corridor flows: first deploy of the bridge-flows harness
+  // 281 USDC corridor flows: first deploy of the bridge-flows harness
   // (CCTP burns over public RPCs), the 7d window fills over its first
   // week and no audit round yet. Un-gate after both.
   "usdc-corridor-flows",

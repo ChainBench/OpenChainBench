@@ -1,7 +1,7 @@
 # bridge-flows
 
 Where USDC moves between chains, from public data only. Feeds bench
-`usdc-corridor-flows` (279). Three sources, all free and keyless:
+`usdc-corridor-flows` (281). Three sources, all free and keyless:
 
 1. **Circle CCTP burns.** A CCTP transfer burns USDC on the source chain
    (`DepositForBurn` on the TokenMessenger, v1 and v2) and mints it on the

@@ -1,6 +1,6 @@
-# OpenChainBench. Bench 279
+# OpenChainBench. Bench 281
 slug: usdc-corridor-flows
-number: "279"
+number: "281"
 title: "USDC corridor flows: where dollars move between chains over Circle CCTP, 7 days"
 seo_title: "USDC flows between chains: {{best_name}} netted {{best_p50}} in 7 days"
 seo_description: "{{best_name}} took in {{best_p50}} of USDC over Circle CCTP in 7 days, {{worst_name}} sent out {{worst_p50}}. Corridor by corridor, from the burn events on {{ranked_count}} chains."
