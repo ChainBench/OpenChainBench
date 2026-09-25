@@ -45,40 +45,57 @@ type Blob = {
 let lastRunMs = 0;
 
 async function atomicWrite(finalPath: string, body: string): Promise<void> {
-  const tmpPath = `${finalPath}.tmp`;
+  // Per-process temp name: two workers alive during a rebuild must not
+  // rename each other's half-written file into place.
+  const tmpPath = `${finalPath}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(tmpPath, body, "utf-8");
   await rename(tmpPath, finalPath);
 }
 
+/**
+ * The previous blob, or null when the file does not exist yet. Any other
+ * failure (unreadable, unparsable) throws, so the caller skips this run
+ * instead of replacing 400 days of history with today's point.
+ */
 async function readBlob(path: string): Promise<Blob | null> {
+  let raw: string;
   try {
-    const raw = await readFile(path, "utf-8");
-    const parsed = JSON.parse(raw) as Blob;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
+    raw = await readFile(path, "utf-8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
   }
+  const parsed = JSON.parse(raw) as Blob;
+  if (!parsed || typeof parsed !== "object") throw new Error(`${path}: not an object`);
+  return parsed;
 }
 
-/** One instant vector as { labelValue: number }. */
+/** A cohort read from the previous blob: an array, or absent on a fresh file. */
+function previousCohort(blob: Blob | null, key: string, path: string): unknown[] | undefined {
+  if (!blob) return undefined;
+  const v = blob[key];
+  if (v === undefined) return undefined;
+  if (!Array.isArray(v)) throw new Error(`${path}: cohort ${key} is not an array`);
+  return v;
+}
+
+/**
+ * One instant vector as { labelValue: number }. Throws on a failed query:
+ * a cohort with one failed field is not written this run (the previous
+ * file stands) rather than written short of that field.
+ */
 async function vector(
   prom: Prometheus,
   promql: string,
   label: string,
 ): Promise<Map<string, number>> {
   const out = new Map<string, number>();
-  try {
-    const res = await prom.query(promql);
-    if (res.resultType !== "vector") return out;
-    for (const r of res.result) {
-      const key = r.metric[label];
-      const v = Number(r.value[1]);
-      if (key && Number.isFinite(v)) out.set(key, v);
-    }
-  } catch (err) {
-    console.warn(
-      `[history] ${promql} failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+  const res = await prom.query(promql);
+  if (res.resultType !== "vector") return out;
+  for (const r of res.result) {
+    const key = r.metric[label];
+    const v = Number(r.value[1]);
+    if (key && Number.isFinite(v)) out.set(key, v);
   }
   return out;
 }
@@ -111,11 +128,16 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Upsert `point` (keyed by point.day) into an entity's days, keep the last HISTORY_DAYS. */
+/**
+ * Upsert `point` (keyed by point.day) into an entity's days, keep the last
+ * HISTORY_DAYS. An existing day is merged, not replaced: a gauge the harness
+ * dropped between two runs (undefined denominator, restart) must not erase
+ * the value recorded earlier that day.
+ */
 function upsert(entity: Entity, point: Point): void {
   const day = point.day as string;
   const i = entity.days.findIndex((p) => p.day === day);
-  if (i >= 0) entity.days[i] = point;
+  if (i >= 0) entity.days[i] = { ...entity.days[i], ...point };
   else entity.days.push(point);
   entity.days.sort((a, b) => String(a.day).localeCompare(String(b.day)));
   if (entity.days.length > HISTORY_DAYS) entity.days.splice(0, entity.days.length - HISTORY_DAYS);
@@ -126,7 +148,7 @@ function mergeCohort(
   existing: unknown,
   keys: Iterable<string>,
   pointFor: (slug: string) => Point | null,
-  meta: (slug: string) => Record<string, unknown>,
+  meta: (slug: string) => Record<string, unknown | undefined>,
 ): Entity[] {
   const bySlug = new Map<string, Entity>();
   if (Array.isArray(existing)) {
@@ -141,7 +163,9 @@ function mergeCohort(
     const point = pointFor(slug);
     if (!point) continue;
     const ent = bySlug.get(slug) ?? { slug, days: [] };
-    Object.assign(ent, meta(slug));
+    // Meta (name, category) only when this run has it; a missing info
+    // gauge must not reset names already stored.
+    for (const [k, v] of Object.entries(meta(slug))) if (v !== undefined) ent[k] = v;
     upsert(ent, point);
     bySlug.set(slug, ent);
   }
@@ -172,6 +196,9 @@ async function publishValuation(prom: Prometheus, dir: string, day: string): Pro
     pf_fdv: await vector(prom, "protocol_pf_fdv_ratio", "protocol"),
     price_change_30d_pct: await vector(prom, "protocol_price_change_30d_pct", "protocol"),
     fee_growth_30d_pct: await vector(prom, "protocol_fee_growth_30d_pct", "protocol"),
+    // 1 when the fee adapter is knowably incomplete: the board holds the
+    // token out and so should any reader of this file.
+    fees_incomplete: await vector(prom, "protocol_fees_incomplete", "protocol"),
   };
   const pInfo = await infoLabels(prom, "protocol_info", "protocol", ["name", "category"]);
   // Bench 265 cohort (perp DEXes, fees and revenue).
@@ -189,13 +216,13 @@ async function publishValuation(prom: Prometheus, dir: string, day: string): Pro
   const path = join(dir, "valuation", "history.json");
   const prev = await readBlob(path);
   const protocols = mergeCohort(
-    prev?.protocols,
+    previousCohort(prev, "protocols", path),
     new Set([...p.pf.keys(), ...p.mcap.keys()]),
     (slug) => pick(day, p, slug),
-    (slug) => ({ name: pInfo.get(slug)?.name ?? slug, category: pInfo.get(slug)?.category ?? "" }),
+    (slug) => ({ name: pInfo.get(slug)?.name, category: pInfo.get(slug)?.category }),
   );
   const perps = mergeCohort(
-    prev?.perps,
+    previousCohort(prev, "perps", path),
     new Set([...x.pf.keys(), ...x.mcap.keys()]),
     (slug) => pick(day, x, slug),
     () => ({}),
@@ -231,7 +258,7 @@ async function publishChains(prom: Prometheus, dir: string, day: string): Promis
   const prev = await readBlob(path);
   const keys = new Set<string>();
   for (const m of Object.values(c)) for (const k of m.keys()) keys.add(k);
-  const chains = mergeCohort(prev?.chains, keys, (slug) => pick(day, c, slug), () => ({}));
+  const chains = mergeCohort(previousCohort(prev, "chains", path), keys, (slug) => pick(day, c, slug), () => ({}));
   const blob: Blob = {
     generated_at: new Date().toISOString(),
     days_kept: HISTORY_DAYS,
@@ -259,12 +286,16 @@ export async function publishCapitalHistory(): Promise<void> {
   try {
     const prom = new Prometheus(promUrl);
     const day = todayUtc();
-    const [nValuation, nChains] = await Promise.all([
+    // Each cohort independently: a failed query or an unreadable file on
+    // one side leaves that file untouched and lets the other publish.
+    const [v, c] = await Promise.allSettled([
       publishValuation(prom, dir, day),
       publishChains(prom, dir, day),
     ]);
+    const describe = (r: PromiseSettledResult<number>, what: string) =>
+      r.status === "fulfilled" ? `${r.value} ${what}` : `${what} skipped: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`;
     console.log(
-      `[worker] capital history published in ${((Date.now() - t0) / 1000).toFixed(1)}s (${nValuation} valuation entities, ${nChains} chains, day ${day})`,
+      `[worker] capital history in ${((Date.now() - t0) / 1000).toFixed(1)}s (${describe(v, "valuation entities")}, ${describe(c, "chains")}, day ${day})`,
     );
   } catch (err) {
     console.warn(

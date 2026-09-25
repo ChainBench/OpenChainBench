@@ -13,7 +13,7 @@
  */
 
 import { getPerpVolumeHistory } from "@/lib/perp-volume-history";
-import { getChainsHistory, getValuationHistory, seriesOn, type CapitalEntity } from "@/lib/capital-history";
+import { getChainsHistory, getValuationHistory, seriesForRange, type CapitalEntity } from "@/lib/capital-history";
 
 export type SeriesRange = "7d" | "30d" | "90d" | "1y";
 
@@ -62,12 +62,16 @@ function capitalProvider(
   field: string,
 ): HistoryProvider {
   return async (range, providerSlugs) => {
+    // 7d and 30d stay on the materialized series; 90d and 1y come from the
+    // blob only once it covers the whole range (seriesForRange), otherwise
+    // null hands the route back to its Prometheus range query.
+    if (range !== "90d" && range !== "1y") return null;
     const history = await load();
     if (!history) return null;
     const grid = dayGrid(RANGE_DAYS[range]);
     const out: Record<string, (number | null)[]> = {};
     for (const slug of providerSlugs) {
-      const series = seriesOn(history.entities.find((e) => e.slug === slug), field, grid);
+      const series = seriesForRange(history.entities.find((e) => e.slug === slug), field, range, grid);
       if (series) out[slug] = series;
     }
     return Object.keys(out).length > 0 ? out : null;

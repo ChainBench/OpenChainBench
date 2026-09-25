@@ -124,6 +124,28 @@ export async function getChainsHistory(): Promise<ChainsHistory | null> {
 }
 
 /**
+ * The long-window series for /api/series: the blob answers only the 90d and
+ * 1y ranges, and only once it covers the whole grid (its first stored day on
+ * or before the grid's first day). Everything else returns null so the route
+ * keeps its materialized 7d/30d series and its Prometheus range fallback:
+ * on the day the blobs shipped they held one point, and serving that for
+ * every range would have blanked the charts of four live benches (review
+ * 2026-09-25).
+ */
+export function seriesForRange(
+  entity: CapitalEntity | undefined,
+  field: string,
+  range: string,
+  grid: string[],
+): (number | null)[] | null {
+  if (range !== "90d" && range !== "1y") return null;
+  if (!entity || entity.days.length === 0 || grid.length === 0) return null;
+  const first = entity.days.find((p) => isNumber(p[field]))?.day;
+  if (!first || first > grid[0]) return null;
+  return seriesOn(entity, field, grid);
+}
+
+/**
  * One entity's field on a day grid (null where the day has no point or the
  * point lacks the field). Days are "YYYY-MM-DD".
  */

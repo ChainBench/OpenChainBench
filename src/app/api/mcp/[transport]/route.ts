@@ -143,6 +143,12 @@ const PROMQL_RESERVED_IDENTS = new Set([
   "le", "chain", "region", "provider", "bridge", "aggregator", "venue",
   "exchange", "asset", "from_chain", "to_chain", "from_token", "to_token",
   "amount_usd", "side", "type", "error_type",
+  // Labels of the capital and valuation families opened 2026-09-25
+  // (protocol_*, perp_protocol_*, chain_*, hl_*): without them every
+  // per-protocol selector such as perp_protocol_pf_ratio{protocol="x"}
+  // was refused as an unlisted metric name.
+  "protocol", "name", "category", "symbol", "source", "origin", "window",
+  "threshold", "bucket", "coin", "builder", "dex", "app", "tier",
 ]);
 
 // Whitespace + non-ASCII spacing variants stripped before pattern checks

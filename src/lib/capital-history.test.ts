@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseChainsHistory, parseValuationHistory, seriesOn } from "./capital-history";
+import { parseChainsHistory, parseValuationHistory, seriesForRange, seriesOn } from "./capital-history";
 
 describe("parseValuationHistory", () => {
   test("keeps numeric fields per day, sorts days, drops malformed entries", () => {
@@ -32,6 +32,23 @@ describe("parseValuationHistory", () => {
   test("refuses a blob without generated_at", () => {
     expect(parseValuationHistory({ protocols: [] })).toBeNull();
     expect(parseChainsHistory(null)).toBeNull();
+  });
+});
+
+describe("seriesForRange", () => {
+  test("answers only 90d and 1y, and only once the blob covers the whole grid", () => {
+    const h = parseChainsHistory({
+      generated_at: "x",
+      chains: [{ slug: "base", days: [{ day: "2026-09-24", tvl: 5 }, { day: "2026-09-25", tvl: 6 }] }],
+    });
+    const base = h!.chains[0];
+    expect(seriesForRange(base, "tvl", "7d", ["2026-09-24", "2026-09-25"])).toBeNull();
+    expect(seriesForRange(base, "tvl", "30d", ["2026-09-24", "2026-09-25"])).toBeNull();
+    // 90d grid starting before the first stored day: not covered yet.
+    expect(seriesForRange(base, "tvl", "90d", ["2026-09-23", "2026-09-24", "2026-09-25"])).toBeNull();
+    // grid inside the stored span: served.
+    expect(seriesForRange(base, "tvl", "90d", ["2026-09-24", "2026-09-25"])).toEqual([5, 6]);
+    expect(seriesForRange(base, "tvl", "1y", ["2026-09-25"])).toEqual([6]);
   });
 });
 
