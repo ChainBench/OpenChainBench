@@ -103,6 +103,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   "fiat-onramp-cost",
   // 273 chain-bridged-tvl, 274 protocol-pf-ratio and 275 chain-stablecoin-flow
   // left this list on 2026-09-25 (windows full, audit round clean).
+  // 280 chain fees and revenue: new gauges on the chain-kpis harness
+  // (2026-09-25), no 24h window yet and no audit round. Un-gate after both.
+  "chain-fees-revenue",
   // 276 perp fee disclosure: the maker gauge is one deploy old and three
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.

@@ -163,4 +163,9 @@ var Registry = []Chain{
 	{Slug: "reya", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "reya"},
 	{Slug: "cyber", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "cyber"},
 	{Slug: "hemi", DefiLlama: "", Mobula: "", NativeSymbol: "ETH", L2Beat: "hemi"},
+	// Plume: L2Beat tracks it as "plumenetwork" (Plume Network, about $89M
+	// TVS on 2026-09-25); the bench 273 audit found the site row with no
+	// bridged TVL because the id was never mapped. DefiLlama and Mobula
+	// names left empty until verified, same as the batch above.
+	{Slug: "plume", DefiLlama: "", Mobula: "", NativeSymbol: "PLUME", L2Beat: "plumenetwork"},
 }

@@ -31,7 +31,13 @@ result is fanned out over the registry rows that carry an L2Beat id.
 | `chain_tvs_change_7d_excess_pct{chain}` | derived: the 7d move minus the cohort median | 15 min |
 | `chain_tvs_cohort_median_7d_pct` | derived, no labels: median 7d move above the size floor | 15 min |
 | `chain_tvs_cohort_size` / `_under_review` / `_layer3` | derived, no labels: the cohort's composition | 15 min |
-| `chain_kpis_health{chain, source}` | 1 if the last fetch for that source returned data | per source |
+| `chain_fees_{24h,7d,30d}_usd{chain}` | DefiLlama `/overview/fees/<name>?dataType=dailyFees` | 60 min |
+| `chain_revenue_{24h,7d,30d}_usd{chain}` | DefiLlama `/overview/fees/<name>?dataType=dailyRevenue` | 60 min |
+| `chain_revenue_share_pct{chain}` | derived: 30d revenue over 30d fees, percent | 60 min |
+| `chain_token_mcap_usd{chain}` | CoinGecko `/coins/markets` for the chain's `gecko_id` on DefiLlama `/v2/chains` (one call per tick) | 60 min |
+| `chain_token_pf_ratio{chain}` / `chain_token_ps_ratio{chain}` | derived: token mcap over annualized 30d fees / revenue; absent for chains with no token of their own (Base, Robinhood Chain, Unichain) | 60 min |
+| `chain_fees_last_success_unix` | when the fees poll last published, no labels | 60 min |
+| `chain_kpis_health{chain, source}` | 1 if the last fetch for that source returned data (`source="fees"` for the fees loop) | per source |
 | `chain_kpis_l2beat_last_success_unix` | when our fetch last worked, no labels | 15 min |
 | `chain_kpis_l2beat_synced_until_unix` | L2Beat's own `chart.syncedUntil`: when it last computed a point | 15 min |
 
@@ -71,6 +77,7 @@ own consensus and are tracked. Settled L1s with no host chain carry no id.
 | `DEFILLAMA_REFRESH_MINUTES` | 15 | DefiLlama cadence |
 | `MOBULA_REFRESH_MINUTES` | 5 | Mobula cadence |
 | `L2BEAT_REFRESH_MINUTES` | 15 | L2Beat cadence |
+| `CHAIN_FEES_REFRESH_MINUTES` | 60 | DefiLlama fees/revenue and CoinGecko market cap cadence (bench 280) |
 | `L2BEAT_MEDIAN_FLOOR_USD` | 200000000 | size floor for the median cohort |
 | `MOBULA_API_KEY` | — | required for the Mobula gauges only |
 
@@ -115,6 +122,12 @@ harness ignores it.
   counter is incremented with `error_type="not_tracked"` or
   `error_type="not_found"` so dashboards can distinguish genuine outages
   from expected gaps.
+- Fees loop: a DefiLlama `not_tracked` answer (200 with null totals) or a
+  month with no fees clears every fee, revenue and ratio series for the
+  chain and sets `chain_kpis_health{source="fees"}` to 0; a transport error
+  on the fees request carries the last values forward, and one on the
+  revenue request alone keeps last hour's revenue side while the fee side
+  updates.
 - Mobula 429 / 401 → all chains for that fetcher are skipped this tick;
   DefiLlama keeps publishing.
 - One chain failure does not affect any other chain (each fetch is its

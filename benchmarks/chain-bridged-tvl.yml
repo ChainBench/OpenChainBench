@@ -62,7 +62,7 @@ methodology:
   - "The $200M floor exists because the median is a yardstick. L2Beat tracks about a hundred projects and most of them are small, so without a floor the many dust chains outnumber the rest and their moves, which are incentive programs rather than capital rotation, own the middle of the sorted list."
   - "Cohort composition: every live project above the floor votes, layer 3s and projects L2Beat currently has under review included. They are counted, not filtered, because dropping them would make the yardstick a judgement rather than a measurement; chain_tvs_cohort_size, _layer3 and _under_review publish the composition. Below five projects no median is published and the excess series is cleared rather than frozen."
   - "Rows: every chain in the OCB registry that carries an L2Beat project id, each verified against a live read of the endpoint. Several ids differ from the OCB slug (polygon-pos, zksync2, roninnetwork, worldchain, mantapacific, galxegravity, nova, polygonzkevm, bobanetwork, immutablezkevm)."
-  - "Membership: a row is a chain in the OCB chain registry that L2Beat tracks in its scaling summary, whatever category L2Beat files it under (41 of L2Beat's roughly 100 projects on 2026-09-25). Registry chains L2Beat lists under another id join when the mapping lands (Plume, Cronos zkEVM); L2Beat projects outside the registry are not rows. Settled L1s carry no id because a chain with no host chain has no bridged balance to report."
+  - "Membership: a row is a chain in the OCB chain registry that L2Beat tracks in its scaling summary, whatever category L2Beat files it under (42 of L2Beat's roughly 100 projects on 2026-09-25, Plume mapped that day); L2Beat projects outside the registry are not rows. Settled L1s carry no id because a chain with no host chain has no bridged balance to report."
   - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing, the previous value carries forward, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success rate each row reports."
   - "Freshness reads L2Beat's own chart.syncedUntil, not the Prometheus scrape and not the time of our fetch. The first is always seconds old because the harness re-exports carried-forward gauges; the second stays green when L2Beat answers 200 with stale numbers. A row whose weekly move is missing keeps its balance and loses only its two weekly columns, rather than publishing a flat week that never happened."
   - "Every aggregate column reads the latest value rather than a window statistic, so the board and the origin panels always describe the same instant. p50, p90, p99 and the mean are equal by construction; the sample count is the number of Prometheus scrapes in the 24h window (about 2,880 at a 30 second scrape), not a count of measurements, since the underlying value refreshes every 15 minutes."
@@ -678,3 +678,16 @@ providers:
       success: avg_over_time(chain_kpis_health{chain="hemi",source="l2beat"}[24h])
       sample_size: count_over_time(chain_bridged_tvl_usd{chain="hemi"}[24h])
       series: chain_bridged_tvl_usd{chain="hemi"}
+
+  - slug: plume
+    name: Plume
+    tag: Other on Ethereum
+    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"plume\"}[1h])"
+    queries:
+      p50: last_over_time(chain_bridged_tvl_usd{chain="plume"}[1h])
+      p90: last_over_time(chain_bridged_tvl_usd{chain="plume"}[1h])
+      p99: last_over_time(chain_bridged_tvl_usd{chain="plume"}[1h])
+      mean: last_over_time(chain_bridged_tvl_usd{chain="plume"}[1h])
+      success: avg_over_time(chain_kpis_health{chain="plume",source="l2beat"}[24h])
+      sample_size: count_over_time(chain_bridged_tvl_usd{chain="plume"}[24h])
+      series: chain_bridged_tvl_usd{chain="plume"}
