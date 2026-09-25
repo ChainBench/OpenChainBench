@@ -3,8 +3,8 @@
 slug: terminal-execution-quality
 number: "279"
 title: "Trading terminal execution quality 2026: what a swap costs once the app's own fee is removed"
-seo_title: "Terminal execution quality 2026: Axiom vs GMGN vs FOMO, app fee removed"
-seo_description: "{{best_name}} executes best at a median {{best_p50}} lost per swap once its own fee is removed, from real swaps read on-chain across {{count}} trading apps. What is left is network, pool and protocol cost: how well the app routes, not what it charges."
+seo_title: "Trading terminal execution quality 2026, app fee removed"
+seo_description: "{{best_name}} loses the least per swap with its own fee removed: {{best_p50}} median (p50, 24h) across {{count}} trading apps and Telegram bots, read on-chain. What is left is network, pool and protocol cost: how the app routes, not what it charges."
 subtitle: Value lost per swap with the app's own fee removed, on every trading terminal, wallet app and Telegram bot we read on-chain. The fee is a published price. What is left, priority fee and tips, the pool's LP fee and price impact, launchpad and router cuts, is the app's routing. Subtracted on each swap before any median is taken. Rolling 24 hours.
 
 category: Trading
@@ -52,14 +52,20 @@ methodology:
   - "What stays in: network (transaction fee the user paid, inclusion tips including the terminal's own relay, the deposit of token accounts the swap creates), pool (the final pool's LP fee and price impact) and protocol (launchpad and curve fees, router cuts, referral payouts). Each is a consequence of how the app routed the trade, not of what it charges for doing so."
   - "A swap whose fee exceeded its loss reads negative: a rebated fee, or a reference that moved in the user's favour between the previous trade and this one. Those swaps are kept: removing them would trim the left tail and push every median up."
   - "Publication and ranking follow bench 268 exactly: same floors, same health and ranked flags, same per-chain pooling weighted by flow. A product present on one board is present on the other, so the two can be read side by side without a row appearing in only one of them."
-  - "The two rankings differ: on the cohort measured at publication, 7 of 13 rows changed place once the fee came out, FOMO moving three places up. Read this board with the 95 % interval under each median. As on bench 268, most adjacent pairs are not separated by the measurement."
+  - "The two rankings differ: a product whose fee sits far from the cohort's usual 1 % changes place once the fee comes out, in either direction. How far each row moved is read from the two live columns, not from this sentence. Read this board with the 95 % interval under each median. As on bench 268, most adjacent pairs are not separated by the measurement."
 
 findings:
-  - "Removing the app fee is not a constant shift. Nine of the cohort's products charge close to 1 % and two do not, so the subtraction reorders the board rather than translating it."
-  - "FOMO charges the highest fee in the cohort and routes among the best: fifth on total cost, second on execution alone."
+  - "Removing the app fee is not a constant shift. Most of the cohort charges close to 1 % and the rest charge nothing or twice that, so the subtraction reorders the board rather than translating it."
+  - "FOMO charges the highest published fee in the cohort. Where it lands here against where it lands on bench 268 is the size of that fee: read the two live columns, not a typed rank."
   - "pump.fun's own app charges nothing, so its two figures are identical. It is the only row where total cost and execution quality are the same number."
 
 faq:
+  - q: "Which trading terminal loses the least per swap once its own fee is removed?"
+    a: "As of the last measurement, {{best_name}} at {{best_p50}} (p50, 24h) across {{count}} trading apps and Telegram bots. The figure is the median value lost per swap against the pool's state before the trade, with the app's own fee subtracted on each swap. It moves with every refresh; the board above is the current answer."
+  - q: "Does the cheapest app to use also execute best?"
+    a: "Not necessarily. An app with a high fee can route well and an app with no fee can route badly; this board isolates the routing. Compare a row's place here with its place on bench 268, trading terminal fill quality (/benchmarks/terminal-fill-quality): the gap between the two is the fee."
+  - q: "How is execution loss measured?"
+    a: "From the user's own transactions read on-chain. Each swap is priced against the pool's state before the trade, the shortfall is split into terminal fee, network, protocol and pool, and the terminal fee is removed. The median of what remains, over a rolling 24 hours, is the row's figure."
   - q: "Why is this a separate bench and not a column on bench 268?"
     a: "They answer different questions and a reader usually wants one or the other. Bench 268 is what a swap costs you, which is what you pay and includes the fee. This one is how well the app executes, which is what you would compare if you were choosing between apps whose fees you already know. The underlying swaps are identical and both boards publish the same rows under the same rules."
   - q: "Why not just subtract the fee column from the loss column yourself?"

@@ -3,7 +3,7 @@
 slug: terminal-fill-quality
 number: "268"
 title: "Trading terminal fill quality 2026: what a swap costs on Axiom, GMGN, FOMO, Photon, Trojan, measured on-chain"
-seo_title: "Trading terminal fill quality 2026: Axiom vs GMGN vs FOMO vs Photon vs Trojan, cost per swap on-chain"
+seo_title: "Trading terminal fill quality 2026: cost per swap read on-chain"
 seo_description: "{{best_name}} fills cheapest at a median {{best_p50}} lost per swap against the pool's state before the trade. Real swaps read on-chain on Solana and the EVM chains for {{count}} trading terminals, wallet apps and Telegram bots: terminal fee, priority fee and tips, pump.fun and pool costs, failed swaps."
 subtitle: Value lost per swap on each trading terminal, wallet app or Telegram bot (Solana and five EVM chains), from real user transactions read on-chain and valued at the pool's own state before the trade. Split into what the terminal takes, what the network takes, what pump.fun and the pool take, plus the share of swap attempts that fail. Rolling 24 hours, refreshed every few minutes.
 
