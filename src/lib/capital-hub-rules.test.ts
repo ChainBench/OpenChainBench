@@ -12,6 +12,7 @@ import {
   median7dPct,
   selectDivergences,
   sevenDaySubline,
+  columnIsWorthShowing,
 } from "./capital-hub-rules";
 import { fmtUsdShort } from "./capital-hub-types";
 
@@ -152,5 +153,15 @@ describe("7d change", () => {
     expect(change7dFromSeries(steady)).toBeCloseTo(80, 6);
     expect(change7dFromSeries(undefined)).toBeNull();
     expect(change7dFromSeries([null, null])).toBeNull();
+  });
+});
+
+describe("columnIsWorthShowing", () => {
+  test("a column filled for a handful of rows stays hidden, one covering half the cohort shows", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => ({ v: i < 2 ? 1 : null }));
+    expect(columnIsWorthShowing(rows, (r) => r.v)).toBe(false);
+    const half = Array.from({ length: 10 }, (_, i) => ({ v: i < 5 ? 1 : null }));
+    expect(columnIsWorthShowing(half, (r) => r.v)).toBe(true);
+    expect(columnIsWorthShowing([], (r: { v: number | null }) => r.v)).toBe(false);
   });
 });

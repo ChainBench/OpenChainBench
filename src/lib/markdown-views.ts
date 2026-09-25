@@ -29,6 +29,7 @@ import {
   OUTSIDE_COHORT_LABEL,
   bridgedShareSubline,
   cohortCell,
+  columnIsWorthShowing,
   fmtUsdLevel,
   sevenDaySubline,
   type CohortCell,
@@ -380,10 +381,10 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     md.push(`## Tokens by price to fees (market cap over annualized 30-day fees)`);
     md.push("");
     // Same rule as the table: the four columns the valuation harness adds appear once a row carries a value.
-    const hasPs = hub.protocols.some((p) => p.ps != null);
-    const hasSupply = hub.protocols.some((p) => p.supplyChange30dPct != null);
-    const hasTvl = hub.protocols.some((p) => p.tvl != null);
-    const hasRevenue = hub.protocols.some((p) => p.revenue30d != null);
+    const hasPs = columnIsWorthShowing(hub.protocols, (p) => p.ps);
+    const hasSupply = columnIsWorthShowing(hub.protocols, (p) => p.supplyChange30dPct);
+    const hasTvl = columnIsWorthShowing(hub.protocols, (p) => p.tvl);
+    const hasRevenue = columnIsWorthShowing(hub.protocols, (p) => p.revenue30d);
     const extra = [
       ...(hasPs ? ["P/S"] : []),
       ...(hasSupply ? ["Supply 30d"] : []),

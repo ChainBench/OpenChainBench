@@ -20,6 +20,7 @@ import {
   OUTSIDE_COHORT_LABEL,
   bridgedShareSubline,
   cohortCell,
+  columnIsWorthShowing,
   fmtUsdLevel,
   isDust,
   levelSortValue,
@@ -430,10 +431,10 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
   const [q, setQ] = useState("");
   const [onlySignal, setOnlySignal] = useState(false);
   // Columns the protocol-valuation harness adds next: hidden while no row carries a value.
-  const hasPs = rows.some((r) => r.ps != null);
-  const hasSupply = rows.some((r) => r.supplyChange30dPct != null);
-  const hasTvl = rows.some((r) => r.tvl != null);
-  const hasRevenue = rows.some((r) => r.revenue30d != null);
+  const hasPs = columnIsWorthShowing(rows, (r) => r.ps);
+  const hasSupply = columnIsWorthShowing(rows, (r) => r.supplyChange30dPct);
+  const hasTvl = columnIsWorthShowing(rows, (r) => r.tvl);
+  const hasRevenue = columnIsWorthShowing(rows, (r) => r.revenue30d);
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return sorted.filter(
