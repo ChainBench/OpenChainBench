@@ -79,6 +79,10 @@ type Swap struct {
 	PoolQ     float64  `json:"pool_q"`
 	TerminalQ float64  `json:"terminal_q"`
 	NetworkQ  float64  `json:"network_q"`
+	// The share of NetworkQ the user paid out of their own balance, as
+	// opposed to a relayer's. Zero on a sponsored transaction, where the
+	// gas is already inside what the user gave in the quote.
+	UserSolQ float64 `json:"user_sol_q,omitempty"`
 	OtherQ    *float64 `json:"other_q,omitempty"`
 	// Cross-chain settlements (see xchain.go): the origin chain, Relay's
 	// own fees the user paid (quote units), the Relay request id and the
@@ -507,6 +511,16 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	}
 	networkQ := toQuote("SOL", network+rentPaidQ)
 	userQ := quoteDelta[quote] // negative on a buy, positive on a sell
+	// The gas the user themselves parted with, which is their own lamport
+	// movement and nothing else. It is zero when a relayer signed and
+	// funded the transaction: the terminal's gas is then already inside
+	// what the user handed over in the quote, and counting it again would
+	// charge them twice. Only used when the quote is not SOL, where the
+	// lamport movement is gas rather than the trade itself.
+	userSolQ := 0.0
+	if d := quoteDelta["SOL"]; d < 0 {
+		userSolQ = toQuote("SOL", -d)
+	}
 
 	// Pools: the counterparties of the token leg, one per token vault
 	// that moved against the user. Each pool's quote vaults are the token
@@ -840,7 +854,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
 		PoolVault: main.base, PoolOwner: main.owner, PoolQuoteVaults: append(append([]string{}, main.quoteVaults...), main.xVaults...),
 		Pools: len(pools), Hops: hops, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
-		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
+		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, UserSolQ: userSolQ, QuoteUSD: quoteUSD,
 		Others: others,
 	}
 	if tx.BlockTime != nil {
@@ -897,22 +911,28 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 		// in a stable does not: there the SOL leaves a balance the loss
 		// never looks at, and the split then subtracted a cost the base
 		// had never been charged.
-		gasApart := s.Chain == "" && s.Quote != "SOL"
+		//
+		// What goes in is what the user themselves parted with, not the
+		// whole network cost. On a sponsored swap a relayer signs and
+		// funds, the user spends no SOL at all, and the terminal recovers
+		// the gas out of the fee they already paid in the quote — so it
+		// is inside the base once and must not be added a second time.
+		gasApart := 0.0
+		if s.Chain == "" && s.Quote != "SOL" {
+			gasApart = math.Min(s.UserSolQ, s.NetworkQ)
+		}
 		var loss float64
 		switch s.Side {
 		case "buy":
-			trade = s.UserQ // on another chain the gas is already inside it
-			if gasApart {
-				trade += s.NetworkQ
-			}
+			trade = s.UserQ + gasApart // on another chain the gas is already inside UserQ
 			if trade > 0 {
 				loss = 1e4 * (1 - value/trade)
 			}
 		case "sell":
-			trade = value
-			if s.Chain != "" || gasApart {
-				// The gas was paid apart from the tokens, so what the user
-				// gave is the tokens plus that gas.
+			trade = value + gasApart
+			if s.Chain != "" {
+				// A sale on another chain: the gas was paid apart from the
+				// tokens, so what the user gave is the tokens plus that gas.
 				trade += s.NetworkQ
 			}
 			if trade > 0 {

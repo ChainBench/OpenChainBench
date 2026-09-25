@@ -2735,17 +2735,23 @@ func loadState(path string) *State {
 	// A method change that moved only the arithmetic — not the reference,
 	// not what was read from the chain — applies to the stored window in
 	// place, because every input finalize needs is already on the row.
-	// Method 4 rebased the loss on the Solana rows whose gas was paid
-	// outside the quote: recomputing and restamping them carries the
+	// Methods 4 and 5 rebased the loss on the Solana rows whose gas was
+	// paid outside the quote: recomputing and restamping them carries the
 	// correction to the whole window at once, where dropping them would
 	// have emptied the board until the window refilled. A change that
 	// alters what is read, or the reference it is read against, still
 	// needs the drop below.
+	//
+	// One caveat this cannot repair: v5 needs to know how much of the gas
+	// the user paid themselves, and rows written earlier never recorded
+	// it. Replayed, they read as fully sponsored — correct for the great
+	// majority, since 73 of the 76 rows in that cell were, and wrong by
+	// the user's own gas on the rest until the window turns over.
 	refinal := 0
-	if methodVersion == 4 {
+	if methodVersion == 5 {
 		for i := range st.Swaps {
 			s := &st.Swaps[i]
-			if s.Method != 3 {
+			if s.Method != 3 && s.Method != 4 {
 				continue
 			}
 			age := int64(0)

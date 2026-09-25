@@ -98,6 +98,15 @@ in the split without it ever entering the base is what drove `pool_bps`
 negative on Solana buys quoted in USDC — 24 % of them, against under 2 %
 everywhere else.
 
+What joins the base is `user_sol_q`, the gas the user themselves parted
+with, and not the whole network cost. On a sponsored swap a relayer
+signs and funds, the user's lamport balance never moves, and the
+terminal recovers the gas out of the fee the user already paid in the
+quote — so it is inside the base once already. Sponsorship is the norm
+rather than the exception here: 73 of the 76 rows in that cell were
+sponsored, and adding the relayer's gas to their base overstated the
+loss by a median of 52 bps.
+
 `loss_bps` is the whole shortfall the user suffered against that
 reference; `terminal_bps` / `network_bps` are exact; `other_bps` is known
 on single-pool swaps without hops; `pool_bps` = loss − terminal − network

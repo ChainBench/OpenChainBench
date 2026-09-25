@@ -25,8 +25,16 @@ func TestGasEntersTheBaseOnceOnly(t *testing.T) {
 	}{{
 		name: "solana buy quoted in a stable: the gas is outside the quote leg",
 		sw: Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1,
-			Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, TerminalQ: 0.0255},
+			Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, UserSolQ: 0.2064, TerminalQ: 0.0255},
 		ref: 1, wantTrade: 3.2064, wantPool: "positive",
+	}, {
+		// A relayer signed and funded: the user spent no SOL, and the gas
+		// is already inside the quote they handed over. Adding it here
+		// would charge them for it twice.
+		name: "solana buy quoted in a stable, gas sponsored: the base is the quote alone",
+		sw: Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1,
+			Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, UserSolQ: 0, TerminalQ: 0.0255},
+		ref: 1, wantTrade: 3.00,
 	}, {
 		name: "solana buy quoted in SOL: the lamport delta already carries it",
 		sw: Swap{Side: "buy", Quote: "SOL", QuoteUSD: 117,
@@ -35,7 +43,7 @@ func TestGasEntersTheBaseOnceOnly(t *testing.T) {
 	}, {
 		name: "solana sell quoted in a stable: the gas is paid apart from the tokens",
 		sw: Swap{Side: "sell", Quote: "USDC", QuoteUSD: 1,
-			Tokens: 3.00, UserQ: 2.90, NetworkQ: 0.2064, TerminalQ: 0.0255},
+			Tokens: 3.00, UserQ: 2.90, NetworkQ: 0.2064, UserSolQ: 0.2064, TerminalQ: 0.0255},
 		ref: 1, wantTrade: 3.2064,
 	}, {
 		name: "evm buy: the leg was built with the gas already inside",
@@ -78,7 +86,8 @@ func TestGasEntersTheBaseOnceOnly(t *testing.T) {
 func TestFinalizeIsIdempotentOnItsOwnOutput(t *testing.T) {
 	ref := 1.0
 	for _, sw := range []Swap{
-		{Side: "buy", Quote: "USDC", QuoteUSD: 1, Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, TerminalQ: 0.0255},
+		{Side: "buy", Quote: "USDC", QuoteUSD: 1, Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, UserSolQ: 0.2064, TerminalQ: 0.0255},
+		{Side: "buy", Quote: "USDC", QuoteUSD: 1, Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, UserSolQ: 0, TerminalQ: 0.0255},
 		{Side: "sell", Quote: "SOL", QuoteUSD: 117, Tokens: 3.00, UserQ: 0.0244, NetworkQ: 0.0018, TerminalQ: 0.0002},
 		{Side: "buy", Chain: "bnb", Quote: "USDC", QuoteUSD: 1, Tokens: 2.9, UserQ: 3.2, NetworkQ: 0.2, TerminalQ: 0.03},
 	} {

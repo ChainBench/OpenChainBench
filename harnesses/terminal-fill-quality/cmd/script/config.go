@@ -16,7 +16,15 @@ import "strings"
 //	   split had been charging a cost the base was never charged, and the
 //	   residual went negative on a quarter of those buys. v3 rows are
 //	   recomputed from their stored reference, not dropped.
-const methodVersion = 4
+//	5: only the gas the user themselves parted with joins the base. v4
+//	   added the whole network cost, including a relayer's on a sponsored
+//	   swap, where the user spends no SOL and the terminal takes the gas
+//	   out of the fee they already paid in the quote — so v4 charged those
+//	   rows twice, by a median of 52 bps across the cell. Rows written
+//	   before v5 carry no record of who paid, and are recomputed as if the
+//	   user paid nothing: right for the sponsored majority, and the window
+//	   turns over within the day.
+const methodVersion = 5
 
 // Evidence published behind the board, per row rather than overall.
 //
