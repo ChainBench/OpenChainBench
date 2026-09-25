@@ -63,8 +63,15 @@ func pollL2BeatOne(ctx context.Context, c Chain) error {
 		sourceFetches.WithLabelValues("l2beat", "decode").Inc()
 		return err
 	}
-	pts := ch.Data.Chart.Data
 	types := ch.Data.Chart.Types
+	// Keep only well-formed rows: a null or truncated row must not panic
+	// the process (this goroutine shares it with the CCTP scan).
+	pts := make([][]float64, 0, len(ch.Data.Chart.Data))
+	for _, p := range ch.Data.Chart.Data {
+		if len(p) >= 4 {
+			pts = append(pts, p)
+		}
+	}
 	if !ch.Success || len(pts) < 2 || len(types) < 4 || types[0] != "timestamp" || types[2] != "canonical" || types[3] != "external" {
 		sourceFetches.WithLabelValues("l2beat", "shape").Inc()
 		return fmt.Errorf("unexpected chart shape %v (%d points)", types, len(pts))

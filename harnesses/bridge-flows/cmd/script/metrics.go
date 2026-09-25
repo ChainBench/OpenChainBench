@@ -85,6 +85,10 @@ var (
 		Name: "bridge_flows_last_tick_unix",
 		Help: "Unix time of the last CCTP tick that scanned every source chain (with or without per-chain errors) and republished the windows.",
 	})
+	netUpdated = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "bridge_flows_net_updated_unix",
+		Help: "Unix time of the last tick on which every source chain scanned to the head and bridge_usdc_in_usd / bridge_usdc_net_usd were rebuilt. The bench's freshness clock.",
+	})
 )
 
 func startMetricsServer(addr string) error {

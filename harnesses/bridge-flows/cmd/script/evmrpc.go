@@ -82,10 +82,14 @@ func (c *rpcClient) call(ctx context.Context, method string, params any, out any
 		}
 		if env.Error != nil {
 			msg := strings.ToLower(env.Error.Message)
-			// Every public gateway words its block-range cap differently.
-			if strings.Contains(msg, "range") || strings.Contains(msg, "too many") || strings.Contains(msg, "limit") || strings.Contains(msg, "exceed") || strings.Contains(msg, "10000") {
+			// A block-range cap belongs to the request, not the endpoint:
+			// shrink the window instead of failing over. Only eth_getLogs
+			// has a range, and rate-limit wording ("rate limit exceeded")
+			// falls through to the next endpoint like any other error.
+			isRange := method == "eth_getLogs" && !strings.Contains(msg, "rate") &&
+				(strings.Contains(msg, "range") || strings.Contains(msg, "too many") || strings.Contains(msg, "more than") || strings.Contains(msg, "10000") || strings.Contains(msg, "results"))
+			if isRange {
 				rpcCalls.WithLabelValues(c.slug, hostOf(url), "range").Inc()
-				c.lastOK = i
 				return errRangeTooWide
 			}
 			lastErr = fmt.Errorf("%s: rpc %d %s", hostOf(url), env.Error.Code, env.Error.Message)

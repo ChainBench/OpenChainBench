@@ -165,11 +165,11 @@ func (s *scanner) scan(ctx context.Context, historyHours int) (int, error) {
 		addresses = append(addresses, s.chain.V1)
 	}
 	topics := [][]string{{topicV1, topicV2}}
-	folded := 0
+	nFolded := 0
 	from := cur + 1
 	for from <= head {
 		if ctx.Err() != nil {
-			return folded, ctx.Err()
+			return nFolded, ctx.Err()
 		}
 		to := from + s.chunk - 1
 		if to > head {
@@ -178,24 +178,25 @@ func (s *scanner) scan(ctx context.Context, historyHours int) (int, error) {
 		logs, err := s.rpc.getLogs(ctx, from, to, addresses, topics)
 		if err == errRangeTooWide {
 			if s.chunk <= 200 {
-				return folded, fmt.Errorf("getLogs: range refused at %d blocks", s.chunk)
+				return nFolded, fmt.Errorf("getLogs: range refused at %d blocks", s.chunk)
 			}
 			s.chunk /= 2
 			continue
 		}
 		if err != nil {
-			return folded, fmt.Errorf("getLogs %d-%d: %w", from, to, err)
+			return nFolded, fmt.Errorf("getLogs %d-%d: %w", from, to, err)
 		}
 		fromTS, err := s.rpc.blockTime(ctx, from)
 		if err != nil {
-			return folded, fmt.Errorf("blockTime %d: %w", from, err)
+			return nFolded, fmt.Errorf("blockTime %d: %w", from, err)
 		}
 		toTS := fromTS
 		if to > from {
 			if toTS, err = s.rpc.blockTime(ctx, to); err != nil {
-				return folded, fmt.Errorf("blockTime %d: %w", to, err)
+				return nFolded, fmt.Errorf("blockTime %d: %w", to, err)
 			}
 		}
+		items := make([]folded, 0, len(logs))
 		for _, l := range logs {
 			b, ok := decodeBurn(l, s.chain.USDC)
 			if !ok {
@@ -207,11 +208,12 @@ func (s *scanner) scan(ctx context.Context, historyHours int) (int, error) {
 			if to > from {
 				ts = fromTS + (toTS-fromTS)*(b.block-from)/(to-from)
 			}
-			s.state.add(s.chain.Slug, ts, b.dest, b.amountUSD)
-			folded++
+			items = append(items, folded{ts: ts, dest: b.dest, usd: b.amountUSD})
 			burnsTotal.WithLabelValues(s.chain.Slug, fmt.Sprintf("v%d", b.version)).Inc()
 		}
-		s.state.setCursor(s.chain.Slug, to)
+		// Buckets and cursor move together (see State.addChunk).
+		s.state.addChunk(s.chain.Slug, items, to)
+		nFolded += len(items)
 		from = to + 1
 		// Grow the chunk back slowly after a shrink, up to the configured cap.
 		if s.chunk < s.chain.MaxChunk {
@@ -219,7 +221,7 @@ func (s *scanner) scan(ctx context.Context, historyHours int) (int, error) {
 		}
 	}
 	s.state.prune(s.chain.Slug, historyHours)
-	return folded, nil
+	return nFolded, nil
 }
 
 func min64(a, b int64) int64 {

@@ -189,6 +189,21 @@ scrape_configs:
           benchmark: trading-app-daily-volume
           host: openchainbench
 
+  # ─ USDC corridor flows (bench 281) ────────────────────────────────────
+  # Container ocb-bridge-flows on the Paris VPS. Circle CCTP burns
+  # (DepositForBurn v1 and v2) read off seven EVM chains over public RPCs,
+  # bucketed per destination; Wormholescan outbound volume per chain per
+  # UTC day; L2Beat TVS deltas. State under /data/state/bridge-flows.
+  - job_name: bridge-flows
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-bridge-flows:2112
+        labels:
+          benchmark: usdc-corridor-flows
+          host: openchainbench
+
   # Container ocb-terminal-fill-quality on the Paris VPS. Cost per swap on
   # each Solana trading terminal from sampled user transactions read
   # on-chain (bench 268); per-terminal stats and recent samples served by

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -85,6 +86,9 @@ func doInstallLogCapture() {
 		_, _ = io.Copy(originalStdout, r)
 		_ = originalStderr
 	}()
+	// The log package captured the original stderr at init; point it at
+	// the capturing writer too so log.Printf lines reach /logs.
+	log.SetOutput(os.Stderr)
 }
 
 // logsHandler returns an http.Handler for GET /logs?tail=N. Requires header

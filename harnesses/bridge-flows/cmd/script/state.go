@@ -101,9 +101,32 @@ func (s *State) setCursor(slug string, n int64) {
 
 func hourKey(ts int64) string { return strconv.FormatInt(ts-ts%3600, 10) }
 
+// folded is one decoded burn ready for its bucket.
+type folded struct {
+	ts   int64
+	dest uint32
+	usd  float64
+}
+
+// addChunk folds a whole chunk's burns and advances the cursor under one
+// lock, so a save can never capture the buckets without the cursor (which
+// would count the chunk twice after a restart).
+func (s *State) addChunk(slug string, items []folded, cursor int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, it := range items {
+		s.addLocked(slug, it.ts, it.dest, it.usd)
+	}
+	s.chain(slug).Cursor = cursor
+}
+
 func (s *State) add(slug string, ts int64, dest uint32, usd float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.addLocked(slug, ts, dest, usd)
+}
+
+func (s *State) addLocked(slug string, ts int64, dest uint32, usd float64) {
 	c := s.chain(slug)
 	h := hourKey(ts)
 	m, ok := c.Hours[h]

@@ -20,6 +20,10 @@ const wormholeURL = "https://api.wormholescan.io/api/v1/x-chain-activity/tops?ti
 
 var wormholeHTTP = &http.Client{Timeout: 30 * time.Second}
 
+// Chains published on the last poll, so vanished ones are deleted without
+// blanking the whole vector.
+var wormholeSeen = map[string]bool{}
+
 type wormholeRow struct {
 	From         string  `json:"from"`
 	To           string  `json:"to"`
@@ -57,29 +61,55 @@ func pollWormhole(ctx context.Context) error {
 		return err
 	}
 	sourceFetches.WithLabelValues("wormhole", "ok").Inc()
-	yesterday := today.AddDate(0, 0, -1).Format(time.RFC3339)
+	todayKey := today.Format("2006-01-02")
+	yesterday := today.AddDate(0, 0, -1).Format("2006-01-02")
 	v24 := map[string]float64{}
 	v7 := map[string]float64{}
 	days := map[string]bool{}
+	haveYesterday := false
 	for _, r := range rows {
+		day := ""
+		if t, err := time.Parse(time.RFC3339, r.From); err == nil {
+			day = t.UTC().Format("2006-01-02")
+		} else if len(r.From) >= 10 {
+			day = r.From[:10]
+		}
+		if day == "" || day >= todayKey {
+			continue // the open day never enters a complete-day sum
+		}
 		slug, ok := wormholeSlug[r.EmitterChain]
 		if !ok {
 			slug = "wormhole-" + r.EmitterChain
 		}
 		usd := r.Volume / 1e8
-		days[r.From] = true
+		days[day] = true
 		v7[slug] += usd
-		if r.From == yesterday {
+		if day == yesterday {
 			v24[slug] += usd
+			haveYesterday = true
 		}
 	}
 	if len(days) < 7 {
 		log.Printf("[wormhole] only %d of 7 days returned; 7d sums cover those days", len(days))
 	}
-	wormholeVolume.Reset()
+	// Replace, never blank: drop chains that vanished, then set the rest.
+	// The 24h series is absent (not zero) until Wormholescan has
+	// materialized yesterday's bucket.
+	for slug := range wormholeSeen {
+		if _, ok := v7[slug]; !ok {
+			wormholeVolume.DeleteLabelValues(slug, "7d")
+			wormholeVolume.DeleteLabelValues(slug, "24h")
+			delete(wormholeSeen, slug)
+		}
+	}
 	for slug, usd := range v7 {
+		wormholeSeen[slug] = true
 		wormholeVolume.WithLabelValues(slug, "7d").Set(usd)
-		wormholeVolume.WithLabelValues(slug, "24h").Set(v24[slug])
+		if haveYesterday {
+			wormholeVolume.WithLabelValues(slug, "24h").Set(v24[slug])
+		} else {
+			wormholeVolume.DeleteLabelValues(slug, "24h")
+		}
 	}
 	wormholeDays.Set(float64(len(days)))
 	wormholeLastTick.Set(float64(time.Now().Unix()))
@@ -91,6 +121,6 @@ func pollWormhole(ctx context.Context) error {
 	if len(top) > 3 {
 		top = top[:3]
 	}
-	log.Printf("[wormhole] %d chains, day %s, top: %v", len(v7), yesterday[:10], top)
+	log.Printf("[wormhole] %d chains, day %s (present=%v), top: %v", len(v7), yesterday, haveYesterday, top)
 	return nil
 }

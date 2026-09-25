@@ -17,8 +17,11 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
@@ -46,21 +49,30 @@ func main() {
 		scanners = append(scanners, newScanner(c, cfg.RequestGap, state))
 	}
 
-	go loop(ctx, cfg.WormholeEvery, func() {
+	var wg sync.WaitGroup
+	run := func(every time.Duration, f func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			loop(ctx, every, f)
+		}()
+	}
+	run(cfg.WormholeEvery, func() {
 		if err := pollWormhole(ctx); err != nil {
 			log.Printf("[wormhole] %v", err)
 		}
 	})
-	go loop(ctx, cfg.L2BeatEvery, func() { pollL2Beat(ctx, cfg.Chains) })
-	go loop(ctx, cfg.Tick, func() {
-		tick(ctx, cfg, scanners, state)
-	})
+	run(cfg.L2BeatEvery, func() { pollL2Beat(ctx, cfg.Chains) })
+	run(cfg.Tick, func() { tick(ctx, cfg, scanners, state) })
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	log.Printf("shutting down")
 	cancel()
+	// A chunk's buckets and cursor move under one lock (State.addChunk);
+	// waiting for the loops keeps the final save after the last chunk.
+	wg.Wait()
 	_ = state.save()
 }
 
@@ -107,6 +119,12 @@ func tick(ctx context.Context, cfg Config, scanners []*scanner, state *State) {
 	}
 	publish(cfg, state, healthy)
 	lastTick.Set(float64(time.Now().Unix()))
+	if len(healthy) == len(cfg.Chains) {
+		// The bench's freshness clock: inflow and net were rebuilt from a
+		// complete cohort. A tick with a failing chain moves lastTick but
+		// not this, so the page reports the headline as stale.
+		netUpdated.Set(float64(time.Now().Unix()))
+	}
 	log.Printf("[tick] %d/%d chains healthy, %s", len(healthy), len(scanners), time.Since(start).Round(time.Second))
 }
 
@@ -123,6 +141,9 @@ func publish(cfg Config, state *State, healthy map[string]bool) {
 				continue
 			}
 			usd, burns := state.window(c.Slug, d)
+			// A corridor that went quiet must read as absent, not keep its
+			// last value: drop this source's series for the window first.
+			usdcOut.DeletePartialMatch(prometheus.Labels{"source": c.Slug, "window": window})
 			var total float64
 			var nb int
 			for dom, v := range usd {
@@ -147,11 +168,16 @@ func publish(cfg Config, state *State, healthy map[string]bool) {
 		if len(healthy) != len(cfg.Chains) {
 			continue
 		}
+		// Rebuild inflow from scratch: a destination nobody sent to in the
+		// window disappears, and a scanned chain that received nothing
+		// reads zero (its outflow is known, so zero inflow is a fact).
+		usdcIn.DeletePartialMatch(prometheus.Labels{"window": window})
+		for _, c := range cfg.Chains {
+			usdcIn.WithLabelValues(c.Slug, window).Set(inbound[c.Slug])
+			usdcNet.WithLabelValues(c.Slug, window).Set(inbound[c.Slug] - outTotal[c.Slug])
+		}
 		for dest, v := range inbound {
 			usdcIn.WithLabelValues(dest, window).Set(v)
-		}
-		for _, c := range cfg.Chains {
-			usdcNet.WithLabelValues(c.Slug, window).Set(inbound[c.Slug] - outTotal[c.Slug])
 		}
 	}
 }

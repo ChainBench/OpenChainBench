@@ -47,7 +47,7 @@ var defaultChains = []Chain{
 		// "op-mainnet" (the former answers "Project not found", 2026-09-25).
 		RPCs: []string{"https://gateway.tenderly.co/public/optimism", "https://mainnet.optimism.io"}, MaxChunk: 10000, L2Beat: "op-mainnet"},
 	{Slug: "polygon", Domain: 7, USDC: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359", V1: "0x9daf8c91aefae50b9c0e69629d3f6ca40ca3b3fe", V2: tokenMessengerV2,
-		RPCs: []string{"https://gateway.tenderly.co/public/polygon"}, MaxChunk: 10000, L2Beat: "polygon-pos"},
+		RPCs: []string{"https://gateway.tenderly.co/public/polygon", "https://polygon-bor-rpc.publicnode.com", "https://polygon.llamarpc.com"}, MaxChunk: 10000, L2Beat: "polygon-pos"},
 	{Slug: "avalanche", Domain: 1, USDC: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e", V1: "0x6b25532e1060ce10cc3b0a99e5683b91bfde6982", V2: tokenMessengerV2,
 		RPCs: []string{"https://gateway.tenderly.co/public/avalanche", "https://api.avax.network/ext/bc/C/rpc"}, MaxChunk: 10000},
 	{Slug: "unichain", Domain: 10, USDC: "0x078d782b760474a361dda0af3839290b0ef57ad6", V1: "0x4e744b28e787c3ad0e810ed65a24461d4ac5a762", V2: tokenMessengerV2,
@@ -61,7 +61,7 @@ var defaultChains = []Chain{
 // id missing here publishes as "domain-<id>".
 var domainSlug = map[uint32]string{
 	0: "ethereum", 1: "avalanche", 2: "optimism", 3: "arbitrum", 4: "noble", 5: "solana", 6: "base", 7: "polygon",
-	8: "sui", 9: "aptos", 10: "unichain", 11: "linea", 12: "codex", 13: "sonic", 14: "world", 15: "monad", 16: "sei",
+	8: "sui", 9: "aptos", 10: "unichain", 11: "linea", 12: "codex", 13: "sonic", 14: "world-chain", 15: "monad", 16: "sei",
 	17: "bnb", 18: "xdc", 19: "hyperevm", 21: "ink", 22: "plume", 25: "starknet", 26: "arc", 27: "stellar",
 	28: "edge", 29: "injective", 30: "morph", 31: "pharos", 32: "cronos", 33: "plasma", 37: "xlayer",
 }
@@ -72,7 +72,7 @@ var domainSlug = map[uint32]string{
 var wormholeSlug = map[string]string{
 	"1": "solana", "2": "ethereum", "4": "bnb", "5": "polygon", "6": "avalanche", "10": "fantom", "14": "celo",
 	"21": "sui", "22": "aptos", "23": "arbitrum", "24": "optimism", "30": "base", "34": "scroll", "35": "mantle",
-	"37": "xlayer", "38": "linea", "39": "berachain", "40": "seievm", "44": "unichain", "45": "worldchain",
+	"37": "xlayer", "38": "linea", "39": "berachain", "40": "sei", "44": "unichain", "45": "world-chain",
 	"46": "ink", "47": "hyperevm", "48": "monad", "50": "mezo", "51": "fogo", "52": "sonic", "53": "converge",
 	"55": "plume", "57": "xrplevm", "58": "plasma", "59": "creditcoin", "60": "stacks", "63": "moca",
 	"64": "megaeth", "66": "xrpl", "67": "zerogravity", "68": "tempo", "69": "nexus", "71": "arc", "72": "robinhood",

@@ -69,6 +69,7 @@ Tenderly public gateways, `mainnet.base.org`, `arb1.arbitrum.io/rpc`,
 | `bridge_l2_tvs_change_usd` | chain, window | change of L2Beat canonical + external |
 | `bridge_l2_bridged_value_usd` | chain | L2Beat canonical + external, newest point |
 | `bridge_flows_last_tick_unix`, `bridge_wormhole_last_tick_unix`, `bridge_l2beat_last_tick_unix` | | liveness per source |
+| `bridge_flows_net_updated_unix` | | last tick with all seven chains healthy; the bench freshness clock |
 | `bridge_flows_rpc_calls_total`, `bridge_flows_fetch_total`, `bridge_flows_burns_folded_total` | | counters |
 
 ## Run
