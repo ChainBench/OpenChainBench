@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -50,7 +51,7 @@ const (
 	// PoolManager ERC-6909 Transfer(caller, from indexed, to indexed,
 	// id indexed, amount): how a v4 hook takes its cut without moving
 	// an ERC20. Four topics, two words of data.
-	topicV4Claim  = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
+	topicV4Claim = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
 	// A hook that logs its own fee rather than minting a claim. Read off
 	// chain on an Axiom sale where it took exactly 1.000 % of the swap:
 	// two topics, three data words, the amount in word 1 (word 0 is 0).
@@ -103,12 +104,33 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 			Result json.RawMessage `json:"result"`
 			Error  *rpcError       `json:"error"`
 		}
-		if json.Unmarshal(data, &env) != nil || env.Error != nil || len(env.Result) == 0 || string(env.Result) == "null" {
-			if env.Error != nil {
-				last = errors.New(env.Error.Message)
-			} else {
-				last = errors.New("empty result")
-			}
+		// An HTTP status the caller never saw is how a refusal became a
+		// quiet range. This read no status at all and turned any body it
+		// could not parse into "empty result", which the log walk treats
+		// as "this pool had no trade here" — and from the VPS the last
+		// endpoint in Ethereum's list answers 403 with the plain text
+		// "forbidden", so every failure ended up wearing that label. A
+		// v4 reference then walked back past 54 swaps and priced a sell
+		// 20 hours stale, published as -952 bps against a true +388.
+		// Reproduced from the same host: 2 replays in 30 return exactly
+		// the sqrtPriceX96 that was published.
+		if err := json.Unmarshal(data, &env); err != nil {
+			last = fmt.Errorf("http %d, unparseable body (%d bytes)", resp.StatusCode, len(data))
+			continue
+		}
+		if env.Error != nil {
+			last = errors.New(env.Error.Message)
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			last = fmt.Errorf("http %d", resp.StatusCode)
+			continue
+		}
+		// A JSON-RPC null is a real answer only for a lookup; for a list
+		// it is the node declining. An empty array is not this: it parses
+		// to a non-zero Result and means the range was genuinely quiet.
+		if len(env.Result) == 0 || string(env.Result) == "null" {
+			last = errors.New("empty result")
 			continue
 		}
 		return json.Unmarshal(env.Result, out)
@@ -157,26 +179,42 @@ func hookClaimUSD(ctx context.Context, httpc *http.Client, c originChain, logs [
 		}
 		total += f(word(l.Data, 1)) * math.Pow10(-m.dec) * u
 	}
-	// The same hook, logging its fee instead of minting a claim. The
-	// amount is in the pool's own currency, the gas coin on the rows this
-	// was found on, so it values like any native leg.
-	if p, ok := gas[c.gas]; ok && p > 0 {
+	// The same hook, logging its fee instead of minting a claim. The event
+	// is (address currency, uint256 protocolFee, uint256 creatorFee), and
+	// this had read the second word alone as wei of the gas coin — wrong
+	// twice over. It missed the creator cut, a median two thirds of what
+	// the hook charged, which stayed in the residual and published as the
+	// app's fee: that is how routers charging 1 % came to read 295 to 494
+	// bps. And on a fee taken in the traded token it valued that token's
+	// raw units at the gas coin's price with eighteen decimals assumed,
+	// which put 30,560,853 dollars of pool on a 53 dollar trade, 43 rows
+	// of it in the window.
+	//
+	// Word 0 is the currency: zero for native, otherwise the token. A fee
+	// in a token we cannot price is left out rather than guessed at, the
+	// same choice the claim branch above makes.
+	{
+		gp, gok := gas[c.gas]
 		for i := range logs {
 			l := &logs[i]
 			if len(l.Topics) == 0 || l.Topics[0] != topicV4HookFee || len(l.Data) < 2+3*64 {
 				continue
 			}
-			// All three words, not the second alone. The event carries a
-			// zero, a fixed 1 % protocol cut and a variable 1–4 % creator
-			// cut, and reading one of them took a median of a third of
-			// what the hook charged. Traced against the pool's actual
-			// movements on the rows that carry this event, the three
-			// summed match on 21 of 21 and word 1 alone on none of them:
-			// the rest was left in the residual and published as the
-			// app's fee, which is how a 1 % router came to read 494 bps.
-			for w := 0; w < 3; w++ {
-				total += f(word(l.Data, w)) / 1e18 * p
+			cur := "0x" + strings.ToLower(strings.TrimPrefix(l.Data, "0x")[24:64])
+			amt := f(word(l.Data, 1)) + f(word(l.Data, 2))
+			if cur == zero {
+				if !gok || gp <= 0 {
+					continue
+				}
+				total += amt / 1e18 * gp
+				continue
 			}
+			m := erc20(ctx, httpc, c, cur)
+			u, ok := quoteUSD(m.symbol, c, gas)
+			if !m.ok || !ok {
+				continue // a fee in the traded token: not a quote-side cost we can value
+			}
+			total += amt * math.Pow10(-m.dec) * u
 		}
 	}
 	return total
