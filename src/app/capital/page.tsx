@@ -94,6 +94,7 @@ export default async function CapitalHubPage() {
         isAccessibleForFree: true,
         dateModified: hub.asOf,
         distribution: [
+          { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${SITE.url}/api/capital` },
           { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: "https://kv.openchainbench.com/aggregate/valuation/history.json" },
           { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: "https://kv.openchainbench.com/aggregate/chains/history.json" },
           ...hub.benches.filter((b) => b.live).map((b) => ({ "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${SITE.url}/api/stat/${b.slug}` })),
@@ -193,17 +194,23 @@ export default async function CapitalHubPage() {
         <div className="mt-3 space-y-3 text-sm text-ink-soft leading-relaxed">
           <p>
             <strong className="text-ink">Follow the capital.</strong> TVL is a level: what sits in DeFi contracts on the chain today. Bridged value is
-            the part of a chain&apos;s value secured that arrived from another chain, and its weekly move is shown against the median move of every
-            L2Beat project above $200M, so a chain gaining ground on its peers stands out from a market-wide move. Stablecoin net flow is the
-            30-day change in pegged dollars circulating on the chain: dollars appear on a chain when somebody mints or bridges them there, so it is
-            the closest public reading of where capital is actually moving. Open interest shows where leveraged positions and prediction bets sit.
+            the part of a chain&apos;s value secured that arrived from another chain; the &quot;7d vs L2 median&quot; column is its weekly move minus
+            the median move of every L2Beat project above $200M, with both numbers under it, so a chain gaining ground on its peers stands out from
+            a market-wide move. Stablecoin net flow is the 30-day change in pegged dollars circulating on the chain: dollars appear on a chain when
+            somebody mints or bridges them there, so it is the closest public reading of where capital is actually moving. A muted value is a
+            chain outside the bench&apos;s ranked cohort, shown from the daily history and left out of the leaders and counts. Open interest shows
+            where leveraged positions and prediction bets sit.
           </p>
           <p>
             <strong className="text-ink">Valuation divergences.</strong> Price to fees is market cap over the last 30 days of fees annualized; price to
             sales uses the protocol&apos;s own share of those fees. Each token is read against the fee-weighted median of its category, and the
             &quot;fees up, token down&quot; badge marks the rows where fees grew month over month, the token fell over 30 days and the P/F sits below
-            that median, all three at once. The mirror badge marks the opposite. Neither is a recommendation: fees can grow for one month, a
-            token can fall for reasons the fee line does not see, and a low float means most of the supply is still to come.
+            that median, all three at once; the block at the top of the tab lists the five of them with the largest fee growth. The mirror badge
+            marks the opposite. Neither is a recommendation: fees can grow for one month, a token can fall for reasons the fee line does not see,
+            and a low float means most of the supply is still to come.
+          </p>
+          <p>
+            Under each table, three lines say how to read its main column, where it misleads, and what it does not say.
           </p>
         </div>
       </section>
@@ -238,7 +245,11 @@ export default async function CapitalHubPage() {
             <strong className="text-ink">Not measured here.</strong> Token unlock schedules (no free source publishes them; float and its 90-day change
             are the closest public proxy), bridge volumes other than the ones OpenChainBench reads itself (DeFiLlama&apos;s bridge endpoints are paid),
             and any figure a venue reports about itself without a public trail. Every number on this page is reproducible from the URLs above and
-            released under CC BY 4.0; the daily history is at{" "}
+            released under CC BY 4.0; the rows of this page are one JSON payload at{" "}
+            <a className="underline" href="/api/capital">
+              /api/capital
+            </a>{" "}
+            (cached five minutes, the same gating as the page), and the daily history is at{" "}
             <a className="underline" href="https://kv.openchainbench.com/aggregate/valuation/history.json">
               valuation/history.json
             </a>{" "}
@@ -324,7 +335,7 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
     },
     {
       q: "Can I get this data as a file or over an API?",
-      a: "Yes. Two daily JSON files hold one point per UTC day per chain and per token (valuation/history.json and chains/history.json on kv.openchainbench.com), every bench has a /api/stat endpoint, and the MCP server answers PromQL over the same gauges for ranges up to 90 days. All of it is CC BY 4.0.",
+      a: "Yes. The rows of this page are one JSON payload at /api/capital (chains, tokens, perp DEXes, open interest, divergences; cached five minutes). Two daily JSON files hold one point per UTC day per chain and per token (valuation/history.json and chains/history.json on kv.openchainbench.com), every bench has a /api/stat endpoint, and the MCP server answers PromQL over the same gauges for ranges up to 90 days. All of it is CC BY 4.0.",
     },
   ];
 }
