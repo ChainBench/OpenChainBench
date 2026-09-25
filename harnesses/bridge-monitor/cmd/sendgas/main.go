@@ -118,6 +118,9 @@ func main() {
 	if to == from {
 		log.Fatalf("recipient is the execution wallet itself")
 	}
+	if to == (common.Address{}) {
+		log.Fatalf("recipient is the zero address")
+	}
 
 	rpc := cfg.rpcDef
 	for _, env := range cfg.rpcEnv {
@@ -209,6 +212,20 @@ func main() {
 	nonce, err := client.PendingNonceAt(ctx, from)
 	if err != nil {
 		log.Fatalf("nonce: %v", err)
+	}
+	// The monitor serializes its own broadcasts behind an in-process mutex
+	// that this tool cannot take (cmd/monitor/spend_tracker.go). A pending
+	// nonce ahead of the mined one means one of its transactions is in
+	// flight right now: signing the same nonce would race it, and the
+	// balance read above would not see its spend. Refuse and let the
+	// operator retry once the slot is over (review of PR 2686).
+	mined, err := client.NonceAt(ctx, from, nil)
+	if err != nil {
+		log.Fatalf("mined nonce: %v", err)
+	}
+	if mined != nonce {
+		log.Fatalf("a transaction from %s is in flight on %s (mined nonce %d, pending %d), retry once it is confirmed",
+			from.Hex(), cfg.name, mined, nonce)
 	}
 
 	log.Printf("%s: %s -> %s (%s), %s ETH, balance %s ETH, gas limit %d, up to %s ETH gas, %s ETH left after",
