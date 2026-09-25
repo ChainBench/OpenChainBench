@@ -101,8 +101,8 @@ var (
 	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
 	}, []string{"terminal", "chain", "bucket"})
-	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
-	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
+	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	// Per-chain health of the EVM log feed. This existed only inside the
 	// feed struct, so BNB's read nothing for days behind a green
 	// tfq_feed_up, which covers the Solana WebSocket alone.
@@ -112,7 +112,13 @@ var (
 	// every poll: BNB logged 250,834,117 skipped blocks in 24 h on a chain
 	// that makes about 115,000). A lag that stays flat at 630,000 can.
 	gNativeLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_lag_blocks", Help: "Blocks between the chain's head and the log feed's cursor after the last poll"}, []string{"chain"})
-	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// Blocks the last poll gave up on. The lag gauge is read after the
+	// cursor jumps to the head of what this poll can afford, so a chain
+	// that never catches up still reads a lag of zero: BNB dropped a
+	// third of its blocks for half an hour with feed_up 1 and lag 0 on
+	// every dashboard. This is the gauge that shows it.
+	gNativeSkipped = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_skipped_last_blocks", Help: "Blocks the chain's log feed skipped on its last poll: never read, never sampled. Non-zero poll after poll means the read budget is below what the chain produces"}, []string{"chain"})
+	gUnpriced      = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
 	}, []string{"terminal", "chain"})
 	gRelayFeed = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_relay_feed_up", Help: "1 when Relay's requests API answered the last polling round (the cross-chain rows' feed)"})
@@ -123,7 +129,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gNativeUp, gNativeLag, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -193,12 +199,12 @@ type failSample struct {
 }
 
 type State struct {
-	Swaps       []Swap                      `json:"swaps"`
-	Fails       []failSample                `json:"fails"`
-	Buckets     map[string][]minuteBucket   `json:"buckets"`                // terminal -> per-minute feed counts
-	Rejects     map[string]map[string]int   `json:"rejects"`                // terminal -> reason -> count (window not enforced; informative)
-	Cursors     map[string]*walletCursor    `json:"cursors"`                // wallet -> cursor (polling fallback)
-	EvmCursor   map[string]int64            `json:"evm_cursor,omitempty"`   // chain -> last block scanned for the native EVM terminals
+	Swaps     []Swap                    `json:"swaps"`
+	Fails     []failSample              `json:"fails"`
+	Buckets   map[string][]minuteBucket `json:"buckets"`              // terminal -> per-minute feed counts
+	Rejects   map[string]map[string]int `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
+	Cursors   map[string]*walletCursor  `json:"cursors"`              // wallet -> cursor (polling fallback)
+	EvmCursor map[string]int64          `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
 	// chain -> unix time its log feed last failed, absent while it reads.
 	// Without it a chain the harness cannot read is indistinguishable from
 	// a chain nobody trades on, and its rows vanish from the board rather
@@ -263,10 +269,10 @@ type TerminalStats struct {
 	Priced          int        `json:"priced"`
 	Flagged         int        `json:"flagged"` // priced but out of bounds, excluded
 	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
-	Loss        *Quantiles         `json:"loss_bps,omitempty"`
+	Loss *Quantiles `json:"loss_bps,omitempty"`
 	/** The same, with the terminal's own fee removed per swap: execution
-	  * quality alone. Network, pool and protocol costs stay inside — how a
-	  * swap is routed is the app's doing, what it charges for it is not. */
+	 * quality alone. Network, pool and protocol costs stay inside — how a
+	 * swap is routed is the app's doing, what it charges for it is not. */
 	LossExFee   *Quantiles         `json:"loss_ex_fee_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
 	TradeUSD    *Quantiles         `json:"trade_usd,omitempty"`
@@ -679,9 +685,19 @@ func (st *State) reject(slug string, r parseReject) {
 // Meteora DLMM), else the previous trade on the pool (at most 60 s
 // earlier); the pool neighbourhood is read anyway for the screen.
 func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pools *poolCache, solUSD float64, now int64) {
-	// The pump.fun curve's own event first: its virtual reserves are not
-	// constants, so the cached account constants can be stale.
-	if sw.Venue == "pump-curve" {
+	// The split guard, on every exit: this function returns from four
+	// places and prices in three, and it had never applied it at all —
+	// implausibleSplit was wired into the EVM paths only, so a Solana row
+	// whose named costs exceeded what the trade lost was published like
+	// any other. Deferred rather than repeated, so a new exit cannot skip
+	// it again.
+	defer implausibleSplit(sw)
+	// The venue's own event first, where the vaults do not describe the
+	// curve: pump.fun's virtual reserves are not constants, so the cached
+	// account constants can be stale, and a Raydium CP-Swap vault holds
+	// protocol, fund and creator fees that the curve excludes — its event
+	// reports the reserves it actually used.
+	if sw.Venue == "pump-curve" || sw.Venue == "raydium-cpmm" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
 			sw.finalize(&p, 0, "reserves")
 		}
@@ -720,6 +736,13 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 		}
 		if sw.RefSrc != "" {
 			break // reference known; only the immediate neighbour is needed for the screen
+		}
+		// A concentrated pool's price only moves on swaps, so the price the
+		// previous swap left behind is the price ours found: exact, where
+		// that trade's own average is not.
+		if p, ok := concMid(sw, tx, vaultOf(tx, sw.PoolVault), ptx, solUSD); ok {
+			sw.finalize(&p, 0, "reserves")
+			break
 		}
 		if p := poolTradePrice(ptx, sw, solUSD); p > 0 {
 			age := int64(0)
@@ -1042,6 +1065,13 @@ func reservePrice(ctx context.Context, rpc *rpcClient, sw *Swap, pools *poolCach
 		} else {
 			acc, err := rpc.account(ctx, sw.PoolOwner)
 			if err != nil || acc == nil {
+				// The Solana twin of the v4 log swallow: a read that failed
+				// fell through to the previous trade with no trace, and a
+				// PumpSwap row whose pool account holds the exact offset at
+				// byte 245 was priced off a print one second old instead.
+				if err != nil {
+					log.Printf("[ref] %s %s: pool account unreadable, previous trade used instead: %v", sw.Terminal, sw.Venue, err)
+				}
 				return 0, false
 			}
 			d := acc.Data
@@ -1550,6 +1580,18 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		out = append(out, ts)
 	}
+	// A hold on the row is a hold on its buckets. sizeSplit judges each
+	// bucket by its own count inside statsFor, before the holds above are
+	// decided, so a product re-sampling its dominant chain read
+	// Unresponsive on All sizes and published, ranked, on $25 to $250.
+	for i := range out {
+		if out[i].Healthy {
+			continue
+		}
+		for _, st := range out[i].SizeSplit {
+			st.Healthy, st.Ranked = false, false
+		}
+	}
 	// Ranked terminals first by median, then published-but-not-ranked by
 	// median, then the rest by sample size.
 	tier := func(ts TerminalStats) int {
@@ -1906,7 +1948,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 			ts.BySize = map[string]*Quantiles{}
 			for b, v := range bySize {
-				if len(v) >= 5 {
+				if len(v) >= minPricedSize { // the spec's floor; five swaps published a median over seven
 					ts.BySize[b] = quantiles(v, false)
 				}
 			}
@@ -2272,7 +2314,7 @@ type PublicSwap struct {
 	// True when the Relay request carried no fee at all: the cut is
 	// unknown rather than nil, and pool_bps on this row absorbs it.
 	RelayUnknown bool     `json:"relay_unknown,omitempty"`
-	OtherBps    *float64 `json:"other_bps,omitempty"`
+	OtherBps     *float64 `json:"other_bps,omitempty"`
 
 	Sandwich *Sandwich `json:"sandwich,omitempty"`
 
@@ -2575,6 +2617,15 @@ func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf
 				if s.Terminal != slug || s.Method != methodVersion {
 					continue
 				}
+				// Priced rows only, as the per-chain split (the appends
+				// guarded at "term = append" above). A row the bounds threw
+				// out still carried its components here: gmgn-arc's 35
+				// doubled buys held a 5,033 bps fee median, weighted 2.5 %
+				// of the product's flow, and the pooled terminal read 224
+				// bps against ~100 on every chain.
+				if !s.Priced || s.LossBps == nil {
+					continue
+				}
 				rowsAll++
 				if keep != nil && !keep(s) {
 					continue
@@ -2732,6 +2783,39 @@ func loadState(path string) *State {
 	// PURGE_TERMINALS (comma-separated slugs) drops those rows once, after
 	// a feed change that made the row's sample unrepresentative.
 	purgeSlugs := set(strings.Split(os.Getenv("PURGE_TERMINALS"), ",")...)
+	// PURGE_SIGS (comma-separated signatures) drops exactly those rows,
+	// once. For a defect fixed at parse time — a stored row keeps its old
+	// figures until the window turns — the choice used to be leaving the
+	// row up for a day or purging its whole terminal; ten rows priced
+	// against a reference the method no longer uses are neither.
+	purgeSigs := set(strings.Split(os.Getenv("PURGE_SIGS"), ",")...)
+	delete(purgeSigs, "")
+	// A method change that moved only the arithmetic — not the reference,
+	// not what was read from the chain — applies to the stored window in
+	// place, because every input finalize needs is already on the row.
+	// Methods 4 and 5 rebased the loss on the Solana rows whose gas was
+	// paid outside the quote: recomputing and restamping them carries the
+	// correction to the whole window at once, where dropping them would
+	// have emptied the board until the window refilled. A change that
+	// alters what is read, or the reference it is read against, still
+	// needs the drop below.
+	//
+	// One caveat this cannot repair: v5 needs to know how much of the gas
+	// the user paid themselves, and rows written earlier never recorded
+	// it. Replayed, they read as fully sponsored — correct for the great
+	// majority, since 73 of the 76 rows in that cell were, and wrong by
+	// the user's own gas on the rest until the window turns over.
+	refinal := 0
+	if methodVersion == 5 {
+		for i := range st.Swaps {
+			s := &st.Swaps[i]
+			if s.Method != 3 && s.Method != 4 {
+				continue
+			}
+			replayFinalize(s)
+			refinal++
+		}
+	}
 	kept := st.Swaps[:0]
 	dropped, purged := 0, 0
 	if st.Resampling == nil {
@@ -2743,7 +2827,7 @@ func loadState(path string) *State {
 			dropped++
 			continue
 		}
-		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] {
+		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] || purgeSigs[s.Sig] {
 			purged++
 			st.Resampling[s.Terminal] = now
 			continue
@@ -2756,7 +2840,24 @@ func loadState(path string) *State {
 		}
 	}
 	st.Swaps = kept
-	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
+	// The split guard, over every stored row. It runs at parse time and
+	// inside the method replay above, and every row in the window was
+	// already method 5 when it shipped, so the rows it was written for
+	// never met it: six sat on the board below -200 bps of pool or above
+	// 1,000 of app fee, the worst a 6,368 bps pool against a 6,616 bps app
+	// fee. Idempotent and cheap, so it simply runs on load.
+	guarded := 0
+	for i := range st.Swaps {
+		if !st.Swaps[i].Priced {
+			continue
+		}
+		implausibleSplit(&st.Swaps[i])
+		if !st.Swaps[i].Priced {
+			guarded++
+		}
+	}
+	log.Printf("[state] split guard on load: %d stored rows dropped from the statistics", guarded)
+	log.Printf("[state] loaded %d swaps from %s (%d recomputed into method v%d, %d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q PURGE_SIGS=%d named; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, refinal, methodVersion, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"), len(purgeSigs))
 	return st
 }
 
@@ -2880,13 +2981,60 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 		if !venues[s.Venue] || s.Chain != "" || s.RelayID != "" {
 			continue
 		}
-		tx, err := rpc.transaction(ctx, s.Sig)
+		// A repricing pass is a one-off read of every row in the venue, and
+		// the client's own pacing (RPC_RPS, 8 a second) is the ceiling the
+		// endpoints allow for a steady trickle, not for a burst of six
+		// hundred: 361 then 446 of ~650 came back unreadable on two passes
+		// and kept their old figures. So the pass walks at three reads a
+		// second and, on a failure, waits and asks twice more with a
+		// growing pause. Six hundred rows take about four minutes, which
+		// is nothing against the day they cover.
+		var tx *parsedTx
+		var err error
+		for attempt := 0; attempt < 3; attempt++ {
+			time.Sleep(time.Duration(300+700*attempt) * time.Millisecond)
+			tx, err = rpc.transaction(ctx, s.Sig)
+			if err == nil && tx != nil {
+				break
+			}
+		}
 		if err != nil || tx == nil {
 			failed++
 			continue
 		}
 		s.RefPrice, s.RefSrc, s.RefAgeS, s.LossBps, s.PoolBps, s.Priced, s.Flag = nil, "", nil, nil, nil, false, ""
-		priceSwap(ctx, rpc, s, tx, pools, solUSD, now)
+		// The mid of a SOL-quoted pool is converted into the row's quote
+		// at SOL's price, and on a row quoted in a stable that price must
+		// be the one of the trade, not of this tick: repricing at today's
+		// rate moved a reference 3.3 % and turned a +198 bps pool into
+		// -116. The row carries the trade-time rate exactly — its pool
+		// leg in quote units over the same leg's SOL movement in the
+		// transaction being re-read.
+		solAt := solUSD
+		if s.Quote != "SOL" && s.PoolQ > 0 {
+			solMoved := 0.0
+			if len(s.PoolQuoteVaults) > 0 {
+				if q := vaultOf(tx, s.PoolQuoteVaults[0]); q.found && q.mint == wsolMint {
+					solMoved = math.Abs(q.delta) / 1e9 // a WSOL vault: PumpSwap, Raydium
+				}
+			}
+			if solMoved == 0 && s.PoolOwner != "" {
+				// A pump.fun curve holds its SOL as lamports on the curve
+				// account itself, not in a token vault: the first version
+				// of this looked for a vault, found none, and converted
+				// those rows at today's rate after all — five buys quoted
+				// in USDC went negative by 100 to 212 bps.
+				for i, k := range tx.Transaction.Message.AccountKeys {
+					if k.Pubkey == s.PoolOwner && i < len(tx.Meta.PreBalances) && i < len(tx.Meta.PostBalances) {
+						solMoved = math.Abs(float64(tx.Meta.PostBalances[i])-float64(tx.Meta.PreBalances[i])) / 1e9
+					}
+				}
+			}
+			if solMoved > 0 {
+				solAt = s.PoolQ * s.QuoteUSD / solMoved
+			}
+		}
+		priceSwap(ctx, rpc, s, tx, pools, solAt, now)
 		done++
 	}
 	log.Printf("[state] REPRICE_VENUES=%q: %d rows priced again, %d unreadable", os.Getenv("REPRICE_VENUES"), done, failed)
@@ -2931,7 +3079,7 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int, pooled bool) map
 			continue
 		}
 		st := &SizeStats{
-			Loss:       wquantiles(a.loss, a.lossW, true, pooled),
+			Loss:       wquantiles(a.loss, a.lossW, true, false), // plain: see the doc comment, and the spec
 			Components: map[string]float64{},
 			Priced:     len(a.loss),
 			Parsed:     a.parsed,
@@ -2939,7 +3087,7 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int, pooled bool) map
 			Ranked:     len(a.loss) >= minRank,
 		}
 		if len(a.trade) > 0 {
-			st.TradeUSD = wquantiles(a.trade, a.tradeW, false, pooled)
+			st.TradeUSD = wquantiles(a.trade, a.tradeW, false, false)
 		}
 		// Single-row entry: the same weighted median the row itself uses.
 		// A pooled entry overwrites these with the chain-weighted rule right
@@ -2994,4 +3142,30 @@ func publishSizeGauges(ts TerminalStats) {
 		gHealth.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Healthy))
 		gRanked.WithLabelValues(ts.Product, ts.Chain, b).Set(b2f(st.Ranked))
 	}
+}
+
+// replayFinalize recomputes a stored row's split under the current
+// method from the inputs already on it. finalize clears Flag and sets
+// Priced again on its first lines, so a bare replay un-drops a row the
+// guard had dropped and, worse, counts a row that was never meant to be
+// counted: a Relay row paid in a token on the origin chain is stored
+// "origin_token", priced by Relay's valuation, shown, not counted — and
+// nothing on the row but that flag says so. The flags finalize itself
+// sets are re-derived; every other flag is restored, and origin_token
+// keeps the row out of the statistics as it was.
+func replayFinalize(s *Swap) {
+	flag := s.Flag
+	age := int64(0)
+	if s.RefAgeS != nil {
+		age = *s.RefAgeS
+	}
+	s.finalize(s.RefPrice, age, s.RefSrc) // nil reference: the row stays unpriced, as it was
+	implausibleSplit(s)
+	if s.Flag == "" && flag != "out_of_bounds" && flag != "split_implausible" {
+		s.Flag = flag
+	}
+	if flag == "origin_token" {
+		s.Flag, s.Priced = "origin_token", false
+	}
+	s.Method = methodVersion
 }

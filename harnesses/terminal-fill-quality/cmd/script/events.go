@@ -38,6 +38,9 @@ import (
 var (
 	discLaunchTrade = anchorEventDisc("TradeEvent")
 	discDlmmSwap    = anchorEventDisc("Swap")
+	discCpmmSwap    = anchorEventDisc("SwapEvent")
+	discPumpSwapBuy = anchorEventDisc("BuyEvent")
+	discPumpSwapSel = anchorEventDisc("SellEvent")
 	anchorEventCPI  = [8]byte{0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d}
 )
 
@@ -59,10 +62,11 @@ func anchorEventDisc(name string) [8]byte {
 
 // vaultInfo: a pool vault's mint, decimals and raw delta in the transaction.
 type vaultInfo struct {
-	mint  string
-	dec   int
-	delta float64 // raw units, post − pre
-	found bool
+	mint      string
+	dec       int
+	delta     float64 // raw units, post − pre
+	pre, post float64 // raw units
+	found     bool
 }
 
 func vaultOf(tx *parsedTx, pubkey string) vaultInfo {
@@ -94,6 +98,7 @@ func vaultOf(tx *parsedTx, pubkey string) vaultInfo {
 		return vaultInfo{}
 	}
 	v.delta = post - pre
+	v.pre, v.post = pre, post
 	return v
 }
 
@@ -131,6 +136,24 @@ func eventMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, solUS
 		return dlmmMid(ctx, rpc, sw, tx, base, solUSD)
 	case "pump-curve":
 		return pumpCurveMid(sw, tx, base, solUSD)
+	case "raydium-cpmm":
+		return cpmmMid(sw, tx, base, solUSD)
+	case "pumpswap":
+		return pumpSwapMid(ctx, rpc, sw, tx, base, solUSD)
+	case "orca":
+		// A whirlpool publishes the price before its own swap, so no
+		// neighbour is needed.
+		return concMid(sw, tx, base, nil, solUSD)
+	case "multi":
+		// A route through several pools loses its final pool's venue to
+		// the label, not its event: a DLMM pair names the bin the swap
+		// started in, which is the price it found, and the whirlpool its
+		// own square root. The rest need the neighbour priceSwap reads
+		// next.
+		if p, ok := dlmmMid(ctx, rpc, sw, tx, base, solUSD); ok {
+			return p, true
+		}
+		return concMid(sw, tx, base, nil, solUSD)
 	}
 	return 0, false
 }
@@ -176,7 +199,20 @@ func pumpCurveMid(sw *Swap, tx *parsedTx, base vaultInfo, solUSD float64) (float
 		} else {
 			solPre, tokPre = vSol+solAmount, vTok-tokAmount
 		}
-		if solPre <= 0 || tokPre <= 0 {
+		if tokPre <= 0 {
+			return 0, false
+		}
+		if solAmount == 0 && vSol == 0 {
+			// A curve quoted in a token (PUMP and the like): the SOL fields
+			// read zero and the quote side closes the event, its last two
+			// words virtual_quote_reserves_after and real_quote_reserves_after.
+			// The quote vault's own post-balance names the second, which
+			// places the first; the vault's delta is the quote moved. These
+			// rows had fallen back to the previous trade, one second old
+			// and on the wrong side of the mid by 94–96 bps.
+			return pumpCurveTokenQuotedMid(sw, tx, raw, isBuy, tokPre, vTok, solUSD)
+		}
+		if solPre <= 0 {
 			return 0, false
 		}
 		mid := solPre / 1e9 / (tokPre * math.Pow10(-base.dec)) // SOL per token
@@ -425,4 +461,367 @@ func onCurve(pubkey string) bool {
 	curveCache.m[pubkey] = v
 	curveCache.Unlock()
 	return v
+}
+
+// cpmmMid: Raydium CP-Swap's mid before the trade, taken from the reserves
+// the program itself reports rather than from the vault balances.
+//
+// The curve does not run on the vault balance. It runs on
+// vault − protocol_fees − fund_fees − creator_fees, all of which sit inside
+// the same token account until someone collects them. The creator fee alone
+// reached 6.84 SOL of a 105.49 SOL vault on one pool in the window — a 1 %
+// rate accruing entirely on the SOL side — so a mid taken from the raw
+// balance read 6.5 % high, the buyer came out looking filled better than any
+// constant product allows, and the excess landed on the pool residual. Six of
+// the fifteen Raydium buys that carried reserves published a negative pool;
+// no venue whose mid is corrected did.
+//
+// Reading the fee counters out of the pool account does not work: they are
+// read at head, the trade happened earlier, and a collection in between
+// empties them. The event is the trade's own record.
+//
+//	SwapEvent: pool_id(32) input_vault_before(u64) output_vault_before(u64)
+//	  input_amount(u64) output_amount(u64) input_transfer_fee(u64)
+//	  output_transfer_fee(u64) base_input(u8) …
+//
+// Later builds append the mints and the fee split; everything used here is
+// inside the prefix both emit.
+func cpmmMid(sw *Swap, tx *parsedTx, base vaultInfo, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) != 1 {
+		return 0, false
+	}
+	quote := vaultOf(tx, sw.PoolQuoteVaults[0])
+	if !quote.found {
+		return 0, false
+	}
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8+32+4*8 || [8]byte(raw[:8]) != discCpmmSwap {
+			continue
+		}
+		body := raw[8+32:]
+		u := func(i int) float64 { return float64(binary.LittleEndian.Uint64(body[8*i:])) }
+		inBefore, outBefore, inAmount, outAmount := u(0), u(1), u(2), u(3)
+		// Ours when the event's token leg is this vault's own movement: a buy
+		// pays the base vault out, a sale fills it.
+		var quoteBefore, baseBefore float64
+		switch {
+		case math.Abs(outAmount+base.delta) <= 1:
+			quoteBefore, baseBefore = inBefore, outBefore
+		case math.Abs(inAmount-base.delta) <= 1:
+			quoteBefore, baseBefore = outBefore, inBefore
+		default:
+			continue
+		}
+		if quoteBefore <= 0 || baseBefore <= 0 {
+			return 0, false
+		}
+		mid := quoteBefore / baseBefore * math.Pow10(base.dec-quote.dec) // quote units per token
+		return toSwapQuote(sw, quote.mint, mid, solUSD)
+	}
+	return 0, false
+}
+
+// pumpCurveTokenQuotedMid: see pumpCurveMid. raw is the whole TradeEvent;
+// tokPre the virtual token reserve before the trade, vTokAfter after it.
+func pumpCurveTokenQuotedMid(sw *Swap, tx *parsedTx, raw []byte, isBuy bool, tokPre, vTokAfter, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) < 1 || len(raw) < 16 {
+		return 0, false
+	}
+	qv := vaultOf(tx, sw.PoolQuoteVaults[0])
+	if !qv.found || qv.delta == 0 {
+		return 0, false
+	}
+	// The quote-side pair is not the last two words: the event carries
+	// sixteen more bytes after real_quote_reserves_after (read off a LULU
+	// curve: …, 65246777, 23653600, 30, 236, with 23653600 the vault's
+	// post-balance). So find the vault's post-balance in the body and take
+	// the word before it as the virtual quote reserve after the trade.
+	post := uint64(qv.post)
+	at := -1
+	for i := len(raw) - 8; i >= 8+32+16; i-- { // by the byte: a u8 or string appended to the event would shift the tail off an 8-byte grid
+		if binary.LittleEndian.Uint64(raw[i:]) == post {
+			at = i
+			break
+		}
+	}
+	if at < 0 {
+		return 0, false // not this event's tail, or not this vault
+	}
+	vQuoteAfter := float64(binary.LittleEndian.Uint64(raw[at-8:]))
+	moved := math.Abs(qv.delta)
+	vQuotePre := vQuoteAfter - moved
+	if !isBuy {
+		vQuotePre = vQuoteAfter + moved
+	}
+	if vQuotePre <= 0 || vTokAfter <= 0 {
+		return 0, false
+	}
+	// x·y = k across the trade, to a part in a hundred thousand.
+	kPre, kAfter := vQuotePre*tokPre, vQuoteAfter*vTokAfter
+	if kAfter <= 0 || math.Abs(kPre-kAfter)/kAfter > 1e-5 {
+		return 0, false
+	}
+	base := vaultOf(tx, sw.PoolVault)
+	if !base.found {
+		return 0, false
+	}
+	mid := vQuotePre / tokPre * math.Pow10(base.dec-qv.dec) // quote units per token
+	return toSwapQuote(sw, qv.mint, mid, solUSD)
+}
+
+const pumpSwapProgramID = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"
+
+// pumpSwapMid: a PumpSwap pool's mid before the trade from its own
+// BuyEvent / SellEvent — pool_base_token_reserves and
+// pool_quote_token_reserves are the pre-trade vaults — plus the pool
+// account's virtual quote offset (byte 245), the same offset reservePrice
+// applies on SOL-quoted pools. Used where reservePrice cannot run: a pool
+// quoted in a third token carries no PoolQuotePre, so those rows had
+// fallen back to the previous trade.
+//
+//	BuyEvent : timestamp(i64) base_amount_out max_quote_amount_in
+//	  user_base_reserves user_quote_reserves pool_base_reserves
+//	  pool_quote_reserves quote_amount_in … (u64 each), then pool(32)
+//	SellEvent: the same shape with base_amount_in / min_quote_amount_out
+func pumpSwapMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, base vaultInfo, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) < 1 || sw.PoolOwner == "" {
+		return 0, false
+	}
+	poolRaw, ok := base58Decode(sw.PoolOwner)
+	if !ok || len(poolRaw) != 32 {
+		return 0, false
+	}
+	try := func(body []byte, disc [8]byte) (float64, bool) {
+		if len(body) < 14*8+32 {
+			return 0, false
+		}
+		if string(body[14*8:14*8+32]) != string(poolRaw) {
+			return 0, false
+		}
+		u := func(i int) float64 { return float64(binary.LittleEndian.Uint64(body[8*i:])) }
+		if math.Abs(u(1)-math.Abs(base.delta)) > 1 { // the base amount is this vault's movement
+			return 0, false
+		}
+		baseRes, quoteRes := u(5), u(6)
+		if baseRes <= 0 || quoteRes < 0 {
+			return 0, false
+		}
+		acc, err := rpc.account(ctx, sw.PoolOwner)
+		if err != nil || acc == nil || len(acc.Data) < pumpSwapQuoteOffsetAt+8 {
+			return 0, false
+		}
+		offset := float64(binary.LittleEndian.Uint64(acc.Data[pumpSwapQuoteOffsetAt:]))
+		qv := vaultOf(tx, sw.PoolQuoteVaults[0])
+		if !qv.found {
+			return 0, false
+		}
+		mid := (quoteRes + offset) / baseRes * math.Pow10(base.dec-qv.dec)
+		return toSwapQuote(sw, qv.mint, mid, solUSD)
+	}
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8 {
+			continue
+		}
+		d := [8]byte(raw[:8])
+		if d != discPumpSwapBuy && d != discPumpSwapSel {
+			continue
+		}
+		if mid, ok := try(raw[8:], d); ok {
+			return mid, true
+		}
+	}
+	for _, in := range tx.Meta.InnerInstructions {
+		for _, ix := range in.Instructions {
+			if ix.ProgramID != pumpSwapProgramID || ix.Data == "" {
+				continue
+			}
+			raw, ok := base58Decode(ix.Data)
+			if !ok || len(raw) < 16 || [8]byte(raw[:8]) != anchorEventCPI {
+				continue
+			}
+			d := [8]byte(raw[8:16])
+			if d != discPumpSwapBuy && d != discPumpSwapSel {
+				continue
+			}
+			if mid, ok := try(raw[16:], d); ok {
+				return mid, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// Concentrated pools: Orca whirlpools, Raydium CLMM, Meteora DAMM v2 and
+// Meteora's dynamic bonding curve. Each publishes the square-root price
+// its swap left behind, and Orca's event also carries the one it found.
+//
+// A concentrated pool's price moves on swaps and on nothing else: adding
+// or removing liquidity changes the depth at a price, never the price
+// itself. So the price a swap left behind IS the price the next swap
+// finds, however long the wait — the previous swap's own event is an
+// exact pre-trade reference, not the lagged one the VWAP of that trade
+// gives. These five venues were the last on that fallback: 55 of 902
+// Solana rows, and every negative pool left on the board.
+const (
+	orcaProgram  = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+	clmmProgram  = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+	damm2Program = "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG"
+	dbcProgram   = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+)
+
+var (
+	discOrcaTraded = anchorEventDisc("Traded")
+	discEvtSwap    = anchorEventDisc("EvtSwap")
+	discEvtSwap2   = anchorEventDisc("EvtSwap2")
+)
+
+// concSqrt: the prices one concentrated swap event reports, raw token B
+// per raw token A. pre is zero on the venues whose event carries only
+// what the swap left behind.
+type concSqrt struct{ pre, post float64 }
+
+// q64: a Q64.64 square-root price as a price.
+func q64(b []byte) float64 {
+	if len(b) < 16 {
+		return 0
+	}
+	v := float64(binary.LittleEndian.Uint64(b[8:]))*math.Pow(2, 64) + float64(binary.LittleEndian.Uint64(b))
+	r := v / math.Pow(2, 64)
+	return r * r
+}
+
+// concSqrts: every swap event of the venue in a transaction.
+//
+//	Orca Traded:      whirlpool(32) a_to_b(1) pre(u128) post(u128) in out …
+//	Raydium CLMM:     pool(32) sender(32) ta0(32) ta1(32) a0 tf0 a1 tf1
+//	                  zero_for_one(1) sqrt_price(u128) liquidity(u128) tick
+//	Meteora DAMM v2:  pool(32) … next_sqrt_price(u128) at 84
+//	Meteora DBC:      pool(32) config(32) … next_sqrt_price(u128) at 98
+//
+// Read from the CPI event instructions and from the emit! log lines both;
+// Orca and Raydium log theirs, Meteora emits through the CPI.
+func concSqrts(tx *parsedTx, venue string) []concSqrt {
+	var out []concSqrt
+	// A route through several pools loses the final pool's venue to the
+	// "multi" label, so every decoder is tried there; picking between
+	// their events is what the band and the uniqueness rule below are
+	// for.
+	any := venue == "multi"
+	add := func(prog string, d [8]byte, b []byte) {
+		switch {
+		case (any || venue == "orca") && d == discOrcaTraded && len(b) == 113:
+			out = append(out, concSqrt{pre: q64(b[33:]), post: q64(b[49:])})
+		// Raydium's CLMM shares its discriminator with its CP-Swap, whose
+		// event is shorter, and has grown from 197 bytes to 213 with two
+		// words after the tick. The square-root price stayed at 161.
+		case (any || venue == "raydium-clmm") && d == discCpmmSwap && len(b) >= 197:
+			out = append(out, concSqrt{post: q64(b[161:])})
+		case (any || venue == "meteora-damm2") && prog == damm2Program && d == discEvtSwap2 && len(b) >= 100:
+			out = append(out, concSqrt{post: q64(b[84:])})
+		case (any || venue == "meteora-dbc") && prog == dbcProgram && d == discEvtSwap && len(b) >= 114:
+			out = append(out, concSqrt{post: q64(b[98:])})
+		}
+	}
+	for _, in := range tx.Meta.InnerInstructions {
+		for _, ix := range in.Instructions {
+			if ix.Data == "" {
+				continue
+			}
+			raw, ok := base58Decode(ix.Data)
+			if !ok || len(raw) < 16 || [8]byte(raw[:8]) != anchorEventCPI {
+				continue
+			}
+			add(ix.ProgramID, [8]byte(raw[8:16]), raw[16:])
+		}
+	}
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8 {
+			continue
+		}
+		add("", [8]byte(raw[:8]), raw[8:])
+	}
+	return out
+}
+
+// pickConc: the one event whose price, in one of its two orientations,
+// sits beside the price our own trade executed at. Two candidates within
+// the band are an ambiguity, not a reference: the row keeps the previous
+// trade rather than take a guess (a route through two pools of the same
+// venue, or a pool whose raw price is near one, where a price and its
+// inverse are both plausible).
+func pickConc(evs []concSqrt, exec float64) (pre, post float64, ok bool) {
+	n := 0
+	for _, e := range evs {
+		for _, inv := range []bool{false, true} {
+			p, q := e.pre, e.post
+			if inv {
+				if p > 0 {
+					p = 1 / p
+				}
+				if q > 0 {
+					q = 1 / q
+				}
+			}
+			if q <= 0 || q/exec < 0.5 || q/exec > 2 {
+				continue
+			}
+			pre, post, n = p, q, n+1
+		}
+	}
+	return pre, post, n == 1
+}
+
+// concMid: the pool's exact price before the trade, in the swap's quote
+// unit per token. prev is the transaction before ours on the pool, needed
+// on the venues whose event reports only the price it left behind; nil
+// where the event carries its own (Orca).
+//
+// The trade's own execution comes from the vaults, not the event, so only
+// the square-root price has to be located in the layout. It also decides
+// the orientation and checks the result: a buy never fills under the
+// price the pool showed before it, a sale never over it, and the trade
+// moves the pool its own way.
+func concMid(sw *Swap, tx *parsedTx, base vaultInfo, prev *parsedTx, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) == 0 || base.delta == 0 {
+		return 0, false
+	}
+	q := vaultOf(tx, sw.PoolQuoteVaults[0])
+	if !q.found || q.delta == 0 || (base.delta > 0) == (q.delta > 0) {
+		return 0, false
+	}
+	exec := math.Abs(q.delta) / math.Abs(base.delta) // raw quote per raw token
+	pre, post, ok := pickConc(concSqrts(tx, sw.Venue), exec)
+	if !ok {
+		return 0, false
+	}
+	if pre == 0 {
+		if prev == nil {
+			return 0, false
+		}
+		_, prevPost, ok := pickConc(concSqrts(prev, sw.Venue), exec)
+		if !ok || prevPost == 0 {
+			return 0, false
+		}
+		pre = prevPost
+	}
+	if buy := base.delta < 0; buy {
+		if exec < pre || post < pre {
+			return 0, false
+		}
+	} else if exec > pre || post > pre {
+		return 0, false
+	}
+	return toSwapQuote(sw, q.mint, pre*math.Pow10(base.dec-q.dec), solUSD)
 }

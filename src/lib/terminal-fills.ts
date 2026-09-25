@@ -67,7 +67,7 @@ export type TerminalFillStats = {
   ranked: boolean;
 };
 
-/** USD value in and out of a swap: buy = quote spent (fee inside) against tokens at the reference; sell = tokens at the reference against quote received. */
+/** USD value in and out of a swap: buy = quote spent against tokens at the reference; sell = tokens at the reference against quote received. Either side carries the gas when the user paid it in another asset than the quote. */
 function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOutUsd?: number } {
   const userQ = num(s.user_q);
   const tokens = num(s.tokens);
