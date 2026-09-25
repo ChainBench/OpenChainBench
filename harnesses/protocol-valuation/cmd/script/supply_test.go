@@ -50,19 +50,19 @@ func TestSupplySeriesDividesCapByPriceAndSkipsZeros(t *testing.T) {
 func TestSupplyChangeReadsTheWindowBack(t *testing.T) {
 	prices, mcaps := linearSeries(92) // day 0 .. day 91
 	s := supplySeries(prices, mcaps)
-	now := day(91).Add(13 * time.Hour) // an intraday "now" after the last daily point
 
-	got30, ok := supplyChangePct(s, now, 30*24*time.Hour)
+	got30, ok := supplyChangePct(s, 30*24*time.Hour)
 	if !ok {
 		t.Fatal("30d change should exist on a 92-day series")
 	}
-	// Latest is day 91 (1091); the last point at or before now-30d
-	// (day 61 13:00) is day 61 (1061).
+	// Latest is day 91 (1091); the last point at or before latest-30d is
+	// day 61 (1061). The clock does not enter: a series fetched
+	// yesterday still measures a full window.
 	want30 := 100 * (1091.0/1061 - 1)
 	if math.Abs(got30-want30) > 1e-9 {
 		t.Errorf("30d = %v, want %v", got30, want30)
 	}
-	got90, ok := supplyChangePct(s, now, 90*24*time.Hour)
+	got90, ok := supplyChangePct(s, 90*24*time.Hour)
 	if !ok {
 		t.Fatal("90d change should exist on a 92-day series")
 	}
@@ -77,18 +77,17 @@ func TestSupplyChangeReadsTheWindowBack(t *testing.T) {
 func TestSupplyChangeIsAbsentWhenTheSeriesIsShort(t *testing.T) {
 	prices, mcaps := linearSeries(40)
 	s := supplySeries(prices, mcaps)
-	now := day(39).Add(13 * time.Hour)
 
-	if _, ok := supplyChangePct(s, now, 30*24*time.Hour); !ok {
+	if _, ok := supplyChangePct(s, 30*24*time.Hour); !ok {
 		t.Error("40 days of history should carry a 30d change")
 	}
-	if v, ok := supplyChangePct(s, now, 90*24*time.Hour); ok {
+	if v, ok := supplyChangePct(s, 90*24*time.Hour); ok {
 		t.Errorf("40 days of history should carry no 90d change, got %v", v)
 	}
-	if _, ok := supplyChangePct(s[:1], now, 30*24*time.Hour); ok {
+	if _, ok := supplyChangePct(s[:1], 30*24*time.Hour); ok {
 		t.Error("a single point is not a change")
 	}
-	if _, ok := supplyChangePct(nil, now, 30*24*time.Hour); ok {
+	if _, ok := supplyChangePct(nil, 30*24*time.Hour); ok {
 		t.Error("an empty series is not a change")
 	}
 }
@@ -106,35 +105,46 @@ func TestSupplyChangeSign(t *testing.T) {
 		mcaps = append(mcaps, [2]float64{ms(day(i)), 5 * supply})
 	}
 	s := supplySeries(prices, mcaps)
-	got, ok := supplyChangePct(s, day(39).Add(time.Hour), 30*24*time.Hour)
+	got, ok := supplyChangePct(s, 30*24*time.Hour)
 	if !ok || math.Abs(got-(-10)) > 1e-9 {
 		t.Errorf("got %v ok=%v, want -10", got, ok)
 	}
 }
 
-// The cache serves a token as fresh on the day it was fetched, which is
-// what bounds the CoinGecko budget to one call per token per day, and
-// still serves it, marked stale, the next day until the refetch lands, so
-// the column does not vanish every morning.
+// The cache serves a token as done on the day it was fetched, which is
+// what bounds the CoinGecko budget to one call per token per day, still
+// serves it, marked stale, the next days until the refetch lands, so the
+// column does not vanish every morning, and drops it once it is too old
+// to cover its window. A failed attempt counts as done for the day.
 func TestSupplyCacheServesStaleUntilRefetched(t *testing.T) {
 	c := newSupplyCache()
 	series := []supplyPoint{{T: day(0), Circ: 1}}
 	c.put("aave", "2026-09-25", series)
-	if s, fresh := c.get("aave", "2026-09-25"); !fresh || len(s) != 1 {
-		t.Fatal("same day should be fresh")
+	if s, done := c.get("aave", "2026-09-25"); !done || len(s) != 1 {
+		t.Fatal("same day should be done")
 	}
-	if s, fresh := c.get("uniswap", "2026-09-25"); fresh || s != nil {
+	if s, done := c.get("uniswap", "2026-09-25"); done || s != nil {
 		t.Fatal("another token should be absent")
 	}
-	if s, fresh := c.get("aave", "2026-09-26"); fresh || len(s) != 1 {
-		t.Fatalf("the next day should serve yesterday's series as stale, got fresh=%v len=%d", fresh, len(s))
+	if s, done := c.get("aave", "2026-09-26"); done || len(s) != 1 {
+		t.Fatalf("the next day should serve yesterday's series and want a fetch, got done=%v len=%d", done, len(s))
+	}
+	if s, done := c.get("aave", "2026-09-29"); done || s != nil {
+		t.Fatalf("four days on the series is too old to serve, got done=%v len=%d", done, len(s))
 	}
 	if c.size("2026-09-26") != 0 || c.size("2026-09-25") != 1 {
-		t.Fatalf("size counts fresh series only: %d today, %d yesterday", c.size("2026-09-26"), c.size("2026-09-25"))
+		t.Fatalf("size counts today's series only: %d today, %d yesterday", c.size("2026-09-26"), c.size("2026-09-25"))
+	}
+	c.markTried("aave", "2026-09-26")
+	if s, done := c.get("aave", "2026-09-26"); !done || len(s) != 1 {
+		t.Fatalf("a failed attempt is done for the day and keeps the old series, got done=%v len=%d", done, len(s))
 	}
 	c.put("aave", "2026-09-26", series)
-	if _, fresh := c.get("aave", "2026-09-26"); !fresh {
-		t.Fatal("refetched series should be fresh")
+	if _, done := c.get("aave", "2026-09-26"); !done {
+		t.Fatal("refetched series should be done")
+	}
+	if c.markTried("never", "2026-09-26"); c.size("2026-09-26") != 1 {
+		t.Fatal("a failed first attempt must not count as a cached series")
 	}
 }
 
@@ -191,7 +201,9 @@ func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
 	}
 	rows = []Row{{Protocol: Protocol{GeckoID: "old"}}, {Protocol: Protocol{GeckoID: "never"}}}
 
+	requests := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -210,6 +222,40 @@ func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
 	}
 	if rows[1].HasSupply30d || rows[1].HasSupply90d {
 		t.Error("a row that never had a series should carry none")
+	}
+	// A 5xx is tried once a day: the second pass makes no request.
+	before := requests
+	attachSupplyChange(rows, c, now, nil)
+	if requests != before {
+		t.Errorf("a failed id was fetched again the same day (%d more requests)", requests-before)
+	}
+}
+
+// An exhausted 429 stops the pass for the tick: the limit is per address,
+// so the next token would meet it too and the calls would only extend
+// the throttling for every harness on the host.
+func TestAttachSupplyStopsAtTheFirstExhaustedRateLimit(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	savedPacer, savedAPI := pacer, cgChartURL
+	pacer = &cgPacer{}
+	cgChartURL = srv.URL + "/coins/%s/market_chart"
+	defer func() { pacer, cgChartURL = savedPacer, savedAPI }()
+
+	rows := []Row{{Protocol: Protocol{GeckoID: "a"}}, {Protocol: Protocol{GeckoID: "b"}}, {Protocol: Protocol{GeckoID: "c"}}}
+	c := newSupplyCache()
+	attachSupplyChange(rows, c, day(91), nil)
+	if calls != cgAttempts {
+		t.Fatalf("%d calls, want %d: one token's attempts, then stop", calls, cgAttempts)
+	}
+	// A rate limit is not a failure of the id: it is retried next tick.
+	if _, done := c.get("a", day(91).UTC().Format("2006-01-02")); done {
+		t.Error("a throttled id must not be marked done for the day")
 	}
 }
 

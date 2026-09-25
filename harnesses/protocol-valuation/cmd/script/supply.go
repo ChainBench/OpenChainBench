@@ -72,37 +72,71 @@ type supplyPoint struct {
 // fetched. A series from an earlier day is still served, marked stale,
 // until today's fetch replaces it: the day rolls over at midnight UTC and
 // the refetch takes from minutes to over an hour, and a column that
-// vanished every morning would be worse than one a day old.
+// vanished every morning would be worse than one a day old. Past
+// supplyMaxStaleDays it is dropped: the window would otherwise shrink by
+// the staleness while still being called 30 days.
 type supplyCache struct {
 	mu      sync.Mutex
 	entries map[string]supplyEntry
 }
 
 type supplyEntry struct {
-	day    string
+	day    string // UTC day the series was fetched
+	tried  string // UTC day of the last attempt, successful or not
 	series []supplyPoint
 }
+
+// supplyMaxStaleDays is how many days a series is served after its
+// fetch day before it is dropped rather than published under a window
+// it no longer covers.
+const supplyMaxStaleDays = 3
 
 func newSupplyCache() *supplyCache {
 	return &supplyCache{entries: map[string]supplyEntry{}}
 }
 
-// get returns the cached series for id, and whether it was fetched on
-// day. A series from an earlier day comes back with fresh=false.
-func (c *supplyCache) get(id, day string) (series []supplyPoint, fresh bool) {
+// get returns the cached series for id, and whether today's fetch is
+// done with: fetched today, or attempted today and failed for a reason
+// a retry within the day would not fix. A series older than
+// supplyMaxStaleDays is not returned.
+func (c *supplyCache) get(id, day string) (series []supplyPoint, done bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e, ok := c.entries[id]
 	if !ok {
 		return nil, false
 	}
-	return e.series, e.day == day
+	if daysBetween(e.day, day) <= supplyMaxStaleDays {
+		series = e.series
+	}
+	return series, e.day == day || e.tried == day
 }
 
 func (c *supplyCache) put(id, day string, s []supplyPoint) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.entries[id] = supplyEntry{day: day, series: s}
+	c.entries[id] = supplyEntry{day: day, tried: day, series: s}
+}
+
+// markTried records a failed attempt for the day so the id is fetched at
+// most once per UTC day, keeping whatever series it already had.
+func (c *supplyCache) markTried(id, day string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e := c.entries[id]
+	e.tried = day
+	c.entries[id] = e
+}
+
+// daysBetween is the number of UTC days from a to b for "2006-01-02"
+// strings; a malformed or empty a counts as infinitely old.
+func daysBetween(a, b string) int {
+	ta, errA := time.Parse("2006-01-02", a)
+	tb, errB := time.Parse("2006-01-02", b)
+	if errA != nil || errB != nil {
+		return 1 << 20
+	}
+	return int(tb.Sub(ta).Hours() / 24)
 }
 
 // size is how many tokens hold a series fetched on day.
@@ -246,15 +280,17 @@ func supplySeries(prices, mcaps [][2]float64) []supplyPoint {
 }
 
 // supplyChangePct is the percent change of circulating supply between the
-// latest point and the last point at or before now minus the window.
-// False when the series does not reach back that far: a token listed six
-// weeks ago has no 90-day dilution, and a zero would read as "none".
-func supplyChangePct(series []supplyPoint, now time.Time, window time.Duration) (float64, bool) {
+// latest point and the last point at or before the latest point minus the
+// window. Anchoring on the latest point rather than on the clock keeps a
+// series fetched yesterday measuring a full window. False when the series
+// does not reach back that far: a token listed six weeks ago has no
+// 90-day dilution, and a zero would read as "none".
+func supplyChangePct(series []supplyPoint, window time.Duration) (float64, bool) {
 	if len(series) < 2 {
 		return 0, false
 	}
 	latest := series[len(series)-1]
-	cutoff := now.Add(-window)
+	cutoff := latest.T.Add(-window)
 	var then *supplyPoint
 	for i := range series {
 		if series[i].T.After(cutoff) {
@@ -268,6 +304,10 @@ func supplyChangePct(series []supplyPoint, now time.Time, window time.Duration) 
 	return 100 * (latest.Circ/then.Circ - 1), true
 }
 
+func isRateLimited(err error) bool {
+	return err != nil && err.Error() == fmt.Sprintf("status_%d", http.StatusTooManyRequests)
+}
+
 // fillSupplyFromCache stamps every row with whatever series the cache
 // holds, today's or an earlier day's, without fetching. Called before the
 // first publish of a tick so a row that was on the board a minute ago
@@ -279,18 +319,22 @@ func fillSupplyFromCache(rows []Row, cache *supplyCache, now time.Time) {
 		if series == nil {
 			continue
 		}
-		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, now, 30*24*time.Hour)
-		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, now, 90*24*time.Hour)
+		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, 30*24*time.Hour)
+		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, 90*24*time.Hour)
 	}
 }
 
 // attachSupplyChange fills the dilution fields of every row from the
 // cache, fetching the series it does not hold for today, for at most
-// supplyPassBudget and until supplyMaxConsecutiveErrors failures in a
-// row. A row whose fetch did not happen keeps yesterday's series when
-// there is one. onProgress is called every supplyPublishEvery fetches so
-// the caller can republish the rows filled so far. Returns how many
-// fetches it made.
+// supplyPassBudget. The pass stops for the tick at the first token that
+// exhausts its 429 attempts, since the limit is per address and the next
+// token would meet it too, and after supplyMaxConsecutiveErrors failures
+// of any other kind. A failure that is not a rate limit (a 404 after a
+// gecko_id change, a 5xx) is tried once per UTC day, so a broken id does
+// not spend 24 calls a day. A row whose fetch did not happen keeps
+// yesterday's series when there is one. onProgress is called every
+// supplyPublishEvery fetches so the caller can republish the rows filled
+// so far. Returns how many fetches it made.
 func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgress func()) int {
 	day := now.UTC().Format("2006-01-02")
 	start := time.Now()
@@ -298,23 +342,30 @@ func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgres
 	fetching := true
 	for i := range rows {
 		id := rows[i].GeckoID
-		series, fresh := cache.get(id, day)
-		if !fresh && fetching {
+		series, done := cache.get(id, day)
+		if !done && fetching {
 			if time.Since(start) > supplyPassBudget {
 				// Left to the next hourly tick.
 				fetching = false
 			} else if s, err := fetchSupplySeries(id); err != nil {
 				pvFetchErrors.WithLabelValues("coingecko_chart").Inc()
-				fmt.Printf("[supply] %s: %v (retried next tick)\n", id, err)
-				if consecutiveErrors++; consecutiveErrors >= supplyMaxConsecutiveErrors {
-					fmt.Printf("[supply] %d errors in a row, pass stopped for this tick\n", consecutiveErrors)
+				switch {
+				case isRateLimited(err):
+					fmt.Printf("[supply] %s: %v, address throttled, pass stopped for this tick\n", id, err)
 					fetching = false
+				default:
+					fmt.Printf("[supply] %s: %v (next attempt tomorrow)\n", id, err)
+					cache.markTried(id, day)
+					if consecutiveErrors++; consecutiveErrors >= supplyMaxConsecutiveErrors {
+						fmt.Printf("[supply] %d errors in a row, pass stopped for this tick\n", consecutiveErrors)
+						fetching = false
+					}
 				}
 			} else {
 				consecutiveErrors = 0
 				fetched++
 				cache.put(id, day, s)
-				series, fresh = s, true
+				series, done = s, true
 				if fetched%supplyPublishEvery == 0 && onProgress != nil {
 					onProgress()
 				}
@@ -324,11 +375,11 @@ func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgres
 		case series == nil:
 			missing++
 			continue
-		case !fresh:
+		case !done:
 			stale++
 		}
-		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, now, 30*24*time.Hour)
-		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, now, 90*24*time.Hour)
+		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, 30*24*time.Hour)
+		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, 90*24*time.Hour)
 	}
 	if stale > 0 || missing > 0 {
 		fmt.Printf("[supply] %d rows on yesterday's series, %d without one, next tick continues\n", stale, missing)
