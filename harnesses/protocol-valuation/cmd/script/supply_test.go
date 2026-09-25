@@ -213,7 +213,7 @@ func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
 	defer func() { pacer, cgChartURL = savedPacer, savedAPI }()
 
 	now := day(91).Add(13 * time.Hour)
-	fetched := attachSupplyChange(rows, c, now, nil)
+	fetched := attachSupplyChange(rows, c, now, supplyPassMaxBudget, nil)
 	if fetched != 0 {
 		t.Fatalf("fetched %d, want 0 from a failing upstream", fetched)
 	}
@@ -225,7 +225,7 @@ func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
 	}
 	// A 5xx is tried once a day: the second pass makes no request.
 	before := requests
-	attachSupplyChange(rows, c, now, nil)
+	attachSupplyChange(rows, c, now, supplyPassMaxBudget, nil)
 	if requests != before {
 		t.Errorf("a failed id was fetched again the same day (%d more requests)", requests-before)
 	}
@@ -249,7 +249,7 @@ func TestAttachSupplyStopsAtTheFirstExhaustedRateLimit(t *testing.T) {
 
 	rows := []Row{{Protocol: Protocol{GeckoID: "a"}}, {Protocol: Protocol{GeckoID: "b"}}, {Protocol: Protocol{GeckoID: "c"}}}
 	c := newSupplyCache()
-	attachSupplyChange(rows, c, day(91), nil)
+	attachSupplyChange(rows, c, day(91), supplyPassMaxBudget, nil)
 	if calls != cgAttempts {
 		t.Fatalf("%d calls, want %d: one token's attempts, then stop", calls, cgAttempts)
 	}
@@ -288,5 +288,16 @@ func TestPacerAdaptsToThrottling(t *testing.T) {
 	}
 	if p.gap != cgMinGap {
 		t.Fatalf("gap should floor at %v, got %v", cgMinGap, p.gap)
+	}
+}
+
+// The pass budget never outruns the tick: two thirds of the refresh
+// interval, capped at the fixed maximum.
+func TestSupplyPassBudgetFollowsTheRefreshInterval(t *testing.T) {
+	if got := supplyPassBudget(60 * time.Minute); got != supplyPassMaxBudget {
+		t.Errorf("hourly: %v, want %v", got, supplyPassMaxBudget)
+	}
+	if got := supplyPassBudget(15 * time.Minute); got != 10*time.Minute {
+		t.Errorf("15 min: %v, want 10m", got)
 	}
 }

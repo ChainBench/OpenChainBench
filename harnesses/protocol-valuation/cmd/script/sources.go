@@ -54,6 +54,15 @@ type feeAdapter struct {
 	Total1y        float64 `json:"total1y"`
 }
 
+// revenueAdapter is the same row read with dataType=dailyRevenue. The
+// totals are pointers: a null is "no figure", and must not become the
+// known zero that the fees/revenue distinction rests on.
+type revenueAdapter struct {
+	DefillamaID string   `json:"defillamaId"`
+	Total30d    *float64 `json:"total30d"`
+	Total1y     *float64 `json:"total1y"`
+}
+
 type llamaProtocol struct {
 	ID             any     `json:"id"`
 	Name           string  `json:"name"`
@@ -189,7 +198,7 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 	// leaves revenue and P/S absent for the tick rather than taking the
 	// fees board down with it.
 	var revResp struct {
-		Protocols []feeAdapter `json:"protocols"`
+		Protocols []revenueAdapter `json:"protocols"`
 	}
 	if err := getJSON(llamaRevenue, &revResp); err != nil {
 		pvFetchErrors.WithLabelValues("defillama_revenue").Inc()
@@ -215,7 +224,7 @@ type cohortStats struct {
 // four network reads it normally needs. revenue is the same overview read
 // with dataType=dailyRevenue, one row per adapter keyed by defillamaId,
 // and may be nil.
-func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents []llamaParent,
+func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaProtocol, parents []llamaParent,
 	minFees30d float64) ([]Protocol, cohortStats, error) {
 
 	byID := map[string]llamaProtocol{}
@@ -226,9 +235,11 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 	for _, p := range parents {
 		byParent[p.ID] = p
 	}
-	revByID := map[string]feeAdapter{}
+	revByID := map[string]revenueAdapter{}
 	for _, r := range revenue {
-		if id := idString(r.DefillamaID); id != "" {
+		// A row with no 30d figure is no revenue row: it must neither
+		// make the token's revenue known nor count as coverage.
+		if id := idString(r.DefillamaID); id != "" && r.Total30d != nil {
 			revByID[id] = r
 		}
 	}
@@ -312,9 +323,9 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 		// knowably short and the P/S on it would be inflated.
 		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
 			e.RevKnown = true
-			e.Rev30d += rv.Total30d
-			e.Rev1y += rv.Total1y
-			if rv.Total30d == 0 && rv.Total1y > silentAdapterYearUSD {
+			e.Rev30d += *rv.Total30d
+			e.Rev1y += deref(rv.Total1y)
+			if *rv.Total30d == 0 && deref(rv.Total1y) > silentAdapterYearUSD {
 				e.RevIncomplete = true
 			}
 		} else if haveRevenue && f.Total30d > 0 {

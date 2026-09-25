@@ -51,12 +51,14 @@ const (
 	// pass stops for the tick: an outage should cost minutes, not the
 	// whole budget.
 	supplyMaxConsecutiveErrors = 5
-	// How long one tick keeps fetching supply series before leaving the
-	// rest to the next tick. The address is shared with other harnesses
-	// and throttled on some days, so a pass that ran to completion could
-	// outlast the hourly tick; bounded, it fills the cohort over a few
-	// ticks and republishes as it goes.
-	supplyPassBudget = 40 * time.Minute
+	// Longest one tick keeps fetching supply series before leaving the
+	// rest to the next tick, also capped at two thirds of the refresh
+	// interval so a shorter REFRESH_MINUTES keeps its fee-board cadence.
+	// The address is shared with other harnesses and throttled on some
+	// days, so a pass that ran to completion could outlast the tick;
+	// bounded, it fills the cohort over a few ticks and republishes as it
+	// goes.
+	supplyPassMaxBudget = 40 * time.Minute
 	// Rows republished this often during a pass, so the first dilution
 	// columns appear minutes after a restart rather than at the end.
 	supplyPublishEvery = 10
@@ -308,6 +310,14 @@ func isRateLimited(err error) bool {
 	return err != nil && err.Error() == fmt.Sprintf("status_%d", http.StatusTooManyRequests)
 }
 
+// supplyPassBudget is how long a tick may spend fetching supply series.
+func supplyPassBudget(refresh time.Duration) time.Duration {
+	if b := refresh * 2 / 3; b < supplyPassMaxBudget {
+		return b
+	}
+	return supplyPassMaxBudget
+}
+
 // fillSupplyFromCache stamps every row with whatever series the cache
 // holds, today's or an earlier day's, without fetching. Called before the
 // first publish of a tick so a row that was on the board a minute ago
@@ -335,7 +345,7 @@ func fillSupplyFromCache(rows []Row, cache *supplyCache, now time.Time) {
 // yesterday's series when there is one. onProgress is called every
 // supplyPublishEvery fetches so the caller can republish the rows filled
 // so far. Returns how many fetches it made.
-func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgress func()) int {
+func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, budget time.Duration, onProgress func()) int {
 	day := now.UTC().Format("2006-01-02")
 	start := time.Now()
 	fetched, stale, missing, consecutiveErrors := 0, 0, 0, 0
@@ -344,7 +354,7 @@ func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgres
 		id := rows[i].GeckoID
 		series, done := cache.get(id, day)
 		if !done && fetching {
-			if time.Since(start) > supplyPassBudget {
+			if time.Since(start) > budget {
 				// Left to the next hourly tick.
 				fetching = false
 			} else if s, err := fetchSupplySeries(id); err != nil {

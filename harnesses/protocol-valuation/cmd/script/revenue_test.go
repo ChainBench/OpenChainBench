@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+func f(v float64) *float64 { return &v }
+
 // Revenue rides on the fee adapter, so a token's revenue spans exactly the
 // adapters its fees do, and a token whose adapters publish no revenue
 // series has none rather than zero. TVL is parent scope: every /protocols
@@ -15,12 +17,12 @@ func TestRevenueSumsOverTheSameAdaptersAsFees(t *testing.T) {
 		{Name: "Uniswap V3", DefillamaID: "2198", Category: "Dexs", Total30d: 8e6},
 		{Name: "Aave V3", DefillamaID: "1599", ParentProtocol: "parent#aave", Category: "Lending", Total30d: 5e6},
 	}
-	revenue := []feeAdapter{
-		{Name: "Uniswap V2", DefillamaID: "2197", Total30d: 1e5},
-		{Name: "Uniswap V3", DefillamaID: "2198", Total30d: 3e5},
+	revenue := []revenueAdapter{
+		{DefillamaID: "2197", Total30d: f(1e5)},
+		{DefillamaID: "2198", Total30d: f(3e5)},
 		// A revenue row for an adapter that is not in the fee list must not
 		// leak into anyone's total.
-		{Name: "Orphan", DefillamaID: "9999", Total30d: 7e5},
+		{DefillamaID: "9999", Total30d: f(7e5)},
 	}
 	protocols := []llamaProtocol{
 		{ID: float64(2197), Name: "Uniswap V2", GeckoID: "uniswap", TVL: 1e9},
@@ -74,9 +76,9 @@ func TestASilentRevenueAdapterMarksRevenueIncomplete(t *testing.T) {
 		{Name: "A Perps", DefillamaID: "1", Category: "Derivatives", Total30d: 5e6, Total1y: 5e7},
 		{Name: "B Perps", DefillamaID: "2", Category: "Derivatives", Total30d: 5e6, Total1y: 5e7},
 	}
-	revenue := []feeAdapter{
-		{Name: "A Perps", DefillamaID: "1", Total30d: 0, Total1y: 5e6},
-		{Name: "B Perps", DefillamaID: "2", Total30d: 1e6, Total1y: 5e6},
+	revenue := []revenueAdapter{
+		{DefillamaID: "1", Total30d: f(0), Total1y: f(5e6)},
+		{DefillamaID: "2", Total30d: f(1e6), Total1y: f(5e6)},
 	}
 	protocols := []llamaProtocol{
 		{ID: float64(1), Name: "A", GeckoID: "a"},
@@ -109,7 +111,7 @@ func TestPartialRevenueCoverageIsIncomplete(t *testing.T) {
 		{Name: "GMX Retired", DefillamaID: "3", ParentProtocol: "parent#gmx", Category: "Derivatives", Total30d: 0},
 		{Name: "Pump", DefillamaID: "4", Category: "Launchpad", Total30d: 5e6},
 	}
-	revenue := []feeAdapter{{Name: "GMX V1", DefillamaID: "1", Total30d: 1e6}}
+	revenue := []revenueAdapter{{DefillamaID: "1", Total30d: f(1e6)}}
 	protocols := []llamaProtocol{
 		{ID: float64(1), Name: "GMX V1", ParentProtocol: "parent#gmx"},
 		{ID: float64(2), Name: "GMX V2", ParentProtocol: "parent#gmx"},
@@ -152,7 +154,7 @@ func TestAKnownZeroRevenueIsNotUnknown(t *testing.T) {
 		{Name: "Zero", DefillamaID: "1", Category: "Dexs", Total30d: 5e6},
 		{Name: "Unknown", DefillamaID: "2", Category: "Dexs", Total30d: 5e6},
 	}
-	revenue := []feeAdapter{{Name: "Zero", DefillamaID: "1", Total30d: 0}}
+	revenue := []revenueAdapter{{DefillamaID: "1", Total30d: f(0)}}
 	protocols := []llamaProtocol{
 		{ID: float64(1), Name: "Zero", GeckoID: "zero"},
 		{ID: float64(2), Name: "Unknown", GeckoID: "unknown"},
@@ -197,5 +199,41 @@ func TestPSIsAbsentWithoutRevenue(t *testing.T) {
 	}
 	if rows[1].HasPS || rows[1].PS != 0 {
 		t.Errorf("a row without revenue should have no P/S, got has=%v ps=%v", rows[1].HasPS, rows[1].PS)
+	}
+}
+
+// A revenue row whose 30d total is null is no figure at all: it must not
+// make the token's revenue a known zero, and must not count as coverage
+// when a sibling has a real figure.
+func TestANullRevenueTotalIsUnknownNotZero(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "Null", DefillamaID: "1", Category: "Dexs", Total30d: 5e6},
+		{Name: "Sib A", DefillamaID: "2", ParentProtocol: "parent#s", Category: "Dexs", Total30d: 5e6},
+		{Name: "Sib B", DefillamaID: "3", ParentProtocol: "parent#s", Category: "Dexs", Total30d: 5e6},
+	}
+	revenue := []revenueAdapter{
+		{DefillamaID: "1", Total30d: nil},
+		{DefillamaID: "2", Total30d: f(1e6)},
+		{DefillamaID: "3", Total30d: nil},
+	}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "Null", GeckoID: "null-token"},
+		{ID: float64(2), Name: "Sib A", ParentProtocol: "parent#s"},
+		{ID: float64(3), Name: "Sib B", ParentProtocol: "parent#s"},
+	}
+	parents := []llamaParent{{ID: "parent#s", Name: "Sib", GeckoID: "sib"}}
+	cohort, _, err := joinCohort(fees, revenue, protocols, parents, 1e5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := map[string]Protocol{}
+	for _, p := range cohort {
+		by[p.GeckoID] = p
+	}
+	if n := by["null-token"]; n.RevKnown {
+		t.Errorf("a null total must not be a known revenue, got %+v", n)
+	}
+	if s := by["sib"]; !s.RevKnown || s.Rev30d != 1e6 || !s.RevIncomplete || s.RevMissingAdapters != 1 {
+		t.Errorf("a null sibling is a coverage gap: got known=%v rev=%v incomplete=%v missing=%d", s.RevKnown, s.Rev30d, s.RevIncomplete, s.RevMissingAdapters)
 	}
 }

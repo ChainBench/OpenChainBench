@@ -149,7 +149,7 @@ func poll(cfg *Config, supply *supplyCache) {
 		pvSupplyCacheSize.Set(float64(supply.size(day)))
 		publish(rows, medians, sizes, st, float64(time.Now().Unix()))
 	}
-	fetched := attachSupplyChange(rows, supply, now, republish)
+	fetched := attachSupplyChange(rows, supply, now, supplyPassBudget(cfg.RefreshInterval), republish)
 	republish()
 	withSupply30, withSupply90 := 0, 0
 	for _, r := range rows {
