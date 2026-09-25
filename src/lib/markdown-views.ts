@@ -275,6 +275,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       { h: "7d vs L2 peers", v: (c) => capPct(c.excess7dPct) },
       { h: "Stablecoin float", v: (c) => capUsd(c.stablesFloat) },
       { h: "Net stables 30d", v: (c) => capUsd(c.stablesNet30d) },
+      ...(hub.chains.some((c) => c.cctpNet7d != null) ? [{ h: "USDC over CCTP 7d", v: (c: CapitalHub["chains"][number]) => capUsd(c.cctpNet7d) }] : []),
       ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: CapitalHub["chains"][number]) => capUsd(c.dexVolume24h) }] : []),
       ...(hub.chains.some((c) => c.fees30d != null) ? [{ h: "Fees 30d", v: (c: CapitalHub["chains"][number]) => capUsd(c.fees30d) }] : []),
       { h: "Reading", v: (c) => c.note },

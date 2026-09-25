@@ -153,6 +153,7 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
   const hasTvl = rows.some((r) => r.tvl != null);
   const hasDex = rows.some((r) => r.dexVolume24h != null);
   const hasFees = rows.some((r) => r.fees30d != null);
+  const hasCctp = rows.some((r) => r.cctpNet7d != null);
   const { sorted, key, dir, toggle } = useSorted(rows, hasTvl ? "tvl" : "stablesFloat");
   const col = (k: keyof ChainRow, label: string, title?: string, defaultDir: "desc" | "asc" = "desc") => (
     <ThSort active={key === k} dir={dir} onClick={() => toggle(k, defaultDir)} title={title}>
@@ -172,6 +173,7 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
               {col("excess7dPct", "7d vs L2 peers", "Weekly move of value secured minus the median move across L2Beat projects above $200M")}
               {col("stablesFloat", "Stablecoin float", "Pegged-USD circulating on the chain, every issuer (DeFiLlama)")}
               {col("stablesNet30d", "Net stables 30d", "Dollar change of the stablecoin float over 30 days")}
+              {hasCctp && col("cctpNet7d", "USDC over CCTP 7d", "Net USDC that entered the chain over Circle CCTP in 7 days, burn events on seven EVM chains (bench 281); blank off the scanned set")}
               {hasDex && col("dexVolume24h", "DEX volume 24h", "DEX volume on the chain over the trailing 24 hours (DeFiLlama)")}
               {hasFees && col("fees30d", "Fees 30d", "Fees paid by users on the chain over 30 closed days (DeFiLlama)")}
               {hasFees && col("revenue30d", "Revenue 30d", "The part of those fees the chain or its token keeps")}
@@ -211,6 +213,16 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                   <Signed v={r.stablesNet30d} fmt={(v) => fmtUsdShort(v)} />
                   {r.stablesChange30dPct != null && <Sub>{fmtPct(r.stablesChange30dPct)}</Sub>}
                 </Td>
+                {hasCctp && (
+                  <Td mono>
+                    <Signed v={r.cctpNet7d} fmt={(v) => fmtUsdShort(v)} />
+                    {r.cctpIn7d != null && r.cctpOut7d != null && (
+                      <Sub>
+                        in {fmtUsdShort(r.cctpIn7d)} / out {fmtUsdShort(r.cctpOut7d)}
+                      </Sub>
+                    )}
+                  </Td>
+                )}
                 {hasDex && <Td mono>{fmtUsdShort(r.dexVolume24h)}</Td>}
                 {hasFees && <Td mono>{fmtUsdShort(r.fees30d)}</Td>}
                 {hasFees && <Td mono>{fmtUsdShort(r.revenue30d)}</Td>}

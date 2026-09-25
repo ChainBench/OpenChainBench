@@ -198,6 +198,13 @@ export default async function CapitalHubPage() {
             <strong className="text-ink">L2Beat</strong> for value secured per scaling chain, split into native, canonical and external, and its
             7-day change; the cohort is the OCB chain registry intersected with L2Beat&apos;s scaling summary.
           </p>
+          {hub.benches.some((b) => b.slug === CAPITAL_BENCHES.usdcCorridor && b.live) && (
+            <p>
+              <strong className="text-ink">Circle CCTP burn events</strong> on Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche and Unichain
+              for the USDC corridor column: net USDC that entered each scanned chain over that one bridge in 7 days, read from public RPCs.
+              It is one bridge&apos;s ledger, not total cross-chain flow; the stablecoin float change is the bridge-agnostic reading.
+            </p>
+          )}
           <p>
             <strong className="text-ink">CoinGecko</strong> for market cap, fully diluted valuation, circulating and total supply and the 30-day
             price change. <strong className="text-ink">Polymarket and Kalshi</strong> APIs for prediction-market open interest, DeFiLlama TVL for

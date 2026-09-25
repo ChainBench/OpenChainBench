@@ -11,6 +11,8 @@ export const CAPITAL_BENCHES = {
   protocolPf: "protocol-pf-ratio",
   perpPf: "perp-pf-ratio",
   pmOi: "pm-open-interest",
+  /** Bench 281, dev-only for now: net USDC over Circle CCTP among seven EVM chains. */
+  usdcCorridor: "usdc-corridor-flows",
 } as const;
 
 export type ChainRow = {
@@ -25,6 +27,10 @@ export type ChainRow = {
   stablesNet30d: number | null;
   stablesChange30dPct: number | null;
   stablesNet7d: number | null;
+  /** Net USDC that entered the chain over Circle CCTP in 7 days (bench 281), null off the scanned set. */
+  cctpNet7d: number | null;
+  cctpIn7d: number | null;
+  cctpOut7d: number | null;
   dexVolume24h: number | null;
   nativeMcap: number | null;
   fees30d: number | null;

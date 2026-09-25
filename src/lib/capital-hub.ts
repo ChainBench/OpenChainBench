@@ -26,6 +26,7 @@
 import { cache } from "react";
 import { getBenchmark } from "@/data/benchmarks";
 import { CHAINS } from "@/lib/chains";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import { getProviderRegistry } from "@/data/provider-registry";
 import { getChainsHistory, getValuationHistory, type CapitalEntity } from "@/lib/capital-history";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -106,6 +107,9 @@ function chainNote(r: Omit<ChainRow, "note" | "hasChainPage">, stableLeader: boo
   } else if (r.bridgedTvl != null && r.bridgedSharePct != null) {
     parts.push(`${r.bridgedSharePct.toFixed(0)}% of its value secured arrived from another chain`);
   }
+  if (r.cctpNet7d != null) {
+    parts.push(`${fmtUsdShort(Math.abs(r.cctpNet7d))} of USDC ${r.cctpNet7d >= 0 ? "arrived over" : "left over"} Circle CCTP in 7 days`);
+  }
   if (r.fees30d != null && r.revenue30d != null && r.fees30d > 0) {
     parts.push(`the chain kept ${((r.revenue30d / r.fees30d) * 100).toFixed(0)}% of ${fmtUsdShort(r.fees30d)} in 30-day fees`);
   }
@@ -153,12 +157,14 @@ function perpNote(r: Omit<PerpRow, "note" | "hasProductPage">): string {
 }
 
 async function buildHub(): Promise<CapitalHub> {
-  const [bridged, stables, protocolsB, perpsB, pmB, chainsHist, valHist] = await Promise.all([
+  const [bridged, stables, protocolsB, perpsB, pmB, cctp, chainsHist, valHist] = await Promise.all([
     loadLive(CAPITAL_BENCHES.bridgedTvl),
     loadLive(CAPITAL_BENCHES.stableFlow),
     loadLive(CAPITAL_BENCHES.protocolPf),
     loadLive(CAPITAL_BENCHES.perpPf),
     loadLive(CAPITAL_BENCHES.pmOi),
+    // A dev-only bench stays off the production hub entirely (no column, no chip to a 404).
+    isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? Promise.resolve(undefined) : loadLive(CAPITAL_BENCHES.usdcCorridor),
     getChainsHistory().catch(() => null),
     getValuationHistory().catch(() => null),
   ]);
@@ -169,9 +175,12 @@ async function buildHub(): Promise<CapitalHub> {
     { slug: CAPITAL_BENCHES.protocolPf, title: protocolsB?.title ?? "Protocol price to fees", live: !!protocolsB },
     { slug: CAPITAL_BENCHES.perpPf, title: perpsB?.title ?? "Perp DEX price to fees", live: !!perpsB },
     { slug: CAPITAL_BENCHES.pmOi, title: pmB?.title ?? "Prediction market open interest", live: !!pmB },
+    ...(isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor)
+      ? []
+      : [{ slug: CAPITAL_BENCHES.usdcCorridor, title: cctp?.title ?? "USDC corridor flows over CCTP", live: !!cctp }]),
   ];
 
-  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB]
+  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp]
     .map((b) => (b?.lastRunAt ? Date.parse(b.lastRunAt) : NaN))
     .filter((t) => Number.isFinite(t));
   const asOf = asOfMs.length > 0 ? new Date(Math.max(...asOfMs)).toISOString() : null;
@@ -184,6 +193,7 @@ async function buildHub(): Promise<CapitalHub> {
   for (const c of chainEntities.keys()) chainSlugs.add(c);
   const bridgedBy = new Map(liveRows(bridged).map((r) => [r.slug, r]));
   const stablesBy = new Map(liveRows(stables).map((r) => [r.slug, r]));
+  const cctpBy = new Map(liveRows(cctp).map((r) => [r.slug, r]));
 
   const rawChains = [...chainSlugs].map((slug) => {
     const ent = chainEntities.get(slug);
@@ -201,6 +211,9 @@ async function buildHub(): Promise<CapitalHub> {
       stablesNet30d: st ? num(st.ms.p50) : latest(ent, "stables_net_30d"),
       stablesChange30dPct: panel(stables, "change_30d", slug),
       stablesNet7d: panel(stables, "net_7d", slug),
+      cctpNet7d: cctpBy.has(slug) ? num(cctpBy.get(slug)!.ms.p50) : null,
+      cctpIn7d: panel(cctp, "inflow_7d", slug),
+      cctpOut7d: panel(cctp, "outflow_7d", slug),
       dexVolume24h: latest(ent, "dex_volume_24h"),
       nativeMcap: latest(ent, "native_mcap"),
       fees30d: latest(ent, "fees_30d"),
