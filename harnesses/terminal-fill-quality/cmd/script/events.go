@@ -38,6 +38,7 @@ import (
 var (
 	discLaunchTrade = anchorEventDisc("TradeEvent")
 	discDlmmSwap    = anchorEventDisc("Swap")
+	discCpmmSwap    = anchorEventDisc("SwapEvent")
 	anchorEventCPI  = [8]byte{0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d}
 )
 
@@ -131,6 +132,8 @@ func eventMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, solUS
 		return dlmmMid(ctx, rpc, sw, tx, base, solUSD)
 	case "pump-curve":
 		return pumpCurveMid(sw, tx, base, solUSD)
+	case "raydium-cpmm":
+		return cpmmMid(sw, tx, base, solUSD)
 	}
 	return 0, false
 }
@@ -425,4 +428,66 @@ func onCurve(pubkey string) bool {
 	curveCache.m[pubkey] = v
 	curveCache.Unlock()
 	return v
+}
+
+// cpmmMid: Raydium CP-Swap's mid before the trade, taken from the reserves
+// the program itself reports rather than from the vault balances.
+//
+// The curve does not run on the vault balance. It runs on
+// vault − protocol_fees − fund_fees − creator_fees, all of which sit inside
+// the same token account until someone collects them. The creator fee alone
+// reached 6.84 SOL of a 105.49 SOL vault on one pool in the window — a 1 %
+// rate accruing entirely on the SOL side — so a mid taken from the raw
+// balance read 6.5 % high, the buyer came out looking filled better than any
+// constant product allows, and the excess landed on the pool residual. Six of
+// the fifteen Raydium buys that carried reserves published a negative pool;
+// no venue whose mid is corrected did.
+//
+// Reading the fee counters out of the pool account does not work: they are
+// read at head, the trade happened earlier, and a collection in between
+// empties them. The event is the trade's own record.
+//
+//	SwapEvent: pool_id(32) input_vault_before(u64) output_vault_before(u64)
+//	  input_amount(u64) output_amount(u64) input_transfer_fee(u64)
+//	  output_transfer_fee(u64) base_input(u8) …
+//
+// Later builds append the mints and the fee split; everything used here is
+// inside the prefix both emit.
+func cpmmMid(sw *Swap, tx *parsedTx, base vaultInfo, solUSD float64) (float64, bool) {
+	if len(sw.PoolQuoteVaults) != 1 {
+		return 0, false
+	}
+	quote := vaultOf(tx, sw.PoolQuoteVaults[0])
+	if !quote.found {
+		return 0, false
+	}
+	for _, l := range tx.Meta.LogMessages {
+		if !strings.HasPrefix(l, "Program data: ") {
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(l[len("Program data: "):])
+		if err != nil || len(raw) < 8+32+4*8 || [8]byte(raw[:8]) != discCpmmSwap {
+			continue
+		}
+		body := raw[8+32:]
+		u := func(i int) float64 { return float64(binary.LittleEndian.Uint64(body[8*i:])) }
+		inBefore, outBefore, inAmount, outAmount := u(0), u(1), u(2), u(3)
+		// Ours when the event's token leg is this vault's own movement: a buy
+		// pays the base vault out, a sale fills it.
+		var quoteBefore, baseBefore float64
+		switch {
+		case math.Abs(outAmount+base.delta) <= 1:
+			quoteBefore, baseBefore = inBefore, outBefore
+		case math.Abs(inAmount-base.delta) <= 1:
+			quoteBefore, baseBefore = outBefore, inBefore
+		default:
+			continue
+		}
+		if quoteBefore <= 0 || baseBefore <= 0 {
+			return 0, false
+		}
+		mid := quoteBefore / baseBefore * math.Pow10(base.dec-quote.dec) // quote units per token
+		return toSwapQuote(sw, quote.mint, mid, solUSD)
+	}
+	return 0, false
 }

@@ -679,9 +679,12 @@ func (st *State) reject(slug string, r parseReject) {
 // Meteora DLMM), else the previous trade on the pool (at most 60 s
 // earlier); the pool neighbourhood is read anyway for the screen.
 func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pools *poolCache, solUSD float64, now int64) {
-	// The pump.fun curve's own event first: its virtual reserves are not
-	// constants, so the cached account constants can be stale.
-	if sw.Venue == "pump-curve" {
+	// The venue's own event first, where the vaults do not describe the
+	// curve: pump.fun's virtual reserves are not constants, so the cached
+	// account constants can be stale, and a Raydium CP-Swap vault holds
+	// protocol, fund and creator fees that the curve excludes — its event
+	// reports the reserves it actually used.
+	if sw.Venue == "pump-curve" || sw.Venue == "raydium-cpmm" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
 			sw.finalize(&p, 0, "reserves")
 		}
