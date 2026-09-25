@@ -96,11 +96,16 @@ type Protocol struct {
 	// stays absent.
 	Rev30d float64
 	Rev1y  float64
-	// Same rule as Incomplete, on the revenue series: a token is here when
-	// its fee total is short (the silent product's revenue is missing by
-	// the same amount) or when a revenue adapter reports nothing over 30
-	// days after real revenue over the year.
+	// True when the revenue total is knowably short of the token's
+	// protocols: the fee total itself is short (Incomplete), a revenue
+	// adapter reports nothing over 30 days after real revenue over the
+	// year, or a product earning fees this month has no revenue series at
+	// all while its siblings do. Revenue is published with the flag; the
+	// P/S built on it is not.
 	RevIncomplete bool
+	// Adapters with fees this month and no revenue row, so the size of
+	// the coverage gap is visible.
+	RevMissingAdapters int
 
 	// TVL summed over every /protocols row that resolves to this token,
 	// own row or parent, so a lending protocol's V2, V3 and side markets
@@ -221,8 +226,13 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 	}
 	revByID := map[string]feeAdapter{}
 	for _, r := range revenue {
-		revByID[idString(r.DefillamaID)] = r
+		if id := idString(r.DefillamaID); id != "" {
+			revByID[id] = r
+		}
 	}
+	// Whether any revenue rows arrived at all: with none, revenue is
+	// unknown for every token and no row is flagged as partial.
+	haveRevenue := len(revByID) > 0
 	// TVL by token, over every /protocols row, resolved by the same rule
 	// the fee adapters use: the row's own gecko_id first, else its
 	// parent's. Rows without either belong to no token.
@@ -294,13 +304,18 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 			e.SilentFees1y += f.Total1y
 		}
 		// Revenue rides on the fee adapter: same product, same token, so
-		// the sum spans exactly the adapters the fees do.
+		// the sum spans the adapters the fees do. A product earning fees
+		// this month with no revenue row is a coverage gap, not a zero:
+		// DeFiLlama defines no revenue for it, so the token's total is
+		// knowably short and the P/S on it would be inflated.
 		if rv, ok := revByID[idString(f.DefillamaID)]; ok {
 			e.Rev30d += rv.Total30d
 			e.Rev1y += rv.Total1y
 			if rv.Total30d == 0 && rv.Total1y > silentAdapterYearUSD {
 				e.RevIncomplete = true
 			}
+		} else if haveRevenue && f.Total30d > 0 {
+			e.RevMissingAdapters++
 		}
 	}
 
@@ -318,7 +333,10 @@ func joinCohort(fees, revenue []feeAdapter, protocols []llamaProtocol, parents [
 		}
 		sort.Strings(e.Adapters)
 		e.Slug = slugify(e.Name)
-		if e.Incomplete {
+		// A gap only means something once some product does report
+		// revenue; a token with no revenue row anywhere is unknown, not
+		// partial, and stays unflagged with no P/S.
+		if e.Incomplete || (e.Rev30d > 0 && e.RevMissingAdapters > 0) {
 			e.RevIncomplete = true
 		}
 		if tvl, ok := tvlByToken[gecko]; ok {

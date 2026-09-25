@@ -141,8 +141,9 @@ func poll(cfg *Config, supply *supplyCache) {
 	// is. The board above is already published, so a restart does not hold
 	// every gauge behind it; the rows are republished as series arrive.
 	now := time.Now()
+	day := now.UTC().Format("2006-01-02")
 	republish := func() {
-		pvSupplyCacheSize.Set(float64(supply.size()))
+		pvSupplyCacheSize.Set(float64(supply.size(day)))
 		publish(rows, medians, sizes, st, float64(time.Now().Unix()))
 	}
 	fetched := attachSupplyChange(rows, supply, now, republish)
@@ -157,5 +158,5 @@ func poll(cfg *Config, supply *supplyCache) {
 		}
 	}
 	fmt.Printf("[supply] fetched %d series, %d cached for %s, %d/%d rows with supply 30d/90d, %v\n",
-		fetched, supply.size(), now.UTC().Format("2006-01-02"), withSupply30, withSupply90, time.Since(now).Round(time.Millisecond))
+		fetched, supply.size(day), day, withSupply30, withSupply90, time.Since(now).Round(time.Millisecond))
 }

@@ -31,7 +31,7 @@ vs category = P/F / median P/F of the category (5 tokens or more)
 diverging   = fees MoM > 0 and price 30d < 0 and P/F < category median
 ```
 
-Absent, never zero: a ratio whose denominator is missing or zero is not published. No revenue series means "unknown", not "keeps nothing", so P/S stays absent. No `/protocols` row with a TVL means nothing locked, so TVL stays absent. A supply series shorter than the window (a token listed six weeks ago) has no 90-day figure.
+Absent, never zero: a ratio whose denominator is missing or zero is not published. No revenue series means "unknown", not "keeps nothing", so P/S stays absent; so does a revenue total that is knowably short (`protocol_revenue_incomplete`), since a multiple on a fraction of the revenue reads higher than it is. No `/protocols` row with a TVL means nothing locked, so TVL stays absent. A supply series shorter than the window (a token listed six weeks ago) has no 90-day figure.
 
 Supply change is realized dilution, what reached the float over the window, not an unlock schedule. A cliff next month is invisible until it lands.
 
@@ -39,7 +39,7 @@ Supply change is realized dilution, what reached the float over the window, not 
 
 - Fee floor: 100,000 USD of trailing 30d fees, applied to the token after its adapters are summed.
 - Float floor: 10 % of total supply circulating. Below it P/F reads near zero and would lead an ascending board.
-- `protocol_fees_incomplete`: an adapter reports nothing over 30 days after more than 1M USD over the year, so the fee total is knowably short. The row keeps its gauges but leaves the ranking and the category median. `protocol_revenue_incomplete` is the same rule on the revenue series, and is set whenever the fee flag is.
+- `protocol_fees_incomplete`: an adapter reports nothing over 30 days after more than 1M USD over the year, so the fee total is knowably short. The row keeps its gauges but leaves the ranking and the category median. `protocol_revenue_incomplete` is the same rule on the revenue series, set whenever the fee flag is, and also when a product earning fees this month has no revenue series while a sibling does (`protocol_revenue_missing_adapters` counts them). Revenue is published with the flag; P/S is not.
 - Category: the one carrying most of the token's fees, not the first adapter's.
 
 ## Metrics
@@ -54,6 +54,7 @@ protocol_pf_vs_category_ratio     protocol_fee_growth_30d_pct           protocol
 protocol_diverging                protocol_revenue_30d_usd{category}    protocol_supply_change_30d_pct{category}
 protocol_fees_incomplete          protocol_annual_revenue_usd           protocol_supply_change_90d_pct{category}
 protocol_revenue_incomplete       protocol_silent_adapter_fees_1y_usd   protocol_tvl_usd{category}
+protocol_revenue_missing_adapters
 protocol_info{name,category}      protocol_valuation_health
 
 protocol_category_pf_median{category}   protocol_category_size{category}
@@ -70,7 +71,7 @@ Every per-protocol vector is reset each poll: the cohort is rebuilt from upstrea
 
 ## Budget
 
-Four DeFiLlama reads and one CoinGecko `/coins/markets` page per hour. The supply series is one CoinGecko `/market_chart` call per row per UTC day (about 180), cached in memory and rebuilt once after a restart; the poll publishes the board first and republishes with the dilution columns once the series are in. The public tier, no key, allows somewhere between 5 and 30 calls a minute per address and the address is shared with the other harnesses on the host, so the pacer starts 6 s apart, doubles the gap on a 429 (up to 60 s) and halves it back after 20 clean calls. A 429 backs off for `Retry-After` or 65 s and is retried three times. A tick fetches for at most 40 minutes and republishes every 10 series, then leaves the rest to the next hour, so a throttled day fills the cohort over a few ticks and the first dilution columns appear minutes after a restart. `protocol_valuation_coingecko_calls_total`, `_429_total` and `_gap_seconds` are the series to check the claim against.
+Four DeFiLlama reads and one CoinGecko `/coins/markets` page per hour. The supply series is one CoinGecko `/market_chart` call per row per UTC day (about 180), cached in memory and rebuilt once after a restart; the poll publishes the board first and republishes with the dilution columns once the series are in. The public tier, no key, allows somewhere between 5 and 30 calls a minute per address and the address is shared with the other harnesses on the host, so the pacer starts 6 s apart, doubles the gap on a 429 (up to 60 s) and halves it back after 20 clean calls. A call gets three attempts; a 429 backs off for `Retry-After` (clamped to 2 minutes) or 65 s between them, with no sleep after the last. A tick fetches for at most 40 minutes, stops after 5 errors in a row, and republishes every 10 series; the rest waits for the next hour. Yesterday's series is served, marked stale in the log, until today's replaces it, so the dilution columns do not vanish at midnight UTC (a restart still starts from an empty cache). `protocol_valuation_coingecko_calls_total`, `_429_total` and `_gap_seconds` are the series to check the claim against.
 
 ## Run
 

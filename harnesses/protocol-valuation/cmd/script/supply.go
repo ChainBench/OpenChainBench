@@ -23,8 +23,10 @@ import (
 // whole cohort fits inside the free tier's rate limit: the series is
 // daily, so a second read the same day returns the same numbers. The
 // cache is in memory and rebuilt once after a restart.
+// cgChartURL is a var so a test can point the fetch at a fake upstream.
+var cgChartURL = cgAPI + "/coins/%s/market_chart"
+
 const (
-	cgMarketChart = cgAPI + "/coins/%s/market_chart"
 	// 91 days gives 92 daily points plus today's intraday point, which is
 	// one day of slack over the 90-day window when a series starts late.
 	chartDays = 91
@@ -34,14 +36,21 @@ const (
 	// minute (180 rows in 18 minutes, once a day), doubles the gap on a
 	// 429 and halves it back after a run of clean calls, so it settles
 	// wherever the headroom is on the day.
-	cgMinGap  = 6 * time.Second
-	cgMaxGap  = 60 * time.Second
-	cgRetries = 3
+	cgMinGap = 6 * time.Second
+	cgMaxGap = 60 * time.Second
+	// Attempts per call, the first one included.
+	cgAttempts = 3
 	// Clean calls in a row before the gap is halved back toward cgMinGap.
 	cgRelaxAfter = 20
 	// A 429 without a Retry-After header backs off this long before the
-	// next attempt.
-	cgBackoff = 65 * time.Second
+	// next attempt; a Retry-After is honoured up to cgMaxBackoff, since
+	// one large header must not park the fee board for hours.
+	cgBackoff    = 65 * time.Second
+	cgMaxBackoff = 2 * time.Minute
+	// Errors in a row of any kind (timeouts, 5xx) after which a supply
+	// pass stops for the tick: an outage should cost minutes, not the
+	// whole budget.
+	supplyMaxConsecutiveErrors = 5
 	// How long one tick keeps fetching supply series before leaving the
 	// rest to the next tick. The address is shared with other harnesses
 	// and throttled on some days, so a pass that ran to completion could
@@ -59,46 +68,54 @@ type supplyPoint struct {
 	Circ float64
 }
 
-// supplyCache keeps one series per token for the current UTC day.
+// supplyCache keeps one series per token with the UTC day it was
+// fetched. A series from an earlier day is still served, marked stale,
+// until today's fetch replaces it: the day rolls over at midnight UTC and
+// the refetch takes from minutes to over an hour, and a column that
+// vanished every morning would be worse than one a day old.
 type supplyCache struct {
 	mu      sync.Mutex
-	day     string
-	entries map[string][]supplyPoint
+	entries map[string]supplyEntry
+}
+
+type supplyEntry struct {
+	day    string
+	series []supplyPoint
 }
 
 func newSupplyCache() *supplyCache {
-	return &supplyCache{entries: map[string][]supplyPoint{}}
+	return &supplyCache{entries: map[string]supplyEntry{}}
 }
 
-// get returns the cached series for id if it was fetched today.
-func (c *supplyCache) get(id, day string) ([]supplyPoint, bool) {
+// get returns the cached series for id, and whether it was fetched on
+// day. A series from an earlier day comes back with fresh=false.
+func (c *supplyCache) get(id, day string) (series []supplyPoint, fresh bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.day != day {
-		// Midnight UTC: every entry is a day old, so the next tick
-		// refetches the cohort once.
-		c.day = day
-		c.entries = map[string][]supplyPoint{}
+	e, ok := c.entries[id]
+	if !ok {
 		return nil, false
 	}
-	s, ok := c.entries[id]
-	return s, ok
+	return e.series, e.day == day
 }
 
 func (c *supplyCache) put(id, day string, s []supplyPoint) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.day != day {
-		c.day = day
-		c.entries = map[string][]supplyPoint{}
-	}
-	c.entries[id] = s
+	c.entries[id] = supplyEntry{day: day, series: s}
 }
 
-func (c *supplyCache) size() int {
+// size is how many tokens hold a series fetched on day.
+func (c *supplyCache) size(day string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return len(c.entries)
+	n := 0
+	for _, e := range c.entries {
+		if e.day == day {
+			n++
+		}
+	}
+	return n
 }
 
 // cgPacer spaces CoinGecko calls so the whole harness stays under the
@@ -148,10 +165,11 @@ func (p *cgPacer) ok() {
 }
 
 // getCoinGecko is getJSON with the pacer and a 429 backoff. The retry
-// honours Retry-After when CoinGecko sends one.
+// honours Retry-After, clamped, when CoinGecko sends one, and does not
+// sleep after the last attempt.
 func getCoinGecko(rawURL string, out any) error {
 	var err error
-	for attempt := 0; attempt < cgRetries; attempt++ {
+	for attempt := 1; attempt <= cgAttempts; attempt++ {
 		pacer.wait()
 		pvCoinGeckoCalls.Inc()
 		var res httpResult
@@ -165,14 +183,26 @@ func getCoinGecko(rawURL string, out any) error {
 		}
 		pvCoinGecko429s.Inc()
 		pacer.throttled()
-		wait := cgBackoff
-		if res.retryAfter > 0 {
-			wait = res.retryAfter
+		if attempt == cgAttempts {
+			break
 		}
-		fmt.Printf("[coingecko] 429, backing off %v (attempt %d/%d)\n", wait, attempt+1, cgRetries)
+		wait := backoffFor(res.retryAfter)
+		fmt.Printf("[coingecko] 429, backing off %v (attempt %d/%d)\n", wait, attempt, cgAttempts)
 		time.Sleep(wait)
 	}
 	return err
+}
+
+// backoffFor is the wait after a 429: Retry-After when sent, clamped to
+// cgMaxBackoff, else cgBackoff.
+func backoffFor(retryAfter time.Duration) time.Duration {
+	if retryAfter <= 0 {
+		return cgBackoff
+	}
+	if retryAfter > cgMaxBackoff {
+		return cgMaxBackoff
+	}
+	return retryAfter
 }
 
 // fetchSupplySeries reads /market_chart for one coin and turns it into a
@@ -186,7 +216,7 @@ func fetchSupplySeries(id string) ([]supplyPoint, error) {
 		Prices     [][2]float64 `json:"prices"`
 		MarketCaps [][2]float64 `json:"market_caps"`
 	}
-	if err := getCoinGecko(fmt.Sprintf(cgMarketChart, url.PathEscape(id))+"?"+q.Encode(), &chart); err != nil {
+	if err := getCoinGecko(fmt.Sprintf(cgChartURL, url.PathEscape(id))+"?"+q.Encode(), &chart); err != nil {
 		return nil, err
 	}
 	return supplySeries(chart.Prices, chart.MarketCaps), nil
@@ -238,43 +268,54 @@ func supplyChangePct(series []supplyPoint, now time.Time, window time.Duration) 
 	return 100 * (latest.Circ/then.Circ - 1), true
 }
 
-// attachSupplyChange fills the dilution fields of every row, fetching the
-// series the cache does not hold for today, for at most supplyPassBudget.
-// onProgress is called every supplyPublishEvery fetches so the caller can
-// republish the rows filled so far. Returns how many fetches it made.
+// attachSupplyChange fills the dilution fields of every row from the
+// cache, fetching the series it does not hold for today, for at most
+// supplyPassBudget and until supplyMaxConsecutiveErrors failures in a
+// row. A row whose fetch did not happen keeps yesterday's series when
+// there is one. onProgress is called every supplyPublishEvery fetches so
+// the caller can republish the rows filled so far. Returns how many
+// fetches it made.
 func attachSupplyChange(rows []Row, cache *supplyCache, now time.Time, onProgress func()) int {
 	day := now.UTC().Format("2006-01-02")
 	start := time.Now()
-	fetched, misses := 0, 0
+	fetched, stale, missing, consecutiveErrors := 0, 0, 0, 0
+	fetching := true
 	for i := range rows {
 		id := rows[i].GeckoID
-		series, ok := cache.get(id, day)
-		if !ok {
+		series, fresh := cache.get(id, day)
+		if !fresh && fetching {
 			if time.Since(start) > supplyPassBudget {
-				// Left to the next hourly tick; the rows still fill from
-				// whatever the cache holds.
-				misses++
-				continue
-			}
-			s, err := fetchSupplySeries(id)
-			if err != nil {
+				// Left to the next hourly tick.
+				fetching = false
+			} else if s, err := fetchSupplySeries(id); err != nil {
 				pvFetchErrors.WithLabelValues("coingecko_chart").Inc()
 				fmt.Printf("[supply] %s: %v (retried next tick)\n", id, err)
-				misses++
-				continue
+				if consecutiveErrors++; consecutiveErrors >= supplyMaxConsecutiveErrors {
+					fmt.Printf("[supply] %d errors in a row, pass stopped for this tick\n", consecutiveErrors)
+					fetching = false
+				}
+			} else {
+				consecutiveErrors = 0
+				fetched++
+				cache.put(id, day, s)
+				series, fresh = s, true
+				if fetched%supplyPublishEvery == 0 && onProgress != nil {
+					onProgress()
+				}
 			}
-			fetched++
-			cache.put(id, day, s)
-			series = s
+		}
+		switch {
+		case series == nil:
+			missing++
+			continue
+		case !fresh:
+			stale++
 		}
 		rows[i].SupplyChg30d, rows[i].HasSupply30d = supplyChangePct(series, now, 30*24*time.Hour)
 		rows[i].SupplyChg90d, rows[i].HasSupply90d = supplyChangePct(series, now, 90*24*time.Hour)
-		if fetched > 0 && fetched%supplyPublishEvery == 0 && onProgress != nil {
-			onProgress()
-		}
 	}
-	if misses > 0 {
-		fmt.Printf("[supply] %d rows without a series this tick, next tick continues\n", misses)
+	if stale > 0 || missing > 0 {
+		fmt.Printf("[supply] %d rows on yesterday's series, %d without one, next tick continues\n", stale, missing)
 	}
 	return fetched
 }

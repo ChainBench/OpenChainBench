@@ -20,7 +20,9 @@ type Row struct {
 
 	// Price to sales: the same multiple on what the protocol keeps rather
 	// than on what its users paid. Absent when no adapter behind the token
-	// publishes a revenue series, which is "unknown", not "keeps nothing".
+	// publishes a revenue series, which is "unknown", not "keeps nothing",
+	// and absent when the revenue total is knowably short: a multiple on a
+	// fraction of the revenue reads as a higher multiple than it is.
 	AnnualRev float64
 	PS        float64
 	HasPS     bool
@@ -80,7 +82,9 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 		}
 		if p.Rev30d > 0 {
 			r.AnnualRev = annualize(p.Rev30d)
-			r.PS, r.HasPS = r.Mcap/r.AnnualRev, true
+			if !p.RevIncomplete {
+				r.PS, r.HasPS = r.Mcap/r.AnnualRev, true
+			}
 		}
 		if p.Prev30d > 0 {
 			r.FeeGrowthPct, r.HasFeeGrowth = 100*(p.Fees30d/p.Prev30d-1), true

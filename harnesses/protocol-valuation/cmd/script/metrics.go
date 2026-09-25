@@ -45,10 +45,13 @@ var (
 	pvAnnualRev = gaugeVec("protocol_annual_revenue_usd",
 		"Annualized revenue in USD (trailing 30d x 365/30).", "protocol")
 	pvPS = gaugeVec("protocol_ps_ratio",
-		"Price to sales: circulating market cap / annualized revenue. Absent when revenue is missing or zero.",
+		"Price to sales: circulating market cap / annualized revenue. Absent when revenue is missing or zero, and when the revenue total is knowably short (protocol_revenue_incomplete = 1).",
 		"protocol", "category")
 	pvRevIncomplete = gaugeVec("protocol_revenue_incomplete",
-		"1 when the revenue total is knowably short: the token's fee total is (protocol_fees_incomplete), or a revenue adapter reports nothing over 30 days after real revenue over the year.",
+		"1 when the revenue total is knowably short: the token's fee total is (protocol_fees_incomplete), a revenue adapter reports nothing over 30 days after real revenue over the year, or a product earning fees this month has no revenue series while its siblings do. Revenue is published with the flag; P/S is not.",
+		"protocol")
+	pvRevMissingAdapters = gaugeVec("protocol_revenue_missing_adapters",
+		"Fee adapters of this token earning fees this month with no revenue series on DeFiLlama, the size of the coverage gap behind protocol_revenue_incomplete.",
 		"protocol")
 	pvTVL = gaugeVec("protocol_tvl_usd",
 		"Total value locked in USD, summed over every DeFiLlama /protocols row that resolves to this token, own row or parent. Absent when no row carries a TVL.",
@@ -139,7 +142,7 @@ func init() {
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth,
 		pvMcap, pvFDV, pvFloat, pvPriceChg,
 		pvPF, pvPFfdv,
-		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
+		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
 		pvCategoryMedianPF, pvCategorySize, pvPFvsCategory, pvDiverging,
 		pvIncomplete, pvSilentFees1y, pvInfo,
 		pvHealth,
@@ -161,7 +164,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 	for _, v := range []*prometheus.GaugeVec{
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth, pvMcap, pvFDV,
 		pvFloat, pvPriceChg, pvPF, pvPFfdv, pvPFvsCategory, pvDiverging,
-		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
+		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
 		pvIncomplete, pvSilentFees1y, pvInfo,
 		pvHealth, pvCategoryMedianPF, pvCategorySize,
 	} {
@@ -199,10 +202,13 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		}
 		if r.Rev30d > 0 {
 			pvRev30d.WithLabelValues(r.Slug, r.Category).Set(r.Rev30d)
+			pvAnnualRev.WithLabelValues(r.Slug).Set(r.AnnualRev)
 			pvRevIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.RevIncomplete))
+			if r.RevMissingAdapters > 0 {
+				pvRevMissingAdapters.WithLabelValues(r.Slug).Set(float64(r.RevMissingAdapters))
+			}
 		}
 		if r.HasPS {
-			pvAnnualRev.WithLabelValues(r.Slug).Set(r.AnnualRev)
 			pvPS.WithLabelValues(r.Slug, r.Category).Set(r.PS)
 		}
 		if r.HasTVL {

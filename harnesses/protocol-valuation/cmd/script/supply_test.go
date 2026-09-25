@@ -2,6 +2,8 @@ package main
 
 import (
 	"math"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -110,24 +112,97 @@ func TestSupplyChangeSign(t *testing.T) {
 	}
 }
 
-// The cache serves a token for the day it was fetched and forgets every
-// entry at the UTC day boundary, which is what bounds the CoinGecko
-// budget to one call per token per day.
-func TestSupplyCacheResetsAtTheDayBoundary(t *testing.T) {
+// The cache serves a token as fresh on the day it was fetched, which is
+// what bounds the CoinGecko budget to one call per token per day, and
+// still serves it, marked stale, the next day until the refetch lands, so
+// the column does not vanish every morning.
+func TestSupplyCacheServesStaleUntilRefetched(t *testing.T) {
 	c := newSupplyCache()
 	series := []supplyPoint{{T: day(0), Circ: 1}}
 	c.put("aave", "2026-09-25", series)
-	if _, ok := c.get("aave", "2026-09-25"); !ok {
-		t.Fatal("same day should hit")
+	if s, fresh := c.get("aave", "2026-09-25"); !fresh || len(s) != 1 {
+		t.Fatal("same day should be fresh")
 	}
-	if _, ok := c.get("uniswap", "2026-09-25"); ok {
-		t.Fatal("another token should miss")
+	if s, fresh := c.get("uniswap", "2026-09-25"); fresh || s != nil {
+		t.Fatal("another token should be absent")
 	}
-	if _, ok := c.get("aave", "2026-09-26"); ok {
-		t.Fatal("the next day should miss")
+	if s, fresh := c.get("aave", "2026-09-26"); fresh || len(s) != 1 {
+		t.Fatalf("the next day should serve yesterday's series as stale, got fresh=%v len=%d", fresh, len(s))
 	}
-	if c.size() != 0 {
-		t.Fatalf("cache should be empty after the day rolled, has %d", c.size())
+	if c.size("2026-09-26") != 0 || c.size("2026-09-25") != 1 {
+		t.Fatalf("size counts fresh series only: %d today, %d yesterday", c.size("2026-09-26"), c.size("2026-09-25"))
+	}
+	c.put("aave", "2026-09-26", series)
+	if _, fresh := c.get("aave", "2026-09-26"); !fresh {
+		t.Fatal("refetched series should be fresh")
+	}
+}
+
+// A 429 is retried with Retry-After honoured and clamped, and the last
+// attempt does not sleep before giving up.
+func TestCoinGeckoRetryHonoursAndClampsRetryAfter(t *testing.T) {
+	if got := backoffFor(0); got != cgBackoff {
+		t.Errorf("no header: %v, want %v", got, cgBackoff)
+	}
+	if got := backoffFor(4 * time.Second); got != 4*time.Second {
+		t.Errorf("short header: %v, want 4s", got)
+	}
+	if got := backoffFor(time.Hour); got != cgMaxBackoff {
+		t.Errorf("long header: %v, want %v", got, cgMaxBackoff)
+	}
+
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	saved := pacer
+	pacer = &cgPacer{}
+	defer func() { pacer = saved }()
+
+	start := time.Now()
+	var out any
+	err := getCoinGecko(srv.URL+"/x", &out)
+	elapsed := time.Since(start)
+	if err == nil || calls != cgAttempts {
+		t.Fatalf("err=%v calls=%d, want an error after %d attempts", err, calls, cgAttempts)
+	}
+	// Two sleeps of one second between three attempts, none after the last.
+	if elapsed < 2*time.Second || elapsed > 3*time.Second+500*time.Millisecond {
+		t.Errorf("elapsed %v, want about 2s (no sleep after the final attempt)", elapsed)
+	}
+}
+
+// A row whose series could not be fetched this tick keeps yesterday's
+// figure; a row with no series at all has none.
+func TestAttachSupplyKeepsYesterdaysSeries(t *testing.T) {
+	prices, mcaps := linearSeries(92)
+	series := supplySeries(prices, mcaps)
+	c := newSupplyCache()
+	c.put("old", "2026-09-24", series)
+	rows := []Row{{Protocol: Protocol{GeckoID: "old"}}, {Protocol: Protocol{GeckoID: "never"}}}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	savedPacer, savedAPI := pacer, cgChartURL
+	pacer = &cgPacer{}
+	cgChartURL = srv.URL + "/coins/%s/market_chart"
+	defer func() { pacer, cgChartURL = savedPacer, savedAPI }()
+
+	now := day(91).Add(13 * time.Hour)
+	fetched := attachSupplyChange(rows, c, now, nil)
+	if fetched != 0 {
+		t.Fatalf("fetched %d, want 0 from a failing upstream", fetched)
+	}
+	if !rows[0].HasSupply30d || !rows[0].HasSupply90d {
+		t.Error("a row with yesterday's series should still carry its figures")
+	}
+	if rows[1].HasSupply30d || rows[1].HasSupply90d {
+		t.Error("a row that never had a series should carry none")
 	}
 }
 

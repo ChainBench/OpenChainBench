@@ -98,6 +98,52 @@ func TestASilentRevenueAdapterMarksRevenueIncomplete(t *testing.T) {
 	}
 }
 
+// A product earning fees this month with no revenue row while a sibling
+// has one is a coverage gap: the revenue total is short and the P/S on it
+// would be inflated, so the token is flagged. A token with no revenue row
+// anywhere is unknown, not partial.
+func TestPartialRevenueCoverageIsIncomplete(t *testing.T) {
+	fees := []feeAdapter{
+		{Name: "GMX V1", DefillamaID: "1", ParentProtocol: "parent#gmx", Category: "Derivatives", Total30d: 4e6},
+		{Name: "GMX V2", DefillamaID: "2", ParentProtocol: "parent#gmx", Category: "Derivatives", Total30d: 4e6},
+		{Name: "GMX Retired", DefillamaID: "3", ParentProtocol: "parent#gmx", Category: "Derivatives", Total30d: 0},
+		{Name: "Pump", DefillamaID: "4", Category: "Launchpad", Total30d: 5e6},
+	}
+	revenue := []feeAdapter{{Name: "GMX V1", DefillamaID: "1", Total30d: 1e6}}
+	protocols := []llamaProtocol{
+		{ID: float64(1), Name: "GMX V1", ParentProtocol: "parent#gmx"},
+		{ID: float64(2), Name: "GMX V2", ParentProtocol: "parent#gmx"},
+		{ID: float64(3), Name: "GMX Retired", ParentProtocol: "parent#gmx"},
+		{ID: float64(4), Name: "Pump", GeckoID: "pump-fun"},
+	}
+	parents := []llamaParent{{ID: "parent#gmx", Name: "GMX", GeckoID: "gmx"}}
+	cohort, _, err := joinCohort(fees, revenue, protocols, parents, 1e5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := map[string]Protocol{}
+	for _, p := range cohort {
+		by[p.GeckoID] = p
+	}
+	gmx := by["gmx"]
+	if gmx.Rev30d != 1e6 || !gmx.RevIncomplete || gmx.RevMissingAdapters != 1 {
+		t.Errorf("gmx: rev=%v incomplete=%v missing=%d, want 1e6, true, 1 (V2 earns fees with no revenue row; the retired product does not count)",
+			gmx.Rev30d, gmx.RevIncomplete, gmx.RevMissingAdapters)
+	}
+	if pump := by["pump-fun"]; pump.RevIncomplete {
+		t.Errorf("pump: no revenue row anywhere is unknown, not partial, got %+v", pump)
+	}
+	rows := buildRows(cohort, map[string]cgMarket{
+		"gmx":      {ID: "gmx", Mcap: 1e9, FDV: 1e9, Circ: 1, Total: 1},
+		"pump-fun": {ID: "pump-fun", Mcap: 1e9, FDV: 1e9, Circ: 1, Total: 1},
+	}, 10)
+	for _, r := range rows {
+		if r.HasPS {
+			t.Errorf("%s: no P/S on a short or unknown revenue total", r.GeckoID)
+		}
+	}
+}
+
 // P/S needs revenue. Zero or missing revenue is "unknown", and a ratio
 // against unknown must be absent rather than infinite or zero.
 func TestPSIsAbsentWithoutRevenue(t *testing.T) {

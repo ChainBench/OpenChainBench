@@ -210,8 +210,10 @@ async function publishValuation(prom: Prometheus, dir: string, day: string): Pro
     supply_change_30d_pct: await vector(prom, "protocol_supply_change_30d_pct", "protocol"),
     supply_change_90d_pct: await vector(prom, "protocol_supply_change_90d_pct", "protocol"),
     // 1 when the fee adapter is knowably incomplete: the board holds the
-    // token out and so should any reader of this file.
+    // token out and so should any reader of this file. The revenue flag
+    // is the same rule on the revenue series; ps is absent when it is 1.
     fees_incomplete: await vector(prom, "protocol_fees_incomplete", "protocol"),
+    revenue_incomplete: await vector(prom, "protocol_revenue_incomplete", "protocol"),
   };
   const pInfo = await infoLabels(prom, "protocol_info", "protocol", ["name", "category"]);
   // Bench 265 cohort (perp DEXes, fees and revenue).
