@@ -288,7 +288,7 @@ export default async function TradingAppsHubPage() {
                 </th>
                 <th
                   className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap cursor-help"
-                  title="Where the app's volume settled on the last closed UTC day (DeFiLlama, bench 267). Dash: not tracked by DeFiLlama."
+                  title="Where the app's volume settled on its latest closed UTC day (DeFiLlama, bench 267). Dash: not tracked by DeFiLlama."
                 >
                   Chains
                 </th>
@@ -369,7 +369,7 @@ export default async function TradingAppsHubPage() {
         <p className="mt-2 text-[11px] text-ink-faint">
           Best value per column highlighted in green. Sorted by swap transactions.
           Volume is in the bench 267 table above (one figure per app, cross-chain).
-          Chains from bench 267 (last closed UTC day); SOL marks a Dune dataset that covers Solana only.
+          Chains from bench 267 (each app&apos;s latest closed UTC day); SOL marks a Dune dataset that covers Solana only.
           Hover column headers for methodology notes. Data refreshes every 60 s.
         </p>
       </section>
