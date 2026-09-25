@@ -106,6 +106,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 280 chain fees and revenue: new gauges on the chain-kpis harness
   // (2026-09-25), no 24h window yet and no audit round. Un-gate after both.
   "chain-fees-revenue",
+  // 281 USDC corridor flows: first deploy of the bridge-flows harness
+  // (CCTP burns over public RPCs), the 7d window fills over its first
+  // week and no audit round yet. Un-gate after both.
+  "usdc-corridor-flows",
   // 276 perp fee disclosure: the maker gauge is one deploy old and three
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
