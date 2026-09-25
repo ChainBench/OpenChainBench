@@ -144,6 +144,16 @@ func eventMid(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, solUS
 		// A whirlpool publishes the price before its own swap, so no
 		// neighbour is needed.
 		return concMid(sw, tx, base, nil, solUSD)
+	case "multi":
+		// A route through several pools loses its final pool's venue to
+		// the label, not its event: a DLMM pair names the bin the swap
+		// started in, which is the price it found, and the whirlpool its
+		// own square root. The rest need the neighbour priceSwap reads
+		// next.
+		if p, ok := dlmmMid(ctx, rpc, sw, tx, base, solUSD); ok {
+			return p, true
+		}
+		return concMid(sw, tx, base, nil, solUSD)
 	}
 	return 0, false
 }
