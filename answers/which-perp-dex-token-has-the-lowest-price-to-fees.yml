@@ -4,7 +4,7 @@ benchmark: perp-pf-ratio
 status: live
 
 short_answer: |
-  {{best_name}} trades at the lowest price to fees among {{count}} perp DEX tokens, at {{best_p50}}: its market cap is that many times the fees its venue earned over the last 30 days, annualized. The table below reads every token on the same ratio next to price to sales, fully diluted valuation, float and open interest, so a low multiple can be checked against how much of the supply is still to come.
+  {{best_name}} trades at the lowest price to fees among {{ranked_count}} perp DEX tokens, at {{best_p50}}: its market cap is that many times the fees its venue earned over the last 30 days, annualized. The table below reads every token on the same ratio next to price to sales, fully diluted valuation, float and open interest, so a low multiple can be checked against how much of the supply is still to come.
 
 intro: |
   A perpetuals venue earns trading fees every day, and most of them have a token whose market cap
@@ -38,7 +38,7 @@ limitations:
 
 faq:
   - q: "Which perp DEX token has the lowest price to fees right now?"
-    a: "{{best_name}} at {{best_p50}}, of {{count}} tokens ranked. The bench page refreshes hourly and shows the 30-day fee total and the market cap behind the ratio, so the reader can see whether the multiple is low because fees are high or because the market cap is small."
+    a: "{{best_name}} at {{best_p50}}, of {{ranked_count}} tokens ranked. The bench page refreshes hourly and shows the 30-day fee total and the market cap behind the ratio, so the reader can see whether the multiple is low because fees are high or because the market cap is small."
   - q: "What is the difference between price to fees and price to sales here?"
     a: "Price to fees divides the market cap by every fee the venue collected. Price to sales divides it by the revenue, the part of those fees the protocol or its token keeps after paying makers, referrers and other participants. A venue that distributes most fees to traders shows a low P/F and a high P/S; the gap between the two is the venue's take rate."
   - q: "Why does the same token have a much higher FDV/F than P/F?"
@@ -54,4 +54,4 @@ related:
   - which-perp-dex-has-the-lowest-fees
 
 seo_title: "Which perp DEX token has the lowest price to fees?"
-seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{count}} perp DEX tokens. Market cap over annualized 30-day fees, with P/S, FDV and float."
+seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{ranked_count}} perp DEX tokens. Market cap over annualized 30-day fees, with P/S, FDV and float."

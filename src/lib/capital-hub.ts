@@ -34,6 +34,7 @@ import { getChainsHistory, getValuationHistory, type CapitalEntity } from "@/lib
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import {
   CAPITAL_BENCHES,
+  fmtUsdShort,
   type CapitalHub,
   type ChainRow,
   type FlowShare,
@@ -409,6 +410,9 @@ async function buildHub(): Promise<CapitalHub> {
     ...(valHist?.protocols ?? []).map((p) => p.days.length),
   );
 
+  // The bench calls two rows tied when they print the same value (citation.ts);
+  // the hub must not name one of them alone on a $6M gap (SEO audit 2026-09-25).
+  const bridgedRanked = [...chains].filter((c) => c.bridgedTvl != null).sort((a, b) => (b.bridgedTvl ?? 0) - (a.bridgedTvl ?? 0));
   return {
     asOf,
     benches,
@@ -420,7 +424,8 @@ async function buildHub(): Promise<CapitalHub> {
     divergences: selectDivergences(protocols),
     perps,
     leaders: {
-      bridgedTvl: [...chains].filter((c) => c.bridgedTvl != null).sort((a, b) => (b.bridgedTvl ?? 0) - (a.bridgedTvl ?? 0))[0] ?? null,
+      bridgedTvl: bridgedRanked[0] ?? null,
+      bridgedTvlTied: bridgedRanked.filter((c) => bridgedRanked[0] && fmtUsdShort(c.bridgedTvl) === fmtUsdShort(bridgedRanked[0].bridgedTvl)),
       stableInflow: chains.find((c) => c.slug === stableLeaderSlug) ?? null,
       lowestPfProtocol: protocols[0] ?? null,
       lowestPfPerp: perps[0] ?? null,

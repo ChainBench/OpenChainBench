@@ -2,8 +2,8 @@
 slug: chain-bridged-tvl
 number: "273"
 title: "Bridged TVL by chain: how much of a chain's capital came from somewhere else"
-seo_title: "Bridged TVL by chain: {{best_name}} holds {{best_p50}}"
-seo_description: "{{best_name}} holds {{best_p50}}, the most of {{ranked_count}} chains. Value secured that arrived from elsewhere, canonical plus external, from L2Beat, with the weekly move against peers."
+seo_title: "Bridged TVL by chain: {{best_names}} at {{best_p50}}"
+seo_description: "{{best_names}}: {{best_p50}} of bridged TVL, the most of {{ranked_count}} chains. Value secured that arrived from elsewhere, canonical plus external, from L2Beat, with the weekly move against peers."
 subtitle: "L2Beat's value secured per chain, restricted to what arrived from elsewhere: canonical (locked in the chain's own escrow on its host chain) plus external (a third-party bridge). The complement is native, minted here. The weekly columns move with the whole balance, and the one to read is the move against the cohort median."
 category: Blockchains
 status: live
@@ -69,7 +69,7 @@ methodology:
   - "L2Beat's figures are a third-party measurement, credited as the source. OCB does not re-derive the escrow balances; this bench republishes the split and computes the cohort-relative move on top of it."
 
 findings:
-  - "{{best_name}} holds the most bridged capital of the {{ranked_count}} chains at {{best_p50}}."
+  - "The most bridged capital of the {{ranked_count}} chains sits on {{best_names}}, at {{best_p50}}."
   - "A chain at 100 percent bridged secures nothing it minted itself: every dollar was escrowed on its host chain or carried over by a bridge. Several rows sit there, and the Bridged share tab is where to read which."
   - "The opposite case is a chain whose balance is mostly its own issuance, where the bridged share falls into single digits and the Native column carries almost the whole total."
   - "A chain can be up on the week and still lose ground: the 7d vs peers column is the one that says which, because it subtracts the cohort median from the raw move."

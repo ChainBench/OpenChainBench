@@ -40,5 +40,5 @@ related:
   - which-l1-has-the-fastest-finality
 
 seo_title: "Which Hyperliquid frontend earns the most builder revenue?"
-seo_description: "{{best_name}} leads Hyperliquid frontends at {{best_p50}} in daily builder fee revenue across {{count}} tracked frontends, from Hyperliquid's public per-builder fills feed."
+seo_description: "{{best_name}} leads Hyperliquid frontends at {{best_p50}} in daily builder fee revenue across {{ranked_count}} tracked frontends, from Hyperliquid's public per-builder fills feed."
 status: live

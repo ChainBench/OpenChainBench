@@ -4,7 +4,7 @@ benchmark: protocol-pf-ratio
 status: live
 
 short_answer: |
-  {{best_name}} has the lowest price to fees of the {{count}} DeFi tokens OpenChainBench tracks, at {{best_p50}}: its market cap is that many times the fees its protocol earned over the last 30 days, annualized. Every token on the board is read against the fee-weighted median of its own category, and the rows where fees grew while the token fell are flagged, so a low multiple is never read alone.
+  {{best_name}} has the lowest price to fees of the {{ranked_count}} DeFi tokens OpenChainBench tracks, at {{best_p50}}: its market cap is that many times the fees its protocol earned over the last 30 days, annualized. Every token on the board is read against the fee-weighted median of its own category, and the rows where fees grew while the token fell are flagged, so a low multiple is never read alone.
 
 intro: |
   Price to fees is the one valuation ratio every fee-earning protocol can carry, whatever it does:
@@ -40,7 +40,7 @@ limitations:
 
 faq:
   - q: "Which DeFi token has the lowest price to fees right now?"
-    a: "{{best_name}} at {{best_p50}}, of {{count}} tokens ranked. The bench page shows the 30-day fee total, the market cap and the category median behind the ratio, refreshed hourly."
+    a: "{{best_name}} at {{best_p50}}, of {{ranked_count}} tokens ranked. The bench page shows the 30-day fee total, the market cap and the category median behind the ratio, refreshed hourly."
   - q: "What does the fees up, token down flag mean?"
     a: "Three conditions at once: the protocol's fees grew against the prior 30 days, its token fell over the same 30 days, and its price to fees sits below its category median. It marks rows where the fee line and the price line moved apart; it says nothing about which one is right."
   - q: "Why compare to a category median instead of the whole board?"
@@ -56,4 +56,4 @@ related:
   - which-perp-dex-has-the-lowest-fees
 
 seo_title: "Which DeFi token trades at the lowest price to fees?"
-seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{count}} DeFi tokens. Market cap over annualized 30-day fees, read against each category's median."
+seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{ranked_count}} DeFi tokens. Market cap over annualized 30-day fees, read against each category's median."

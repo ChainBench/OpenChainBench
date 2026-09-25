@@ -133,6 +133,8 @@ export type CapitalHub = {
   perps: PerpRow[];
   leaders: {
     bridgedTvl: ChainRow | null;
+    /** Every chain whose bridged value rounds to the leader's at display precision (the bench's tie rule); length 1 when there is a single leader. */
+    bridgedTvlTied: ChainRow[];
     stableInflow: ChainRow | null;
     lowestPfProtocol: ProtocolRow | null;
     lowestPfPerp: PerpRow | null;

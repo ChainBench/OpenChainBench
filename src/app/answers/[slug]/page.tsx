@@ -225,6 +225,8 @@ export default async function AnswerPage({
     "@id": `${url}#question`,
     name: ans.question,
     text: ans.question,
+    // Required by the QAPage schema; the Rich Results Test flags its absence.
+    answerCount: 1,
     acceptedAnswer: {
       "@type": "Answer",
       // Google's Rich Results validator flags Answer nodes without a

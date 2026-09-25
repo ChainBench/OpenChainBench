@@ -1,7 +1,7 @@
 slug: what-is-the-highest-crypto-staking-yield
 question: "What is the highest crypto staking yield right now?"
 short_answer: |
-  {{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across the {{count}} chains OpenChainBench measures live; the lowest is {{worst_name}} at {{worst_p50}}. Net yield means gross APR multiplied by validator uptime, after commission, with MEV included where the chain has a validator level MEV market.
+  {{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across the {{ranked_count}} chains OpenChainBench measures live; the lowest is {{worst_name}} at {{worst_p50}}. Net yield means gross APR multiplied by validator uptime, after commission, with MEV included where the chain has a validator level MEV market.
 
 benchmark: validator-yield
 
@@ -35,5 +35,5 @@ related:
   - which-blockchain-has-cheapest-transaction-fees
 
 seo_title: "Highest crypto staking yield right now? Live validator data"
-seo_description: "{{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across {{count}} chains; {{worst_name}} pays the least at {{worst_p50}}. Measured live on chain by OpenChainBench."
+seo_description: "{{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across {{ranked_count}} chains; {{worst_name}} pays the least at {{worst_p50}}. Measured live on chain by OpenChainBench."
 status: live

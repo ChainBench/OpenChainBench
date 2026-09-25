@@ -1,7 +1,7 @@
 slug: which-hyperliquid-frontend-generates-the-most-hip3-revenue
 question: "Which Hyperliquid HIP-3 deployer generates the most revenue in 2026?"
 short_answer: |
-  {{best_name}} leads {{count}} live HIP-3 dexes on Hyperliquid at {{best_p50}} of notional traded over the last 24 hours. Deployer fee revenue itself is not published by the chain's public endpoints, so the ranking is by volume, the base every deployer's fee cut is taken from.
+  {{best_name}} leads {{ranked_count}} live HIP-3 dexes on Hyperliquid at {{best_p50}} of notional traded over the last 24 hours. Deployer fee revenue itself is not published by the chain's public endpoints, so the ranking is by volume, the base every deployer's fee cut is taken from.
 
 benchmark: hyperliquid-hip3-deployers
 
@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which HIP-3 dex trades the most right now?"
-    a: "{{best_name}} at {{best_p50}} of notional over the rolling 24 hours, across the {{count}} live namespaces. The harness polls the info API every 10 minutes and Prometheus scrapes it every 30 seconds; the page uses incremental static regeneration with a 60 second window, so the headline is at most about 12 minutes behind the chain."
+    a: "{{best_name}} at {{best_p50}} of notional over the rolling 24 hours, across the {{ranked_count}} live namespaces. The harness polls the info API every 10 minutes and Prometheus scrapes it every 30 seconds; the page uses incremental static regeneration with a 60 second window, so the headline is at most about 12 minutes behind the chain."
   - q: "Why is there no revenue number?"
     a: "Because the chain does not publish it. HIP-3 deployers earn a configurable cut of the trading fees on their markets, but the public info API exposes neither the cut nor the amount collected. An earlier edition of this page read the per fill deployerFee field from a node OpenChainBench hosted; that node is retired, and a number estimated from volume and an assumed fee schedule would be a guess, so the column is gone."
   - q: "What is HIP-3 and how does deployer revenue work?"
@@ -40,5 +40,5 @@ related:
   - which-prediction-market-data-api-is-the-freshest
 
 seo_title: "Which Hyperliquid HIP-3 deployer runs the most volume?"
-seo_description: "{{best_name}} runs the largest HIP-3 dex on Hyperliquid at {{best_p50}} notional in 24h across {{count}} live deployers. Volume, markets and open interest from the chain's own info API; deployer fees are not published on chain."
+seo_description: "{{best_name}} runs the largest HIP-3 dex on Hyperliquid at {{best_p50}} notional in 24h across {{ranked_count}} live deployers. Volume, markets and open interest from the chain's own info API; deployer fees are not published on chain."
 status: live

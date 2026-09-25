@@ -2,7 +2,7 @@
 slug: protocol-pf-ratio
 number: "274"
 title: "Price to fees across DeFi: what the market pays per dollar of protocol fees"
-seo_title: "DeFi token price to fees: {{best_name}} lowest of {{ranked_count}} at {{best_p50}}"
+seo_title: "DeFi token price to fees: {{best_names}} lowest of {{ranked_count}} at {{best_p50}}"
 seo_description: "{{best_name}} has the lowest price to fees of {{ranked_count}} DeFi tokens at {{best_p50}}, each read against its category median, with float and 30-day fee trend."
 subtitle: "Circulating market cap divided by annualized fees, for every protocol that earns real fees and has a listed token. The number to read is not the ratio but the column beside it: the same multiple can be ordinary in one category and low in another, so each row is compared to the median of its own category rather than to the market."
 category: Trading

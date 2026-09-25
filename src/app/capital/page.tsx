@@ -20,7 +20,14 @@ import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dat
  * product (see the ocb-seo-geo rules and the Gains note in memory).
  */
 
-const TITLE = "Capital flows and token valuation leaderboards";
+const TITLE = "Bridged TVL, stablecoin flows, open interest, price to fees";
+
+/** The bench's tie rule applied to the hub sentence: "Base and Arbitrum One" when two rows print the same value. */
+function bridgedLeaderNames(hub: CapitalHub): string {
+  const names = hub.leaders.bridgedTvlTied.map((c) => c.name);
+  if (names.length <= 1) return hub.leaders.bridgedTvl?.name ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
 const PATH = "/capital";
 const FALLBACK_DESCRIPTION =
   "TVL, bridged value and stablecoin flows per chain, open interest, and price to fees per token against category medians. Daily history, public data.";
@@ -56,7 +63,7 @@ export async function generateMetadata(): Promise<import("next").Metadata> {
       title: TITLE,
       url: `${SITE.url}${PATH}`,
       asOfIso: hub.asOf,
-      jsonUrl: `${SITE.url}/api/stat/${CAPITAL_BENCHES.protocolPf}`,
+      jsonUrl: `${SITE.url}/api/capital`,
     }),
   };
 }
@@ -285,7 +292,7 @@ function ledeSentence(hub: CapitalHub): string {
   if (!hub.asOf) return "";
   const parts: string[] = [];
   const b = hub.leaders.bridgedTvl;
-  if (b && b.bridgedTvl != null) parts.push(`${b.name} secures the most bridged value at ${fmtUsdShort(b.bridgedTvl)}`);
+  if (b && b.bridgedTvl != null) parts.push(`${bridgedLeaderNames(hub)} ${hub.leaders.bridgedTvlTied.length > 1 ? "secure the most bridged value, tied" : "secures the most bridged value"} at ${fmtUsdShort(b.bridgedTvl)}`);
   const s = hub.leaders.stableInflow;
   if (s && s.stablesNet30d != null && s.stablesNet30d > 0) parts.push(`${s.name} took in the most stablecoins over 30 days at ${fmtUsdShort(s.stablesNet30d)}`);
   const p = hub.leaders.lowestPfProtocol;
@@ -303,14 +310,14 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
   const diverging = hub.protocols.filter((r) => r.signal === "fees-up-token-down");
   return [
     {
-      q: "Which chain gained the most stablecoins this month?",
+      q: "How is the stablecoin flow leader picked, and who leads this month?",
       a:
         s && s.stablesNet30d != null
           ? `${s.name}: its pegged-USD float ${s.stablesNet30d >= 0 ? "grew" : "shrank"} by ${fmtUsdShort(Math.abs(s.stablesNet30d))} over the last 30 days${s.stablesChange30dPct != null ? ` (${fmtPct(s.stablesChange30dPct)})` : ""}, the largest move in the ${hub.chains.filter((c) => c.stablesNet30d != null).length}-chain cohort DeFiLlama tracks above $100M of float.`
           : "The Follow the capital tab ranks every tracked chain by the 30-day change in its stablecoin float, from DeFiLlama's per-chain circulating series.",
     },
     {
-      q: "Which token trades at the lowest price to fees?",
+      q: "How is the lowest price to fees read against its category median?",
       a:
         p && p.pf != null
           ? `${p.name} has the lowest price to fees at ${fmtX(p.pf)}: its market cap is ${fmtX(p.pf)} the fees its protocol earned over the last 30 days annualized${p.categoryMedianPf != null ? `, against a ${p.category} median of ${fmtX(p.categoryMedianPf)}` : ""}. Low is not a verdict: a token can trade at a low multiple because the market expects the fees to fall, or because most of its supply is still locked.`
@@ -330,7 +337,7 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
       q: "Where does bridged value come from and why are Ethereum and Solana missing from it?",
       a:
         b && b.bridgedTvl != null
-          ? `From L2Beat's value secured per scaling chain, split into native, canonical and external; ${b.name} leads at ${fmtUsdShort(b.bridgedTvl)}. Settled L1s have no host chain and therefore no bridged balance to report, so they appear in the TVL and stablecoin columns only.`
+          ? `From L2Beat's value secured per scaling chain, split into native, canonical and external; ${bridgedLeaderNames(hub)} ${hub.leaders.bridgedTvlTied.length > 1 ? "lead, tied" : "leads"} at ${fmtUsdShort(b.bridgedTvl)}. Settled L1s have no host chain and therefore no bridged balance to report, so they appear in the TVL and stablecoin columns only.`
           : "From L2Beat's value secured per scaling chain, split into native, canonical and external. Settled L1s have no host chain and therefore no bridged balance to report, so they appear in the TVL and stablecoin columns only.",
     },
     {

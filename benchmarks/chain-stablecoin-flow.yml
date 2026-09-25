@@ -2,7 +2,7 @@
 slug: chain-stablecoin-flow
 number: "275"
 title: "Stablecoin flow by chain: where dollars actually moved over 30 days"
-seo_title: "Stablecoin flow by chain: {{best_name}} leads at {{best_p50}} over 30 days"
+seo_title: "Stablecoin flow by chain: {{best_names}} at {{best_p50}} over 30 days"
 seo_description: "{{best_name}} leads the 30-day stablecoin net flow of {{ranked_count}} chains at {{best_p50}}; {{worst_name}} sits at the bottom with {{worst_p50}}. Net dollars, 7 and 30 day moves, float, from DefiLlama."
 subtitle: "The dollar change in each chain's stablecoin float over the trailing 30 days. Unlike a TVL ranking this is a flow, not a level: it only moves when somebody mints or bridges dollars onto a chain, or takes them off. Chains below $100M of float when the cohort was set (2026-09-25) are not ranked, because one mint moves them by a third."
 category: Blockchains
@@ -54,7 +54,7 @@ methodology:
   - "Ranking is by net dollars, because that is the quantity that actually moved. The percentage column is the size-adjusted reading and the two disagree on purpose: the largest net inflow and the largest percentage gain are rarely the same chain."
   - "No cohort-relative column here, unlike bench 273. A flow already carries a sign, so the raw number separates a chain that gained from one that lost. Value secured is a level and moves with the market, which is why that board needs an excess column and this one does not."
   - "Cadence: every 15 minutes, matched to the rest of the DefiLlama reads in the harness. The underlying series is daily, so p50, p90, p99 and the mean read the same value and are equal by construction."
-  - "Coverage: the 26 registry chains DefiLlama tracks for stablecoins that sat above the floor when the cohort was chosen on 2026-09-25. A chain DefiLlama does not track for stablecoins answers 404 and is absent rather than shown at zero. Arc cleared the floor ($0.5B) but its history begins on 2026-09-17, too short for a 30-day difference; it joins at the next spec review once that point exists, around 2026-10-17. Under the floor that day: Berachain, zkSync Era, Linea, Unichain, Gnosis."
+  - "Coverage: every registry chain DefiLlama tracks for stablecoins that sat above the floor on 2026-09-25, when the cohort was chosen; the Results heading carries the live count. A chain DefiLlama does not track answers 404 and is absent rather than shown at zero. Arc cleared the floor but its history starts 2026-09-17, too short to difference; it joins once that point exists. Under the floor that day: Berachain, zkSync Era, Linea, Unichain, Gnosis."
 
 findings:
   - "{{best_name}} leads the {{ranked_count}} ranked chains on 30-day stablecoin net flow at {{best_p50}}; a positive figure is an inflow, a negative one the smallest outflow in a month where every chain lost float."
