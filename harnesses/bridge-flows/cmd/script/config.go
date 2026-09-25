@@ -54,13 +54,16 @@ var defaultChains = []Chain{
 		RPCs: []string{"https://gateway.tenderly.co/public/unichain", "https://mainnet.unichain.org"}, MaxChunk: 10000, L2Beat: "unichain"},
 }
 
-// CCTP destination domains, from Circle's domain table (2026-09). Domains
-// the registry does not scan as sources (Solana, Sui, Aptos, ...) still
-// appear as destinations of the scanned chains' burns.
+// CCTP destination domains, from Circle's supported-blockchains table
+// (developers.circle.com/cctp/cctp-supported-blockchains, read 2026-09-25;
+// 4 Noble and 8 Sui are v1-only). Domains the registry does not scan as
+// sources still appear as destinations of the scanned chains' burns; an
+// id missing here publishes as "domain-<id>".
 var domainSlug = map[uint32]string{
-	0: "ethereum", 1: "avalanche", 2: "optimism", 3: "arbitrum", 5: "solana", 6: "base", 7: "polygon",
-	8: "sui", 9: "aptos", 10: "unichain", 11: "linea", 12: "codex", 13: "sonic", 14: "world", 16: "sei",
-	17: "bnb", 18: "xdc", 19: "hyperevm", 21: "ink", 22: "plume", 26: "arc",
+	0: "ethereum", 1: "avalanche", 2: "optimism", 3: "arbitrum", 4: "noble", 5: "solana", 6: "base", 7: "polygon",
+	8: "sui", 9: "aptos", 10: "unichain", 11: "linea", 12: "codex", 13: "sonic", 14: "world", 15: "monad", 16: "sei",
+	17: "bnb", 18: "xdc", 19: "hyperevm", 21: "ink", 22: "plume", 25: "starknet", 26: "arc", 27: "stellar",
+	28: "edge", 29: "injective", 30: "morph", 31: "pharos", 32: "cronos", 33: "plasma", 37: "xlayer",
 }
 
 // Wormhole chain ids to OCB slugs, from the Wormhole TypeScript SDK
