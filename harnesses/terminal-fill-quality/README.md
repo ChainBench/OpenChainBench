@@ -87,8 +87,16 @@ The token leg is valued at an **arrival price**, in this order:
 
 ```
 buy : loss = 1 − tokens × ref / user_q
-sell: loss = 1 − user_q / (tokens × ref)          (EVM sell: base = tokens × ref + the gas paid apart, user_q = gross proceeds)
+sell: loss = 1 − user_q / (tokens × ref)
 ```
+
+The gas joins the base whenever the user paid it in an asset other than
+the quote: on every EVM chain, and on Solana when the quote is a stable.
+A SOL-quoted Solana swap already carries it, because `user_q` there is
+the user's own lamport movement and the fee never left it. Charging it
+in the split without it ever entering the base is what drove `pool_bps`
+negative on Solana buys quoted in USDC — 24 % of them, against under 2 %
+everywhere else.
 
 `loss_bps` is the whole shortfall the user suffered against that
 reference; `terminal_bps` / `network_bps` are exact; `other_bps` is known
@@ -96,8 +104,9 @@ on single-pool swaps without hops; `pool_bps` = loss − terminal − network
 − other, i.e. LP fee + price impact, plus the hop costs and unattributed
 fees on routed swaps. The components always sum to the loss (relay
 included on the Relay rows). All in
-basis points of the trade (buy: quote spent; sell: tokens × ref; unpriced
-sell: the larger of pool_q and what the user got back plus fees). Losses
+basis points of the trade (buy: quote spent; sell: tokens × ref; either
+plus the gas paid apart, as above; unpriced sell: the larger of pool_q
+and what the user got back plus fees). Losses
 outside [−1000, 5000] bps are parsing or reference errors: the row keeps
 its figures with `flag: out_of_bounds` and stays out of the statistics.
 

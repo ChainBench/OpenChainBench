@@ -109,7 +109,7 @@ type Swap struct {
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
 	Flag     string   `json:"flag,omitempty"`
-	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref (quote moved when unpriced)
+	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
 	// Neighbourhood scan for a sandwich around this swap (see sandwich.go).
 	Scanned      bool      `json:"scanned"`
 	BlockPoolTxs int       `json:"block_pool_txs,omitempty"`
@@ -890,18 +890,29 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	s.LossBps, s.PoolBps, s.RefPrice, s.RefAgeS, s.RefSrc = nil, nil, nil, nil, ""
 	if ref != nil && *ref > 0 && s.QuoteUSD > 0 {
 		value := s.Tokens * *ref // token leg in quote units
+		// The gas counts in what the user gave whenever it was paid in
+		// something other than the quote asset. On Solana the quote
+		// movement is the user's own lamport balance, so a SOL-quoted swap
+		// already carries the fee (see quoteDelta above) and a swap quoted
+		// in a stable does not: there the SOL leaves a balance the loss
+		// never looks at, and the split then subtracted a cost the base
+		// had never been charged.
+		gasApart := s.Chain == "" && s.Quote != "SOL"
 		var loss float64
 		switch s.Side {
 		case "buy":
-			trade = s.UserQ
+			trade = s.UserQ // on another chain the gas is already inside it
+			if gasApart {
+				trade += s.NetworkQ
+			}
 			if trade > 0 {
 				loss = 1e4 * (1 - value/trade)
 			}
 		case "sell":
 			trade = value
-			if s.Chain != "" {
-				// A sale on another chain: the gas was paid apart from the
-				// tokens, so what the user gave is the tokens plus that gas.
+			if s.Chain != "" || gasApart {
+				// The gas was paid apart from the tokens, so what the user
+				// gave is the tokens plus that gas.
 				trade += s.NetworkQ
 			}
 			if trade > 0 {

@@ -234,8 +234,8 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th(undefined, "Terminal", undefined, "left")}
               {th(undefined, "Transaction", "Opens on the explorer of the chain this hash belongs to. A cross-chain trade has two: the one here is where the trade settled, and the chain shown next to the route links the side it was paid from.", "left")}
               {th(undefined, "Side · route", "final pool's venue; hops = pool instructions of the route before it; via X = final pool quoted in a third asset", "left")}
-              {th("trade", "Trade", "buy: quote spent, tx fee included; sell: tokens × reference")}
-              {th(undefined, "In $", "USD value the user gave: buy = quote spent (tx fee inside); sell = tokens at the pool's pre-trade reference, plus the gas paid apart on an EVM chain")}
+              {th("trade", "Trade", "buy: quote spent; sell: tokens × reference; plus the gas whenever it was paid in another asset than the quote")}
+              {th(undefined, "In $", "USD value the user gave: buy = quote spent; sell = tokens at the pool's pre-trade reference; either plus the gas, when the user paid it in another asset than the quote")}
               {th(undefined, "Out $", "USD value the user received: buy = tokens at the pool's pre-trade reference; sell = quote received")}
               {th("loss", "Loss", "1 − value received / value given, basis points of the trade. ! marks a row outside the plausible bounds: it stays visible so the sample can be audited, but it is excluded from every figure on this page, so averaging the column by eye gives a number the page never publishes.")}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
